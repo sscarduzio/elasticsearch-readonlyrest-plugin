@@ -67,18 +67,13 @@ object common extends Logging {
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { str =>
-        val (errors, list) = str.split(",")
+        import tech.beshu.ror.utils.StringWiseSplitter._
+        val (errors, list) = str.split(";")
           .map(_.trim)
           .map { pairString =>
-            pairString.split(":").toList match {
-              case first :: second :: Nil =>
-                val result = for {
-                  nonEmptyA <- NonEmptyString.from(first)
-                  nonEmptyB <- NonEmptyString.from(second)
-                } yield (nonEmptyA, nonEmptyB)
-                result.left.map(_ => pairString)
-              case _ => Left(pairString)
-            }
+            pairString
+              .toNonEmptyStringsTuple
+              .left.map(_ => pairString)
           }
           .toList
           .partitionEither
@@ -117,7 +112,7 @@ object common extends Logging {
     DecoderHelpers.decodeStringLikeNonEmpty.map(Group.apply)
 
   implicit val userIdDecoder: Decoder[User.Id] =
-    DecoderHelpers.decodeStringLike.map(User.Id.apply)
+    DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply)
 
   implicit val groupsNesDecoder: Decoder[NonEmptySet[Group]] =
     SyncDecoderCreator

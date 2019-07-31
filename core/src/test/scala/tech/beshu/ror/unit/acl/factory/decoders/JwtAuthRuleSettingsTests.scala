@@ -35,7 +35,9 @@ import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 
-class JwtAuthRuleSettingsTests extends BaseRuleSettingsDecoderTest[JwtAuthRule] with MockFactory {
+class JwtAuthRuleSettingsTests 
+  extends BaseRuleSettingsDecoderTest[JwtAuthRule] 
+    with MockFactory {
 
   "A JwtAuthRule" should {
     "be able to be loaded from config" when {

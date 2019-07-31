@@ -252,10 +252,11 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
-        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
+        impersonationDefs <- AsyncDecoderCreator.from(ImpersonationDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
+        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, impersonationDefs))
         blocks <- {
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
-            blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs, ldapServices))
+            blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs, ldapServices, impersonationDefs))
           }
           DecoderHelpers
             .decodeFieldList[Block, Task](Attributes.acl, RulesLevelCreationError.apply)

@@ -72,6 +72,7 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       .put("headers", requestContext.headers.keys.toList.asJava)
       .put("path", requestContext.uriPath)
       .put("user", requestContext.loggedInUserName.orNull)
+      .put("impersonated_by", requestContext.impersonatedByUserName.orNull)
       .put("action", requestContext.action)
       .put("indices", if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava)
       .put("acl_history", requestContext.history)

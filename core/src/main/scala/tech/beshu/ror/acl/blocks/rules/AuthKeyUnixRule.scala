@@ -19,29 +19,29 @@ package tech.beshu.ror.acl.blocks.rules
 import java.util.regex.Pattern
 
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
-import tech.beshu.ror.acl.domain.{BasicAuth, Secret, User}
+import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.acl.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
+import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.acl.domain.{Credentials, User}
 
-class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings)
+class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
+                      override val impersonators: List[ImpersonatorDef])
   extends BasicAuthenticationRule(settings) {
 
   override val name: Rule.Name = AuthKeyUnixRule.name
 
-  override protected def compare(configuredAuthKey: Secret,
-                                 basicAuth: BasicAuth): Task[Boolean] = Task {
-    configuredAuthKey.value.split(":").toList match {
-      case user :: pass :: Nil if User.Id(user) === basicAuth.user =>
-        configuredAuthKey === roundHash(pass, basicAuth)
-      case _ =>
-        false
-    }
+  override protected def compare(configuredCredentials: UnixHashedCredentials,
+                                 credentials: Credentials): Task[Boolean] = Task {
+    configuredCredentials.userId == credentials.user &&
+      configuredCredentials.from(credentials).contains(configuredCredentials)
   }
 
-  private def roundHash(key: String, basicAuth: BasicAuth): Secret = {
-    val m = AuthKeyUnixRule.pattern.matcher(key)
-    if (m.find) Secret(s"${basicAuth.user.value}:${crypt(basicAuth.secret.value, m.group(1))}")
-    else Secret.empty
+  override def exists(user: User.Id): Task[UserExistence] = Task.now {
+    if (user === settings.credentials.userId) UserExistence.Exists
+    else UserExistence.NotExist
   }
 }
 
@@ -49,4 +49,17 @@ object AuthKeyUnixRule {
   val name = Rule.Name("auth_key_unix")
 
   private val pattern = Pattern.compile("((?:[^$]*\\$){3}[^$]*).*")
+
+  final case class UnixHashedCredentials(userId: User.Id, hash: NonEmptyString) {
+    def from(credentials: Credentials): Option[UnixHashedCredentials] = {
+      roundHash(credentials).map(UnixHashedCredentials(credentials.user, _))
+    }
+
+    private def roundHash(credentials: Credentials): Option[NonEmptyString] = {
+      val m = AuthKeyUnixRule.pattern.matcher(hash.value)
+      if (m.find) NonEmptyString.unapply(crypt(credentials.secret.value.value, m.group(1)))
+      else None
+    }
+  }
+
 }

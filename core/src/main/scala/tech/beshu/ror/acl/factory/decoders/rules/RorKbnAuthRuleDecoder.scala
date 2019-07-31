@@ -30,7 +30,6 @@ import tech.beshu.ror.acl.factory.decoders.definitions.RorKbnDefinitionsDecoder.
 import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.utils.CirceOps._
-import tech.beshu.ror.providers.EnvVarsProvider
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
   extends RuleDecoderWithoutAssociatedFields[RorKbnAuthRule](

@@ -19,6 +19,7 @@ package tech.beshu.ror.acl.blocks.variables.runtime
 import cats.data.NonEmptyList
 import cats.implicits._
 import com.github.tototoshi.csv.{CSVParser, DefaultCSVFormat}
+import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.variables.runtime.Extractable.ExtractError
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
@@ -51,16 +52,20 @@ object RuntimeResolvableVariable {
     final case class ConvertError(msg: String)
 
     trait AlwaysRightConvertible[T] extends Convertible[T] {
-      def safeConvert: String => T
-      override def convert: String => Either[ConvertError, T] =
-        safeConvert andThen (Right(_))
+      def safeConvert: NonEmptyString => T
+      override def convert: String => Either[ConvertError, T] = str => {
+        NonEmptyString
+          .from(str)
+          .map(safeConvert)
+          .left.map(_ => ConvertError("Cannot use empty string"))
+      }
     }
     object AlwaysRightConvertible {
-      def from[T](conversion: String => T): AlwaysRightConvertible[T] = new AlwaysRightConvertible[T] {
-        override def safeConvert: String => T = conversion
+      def from[T](conversion: NonEmptyString => T): AlwaysRightConvertible[T] = new AlwaysRightConvertible[T] {
+        override def safeConvert: NonEmptyString => T = conversion
       }
       val stringAlwaysRightConvertible: AlwaysRightConvertible[String] = new AlwaysRightConvertible[String] {
-        override def safeConvert: String => String = identity
+        override def safeConvert: NonEmptyString => String = _.value
       }
     }
   }
@@ -91,7 +96,7 @@ object SingleExtractable {
       blockContext
         .loggedUser
         .map(_.id.value) match {
-        case Some(value) => Right(value)
+        case Some(value) => Right(value.value)
         case None => Left(ExtractError("Cannot extract user ID from block context"))
       }
     }

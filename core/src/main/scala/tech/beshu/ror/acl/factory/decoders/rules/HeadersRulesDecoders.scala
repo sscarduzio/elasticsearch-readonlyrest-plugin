@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.acl.factory.decoders.rules
 
-import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.acl.blocks.rules.{HeadersAndRule, HeadersOrRule}
-import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.acl.factory.decoders.rules.HeadersHelper.headerFromString
-import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.domain.Header.Name
+import tech.beshu.ror.acl.factory.decoders.rules.HeadersHelper.headerFromString
+import tech.beshu.ror.acl.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.acl.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.utils.StringWiseSplitter._
 
 object HeadersAndRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers.decodeStringLikeOrNonEmptySetE(headerFromString).map(headers => new HeadersAndRule(HeadersAndRule.Settings(headers)))
@@ -34,13 +34,9 @@ object HeadersOrRuleDecoder extends RuleDecoderWithoutAssociatedFields(
 )
 
 private object HeadersHelper {
-  def headerFromString(value: String): Either[String, Header] = value.split(":").toList match {
-    case hName :: hValue :: Nil =>
-      (NonEmptyString.unapply(hName), NonEmptyString.unapply(hValue)) match {
-        case (Some(headerName), Some(headerValue)) => Right(Header(Name(headerName), headerValue))
-        case _ => Left(s"Cannot convert $value to header")
-      }
-
-    case _ => Left(s"Cannot convert $value to header")
-  }
+  def headerFromString(value: String): Either[String, Header] =
+    value
+      .toNonEmptyStringsTuple
+      .map { case (first, second) => Header(Name(first), second) }
+      .left.map(_ => s"Cannot convert $value to header")
 }

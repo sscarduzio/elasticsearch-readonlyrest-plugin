@@ -61,7 +61,7 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
     } else {
       zeroKnowledgeMatchFilter.alterIndicesIfNecessary(
         specializedIndicesFromRequest(requestContext),
-        new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(allowedSpecializedIndices.map(_.value).asJava))
+        new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(allowedSpecializedIndices.map(_.value.value).asJava))
       ) match {
         case NotAltered =>
           Fulfilled(blockContext)
@@ -70,7 +70,7 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
             case Some(nesIndices) if requestContext.isReadOnlyRequest =>
               Fulfilled(blockContextWithSpecializedIndices(blockContext, nesIndices))
             case None | Some(_) =>
-              Rejected
+              Rejected()
           }
       }
     }

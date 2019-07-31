@@ -22,6 +22,7 @@ import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariab
 import tech.beshu.ror.acl.domain.Filter
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
 
@@ -40,7 +41,7 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.filter should be(AlreadyResolved(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}")))
+            rule.settings.filter should be(AlreadyResolved(Filter("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}".nonempty)))
           }
         )
       }

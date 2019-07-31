@@ -26,7 +26,8 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.domain.{Header, IndexName, LoggedUser, User}
+import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.acl.domain.{Header, IndexName, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -109,7 +110,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1"))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(groupFrom("g3")),
               availableGroups = allUser1Groups
             ) {
@@ -128,7 +129,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1"))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(groupFrom("g3")),
               availableGroups = allUser1Groups
             ) {
@@ -147,7 +148,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user2"))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
               currentGroup = Some(groupFrom("gs2")),
               availableGroups = allUser2Groups
             ) {
@@ -166,7 +167,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user1"))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(groupFrom("gs1")),
               availableGroups = allUser1Groups
             ) {
@@ -186,7 +187,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
                   .claim("tech", Map("beshu" -> Map("mainGroup" -> List("j1", "j2").asJava).asJava).asJava)
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
-            indices = Set(IndexName("gj1")),
+            indices = Set(IndexName("gj1".nonempty)),
             involvesIndices = true
           )
 
@@ -196,7 +197,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable (array)"))
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user3")))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user3".nonempty)))
             ) {
               blockContext
             }
@@ -214,7 +215,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
                   .claim("tech", Map("beshu" -> Map("mainGroupsString" -> "j0,j3").asJava).asJava)
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
-            indices = Set(IndexName("gj0")),
+            indices = Set(IndexName("gj0".nonempty)),
             involvesIndices = true
           )
 
@@ -224,7 +225,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable"))
             assertBlockContext(
-              loggedUser = Some(LoggedUser(User.Id("user4")))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user4".nonempty)))
             ) {
               blockContext
             }

@@ -97,13 +97,13 @@ class HostsRuleTests extends WordSpec with MockFactory {
     val blockContext = mock[BlockContext]
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
-      else Rejected
+      else Rejected()
     }
   }
 
   private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
     RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom[Address](value.nonempty)(AlwaysRightConvertible.from(extracted => Address.from(extracted).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))))
+      .createMultiResolvableVariableFrom[Address](value.nonempty)(AlwaysRightConvertible.from(extracted => Address.from(extracted.value).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

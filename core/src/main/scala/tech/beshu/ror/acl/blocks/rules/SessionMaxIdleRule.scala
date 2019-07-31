@@ -46,7 +46,7 @@ class SessionMaxIdleRule(val settings: Settings)
         checkCookieFor(user, requestContext, blockContext)
       case None =>
         logger.warn("Cannot state the logged in user, put the authentication rule on top of the block!")
-        Rejected
+        Rejected()
     }
   }
 
@@ -56,7 +56,7 @@ class SessionMaxIdleRule(val settings: Settings)
         val newCookie = RorSessionCookie(user.id, newExpiryDate)
         Fulfilled(blockContext.withAddedResponseHeader(toSessionHeader(newCookie)))
       case Left(ExtractingError.Invalid) | Left(ExtractingError.Expired) =>
-        Rejected
+        Rejected()
     }
   }
 

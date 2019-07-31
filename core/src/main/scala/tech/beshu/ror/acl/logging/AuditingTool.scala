@@ -24,6 +24,7 @@ import monix.eval.Task
 import tech.beshu.ror.acl.domain.Address
 import tech.beshu.ror.acl.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.acl.logging.AuditingTool.Settings
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
@@ -74,7 +75,7 @@ class AuditingTool(settings: Settings,
     new AuditRequestContext {
       override val timestamp: Instant = requestContext.timestamp
       override val id: String = requestContext.id.value
-      override val indices: Set[String] = requestContext.indices.map(_.value)
+      override val indices: Set[String] = requestContext.indices.map(_.value.value)
       override val action: String = requestContext.action.value
       override val headers: Map[String, String] = requestContext.headers.map(h => (h.name.value.value, h.value.value)).toMap
       override val uriPath: String = requestContext.uriPath.value
@@ -93,7 +94,11 @@ class AuditingTool(settings: Settings,
       override val `type`: String = requestContext.`type`.value
       override val taskId: Long = requestContext.taskId
       override val httpMethod: String = requestContext.method.m
-      override val loggedInUserName: Option[String] = blockContext.flatMap(_.loggedUser.map(_.id.value))
+      override val loggedInUserName: Option[String] = blockContext.flatMap(_.loggedUser.map(_.id.value.value))
+      override val impersonatedByUserName: Option[String] = blockContext.flatMap(_.loggedUser).flatMap {
+        case DirectlyLoggedUser(_) => None
+        case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
+      }
       override val involvesIndices: Boolean = requestContext.involvesIndices
     }
   }

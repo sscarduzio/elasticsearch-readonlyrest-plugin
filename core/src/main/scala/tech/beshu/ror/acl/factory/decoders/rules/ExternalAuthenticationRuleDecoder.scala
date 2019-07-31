@@ -20,7 +20,7 @@ import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
-import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService}
+import tech.beshu.ror.acl.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, ImpersonatorDef}
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError

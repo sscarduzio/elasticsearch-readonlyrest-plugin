@@ -35,7 +35,7 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
   extends LdapAuthenticationService {
 
   private val cacheableAuthentication =
-    new CacheableActionWithKeyMapping[(User.Id, domain.Secret), HashedUserCredentials, Boolean](ttl, authenticateAction, hashCredential)
+    new CacheableActionWithKeyMapping[(User.Id, domain.PlainTextSecret), HashedUserCredentials, Boolean](ttl, authenticateAction, hashCredential)
   private val cacheableLdapUserService = new CacheableLdapUserServiceDecorator(underlying, ttl)
 
   override val id: LdapService.Name = underlying.id
@@ -43,23 +43,23 @@ class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthentication
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     cacheableLdapUserService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: domain.Secret): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
     cacheableAuthentication.call((user, secret))
 
-  private def hashCredential(value: (User.Id, domain.Secret)) = {
+  private def hashCredential(value: (User.Id, domain.PlainTextSecret)) = {
     val (user, secret) = value
-    HashedUserCredentials(user, Hashing.sha256.hashString(secret.value, Charset.defaultCharset).toString)
+    HashedUserCredentials(user, Hashing.sha256.hashString(secret.value.value, Charset.defaultCharset).toString)
   }
 
-  private def authenticateAction(value: (User.Id, domain.Secret)) = {
+  private def authenticateAction(value: (User.Id, domain.PlainTextSecret)) = {
     val (userId, secret) = value
     underlying.authenticate(userId, secret)
   }
 }
 
 object CacheableLdapAuthenticationServiceDecorator {
-  private[CacheableLdapAuthenticationServiceDecorator] final case class HashedUserCredentials(user: User.Id,
-                                                                                              hashedCredentials: String)
+  private[ldap] final case class HashedUserCredentials(user: User.Id,
+                                                       hashedCredentials: String)
 }
 
 class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationService,
@@ -90,7 +90,7 @@ class CacheableLdapServiceDecorator(underlying: LdapAuthService,
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     cacheableLdapAuthenticationService.ldapUserBy(userId)
 
-  override def authenticate(user: User.Id, secret: domain.Secret): Task[Boolean] =
+  override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
     cacheableLdapAuthenticationService.authenticate(user, secret)
 
   override def groupsOf(id: User.Id): Task[Set[domain.Group]] =

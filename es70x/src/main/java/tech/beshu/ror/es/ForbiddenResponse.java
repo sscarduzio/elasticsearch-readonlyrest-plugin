@@ -19,17 +19,22 @@ package tech.beshu.ror.es;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.rest.RestStatus;
+import tech.beshu.ror.acl.AclActionHandler;
 import tech.beshu.ror.acl.AclStaticContext;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ForbiddenResponse extends ElasticsearchStatusException {
 
+  private final List<AclActionHandler.ForbiddenCause> causes;
   private final AclStaticContext aclStaticContext;
 
-  public ForbiddenResponse(AclStaticContext aclStaticContext) {
+  public ForbiddenResponse(List<AclActionHandler.ForbiddenCause> causes, AclStaticContext aclStaticContext) {
     super(aclStaticContext.forbiddenRequestMessage(),
         aclStaticContext.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN);
+    this.causes = causes;
     this.aclStaticContext = aclStaticContext;
     if (aclStaticContext.doesRequirePassword()) {
       this.addHeader("WWW-Authenticate", "Basic");
@@ -39,6 +44,7 @@ public class ForbiddenResponse extends ElasticsearchStatusException {
   @Override
   public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
     builder.field("reason", aclStaticContext.forbiddenRequestMessage());
+    builder.field("due_to", causes.stream().map(AclActionHandler.ForbiddenCause::stringify).collect(Collectors.toList()));
     return builder;
   }
 }

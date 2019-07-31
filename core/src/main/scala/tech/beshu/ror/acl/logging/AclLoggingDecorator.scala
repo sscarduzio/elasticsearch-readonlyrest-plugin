@@ -48,7 +48,7 @@ class AclLoggingDecorator(val underlying: Acl, auditingTool: Option[AuditingTool
               log(Allowed(requestContext, block, blockContext, result.history))
             case Result.ForbiddenBy(blockContext, block) =>
               log(ForbiddenBy(requestContext, block, blockContext, result.history))
-            case Result.ForbiddenByUnmatched =>
+            case Result.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, result.history))
             case Result.Failed(ex) =>
               log(Errored(requestContext, ex))

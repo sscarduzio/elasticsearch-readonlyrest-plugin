@@ -21,10 +21,10 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.definitions.UserDef
+import tech.beshu.ror.acl.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.acl.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleResult}
+import tech.beshu.ror.acl.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.acl.domain.Group
 import tech.beshu.ror.acl.orders._
@@ -40,19 +40,20 @@ import scala.collection.SortedSet
 //        when user is not authenticated (using JWT auth token)
 class GroupsRule(val settings: Settings)
   extends AuthenticationRule
+    with NoImpersonationSupport
     with AuthorizationRule
     with Logging {
 
   override val name: Rule.Name = GroupsRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task.unit
+  override def tryToAuthenticate(requestContext: RequestContext,
+                                  blockContext: BlockContext): Task[RuleResult] = Task.unit
     .flatMap { _ =>
       NonEmptySet.fromSet(resolveGroups(requestContext, blockContext)) match {
-        case None => Task.now(Rejected)
+        case None => Task.now(Rejected())
         case Some(groups) =>
           blockContext.currentGroup match {
-            case Some(preferredGroup) if !groups.contains(preferredGroup) => Task.now(Rejected)
+            case Some(preferredGroup) if !groups.contains(preferredGroup) => Task.now(Rejected())
             case _ => continueCheckingWithUserDefinitions(requestContext, blockContext, groups)
           }
       }
@@ -66,7 +67,7 @@ class GroupsRule(val settings: Settings)
       case Some(user) =>
         NonEmptySet.fromSet(settings.usersDefinitions.filter(_.id === user.id)) match {
           case None =>
-            Task.now(Rejected)
+            Task.now(Rejected())
           case Some(filteredUserDefinitions) =>
             tryToAuthorizeAndAuthenticateUsing(filteredUserDefinitions, requestContext, blockContext, resolvedGroups)
         }
@@ -89,7 +90,7 @@ class GroupsRule(val settings: Settings)
       }
       .map {
         case Some(newBlockContext) => Fulfilled(newBlockContext)
-        case None => Rejected
+        case None => Rejected()
       }
   }
 
@@ -103,7 +104,7 @@ class GroupsRule(val settings: Settings)
         .authenticationRule
         .check(requestContext, blockContext)
         .map {
-          case RuleResult.Rejected =>
+          case RuleResult.Rejected(_) =>
             None
           case RuleResult.Fulfilled(newBlockContext) =>
             newBlockContext.loggedUser match {

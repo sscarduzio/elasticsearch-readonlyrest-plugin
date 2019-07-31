@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.acl.blocks.rules.utils
 
+import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
@@ -27,11 +28,11 @@ class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter)
   def check(indices: Set[IndexName], matcher: Matcher): CheckResult = {
     val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
-      indices.map(_.value).asJava,
+      indices.map(_.value.value).asJava,
       matcher.underlying,
       processedIndices.addAll _
     )
-    if(result) CheckResult.Ok(processedIndices.asScala.map(IndexName.apply).toSet)
+    if(result) CheckResult.Ok(processedIndices.asScala.map(str => IndexName(NonEmptyString.unsafeFrom(str))).toSet)
     else CheckResult.Failed
   }
 }

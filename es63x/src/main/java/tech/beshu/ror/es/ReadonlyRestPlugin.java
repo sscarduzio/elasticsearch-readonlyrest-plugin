@@ -188,7 +188,6 @@ public class ReadonlyRestPlugin extends Plugin
     ilaf.stop();
   }
 
-  // todo: to remove or not? just force load?
   @Override
   public List<Setting<?>> getSettings() {
     return ImmutableList.of(

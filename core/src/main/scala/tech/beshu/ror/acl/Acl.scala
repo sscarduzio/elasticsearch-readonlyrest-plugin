@@ -16,8 +16,10 @@
  */
 package tech.beshu.ror.acl
 
+import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.acl.AclHandlingResult.Result
+import tech.beshu.ror.acl.AclHandlingResult.Result.ForbiddenByMismatched.Cause
 import tech.beshu.ror.acl.blocks.Block.History
 import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.request.RequestContext
@@ -36,7 +38,15 @@ object AclHandlingResult {
   object Result {
     final case class Allow(blockContext: BlockContext, block: Block) extends Result
     final case class ForbiddenBy(blockContext: BlockContext, block: Block) extends Result
-    case object ForbiddenByUnmatched extends Result
+    final case class ForbiddenByMismatched(causes: NonEmptySet[Cause]) extends Result
+    case object ForbiddenByMismatched {
+      sealed trait Cause
+      object Cause {
+        case object OperationNotAllowed extends Cause
+        case object ImpersonationNotSupported extends Cause
+        case object ImpersonationNotAllowed extends Cause
+      }
+    }
     final case class Failed(ex: Throwable) extends Result
     case object PassedThrough extends Result
   }

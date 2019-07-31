@@ -41,7 +41,11 @@ class ClaimsOps(val claims: Claims) extends Logging {
   def userIdClaim(claimName: ClaimName): ClaimSearchResult[User.Id] = {
     Try(claimName.name.read[Any](claims))
       .map {
-        case value: String => Found(User.Id(value))
+        case value: String =>
+          NonEmptyString.from(value) match {
+            case Left(_) => NotFound
+            case Right(userStr) => Found(User.Id(userStr))
+          }
         case _ => NotFound
       }
       .fold(

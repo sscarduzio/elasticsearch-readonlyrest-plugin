@@ -61,6 +61,7 @@ import tech.beshu.ror.utils.ScalaJavaHelper$;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -247,8 +248,8 @@ public class IndexLevelActionFilter implements ActionFilter {
       }
 
       @Override
-      public void onForbidden() {
-        baseListener.onFailure(new ForbiddenResponse(aclStaticContext));
+      public void onForbidden(List<ForbiddenCause> causes) {
+        baseListener.onFailure(new ForbiddenResponse(causes, aclStaticContext));
       }
 
       @Override

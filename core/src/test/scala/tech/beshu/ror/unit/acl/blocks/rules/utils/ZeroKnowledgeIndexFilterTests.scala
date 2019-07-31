@@ -24,6 +24,7 @@ import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.acl.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
+import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class ZeroKnowledgeIndexFilterTests extends WordSpec {
 
@@ -32,26 +33,26 @@ class ZeroKnowledgeIndexFilterTests extends WordSpec {
       val matcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Sets.newHashSet("a*")))
 
       val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(IndexName("*")), matcher)
-      res1 should be(CheckResult.Ok(Set(IndexName("a*"))))
+        .check(Set(IndexName("*".nonempty)), matcher)
+      res1 should be(CheckResult.Ok(Set(IndexName("a*".nonempty))))
 
       val res2 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(IndexName("b")), matcher)
+        .check(Set(IndexName("b".nonempty)), matcher)
       res2 should be(CheckResult.Failed)
     }
     "two elements are passed" in {
       val matcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Sets.newHashSet("a1*")))
 
       val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(IndexName("a*")), matcher)
-      res1 should be(CheckResult.Ok(Set(IndexName("a1*"))))
+        .check(Set(IndexName("a*".nonempty)), matcher)
+      res1 should be(CheckResult.Ok(Set(IndexName("a1*".nonempty))))
     }
     "two patterns in matcher" in {
       val matcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Sets.newHashSet("b:*", "a*")))
 
       val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
-        .check(Set(IndexName("*")), matcher)
-      res1 should be(CheckResult.Ok(Set(IndexName("a*"))))
+        .check(Set(IndexName("*".nonempty)), matcher)
+      res1 should be(CheckResult.Ok(Set(IndexName("a*".nonempty))))
     }
   }
 }
