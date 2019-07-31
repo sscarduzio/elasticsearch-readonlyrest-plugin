@@ -65,6 +65,7 @@ import org.elasticsearch.transport.TransportService;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
+import tech.beshu.ror.acl.domain;
 import tech.beshu.ror.configuration.RorSsl;
 import tech.beshu.ror.configuration.RorSsl$;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
@@ -137,15 +138,13 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
+  public Collection<String> getTaskHeaders() {
+    return ImmutableList.of(Constants.FILTER_TRANSIENT, Constants.FIELDS_TRANSIENT);
+  }
+
+  @Override
   public void onIndexModule(IndexModule indexModule) {
-    indexModule.setSearcherWrapper(indexService -> {
-      try {
-        return new RoleIndexSearcherWrapper(indexService);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-      return null;
-    });
+    indexModule.setSearcherWrapper(RoleIndexSearcherWrapper::new);
   }
 
   @Override
