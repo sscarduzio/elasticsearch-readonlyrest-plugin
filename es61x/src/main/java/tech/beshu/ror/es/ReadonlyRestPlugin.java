@@ -133,7 +133,6 @@ public class ReadonlyRestPlugin extends Plugin
     return Collections.singletonList(ilaf);
   }
 
-  @Override
   public Collection<String> getTaskHeaders() {
     return ImmutableList.of(Constants.FILTER_TRANSIENT, Constants.FIELDS_TRANSIENT);
   }
