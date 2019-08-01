@@ -51,4 +51,7 @@ object ScalaUtils {
 
   implicit def finiteDurationToJavaDuration(interval: FiniteDuration): Duration = Duration.ofMillis(interval.toMillis)
 
+  def retry(times: Int)(action: Unit): Unit = {
+    Stream.fill(times)(()).foreach(_ => action)
+  }
 }

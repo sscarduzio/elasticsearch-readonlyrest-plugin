@@ -40,6 +40,7 @@ import org.elasticsearch.index.query.QueryShardContext;
 import org.elasticsearch.index.shard.IndexSearcherWrapper;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.index.shard.ShardUtils;
+import org.elasticsearch.threadpool.ThreadPool;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.es.RorInstanceSupplier;
 import tech.beshu.ror.utils.FilterTransient;
@@ -57,15 +58,15 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
   private static final Logger logger = LogManager.getLogger(RoleIndexSearcherWrapper.class);
 
   private final Function<ShardId, QueryShardContext> queryShardContextProvider;
-  private final ThreadContext threadContext;
+  private final ThreadPool threadPool;
 
-  public RoleIndexSearcherWrapper(IndexService indexService) throws Exception {
+  public RoleIndexSearcherWrapper(IndexService indexService) {
     if (indexService == null) {
       throw new IllegalArgumentException("Please provide an indexService");
     }
     logger.debug("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
     this.queryShardContextProvider = shardId -> indexService.newQueryShardContext(shardId.id(), null, null, null);
-    this.threadContext = indexService.getThreadPool().getThreadContext();
+    this.threadPool = indexService.getThreadPool();
   }
 
   @Override
@@ -75,8 +76,9 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       return reader;
     }
     // Field level security (FLS)
+    ThreadContext threadContext = threadPool.getThreadContext();
     try {
-      String fieldsHeader = threadContext.getTransient(Constants.FIELDS_TRANSIENT);
+      String fieldsHeader = threadContext.getHeader(Constants.FIELDS_TRANSIENT);
       Set<String> fields = Strings.isNullOrEmpty(fieldsHeader) ?
           null :
           Sets.newHashSet(fieldsHeader.split(",")).stream().map(String::trim).collect(Collectors.toSet());
@@ -88,7 +90,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     }
 
     // Document level security (DLS)
-    FilterTransient filterTransient = FilterTransient.deserialize(threadContext.getTransient(Constants.FILTER_TRANSIENT));
+    FilterTransient filterTransient = FilterTransient.deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
     if (filterTransient == null) {
       logger.trace("filterTransient not found from threadContext.");
       return reader;

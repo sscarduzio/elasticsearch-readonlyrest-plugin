@@ -55,6 +55,7 @@ import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -131,15 +132,8 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-  public void onIndexModule(IndexModule module) {
-    module.setSearcherWrapper(indexService -> {
-      try {
-        return new RoleIndexSearcherWrapper(indexService);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-      return null;
-    });
+  public void onIndexModule(IndexModule indexModule) {
+    indexModule.setSearcherWrapper(RoleIndexSearcherWrapper::new);
   }
 
   @Override

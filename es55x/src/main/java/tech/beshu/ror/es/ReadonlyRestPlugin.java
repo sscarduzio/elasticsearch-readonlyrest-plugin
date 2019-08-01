@@ -157,15 +157,8 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
-  public void onIndexModule(IndexModule module) {
-    module.setSearcherWrapper(indexService -> {
-      try {
-        return new RoleIndexSearcherWrapper(indexService);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-      return null;
-    });
+  public void onIndexModule(IndexModule indexModule) {
+    indexModule.setSearcherWrapper(RoleIndexSearcherWrapper::new);
   }
 
   @Override

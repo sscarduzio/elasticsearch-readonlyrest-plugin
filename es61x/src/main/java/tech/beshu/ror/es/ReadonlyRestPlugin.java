@@ -133,16 +133,13 @@ public class ReadonlyRestPlugin extends Plugin
     return Collections.singletonList(ilaf);
   }
 
+  public Collection<String> getTaskHeaders() {
+    return ImmutableList.of(Constants.FILTER_TRANSIENT, Constants.FIELDS_TRANSIENT);
+  }
+
   @Override
   public void onIndexModule(IndexModule indexModule) {
-    indexModule.setSearcherWrapper(indexService -> {
-      try {
-        return new RoleIndexSearcherWrapper(indexService);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-      return null;
-    });
+    indexModule.setSearcherWrapper(RoleIndexSearcherWrapper::new);
   }
 
   @Override

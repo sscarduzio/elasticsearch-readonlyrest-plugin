@@ -23,13 +23,14 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import java.util.{Map => JMap}
+import tech.beshu.ror.utils.misc.ScalaUtils.retry
 
 class FilterRuleTests extends WordSpec with ForAllTestContainer {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/filter_rules/readonlyrest.yml",
-    numberOfInstances = 1,
+    numberOfInstances = 2,
     FilterRuleTests.nodeDataInitializer()
   )
 
@@ -38,17 +39,21 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
   "A filter rule" should {
     "show only doc according to defined filter" when {
       "search api is used" in {
-        val result = searchManager.search("/test1_index/_search")
-        assertEquals(200, result.getResponseCode)
-        result.getResults.size() should be (1)
-        result.getResults.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be ("db_user1")
+        retry(times = 3) {
+          val result = searchManager.search("/test1_index/_search")
+          assertEquals(200, result.getResponseCode)
+          result.getResults.size() should be(1)
+          result.getResults.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be("db_user1")
+        }
       }
       "msearch api is used" in {
-        val matchAllIndicesQuery = "{\"index\":\"*\"}\n" + "{\"query\" : {\"match_all\" : {}}}\n"
-        val result = searchManager.mSearch(matchAllIndicesQuery)
-        assertEquals(200, result.getResponseCode)
-        result.getResults.size() should be (1)
-        result.getResults.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be ("db_user1")
+        retry(times = 3) {
+          val matchAllIndicesQuery = "{\"index\":\"*\"}\n" + "{\"query\" : {\"match_all\" : {}}}\n"
+          val result = searchManager.mSearch(matchAllIndicesQuery)
+          assertEquals(200, result.getResponseCode)
+          result.getResults.size() should be(1)
+          result.getResults.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be("db_user1")
+        }
       }
     }
   }

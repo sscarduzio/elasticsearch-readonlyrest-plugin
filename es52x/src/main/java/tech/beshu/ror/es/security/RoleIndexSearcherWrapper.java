@@ -19,7 +19,6 @@ package tech.beshu.ror.es.security;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
-import com.unboundid.util.args.ArgumentException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.index.DirectoryReader;
@@ -59,9 +58,9 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
   private final Function<ShardId, QueryShardContext> queryShardContextProvider;
   private final ThreadContext threadContext;
 
-  public RoleIndexSearcherWrapper(IndexService indexService) throws Exception {
+  public RoleIndexSearcherWrapper(IndexService indexService) {
     if (indexService == null) {
-      throw new ArgumentException("Please provide an indexService");
+      throw new IllegalArgumentException("Please provide an indexService");
     }
     logger.debug("Create new RoleIndexSearcher wrapper, [{}]", indexService.getIndexSettings().getIndex().getName());
     this.queryShardContextProvider = shardId -> indexService.newQueryShardContext(shardId.id(), null, null);
@@ -76,7 +75,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
     }
     // Field level security (FLS)
     try {
-      String fieldsHeader = threadContext.getTransient(Constants.FIELDS_TRANSIENT);
+      String fieldsHeader = threadContext.getHeader(Constants.FIELDS_TRANSIENT);
       Set<String> fields = Strings.isNullOrEmpty(fieldsHeader) ?
           null :
           Sets.newHashSet(fieldsHeader.split(",")).stream().map(String::trim).collect(Collectors.toSet());
@@ -87,7 +86,7 @@ public class RoleIndexSearcherWrapper extends IndexSearcherWrapper {
       throw new IllegalStateException("Couldn't extract FLS fields from threadContext.", e);
     }
 
-    FilterTransient userTransient = FilterTransient.deserialize(threadContext.getTransient(Constants.FILTER_TRANSIENT));
+    FilterTransient userTransient = FilterTransient.deserialize(threadContext.getHeader(Constants.FILTER_TRANSIENT));
     if (userTransient == null) {
       logger.debug("Couldn't extract userTransient from threadContext.");
       return reader;

@@ -625,7 +625,7 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public void writeToThreadContextHeaders(Map<String, String> hMap) {
     ThreadContext threadContext = threadPool.getThreadContext();
-    hMap.keySet().forEach(k -> threadContext.putTransient(k, hMap.get(k)));
+    hMap.keySet().forEach(k -> threadContext.putHeader(k, hMap.get(k)));
   }
 
   @Override
