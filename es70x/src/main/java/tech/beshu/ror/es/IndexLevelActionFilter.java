@@ -30,6 +30,7 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.metadata.MetaDataIndexTemplateService;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
@@ -74,6 +75,7 @@ import java.util.function.Supplier;
 public class IndexLevelActionFilter implements ActionFilter {
 
   private final ThreadPool threadPool;
+  private final Supplier<Optional<MetaDataIndexTemplateService>> metaDataIndexTemplateServiceSupplier;
   private final ClusterService clusterService;
 
   private final RorInstance rorInstance;
@@ -86,11 +88,13 @@ public class IndexLevelActionFilter implements ActionFilter {
       NodeClient client,
       ThreadPool threadPool,
       Environment env,
-      Supplier<Optional<RemoteClusterService>> remoteClusterServiceSupplier
+      Supplier<Optional<RemoteClusterService>> remoteClusterServiceSupplier,
+      Supplier<Optional<MetaDataIndexTemplateService>> metaDataIndexTemplateServiceSupplier
   ) {
     this.remoteClusterServiceSupplier = remoteClusterServiceSupplier;
     this.clusterService = clusterService;
     this.threadPool = threadPool;
+    this.metaDataIndexTemplateServiceSupplier = metaDataIndexTemplateServiceSupplier;
 
     FiniteDuration startingTimeout = scala.concurrent.duration.FiniteDuration.apply(1, TimeUnit.MINUTES);
 
@@ -127,6 +131,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       Option<Engine> engine = rorInstance.engine();
+
       if (engine.isDefined()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
       } else {

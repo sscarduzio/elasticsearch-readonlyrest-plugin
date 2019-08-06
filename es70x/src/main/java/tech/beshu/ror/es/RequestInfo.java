@@ -35,6 +35,9 @@ import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest;
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest;
 import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest;
+import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest;
+import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -59,6 +62,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterService;
 import org.reflections.ReflectionUtils;
+import tech.beshu.ror.es.utils.ClusterServiceHelper;
 import tech.beshu.ror.shims.request.RequestInfoShim;
 import tech.beshu.ror.utils.RCUtils;
 import tech.beshu.ror.utils.ReflecUtils;
@@ -74,8 +78,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static tech.beshu.ror.es.utils.ClusterServiceHelper.findTemplatesOfIndices;
+import static tech.beshu.ror.es.utils.ClusterServiceHelper.getIndicesRelatedToTemplates;
 import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
 import static tech.beshu.ror.utils.ReflecUtils.invokeMethodCached;
 
@@ -270,6 +277,26 @@ public class RequestInfo implements RequestInfoShim {
       indices = rsr.indices();
     }
 
+    else if (ar instanceof PutIndexTemplateRequest) {
+      PutIndexTemplateRequest pitr = (PutIndexTemplateRequest) ar;
+      indices = ClusterServiceHelper.indicesFromPatterns(clusterService, Sets.newHashSet(pitr.indices())).toArray(new String[0]);
+    }
+    else if (ar instanceof DeleteIndexTemplateRequest) {
+      DeleteIndexTemplateRequest ditr = (DeleteIndexTemplateRequest) ar;
+      Set<String> templateNames = nonEmptyTemplateNamesOrAllAvailable(Sets.newHashSet(ditr.name()));
+      indices = getIndicesRelatedToTemplates(clusterService, templateNames).toArray(new String[0]);
+    }
+    else if (ar instanceof GetIndexTemplatesRequest) {
+      GetIndexTemplatesRequest gitr = (GetIndexTemplatesRequest) ar;
+      Set<String> requestedTemplateNames = Sets.newHashSet(gitr.names());
+      if(requestedTemplateNames.isEmpty()) {
+        indices = new String[] { "*" };
+      } else {
+        Set<String> templateNames = nonEmptyTemplateNamesOrAllAvailable(requestedTemplateNames);
+        indices = getIndicesRelatedToTemplates(clusterService, templateNames).toArray(new String[0]);
+      }
+    }
+
     // Last resort
     else {
       indices = extractStringArrayFromPrivateMethod("indices", ar);
@@ -290,6 +317,12 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     return indicesSet;
+  }
+
+  private Set<String> nonEmptyTemplateNamesOrAllAvailable(Set<String> templateNames) {
+    return templateNames.isEmpty()
+        ? Sets.newHashSet(clusterService.state().getMetaData().getTemplates().keysIt())
+        : templateNames;
   }
 
   @Override
@@ -406,6 +439,10 @@ public class RequestInfo implements RequestInfoShim {
     else if (actionRequest instanceof VerifyRepositoryRequest) {
       VerifyRepositoryRequest r = (VerifyRepositoryRequest) actionRequest;
       return Sets.newHashSet(r.name());
+    }
+    else if (actionRequest instanceof GetIndexTemplatesRequest) {
+      GetIndexTemplatesRequest r = (GetIndexTemplatesRequest)actionRequest;
+      return Sets.newHashSet(r.names());
     }
 
     return Collections.emptySet();
@@ -561,6 +598,23 @@ public class RequestInfo implements RequestInfoShim {
       return;
     }
 
+    if(actionRequest instanceof GetIndexTemplatesRequest) {
+      GetIndexTemplatesRequest gitr = (GetIndexTemplatesRequest) actionRequest;
+      Set<String> requestTemplateNames = Sets.newHashSet(gitr.names());
+      Set<String> allowedTemplateNames = findTemplatesOfIndices(clusterService, newIndices);
+      Set<String> templateNamesToReturn =
+          requestTemplateNames.isEmpty()
+              ? allowedTemplateNames
+              : Sets.intersection(requestTemplateNames, allowedTemplateNames);
+      if(templateNamesToReturn.isEmpty()) {
+        // hack! there is no other way to return empty list of templates
+        gitr.names(UUID.randomUUID() + "*");
+      } else {
+        gitr.names(templateNamesToReturn.toArray(new String[0]));
+      }
+      return;
+    }
+
     // Optimistic reflection attempt
     boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices);
 
@@ -578,7 +632,6 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public void writeResponseHeaders(Map<String, String> hMap) {
-
     hMap.keySet().forEach(k -> {
       String val = hMap.get(k);
       threadPool.getThreadContext().addResponseHeader(k, val, v -> val);
@@ -600,10 +653,11 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean involvesIndices() {
-    return actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest ||
+    return actionRequest instanceof IndicesRequest ||
+        actionRequest instanceof CompositeIndicesRequest ||
         // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
-        actionRequest instanceof RestoreSnapshotRequest;
-
+        actionRequest instanceof RestoreSnapshotRequest ||
+        actionRequest instanceof GetIndexTemplatesRequest || actionRequest instanceof PutIndexTemplateRequest || actionRequest instanceof DeleteIndexTemplateRequest;
   }
 
   @Override

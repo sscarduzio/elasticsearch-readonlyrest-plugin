@@ -22,6 +22,8 @@ import org.scalatest.WordSpec
 import org.scalatest.Matchers._
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.httpclient.RestClient
+
 import scala.collection.JavaConverters._
 
 class ImpersonationTests extends WordSpec with ForAllTestContainer {
@@ -105,7 +107,9 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
 }
 
 object ImpersonationTests {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
+
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer =(adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
   }

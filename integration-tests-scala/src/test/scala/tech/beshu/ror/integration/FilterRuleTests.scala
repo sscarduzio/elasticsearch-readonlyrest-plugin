@@ -16,13 +16,15 @@
  */
 package tech.beshu.ror.integration
 
+import java.util.{Map => JMap}
+
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
-import java.util.{Map => JMap}
+import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
 
 class FilterRuleTests extends WordSpec with ForAllTestContainer {
@@ -61,7 +63,8 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
 
 object FilterRuleTests {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDocAndWaitForRefresh("/test1_index/test/1", s"""{"db_name":"db_user1"}""")
     documentManager.insertDocAndWaitForRefresh("/test1_index/test/2", s"""{"db_name":"db_user2"}""")
     documentManager.insertDocAndWaitForRefresh("/test1_index/test/3", s"""{"db_name":"db_user3"}""")

@@ -18,16 +18,20 @@
 package tech.beshu.ror.es;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.admin.cluster.state.ClusterStateAction;
+import org.elasticsearch.action.admin.cluster.state.TransportClusterStateAction;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
+import org.elasticsearch.cluster.metadata.MetaDataIndexTemplateService;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
@@ -65,7 +69,6 @@ import org.elasticsearch.transport.TransportService;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.acl.domain;
 import tech.beshu.ror.configuration.RorSsl;
 import tech.beshu.ror.configuration.RorSsl$;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
@@ -88,6 +91,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+
+import static org.elasticsearch.rest.RestRequest.Method.GET;
 
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
@@ -118,7 +123,8 @@ public class ReadonlyRestPlugin extends Plugin
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
       this.ilaf = new IndexLevelActionFilter(clusterService, (NodeClient) client, threadPool, environment,
-          TransportServiceInterceptor.getRemoteClusterServiceSupplier());
+          TransportServiceInterceptor.getRemoteClusterServiceSupplier(),
+          MetaDataIndexTemplateServiceInterceptor.getMetaDataIndexTemplateServiceSupplierSupplier());
       return null;
     });
 
@@ -129,6 +135,7 @@ public class ReadonlyRestPlugin extends Plugin
   public Collection<Class<? extends LifecycleComponent>> getGuiceServiceClasses() {
     final List<Class<? extends LifecycleComponent>> services = new ArrayList<>(1);
     services.add(TransportServiceInterceptor.class);
+    services.add(MetaDataIndexTemplateServiceInterceptor.class);
     return services;
   }
 
@@ -258,4 +265,46 @@ public class ReadonlyRestPlugin extends Plugin
       remoteClusterServiceAtomicReference.set(Optional.ofNullable(service));
     }
   }
+
+  public static class MetaDataIndexTemplateServiceInterceptor extends AbstractLifecycleComponent {
+
+    private static MetaDataIndexTemplateServiceSupplier metaDataIndexTemplateServiceSupplier;
+
+    @Inject
+    public MetaDataIndexTemplateServiceInterceptor(final MetaDataIndexTemplateService metaDataIndexTemplateService) {
+      Optional.ofNullable(metaDataIndexTemplateService).ifPresent(r -> getMetaDataIndexTemplateServiceSupplierSupplier().update(r));
+    }
+
+    public synchronized static MetaDataIndexTemplateServiceSupplier getMetaDataIndexTemplateServiceSupplierSupplier() {
+      if (metaDataIndexTemplateServiceSupplier == null) {
+        metaDataIndexTemplateServiceSupplier = new MetaDataIndexTemplateServiceSupplier();
+      }
+      return metaDataIndexTemplateServiceSupplier;
+    }
+
+    @Override
+    protected void doStart() { /* unused */ }
+
+    @Override
+    protected void doStop() {  /* unused */ }
+
+    @Override
+    protected void doClose() throws IOException {  /* unused */ }
+  }
+
+  private static class MetaDataIndexTemplateServiceSupplier implements Supplier<Optional<MetaDataIndexTemplateService>> {
+
+    private final AtomicReference<Optional<MetaDataIndexTemplateService>> metaDataIndexTemplateServiceAtomicReference =
+        new AtomicReference(Optional.empty());
+
+    @Override
+    public Optional<MetaDataIndexTemplateService> get() {
+      return metaDataIndexTemplateServiceAtomicReference.get();
+    }
+
+    private void update(MetaDataIndexTemplateService service) {
+      metaDataIndexTemplateServiceAtomicReference.set(Optional.ofNullable(service));
+    }
+  }
+
 }

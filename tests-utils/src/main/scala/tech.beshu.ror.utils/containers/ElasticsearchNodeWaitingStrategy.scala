@@ -56,7 +56,7 @@ class ElasticsearchNodeWaitingStrategy(containerName: String,
     if(!started) {
       throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]")
     }
-    initializer.initialize(new DocumentManager(client))
+    initializer.initialize(client)
   }
 
   private def retry[A](checkClusterHealthAction: => Boolean)
@@ -86,9 +86,9 @@ class ElasticsearchNodeWaitingStrategy(containerName: String,
 }
 
 trait ElasticsearchNodeDataInitializer {
-  def initialize(documentManager: DocumentManager): Unit
+  def initialize(adminRestClient: RestClient): Unit
 }
 
 object NoOpElasticsearchNodeDataInitializer extends ElasticsearchNodeDataInitializer {
-  override def initialize(documentManager: DocumentManager): Unit = {}
+  override def initialize(adminRestClient: RestClient): Unit = {}
 }
