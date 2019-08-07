@@ -28,7 +28,7 @@ import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Unr
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.{JwtTokenPayload, LoggedUser, User}
+import tech.beshu.ror.acl.domain.{JwtTokenPayload, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -163,7 +163,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
                 claims
               })
           )
-        variable shouldBe Right("group1,group2")
+        variable shouldBe Right("\"group1\",\"group2\"")
       }
       "jwt multivariable is used with correct JSON path to strings array value and JWT token was set" in {
         val variable = forceCreateMultiVariable("@explode{jwt:tech.beshu.groups}")
