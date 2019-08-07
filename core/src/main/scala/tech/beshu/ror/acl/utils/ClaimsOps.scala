@@ -21,7 +21,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.acl.domain.{ClaimName, Group, Header, User}
-import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult
+import tech.beshu.ror.acl.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult._
 
 import scala.collection.JavaConverters._
@@ -84,11 +84,11 @@ class ClaimsOps(val claims: Claims) extends Logging {
       )
   }
 
-  def customClaim(claimName: ClaimName): ClaimSearchResult[NonEmptyList[String]] = {
+  def customClaim(claimName: ClaimName): ClaimSearchResult[CustomClaimValue] = {
     Try(claimName.name.read[Any](claims))
       .map {
         case value: String =>
-          Found(NonEmptyList.one(value))
+          Found(CustomClaimValue.SingleValue(value))
         case collection: java.util.Collection[_] =>
           val items = collection.asScala
             .collect {
@@ -97,7 +97,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
             }
             .toList
           NonEmptyList.fromList(items) match {
-            case Some(nel) => Found(nel)
+            case Some(nel) => Found(CustomClaimValue.CollectionValue(nel))
             case None => NotFound
           }
         case _ =>
@@ -124,5 +124,11 @@ object ClaimsOps {
   object ClaimSearchResult {
     final case class Found[+T](value: T) extends ClaimSearchResult[T]
     case object NotFound extends ClaimSearchResult[Nothing]
+  }
+
+  sealed trait CustomClaimValue
+  object CustomClaimValue {
+    final case class SingleValue(value: String) extends CustomClaimValue
+    final case class CollectionValue(value: NonEmptyList[String]) extends CustomClaimValue
   }
 }

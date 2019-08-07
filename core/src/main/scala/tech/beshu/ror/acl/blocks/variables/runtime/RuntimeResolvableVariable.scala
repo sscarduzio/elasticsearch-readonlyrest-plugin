@@ -28,6 +28,7 @@ import tech.beshu.ror.acl.domain.{ClaimName, Header}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.show.logs._
 import tech.beshu.ror.acl.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
+import tech.beshu.ror.acl.utils.ClaimsOps.CustomClaimValue.{CollectionValue, SingleValue}
 import tech.beshu.ror.acl.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
@@ -123,8 +124,10 @@ object SingleExtractable {
       blockContext.jsonToken match {
         case Some(payload) =>
           payload.claims.customClaim(varClaim) match {
-            case Found(values) =>
-              Right(values.toList.mkString(","))
+            case Found(SingleValue(value)) =>
+              Right(value)
+            case Found(CollectionValue(values)) =>
+              Right(values.toList.map(v => s""""$v"""").mkString(","))
             case NotFound =>
               Left(ExtractError(s"Cannot find value string or collection of strings in path '${jsonPath.show}' of JWT Token"))
           }
