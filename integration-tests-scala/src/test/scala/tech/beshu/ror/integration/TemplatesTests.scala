@@ -106,7 +106,7 @@ object TemplatesTests {
   private def templateExample(esVersion: String, indexPattern: String) = {
     if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       s"""{"index_patterns":["$indexPattern"],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
-    } else if(Version.greaterOrEqualThan(esVersion, 6, 0, 0)) {
+    } else if(Version.greaterOrEqualThan(esVersion, 6, 1, 0)) {
       s"""{"index_patterns":["$indexPattern"],"settings":{"number_of_shards":1},"mappings":{"_doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
     } else {
       s"""{"template":"$indexPattern","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""

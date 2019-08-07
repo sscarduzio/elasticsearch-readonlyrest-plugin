@@ -19,18 +19,27 @@ package tech.beshu.ror.utils.misc;
 import com.google.common.base.Strings;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.util.VersionUtil;
 
+import java.util.function.Function;
+
 public class Version {
 
   private Version() {}
 
   public static boolean greaterOrEqualThan(String esVersion, int maj, int min, int patchLevel) {
+    return compare(esVersion, maj, min, patchLevel, result -> result >= 0);
+  }
+
+  public static boolean greaterThan(String esVersion, int maj, int min, int patchLevel) {
+    return compare(esVersion, maj, min, patchLevel, result -> result > 0);
+  }
+
+  private static boolean compare(String esVersion, int maj, int min, int patchLevel, Function<Integer, Boolean> comparator) {
     if (Strings.isNullOrEmpty(esVersion)) {
       throw new IllegalArgumentException("invalid esVersion: " + esVersion);
     }
-    return VersionUtil
-        .parseVersion(esVersion, "x", "y")
-        .compareTo(
-            new org.testcontainers.shaded.com.fasterxml.jackson.core.Version(maj, min, patchLevel, "", "x", "y")) >= 0;
+    Integer compareResult = VersionUtil.parseVersion(esVersion, "x", "y").compareTo(
+        new org.testcontainers.shaded.com.fasterxml.jackson.core.Version(maj, min, patchLevel, "", "x", "y"));
+    return comparator.apply(compareResult);
   }
 
 }
