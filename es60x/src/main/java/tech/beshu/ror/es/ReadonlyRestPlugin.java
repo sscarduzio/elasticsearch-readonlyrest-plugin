@@ -29,6 +29,7 @@ import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -55,6 +56,7 @@ import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
+import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterService;
@@ -181,7 +183,7 @@ public class ReadonlyRestPlugin extends Plugin
     return restHandler -> (RestHandler) (request, channel, client) -> {
       // Need to make sure we've fetched cluster-wide configuration at least once. This is super fast, so NP.
       ThreadRepo.channel.set(channel);
-      restHandler.handleRequest(request, channel, client);
+      restHandler.handleRequest(RorRestRequest.from(request), channel, client);
     };
   }
 
@@ -226,4 +228,41 @@ public class ReadonlyRestPlugin extends Plugin
     }
   }
 
+  private static class RorRestRequest extends RestRequest {
+
+    private final RestRequest underlying;
+
+    private RorRestRequest(RestRequest restRequest, Map<String, String> params) {
+      super(restRequest.getXContentRegistry(), params, restRequest.path(), restRequest.getHeaders());
+      this.underlying = restRequest;
+    }
+
+    static RorRestRequest from(RestRequest restRequest) {
+      Map<String, String> params = restRequest.params();
+      params.put("error_trace", "true");
+      RorRestRequest rorRestRequest = new RorRestRequest(restRequest, params);
+      rorRestRequest.param("error_trace"); // hack! we're faking that user used this param in request query
+      return rorRestRequest;
+    }
+
+    @Override
+    public Method method() {
+      return underlying.method();
+    }
+
+    @Override
+    public String uri() {
+      return underlying.uri();
+    }
+
+    @Override
+    public boolean hasContent() {
+      return underlying.hasContent();
+    }
+
+    @Override
+    public BytesReference content() {
+      return underlying.content();
+    }
+  }
 }

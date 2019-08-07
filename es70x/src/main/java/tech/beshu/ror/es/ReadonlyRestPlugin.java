@@ -57,6 +57,7 @@ import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
+import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterService;
@@ -65,7 +66,6 @@ import org.elasticsearch.transport.TransportService;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.acl.domain;
 import tech.beshu.ror.configuration.RorSsl;
 import tech.beshu.ror.configuration.RorSsl$;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
@@ -74,7 +74,6 @@ import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -215,7 +214,7 @@ public class ReadonlyRestPlugin extends Plugin
     return restHandler -> (RestHandler) (request, channel, client) -> {
       // Need to make sure we've fetched cluster-wide configuration at least once. This is super fast, so NP.
       ThreadRepo.channel.set(channel);
-      restHandler.handleRequest(request, channel, client);
+      restHandler.handleRequest(RorRestRequest.from(request), channel, client);
     };
   }
 
@@ -242,7 +241,7 @@ public class ReadonlyRestPlugin extends Plugin
     protected void doStop() {  /* unused */ }
 
     @Override
-    protected void doClose() throws IOException {  /* unused */ }
+    protected void doClose() {  /* unused */ }
   }
 
   private static class RemoteClusterServiceSupplier implements Supplier<Optional<RemoteClusterService>> {
@@ -256,6 +255,21 @@ public class ReadonlyRestPlugin extends Plugin
 
     private void update(RemoteClusterService service) {
       remoteClusterServiceAtomicReference.set(Optional.ofNullable(service));
+    }
+  }
+
+  private static class RorRestRequest extends RestRequest {
+    private RorRestRequest(RestRequest restRequest, Map<String, String> params) {
+      super(restRequest.getXContentRegistry(), params, restRequest.path(), restRequest.getHeaders(),
+          restRequest.getHttpRequest(), restRequest.getHttpChannel());
+    }
+
+    static RorRestRequest from(RestRequest restRequest) {
+      Map<String, String> params = restRequest.params();
+      params.put("error_trace", "true");
+      RorRestRequest rorRestRequest = new RorRestRequest(restRequest, params);
+      rorRestRequest.param("error_trace"); // hack! we're faking that user used this param in request query
+      return rorRestRequest;
     }
   }
 }
