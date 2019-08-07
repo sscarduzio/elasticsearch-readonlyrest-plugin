@@ -36,7 +36,7 @@ public class TemplateManager {
 
   public void insertTemplateAndWaitForIndexing(String name, String templateContent) {
     TemplateOperationResult result = insertTemplate(name, templateContent);
-    if(result.responseCode != 200) throw new IllegalStateException("Cannot insert template");
+    if(result.responseCode != 200) throw new IllegalStateException("Cannot insert template: [" + result.responseCode + "]\nResponse: " + result.body);
     RetryPolicy<Boolean> retryPolicy = new RetryPolicy<Boolean>()
         .handleIf(isNotIndexedYet())
         .withMaxRetries(20)
@@ -54,11 +54,7 @@ public class TemplateManager {
 
   private TemplateOperationResult makeTemplateOperation(HttpUriRequest request) {
     try (CloseableHttpResponse response = restClient.execute(request)) {
-      int statusCode = response.getStatusLine().getStatusCode();
-      Map<String, Object> jsonBody = deserializeJsonBody(EntityUtils.toString(response.getEntity()));
-      return statusCode != 200
-          ? new TemplateOperationResult(statusCode, jsonBody)
-          : new TemplateOperationResult(statusCode, jsonBody);
+      return new TemplateOperationResult(response.getStatusLine().getStatusCode(), EntityUtils.toString(response.getEntity()));
     } catch (IOException e) {
       throw new IllegalStateException(e);
     }
@@ -105,10 +101,12 @@ public class TemplateManager {
 
     private final Integer responseCode;
     private final Map<String, Object> results;
+    private final String body;
 
-    TemplateOperationResult(Integer responseCode, Map<String, Object> results) {
+    TemplateOperationResult(Integer responseCode, String body) {
       this.responseCode = responseCode;
-      this.results = results;
+      this.body = body;
+      this.results = deserializeJsonBody(body);
     }
 
     public int getResponseCode() {
@@ -118,6 +116,5 @@ public class TemplateManager {
     public Map<String, Object> getResults() {
       return results;
     }
-
   }
 }

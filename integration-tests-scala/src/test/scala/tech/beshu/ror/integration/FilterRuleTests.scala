@@ -63,7 +63,7 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
 
 object FilterRuleTests {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (adminRestClient: RestClient) => {
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDocAndWaitForRefresh("/test1_index/test/1", s"""{"db_name":"db_user1"}""")
     documentManager.insertDocAndWaitForRefresh("/test1_index/test/2", s"""{"db_name":"db_user2"}""")

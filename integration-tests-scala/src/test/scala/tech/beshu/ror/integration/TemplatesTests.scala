@@ -6,6 +6,8 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, TemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.Version
+
 import scala.collection.JavaConverters._
 
 class TemplatesTests extends WordSpec with ForAllTestContainer {
@@ -35,13 +37,13 @@ class TemplatesTests extends WordSpec with ForAllTestContainer {
         templates.getResults.asScala.keys.toList should contain only "temp1"
       }
       "allow to create new template" in {
-        val result = dev1TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample("test1_index"))
+        val result = dev1TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample(container.esVersion, "test1_index"))
         result.getResponseCode should be (200)
 
         adminTemplateManager.deleteTemplate("new_template")
       }
       "allow to remove `temp_to_remove` template" in {
-        adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", TemplatesTests.templateExample("test1_index"))
+        adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", TemplatesTests.templateExample(container.esVersion,"test1_index"))
 
         val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
         result.getResponseCode should be (200)
@@ -53,7 +55,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer {
         templates.getResponseCode should be (401)
       }
       "forbid to create template for foreign index patten" in {
-        val result = dev2TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample("test1_index"))
+        val result = dev2TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample(container.esVersion,"test1_index"))
         result.getResponseCode should be (401)
       }
       "forbid to remove foreign template" in {
@@ -74,10 +76,10 @@ class TemplatesTests extends WordSpec with ForAllTestContainer {
 }
 
 object TemplatesTests {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (adminRestClient: RestClient) => {
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
     val templateManager = new TemplateManager(adminRestClient)
-    templateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("test1_*"))
-    templateManager.insertTemplateAndWaitForIndexing("temp2", templateExample("test2_*"))
+    templateManager.insertTemplateAndWaitForIndexing("temp1", templateExample(esVersion, "test1_*"))
+    templateManager.insertTemplateAndWaitForIndexing("temp2", templateExample(esVersion, "test2_*"))
 
     val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
@@ -85,7 +87,13 @@ object TemplatesTests {
     documentManager.insertDoc("/test3_index/test/1", "{\"hello\":\"world\"}")
   }
 
-  private def templateExample(indexPattern: String) = {
-    s"""{"index_patterns":["$indexPattern"],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
+  private def templateExample(esVersion: String, indexPattern: String) = {
+    if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+      s"""{"index_patterns":["$indexPattern"],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
+    } else if(Version.greaterOrEqualThan(esVersion, 6, 0, 0)) {
+      s"""{"index_patterns":["$indexPattern"],"settings":{"number_of_shards":1},"mappings":{"_doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
+    } else {
+      s"""{"template":"$indexPattern","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
+    }
   }
 }

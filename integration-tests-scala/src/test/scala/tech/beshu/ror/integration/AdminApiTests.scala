@@ -113,7 +113,7 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
 
 object AdminApiTests {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (adminRestClient: RestClient) => {
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")

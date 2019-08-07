@@ -31,7 +31,6 @@ import org.elasticsearch.action.support.ActionFilterChain;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.service.ClusterService;
-import org.elasticsearch.cluster.service.ClusterService;
 import org.elasticsearch.common.inject.Singleton;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.env.Environment;
@@ -128,7 +127,6 @@ public class IndexLevelActionFilter implements ActionFilter {
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       Option<Engine> engine = rorInstance.engine();
-
       if (engine.isDefined()) {
         handleRequest(engine.get(), task, action, request, listener, chain);
       } else {

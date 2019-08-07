@@ -283,8 +283,7 @@ public class RequestInfo implements RequestInfoShim {
     }
     else if (ar instanceof DeleteIndexTemplateRequest) {
       DeleteIndexTemplateRequest ditr = (DeleteIndexTemplateRequest) ar;
-      Set<String> templateNames = nonEmptyTemplateNamesOrAllAvailable(Sets.newHashSet(ditr.name()));
-      indices = getIndicesRelatedToTemplates(clusterService, templateNames).toArray(new String[0]);
+      indices = getIndicesRelatedToTemplates(clusterService, Sets.newHashSet(ditr.name())).toArray(new String[0]);
     }
     else if (ar instanceof GetIndexTemplatesRequest) {
       GetIndexTemplatesRequest gitr = (GetIndexTemplatesRequest) ar;
@@ -292,8 +291,7 @@ public class RequestInfo implements RequestInfoShim {
       if(requestedTemplateNames.isEmpty()) {
         indices = new String[] { "*" };
       } else {
-        Set<String> templateNames = nonEmptyTemplateNamesOrAllAvailable(requestedTemplateNames);
-        indices = getIndicesRelatedToTemplates(clusterService, templateNames).toArray(new String[0]);
+        indices = getIndicesRelatedToTemplates(clusterService, requestedTemplateNames).toArray(new String[0]);
       }
     }
 
@@ -317,12 +315,6 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     return indicesSet;
-  }
-
-  private Set<String> nonEmptyTemplateNamesOrAllAvailable(Set<String> templateNames) {
-    return templateNames.isEmpty()
-        ? Sets.newHashSet(clusterService.state().getMetaData().getTemplates().keysIt())
-        : templateNames;
   }
 
   @Override
@@ -439,10 +431,6 @@ public class RequestInfo implements RequestInfoShim {
     else if (actionRequest instanceof VerifyRepositoryRequest) {
       VerifyRepositoryRequest r = (VerifyRepositoryRequest) actionRequest;
       return Sets.newHashSet(r.name());
-    }
-    else if (actionRequest instanceof GetIndexTemplatesRequest) {
-      GetIndexTemplatesRequest r = (GetIndexTemplatesRequest)actionRequest;
-      return Sets.newHashSet(r.names());
     }
 
     return Collections.emptySet();

@@ -57,7 +57,7 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESV
 
 object CrossClusterSearchTests {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (adminRestClient: RestClient) => {
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test1_index/test/2", "{\"hello\":\"ROR\"}")

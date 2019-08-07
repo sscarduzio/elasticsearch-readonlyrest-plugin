@@ -35,7 +35,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class ReadonlyRestEsContainer private(val name: String, underlying: GenericContainer[_])
+class ReadonlyRestEsContainer private(val name: String, val esVersion: String, underlying: GenericContainer[_])
   extends SingleContainer[GenericContainer[_]]
   with StrictLogging {
 
@@ -66,6 +66,7 @@ object ReadonlyRestEsContainer extends StrictLogging {
              initializer: ElasticsearchNodeDataInitializer): ReadonlyRestEsContainer = {
     val rorContainer = new ReadonlyRestEsContainer(
       nodeName,
+      esVersion,
       new org.testcontainers.containers.GenericContainer(
         ESWithReadonlyRestImage.create(nodeName, seedNodes, esVersion, rorPluginFile, rorConfigFile)
       )
@@ -74,7 +75,7 @@ object ReadonlyRestEsContainer extends StrictLogging {
     rorContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     rorContainer.container.addExposedPort(9200)
     rorContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(rorContainer.name, Coeval(rorContainer.adminClient), initializer)
+      new ElasticsearchNodeWaitingStrategy(esVersion, rorContainer.name, Coeval(rorContainer.adminClient), initializer)
         .withStartupTimeout(3 minutes)
     )
     rorContainer.container.setNetwork(Network.SHARED)
