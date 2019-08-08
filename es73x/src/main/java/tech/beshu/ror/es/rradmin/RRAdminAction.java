@@ -15,20 +15,22 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'tests-utils'
-include 'integration-tests'
-include 'integration-tests-scala'
-include 'es51x'
-include 'es52x'
-include 'es53x'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es63x'
-include 'es66x'
-include 'es70x'
-include 'es73x'
+package tech.beshu.ror.es.rradmin;
+
+import org.elasticsearch.action.ActionType;
+
+public class RRAdminAction extends ActionType<RRAdminResponse> {
+
+  public static final String NAME = "cluster:admin/rradmin/refreshsettings";
+  public static final RRAdminAction INSTANCE = new RRAdminAction();
+
+  public RRAdminAction() {
+    super(NAME);
+  }
+
+//  @Override
+//  public RRAdminResponse newResponse() {
+//    return new RRAdminResponse(AdminRestApi.AdminResponse$.MODULE$.notAvailable());
+//  }
+
+}

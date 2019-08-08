@@ -23,6 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.CompositeIndicesRequest;
+import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.IndicesRequest;
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest;
 import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest;
@@ -54,10 +55,12 @@ import org.elasticsearch.common.collect.ImmutableOpenMap;
 import org.elasticsearch.common.util.ArrayUtils;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.index.Index;
+import org.elasticsearch.index.reindex.ReindexRequest;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.RemoteClusterService;
 import org.reflections.ReflectionUtils;
 import tech.beshu.ror.es.utils.ClusterServiceHelper;
 import tech.beshu.ror.shims.request.RequestInfoShim;
@@ -65,7 +68,6 @@ import tech.beshu.ror.utils.RCUtils;
 import tech.beshu.ror.utils.ReflecUtils;
 
 import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Collection;
@@ -82,8 +84,10 @@ import java.util.stream.Collectors;
 import static tech.beshu.ror.es.utils.ClusterServiceHelper.findTemplatesOfIndices;
 import static tech.beshu.ror.es.utils.ClusterServiceHelper.getIndicesRelatedToTemplates;
 import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
+import static tech.beshu.ror.utils.ReflecUtils.invokeMethodCached;
 
 public class RequestInfo implements RequestInfoShim {
+
   private final Logger logger = LogManager.getLogger(this.getClass());
 
   private final RestRequest request;
@@ -92,73 +96,28 @@ public class RequestInfo implements RequestInfoShim {
   private final String id;
   private final ClusterService clusterService;
   private final Long taskId;
+  private final RemoteClusterService remoteClusterService;
   private final ThreadPool threadPool;
+  private final RestChannel channel;
   private String content = null;
   private Integer contentLength;
 
   RequestInfo(RestChannel channel, Long taskId, String action, ActionRequest actionRequest,
-      ClusterService clusterService, ThreadPool threadPool) {
+      ClusterService clusterService, ThreadPool threadPool, RemoteClusterService remoteClusterService) {
     this.threadPool = threadPool;
     this.request = channel.request();
+    this.channel = channel;
     this.action = action;
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
     this.taskId = taskId;
+    this.remoteClusterService = remoteClusterService;
     String tmpID = request.hashCode() + "-" + actionRequest.hashCode();
     if (taskId != null) {
       this.id = tmpID + "#" + taskId;
     }
     else {
       this.id = tmpID;
-    }
-  }
-
-  @Override
-  public void writeSnapshots(Set<String> newSnapshots) {
-    if(newSnapshots.isEmpty()) return;
-
-    // We limit this to read requests, as all the write requests are single-snapshot oriented.
-    String[] newSnapshotsA = newSnapshots.toArray(new String[0]);
-    if (actionRequest instanceof GetSnapshotsRequest) {
-      GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
-      rsr.snapshots(newSnapshotsA);
-      return;
-    }
-
-    if (actionRequest instanceof SnapshotsStatusRequest) {
-      SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
-      r.snapshots(newSnapshotsA);
-      return;
-    }
-  }
-
-  @Override
-  public void writeRepositories(Set<String> newRepositories) {
-    if(newRepositories.isEmpty()) return;
-
-    // We limit this to read requests, as all the write requests are single-snapshot oriented.
-    String[] newRepositoriesA = newRepositories.toArray(new String[0]);
-    if (actionRequest instanceof GetSnapshotsRequest) {
-      GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
-      rsr.repository(newRepositoriesA[0]);
-      return;
-    }
-
-    if (actionRequest instanceof SnapshotsStatusRequest) {
-      SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
-      r.repository(newRepositoriesA[0]);
-      return;
-    }
-    if (actionRequest instanceof GetRepositoriesRequest) {
-      GetRepositoriesRequest r = (GetRepositoriesRequest) actionRequest;
-      r.repositories(newRepositoriesA);
-      return;
-    }
-
-    if (actionRequest instanceof VerifyRepositoryRequest) {
-      VerifyRepositoryRequest r = (VerifyRepositoryRequest) actionRequest;
-      r.name(newRepositoriesA[0]);
-      return;
     }
   }
 
@@ -176,6 +135,10 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public Long extractTaskId() {
     return taskId;
+  }
+
+  public RestChannel getChannel() {
+    return channel;
   }
 
   @Override
@@ -229,18 +192,23 @@ public class RequestInfo implements RequestInfoShim {
     // CompositeIndicesRequests
     else if (ar instanceof MultiGetRequest) {
       MultiGetRequest cir = (MultiGetRequest) ar;
+
       for (MultiGetRequest.Item ir : cir.getItems()) {
         indices = ArrayUtils.concat(indices, ir.indices(), String.class);
       }
     }
+
     else if (ar instanceof MultiSearchRequest) {
       MultiSearchRequest cir = (MultiSearchRequest) ar;
+
       for (SearchRequest ir : cir.requests()) {
         indices = ArrayUtils.concat(indices, ir.indices(), String.class);
       }
     }
+
     else if (ar instanceof MultiTermVectorsRequest) {
       MultiTermVectorsRequest cir = (MultiTermVectorsRequest) ar;
+
       for (TermVectorsRequest ir : cir.getRequests()) {
         indices = ArrayUtils.concat(indices, ir.indices(), String.class);
       }
@@ -248,11 +216,9 @@ public class RequestInfo implements RequestInfoShim {
 
     else if (ar instanceof BulkRequest) {
       BulkRequest cir = (BulkRequest) ar;
-      for (ActionRequest x : cir.requests()) {
-        if (x instanceof IndicesRequest) {
-          IndicesRequest ir = (IndicesRequest) x;
-          indices = ArrayUtils.concat(indices, ir.indices(), String.class);
-        }
+
+      for (DocWriteRequest<?> ir : cir.requests()) {
+        indices = ArrayUtils.concat(indices, ir.indices(), String.class);
       }
     }
 
@@ -265,6 +231,24 @@ public class RequestInfo implements RequestInfoShim {
       IndicesAliasesRequest ir = (IndicesAliasesRequest) ar;
       indices = ir.getAliasActions().stream().map(x -> Sets.newHashSet(x.indices())).flatMap(
           Collection::stream).distinct().toArray(String[]::new);
+    }
+
+    // Buggy cases here onwards
+    else if (ar instanceof ReindexRequest) {
+      // Using reflection otherwise need to create another sub-project
+      try {
+        SearchRequest sr = (SearchRequest) invokeMethodCached(ar, ar.getClass(), "getSearchRequest");
+        IndexRequest ir = (IndexRequest) invokeMethodCached(ar, ar.getClass(), "getDestination");
+        indices = ArrayUtils.concat(sr.indices(), ir.indices(), String.class);
+      } catch (Exception e) {
+        logger.error("cannot extract indices from: " + extractMethod() + " " + extractURI() + "\n" + extractContent(),
+            e);
+        e.printStackTrace();
+      }
+    }
+    else if (ar.getClass().getSimpleName().startsWith("Sql")) {
+      // Do noting, we can't do anything about X-Pack SQL queries, as it does not contain indices.
+      // #TODO The only way we can filter this kind of request is going Lucene level like "filter" rule.
     }
 
     else if (ar instanceof CompositeIndicesRequest) {
@@ -297,6 +281,7 @@ public class RequestInfo implements RequestInfoShim {
       }
     }
 
+    // Last resort
     else {
       indices = extractStringArrayFromPrivateMethod("indices", ar);
       if (indices == null || indices.length == 0) {
@@ -341,6 +326,56 @@ public class RequestInfo implements RequestInfoShim {
       return Sets.newHashSet(r.snapshots());
     }
     return Collections.emptySet();
+  }
+
+  @Override
+  public void writeSnapshots(Set<String> newSnapshots) {
+    if(newSnapshots.isEmpty()) return;
+
+    // We limit this to read requests, as all the write requests are single-snapshot oriented.
+    String[] newSnapshotsA = newSnapshots.toArray(new String[newSnapshots.size()]);
+    if (actionRequest instanceof GetSnapshotsRequest) {
+      GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
+      rsr.snapshots(newSnapshotsA);
+      return;
+    }
+
+    if (actionRequest instanceof SnapshotsStatusRequest) {
+      SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
+      r.snapshots(newSnapshotsA);
+      return;
+    }
+  }
+
+  @Override
+  public void writeRepositories(Set<String> newRepositories) {
+    if(newRepositories.isEmpty()) return;
+
+    // We limit this to read requests, as all the write requests are single-snapshot oriented.
+    String[] newRepositoriesA = newRepositories.toArray(new String[newRepositories.size()]);
+    if (actionRequest instanceof GetSnapshotsRequest) {
+      GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;
+      rsr.repository(newRepositoriesA[0]);
+      return;
+    }
+
+    if (actionRequest instanceof SnapshotsStatusRequest) {
+      SnapshotsStatusRequest r = (SnapshotsStatusRequest) actionRequest;
+      r.repository(newRepositoriesA[0]);
+      return;
+    }
+    if (actionRequest instanceof GetRepositoriesRequest) {
+      GetRepositoriesRequest r = (GetRepositoriesRequest) actionRequest;
+      r.repositories(newRepositoriesA);
+      return;
+    }
+
+    if (actionRequest instanceof VerifyRepositoryRequest) {
+      VerifyRepositoryRequest r = (VerifyRepositoryRequest) actionRequest;
+      r.name(newRepositoriesA[0]);
+      return;
+    }
+
   }
 
   @Override
@@ -400,19 +435,21 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public Map<String, String> extractRequestHeaders() {
     final Map<String, String> h = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    request.headers().forEach(k -> {
-      h.put(k.getKey(), k.getValue());
+    request.getHeaders().keySet().forEach(k -> {
+      if (request.getAllHeaderValues(k).isEmpty()) {
+        return;
+      }
+      h.put(k, request.getAllHeaderValues(k).iterator().next());
     });
     return h;
   }
 
   @Override
   public String extractLocalAddress() {
-    try{
-      String remoteHost = ((InetSocketAddress) request.getLocalAddress()).getAddress().getHostAddress();
+    try {
+      String remoteHost = request.getHttpChannel().getLocalAddress().getAddress().getHostAddress();
       return remoteHost;
-    }
-    catch(Exception e){
+    } catch (Exception e) {
       logger.error("Could not extract local address", e);
       return null;
     }
@@ -422,14 +459,13 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public String extractRemoteAddress() {
     try {
-      String remoteHost = ((InetSocketAddress) request.getRemoteAddress()).getAddress().getHostAddress();
+      String remoteHost = request.getHttpChannel().getRemoteAddress().getAddress().getHostAddress();
       // Make sure we recognize localhost even when IPV6 is involved
       if (RCUtils.isLocalHost(remoteHost)) {
         remoteHost = RCUtils.LOCALHOST;
       }
       return remoteHost;
-    }
-    catch (Exception e){
+    } catch (Exception e) {
       logger.error("Could not extract remote address", e);
       return null;
     }
@@ -439,13 +475,12 @@ public class RequestInfo implements RequestInfoShim {
   public void writeIndices(Set<String> newIndices) {
     if(newIndices.isEmpty()) return;
 
-    // Setting indices by reflection..
     newIndices.remove("<no-index>");
     newIndices.remove("");
 
     // Best case, this request is designed to have indices replaced.
     if (actionRequest instanceof IndicesRequest.Replaceable) {
-      ((IndicesRequest.Replaceable) actionRequest).indices(newIndices.toArray(new String[0]));
+      ((IndicesRequest.Replaceable) actionRequest).indices(newIndices.toArray(new String[newIndices.size()]));
       return;
     }
 
@@ -455,8 +490,8 @@ public class RequestInfo implements RequestInfoShim {
       String singleIndex = newIndices.iterator().next();
       String uuid = extractIndexMetadata(singleIndex).iterator().next();
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-        @SuppressWarnings("unchecked")
-        Set<Field> fields = ReflectionUtils.getAllFields(bsr.shardId().getClass(), ReflectionUtils.withName("index"));
+        @SuppressWarnings("unchecked") Set<Field> fields = ReflectionUtils.getAllFields(bsr.shardId().getClass(),
+            ReflectionUtils.withName("index"));
         fields.stream().forEach(f -> {
           f.setAccessible(true);
           try {
@@ -470,40 +505,6 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     if (actionRequest instanceof MultiSearchRequest) {
-      // If it's an empty MSR, we are ok
-      MultiSearchRequest msr = (MultiSearchRequest) actionRequest;
-      for (SearchRequest sr : msr.requests()) {
-
-        // This contains global indices
-        if (sr.indices().length == 0 || Sets.newHashSet(sr.indices()).contains("*")) {
-          sr.indices(newIndices.toArray(new String[newIndices.size()]));
-          continue;
-        }
-
-        Set<String> srIndices = Sets.newHashSet(sr.indices());
-        // This transforms wildcards and aliases in concrete indices
-        srIndices = getExpandedIndices(srIndices);
-
-        Set<String> remaining = Sets.newHashSet(srIndices);
-        remaining.retainAll(newIndices);
-
-        if (remaining.size() == 0) {
-          // contained just forbidden indices, should return zero results
-          sr.source(new SearchSourceBuilder().size(0));
-          continue;
-        }
-        if (remaining.size() == srIndices.size()) {
-          // contained all allowed indices
-          continue;
-        }
-        // some allowed indices were there, restrict query to those
-        sr.indices(remaining.toArray(new String[remaining.size()]));
-      }
-      // All the work is done - no need for reflection
-      return;
-    }
-
-    if (actionRequest instanceof MultiGetRequest) {
       // If it's an empty MSR, we are ok
       MultiSearchRequest msr = (MultiSearchRequest) actionRequest;
       for (SearchRequest sr : msr.requests()) {
@@ -543,8 +544,9 @@ public class RequestInfo implements RequestInfoShim {
         MultiGetRequest.Item item = it.next();
         // One item contains just an index, but can be an alias
         Set<String> indices = getExpandedIndices(Sets.newHashSet(item.indices()));
-        indices.retainAll(newIndices);
-        if (indices.isEmpty()) {
+        Set<String> remaining = indices;
+        remaining.retainAll(newIndices);
+        if (remaining.isEmpty()) {
           it.remove();
         }
       }
@@ -558,12 +560,13 @@ public class RequestInfo implements RequestInfoShim {
       while (it.hasNext()) {
         IndicesAliasesRequest.AliasActions act = it.next();
         Set<String> indices = getExpandedIndices(Sets.newHashSet(act.indices()));
-        indices.retainAll(newIndices);
-        if (indices.isEmpty()) {
+        Set<String> remaining = indices;
+        remaining.retainAll(newIndices);
+        if (remaining.isEmpty()) {
           it.remove();
           continue;
         }
-        act.indices(indices.toArray(new String[indices.size()]));
+        act.indices(remaining.toArray(new String[remaining.size()]));
       }
       // All the work is done - no need for reflection
       return;
@@ -595,14 +598,18 @@ public class RequestInfo implements RequestInfoShim {
       }
     }
     else {
-      logger.error("REFLECTION: Failed to set indices for type " + actionRequest.getClass().getSimpleName() +
-          "  in req id: " + extractId());
+      logger.error(
+          "REFLECTION: Failed to set indices for type " + actionRequest.getClass().getSimpleName() + "  in req id: "
+              + extractId());
     }
   }
 
   @Override
   public void writeResponseHeaders(Map<String, String> hMap) {
-    hMap.keySet().forEach(k -> threadPool.getThreadContext().addResponseHeader(k, hMap.get(k)));
+    hMap.keySet().forEach(k -> {
+      String val = hMap.get(k);
+      threadPool.getThreadContext().addResponseHeader(k, val, v -> val);
+    });
   }
 
   @Override
@@ -642,7 +649,8 @@ public class RequestInfo implements RequestInfoShim {
       if (sr.source() == null) {
         return true;
       }
-      if (sr.source().profile() || (sr.source().suggest() != null && !sr.source().suggest().getSuggestions().isEmpty())) {
+      if (sr.source().profile() || (sr.source().suggest() != null
+          && !sr.source().suggest().getSuggestions().isEmpty())) {
         return false;
       }
     }
@@ -662,7 +670,7 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean extractHasRemoteClusters() {
-    return false;
+    return remoteClusterService.isCrossClusterSearchEnabled();
   }
 
 }

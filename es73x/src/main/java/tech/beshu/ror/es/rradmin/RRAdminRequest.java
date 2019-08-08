@@ -15,20 +15,30 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'tests-utils'
-include 'integration-tests'
-include 'integration-tests-scala'
-include 'es51x'
-include 'es52x'
-include 'es53x'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es63x'
-include 'es66x'
-include 'es70x'
-include 'es73x'
+package tech.beshu.ror.es.rradmin;
+
+import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionRequestValidationException;
+import org.elasticsearch.rest.RestRequest;
+import tech.beshu.ror.adminapi.AdminRestApi;
+
+public class RRAdminRequest extends ActionRequest {
+
+  private RestRequest request;
+
+  public RRAdminRequest() {
+  }
+
+  public RRAdminRequest(RestRequest request) {
+    this.request = request;
+  }
+
+  public AdminRestApi.AdminRequest getAdminRequest() {
+    return new AdminRestApi.AdminRequest(request.method().name(), request.path(), request.content().utf8ToString());
+  }
+
+  @Override
+  public ActionRequestValidationException validate() {
+    return null;
+  }
+}
