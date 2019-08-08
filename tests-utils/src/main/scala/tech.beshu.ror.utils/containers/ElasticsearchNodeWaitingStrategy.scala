@@ -27,7 +27,6 @@ import org.testcontainers.containers.ContainerLaunchException
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
 import retry._
 import retry.RetryPolicies._
-import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody
 import tech.beshu.ror.utils.misc.ScalaUtils._
@@ -35,7 +34,8 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
 
-class ElasticsearchNodeWaitingStrategy(containerName: String,
+class ElasticsearchNodeWaitingStrategy(esVersion: String,
+                                       containerName: String,
                                        restClient: Coeval[RestClient],
                                        initializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer)
   extends AbstractWaitStrategy
@@ -56,7 +56,7 @@ class ElasticsearchNodeWaitingStrategy(containerName: String,
     if(!started) {
       throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]")
     }
-    initializer.initialize(new DocumentManager(client))
+    initializer.initialize(esVersion, client)
   }
 
   private def retry[A](checkClusterHealthAction: => Boolean)
@@ -86,9 +86,9 @@ class ElasticsearchNodeWaitingStrategy(containerName: String,
 }
 
 trait ElasticsearchNodeDataInitializer {
-  def initialize(documentManager: DocumentManager): Unit
+  def initialize(esVersion: String, adminRestClient: RestClient): Unit
 }
 
 object NoOpElasticsearchNodeDataInitializer extends ElasticsearchNodeDataInitializer {
-  override def initialize(documentManager: DocumentManager): Unit = {}
+  override def initialize(esVersion: String, adminRestClient: RestClient): Unit = {}
 }

@@ -35,6 +35,9 @@ import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest;
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest;
 import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest;
+import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest;
+import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkShardRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
@@ -58,6 +61,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterService;
 import org.reflections.ReflectionUtils;
+import tech.beshu.ror.es.utils.ClusterServiceHelper;
 import tech.beshu.ror.shims.request.RequestInfoShim;
 import tech.beshu.ror.utils.RCUtils;
 import tech.beshu.ror.utils.ReflecUtils;
@@ -74,8 +78,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static tech.beshu.ror.es.utils.ClusterServiceHelper.findTemplatesOfIndices;
+import static tech.beshu.ror.es.utils.ClusterServiceHelper.getIndicesRelatedToTemplates;
 import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
 import static tech.beshu.ror.utils.ReflecUtils.invokeMethodCached;
 
@@ -302,6 +309,24 @@ public class RequestInfo implements RequestInfoShim {
       logger.error(
           "Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! "
               + ar.getClass().getSimpleName());
+    }
+
+    else if (ar instanceof PutIndexTemplateRequest) {
+      PutIndexTemplateRequest pitr = (PutIndexTemplateRequest) ar;
+      indices = ClusterServiceHelper.indicesFromPatterns(clusterService, Sets.newHashSet(pitr.indices())).toArray(new String[0]);
+    }
+    else if (ar instanceof DeleteIndexTemplateRequest) {
+      DeleteIndexTemplateRequest ditr = (DeleteIndexTemplateRequest) ar;
+      indices = getIndicesRelatedToTemplates(clusterService, Sets.newHashSet(ditr.name())).toArray(new String[0]);
+    }
+    else if (ar instanceof GetIndexTemplatesRequest) {
+      GetIndexTemplatesRequest gitr = (GetIndexTemplatesRequest) ar;
+      Set<String> requestedTemplateNames = Sets.newHashSet(gitr.names());
+      if(requestedTemplateNames.isEmpty()) {
+        indices = new String[] { "*" };
+      } else {
+        indices = getIndicesRelatedToTemplates(clusterService, requestedTemplateNames).toArray(new String[0]);
+      }
     }
 
     else {
@@ -544,6 +569,24 @@ public class RequestInfo implements RequestInfoShim {
       // All the work is done - no need for reflection
       return;
     }
+
+    if(actionRequest instanceof GetIndexTemplatesRequest) {
+      GetIndexTemplatesRequest gitr = (GetIndexTemplatesRequest) actionRequest;
+      Set<String> requestTemplateNames = Sets.newHashSet(gitr.names());
+      Set<String> allowedTemplateNames = findTemplatesOfIndices(clusterService, newIndices);
+      Set<String> templateNamesToReturn =
+          requestTemplateNames.isEmpty()
+              ? allowedTemplateNames
+              : Sets.intersection(requestTemplateNames, allowedTemplateNames);
+      if(templateNamesToReturn.isEmpty()) {
+        // hack! there is no other way to return empty list of templates
+        gitr.names(UUID.randomUUID() + "*");
+      } else {
+        gitr.names(templateNamesToReturn.toArray(new String[0]));
+      }
+      return;
+    }
+
     // Optimistic reflection attempt
     boolean okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), newIndices);
 
@@ -580,7 +623,10 @@ public class RequestInfo implements RequestInfoShim {
 
   @Override
   public boolean involvesIndices() {
-    return actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest;
+    return actionRequest instanceof IndicesRequest || actionRequest instanceof CompositeIndicesRequest ||
+        // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
+        actionRequest instanceof RestoreSnapshotRequest ||
+        actionRequest instanceof GetIndexTemplatesRequest || actionRequest instanceof PutIndexTemplateRequest || actionRequest instanceof DeleteIndexTemplateRequest;
   }
 
   @Override

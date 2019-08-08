@@ -32,8 +32,8 @@ public class MatcherWithWildcards {
   private final Set<String> matchers;
   private List<String[]> patternsList = new LinkedList<>();
 
-  public MatcherWithWildcards(Set<String> patterns) {
-    this.matchers = patterns;
+  public MatcherWithWildcards(Iterable<String> patterns) {
+    this.matchers = Sets.newHashSet(patterns);
     for (String p : patterns) {
       if (p == null) {
         continue;

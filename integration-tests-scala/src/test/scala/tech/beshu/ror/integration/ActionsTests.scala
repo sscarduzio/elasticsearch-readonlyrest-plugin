@@ -21,6 +21,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager}
+import tech.beshu.ror.utils.httpclient.RestClient
 
 class ActionsTests extends WordSpec with ForAllTestContainer {
 
@@ -49,7 +50,8 @@ class ActionsTests extends WordSpec with ForAllTestContainer {
 
 object ActionsTests {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
   }
