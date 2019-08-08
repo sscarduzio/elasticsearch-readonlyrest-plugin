@@ -214,7 +214,7 @@ public class ReadonlyRestPlugin extends Plugin
     return restHandler -> (RestHandler) (request, channel, client) -> {
       // Need to make sure we've fetched cluster-wide configuration at least once. This is super fast, so NP.
       ThreadRepo.channel.set(channel);
-      restHandler.handleRequest(RorRestRequest.from(request), channel, client);
+      restHandler.handleRequest(request, channel, client);
     };
   }
 
@@ -255,21 +255,6 @@ public class ReadonlyRestPlugin extends Plugin
 
     private void update(RemoteClusterService service) {
       remoteClusterServiceAtomicReference.set(Optional.ofNullable(service));
-    }
-  }
-
-  private static class RorRestRequest extends RestRequest {
-    private RorRestRequest(RestRequest restRequest, Map<String, String> params) {
-      super(restRequest.getXContentRegistry(), params, restRequest.path(), restRequest.getHeaders(),
-          restRequest.getHttpRequest(), restRequest.getHttpChannel());
-    }
-
-    static RorRestRequest from(RestRequest restRequest) {
-      Map<String, String> params = restRequest.params();
-      params.put("error_trace", "true");
-      RorRestRequest rorRestRequest = new RorRestRequest(restRequest, params);
-      rorRestRequest.param("error_trace"); // hack! we're faking that user used this param in request query
-      return rorRestRequest;
     }
   }
 }

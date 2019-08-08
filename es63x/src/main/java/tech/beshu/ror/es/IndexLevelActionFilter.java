@@ -67,6 +67,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import static tech.beshu.ror.es.utils.ThreadLocalRestChannelProviderHelper.getRestChannel;
+
 /**
  * Created by sscarduzio on 19/12/2015.
  */
@@ -127,11 +129,14 @@ public class IndexLevelActionFilter implements ActionFilter {
       ActionFilterChain<Request, Response> chain) {
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       Option<Engine> engine = rorInstance.engine();
-      if (engine.isDefined()) {
-        handleRequest(engine.get(), task, action, request, listener, chain);
+      Optional<RestChannel> restChannel = getRestChannel();
+      if(!restChannel.isPresent() || action.startsWith("internal:")) {
+        chain.proceed(task, action, request, listener);
+      } else if (!engine.isDefined()) {
+        RestChannel channel = restChannel.get();
+        channel.sendResponse(RorNotReadyResponse.create(channel));
       } else {
-        if(action.startsWith("internal:") || ThreadRepo.channel.get() == null) chain.proceed(task, action, request, listener);
-        else listener.onFailure(new RorNotReadyResponse());
+        handleRequest(engine.get(), task, action, request, listener, chain, restChannel.get());
       }
       return null;
     });
@@ -144,20 +149,9 @@ public class IndexLevelActionFilter implements ActionFilter {
       String action,
       Request request,
       ActionListener<Response> listener,
-      ActionFilterChain<Request, Response> chain
+      ActionFilterChain<Request, Response> chain,
+      RestChannel channel
   ) {
-    RestChannel channel = ThreadRepo.channel.get();
-    if (channel != null) {
-      ThreadRepo.channel.remove();
-    }
-
-    boolean chanNull = channel == null;
-    boolean reqNull = channel == null ? true : channel.request() == null;
-    if (shouldSkipACL(chanNull, reqNull)) {
-      chain.proceed(task, action, request, listener);
-      return;
-    }
-
     Optional<RemoteClusterService> remoteClusterService = remoteClusterServiceSupplier.get();
     if(remoteClusterService.isPresent()) {
       RequestInfo requestInfo = new RequestInfo(channel, task.getId(), action, request, clusterService, threadPool,
@@ -169,7 +163,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       engine.acl()
           .handle(requestContext)
-          .runAsync(handleAclResult(engine, listener, request, requestContext, requestInfo, proceed), Scheduler$.MODULE$.global());
+          .runAsync(handleAclResult(engine, listener, request, requestContext, requestInfo, proceed, channel), Scheduler$.MODULE$.global());
     } else {
       listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"));
     }
@@ -181,13 +175,14 @@ public class IndexLevelActionFilter implements ActionFilter {
       Request request,
       RequestContext requestContext,
       RequestInfo requestInfo,
-      Consumer<ActionListener<Response>> chainProceed
+      Consumer<ActionListener<Response>> chainProceed,
+      RestChannel channel
   ) {
     return result -> {
       try (ThreadContext.StoredContext ctx = threadPool.getThreadContext().stashContext()) {
         if (result.isRight()) {
           AclActionHandler handler = createAclActionHandler(engine.context(), requestInfo, request, requestContext,
-              listener, chainProceed);
+              listener, chainProceed, channel);
           AclResultCommitter.commit(result.right().get(), handler);
         }
         else {
@@ -204,7 +199,8 @@ public class IndexLevelActionFilter implements ActionFilter {
       Request request,
       RequestContext requestContext,
       ActionListener<Response> baseListener,
-      Consumer<ActionListener<Response>> chainProceed
+      Consumer<ActionListener<Response>> chainProceed,
+      RestChannel channel
   ) {
     return new AclActionHandler() {
       @Override
@@ -249,7 +245,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       @Override
       public void onForbidden(List<ForbiddenCause> causes) {
-        baseListener.onFailure(new ForbiddenResponse(causes, aclStaticContext));
+        channel.sendResponse(ForbiddenResponse.create(channel, causes, aclStaticContext));
       }
 
       @Override
