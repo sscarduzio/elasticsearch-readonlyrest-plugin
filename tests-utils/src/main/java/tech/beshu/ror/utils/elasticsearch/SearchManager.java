@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
-import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -91,14 +90,6 @@ public class SearchManager {
       return request;
     } catch (UnsupportedEncodingException e) {
       throw new IllegalStateException(e);
-    }
-  }
-
-  private static String bodyFrom(HttpResponse r) {
-    try {
-      return EntityUtils.toString(r.getEntity());
-    } catch (IOException e) {
-      throw new IllegalStateException("Cannot get string body", e);
     }
   }
 

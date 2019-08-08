@@ -22,6 +22,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager}
+import tech.beshu.ror.utils.httpclient.RestClient
 
 class ReindexTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
@@ -36,13 +37,13 @@ class ReindexTests extends WordSpec with ForAllTestContainer with ESVersionSuppo
 
   "A reindex request" should {
     "be able to proceed" when {
-      "user has permission to source index and dest index" excludeES ("es51x", "es52x") in {
+      "user has permission to source index and dest index" excludeES("es51x", "es52x") in {
         val result = user1ActionManager.actionPost("_reindex", ReindexTests.reindexPayload("test1_index"))
         assertEquals(200, result.getResponseCode)
       }
     }
     "not be able to proceed" when {
-      "user has no permission to source index and dest index" excludeES ("es51x", "es52x") in {
+      "user has no permission to source index and dest index" excludeES("es51x", "es52x") in {
         val result = user1ActionManager.actionPost("_reindex", ReindexTests.reindexPayload("test2_index"))
         assertEquals(401, result.getResponseCode)
       }
@@ -52,7 +53,8 @@ class ReindexTests extends WordSpec with ForAllTestContainer with ESVersionSuppo
 
 object ReindexTests {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
   }

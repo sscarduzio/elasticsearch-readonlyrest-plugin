@@ -23,6 +23,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.httpclient.RestClient
 
 class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
@@ -39,14 +40,14 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESV
 
   "A cluster search for given index" should {
     "return 200 and allow user to its content" when {
-      "user has permission to do so" excludeES ("es51x", "es52x") in {
+      "user has permission to do so" excludeES("es51x", "es52x") in {
         val result = user1SearchManager.search("/odd:test1_index/_search")
         assertEquals(200, result.getResponseCode)
         assertEquals(2, result.getResults.size)
       }
     }
     "return 401" when {
-      "user has no permission to do so" excludeES ("es51x", "es52x") in {
+      "user has no permission to do so" excludeES("es51x", "es52x") in {
         val result = user2SearchManager.search("/odd:test1_index/_search")
         assertEquals(401, result.getResponseCode)
       }
@@ -56,7 +57,8 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESV
 
 object CrossClusterSearchTests {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (documentManager: DocumentManager) => {
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test1_index/test/2", "{\"hello\":\"ROR\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")

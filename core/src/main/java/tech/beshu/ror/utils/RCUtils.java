@@ -46,7 +46,9 @@ public class RCUtils {
       "indices:admin/refresh*",
       "indices:admin/types/exists",
       "indices:admin/validate/*",
+      "indices:admin/template/get",
       "indices:data/read/*",
+      "indices:monitor/segments",
       "cluster:admin/*/get",
       "cluster:admin/*/status",
       "cluster:monitor/ccr/follow_info"

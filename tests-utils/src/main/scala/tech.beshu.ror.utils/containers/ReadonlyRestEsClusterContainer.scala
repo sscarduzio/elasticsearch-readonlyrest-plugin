@@ -79,6 +79,8 @@ class ReadonlyRestEsClusterContainer private[containers](containers: NonEmptyLis
     NonEmptyList.fromListUnsafe(Task.gather(containers.toList).runSyncUnsafe())
   }
 
+  val esVersion: String = nodesContainers.head.esVersion
+
   override def starting()(implicit description: Description): Unit = {
     Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
     clusterInitializer.initialize(nodesContainers.head.adminClient, this)

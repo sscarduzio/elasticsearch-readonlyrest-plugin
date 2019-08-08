@@ -65,7 +65,6 @@ import org.elasticsearch.transport.TransportService;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
-import tech.beshu.ror.acl.domain;
 import tech.beshu.ror.configuration.RorSsl;
 import tech.beshu.ror.configuration.RorSsl$;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
