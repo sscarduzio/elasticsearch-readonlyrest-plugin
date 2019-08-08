@@ -21,7 +21,6 @@ import java.time.Duration
 import cats.Functor
 import cats.implicits._
 
-import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{higherKinds, implicitConversions}
 
