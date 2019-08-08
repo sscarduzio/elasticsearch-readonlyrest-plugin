@@ -14,35 +14,38 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es;
+package tech.beshu.ror.es.utils;
 
 import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 
-import static tech.beshu.ror.es.utils.ErrorContentBuilderHelper.createErrorResponse;
+public class ErrorContentBuilderHelper {
 
-public class RorNotReadyResponse extends BytesRestResponse {
-
-  private RorNotReadyResponse(RestStatus status, XContentBuilder builder) {
-    super(status, builder);
-  }
-
-  public static RorNotReadyResponse create(RestChannel channel) {
-    return new RorNotReadyResponse(
-        RestStatus.SERVICE_UNAVAILABLE,
-        createErrorResponse(channel, RestStatus.SERVICE_UNAVAILABLE, RorNotReadyResponse::addRootCause)
-    );
-  }
-
-  private static void addRootCause(XContentBuilder builder) {
+  public static XContentBuilder createErrorResponse(RestChannel channel, RestStatus status, Consumer<XContentBuilder> rootCause) {
     try {
-      builder.field("reason", "Waiting for ReadonlyREST start");
+      XContentBuilder builder = channel.newErrorBuilder().startObject();
+      {
+        builder.startObject("error");
+        {
+          builder.startArray("root_cause");
+          {
+            builder.startObject();
+            rootCause.accept(builder);
+            builder.endObject();
+          }
+          builder.endArray();
+        }
+        rootCause.accept(builder);
+        builder.field("status", status.getStatus());
+        builder.endObject();
+      }
+      return builder.endObject();
     } catch (IOException e) {
-      throw new IllegalStateException("Cannot create root cause", e);
+      throw new IllegalStateException("Cannot create forbidden response", e);
     }
   }
 }

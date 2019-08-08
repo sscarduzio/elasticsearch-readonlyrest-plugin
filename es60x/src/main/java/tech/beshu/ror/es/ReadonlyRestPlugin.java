@@ -225,5 +225,4 @@ public class ReadonlyRestPlugin extends Plugin
       remoteClusterServiceAtomicReference.set(Optional.ofNullable(service));
     }
   }
-
 }

@@ -57,6 +57,7 @@ import org.elasticsearch.plugins.Plugin;
 import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
+import org.elasticsearch.rest.RestRequest;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.RemoteClusterService;
@@ -73,7 +74,6 @@ import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -241,7 +241,7 @@ public class ReadonlyRestPlugin extends Plugin
     protected void doStop() {  /* unused */ }
 
     @Override
-    protected void doClose() throws IOException {  /* unused */ }
+    protected void doClose() {  /* unused */ }
   }
 
   private static class RemoteClusterServiceSupplier implements Supplier<Optional<RemoteClusterService>> {

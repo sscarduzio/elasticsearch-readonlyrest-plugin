@@ -16,21 +16,33 @@
  */
 package tech.beshu.ror.es;
 
-import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.rest.BytesRestResponse;
+import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
 
 import java.io.IOException;
 
-public class RorNotReadyResponse extends ElasticsearchStatusException {
+import static tech.beshu.ror.es.utils.ErrorContentBuilderHelper.createErrorResponse;
 
-  public RorNotReadyResponse() {
-    super("ReadonlyREST is not ready", RestStatus.SERVICE_UNAVAILABLE);
+public class RorNotReadyResponse extends BytesRestResponse {
+
+  private RorNotReadyResponse(RestStatus status, XContentBuilder builder) {
+    super(status, builder);
   }
 
-  @Override
-  public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-    builder.field("reason", "Waiting for ReadonlyREST start");
-    return builder;
+  public static RorNotReadyResponse create(RestChannel channel) {
+    return new RorNotReadyResponse(
+        RestStatus.SERVICE_UNAVAILABLE,
+        createErrorResponse(channel, RestStatus.SERVICE_UNAVAILABLE, RorNotReadyResponse::addRootCause)
+    );
+  }
+
+  private static void addRootCause(XContentBuilder builder) {
+    try {
+      builder.field("reason", "Waiting for ReadonlyREST start");
+    } catch (IOException e) {
+      throw new IllegalStateException("Cannot create root cause", e);
+    }
   }
 }
