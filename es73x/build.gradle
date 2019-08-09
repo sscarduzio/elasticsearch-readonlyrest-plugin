@@ -26,9 +26,10 @@ buildscript {
         mavenLocal()
         mavenCentral()
         jcenter()
+        maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath group: 'nl.javadude.gradle.plugins',  name: 'license-gradle-plugin', version: '0.10.0'
+        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
     }
 }
 
@@ -43,7 +44,7 @@ def pluginFullName = pluginName + '-' + version
 apply plugin: 'java'
 apply plugin: 'scala'
 apply plugin: 'maven'
-apply plugin: 'license'
+apply plugin: "com.github.hierynomus.license"
 
 compileJava {
     sourceCompatibility = 1.8
@@ -70,8 +71,10 @@ license {
     useDefaultMappings = false
     mapping {
         java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
     }
 }
+
 
 tasks.withType(Zip) { task ->
     task.doLast {
