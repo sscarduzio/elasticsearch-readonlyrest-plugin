@@ -26,16 +26,7 @@ object RoleIndexSearcherWrapper extends Logging {
     new JavaFunction[IndexService, CheckedFunction[DirectoryReader, DirectoryReader, IOException]] {
 
       override def apply(indexService: IndexService): CheckedFunction[DirectoryReader, DirectoryReader, IOException] = {
-        val threadPool = indexService.getThreadPool
-        reader: DirectoryReader => {
-          RorInstanceSupplier.get() match {
-            case Some(_) =>
-              readerFor(indexService, threadPool, reader)
-            case None =>
-              logger.debug("Document filtering not available. Return default reader")
-              reader
-          }
-        }
+        reader: DirectoryReader => readerFor(indexService, indexService.getThreadPool, reader)
       }
 
       private def readerFor(indexService: IndexService, threadPool: ThreadPool, reader: DirectoryReader): DirectoryReader = {

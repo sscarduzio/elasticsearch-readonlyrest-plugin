@@ -40,8 +40,11 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
       .runSyncUnsafe(1 minute)
     startingResult match {
-      case Right(instance) => instance
-      case Left(ex) => throw StartingFailureException.from(ex)
+      case Right(instance) =>
+        RorInstanceSupplier.update(instance)
+        instance
+      case Left(ex) =>
+        throw StartingFailureException.from(ex)
     }
   }
 
@@ -149,6 +152,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
           case r: MultiSearchRequest =>
             logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest")
             r.requests().asScala.foreach(_.requestCache(false))
+          case _ =>
         }
       }
       new ResponseActionListener(listener.asInstanceOf[ActionListener[ActionResponse]], requestContext, blockContext).asInstanceOf[ActionListener[Response]]

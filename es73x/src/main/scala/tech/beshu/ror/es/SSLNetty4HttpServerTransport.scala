@@ -37,7 +37,9 @@ class SSLNetty4HttpServerTransport(settings: Settings,
     channel.close()
   }
 
-  private class SSLHandler(transport: Netty4HttpServerTransport)
+  override def configureServerChannelHandler = new SSLHandler(this)
+
+  final class SSLHandler(transport: Netty4HttpServerTransport)
     extends Netty4HttpServerTransport.HttpChannelHandler(transport, handlingSettings) {
 
     private var context = Option.empty[SslContext]

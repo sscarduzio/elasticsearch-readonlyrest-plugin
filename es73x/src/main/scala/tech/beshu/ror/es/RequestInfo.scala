@@ -26,11 +26,13 @@ import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
 import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest, IndicesRequest}
 import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.index.Index
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import org.reflections.ReflectionUtils
 import tech.beshu.ror.es.utils.ClusterServiceHelper.{findTemplatesOfIndices, getIndicesRelatedToTemplates, indicesFromPatterns}
 import tech.beshu.ror.shims.request.RequestInfoShim
 import tech.beshu.ror.utils.LoggerOps._
@@ -39,7 +41,7 @@ import tech.beshu.ror.utils.{RCUtils, ReflecUtils}
 
 import scala.collection.JavaConverters._
 import scala.math.Ordering.comparatorToOrdering
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actionRequest: ActionRequest,
                   clusterService: ClusterService, threadPool: ThreadPool, remoteClusterService: RemoteClusterService)
@@ -228,6 +230,7 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
         ar.snapshots(newSnapshots.toArray(new Array[String](newSnapshots.size)))
       case ar: SnapshotsStatusRequest =>
         ar.snapshots(newSnapshots.toArray(new Array[String](newSnapshots.size)))
+      case _ =>
     }
   }
 
@@ -241,6 +244,7 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
       case ar: SnapshotsStatusRequest => ar.repository(newRepositoriesA(0))
       case ar: GetRepositoriesRequest => ar.repositories(newRepositoriesA)
       case ar: VerifyRepositoryRequest => ar.name(newRepositoriesA(0))
+      case _ =>
     }
   }
 
@@ -259,18 +263,27 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
   }
 
   override def writeIndices(newIndices: util.Set[String]): Unit = {
-    if (newIndices.isEmpty) return
-    val indices = newIndices.asScala.filter(i => i == "" || i == "<no-index>").toList
-    val indicesArray = indices.asJava.toArray(new Array[String](indices.size))
+    val indices = newIndices.asScala.filter(i => i != "" && i != "<no-index>").toList
+    if (indices.isEmpty) return
 
     actionRequest match {
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
       case ar: BulkShardRequest => // This should not be necessary anymore because nowadays we either allow or forbid write requests.
-        // todo: implement
+        val singleIndex = indices.head
+        val uuid = extractIndexMetadata(singleIndex).asScala.toList.head
+        ReflectionUtils
+          .getAllFields(ar.shardId().getClass, ReflectionUtils.withName("index")).asScala
+          .foreach { f =>
+            f.setAccessible(true)
+            Try(f.set(ar.shardId(), new Index(singleIndex, uuid))) match {
+              case Failure(ex) => logger.error("Cannot set index", ex)
+              case Success(_) =>
+            }
+          }
       case ar: MultiSearchRequest =>
         ar.requests().asScala.foreach { sr =>
-          if (sr.indices.length == 0 || Sets.newHashSet(sr.indices).contains("*")) {
+          if (sr.indices.length == 0 || sr.indices().contains("*")) {
             sr.indices(indices: _*)
           } else {
             // This transforms wildcards and aliases in concrete indices
