@@ -16,12 +16,14 @@
  */
 package tech.beshu.ror.es.utils;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.elasticsearch.cluster.metadata.IndexTemplateMetaData;
+import org.elasticsearch.cluster.metadata.MetaData;
+import org.elasticsearch.cluster.metadata.MetaDataIndexTemplateService;
 import org.elasticsearch.cluster.service.ClusterService;
 import tech.beshu.ror.utils.MatcherWithWildcards;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
@@ -35,13 +37,13 @@ public class ClusterServiceHelper {
         .stream()
         .flatMap(templateName -> getIndicesPatternsOfTemplate(clusterService, templateName).stream())
         .collect(Collectors.toSet());
-    return indicesFromPatterns(clusterService, indicesPatterns);
+    return indicesFromPatterns(clusterService, indicesPatterns).values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
   }
 
-  public static Set<String> indicesFromPatterns(ClusterService clusterService, Set<String> indicesPatterns) {
-    MatcherWithWildcards indicesMatcher = new MatcherWithWildcards(indicesPatterns);
+  public static Map<String, Set<String>> indicesFromPatterns(ClusterService clusterService, Set<String> indicesPatterns) {
     Set<String> allIndices = Sets.newHashSet(clusterService.state().getMetaData().getIndices().keysIt());
-    return indicesMatcher.filter(allIndices);
+    return indicesPatterns.stream().collect(
+        Collectors.toMap(i -> i, i -> new MatcherWithWildcards(indicesPatterns).filter(allIndices)));
   }
 
   public static Set<String> getIndicesPatternsOfTemplate(ClusterService clusterService, String templateName) {
@@ -53,12 +55,10 @@ public class ClusterServiceHelper {
   }
 
   public static Set<String> findTemplatesOfIndices(ClusterService clusterService, Set<String> indices) {
-    Map<String, MatcherWithWildcards> templateIndexMatchers = Lists
-        .newArrayList(clusterService.state().getMetaData().getTemplates().valuesIt())
-        .stream()
-        .collect(Collectors.toMap(IndexTemplateMetaData::getName, templateMetaData -> new MatcherWithWildcards(templateMetaData.patterns())));
+    MetaData metaData = clusterService.state().getMetaData();
     return indices.stream()
-        .flatMap(index -> templateIndexMatchers.entrySet().stream().filter(t -> t.getValue().match(index)).map(Map.Entry::getKey))
+        .flatMap(index -> MetaDataIndexTemplateService.findTemplates(metaData, index).stream())
+        .map(IndexTemplateMetaData::getName)
         .collect(Collectors.toSet());
   }
 

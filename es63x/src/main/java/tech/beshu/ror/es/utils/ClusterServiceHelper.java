@@ -23,7 +23,9 @@ import org.elasticsearch.cluster.metadata.MetaDataIndexTemplateService;
 import org.elasticsearch.cluster.service.ClusterService;
 import tech.beshu.ror.utils.MatcherWithWildcards;
 
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -35,13 +37,13 @@ public class ClusterServiceHelper {
         .stream()
         .flatMap(templateName -> getIndicesPatternsOfTemplate(clusterService, templateName).stream())
         .collect(Collectors.toSet());
-    return indicesFromPatterns(clusterService, indicesPatterns);
+    return indicesFromPatterns(clusterService, indicesPatterns).values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
   }
 
-  public static Set<String> indicesFromPatterns(ClusterService clusterService, Set<String> indicesPatterns) {
-    MatcherWithWildcards indicesMatcher = new MatcherWithWildcards(indicesPatterns);
+  public static Map<String, Set<String>> indicesFromPatterns(ClusterService clusterService, Set<String> indicesPatterns) {
     Set<String> allIndices = Sets.newHashSet(clusterService.state().getMetaData().getIndices().keysIt());
-    return indicesMatcher.filter(allIndices);
+    return indicesPatterns.stream().collect(
+        Collectors.toMap(i -> i, i -> new MatcherWithWildcards(indicesPatterns).filter(allIndices)));
   }
 
   public static Set<String> getIndicesPatternsOfTemplate(ClusterService clusterService, String templateName) {

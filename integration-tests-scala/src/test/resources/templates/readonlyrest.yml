@@ -14,13 +14,13 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "test1"
-      indices: ["test1_index"]
+      indices: ["@{user}_index"]
       auth_key: dev1:test
 
     - name: "test2"
-      indices: ["test2_index"]
+      indices: ["@{user}_index"]
       auth_key: dev2:test
 
     - name: "test3"
-      indices: ["test3_index"]
+      indices: ["@{user}_index"]
       auth_key: dev3:test
