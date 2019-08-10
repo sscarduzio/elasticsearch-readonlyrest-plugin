@@ -19,7 +19,6 @@ package tech.beshu.ror.es;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -45,22 +44,24 @@ import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
 /**
  * Created by sscarduzio on 14/06/2017.
  */
-@Singleton
-public class AuditSinkImpl {
 
-  private static final Logger logger = Loggers.getLogger(AuditSinkImpl.class);
+@Singleton
+public class EsAuditSink {
+
+  private static final Logger logger = Loggers.getLogger(EsAuditSink.class);
   private final BulkProcessor bulkProcessor;
 
   @Inject
-  public AuditSinkImpl(Client client) {
+  public EsAuditSink(Client client) {
     this.bulkProcessor = BulkProcessor
         .builder(client, new AuditSinkBulkProcessorListener())
-        .setBulkActions(AUDIT_SINK_MAX_ITEMS)
-        .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
-        .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))
-        .setConcurrentRequests(1)
-        .setBackoffPolicy(BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))
-        .build();
+      .setBulkActions(AUDIT_SINK_MAX_ITEMS)
+      .setBulkSize(new ByteSizeValue(AUDIT_SINK_MAX_KB, ByteSizeUnit.KB))
+      .setFlushInterval(TimeValue.timeValueSeconds(AUDIT_SINK_MAX_SECONDS))
+      .setConcurrentRequests(1)
+      .setBackoffPolicy(
+        BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(100), AUDIT_SINK_MAX_RETRIES))
+      .build();
   }
 
   public void submit(String indexName, String documentId, String jsonRecord) {
@@ -76,7 +77,6 @@ public class AuditSinkImpl {
   }
 
   private static class AuditSinkBulkProcessorListener implements BulkProcessor.Listener {
-
     @Override
     public void beforeBulk(long executionId,
         BulkRequest request) {
@@ -90,8 +90,8 @@ public class AuditSinkImpl {
       if (response.hasFailures()) {
         logger.error("Some failures flushing the BulkProcessor: ");
         Arrays.stream(response.getItems())
-            .filter(BulkItemResponse::isFailed)
-            .map(BulkItemResponse::getFailureMessage)
+            .filter(r -> r.isFailed())
+            .map(r -> r.getFailureMessage())
             .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
             .forEach((message, times) -> logger.error(times + "x: " + message));
       }
@@ -104,5 +104,6 @@ public class AuditSinkImpl {
       logger.error("Failed flushing the BulkProcessor: " + failure.getMessage());
       failure.printStackTrace();
     }
+
   }
 }

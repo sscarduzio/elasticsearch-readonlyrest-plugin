@@ -258,7 +258,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
 
   private AuditSink createAuditSink(Client client) {
     return new AuditSink() {
-      AuditSinkImpl auditSink = new AuditSinkImpl(client);
+      EsAuditSink auditSink = new EsAuditSink(client);
 
       @Override
       public void submit(String indexName, String documentId, String jsonRecord) {

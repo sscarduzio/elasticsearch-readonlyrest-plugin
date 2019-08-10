@@ -65,10 +65,6 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
-
-    tags {
-        exclude 'es70x'
-    }
 }
 
 dependencies {
@@ -130,7 +126,6 @@ license {
         scala = 'SLASHSTAR_STYLE'
     }
 }
-
 
 tasks.withType(ScalaCompile) {
     scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature", "-Xfatal-warnings"]

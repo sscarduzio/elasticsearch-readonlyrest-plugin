@@ -34,6 +34,8 @@ deploy:
 env:
   - ROR_TASK="license"
   - ROR_TASK="unit"
+  - ROR_TASK="integration_es73x"
+  - ROR_TASK="integration_es73x_scala"
   - ROR_TASK="integration_es70x"
   - ROR_TASK="integration_es70x_scala"
   - ROR_TASK="integration_es66x"
