@@ -19,7 +19,6 @@ package tech.beshu.ror.es;
 
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -46,13 +45,13 @@ import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
  * Created by sscarduzio on 14/06/2017.
  */
 @Singleton
-public class AuditSinkImpl {
+public class EsAuditSink {
 
-  private static final Logger logger = Loggers.getLogger(AuditSinkImpl.class);
+  private static final Logger logger = Loggers.getLogger(EsAuditSink.class);
   private final BulkProcessor bulkProcessor;
 
   @Inject
-  public AuditSinkImpl(Client client) {
+  public EsAuditSink(Client client) {
     this.bulkProcessor = BulkProcessor
         .builder(client, new AuditSinkBulkProcessorListener())
         .setBulkActions(AUDIT_SINK_MAX_ITEMS)
@@ -64,33 +63,44 @@ public class AuditSinkImpl {
   }
 
   public void submit(String indexName, String documentId, String jsonRecord) {
-    IndexRequest ir = new IndexRequest(indexName, "ror_audit_evt", documentId)
-        .contentType(XContentType.JSON)
-        .source(jsonRecord);
+    IndexRequest ir = new IndexRequest(
+      indexName,
+      "ror_audit_evt",
+      documentId
+    ).source(
+      jsonRecord,
+      XContentType.JSON
+    );
     bulkProcessor.add(ir);
   }
 
   private static class AuditSinkBulkProcessorListener implements BulkProcessor.Listener {
     @Override
-    public void beforeBulk(long executionId, BulkRequest request) {
+    public void beforeBulk(long executionId,
+        BulkRequest request) {
       logger.debug("Flushing " + request.numberOfActions() + " bulk actions..");
     }
 
     @Override
-    public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
+    public void afterBulk(long executionId,
+        BulkRequest request,
+        BulkResponse response) {
       if (response.hasFailures()) {
         logger.error("Some failures flushing the BulkProcessor: ");
-        Arrays.stream(response.getItems()).filter(BulkItemResponse::isFailed).map(BulkItemResponse::getFailureMessage).collect(
-            Collectors.groupingBy(Function.identity(), Collectors.counting())).forEach(
-            (message, times) -> logger.error(times + "x: " + message));
+        Arrays.stream(response.getItems())
+            .filter(r -> r.isFailed())
+            .map(r -> r.getFailureMessage())
+            .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+            .forEach((message, times) -> logger.error(times + "x: " + message));
       }
     }
 
     @Override
-    public void afterBulk(long executionId, BulkRequest request, Throwable failure) {
+    public void afterBulk(long executionId,
+        BulkRequest request,
+        Throwable failure) {
       logger.error("Failed flushing the BulkProcessor: " + failure.getMessage());
       failure.printStackTrace();
     }
   }
-
 }

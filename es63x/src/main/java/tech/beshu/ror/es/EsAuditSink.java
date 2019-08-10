@@ -47,13 +47,13 @@ import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
  */
 
 @Singleton
-public class AuditSinkImpl {
+public class EsAuditSink {
 
-  private static final Logger logger = LogManager.getLogger(AuditSinkImpl.class);
+  private static final Logger logger = LogManager.getLogger(EsAuditSink.class);
   private final BulkProcessor bulkProcessor;
 
   @Inject
-  public AuditSinkImpl(Client client) {
+  public EsAuditSink(Client client) {
     this.bulkProcessor = BulkProcessor
         .builder(client, new AuditSinkBulkProcessorListener())
         .setBulkActions(AUDIT_SINK_MAX_ITEMS)

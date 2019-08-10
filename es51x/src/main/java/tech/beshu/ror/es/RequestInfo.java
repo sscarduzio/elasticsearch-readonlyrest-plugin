@@ -94,7 +94,6 @@ public class RequestInfo implements RequestInfoShim {
   private final ClusterService clusterService;
   private final Long taskId;
   private final ThreadPool threadPool;
-  private final RestChannel channel;
   private String content = null;
   private Integer contentLength;
 
@@ -102,7 +101,6 @@ public class RequestInfo implements RequestInfoShim {
       ClusterService clusterService, ThreadPool threadPool) {
     this.threadPool = threadPool;
     this.request = channel.request();
-    this.channel = channel;
     this.action = action;
     this.actionRequest = actionRequest;
     this.clusterService = clusterService;
@@ -171,20 +169,6 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
-  public Integer getContentLength() {
-    if (contentLength == null) {
-      BytesReference cnt = request.content();
-      if (cnt == null) {
-        contentLength = 0;
-      }
-      else {
-        contentLength = request.content().length();
-      }
-    }
-    return contentLength;
-  }
-
-  @Override
   public Set<String> extractIndexMetadata(String index) {
     SortedMap<String, AliasOrIndex> lookup = clusterService.state().metaData().getAliasAndIndexLookup();
     return lookup.get(index).getIndices().stream().map(IndexMetaData::getIndexUUID).collect(Collectors.toSet());
@@ -193,10 +177,6 @@ public class RequestInfo implements RequestInfoShim {
   @Override
   public Long extractTaskId() {
     return taskId;
-  }
-
-  public RestChannel getChannel() {
-    return channel;
   }
 
   @Override

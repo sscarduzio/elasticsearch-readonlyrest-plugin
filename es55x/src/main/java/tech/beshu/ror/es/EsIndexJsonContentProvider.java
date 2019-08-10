@@ -51,12 +51,12 @@ public class EsIndexJsonContentProvider implements IndexJsonContentManager {
   }
 
   @Override
-  public Task<Either<ReadError, Map<String, Object>>> sourceOf(String index, String type, String id) {
+  public Task<Either<ReadError, Map<String, ?>>> sourceOf(String index, String type, String id) {
     try {
       GetResponse response = client.get(client.prepareGet(index, type, id).request()).actionGet();
       Map<String, Object> source = Optional.ofNullable(response.getSourceAsMap()).orElse(Maps.newHashMap());
       return Task$.MODULE$
-          .eval((Function0<Either<ReadError, Map<String, Object>>>) () -> Right$.MODULE$.apply(source))
+          .eval((Function0<Either<ReadError, Map<String, ?>>>) () -> Right$.MODULE$.apply(source))
           .executeOn(Ror$.MODULE$.blockingScheduler(), true);
     } catch (ResourceNotFoundException ex) {
       return Task$.MODULE$.now(Left$.MODULE$.apply(ContentNotFound$.MODULE$));

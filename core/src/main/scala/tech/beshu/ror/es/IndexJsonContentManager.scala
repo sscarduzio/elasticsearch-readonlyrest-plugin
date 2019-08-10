@@ -21,7 +21,7 @@ import tech.beshu.ror.es.IndexJsonContentManager.{ReadError, WriteError}
 
 trait IndexJsonContentManager {
 
-  def sourceOf(index: String, `type`: String, id: String): Task[Either[ReadError, java.util.Map[String, Any]]]
+  def sourceOf(index: String, `type`: String, id: String): Task[Either[ReadError, java.util.Map[String, _]]]
 
   def saveContent(index: String, `type`: String, id: String, content: java.util.Map[String, String]): Task[Either[WriteError, Unit]]
 }

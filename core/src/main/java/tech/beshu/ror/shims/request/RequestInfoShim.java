@@ -33,8 +33,6 @@ public interface RequestInfoShim {
 
   String extractType();
 
-  Integer getContentLength();
-
   default Set<String> getExpandedIndices(Set<String> ixsSet) {
     if (involvesIndices()) {
       Set<String> all = extractAllIndicesAndAliases().stream().flatMap(e -> {

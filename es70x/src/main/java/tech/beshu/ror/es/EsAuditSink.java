@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.es;
 
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -27,7 +28,6 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
-import org.elasticsearch.common.logging.Loggers;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
@@ -42,17 +42,19 @@ import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_KB;
 import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_RETRIES;
 import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
 
+
 /**
  * Created by sscarduzio on 14/06/2017.
  */
 
-@Singleton public class AuditSinkImpl {
+@Singleton
+public class EsAuditSink {
 
-  private static final Logger logger = Loggers.getLogger(AuditSinkImpl.class);
+  private static final Logger logger = LogManager.getLogger(EsAuditSink.class);
   private final BulkProcessor bulkProcessor;
 
   @Inject
-  public AuditSinkImpl(Client client) {
+  public EsAuditSink(Client client) {
     this.bulkProcessor = BulkProcessor
         .builder(client, new AuditSinkBulkProcessorListener())
         .setBulkActions(AUDIT_SINK_MAX_ITEMS)
@@ -64,9 +66,15 @@ import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
   }
 
   public void submit(String indexName, String documentId, String jsonRecord) {
-    IndexRequest ir = new IndexRequest(indexName, "ror_audit_evt", documentId)
-        .contentType(XContentType.JSON)
-        .source(jsonRecord);
+
+    IndexRequest ir = new IndexRequest(
+        indexName,
+        "ror_audit_evt",
+        documentId
+    ).source(
+        jsonRecord,
+        XContentType.JSON
+    );
     bulkProcessor.add(ir);
   }
 
@@ -80,9 +88,12 @@ import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
     public void afterBulk(long executionId, BulkRequest request, BulkResponse response) {
       if (response.hasFailures()) {
         logger.error("Some failures flushing the BulkProcessor: ");
-        Arrays.stream(response.getItems()).filter(BulkItemResponse::isFailed).map(BulkItemResponse::getFailureMessage).collect(
-            Collectors.groupingBy(Function.identity(), Collectors.counting())).forEach(
-            (message, times) -> logger.error(times + "x: " + message));
+        Arrays
+            .stream(response.getItems())
+            .filter(BulkItemResponse::isFailed)
+            .map(BulkItemResponse::getFailureMessage)
+            .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+            .forEach((message, times) -> logger.error(times + "x: " + message));
       }
     }
 
@@ -92,4 +103,5 @@ import static tech.beshu.ror.Constants.AUDIT_SINK_MAX_SECONDS;
       failure.printStackTrace();
     }
   }
+
 }

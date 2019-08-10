@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils
 
+import cats.Functor
 import cats.data.{EitherT, NonEmptyList}
 import com.twitter.{util => twitter}
 import eu.timepit.refined.types.string.NonEmptyString
@@ -114,6 +115,23 @@ object ScalaOps {
     val promise = Promise[T]()
     f.respond(promise complete _)
     promise.future
+  }
+
+  implicit class AutoCloseableOps[A <: AutoCloseable](val value: A) extends AnyVal {
+    def bracket[B](convert: A => B): B = {
+      try {
+        convert(value)
+      } finally {
+        value.close()
+      }
+    }
+  }
+
+  implicit class AutoClosableMOps[A <: AutoCloseable, M[_]: Functor](val value: M[A]) {
+    def bracket[B](convert: A => B): M[B] = {
+      import cats.implicits._
+      value.map(v => AutoCloseableOps(v).bracket(convert))
+    }
   }
 
 }
