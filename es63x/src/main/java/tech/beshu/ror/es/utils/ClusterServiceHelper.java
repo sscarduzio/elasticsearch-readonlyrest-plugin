@@ -43,7 +43,7 @@ public class ClusterServiceHelper {
   public static Map<String, Set<String>> indicesFromPatterns(ClusterService clusterService, Set<String> indicesPatterns) {
     Set<String> allIndices = Sets.newHashSet(clusterService.state().getMetaData().getIndices().keysIt());
     return indicesPatterns.stream().collect(
-        Collectors.toMap(i -> i, i -> new MatcherWithWildcards(indicesPatterns).filter(allIndices)));
+        Collectors.toMap(i -> i, i -> new MatcherWithWildcards(Sets.newHashSet(i)).filter(allIndices)));
   }
 
   public static Set<String> getIndicesPatternsOfTemplate(ClusterService clusterService, String templateName) {

@@ -26,13 +26,14 @@ object ClusterServiceHelper {
 
   def getIndicesRelatedToTemplates(clusterService: ClusterService, templateNames: Set[String]): Set[String] = {
     val indicesPatterns = templateNames.flatMap(getIndicesPatternsOfTemplate(clusterService, _))
-    indicesFromPatterns(clusterService, indicesPatterns)
+    indicesFromPatterns(clusterService, indicesPatterns).values.flatten.toSet
   }
 
-  def indicesFromPatterns(clusterService: ClusterService, indicesPatterns: Set[String]): Set[String] = {
-    val indicesMatcher = new MatcherWithWildcards(indicesPatterns.asJava)
+  def indicesFromPatterns(clusterService: ClusterService, indicesPatterns: Set[String]): Map[String, Set[String]] = {
     val allIndices = clusterService.state.getMetaData.getIndices.keysIt.asScala.toSet.asJava
-    indicesMatcher.filter(allIndices).asScala.toSet
+    indicesPatterns
+        .map(p => (p, new MatcherWithWildcards(Set(p).asJava).filter(allIndices).asScala.toSet))
+        .toMap
   }
 
   def getIndicesPatternsOfTemplate(clusterService: ClusterService, templateName: String): Set[String] = {
