@@ -128,6 +128,8 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
         ar.indices().toSet
       case ar: PutIndexTemplateRequest =>
         indicesFromPatterns(clusterService, ar.indices.toSet)
+          .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
+          .toSet
       case ar: DeleteIndexTemplateRequest =>
         getIndicesRelatedToTemplates(clusterService, Set(ar.name))
       case ar: GetIndexTemplatesRequest =>

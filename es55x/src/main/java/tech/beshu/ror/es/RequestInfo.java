@@ -80,6 +80,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static tech.beshu.ror.es.utils.ClusterServiceHelper.findTemplatesOfIndices;
 import static tech.beshu.ror.es.utils.ClusterServiceHelper.getIndicesRelatedToTemplates;
@@ -301,7 +302,11 @@ public class RequestInfo implements RequestInfoShim {
 
     else if (ar instanceof PutIndexTemplateRequest) {
       PutIndexTemplateRequest pitr = (PutIndexTemplateRequest) ar;
-      indices = ClusterServiceHelper.indicesFromPatterns(clusterService, Sets.newHashSet(pitr.indices())).toArray(new String[0]);
+      indices = ClusterServiceHelper
+          .indicesFromPatterns(clusterService, Sets.newHashSet(pitr.indices()))
+          .entrySet().stream()
+          .flatMap(e -> e.getValue().isEmpty() ? Stream.of(e.getKey()) : e.getValue().stream())
+          .toArray(String[]::new);
     }
     else if (ar instanceof DeleteIndexTemplateRequest) {
       DeleteIndexTemplateRequest ditr = (DeleteIndexTemplateRequest) ar;

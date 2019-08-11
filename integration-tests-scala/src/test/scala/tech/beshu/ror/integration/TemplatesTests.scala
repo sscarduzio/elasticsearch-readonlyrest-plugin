@@ -37,6 +37,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer {
   private lazy val adminTemplateManager = new TemplateManager(container.nodesContainers.head.adminClient)
   private lazy val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
   private lazy val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+  private lazy val dev3TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev3", "test"))
 
   "A template API" when {
     "user is admin" should {
@@ -53,13 +54,13 @@ class TemplatesTests extends WordSpec with ForAllTestContainer {
         templates.getResults.asScala.keys.toList should contain only "temp1"
       }
       "allow to create new template" in {
-        val result = dev1TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample(container.esVersion, "test1_index"))
+        val result = dev1TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample(container.esVersion, "dev1_index"))
         result.getResponseCode should be (200)
 
         adminTemplateManager.deleteTemplate("new_template")
       }
       "allow to remove `temp_to_remove` template" in {
-        adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", TemplatesTests.templateExample(container.esVersion,"test1_index"))
+        adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", TemplatesTests.templateExample(container.esVersion,"dev1_index"))
 
         val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
         result.getResponseCode should be (200)
@@ -71,7 +72,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer {
         templates.getResponseCode should be (401)
       }
       "forbid to create template for foreign index patten" in {
-        val result = dev2TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample(container.esVersion,"test1_index"))
+        val result = dev2TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample(container.esVersion,"dev1_index"))
         result.getResponseCode should be (401)
       }
       "forbid to remove foreign template" in {
@@ -81,11 +82,13 @@ class TemplatesTests extends WordSpec with ForAllTestContainer {
     }
     "user is dev3" should {
       "return empty list of templates" in {
-        val dev3TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev3", "test"))
-
         val templates = dev3TemplateManager.getTemplates
         templates.getResponseCode should be (200)
         templates.getResults.size() should be (0)
+      }
+      "not be allowed to create new template for non-self index" in {
+        val result = dev3TemplateManager.insertTemplate("dev3_new_template", TemplatesTests.templateExample(container.esVersion,"new_index"))
+        result.getResponseCode should be (401)
       }
     }
   }
@@ -94,13 +97,13 @@ class TemplatesTests extends WordSpec with ForAllTestContainer {
 object TemplatesTests {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
     val templateManager = new TemplateManager(adminRestClient)
-    templateManager.insertTemplateAndWaitForIndexing("temp1", templateExample(esVersion, "test1_*"))
-    templateManager.insertTemplateAndWaitForIndexing("temp2", templateExample(esVersion, "test2_*"))
+    templateManager.insertTemplateAndWaitForIndexing("temp1", templateExample(esVersion, "dev1_*"))
+    templateManager.insertTemplateAndWaitForIndexing("temp2", templateExample(esVersion, "dev2_*"))
 
     val documentManager = new DocumentManager(adminRestClient)
-    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/test3_index/test/1", "{\"hello\":\"world\"}")
+    documentManager.insertDoc("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+    documentManager.insertDoc("/dev2_index/_doc/1", "{\"hello\":\"world\"}")
+    documentManager.insertDoc("/dev3_index/_doc/1", "{\"hello\":\"world\"}")
   }
 
   private def templateExample(esVersion: String, indexPattern: String) = {
