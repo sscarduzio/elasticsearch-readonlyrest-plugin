@@ -16,10 +16,15 @@
  */
 package tech.beshu.ror.es
 
+import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.{ActionListener, ActionResponse}
+import org.elasticsearch.cluster
+import org.elasticsearch.cluster.ClusterState
+import org.elasticsearch.cluster.metadata.MetaData
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.es.rradmin.RRMetadataResponse
+
 
 class ResponseActionListener(baseListener: ActionListener[ActionResponse],
                              requestContext: RequestContext,
@@ -29,6 +34,11 @@ class ResponseActionListener(baseListener: ActionListener[ActionResponse],
   override def onResponse(response: ActionResponse): Unit = {
     if (requestContext.uriPath.isRestMetadataPath) baseListener.onResponse(new RRMetadataResponse(blockContext))
     else baseListener.onResponse(response)
+    val cs: ClusterState = ???
+    val md: MetaData = ???
+    val ll = new ClusterStateResponse(???, ClusterState.builder(cs).metaData(
+      new MetaData.Builder(md).templates().build()
+    ).build() ,???)
   }
 
   override def onFailure(e: Exception): Unit = baseListener.onFailure(e)

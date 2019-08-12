@@ -144,6 +144,7 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking - none or all indices ...")
     val indices = requestContext.indices
     if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
+      // todo: we need here also templates patterns
       val allowedIdxs = matcher.filter(requestContext.allIndicesAndAliases.flatMap(_.all))
       stop(if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs) else CanPass.No)
     } else {
