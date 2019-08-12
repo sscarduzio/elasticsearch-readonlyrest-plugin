@@ -303,6 +303,23 @@ public class RequestInfo implements RequestInfoShim {
   }
 
   @Override
+  public Set<String> extractTemplateIndicesPatterns() {
+//    if (ac)
+//    val patterns = actionRequest match {
+//      case ar: DeleteIndexTemplateRequest =>
+//        getIndicesPatternsOfTemplate(clusterService, ar.name())
+//      case ar: GetIndexTemplatesRequest =>
+//        val templates = ar.names().toSet
+//        if(templates.isEmpty) getIndicesPatternsOfTemplates(clusterService)
+//        else getIndicesPatternsOfTemplates(clusterService, templates)
+//      case _ =>
+//        Set.empty[String]
+//    }
+//    patterns.asJava
+    null
+  }
+
+  @Override
   public Set<String> extractSnapshots() {
     if (actionRequest instanceof GetSnapshotsRequest) {
       GetSnapshotsRequest rsr = (GetSnapshotsRequest) actionRequest;

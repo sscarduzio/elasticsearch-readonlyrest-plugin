@@ -154,6 +154,7 @@ object domain {
 
     def isSnapshot: Boolean = value.contains("/snapshot/")
     def isRepository: Boolean = value.contains("/repository/")
+    def isTemplate: Boolean = value.contains("/template/")
   }
   object Action {
     val searchAction = Action("indices:data/read/search")
