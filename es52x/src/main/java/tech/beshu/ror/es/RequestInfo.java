@@ -81,6 +81,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static tech.beshu.ror.es.utils.ClusterServiceHelper.findTemplatesOfIndices;
+import static tech.beshu.ror.es.utils.ClusterServiceHelper.getIndicesPatternsOfTemplate;
+import static tech.beshu.ror.es.utils.ClusterServiceHelper.getIndicesPatternsOfTemplates;
 import static tech.beshu.ror.es.utils.ClusterServiceHelper.getIndicesRelatedToTemplates;
 import static tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod;
 
@@ -321,6 +323,25 @@ public class RequestInfo implements RequestInfoShim {
     }
 
     return indicesSet;
+  }
+
+  @Override
+  public Set<String> extractTemplateIndicesPatterns() {
+    if (actionRequest instanceof GetIndexTemplatesRequest) {
+      GetIndexTemplatesRequest ar = (GetIndexTemplatesRequest) actionRequest;
+      Set<String> templates = Sets.newHashSet(ar.names());
+      return templates.isEmpty()
+          ? getIndicesPatternsOfTemplates(clusterService)
+          : getIndicesPatternsOfTemplates(clusterService, templates);
+    } else if (actionRequest instanceof PutIndexTemplateRequest) {
+      PutIndexTemplateRequest ar = (PutIndexTemplateRequest) actionRequest;
+      return Sets.newHashSet(ar.indices());
+    } else if(actionRequest instanceof DeleteIndexTemplateRequest) {
+      DeleteIndexTemplateRequest ar = (DeleteIndexTemplateRequest) actionRequest;
+      return getIndicesPatternsOfTemplate(clusterService, ar.name());
+    } else {
+      return Sets.newHashSet();
+    }
   }
 
   @Override

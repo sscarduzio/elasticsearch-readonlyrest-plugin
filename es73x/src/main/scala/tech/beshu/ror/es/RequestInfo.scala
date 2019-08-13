@@ -146,14 +146,14 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
 
   override lazy val extractTemplateIndicesPatterns: util.Set[String] = {
     val patterns = actionRequest match {
-      case ar: DeleteIndexTemplateRequest =>
-        getIndicesPatternsOfTemplate(clusterService, ar.name())
       case ar: GetIndexTemplatesRequest =>
         val templates = ar.names().toSet
         if(templates.isEmpty) getIndicesPatternsOfTemplates(clusterService)
         else getIndicesPatternsOfTemplates(clusterService, templates)
       case ar: PutIndexTemplateRequest =>
         ar.indices().toSet
+      case ar: DeleteIndexTemplateRequest =>
+        getIndicesPatternsOfTemplate(clusterService, ar.name())
       case _ =>
         Set.empty[String]
     }
