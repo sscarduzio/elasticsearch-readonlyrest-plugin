@@ -83,6 +83,8 @@ public interface RequestInfoShim {
 
   Set<Entry<String, Set<String>>> extractAllIndicesAndAliases();
 
+  Set<String> extractTemplateIndicesPatterns();
+
   boolean involvesIndices();
 
   boolean extractIsReadRequest();

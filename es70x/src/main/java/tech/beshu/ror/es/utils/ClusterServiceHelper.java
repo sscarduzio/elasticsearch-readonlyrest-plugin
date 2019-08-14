@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.utils;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.elasticsearch.cluster.metadata.IndexTemplateMetaData;
 import org.elasticsearch.cluster.metadata.MetaData;
@@ -24,9 +25,7 @@ import org.elasticsearch.cluster.service.ClusterService;
 import tech.beshu.ror.utils.MatcherWithWildcards;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -47,11 +46,30 @@ public class ClusterServiceHelper {
   }
 
   public static Set<String> getIndicesPatternsOfTemplate(ClusterService clusterService, String templateName) {
-    return Optional
-        .ofNullable(clusterService.state().getMetaData().templates().get(templateName))
-        .map(IndexTemplateMetaData::patterns)
-        .map(HashSet::new)
-        .orElse(Sets.newHashSet());
+    return getIndicesPatternsOfTemplates(clusterService, Sets.newHashSet(templateName));
+  }
+
+  public static Set<String> getIndicesPatternsOfTemplates(ClusterService clusterService, Set<String> templateNames) {
+    return getTemplatesWithPatterns(clusterService).entrySet().stream()
+        .filter(e -> templateNames.contains(e.getKey()))
+        .flatMap(e -> e.getValue().stream())
+        .collect(Collectors.toSet());
+  }
+
+  public static Set<String> getIndicesPatternsOfTemplates(ClusterService clusterService) {
+    return getTemplatesWithPatterns(clusterService).values().stream()
+        .flatMap(Collection::stream)
+        .collect(Collectors.toSet());
+  }
+
+  private static Map<String, Set<String>> getTemplatesWithPatterns(ClusterService clusterService) {
+    return Lists
+        .newArrayList(clusterService.state().getMetaData().templates().valuesIt())
+        .stream()
+        .collect(Collectors.toMap(
+            IndexTemplateMetaData::getName,
+            t -> Sets.newHashSet(t.patterns())
+        ));
   }
 
   public static Set<String> findTemplatesOfIndices(ClusterService clusterService, Set<String> indices) {

@@ -49,7 +49,7 @@ import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.reflections.ReflectionUtils
-import tech.beshu.ror.es.utils.ClusterServiceHelper.{findTemplatesOfIndices, getIndicesRelatedToTemplates, indicesFromPatterns}
+import tech.beshu.ror.es.utils.ClusterServiceHelper._
 import tech.beshu.ror.shims.request.RequestInfoShim
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.{extractStringArrayFromPrivateMethod, invokeMethodCached}
@@ -142,6 +142,22 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
     }
     logger.debug(s"Discovered indices: ${indices.mkString(",")}")
     indices.asJava
+  }
+
+  override lazy val extractTemplateIndicesPatterns: util.Set[String] = {
+    val patterns = actionRequest match {
+      case ar: GetIndexTemplatesRequest =>
+        val templates = ar.names().toSet
+        if(templates.isEmpty) getIndicesPatternsOfTemplates(clusterService)
+        else getIndicesPatternsOfTemplates(clusterService, templates)
+      case ar: PutIndexTemplateRequest =>
+        ar.indices().toSet
+      case ar: DeleteIndexTemplateRequest =>
+        getIndicesPatternsOfTemplate(clusterService, ar.name())
+      case _ =>
+        Set.empty[String]
+    }
+    patterns.asJava
   }
 
   override lazy val extractSnapshots: util.Set[String] = {

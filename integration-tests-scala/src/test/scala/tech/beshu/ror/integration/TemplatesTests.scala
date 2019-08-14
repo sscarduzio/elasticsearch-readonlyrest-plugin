@@ -17,96 +17,681 @@
 package tech.beshu.ror.integration
 
 import com.dimafeng.testcontainers.ForAllTestContainer
-import org.scalatest.WordSpec
 import org.scalatest.Matchers._
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, TemplateManager}
-import tech.beshu.ror.utils.httpclient.RestClient
+import org.scalatest.{BeforeAndAfterEach, WordSpec}
+import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, TemplateManager}
 import tech.beshu.ror.utils.misc.Version
 
 import scala.collection.JavaConverters._
 
-class TemplatesTests extends WordSpec with ForAllTestContainer {
+class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAfterEach {
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/templates/readonlyrest.yml",
-    numberOfInstances = 1,
-    TemplatesTests.nodeDataInitializer()
+    numberOfInstances = 1
   )
 
   private lazy val adminTemplateManager = new TemplateManager(container.nodesContainers.head.adminClient)
-  private lazy val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-  private lazy val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-  private lazy val dev3TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev3", "test"))
+  private lazy val adminDocumentManager = new DocumentManager(container.nodesContainers.head.adminClient)
 
   "A template API" when {
-    "user is admin" should {
-      "allow to get all templates" in {
-        val templates = adminTemplateManager.getTemplates
-        templates.getResponseCode should be (200)
-        templates.getResults.asScala.keys.toList should contain only ("temp1", "temp2")
-      }
-    }
     "user is dev1" should {
-      "allow to get only `temp1` templates" in {
-        val templates = dev1TemplateManager.getTemplates
-        templates.getResponseCode should be (200)
-        templates.getResults.asScala.keys.toList should contain only "temp1"
-      }
-      "allow to create new template" in {
-        val result = dev1TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample(container.esVersion, "dev1_index"))
-        result.getResponseCode should be (200)
+      "be allowed to get all templates" when {
+        "there is no index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-        adminTemplateManager.deleteTemplate("new_template")
-      }
-      "allow to remove `temp_to_remove` template" in {
-        adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", TemplatesTests.templateExample(container.esVersion,"dev1_index"))
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplates
 
-        val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
-        result.getResponseCode should be (200)
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplates
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplates
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplates
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+        }
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplates
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplates
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplates
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplates
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+        }
+      }
+      "be allowed to get specific template" when {
+        "there is no index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+        }
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+        }
+      }
+      "be allowed to create new template" when {
+        "there is no index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
+
+              result.getResponseCode should be (200)
+            }
+            "rule has index pattern with no wildcard" in {
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
+
+              result.getResponseCode should be (200)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
+
+              result.getResponseCode should be (200)
+            }
+            "rule has index pattern with no wildcard" in {
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
+
+              result.getResponseCode should be (200)
+            }
+          }
+        }
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
+
+              result.getResponseCode should be (200)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
+
+              result.getResponseCode should be (200)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
+
+              result.getResponseCode should be (200)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
+
+              result.getResponseCode should be (200)
+            }
+          }
+        }
+      }
+      "be allowed to remove his template" when {
+        "there is no index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_*"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+
+              result.getResponseCode should be (200)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_*"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+
+              result.getResponseCode should be (200)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_index_test"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+
+              result.getResponseCode should be (200)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_index"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+
+              result.getResponseCode should be (200)
+            }
+          }
+        }
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+
+              result.getResponseCode should be (200)
+
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+
+              result.getResponseCode should be (200)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_index_test"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+
+              result.getResponseCode should be (200)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_index"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+
+              result.getResponseCode should be (200)
+            }
+          }
+        }
+      }
+      "not be allowed to get templates" when {
+        "there is none" in {
+          val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+          val templates = dev1TemplateManager.getTemplates
+
+          templates.getResponseCode should be(401)
+        }
       }
     }
     "user is dev2" should {
-      "forbid to get `temp1` template" in {
-        val templates = dev2TemplateManager.getTemplate("temp1")
-        templates.getResponseCode should be (401)
+      "not be able to get templates" when {
+        "there are no his templates but other user's one exists" when {
+          "there is no index defined for it" when {
+            "template has index pattern with wildcard" when {
+              "rule has index pattern with wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+
+                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1TemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+              "rule has index pattern with no wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+
+                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1TemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+            }
+            "template has index pattern with no wildcard" when {
+              "rule has index pattern with wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+
+                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1TemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+              "rule has index pattern with no wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+
+                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1TemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+            }
+          }
+          "there is an index defined for it" when {
+            "template has index pattern with wildcard" when {
+              "rule has index pattern with wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+                adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1TemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+              "rule has index pattern with no wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+                adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1TemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+            }
+            "template has index pattern with no wildcard" when {
+              "rule has index pattern with wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+                adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1TemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+              "rule has index pattern with no wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+                adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1TemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+            }
+          }
+        }
       }
-      "forbid to create template for foreign index patten" in {
-        val result = dev2TemplateManager.insertTemplate("new_template", TemplatesTests.templateExample(container.esVersion,"dev1_index"))
-        result.getResponseCode should be (401)
+      "not be able to get specific, foreign template" when {
+        "there is no index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+          }
+        }
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1TemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+          }
+        }
       }
-      "forbid to remove foreign template" in {
-        val result = dev2TemplateManager.deleteTemplate("temp1")
-        result.getResponseCode should be (401)
+      "not be able to create template for foreign index pattern" when {
+        "template has index pattern with wildcard" when {
+          "rule has index pattern with wildcard" in {
+            val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
+
+            result.getResponseCode should be (401)
+          }
+          "rule has index pattern with no wildcard" in {
+            val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
+
+            result.getResponseCode should be (401)
+          }
+        }
+        "template has index pattern with no wildcard" when {
+          "rule has index pattern with wildcard" in {
+            val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
+
+            result.getResponseCode should be (401)
+          }
+          "rule has index pattern with no wildcard" in {
+            val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
+
+            result.getResponseCode should be (401)
+          }
+        }
       }
-    }
-    "user is dev3" should {
-      "return empty list of templates" in {
-        val templates = dev3TemplateManager.getTemplates
-        templates.getResponseCode should be (200)
-        templates.getResults.size() should be (0)
-      }
-      "not be allowed to create new template for non-self index" in {
-        val result = dev3TemplateManager.insertTemplate("dev3_new_template", TemplatesTests.templateExample(container.esVersion,"new_index"))
-        result.getResponseCode should be (401)
+      "not be able to delete foreign template" when {
+        "there is no index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+
+              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = dev2TemplateManager.deleteTemplate("temp1")
+
+              result.getResponseCode should be (401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+
+              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = dev2TemplateManager.deleteTemplate("temp1")
+
+              result.getResponseCode should be (401)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+
+              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = dev2TemplateManager.deleteTemplate("temp1")
+
+              result.getResponseCode should be (401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+
+              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = dev2TemplateManager.deleteTemplate("temp1")
+
+              result.getResponseCode should be (401)
+            }
+          }
+        }
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = dev2TemplateManager.deleteTemplate("temp1")
+
+              result.getResponseCode should be (401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = dev2TemplateManager.deleteTemplate("temp1")
+
+              result.getResponseCode should be (401)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = dev2TemplateManager.deleteTemplate("temp1")
+
+              result.getResponseCode should be (401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = dev2TemplateManager.deleteTemplate("temp1")
+
+              result.getResponseCode should be (401)
+            }
+          }
+        }
       }
     }
   }
-}
 
-object TemplatesTests {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
-    val templateManager = new TemplateManager(adminRestClient)
-    templateManager.insertTemplateAndWaitForIndexing("temp1", templateExample(esVersion, "dev1_*"))
-    templateManager.insertTemplateAndWaitForIndexing("temp2", templateExample(esVersion, "dev2_*"))
-
-    val documentManager = new DocumentManager(adminRestClient)
-    documentManager.insertDoc("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/dev2_index/_doc/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/dev3_index/_doc/1", "{\"hello\":\"world\"}")
+  override protected def beforeEach(): Unit = {
+    super.beforeEach()
+    truncateTemplates()
+    truncateIndices()
+    addControlTemplate()
   }
 
-  private def templateExample(esVersion: String, indexPattern: String) = {
+  private def truncateTemplates(): Unit = {
+    val templates = adminTemplateManager.getTemplates
+    if(templates.getResponseCode != 200) throw new IllegalStateException("Cannot get all templates by admin")
+    templates
+      .getResults.keySet().asScala
+      .foreach { template =>
+        val deleteTemplateResult = adminTemplateManager.deleteTemplate(template)
+        if(deleteTemplateResult.getResponseCode != 200) throw new IllegalStateException(s"Admin cannot delete '$template' template")
+      }
+  }
+
+  private def truncateIndices(): Unit = {
+    val indicesManager = new IndexManager(container.nodesContainers.head.adminClient)
+    if(indicesManager.removeAll().getResponseCode != 200) {
+      throw new IllegalStateException("Admin cannot remove all indices")
+    }
+  }
+
+  private def addControlTemplate(): TemplateManager.TemplateOperationResult = {
+    adminTemplateManager.insertTemplate("control_one", templateExample("control_*"))
+  }
+
+  private def templateExample(indexPattern: String) = {
+    val esVersion = container.esVersion
     if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       s"""{"index_patterns":["$indexPattern"],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
     } else if(Version.greaterOrEqualThan(esVersion, 6, 1, 0)) {

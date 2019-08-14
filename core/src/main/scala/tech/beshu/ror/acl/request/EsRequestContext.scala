@@ -102,6 +102,9 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
       }
       .toSet
 
+  override val templateIndicesPatterns: Set[IndexName] =
+    rInfo.extractTemplateIndicesPatterns().asScala.flatMap(IndexName.fromString).toSet
+
   override val repositories: Set[IndexName] =
     rInfo.extractRepositories().asScala.flatMap(IndexName.fromString).toSet
 
