@@ -24,26 +24,44 @@ import scala.collection.JavaConverters._
 
 object ClusterServiceHelper {
 
-  def getIndicesRelatedToTemplates(clusterService: ClusterService, templateNames: Set[String]): Set[String] = {
+  type IndexPatten = String
+  type IndexName = String
+  type TemplateName = String
+
+  def getIndicesRelatedToTemplates(clusterService: ClusterService, templateNames: Set[TemplateName]): Set[IndexName] = {
     val indicesPatterns = templateNames.flatMap(getIndicesPatternsOfTemplate(clusterService, _))
     indicesFromPatterns(clusterService, indicesPatterns).values.flatten.toSet
   }
 
-  def indicesFromPatterns(clusterService: ClusterService, indicesPatterns: Set[String]): Map[String, Set[String]] = {
+  def indicesFromPatterns(clusterService: ClusterService, indicesPatterns: Set[IndexPatten]): Map[IndexPatten, Set[IndexName]] = {
     val allIndices = clusterService.state.getMetaData.getIndices.keysIt.asScala.toSet.asJava
     indicesPatterns
         .map(p => (p, new MatcherWithWildcards(Set(p).asJava).filter(allIndices).asScala.toSet))
         .toMap
   }
 
-  def getIndicesPatternsOfTemplate(clusterService: ClusterService, templateName: String): Set[String] = {
-    Option(clusterService.state.getMetaData.templates.get(templateName))
+  def getIndicesPatternsOfTemplate(clusterService: ClusterService, templateName: TemplateName): Set[IndexPatten] = {
+    getIndicesPatternsOfTemplates(clusterService, Set(templateName))
+  }
+
+  def getIndicesPatternsOfTemplates(clusterService: ClusterService, templateNames: Set[TemplateName]): Set[IndexPatten] = {
+    getTemplatesWithPatterns(clusterService)
+      .filter(t => templateNames.contains(t._1))
+      .flatMap(_._2)
+  }
+
+  def getIndicesPatternsOfTemplates(clusterService: ClusterService): Set[IndexPatten] = {
+    getTemplatesWithPatterns(clusterService).flatMap(_._2)
+  }
+
+  private def getTemplatesWithPatterns(clusterService: ClusterService): Set[(TemplateName, Set[IndexPatten])] = {
+    Option(clusterService.state.getMetaData.templates)
       .toList
-      .flatMap(_.patterns.asScala)
+      .flatMap(t => t.iterator().asScala.map(t => (t.key, t.value.patterns().asScala.toSet)))
       .toSet
   }
 
-  def findTemplatesOfIndices(clusterService: ClusterService, indices: Set[String]): Set[String] = {
+  def findTemplatesOfIndices(clusterService: ClusterService, indices: Set[IndexName]): Set[IndexName] = {
     val metaData = clusterService.state.getMetaData
     indices
         .flatMap(index => MetaDataIndexTemplateService.findTemplates(metaData, index).asScala)

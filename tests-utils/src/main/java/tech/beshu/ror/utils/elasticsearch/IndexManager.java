@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.util.EntityUtils;
@@ -52,8 +53,20 @@ public class IndexManager {
     }
   }
 
+  public RemoveIndexResult removeAll() {
+    try (CloseableHttpResponse response = restClient.execute(createDeleteIndicesRequest())) {
+      return new RemoveIndexResult(response.getStatusLine().getStatusCode());
+    } catch (IOException e) {
+      throw new IllegalStateException("Index manager remove all indices result failed", e);
+    }
+  }
+
   private HttpUriRequest createGetIndexRequest(String indexName) {
     return new HttpGet(restClient.from("/" + indexName));
+  }
+
+  private HttpUriRequest createDeleteIndicesRequest() {
+    return new HttpDelete(restClient.from("/_all"));
   }
 
   private static Set<String> getAliases(Map<String, Object> result) {
@@ -85,6 +98,19 @@ public class IndexManager {
 
     public ImmutableSet<String> getAliases() {
       return aliases;
+    }
+  }
+
+  public static class RemoveIndexResult {
+
+    private final Integer responseCode;
+
+    RemoveIndexResult(Integer responseCode) {
+      this.responseCode = responseCode;
+    }
+
+    public Integer getResponseCode() {
+      return responseCode;
     }
   }
 }

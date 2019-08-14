@@ -60,6 +60,13 @@ class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildc
     underlying.getMatchers.contains(str)
 }
 
+object MatcherWithWildcardsScalaAdapter {
+  def create[T: StringTNaturalTransformation](items: Iterable[T]): Matcher =
+    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(
+      items.map(implicitly[StringTNaturalTransformation[T]].toAString).asJava
+    ))
+}
+
 final case class StringTNaturalTransformation[T](fromString: String => T, toAString: T => String)
 object StringTNaturalTransformation {
   object instances {
