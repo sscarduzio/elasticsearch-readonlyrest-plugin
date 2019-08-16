@@ -29,7 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
+import static tech.beshu.ror.utils.misc.HttpResponseHelper.deserializeJsonBody;
 
 public class SearchManager {
 

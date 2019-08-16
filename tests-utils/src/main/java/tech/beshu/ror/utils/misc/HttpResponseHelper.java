@@ -18,16 +18,32 @@ package tech.beshu.ror.utils.misc;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.apache.http.HttpResponse;
+import org.apache.http.util.EntityUtils;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
-public class GsonHelper {
+public class HttpResponseHelper {
+
+  public static Map<String, Object> deserializeJsonBody(HttpResponse response) {
+    return deserializeJsonBody(stringBodyFrom(response));
+  }
+
   public static Map<String, Object> deserializeJsonBody(String response) {
     Gson gson = new Gson();
     Type mapType = new TypeToken<HashMap<String, Object>>(){}.getType();
     return gson.fromJson(response, mapType);
+  }
+
+  public static String stringBodyFrom(HttpResponse response) {
+    try {
+      return EntityUtils.toString(response.getEntity());
+    } catch (IOException ex) {
+      throw new IllegalStateException("Cannot convert body to string", ex);
+    }
   }
 
 }

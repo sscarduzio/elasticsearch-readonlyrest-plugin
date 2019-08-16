@@ -20,7 +20,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, TemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{ClusterStateManager, DocumentManager, IndexManager, TemplateManager}
 import tech.beshu.ror.utils.misc.Version
 
 import scala.collection.JavaConverters._
@@ -37,6 +37,104 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
 
   "A template API" when {
     "user is dev1" should {
+      "be allowed to get all templates using /_cat/templates" when {
+        "there is no index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates()
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates()
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates()
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates()
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+          }
+        }
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates()
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates()
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates()
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates()
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+          }
+        }
+      }
       "be allowed to get all templates" when {
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {

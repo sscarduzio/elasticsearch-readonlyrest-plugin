@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
-import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
+import static tech.beshu.ror.utils.misc.HttpResponseHelper.deserializeJsonBody;
 
 public class ActionManager {
 

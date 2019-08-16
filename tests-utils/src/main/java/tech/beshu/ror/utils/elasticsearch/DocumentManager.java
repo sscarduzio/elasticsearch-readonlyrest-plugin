@@ -37,7 +37,7 @@ import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
-import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
+import static tech.beshu.ror.utils.misc.HttpResponseHelper.deserializeJsonBody;
 
 public class DocumentManager {
 

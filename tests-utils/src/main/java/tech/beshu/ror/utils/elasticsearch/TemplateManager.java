@@ -32,7 +32,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.function.BiPredicate;
 
-import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
+import static tech.beshu.ror.utils.misc.HttpResponseHelper.deserializeJsonBody;
 
 public class TemplateManager {
 

@@ -28,7 +28,7 @@ import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
 import retry._
 import retry.RetryPolicies._
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody
+import tech.beshu.ror.utils.misc.HttpResponseHelper.deserializeJsonBody
 import tech.beshu.ror.utils.misc.ScalaUtils._
 import scala.concurrent.duration._
 import scala.language.postfixOps
