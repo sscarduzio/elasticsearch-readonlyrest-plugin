@@ -16,30 +16,78 @@
  */
 package tech.beshu.ror.es
 
+import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.{ActionListener, ActionResponse}
-import org.elasticsearch.cluster
 import org.elasticsearch.cluster.ClusterState
-import org.elasticsearch.cluster.metadata.MetaData
+import org.elasticsearch.cluster.metadata.{IndexTemplateMetaData, MetaData}
+import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.rules.utils.Pattern
+import tech.beshu.ror.acl.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
+import tech.beshu.ror.acl.domain.IndexName
+import tech.beshu.ror.acl.domain.UriPath.{CatTemplatePath, RestMetadataPath}
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.es.rradmin.RRMetadataResponse
 
+import scala.collection.JavaConverters._
 
 class ResponseActionListener(baseListener: ActionListener[ActionResponse],
                              requestContext: RequestContext,
                              blockContext: BlockContext)
-  extends ActionListener[ActionResponse]{
+  extends ActionListener[ActionResponse] {
 
   override def onResponse(response: ActionResponse): Unit = {
-    if (requestContext.uriPath.isRestMetadataPath) baseListener.onResponse(new RRMetadataResponse(blockContext))
-    else baseListener.onResponse(response)
-    val cs: ClusterState = ???
-    val md: MetaData = ???
-    val ll = new ClusterStateResponse(???, ClusterState.builder(cs).metaData(
-      new MetaData.Builder(md).templates().build()
-    ).build() ,???)
+    requestContext.uriPath match {
+      case CatTemplatePath(_) =>
+        baseListener.onResponse(filterTemplatesInClusterStateResponse(response.asInstanceOf[ClusterStateResponse]))
+      case RestMetadataPath(_) =>
+        baseListener.onResponse(new RRMetadataResponse(blockContext))
+      case _ =>
+        baseListener.onResponse(response)
+    }
   }
 
   override def onFailure(e: Exception): Unit = baseListener.onFailure(e)
+
+  // templates are not filtered so we have to do this for our own
+  private def filterTemplatesInClusterStateResponse(response: ClusterStateResponse): ClusterStateResponse = {
+    val oldMetadata = response.getState.metaData()
+    val allowedIndices = blockContext.indices.getOrElse(Set(IndexName.fromUnsafeString("*")))
+    val filteredTemplates = oldMetadata
+      .templates().valuesIt().asScala.toSet
+      .filter { t =>
+        findTemplatesIndicesPatterns(
+          t.patterns().asScala.flatMap(NonEmptyString.unapply).map(IndexName.apply).toSet,
+          allowedIndices
+        ).nonEmpty
+      }
+
+    val newMetadataWithFilteredTemplates = oldMetadata.templates().valuesIt().asScala
+      .foldLeft(new MetaData.Builder(oldMetadata)) {
+        case (acc, elem) => acc.removeTemplate(elem.name())
+      }
+      .templates(
+        ImmutableOpenMap
+          .builder(filteredTemplates.size)
+          .putAll(filteredTemplates.map(t => (t.name(), t)).toMap.asJava)
+          .build()
+      )
+      .build()
+
+    val modifiedClusterState =
+      ClusterState
+        .builder(response.getState)
+        .metaData(newMetadataWithFilteredTemplates)
+        .build()
+
+    new ClusterStateResponse(
+      response.getClusterName,
+      modifiedClusterState,
+      response.isWaitForTimedOut
+    )
+  }
+
+  private implicit val patternFromTemplate: Pattern[IndexTemplateMetaData] = (item: IndexTemplateMetaData) =>
+    item.patterns().asScala.toSet
 }

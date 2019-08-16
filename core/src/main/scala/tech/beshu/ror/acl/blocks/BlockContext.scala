@@ -18,7 +18,8 @@ package tech.beshu.ror.acl.blocks
 
 import cats.implicits._
 import cats.data.NonEmptySet
-import tech.beshu.ror.acl.domain.{JwtTokenPayload, Group, Header, IndexName, LoggedUser}
+import tech.beshu.ror.acl.blocks.BlockContext.Outcome
+import tech.beshu.ror.acl.domain.{Group, Header, IndexName, JwtTokenPayload, LoggedUser}
 import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.request.RequestContextOps.RequestGroup._
@@ -50,14 +51,27 @@ trait BlockContext {
   def kibanaIndex: Option[IndexName]
   def withKibanaIndex(index: IndexName): BlockContext
 
-  def indices: Set[IndexName]
-  def withIndices(indices: NonEmptySet[IndexName]): BlockContext
+  def indices: Outcome[Set[IndexName]]
+  def withIndices(indices: Set[IndexName]): BlockContext
 
   def repositories: Set[IndexName]
   def withRepositories(indices: NonEmptySet[IndexName]): BlockContext
 
   def snapshots: Set[IndexName]
   def withSnapshots(indices: NonEmptySet[IndexName]): BlockContext
+}
+
+object BlockContext {
+  sealed trait Outcome[+T] {
+    def getOrElse[S >: T](default: => S): S = this match {
+      case Outcome.Exist(value) => value
+      case Outcome.NotExist => default
+    }
+  }
+  object Outcome {
+    final case class Exist[T](value: T) extends Outcome[T]
+    case object NotExist extends Outcome[Nothing]
+  }
 }
 
 object NoOpBlockContext extends BlockContext {
@@ -82,8 +96,8 @@ object NoOpBlockContext extends BlockContext {
   override val kibanaIndex: Option[IndexName] = None
   override def withKibanaIndex(index: IndexName): BlockContext = this
 
-  override val indices: Set[IndexName] = Set.empty
-  override def withIndices(indices: NonEmptySet[IndexName]): BlockContext = this
+  override val indices: Outcome[Set[IndexName]] = Outcome.NotExist
+  override def withIndices(indices: Set[IndexName]): BlockContext = this
 
   override val repositories: Set[IndexName] = Set.empty
   override def withRepositories(indices: NonEmptySet[IndexName]): BlockContext = this
@@ -125,10 +139,10 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withKibanaIndex(index: IndexName): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(kibanaIndex = Some(index)))
 
-  override def indices: Set[IndexName] = data.indices
+  override def indices: Outcome[Set[IndexName]] = data.indices
 
-  override def withIndices(indices: NonEmptySet[IndexName]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(indices = indices.toSortedSet))
+  override def withIndices(indices: Set[IndexName]): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(indices = Outcome.Exist(indices)))
 
   override def repositories: Set[IndexName] = data.repositories
 
@@ -154,7 +168,7 @@ object RequestContextInitiatedBlockContext {
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
                                     kibanaIndex: Option[IndexName],
-                                    indices: Set[IndexName],
+                                    indices: Outcome[Set[IndexName]],
                                     repositories: Set[IndexName],
                                     snapshots: Set[IndexName],
                                     jsonToken: Option[JwtTokenPayload])
@@ -171,7 +185,7 @@ object RequestContextInitiatedBlockContext {
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,
         kibanaIndex = None,
-        indices = Set.empty,
+        indices = Outcome.NotExist,
         repositories = Set.empty,
         snapshots = Set.empty,
         jsonToken = None

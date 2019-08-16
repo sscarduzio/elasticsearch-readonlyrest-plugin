@@ -30,8 +30,6 @@ import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-
-import scala.collection.SortedSet
 import tech.beshu.ror.utils.TestsUtils._
 
 class IndicesRuleTests extends WordSpec with MockFactory {
@@ -292,7 +290,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     val blockContext = mock[BlockContext]
     val returnedBlock = if(found.nonEmpty) {
       val newBlock = mock[BlockContext]
-      (blockContext.withIndices _).expects(NonEmptySet.fromSetUnsafe(SortedSet.empty[IndexName] ++ found)).returning(newBlock)
+      (blockContext.withIndices _).expects(found).returning(newBlock)
       newBlock
     } else {
       blockContext

@@ -18,7 +18,6 @@ package tech.beshu.ror.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
@@ -27,7 +26,7 @@ import tech.beshu.ror.acl.blocks.rules.IndicesRule.{CanPass, Settings}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterScalaAdapter}
+import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, TemplateMatcher, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.acl.domain.Action.{mSearchAction, searchAction}
@@ -35,15 +34,15 @@ import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.acl.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import scala.collection.SortedSet
-import scala.language.postfixOps
 
+import scala.language.postfixOps
+import StringTNaturalTransformation.instances.stringIndexNameNT
+import tech.beshu.ror.acl.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
 
 class IndicesRule(val settings: Settings)
   extends RegularRule with Logging {
 
   import IndicesCheckContinuation._
-  import IndicesRule.stringIndexNameNT
 
   override val name: Rule.Name = IndicesRule.name
 
@@ -97,22 +96,15 @@ class IndicesRule(val settings: Settings)
             return Rejected()
         }
 
-        return Fulfilled(blockContextWithIndices(blockContext, allProcessedIndices))
+        return Fulfilled(blockContext.withIndices(allProcessedIndices))
       }
     }
 
     canPass(requestContext, matcher, resolvedAllowedIndices) match {
       case CanPass.Yes(indices) =>
-        Fulfilled(blockContextWithIndices(blockContext, indices))
+        Fulfilled(blockContext.withIndices(indices))
       case CanPass.No =>
         Rejected()
-    }
-  }
-
-  private def blockContextWithIndices(blockContext: BlockContext, indices: Set[IndexName]) = {
-    NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ indices) match {
-      case Some(indexes) => blockContext.withIndices(indexes)
-      case None => blockContext
     }
   }
 
@@ -216,24 +208,13 @@ class IndicesRule(val settings: Settings)
 
   private def templateIndicesPatterns(requestContext: RequestContext, allowedIndices: Set[IndexName]): IndicesCheckContinuation = {
     logger.debug("Checking - template indices patterns...")
-    if(requestContext.action.isTemplate) {
-      val filteredPatterns = MatcherWithWildcardsScalaAdapter
-        .create(requestContext.templateIndicesPatterns)
-        .filter(allowedIndices)
-      if (filteredPatterns.nonEmpty) {
-        stop(CanPass.Yes(filteredPatterns))
-      } else {
-        val filteredAllowedIndices = MatcherWithWildcardsScalaAdapter
-          .create(allowedIndices)
-          .filter(requestContext.templateIndicesPatterns)
-        if(filteredAllowedIndices.nonEmpty) {
-          stop(CanPass.Yes(filteredAllowedIndices))
-        } else {
-          stop(CanPass.No)
-        }
-      }
-    } else {
-      continue
+    requestContext match {
+      case rc if rc.action.isTemplate || rc.uriPath.isCatTemplatePath =>
+        val allowed = findTemplatesIndicesPatterns(rc.templateIndicesPatterns, allowedIndices)
+        if(allowed.nonEmpty) stop(CanPass.Yes(allowed))
+        else stop(CanPass.No)
+      case _ =>
+        continue
     }
   }
 
@@ -313,7 +294,4 @@ object IndicesRule {
     final case class Yes(indices: Set[IndexName]) extends CanPass
     case object No extends CanPass
   }
-
-  private implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
-    StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
 }

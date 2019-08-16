@@ -17,7 +17,7 @@
 package tech.beshu.ror.acl.blocks.rules.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.acl.domain.User
+import tech.beshu.ror.acl.domain.{IndexName, User}
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
@@ -72,5 +72,9 @@ object StringTNaturalTransformation {
   object instances {
     implicit val stringUserIdNT: StringTNaturalTransformation[User.Id] =
       StringTNaturalTransformation[User.Id](str => User.Id(NonEmptyString.unsafeFrom(str)), _.value.value)
+    implicit val identityNT: StringTNaturalTransformation[String] =
+      StringTNaturalTransformation[String](identity, identity)
+    implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
+      StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
   }
 }

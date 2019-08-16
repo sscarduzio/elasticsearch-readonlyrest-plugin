@@ -135,6 +135,8 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
       case ar: GetIndexTemplatesRequest =>
         if(ar.names().isEmpty) Set("*")
         else getIndicesRelatedToTemplates(clusterService, ar.names().toSet)
+      case _ if extractURI.startsWith("/_cat/templates") =>
+        Set("*")
       case ar =>
         val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
         if(indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
@@ -154,6 +156,8 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
         ar.indices().toSet
       case ar: DeleteIndexTemplateRequest =>
         getIndicesPatternsOfTemplate(clusterService, ar.name())
+      case _ if extractURI.startsWith("/_cat/templates") =>
+        Set("*")
       case _ =>
         Set.empty[String]
     }
@@ -301,6 +305,8 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
     if (indices.isEmpty) return
 
     actionRequest match {
+      case ar: IndicesRequest.Replaceable if extractURI.startsWith("/_cat/templates") =>
+        ar // workaround for filtering templates of /_cat/templates action
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
       case ar: BulkShardRequest => // This should not be necessary anymore because nowadays we either allow or forbid write requests.

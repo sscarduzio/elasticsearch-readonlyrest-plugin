@@ -54,7 +54,7 @@ object TestsUtils {
         loggedUser = expected.loggedUser,
         currentGroup = expected.currentGroup,
         availableGroups = expected.availableGroups.toSet,
-        indices = expected.indices,
+        indices = expected.indices.getOrElse(Set.empty),
         repositories = expected.repositories,
         snapshots = expected.snapshots) {
         current

@@ -109,9 +109,9 @@ object BlockContextJavaHelper {
   }
 
   def indicesFrom(blockContext: BlockContext): Set[String] = {
-    NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.indices) match {
-      case Some(indices) => indices.toSortedSet.map(_.value.value)
-      case None => Set.empty
+    blockContext.indices match {
+      case BlockContext.Outcome.Exist(indices) => indices.map(_.value.value)
+      case BlockContext.Outcome.NotExist => Set.empty
     }
   }
 

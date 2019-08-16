@@ -134,24 +134,22 @@ object show {
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val blockContextShow: Show[BlockContext] = Show.show { bc =>
-      def showList[T : Show](name: String, list: List[T]) = {
-        list match {
-          case Nil => None
-          case elems => Some(s"$name=${elems.map(_.show).mkString(",")}")
-        }
+      def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {
+        if(traversable.isEmpty) None
+        else Some(s"$name=${traversable.map(_.show).mkString(",")}")
       }
       def showOption[T : Show](name: String, option: Option[T]) = {
         option.map(v => s"$name=${v.show}")
       }
       (showOption("user", bc.loggedUser) ::
         showOption("group", bc.currentGroup) ::
-        showList("av_groups", bc.availableGroups.toList) ::
-        showList("indices", bc.indices.toList) ::
+        showTraversable("av_groups", bc.availableGroups) ::
+        showTraversable("indices", bc.indices.getOrElse(Set.empty)) ::
         showOption("kibana_idx", bc.kibanaIndex) ::
-        showList("response_hdr", bc.responseHeaders.toList) ::
-        showList("context_hdr", bc.contextHeaders.toList) ::
-        showList("repositories", bc.repositories.toList) ::
-        showList("snapshots", bc.snapshots.toList) ::
+        showTraversable("response_hdr", bc.responseHeaders) ::
+        showTraversable("context_hdr", bc.contextHeaders) ::
+        showTraversable("repositories", bc.repositories) ::
+        showTraversable("snapshots", bc.snapshots) ::
         Nil flatten) mkString ";"
     }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)

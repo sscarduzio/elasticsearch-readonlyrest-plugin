@@ -142,7 +142,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1", _.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))) ::
             passingRule("r2", _.withCurrentGroup(Group("group1".nonempty))) ::
-            passingRule("r3", _.withIndices(NonEmptySet.one(IndexName("idx1".nonempty)))) ::
+            passingRule("r3", _.withIndices(Set(IndexName("idx1".nonempty)))) ::
             Nil
         )
       )
