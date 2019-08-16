@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 import static tech.beshu.ror.utils.misc.HttpResponseHelper.stringBodyFrom;
@@ -43,7 +44,14 @@ public class ClusterStateManager {
 
   public CatTemplatesResponse catTemplates() {
     return call(
-        createCatTemplatesRequest(),
+        createCatTemplatesRequest(Optional.empty()),
+        response -> new CatTemplatesResponse(response.getStatusLine().getStatusCode(), stringBodyFrom(response))
+    );
+  }
+
+  public CatTemplatesResponse catTemplates(String templateName) {
+    return call(
+        createCatTemplatesRequest(Optional.of(templateName)),
         response -> new CatTemplatesResponse(response.getStatusLine().getStatusCode(), stringBodyFrom(response))
     );
   }
@@ -60,8 +68,8 @@ public class ClusterStateManager {
     return new HttpGet(restClient.from("/_cat/health"));
   }
 
-  private HttpUriRequest createCatTemplatesRequest() {
-    return new HttpGet(restClient.from("/_cat/templates"));
+  private HttpUriRequest createCatTemplatesRequest(Optional<String> templateName) {
+    return new HttpGet(restClient.from("/_cat/templates" + templateName.map(t -> "/" + t).orElse("")));
   }
 
   public static class HealthCheckResponse {

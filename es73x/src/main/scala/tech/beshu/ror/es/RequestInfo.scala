@@ -157,7 +157,7 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
       case ar: DeleteIndexTemplateRequest =>
         getIndicesPatternsOfTemplate(clusterService, ar.name())
       case _ if extractURI.startsWith("/_cat/templates") =>
-        Set("*")
+        getIndicesPatternsOfTemplates(clusterService)
       case _ =>
         Set.empty[String]
     }

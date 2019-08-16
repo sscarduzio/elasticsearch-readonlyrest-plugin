@@ -37,7 +37,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
 
   "A template API" when {
     "user is dev1" should {
-      "be allowed to get all templates using /_cat/templates" when {
+      "be allowed to get all templates using /_cat/templates API" when {
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
@@ -141,8 +141,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplates
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -150,8 +150,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplates
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -161,8 +161,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplates
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -170,8 +170,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplates
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -184,8 +184,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplates
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -194,8 +194,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplates
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -206,8 +206,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplates
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -216,8 +216,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplates
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -231,8 +231,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -240,8 +240,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -251,8 +251,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -260,8 +260,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -274,8 +274,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -284,8 +284,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -296,8 +296,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -306,8 +306,102 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+        }
+      }
+      "be allowed to get specific template using /_cat/templates API" when {
+        "there is no index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.size() should be (1)
+              templates.getResults.asScala.head should include ("temp1")
+            }
+          }
+        }
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(200)
+              templates.getResults.asScala.keys.toList should contain only "temp1"
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
               templates.getResults.asScala.keys.toList should contain only "temp1"
@@ -319,28 +413,28 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
 
               result.getResponseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
 
               result.getResponseCode should be (200)
             }
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
 
               result.getResponseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
 
               result.getResponseCode should be (200)
             }
@@ -351,16 +445,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
 
               result.getResponseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
 
               result.getResponseCode should be (200)
             }
@@ -369,16 +463,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
 
               result.getResponseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
 
               result.getResponseCode should be (200)
             }
@@ -391,16 +485,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_*"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.getResponseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_*"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.getResponseCode should be (200)
             }
@@ -409,16 +503,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_index_test"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.getResponseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_index"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.getResponseCode should be (200)
             }
@@ -430,8 +524,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.getResponseCode should be (200)
 
@@ -440,8 +534,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.getResponseCode should be (200)
             }
@@ -451,8 +545,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_index_test"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.getResponseCode should be (200)
             }
@@ -460,8 +554,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_index"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-              val result = dev1TemplateManager.deleteTemplate("temp_to_remove")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+              val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.getResponseCode should be (200)
             }
@@ -470,8 +564,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
       }
       "not be allowed to get templates" when {
         "there is none" in {
-          val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
-          val templates = dev1TemplateManager.getTemplates
+          val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev1", "test"))
+          val templates = devTemplateManager.getTemplates
 
           templates.getResponseCode should be(401)
         }
@@ -485,16 +579,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               "rule has index pattern with wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-                val templates = dev1TemplateManager.getTemplates
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
 
                 templates.getResponseCode should be(401)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-                val templates = dev1TemplateManager.getTemplates
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
 
                 templates.getResponseCode should be(401)
               }
@@ -503,16 +597,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               "rule has index pattern with wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-                val templates = dev1TemplateManager.getTemplates
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
 
                 templates.getResponseCode should be(401)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-                val templates = dev1TemplateManager.getTemplates
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
 
                 templates.getResponseCode should be(401)
               }
@@ -524,8 +618,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
                 adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-                val templates = dev1TemplateManager.getTemplates
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
 
                 templates.getResponseCode should be(401)
               }
@@ -533,8 +627,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
                 adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-                val templates = dev1TemplateManager.getTemplates
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
 
                 templates.getResponseCode should be(401)
               }
@@ -544,8 +638,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
                 adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-                val templates = dev1TemplateManager.getTemplates
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
 
                 templates.getResponseCode should be(401)
               }
@@ -553,8 +647,92 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
                 adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-                val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-                val templates = dev1TemplateManager.getTemplates
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+            }
+          }
+        }
+      }
+      "not be able to get templates using /_cat/templates API" when {
+        "there are no his templates but other user's one exists" when {
+          "there is no index defined for it" when {
+            "template has index pattern with wildcard" when {
+              "rule has index pattern with wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+
+                val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1ClusterStateManager.catTemplates()
+
+                templates.getResponseCode should be(401)
+              }
+              "rule has index pattern with no wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+
+                val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1ClusterStateManager.catTemplates()
+
+                templates.getResponseCode should be(401)
+              }
+            }
+            "template has index pattern with no wildcard" when {
+              "rule has index pattern with wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+
+                val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1ClusterStateManager.catTemplates()
+
+                templates.getResponseCode should be(401)
+              }
+              "rule has index pattern with no wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+
+                val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = dev1ClusterStateManager.catTemplates()
+
+                templates.getResponseCode should be(401)
+              }
+            }
+          }
+          "there is an index defined for it" when {
+            "template has index pattern with wildcard" when {
+              "rule has index pattern with wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+                adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+              "rule has index pattern with no wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+                adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+            }
+            "template has index pattern with no wildcard" when {
+              "rule has index pattern with wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+                adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
+
+                templates.getResponseCode should be(401)
+              }
+              "rule has index pattern with no wildcard" in {
+                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+                adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+                val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+                val templates = devTemplateManager.getTemplates
 
                 templates.getResponseCode should be(401)
               }
@@ -568,16 +746,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(401)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(401)
             }
@@ -586,16 +764,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(401)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(401)
             }
@@ -607,8 +785,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(401)
             }
@@ -616,8 +794,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(401)
             }
@@ -627,8 +805,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(401)
             }
@@ -636,8 +814,90 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev1TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val templates = dev1TemplateManager.getTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = devTemplateManager.getTemplate("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+          }
+        }
+      }
+      "not be able to get specific, foreign template using /_cat/templates API" when {
+        "there is no index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+          }
+        }
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+          }
+          "template has index pattern with no wildcard" when {
+            "rule has index pattern with wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
+
+              templates.getResponseCode should be(401)
+            }
+            "rule has index pattern with no wildcard" in {
+              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
+
+              val dev1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("dev2", "test"))
+              val templates = dev1ClusterStateManager.catTemplates("temp1")
 
               templates.getResponseCode should be(401)
             }
@@ -647,28 +907,28 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
       "not be able to create template for foreign index pattern" when {
         "template has index pattern with wildcard" when {
           "rule has index pattern with wildcard" in {
-            val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
+            val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+            val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
 
             result.getResponseCode should be (401)
           }
           "rule has index pattern with no wildcard" in {
-            val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
+            val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+            val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
 
             result.getResponseCode should be (401)
           }
         }
         "template has index pattern with no wildcard" when {
           "rule has index pattern with wildcard" in {
-            val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
+            val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+            val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
 
             result.getResponseCode should be (401)
           }
           "rule has index pattern with no wildcard" in {
-            val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
+            val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+            val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
 
             result.getResponseCode should be (401)
           }
@@ -680,16 +940,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val result = dev2TemplateManager.deleteTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = devTemplateManager.deleteTemplate("temp1")
 
               result.getResponseCode should be (401)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val result = dev2TemplateManager.deleteTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = devTemplateManager.deleteTemplate("temp1")
 
               result.getResponseCode should be (401)
             }
@@ -698,16 +958,16 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val result = dev2TemplateManager.deleteTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = devTemplateManager.deleteTemplate("temp1")
 
               result.getResponseCode should be (401)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val result = dev2TemplateManager.deleteTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = devTemplateManager.deleteTemplate("temp1")
 
               result.getResponseCode should be (401)
             }
@@ -719,8 +979,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val result = dev2TemplateManager.deleteTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = devTemplateManager.deleteTemplate("temp1")
 
               result.getResponseCode should be (401)
             }
@@ -728,8 +988,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val result = dev2TemplateManager.deleteTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = devTemplateManager.deleteTemplate("temp1")
 
               result.getResponseCode should be (401)
             }
@@ -739,8 +999,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
               adminDocumentManager.insertDocAndWaitForRefresh("/custom_dev1_index_test/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val result = dev2TemplateManager.deleteTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = devTemplateManager.deleteTemplate("temp1")
 
               result.getResponseCode should be (401)
             }
@@ -748,8 +1008,8 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
               adminDocumentManager.insertDocAndWaitForRefresh("/dev1_index/_doc/1", "{\"hello\":\"world\"}")
 
-              val dev2TemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
-              val result = dev2TemplateManager.deleteTemplate("temp1")
+              val devTemplateManager = new TemplateManager(container.nodesContainers.head.client("dev2", "test"))
+              val result = devTemplateManager.deleteTemplate("temp1")
 
               result.getResponseCode should be (401)
             }
