@@ -83,8 +83,7 @@ public class ReflecUtils {
   }
 
   public static String[] extractStringArrayFromPrivateMethod(String methodName, Object o) {
-    final String[][] result = {new String[]{}};
-    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+    return AccessController.doPrivileged((PrivilegedAction<String[]>) () -> {
       if (o == null) {
         throw new ReadonlyRestIllegalStateException("cannot extract field from null!");
       }
@@ -94,14 +93,14 @@ public class ReflecUtils {
         try {
           Method m = exploreClassMethods(clazz, methodName, String[].class);
           if (m != null) {
-            result[0] = (String[]) m.invoke(o);
-            return null;
+              Object result = m.invoke(o);
+              return result != null ? new String[]{ (String)result } : new String[0];
           }
 
           m = exploreClassMethods(clazz, methodName, String.class);
           if (m != null) {
-            result[0] = new String[]{(String) m.invoke(o)};
-            return null;
+              Object result = m.invoke(o);
+              return result != null ? new String[]{ (String)result } : new String[0];
           }
         } catch (SecurityException e) {
           logger.error("Can't get indices for request because of wrong security configuration " + o.getClass());
@@ -112,9 +111,8 @@ public class ReflecUtils {
         }
         clazz = clazz.getSuperclass();
       }
-      return null;
+      return new String[0];
     });
-    return result[0];
   }
 
   private static Method exploreClassMethods(Class<?> c, String methodName, Class<?> returnClass) {
