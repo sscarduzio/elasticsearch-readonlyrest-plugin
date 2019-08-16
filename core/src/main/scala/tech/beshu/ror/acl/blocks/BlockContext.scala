@@ -54,11 +54,11 @@ trait BlockContext {
   def indices: Outcome[Set[IndexName]]
   def withIndices(indices: Set[IndexName]): BlockContext
 
-  def repositories: Set[IndexName]
-  def withRepositories(indices: NonEmptySet[IndexName]): BlockContext
+  def repositories: Outcome[Set[IndexName]]
+  def withRepositories(indices: Set[IndexName]): BlockContext
 
-  def snapshots: Set[IndexName]
-  def withSnapshots(indices: NonEmptySet[IndexName]): BlockContext
+  def snapshots: Outcome[Set[IndexName]]
+  def withSnapshots(indices: Set[IndexName]): BlockContext
 }
 
 object BlockContext {
@@ -99,11 +99,11 @@ object NoOpBlockContext extends BlockContext {
   override val indices: Outcome[Set[IndexName]] = Outcome.NotExist
   override def withIndices(indices: Set[IndexName]): BlockContext = this
 
-  override val repositories: Set[IndexName] = Set.empty
-  override def withRepositories(indices: NonEmptySet[IndexName]): BlockContext = this
+  override val repositories: Outcome[Set[IndexName]] = Outcome.NotExist
+  override def withRepositories(indices: Set[IndexName]): BlockContext = this
 
-  override val snapshots: Set[IndexName] = Set.empty
-  override def withSnapshots(indices: NonEmptySet[IndexName]): BlockContext = this
+  override val snapshots: Outcome[Set[IndexName]] = Outcome.NotExist
+  override def withSnapshots(indices: Set[IndexName]): BlockContext = this
 }
 
 class RequestContextInitiatedBlockContext private(val data: BlockContextData)
@@ -144,15 +144,15 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withIndices(indices: Set[IndexName]): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(indices = Outcome.Exist(indices)))
 
-  override def repositories: Set[IndexName] = data.repositories
+  override def repositories: Outcome[Set[IndexName]] = data.repositories
 
-  override def withRepositories(repositories: NonEmptySet[IndexName]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(repositories = repositories.toSortedSet))
+  override def withRepositories(repositories: Set[IndexName]): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(repositories = Outcome.Exist(repositories)))
 
-  override def snapshots: Set[IndexName] = data.snapshots
+  override def snapshots: Outcome[Set[IndexName]] = data.snapshots
 
-  override def withSnapshots(snapshots: NonEmptySet[IndexName]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(snapshots = snapshots.toSortedSet))
+  override def withSnapshots(snapshots: Set[IndexName]): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(snapshots = Outcome.Exist(snapshots)))
 
   override def jsonToken: Option[JwtTokenPayload] = data.jsonToken
 
@@ -169,8 +169,8 @@ object RequestContextInitiatedBlockContext {
                                     contextHeaders: Vector[Header],
                                     kibanaIndex: Option[IndexName],
                                     indices: Outcome[Set[IndexName]],
-                                    repositories: Set[IndexName],
-                                    snapshots: Set[IndexName],
+                                    repositories: Outcome[Set[IndexName]],
+                                    snapshots: Outcome[Set[IndexName]],
                                     jsonToken: Option[JwtTokenPayload])
 
   def fromRequestContext(requestContext: RequestContext): RequestContextInitiatedBlockContext =
@@ -186,8 +186,8 @@ object RequestContextInitiatedBlockContext {
         contextHeaders = Vector.empty,
         kibanaIndex = None,
         indices = Outcome.NotExist,
-        repositories = Set.empty,
-        snapshots = Set.empty,
+        repositories = Outcome.NotExist,
+        snapshots = Outcome.NotExist,
         jsonToken = None
       )
     )

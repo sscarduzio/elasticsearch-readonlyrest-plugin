@@ -33,7 +33,7 @@ class SnapshotsRule(override val settings: Settings)
 
   override protected def blockContextWithSpecializedIndices(blockContext: BlockContext,
                                                             indices: NonEmptySet[IndexName]): BlockContext =
-    blockContext.withSnapshots(indices)
+    blockContext.withSnapshots(indices.toSortedSet)
 
 }
 

@@ -34,7 +34,7 @@ class RepositoriesRule(override val settings: Settings)
 
   override protected def blockContextWithSpecializedIndices(blockContext: BlockContext,
                                                             indices: NonEmptySet[IndexName]): BlockContext =
-    blockContext.withRepositories(indices)
+    blockContext.withRepositories(indices.toSortedSet)
 
 }
 

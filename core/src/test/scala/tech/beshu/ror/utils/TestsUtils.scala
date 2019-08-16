@@ -55,8 +55,8 @@ object TestsUtils {
         currentGroup = expected.currentGroup,
         availableGroups = expected.availableGroups.toSet,
         indices = expected.indices.getOrElse(Set.empty),
-        repositories = expected.repositories,
-        snapshots = expected.snapshots) {
+        repositories = expected.repositories.getOrElse(Set.empty),
+        snapshots = expected.snapshots.getOrElse(Set.empty)) {
         current
       }
     }

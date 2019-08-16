@@ -148,8 +148,8 @@ object show {
         showOption("kibana_idx", bc.kibanaIndex) ::
         showTraversable("response_hdr", bc.responseHeaders) ::
         showTraversable("context_hdr", bc.contextHeaders) ::
-        showTraversable("repositories", bc.repositories) ::
-        showTraversable("snapshots", bc.snapshots) ::
+        showTraversable("repositories", bc.repositories.getOrElse(Set.empty)) ::
+        showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
         Nil flatten) mkString ";"
     }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
