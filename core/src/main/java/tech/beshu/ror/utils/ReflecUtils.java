@@ -93,17 +93,19 @@ public class ReflecUtils {
         try {
           Method m = exploreClassMethods(clazz, methodName, String[].class);
           if (m != null) {
-            return (String[]) m.invoke(o);
+            Object result = m.invoke(o);
+            return result != null ? new String[]{(String) result} : new String[0];
           }
 
           m = exploreClassMethods(clazz, methodName, String.class);
           if (m != null) {
-            return new String[]{(String) m.invoke(o)};
+            Object result = m.invoke(o);
+            return result != null ? new String[]{(String) result} : new String[0];
           }
         } catch (SecurityException e) {
           logger.error("Can't get indices for request because of wrong security configuration " + o.getClass());
           throw new SecurityPermissionException(
-            "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
+              "Insufficient permissions to extract field " + methodName + ". Abort! Cause: " + e.getMessage(), e);
         } catch (Exception e) {
           logger.debug("Cannot to discover field " + methodName + " associated to this request: " + o.getClass());
         }
