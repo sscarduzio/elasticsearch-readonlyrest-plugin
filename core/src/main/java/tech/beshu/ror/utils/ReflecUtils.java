@@ -94,7 +94,7 @@ public class ReflecUtils {
           Method m = exploreClassMethods(clazz, methodName, String[].class);
           if (m != null) {
             Object result = m.invoke(o);
-            return result != null ? new String[]{(String) result} : new String[0];
+            return result != null ? (String[])result : new String[0];
           }
 
           m = exploreClassMethods(clazz, methodName, String.class);
