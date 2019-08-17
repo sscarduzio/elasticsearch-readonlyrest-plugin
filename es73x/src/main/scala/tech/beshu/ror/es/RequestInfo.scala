@@ -130,13 +130,6 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
         indicesFromPatterns(clusterService, ar.indices.toSet)
           .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
           .toSet
-      case ar: DeleteIndexTemplateRequest =>
-        getIndicesRelatedToTemplates(clusterService, Set(ar.name))
-      case ar: GetIndexTemplatesRequest =>
-        if(ar.names().isEmpty) Set("*")
-        else getIndicesRelatedToTemplates(clusterService, ar.names().toSet)
-      case _ if extractURI.startsWith("/_cat/templates") =>
-        Set("*")
       case ar =>
         val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
         if(indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
@@ -371,7 +364,9 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
         val templateNamesToReturn =
           if (requestTemplateNames.isEmpty) allowedTemplateNames
           else requestTemplateNames.intersect(allowedTemplateNames)
-        if (templateNamesToReturn.isEmpty) { // hack! there is no other way to return empty list of templates
+        if (templateNamesToReturn.isEmpty) {
+          // hack! there is no other way to return empty list of templates (at the moment should not be used, but
+          // I leave it as a protection
           ar.names(UUID.randomUUID + "*")
         } else {
           ar.names(templateNamesToReturn.toList: _*)
