@@ -57,6 +57,8 @@ import tech.beshu.ror.boot.Engine;
 import tech.beshu.ror.boot.Ror$;
 import tech.beshu.ror.boot.RorInstance;
 import tech.beshu.ror.boot.StartingFailure;
+import tech.beshu.ror.es.scala.RequestInfo;
+import tech.beshu.ror.es.scala.ResponseActionListener;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
 import java.security.AccessController;

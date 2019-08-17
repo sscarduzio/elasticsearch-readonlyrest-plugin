@@ -20,10 +20,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.cluster.ClusterState
-import org.elasticsearch.cluster.metadata.{IndexTemplateMetaData, MetaData}
+import org.elasticsearch.cluster.metadata.MetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.rules.utils.Pattern
 import tech.beshu.ror.acl.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
 import tech.beshu.ror.acl.domain.IndexName
 import tech.beshu.ror.acl.domain.UriPath.{CatTemplatePath, RestMetadataPath}
@@ -87,7 +86,4 @@ class ResponseActionListener(baseListener: ActionListener[ActionResponse],
       response.isWaitForTimedOut
     )
   }
-
-  private implicit val patternFromTemplate: Pattern[IndexTemplateMetaData] = (item: IndexTemplateMetaData) =>
-    item.patterns().asScala.toSet
 }

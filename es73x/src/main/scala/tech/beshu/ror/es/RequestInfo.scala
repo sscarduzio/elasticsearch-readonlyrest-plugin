@@ -299,7 +299,7 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
 
     actionRequest match {
       case ar: IndicesRequest.Replaceable if extractURI.startsWith("/_cat/templates") =>
-        ar // workaround for filtering templates of /_cat/templates action
+        // workaround for filtering templates of /_cat/templates action
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
       case ar: BulkShardRequest => // This should not be necessary anymore because nowadays we either allow or forbid write requests.

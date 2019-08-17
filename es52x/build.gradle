@@ -41,10 +41,16 @@ version = pluginVersion + '_es' + esVersion
 def pluginFullName = pluginName + '-' + version
 
 apply plugin: 'java'
+apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: 'license'
 
 compileJava {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
+compileScala {
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
 }
@@ -62,6 +68,7 @@ license {
     useDefaultMappings = false
     mapping {
         java = 'SLASHSTAR_STYLE'
+        scala = 'SLASHSTAR_STYLE'
     }
 }
 
