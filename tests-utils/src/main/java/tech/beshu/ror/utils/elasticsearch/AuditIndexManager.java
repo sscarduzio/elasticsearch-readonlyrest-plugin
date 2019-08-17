@@ -16,13 +16,11 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
-import com.google.common.collect.Lists;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.time.Duration;
@@ -31,65 +29,45 @@ import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
-import static tech.beshu.ror.utils.misc.HttpResponseHelper.deserializeJsonBody;
+public class AuditIndexManager extends BaseManager {
 
-public class AuditIndexManager {
-
-  private final RestClient restClient;
   private final String indexName;
 
   public AuditIndexManager(RestClient restClient, String indexName) {
-    this.restClient = restClient;
+    super(restClient);
     this.indexName = indexName;
   }
 
-  public void cleanAuditIndex() throws Exception {
-    HttpDelete request = new HttpDelete(restClient.from("/audit_index"));
-    try (CloseableHttpResponse ignored = restClient.execute(request)) {
-      // nothing to do
-    }
+  public SimpleResponse cleanAuditIndex() {
+    return call(new HttpDelete(restClient.from("/audit_index")), SimpleResponse::new);
   }
 
-  public List<Map<String, Object>> getAuditIndexEntries() {
-    RetryPolicy<List<Map<String, Object>>> retryPolicy = new RetryPolicy<List<Map<String, Object>>>()
+  public AuditIndexResponse auditIndexSearch() {
+    RetryPolicy<AuditIndexResponse> retryPolicy = new RetryPolicy<AuditIndexResponse>()
         .handleIf(emptyEntriesResultPredicate())
         .withMaxRetries(20)
         .withDelay(Duration.ofMillis(500))
         .withMaxDuration(Duration.ofSeconds(10));
-    return Failsafe.with(retryPolicy).get(() -> call("/" + indexName + "/_search", restClient));
+    return Failsafe.with(retryPolicy).get(() -> call(createAuditIndexxEntriesRequest(), AuditIndexResponse::new));
   }
 
-  private List<Map<String, Object>> call(String endpoint, RestClient client) throws Exception {
-    Result response = get(endpoint, client);
-    if(response.code / 100 == 2)
-      return getEntries(deserializeJsonBody(response.body));
-    else
-      return Lists.newArrayList();
+  private HttpGet createAuditIndexxEntriesRequest() {
+    return new HttpGet(restClient.from("/" + indexName + "/_search"));
   }
 
-  public List<Map<String, Object>> getEntries(Map<String, Object> result) {
-    List<Map<String, Object>> entries = (List<Map<String, Object>>) ((Map<String, Object>)result.get("hits")).get("hits");
-    return entries.stream().map(entry -> (Map<String, Object>)entry.get("_source")).collect(Collectors.toList());
+  private BiPredicate<AuditIndexResponse, Throwable> emptyEntriesResultPredicate() {
+    return (maps, throwable) -> throwable != null || maps == null || maps.getEntries().size() == 0;
   }
 
-  private Result get(String endpoint, RestClient client) throws Exception {
-    HttpGet request = new HttpGet(client.from(endpoint));
-    try (CloseableHttpResponse response = client.execute(request)) {
-      return new Result(response.getStatusLine().getStatusCode(), EntityUtils.toString(response.getEntity()));
+  public static class AuditIndexResponse extends JsonResponse {
+
+    AuditIndexResponse(HttpResponse response) {
+      super(response);
     }
-  }
 
-  private BiPredicate<List<Map<String, Object>>, Throwable> emptyEntriesResultPredicate() {
-    return (maps, throwable) -> throwable != null || maps == null || maps.size() == 0;
-  }
-
-  private static class Result {
-    public final Integer code;
-    public final String body;
-
-    public Result(Integer code, String body) {
-      this.code = code;
-      this.body = body;
+    public List<Map<String, Object>> getEntries() {
+      List<Map<String, Object>> entries = (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("hits")).get("hits");
+      return entries.stream().map(entry -> (Map<String, Object>)entry.get("_source")).collect(Collectors.toList());
     }
   }
 }

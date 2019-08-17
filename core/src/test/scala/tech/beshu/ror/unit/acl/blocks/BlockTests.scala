@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.unit.acl.blocks
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History}
+import tech.beshu.ror.acl.blocks.BlockContext.Outcome
 import tech.beshu.ror.acl.blocks.rules.Rule
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.{Block, BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.{Group, IndexName, User}
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.acl.request.RequestContext
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
@@ -162,7 +162,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
             currentGroup = Some(Group("group1".nonempty)),
-            indices = Set(IndexName("idx1".nonempty))
+            indices = Outcome.Exist(Set(IndexName("idx1".nonempty)))
           ) {
             blockContext
           }

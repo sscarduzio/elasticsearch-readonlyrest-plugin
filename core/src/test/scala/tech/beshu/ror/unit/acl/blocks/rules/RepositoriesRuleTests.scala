@@ -20,6 +20,7 @@ import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.acl.blocks.BlockContext.Outcome
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, RepositoriesRule}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -113,7 +114,7 @@ class RepositoriesRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              repositories = Set(IndexName("public-asd".nonempty))
+              repositories = Outcome.Exist(Set(IndexName("public-asd".nonempty)))
             )(blockContext)
         }
       }

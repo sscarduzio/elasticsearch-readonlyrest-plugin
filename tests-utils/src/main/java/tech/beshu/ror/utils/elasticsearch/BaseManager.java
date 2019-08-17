@@ -23,7 +23,7 @@ public abstract class BaseManager {
     this.restClient = restClient;
   }
 
-  protected <T> T call(HttpUriRequest request, Function<HttpResponse, T> resultFromResponse) {
+  protected <T extends SimpleResponse> T call(HttpUriRequest request, Function<HttpResponse, T> resultFromResponse) {
     additionalHeaders().forEach(request::addHeader);
     try (CloseableHttpResponse response = restClient.execute(request)) {
       return resultFromResponse.apply(response);
@@ -47,6 +47,10 @@ public abstract class BaseManager {
     public int getResponseCode() {
       return responseCode;
     }
+
+    public boolean isSuccess() {
+      return getResponseCode() / 100 == 2;
+    }
   }
 
   public static class TextLinesResponse extends SimpleResponse {
@@ -57,9 +61,9 @@ public abstract class BaseManager {
     TextLinesResponse(HttpResponse response) {
       super(response);
       this.body = stringBodyFrom(response);
-      this.results = getResponseCode() != 200
-          ? Lists.newArrayList()
-          : linesFrom(body);
+      this.results = isSuccess()
+          ? linesFrom(body)
+          : Lists.newArrayList();
     }
 
     public List<String> getResults() {
@@ -86,9 +90,9 @@ public abstract class BaseManager {
     JsonResponse(HttpResponse response, Boolean withJsonError) {
       super(response);
       this.body = stringBodyFrom(response);
-      this.responseJson = getResponseCode() != 200 || !withJsonError
-          ? Maps.newHashMap()
-          : HttpResponseHelper.deserializeJsonBody(body);
+      this.responseJson = isSuccess() || withJsonError
+          ? HttpResponseHelper.deserializeJsonBody(body)
+          : Maps.newHashMap();
     }
 
     public Map<String, Object> getResponseJson() {

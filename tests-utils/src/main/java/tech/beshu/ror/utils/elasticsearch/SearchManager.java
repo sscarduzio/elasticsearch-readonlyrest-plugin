@@ -81,13 +81,13 @@ public class SearchManager extends BaseManager {
     }
 
     public List<Map<String, Object>> getSearchHits() {
-      return getResponseCode() != 200
-          ? Lists.newArrayList()
-          : (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("hits")).get("hits");
+      return isSuccess()
+          ? (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("hits")).get("hits")
+          : Lists.newArrayList();
     }
 
     public List<Map<String, Object>> getError() {
-      return getResponseCode() == 200
+      return isSuccess()
           ? Lists.newArrayList()
           : (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("error")).get("root_cause");
     }
@@ -100,14 +100,14 @@ public class SearchManager extends BaseManager {
     }
 
     public List<Map<String, Object>> getMSearchHits() {
-      if(getResponseCode() != 200) return Lists.newArrayList();
+      if(!isSuccess()) return Lists.newArrayList();
 
       List<Map<String, Object>> responses = (List<Map<String, Object>>)getResponseJson().get("responses");
       return (List<Map<String, Object>>) ((Map<String, Object>)responses.get(0).get("hits")).get("hits");
     }
 
     public List<Map<String, Object>> getError() {
-      return getResponseCode() == 200
+      return isSuccess()
           ? Lists.newArrayList()
           : (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("error")).get("root_cause");
     }

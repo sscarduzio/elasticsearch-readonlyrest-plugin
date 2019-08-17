@@ -63,10 +63,9 @@ public class DocumentManager extends BaseManager {
 
   private void makeInsertCall(String docPath, String content, boolean waitForRefresh) {
     SimpleResponse response = call(createInsertDocRequest(docPath, content, waitForRefresh), SimpleResponse::new);
-    if(response.getResponseCode() != 200) {
-      throw new IllegalStateException("Cannot insert document");
-    }
+    if(!response.isSuccess()) throw new IllegalStateException("Cannot insert document");
   }
+
   private HttpPut createInsertDocRequest(String docPath, String content, boolean waitForRefresh) {
     try {
       HttpPut request = new HttpPut(restClient.from(
@@ -87,9 +86,7 @@ public class DocumentManager extends BaseManager {
 
   private void makeCreateIndexAliasCall(String alias, Set<String> indexes) {
     SimpleResponse response = call(createInsertIndexAliasRequest(alias, indexes), SimpleResponse::new);
-    if(response.getResponseCode() != 200) {
-      throw new IllegalStateException("Cannot insert document");
-    }
+    if(!response.isSuccess()) throw new IllegalStateException("Cannot insert document");
   }
 
   private HttpPost createInsertIndexAliasRequest(String alias, Set<String> indexes) {
@@ -112,7 +109,7 @@ public class DocumentManager extends BaseManager {
   }
 
   private Boolean isAliasIndexed(String aliasName) {
-    return call(new HttpGet(restClient.from(aliasName)), SimpleResponse::new).getResponseCode() == 200;
+    return call(new HttpGet(restClient.from(aliasName)), SimpleResponse::new).isSuccess();
   }
 
   private BiPredicate<Boolean, Throwable> isNotIndexedYet() {

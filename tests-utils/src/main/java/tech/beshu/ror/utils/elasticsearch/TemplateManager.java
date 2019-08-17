@@ -44,7 +44,7 @@ public class TemplateManager extends BaseManager {
 
   public void insertTemplateAndWaitForIndexing(String name, String templateContent) {
     JsonResponse result = insertTemplate(name, templateContent);
-    if(result.getResponseCode() != 200) throw new IllegalStateException("Cannot insert template: [" + result.getResponseCode() + "]\nResponse: " + result.getRawBody());
+    if(!result.isSuccess()) throw new IllegalStateException("Cannot insert template: [" + result.getResponseCode() + "]\nResponse: " + result.getRawBody());
     RetryPolicy<Boolean> retryPolicy = new RetryPolicy<Boolean>()
         .handleIf(isNotIndexedYet())
         .withMaxRetries(20)

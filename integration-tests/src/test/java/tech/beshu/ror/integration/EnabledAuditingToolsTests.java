@@ -47,14 +47,14 @@ public class EnabledAuditingToolsTests {
   );
 
   @Before
-  public void beforeEach() throws Exception {
+  public void beforeEach() {
     auditIndexManager.cleanAuditIndex();
   }
 
   @Test
   public void rule1MatchingRequestShouldBeAudited() throws Exception {
     assertions(container).assertUserHasAccessToIndex("user", "dev", "twitter");
-    List<Map<String, Object>> auditEntries = auditIndexManager.getAuditIndexEntries();
+    List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
 
     assertEquals(1, auditEntries.size());
     assertEquals("ALLOWED", auditEntries.get(0).get("final_state"));
@@ -64,7 +64,7 @@ public class EnabledAuditingToolsTests {
   @Test
   public void noRuleMatchingRequestShouldBeAudited() throws Exception {
     assertions(container).assertUserAccessToIndexForbidden("user", "wrong", "twitter");
-    List<Map<String, Object>> auditEntries = auditIndexManager.getAuditIndexEntries();
+    List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
 
     assertEquals(1, auditEntries.size());
     assertEquals("FORBIDDEN", auditEntries.get(0).get("final_state"));
@@ -73,7 +73,7 @@ public class EnabledAuditingToolsTests {
   @Test
   public void rule2MatchingRequestShouldNotBeAudited() throws Exception {
     assertions(container).assertUserHasAccessToIndex("user", "dev", "facebook");
-    List<Map<String, Object>> auditEntries = auditIndexManager.getAuditIndexEntries();
+    List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
 
     assertEquals(0, auditEntries.size());
   }

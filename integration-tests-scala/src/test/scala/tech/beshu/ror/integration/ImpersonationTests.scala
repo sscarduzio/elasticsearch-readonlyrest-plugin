@@ -59,7 +59,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
       val result = searchManager.search("/test1_index/_search")
 
       assertEquals(401, result.getResponseCode)
-      assertEquals(1, result.getSearchHits.size())
+      assertEquals(1, result.getError.size())
       result.getSearchHits.get(0).asScala("reason") should be ("forbidden")
       result.getSearchHits.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
     }
@@ -72,7 +72,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
       val result = searchManager.search("/test1_index/_search")
 
       assertEquals(401, result.getResponseCode)
-      assertEquals(1, result.getSearchHits.size())
+      assertEquals(1, result.getError.size())
       result.getSearchHits.get(0).asScala("reason") should be ("forbidden")
       result.getSearchHits.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
     }
@@ -85,7 +85,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
       val result = searchManager.search("/test1_index/_search")
 
       assertEquals(401, result.getResponseCode)
-      assertEquals(1, result.getSearchHits.size())
+      assertEquals(1, result.getError.size())
       result.getSearchHits.get(0).asScala("reason") should be ("forbidden")
       result.getSearchHits.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
     }
@@ -98,7 +98,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/test2_index/_search")
         assertEquals(401, result.getResponseCode)
-        assertEquals(1, result.getSearchHits.size())
+        assertEquals(1, result.getError.size())
         result.getSearchHits.get(0).asScala("reason") should be ("forbidden")
         result.getSearchHits.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_SUPPORTED")
       }

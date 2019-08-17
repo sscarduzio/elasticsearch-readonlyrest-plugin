@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -28,6 +27,7 @@ import tech.beshu.ror.acl.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.blocks.BlockContext.Outcome
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.utils.TestsUtils._
@@ -260,18 +260,18 @@ class IndicesRuleTests extends WordSpec with MockFactory {
                               requestIndices: Set[IndexName],
                               modifyRequestContext: MockRequestContext => MockRequestContext = identity,
                               found: Set[IndexName] = Set.empty) =
-    assertRule(configured, requestIndices, isMatched = true, modifyRequestContext, found)
+    assertRule(configured, requestIndices, isMatched = true, modifyRequestContext, Outcome.Exist(found))
 
   private def assertNotMatchRule(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                                  requestIndices: Set[IndexName],
                                  modifyRequestContext: MockRequestContext => MockRequestContext = identity) =
-    assertRule(configured, requestIndices, isMatched = false, modifyRequestContext, Set.empty)
+    assertRule(configured, requestIndices, isMatched = false, modifyRequestContext, Outcome.NotExist)
 
   private def assertRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                          requestIndices: Set[IndexName],
                          isMatched: Boolean,
                          modifyRequestContext: MockRequestContext => MockRequestContext,
-                         found: Set[IndexName]) = {
+                         found: Outcome[Set[IndexName]]) = {
     val rule = new IndicesRule(IndicesRule.Settings(configuredValues))
     val requestContext = modifyRequestContext apply MockRequestContext.default
       .copy(
@@ -288,12 +288,13 @@ class IndicesRuleTests extends WordSpec with MockFactory {
         )
       )
     val blockContext = mock[BlockContext]
-    val returnedBlock = if(found.nonEmpty) {
-      val newBlock = mock[BlockContext]
-      (blockContext.withIndices _).expects(found).returning(newBlock)
-      newBlock
-    } else {
-      blockContext
+    val returnedBlock = found match {
+      case Outcome.Exist(foundIndices) =>
+        val newBlock = mock[BlockContext]
+        (blockContext.withIndices _).expects(foundIndices).returning(newBlock)
+        newBlock
+      case Outcome.NotExist =>
+        blockContext
     }
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(returnedBlock)
