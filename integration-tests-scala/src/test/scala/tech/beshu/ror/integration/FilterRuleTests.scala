@@ -44,8 +44,8 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
         retry(times = 3) {
           val result = searchManager.search("/test1_index/_search")
           assertEquals(200, result.getResponseCode)
-          result.getResults.size() should be(1)
-          result.getResults.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be("db_user1")
+          result.getSearchHits.size() should be(1)
+          result.getSearchHits.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be("db_user1")
         }
       }
       "msearch api is used" in {
@@ -53,8 +53,8 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
           val matchAllIndicesQuery = "{\"index\":\"*\"}\n" + "{\"query\" : {\"match_all\" : {}}}\n"
           val result = searchManager.mSearch(matchAllIndicesQuery)
           assertEquals(200, result.getResponseCode)
-          result.getResults.size() should be(1)
-          result.getResults.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be("db_user1")
+          result.getMSearchHits.size() should be(1)
+          result.getMSearchHits.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be("db_user1")
         }
       }
     }

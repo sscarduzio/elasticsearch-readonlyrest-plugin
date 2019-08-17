@@ -21,30 +21,22 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.time.Duration;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
-import static tech.beshu.ror.utils.misc.HttpResponseHelper.deserializeJsonBody;
-
-public class DocumentManager {
-
-  private final RestClient restClient;
+public class DocumentManager extends BaseManager {
 
   public DocumentManager(RestClient restClient) {
-    this.restClient = restClient;
+    super(restClient);
   }
 
   public void insertDocAndWaitForRefresh(String docPath, String content) {
@@ -70,6 +62,12 @@ public class DocumentManager {
   }
 
   private void makeInsertCall(String docPath, String content, boolean waitForRefresh) {
+    SimpleResponse response = call(createInsertDocRequest(docPath, content, waitForRefresh), SimpleResponse::new);
+    if(response.getResponseCode() != 200) {
+      throw new IllegalStateException("Cannot insert document");
+    }
+  }
+  private HttpPut createInsertDocRequest(String docPath, String content, boolean waitForRefresh) {
     try {
       HttpPut request = new HttpPut(restClient.from(
           docPath,
@@ -81,47 +79,44 @@ public class DocumentManager {
       request.setHeader("timeout", "50s");
       request.setHeader("Content-Type", "application/json");
       request.setEntity(new StringEntity(content));
-      System.out.println(body(restClient.execute(request)));
+      return request;
     } catch (Exception ex) {
-      throw new IllegalStateException("Cannot insert document", ex);
+      throw new IllegalStateException(ex);
     }
   }
 
   private void makeCreateIndexAliasCall(String alias, Set<String> indexes) {
+    SimpleResponse response = call(createInsertIndexAliasRequest(alias, indexes), SimpleResponse::new);
+    if(response.getResponseCode() != 200) {
+      throw new IllegalStateException("Cannot insert document");
+    }
+  }
+
+  private HttpPost createInsertIndexAliasRequest(String alias, Set<String> indexes) {
     try {
       HttpPost request = new HttpPost(restClient.from("_aliases"));
       request.setHeader("Content-Type", "application/json");
       String indexesStr = Joiner.on(",").join(indexes.stream().map(s -> "\"" + s + "\"").collect(Collectors.toList()));
       request.setEntity(new StringEntity("{ \"actions\" : [ { \"add\" : { \"indices\" : [" + indexesStr + "], \"alias\" : \"" + alias +"\" } } ] }"));
-      System.out.println(body(restClient.execute(request)));
+      return request;
     } catch (Exception ex) {
-      throw new IllegalStateException("Cannot insert document", ex);
+      throw new IllegalStateException(ex);
     }
   }
 
-  private Boolean isDocumentIndexed(String docPath) throws Exception {
-    HttpGet request = new HttpGet(restClient.from(docPath));
-    try (CloseableHttpResponse response = restClient.execute(request)) {
-      Map<String, Object> jsonMap = deserializeJsonBody(body(response));
-      Boolean inserted = Optional.ofNullable((Boolean) jsonMap.get("found")).orElse(false);
-      System.out.println("INSERTED: " + inserted);
-      return inserted;
-    }
+  private Boolean isDocumentIndexed(String docPath) {
+    JsonResponse response = call(new HttpGet(restClient.from(docPath)), JsonResponse::new);
+    Boolean inserted = Optional.ofNullable((Boolean) response.getResponseJson().get("found")).orElse(false);
+    System.out.println("INSERTED: " + inserted);
+    return inserted;
   }
 
-  private Boolean isAliasIndexed(String aliasName) throws Exception {
-    HttpGet request = new HttpGet(restClient.from(aliasName));
-    try (CloseableHttpResponse response = restClient.execute(request)) {
-      return response.getStatusLine().getStatusCode() == 200;
-    }
+  private Boolean isAliasIndexed(String aliasName) {
+    return call(new HttpGet(restClient.from(aliasName)), SimpleResponse::new).getResponseCode() == 200;
   }
 
   private BiPredicate<Boolean, Throwable> isNotIndexedYet() {
     return (indexed, throwable) -> throwable != null || !indexed;
-  }
-
-  private static String body(HttpResponse r) throws Exception {
-    return EntityUtils.toString(r.getEntity());
   }
 
 }

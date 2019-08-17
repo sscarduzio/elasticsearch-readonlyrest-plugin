@@ -22,7 +22,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.elasticsearch.SearchManager;
-import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult;
+import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 
@@ -50,11 +50,11 @@ public class MSearchWithFilterTests {
   public void userShouldOnlySeeFacebookPostsFilterTest() {
     waitUntilAllIndexed();
 
-    SearchResult searchResult1 = user1SearchManager.mSearch(matchAllIndicesQuery);
-    SearchResult searchResult2 = user1SearchManager.mSearch(matchAllIndicesQuery);
-    SearchResult searchResult3 = user2SearchManager.mSearch(matchAllIndicesQuery);
-    SearchResult searchResult4 = user2SearchManager.mSearch(matchAllIndicesQuery);
-    SearchResult searchResult5 = user1SearchManager.mSearch(matchAllIndicesQuery);
+    MSearchResult searchResult1 = user1SearchManager.mSearch(matchAllIndicesQuery);
+    MSearchResult searchResult2 = user1SearchManager.mSearch(matchAllIndicesQuery);
+    MSearchResult searchResult3 = user2SearchManager.mSearch(matchAllIndicesQuery);
+    MSearchResult searchResult4 = user2SearchManager.mSearch(matchAllIndicesQuery);
+    MSearchResult searchResult5 = user1SearchManager.mSearch(matchAllIndicesQuery);
 
     assertSearchResult("facebook", searchResult1);
     assertSearchResult("facebook", searchResult2);
@@ -63,14 +63,14 @@ public class MSearchWithFilterTests {
     assertSearchResult("facebook", searchResult5);
   }
 
-  private void assertSearchResult(String expectedIndex, SearchResult searchResult) {
+  private void assertSearchResult(String expectedIndex, MSearchResult searchResult) {
     assertEquals(200, searchResult.getResponseCode());
-    assertEquals(2, searchResult.getResults().size());
-    searchResult.getResults().forEach(result -> assertEquals(expectedIndex, result.get("_index")));
+    assertEquals(2, searchResult.getMSearchHits().size());
+    searchResult.getMSearchHits().forEach(result -> assertEquals(expectedIndex, result.get("_index")));
   }
 
   private void waitUntilAllIndexed() {
-    RetryPolicy<SearchResult> retryPolicy = new RetryPolicy<SearchResult>()
+    RetryPolicy<MSearchResult> retryPolicy = new RetryPolicy<MSearchResult>()
         .handleIf(resultsContainsLessElementsThan(4))
         .withMaxRetries(20)
         .withDelay(Duration.ofMillis(500))
@@ -78,8 +78,8 @@ public class MSearchWithFilterTests {
     Failsafe.with(retryPolicy).get(() -> adminSearchManager.mSearch(matchAllIndicesQuery));
   }
 
-  private BiPredicate<SearchResult, Throwable> resultsContainsLessElementsThan(int count) {
-    return (searchResult, throwable) -> throwable != null || searchResult == null || searchResult.getResults().size() < count;
+  private BiPredicate<MSearchResult, Throwable> resultsContainsLessElementsThan(int count) {
+    return (searchResult, throwable) -> throwable != null || searchResult == null || searchResult.getMSearchHits().size() < count;
   }
 
 }

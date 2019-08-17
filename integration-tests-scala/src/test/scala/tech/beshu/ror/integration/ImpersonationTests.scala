@@ -59,9 +59,9 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
       val result = searchManager.search("/test1_index/_search")
 
       assertEquals(401, result.getResponseCode)
-      assertEquals(1, result.getResults.size())
-      result.getResults.get(0).asScala("reason") should be ("forbidden")
-      result.getResults.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
+      assertEquals(1, result.getSearchHits.size())
+      result.getSearchHits.get(0).asScala("reason") should be ("forbidden")
+      result.getSearchHits.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
     }
     "user with admin privileges cannot be authenticated" in {
       val searchManager = new SearchManager(
@@ -72,9 +72,9 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
       val result = searchManager.search("/test1_index/_search")
 
       assertEquals(401, result.getResponseCode)
-      assertEquals(1, result.getResults.size())
-      result.getResults.get(0).asScala("reason") should be ("forbidden")
-      result.getResults.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
+      assertEquals(1, result.getSearchHits.size())
+      result.getSearchHits.get(0).asScala("reason") should be ("forbidden")
+      result.getSearchHits.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
     }
     "admin user is authenticated but cannot impersonate given user" in {
       val searchManager = new SearchManager(
@@ -85,9 +85,9 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
       val result = searchManager.search("/test1_index/_search")
 
       assertEquals(401, result.getResponseCode)
-      assertEquals(1, result.getResults.size())
-      result.getResults.get(0).asScala("reason") should be ("forbidden")
-      result.getResults.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
+      assertEquals(1, result.getSearchHits.size())
+      result.getSearchHits.get(0).asScala("reason") should be ("forbidden")
+      result.getSearchHits.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
     }
     "not supported authentication rule is used" which {
       "is full hashed auth credentials" in {
@@ -98,9 +98,9 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/test2_index/_search")
         assertEquals(401, result.getResponseCode)
-        assertEquals(1, result.getResults.size())
-        result.getResults.get(0).asScala("reason") should be ("forbidden")
-        result.getResults.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_SUPPORTED")
+        assertEquals(1, result.getSearchHits.size())
+        result.getSearchHits.get(0).asScala("reason") should be ("forbidden")
+        result.getSearchHits.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_SUPPORTED")
       }
     }
   }

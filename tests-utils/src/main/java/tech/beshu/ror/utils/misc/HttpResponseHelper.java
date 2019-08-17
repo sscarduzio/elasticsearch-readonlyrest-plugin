@@ -45,5 +45,4 @@ public class HttpResponseHelper {
       throw new IllegalStateException("Cannot convert body to string", ex);
     }
   }
-
 }

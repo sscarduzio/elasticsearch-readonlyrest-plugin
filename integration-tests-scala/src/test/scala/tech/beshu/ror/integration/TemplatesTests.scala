@@ -145,7 +145,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -154,7 +154,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
           "template has index pattern with no wildcard" when {
@@ -165,7 +165,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -174,7 +174,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
         }
@@ -188,7 +188,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -198,7 +198,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
           "template has index pattern with no wildcard" when {
@@ -210,7 +210,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -220,7 +220,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplates
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
         }
@@ -235,7 +235,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -244,7 +244,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
           "template has index pattern with no wildcard" when {
@@ -255,7 +255,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -264,7 +264,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
         }
@@ -278,7 +278,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -288,7 +288,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
           "template has index pattern with no wildcard" when {
@@ -300,7 +300,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -310,7 +310,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
         }
@@ -372,7 +372,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -382,7 +382,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
           "template has index pattern with no wildcard" when {
@@ -394,7 +394,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -404,7 +404,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.getResponseCode should be(200)
-              templates.getResults.asScala.keys.toList should contain only "temp1"
+              templates.getResponseJson.asScala.keys.toList should contain only "temp1"
             }
           }
         }
@@ -1030,7 +1030,7 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
     val templates = adminTemplateManager.getTemplates
     if(templates.getResponseCode != 200) throw new IllegalStateException("Cannot get all templates by admin")
     templates
-      .getResults.keySet().asScala
+      .getResponseJson.keySet().asScala
       .foreach { template =>
         val deleteTemplateResult = adminTemplateManager.deleteTemplate(template)
         if(deleteTemplateResult.getResponseCode != 200) throw new IllegalStateException(s"Admin cannot delete '$template' template")
@@ -1044,8 +1044,11 @@ class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAft
     }
   }
 
-  private def addControlTemplate(): TemplateManager.TemplateOperationResult = {
-    adminTemplateManager.insertTemplate("control_one", templateExample("control_*"))
+  private def addControlTemplate(): Unit = {
+    val response = adminTemplateManager.insertTemplate("control_one", templateExample("control_*"))
+    if(response.getResponseCode != 200) {
+      throw new IllegalStateException("Cannot add control template")
+    }
   }
 
   private def templateExample(indexPattern: String) = {
