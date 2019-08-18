@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
+import com.google.common.collect.Sets;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -56,6 +57,7 @@ public class IndexManager extends BaseManager {
     }
 
     public Set<String> getAliases() {
+      if(!isSuccess()) return Sets.newHashSet();
       List<Object> responses = getResponseJson().values().stream().collect(Collectors.toList());
       return ((Map<String, Object>) ((Map<String, Object>)responses.get(0)).get("aliases")).keySet();
     }

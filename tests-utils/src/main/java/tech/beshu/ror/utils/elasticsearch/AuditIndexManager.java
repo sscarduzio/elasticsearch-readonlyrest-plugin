@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
+import com.google.common.collect.Lists;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.http.HttpResponse;
@@ -39,7 +40,7 @@ public class AuditIndexManager extends BaseManager {
   }
 
   public SimpleResponse cleanAuditIndex() {
-    return call(new HttpDelete(restClient.from("/audit_index")), SimpleResponse::new);
+    return call(new HttpDelete(restClient.from("/" + indexName)), SimpleResponse::new);
   }
 
   public AuditIndexResponse auditIndexSearch() {
@@ -48,10 +49,10 @@ public class AuditIndexManager extends BaseManager {
         .withMaxRetries(20)
         .withDelay(Duration.ofMillis(500))
         .withMaxDuration(Duration.ofSeconds(10));
-    return Failsafe.with(retryPolicy).get(() -> call(createAuditIndexxEntriesRequest(), AuditIndexResponse::new));
+    return Failsafe.with(retryPolicy).get(() -> call(createAuditIndexEntriesRequest(), AuditIndexResponse::new));
   }
 
-  private HttpGet createAuditIndexxEntriesRequest() {
+  private HttpGet createAuditIndexEntriesRequest() {
     return new HttpGet(restClient.from("/" + indexName + "/_search"));
   }
 
@@ -66,6 +67,7 @@ public class AuditIndexManager extends BaseManager {
     }
 
     public List<Map<String, Object>> getEntries() {
+      if(!isSuccess()) return Lists.newArrayList();
       List<Map<String, Object>> entries = (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("hits")).get("hits");
       return entries.stream().map(entry -> (Map<String, Object>)entry.get("_source")).collect(Collectors.toList());
     }

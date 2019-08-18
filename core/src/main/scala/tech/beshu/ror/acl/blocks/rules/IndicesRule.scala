@@ -26,7 +26,7 @@ import tech.beshu.ror.acl.blocks.rules.IndicesRule.{CanPass, Settings}
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.acl.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, TemplateMatcher, ZeroKnowledgeIndexFilterScalaAdapter}
+import tech.beshu.ror.acl.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.acl.domain.Action.{mSearchAction, searchAction}
@@ -134,7 +134,6 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking - none or all indices ...")
     val indices = requestContext.indices
     if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
-      // todo: we need here also templates patterns
       val allowedIdxs = matcher.filter(requestContext.allIndicesAndAliases.flatMap(_.all))
       stop(if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs) else CanPass.No)
     } else {
