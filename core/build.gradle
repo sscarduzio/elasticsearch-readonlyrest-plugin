@@ -45,14 +45,8 @@ repositories {
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'com.github.maiflai.scalatest'
 apply plugin: "com.github.hierynomus.license"
-apply plugin: 'java'
 apply plugin: 'scala'
 apply plugin: 'maven'
-
-compileJava {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-}
 
 compileScala {
     sourceCompatibility = 1.8

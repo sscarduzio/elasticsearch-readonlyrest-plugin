@@ -26,6 +26,7 @@ import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, Readon
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
+import tech.beshu.ror.utils.misc.Version
 
 class FilterRuleTests extends WordSpec with ForAllTestContainer {
 
@@ -63,10 +64,18 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
 
 object FilterRuleTests {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+      add3Docs(adminRestClient, "test1_index", "_doc")
+    } else {
+      add3Docs(adminRestClient, "test1_index", "doc")
+    }
+  }
+
+  private def add3Docs(adminRestClient: RestClient, index: String, `type`: String): Unit = {
     val documentManager = new DocumentManager(adminRestClient)
-    documentManager.insertDocAndWaitForRefresh("/test1_index/test/1", s"""{"db_name":"db_user1"}""")
-    documentManager.insertDocAndWaitForRefresh("/test1_index/test/2", s"""{"db_name":"db_user2"}""")
-    documentManager.insertDocAndWaitForRefresh("/test1_index/test/3", s"""{"db_name":"db_user3"}""")
+    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/1", s"""{"db_name":"db_user1"}""")
+    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/2", s"""{"db_name":"db_user2"}""")
+    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/3", s"""{"db_name":"db_user3"}""")
   }
 }

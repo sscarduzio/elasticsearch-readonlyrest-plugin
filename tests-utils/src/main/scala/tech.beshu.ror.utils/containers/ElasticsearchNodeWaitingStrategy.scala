@@ -25,11 +25,12 @@ import monix.eval.Coeval
 import org.apache.http.client.methods.HttpGet
 import org.testcontainers.containers.ContainerLaunchException
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
-import retry._
 import retry.RetryPolicies._
+import retry._
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.HttpResponseHelper.deserializeJsonBody
 import tech.beshu.ror.utils.misc.ScalaUtils._
+
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -56,7 +57,10 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
     if(!started) {
       throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]")
     }
-    initializer.initialize(esVersion, client)
+    Try(initializer.initialize(esVersion, client))
+      .recover { case ex: Exception =>
+        throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]", ex)
+      }
   }
 
   private def retry[A](checkClusterHealthAction: => Boolean)
