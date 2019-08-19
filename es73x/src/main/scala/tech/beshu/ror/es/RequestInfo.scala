@@ -130,11 +130,6 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
         indicesFromPatterns(clusterService, ar.indices.toSet)
           .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
           .toSet
-      case ar: DeleteIndexTemplateRequest =>
-        getIndicesRelatedToTemplates(clusterService, Set(ar.name))
-      case ar: GetIndexTemplatesRequest =>
-        if(ar.names().isEmpty) Set("*")
-        else getIndicesRelatedToTemplates(clusterService, ar.names().toSet)
       case ar =>
         val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
         if(indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
@@ -154,6 +149,8 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
         ar.indices().toSet
       case ar: DeleteIndexTemplateRequest =>
         getIndicesPatternsOfTemplate(clusterService, ar.name())
+      case _ if extractURI.startsWith("/_cat/templates") =>
+        getIndicesPatternsOfTemplates(clusterService)
       case _ =>
         Set.empty[String]
     }
@@ -301,6 +298,8 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
     if (indices.isEmpty) return
 
     actionRequest match {
+      case ar: IndicesRequest.Replaceable if extractURI.startsWith("/_cat/templates") =>
+        // workaround for filtering templates of /_cat/templates action
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
       case ar: BulkShardRequest => // This should not be necessary anymore because nowadays we either allow or forbid write requests.
@@ -365,7 +364,9 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
         val templateNamesToReturn =
           if (requestTemplateNames.isEmpty) allowedTemplateNames
           else requestTemplateNames.intersect(allowedTemplateNames)
-        if (templateNamesToReturn.isEmpty) { // hack! there is no other way to return empty list of templates
+        if (templateNamesToReturn.isEmpty) {
+          // hack! there is no other way to return empty list of templates (at the moment should not be used, but
+          // I leave it as a protection
           ar.names(UUID.randomUUID + "*")
         } else {
           ar.names(templateNamesToReturn.toList: _*)

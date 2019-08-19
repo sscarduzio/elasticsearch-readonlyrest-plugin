@@ -23,13 +23,11 @@ import tech.beshu.ror.acl.AclActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.AclHandlingResult.Result.ForbiddenByMismatched.Cause
 import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.acl.domain.Header
 import tech.beshu.ror.acl.domain.Header.Name
-import tech.beshu.ror.acl.domain.{Header, IndexName}
 import tech.beshu.ror.acl.headerValues._
-import tech.beshu.ror.acl.orders._
 import tech.beshu.ror.utils.LoggerOps._
 
-import scala.collection.immutable.SortedSet
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -109,23 +107,23 @@ object BlockContextJavaHelper {
   }
 
   def indicesFrom(blockContext: BlockContext): Set[String] = {
-    NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.indices) match {
-      case Some(indices) => indices.toSortedSet.map(_.value.value)
-      case None => Set.empty
+    blockContext.indices match {
+      case BlockContext.Outcome.Exist(indices) => indices.map(_.value.value)
+      case BlockContext.Outcome.NotExist => Set.empty
     }
   }
 
   def repositoriesFrom(blockContext: BlockContext): Set[String] = {
-    NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.repositories) match {
-      case Some(indices) => indices.toSortedSet.map(_.value.value)
-      case None => Set.empty
+    blockContext.repositories match {
+      case BlockContext.Outcome.Exist(repositories) => repositories.map(_.value.value)
+      case BlockContext.Outcome.NotExist => Set.empty
     }
   }
 
   def snapshotsFrom(blockContext: BlockContext): Set[String] = {
-    NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ blockContext.snapshots) match {
-      case Some(indices) => indices.toSortedSet.map(_.value.value)
-      case None => Set.empty
+    blockContext.snapshots match {
+      case BlockContext.Outcome.Exist(snapshots) => snapshots.map(_.value.value)
+      case BlockContext.Outcome.NotExist => Set.empty
     }
   }
 

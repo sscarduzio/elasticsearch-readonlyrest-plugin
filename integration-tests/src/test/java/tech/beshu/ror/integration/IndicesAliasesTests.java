@@ -66,7 +66,7 @@ public class IndicesAliasesTests {
     assertNAttempts(3, () -> {
       SearchResult result = unrestrictedDevSearchManager.search("/my_data/_search");
       assertEquals(200, result.getResponseCode());
-      assertEquals(2, result.getResults().size());
+      assertEquals(2, result.getSearchHits().size());
       return null;
     });
   }
@@ -76,7 +76,7 @@ public class IndicesAliasesTests {
     assertNAttempts(3, () -> {
       SearchResult result = unrestrictedDevSearchManager.search("/public_data/_search");
       assertEquals(200, result.getResponseCode());
-      assertEquals(1, result.getResults().size());
+      assertEquals(1, result.getSearchHits().size());
       return null;
     });
   }
@@ -86,7 +86,7 @@ public class IndicesAliasesTests {
     assertNAttempts(3, () -> {
       SearchResult result = unrestrictedDevSearchManager.search("/pub*/_search");
       assertEquals(200, result.getResponseCode());
-      assertEquals(1, result.getResults().size());
+      assertEquals(1, result.getSearchHits().size());
       return null;
     });
   }
@@ -107,7 +107,7 @@ public class IndicesAliasesTests {
     assertNAttempts(3, () -> {
       SearchResult result = restrictedDevSearchManager.search("/public_data/_search");
       assertEquals(200, result.getResponseCode());
-      assertEquals(1, result.getResults().size());
+      assertEquals(1, result.getSearchHits().size());
       return null;
     });
   }
@@ -117,7 +117,7 @@ public class IndicesAliasesTests {
     assertNAttempts(3, () -> {
       SearchResult result = restrictedDevSearchManager.search("/public*/_search");
       assertEquals(200, result.getResponseCode());
-      assertEquals(1, result.getResults().size());
+      assertEquals(1, result.getSearchHits().size());
       return null;
     });
   }
@@ -127,7 +127,7 @@ public class IndicesAliasesTests {
     assertNAttempts(3, () -> {
       SearchResult result = restrictedDevSearchManager.search("/pu*/_search");
       assertEquals(200, result.getResponseCode());
-      assertEquals(1, result.getResults().size());
+      assertEquals(1, result.getSearchHits().size());
       return null;
     });
   }
@@ -202,7 +202,7 @@ public class IndicesAliasesTests {
     assertNAttempts(3, () -> {
       SearchResult result = vietMyanSearchManager.search("/vuln-ass-all-vietnam/_search");
       assertEquals(200, result.getResponseCode());
-      assertEquals(1, result.getResults().size());
+      assertEquals(1, result.getSearchHits().size());
       return null;
     });
   }
@@ -221,7 +221,7 @@ public class IndicesAliasesTests {
     assertNAttempts(3, () -> {
       SearchResult result = vietMyanSearchManager.search("/all-subs-data/_search");
       assertEquals(200, result.getResponseCode());
-      assertEquals(2, result.getResults().size());
+      assertEquals(2, result.getSearchHits().size());
       return null;
     });
   }

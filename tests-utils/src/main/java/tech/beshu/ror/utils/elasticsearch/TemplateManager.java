@@ -18,41 +18,33 @@ package tech.beshu.ror.utils.elasticsearch;
 
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
-import java.io.IOException;
 import java.time.Duration;
-import java.util.Map;
 import java.util.function.BiPredicate;
 
-import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
-
-public class TemplateManager {
-
-  private final RestClient restClient;
+public class TemplateManager extends BaseManager {
 
   public TemplateManager(RestClient restClient) {
-    this.restClient = restClient;
+    super(restClient);
   }
 
-  public TemplateOperationResult getTemplate(String name) {
-    return makeTemplateOperation(createGetTemplateRequest(name));
+  public JsonResponse getTemplate(String name) {
+    return call(createGetTemplateRequest(name), JsonResponse::new);
   }
 
-  public TemplateOperationResult getTemplates() {
-    return makeTemplateOperation(createGetTemplatesRequest());
+  public JsonResponse getTemplates() {
+    return call(createGetTemplatesRequest(), JsonResponse::new);
   }
 
   public void insertTemplateAndWaitForIndexing(String name, String templateContent) {
-    TemplateOperationResult result = insertTemplate(name, templateContent);
-    if(result.responseCode != 200) throw new IllegalStateException("Cannot insert template: [" + result.responseCode + "]\nResponse: " + result.body);
+    JsonResponse result = insertTemplate(name, templateContent);
+    if(!result.isSuccess()) throw new IllegalStateException("Cannot insert template: [" + result.getResponseCode() + "]\nResponse: " + result.getRawBody());
     RetryPolicy<Boolean> retryPolicy = new RetryPolicy<Boolean>()
         .handleIf(isNotIndexedYet())
         .withMaxRetries(20)
@@ -60,20 +52,12 @@ public class TemplateManager {
     Failsafe.with(retryPolicy).get(() -> isTemplateIndexed(name));
   }
 
-  public TemplateOperationResult insertTemplate(String name, String templateContent) {
-    return makeTemplateOperation(createInsertTemplateRequest(name, templateContent));
+  public JsonResponse insertTemplate(String name, String templateContent) {
+    return call(createInsertTemplateRequest(name, templateContent), JsonResponse::new);
   }
 
-  public TemplateOperationResult deleteTemplate(String name) {
-    return makeTemplateOperation(createDeleteTemplateRequest(name));
-  }
-
-  private TemplateOperationResult makeTemplateOperation(HttpUriRequest request) {
-    try (CloseableHttpResponse response = restClient.execute(request)) {
-      return new TemplateOperationResult(response.getStatusLine().getStatusCode(), EntityUtils.toString(response.getEntity()));
-    } catch (IOException e) {
-      throw new IllegalStateException(e);
-    }
+  public JsonResponse deleteTemplate(String name) {
+    return call(createDeleteTemplateRequest(name), JsonResponse::new);
   }
 
   private HttpUriRequest createGetTemplateRequest(String name) {
@@ -106,31 +90,11 @@ public class TemplateManager {
   }
 
   private Boolean isTemplateIndexed(String templateName) {
-    return getTemplates().results.containsKey(templateName);
+    return getTemplates().getResponseJson().containsKey(templateName);
   }
 
   private BiPredicate<Boolean, Throwable> isNotIndexedYet() {
     return (indexed, throwable) -> throwable != null || !indexed;
   }
 
-  public static class TemplateOperationResult {
-
-    private final Integer responseCode;
-    private final Map<String, Object> results;
-    private final String body;
-
-    TemplateOperationResult(Integer responseCode, String body) {
-      this.responseCode = responseCode;
-      this.body = body;
-      this.results = deserializeJsonBody(body);
-    }
-
-    public int getResponseCode() {
-      return responseCode;
-    }
-
-    public Map<String, Object> getResults() {
-      return results;
-    }
-  }
 }

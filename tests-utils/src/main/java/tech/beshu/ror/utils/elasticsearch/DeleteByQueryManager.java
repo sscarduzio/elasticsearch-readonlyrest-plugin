@@ -16,28 +16,20 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
-public class DeleteByQueryManager {
-
-  private final RestClient restClient;
+public class DeleteByQueryManager extends BaseManager {
 
   public DeleteByQueryManager(RestClient restClient) {
-    this.restClient = restClient;
+    super(restClient);
   }
 
-  public DeleteByQueryResult delete(String indexName, String query) {
-    try (CloseableHttpResponse response = restClient.execute(createDeleteByQueryRequest(indexName, query))) {
-      return new DeleteByQueryResult(response.getStatusLine().getStatusCode());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  public SimpleResponse delete(String indexName, String query) {
+    return call(createDeleteByQueryRequest(indexName, query), SimpleResponse::new);
   }
 
   private HttpPost createDeleteByQueryRequest(String indexName, String query) {
@@ -48,19 +40,6 @@ public class DeleteByQueryManager {
       return request;
     } catch (UnsupportedEncodingException e) {
       throw new RuntimeException(e);
-    }
-  }
-
-  public static class DeleteByQueryResult {
-
-    private final Integer responseCode;
-
-    DeleteByQueryResult(Integer responseCode) {
-      this.responseCode = responseCode;
-    }
-
-    public int getResponseCode() {
-      return responseCode;
     }
   }
 }

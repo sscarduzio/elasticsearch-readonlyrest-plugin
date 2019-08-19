@@ -19,16 +19,15 @@ package tech.beshu.ror.integration;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.utils.elasticsearch.AuditIndexManager;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
+import tech.beshu.ror.utils.elasticsearch.AuditIndexManager;
+import tech.beshu.ror.utils.elasticsearch.AuditIndexManager.AuditIndexResponse;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions.assertions;
 
 public class DisabledAuditingToolsTests {
@@ -45,32 +44,32 @@ public class DisabledAuditingToolsTests {
   );
 
   @Before
-  public void beforeEach() throws Exception {
+  public void beforeEach() {
     auditIndexManager.cleanAuditIndex();
   }
 
   @Test
   public void rule1MatchingRequestShouldNotBeAudited() throws Exception {
     assertions(container).assertUserHasAccessToIndex("user", "dev", "twitter");
-    List<Map<String, Object>> auditEntries = auditIndexManager.getAuditIndexEntries();
+    AuditIndexResponse auditIndexResponse = auditIndexManager.auditIndexSearch();
 
-    assertEquals(0, auditEntries.size());
+    assertFalse(auditIndexResponse.isSuccess());
   }
 
   @Test
   public void noRuleMatchingRequestShouldNotBeAudited() throws Exception {
     assertions(container).assertUserAccessToIndexForbidden("user", "wrong", "twitter");
-    List<Map<String, Object>> auditEntries = auditIndexManager.getAuditIndexEntries();
+    AuditIndexResponse auditIndexResponse = auditIndexManager.auditIndexSearch();
 
-    assertEquals(0, auditEntries.size());
+    assertFalse(auditIndexResponse.isSuccess());
   }
 
   @Test
   public void rule2MatchingRequestShouldNotBeAudited() throws Exception {
     assertions(container).assertUserHasAccessToIndex("user", "dev", "facebook");
-    List<Map<String, Object>> auditEntries = auditIndexManager.getAuditIndexEntries();
+    AuditIndexResponse auditIndexResponse = auditIndexManager.auditIndexSearch();
 
-    assertEquals(0, auditEntries.size());
+    assertFalse(auditIndexResponse.isSuccess());
   }
 
 }

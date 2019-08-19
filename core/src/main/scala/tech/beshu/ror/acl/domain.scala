@@ -179,7 +179,7 @@ object domain {
 
     def fromString(value: String): Option[IndexName] = NonEmptyString.from(value).map(IndexName.apply).toOption
 
-    private def fromUnsafeString(value: String) = IndexName(NonEmptyString.unsafeFrom(value))
+    def fromUnsafeString(value: String) = IndexName(NonEmptyString.unsafeFrom(value))
   }
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
@@ -225,13 +225,26 @@ object domain {
   }
 
   final case class UriPath(value: String) {
-    def isRestMetadataPath: Boolean = {
-      value.startsWith(UriPath.restMetadataPath.value)
-    }
+    def isRestMetadataPath: Boolean = value.startsWith(UriPath.restMetadataPath.value)
+    def isCatTemplatePath: Boolean = value.startsWith("/_cat/templates")
   }
   object UriPath {
     val restMetadataPath = UriPath(Constants.REST_METADATA_PATH)
     implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
+
+    object CatTemplatePath {
+      def unapply(uriPath: UriPath): Option[UriPath] = {
+        if(uriPath.isCatTemplatePath) Some(uriPath)
+        else None
+      }
+    }
+
+    object RestMetadataPath {
+      def unapply(uriPath: UriPath): Option[UriPath] = {
+        if(uriPath.isRestMetadataPath) Some(uriPath)
+        else None
+      }
+    }
   }
 
 

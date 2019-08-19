@@ -26,6 +26,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
+import tech.beshu.ror.acl.blocks.BlockContext.Outcome
 import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.acl.domain.{Header, IndexName, User}
 import tech.beshu.ror.mocks.MockRequestContext
@@ -197,7 +198,8 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable (array)"))
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user3".nonempty)))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user3".nonempty))),
+              indices = Outcome.Exist(Set.empty)
             ) {
               blockContext
             }
@@ -225,7 +227,8 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable"))
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user4".nonempty)))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user4".nonempty))),
+              indices = Outcome.Exist(Set.empty)
             ) {
               blockContext
             }

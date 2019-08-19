@@ -43,7 +43,7 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESV
       "user has permission to do so" excludeES("es51x", "es52x") in {
         val result = user1SearchManager.search("/odd:test1_index/_search")
         assertEquals(200, result.getResponseCode)
-        assertEquals(2, result.getResults.size)
+        assertEquals(2, result.getSearchHits.size)
       }
     }
     "return 401" when {

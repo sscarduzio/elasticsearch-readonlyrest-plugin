@@ -16,69 +16,35 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
-import com.google.common.collect.Maps;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.Map;
 
-import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
-
-public class ActionManager {
-
-  private final RestClient restClient;
+public class ActionManager extends BaseManager {
 
   public ActionManager(RestClient restClient) {
-    this.restClient = restClient;
+    super(restClient);
   }
 
-  public ActionResult actionPost(String action, String payload) {
-    try {
-      return call(createPostActionRequest(action, payload));
-    } catch (IOException e) {
-      throw new IllegalStateException("Action manager '" + action + "' failed", e);
-    }
+  public JsonResponse actionPost(String action, String payload) {
+    return call(createPostActionRequest(action, payload), JsonResponse::new);
   }
 
-  public ActionResult actionPost(String action) {
-    try {
-      return call(createPostActionRequest(action));
-    } catch (IOException e) {
-      throw new IllegalStateException("Action manager '" + action + "' failed", e);
-    }
+  public JsonResponse actionPost(String action) {
+    return call(createPostActionRequest(action), JsonResponse::new);
   }
 
-  public ActionResult actionGet(String action) {
-    try {
-      return call(createGetActionRequest(action));
-    } catch (IOException e) {
-      throw new IllegalStateException("Action manager '" + action + "' failed", e);
-    }
+  public JsonResponse actionGet(String action) {
+    return call(createGetActionRequest(action), JsonResponse::new);
   }
 
-  public ActionResult actionDelete(String action) {
-    try {
-      return call(createDeleteActionRequest(action));
-    } catch (IOException e) {
-      throw new IllegalStateException("Action manager '" + action + "' failed", e);
-    }
-  }
-
-  private ActionResult call(HttpUriRequest request) throws IOException {
-    try (CloseableHttpResponse response = restClient.execute(request)) {
-      int statusCode = response.getStatusLine().getStatusCode();
-      return statusCode != 200
-          ? new ActionResult(statusCode, Maps.newHashMap())
-          : new ActionResult(statusCode, deserializeJsonBody(EntityUtils.toString(response.getEntity())));
-    }
+  public JsonResponse actionDelete(String action) {
+    return call(createDeleteActionRequest(action), JsonResponse::new);
   }
 
   private HttpUriRequest createPostActionRequest(String action, String payload) {
@@ -102,24 +68,5 @@ public class ActionManager {
 
   private HttpUriRequest createDeleteActionRequest(String action) {
     return new HttpDelete(restClient.from("/" + action));
-  }
-
-  public static class ActionResult {
-
-    private final Integer responseCode;
-    private final Map<String, Object> responseJson;
-
-    ActionResult(Integer responseCode, Map<String, Object> responseJson) {
-      this.responseCode = responseCode;
-      this.responseJson = responseJson;
-    }
-
-    public int getResponseCode() {
-      return responseCode;
-    }
-
-    public Map<String, Object> getResponseJson() {
-      return responseJson;
-    }
   }
 }

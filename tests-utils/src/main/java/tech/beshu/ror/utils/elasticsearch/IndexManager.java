@@ -16,49 +16,30 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.util.EntityUtils;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static tech.beshu.ror.utils.misc.GsonHelper.deserializeJsonBody;
-
-public class IndexManager {
-
-  private final RestClient restClient;
+public class IndexManager extends BaseManager {
 
   public IndexManager(RestClient restClient) {
-    this.restClient = restClient;
+    super(restClient);
   }
 
   public GetIndexResult get(String indexName) {
-    try (CloseableHttpResponse response = restClient.execute(createGetIndexRequest(indexName))) {
-      int statusCode = response.getStatusLine().getStatusCode();
-      return statusCode != 200
-          ? new GetIndexResult(statusCode, Sets.newHashSet())
-          : new GetIndexResult(statusCode, getAliases(deserializeJsonBody(bodyFrom(response))));
-    } catch (IOException e) {
-      throw new IllegalStateException("Index manager get index result failed", e);
-    }
+    return call(createGetIndexRequest(indexName), GetIndexResult::new);
   }
 
-  public RemoveIndexResult removeAll() {
-    try (CloseableHttpResponse response = restClient.execute(createDeleteIndicesRequest())) {
-      return new RemoveIndexResult(response.getStatusLine().getStatusCode());
-    } catch (IOException e) {
-      throw new IllegalStateException("Index manager remove all indices result failed", e);
-    }
+  public SimpleResponse removeAll() {
+    return call(createDeleteIndicesRequest(), SimpleResponse::new);
   }
 
   private HttpUriRequest createGetIndexRequest(String indexName) {
@@ -69,48 +50,16 @@ public class IndexManager {
     return new HttpDelete(restClient.from("/_all"));
   }
 
-  private static Set<String> getAliases(Map<String, Object> result) {
-    List<Object> responses = result.values().stream().collect(Collectors.toList());
-    return ((Map<String, Object>) ((Map<String, Object>)responses.get(0)).get("aliases")).keySet();
-  }
+  public static class GetIndexResult extends JsonResponse {
 
-  private static String bodyFrom(HttpResponse r) {
-    try {
-      return EntityUtils.toString(r.getEntity());
-    } catch (IOException e) {
-      throw new IllegalStateException("Cannot get string body", e);
-    }
-  }
-
-  public static class GetIndexResult {
-
-    private final Integer responseCode;
-    private final ImmutableSet<String> aliases;
-
-    GetIndexResult(Integer responseCode, Set<String> aliases) {
-      this.responseCode = responseCode;
-      this.aliases = ImmutableSet.copyOf(aliases);
+    GetIndexResult(HttpResponse response) {
+      super(response);
     }
 
-    public int getResponseCode() {
-      return responseCode;
-    }
-
-    public ImmutableSet<String> getAliases() {
-      return aliases;
-    }
-  }
-
-  public static class RemoveIndexResult {
-
-    private final Integer responseCode;
-
-    RemoveIndexResult(Integer responseCode) {
-      this.responseCode = responseCode;
-    }
-
-    public Integer getResponseCode() {
-      return responseCode;
+    public Set<String> getAliases() {
+      if(!isSuccess()) return Sets.newHashSet();
+      List<Object> responses = getResponseJson().values().stream().collect(Collectors.toList());
+      return ((Map<String, Object>) ((Map<String, Object>)responses.get(0)).get("aliases")).keySet();
     }
   }
 }

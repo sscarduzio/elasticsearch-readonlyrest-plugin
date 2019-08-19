@@ -16,43 +16,36 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
-import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
-import java.io.IOException;
+import java.util.Optional;
 
-public class ClusterStateManager {
-
-  private final RestClient restClient;
+public class ClusterStateManager extends BaseManager {
 
   public ClusterStateManager(RestClient restClient) {
-    this.restClient = restClient;
+    super(restClient);
   }
 
-  public HealthCheckResponse healthCheck() {
-    try (CloseableHttpResponse response = restClient.execute(createHealthCheckRequest())) {
-      return new HealthCheckResponse(response.getStatusLine().getStatusCode());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+  public SimpleResponse healthCheck() {
+    return call(createHealthCheckRequest(), SimpleResponse::new);
+  }
+
+  public TextLinesResponse catTemplates() {
+    return call(createCatTemplatesRequest(Optional.empty()), TextLinesResponse::new);
+  }
+
+  public TextLinesResponse catTemplates(String templateName) {
+    return call(createCatTemplatesRequest(Optional.of(templateName)), TextLinesResponse::new);
   }
 
   private HttpUriRequest createHealthCheckRequest() {
     return new HttpGet(restClient.from("/_cat/health"));
   }
 
-  public static class HealthCheckResponse {
-
-    private final Integer responseCode;
-
-    HealthCheckResponse(Integer responseCode) {
-      this.responseCode = responseCode;
-    }
-
-    public int getResponseCode() {
-      return responseCode;
-    }
+  private HttpUriRequest createCatTemplatesRequest(Optional<String> templateName) {
+    return new HttpGet(restClient.from("/_cat/templates" + templateName.map(t -> "/" + t).orElse("")));
   }
+
 }

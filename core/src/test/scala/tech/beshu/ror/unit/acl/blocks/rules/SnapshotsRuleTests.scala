@@ -20,6 +20,7 @@ import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.acl.blocks.BlockContext.Outcome
 import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, SnapshotsRule}
 import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -112,7 +113,7 @@ class SnapshotsRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              snapshots = Set(IndexName("public-asd".nonempty))
+              snapshots = Outcome.Exist(Set(IndexName("public-asd".nonempty)))
             )(blockContext)
         }
       }

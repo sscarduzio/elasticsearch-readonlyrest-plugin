@@ -19,8 +19,8 @@ package tech.beshu.ror.integration;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
+import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse;
 import tech.beshu.ror.utils.elasticsearch.DeleteByQueryManager;
-import tech.beshu.ror.utils.elasticsearch.DeleteByQueryManager.DeleteByQueryResult;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
@@ -43,13 +43,13 @@ public class DeleteByQueryTests {
 
   @Test
   public void blueTeamShouldBeAbleToDeleteByQuery() {
-    DeleteByQueryResult result = blueTeamDeleteByQueryManager.delete("twitter", matchAllQuery);
+    SimpleResponse result = blueTeamDeleteByQueryManager.delete("twitter", matchAllQuery);
     assertEquals(200, result.getResponseCode());
   }
 
   @Test
   public void redTeamShouldNotBeAbleToDeleteByQuery() {
-    DeleteByQueryResult result = redTeamDeleteByQueryManager.delete("facebook", matchAllQuery);
+    SimpleResponse result = redTeamDeleteByQueryManager.delete("facebook", matchAllQuery);
     assertEquals(401, result.getResponseCode());
   }
 
