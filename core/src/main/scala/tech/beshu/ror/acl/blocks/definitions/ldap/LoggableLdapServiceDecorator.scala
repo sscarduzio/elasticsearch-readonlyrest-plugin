@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.{Failure, Success}
 
-class LoggableLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationService)
+class LoggableLdapAuthenticationServiceDecorator(val underlying: LdapAuthenticationService)
   extends LdapAuthenticationService
     with Logging {
 
@@ -50,7 +50,7 @@ class LoggableLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationS
   }
 }
 
-class LoggableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationService)
+class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizationService)
   extends LdapAuthorizationService
     with Logging {
 
@@ -74,7 +74,7 @@ class LoggableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationSer
   }
 }
 
-class LoggableLdapServiceDecorator(underlying: LdapAuthService)
+class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
   extends LdapAuthService {
 
   private val loggableLdapAuthenticationService = new LoggableLdapAuthenticationServiceDecorator(underlying)
