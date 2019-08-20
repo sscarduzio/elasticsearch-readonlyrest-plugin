@@ -123,7 +123,7 @@ if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; the
     exit 0
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package" ]]; then
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
     
@@ -137,7 +137,12 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package" ]]; then
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.1.1'
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.2.0'
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.2.1'
-    ./gradlew --stacktrace es73x:ror '-PesVersion=7.3.0'
+
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
+
+    echo ">>> ($0) additional builds of ES module for specified ES version"
 
     # es66
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.6.0'
@@ -183,6 +188,12 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package" ]]; then
     # es60
     ./gradlew --stacktrace es60x:ror '-PesVersion=6.0.0'
     #./gradlew --stacktrace es60x:ror '-PesVersion=6.0.1'
+
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
+
+    echo ">>> ($0) additional builds of ES module for specified ES version"
 
     # es55
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.0'

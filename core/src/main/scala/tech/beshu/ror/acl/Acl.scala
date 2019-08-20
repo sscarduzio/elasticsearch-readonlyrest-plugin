@@ -25,7 +25,7 @@ import tech.beshu.ror.acl.blocks.{Block, BlockContext}
 import tech.beshu.ror.acl.request.RequestContext
 
 trait Acl {
-  def handle(requestContext: RequestContext): Task[AclHandlingResult]
+  def handle(context: RequestContext): Task[AclHandlingResult]
 }
 
 trait AclHandlingResult {
