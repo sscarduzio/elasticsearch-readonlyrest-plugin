@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, BasicAuthenticationRule}
-import tech.beshu.ror.acl.domain.{Credentials, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, BasicAuthenticationRule}
+import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.utils.TestsUtils._
 
 class AuthKeyRuleTests extends BasicAuthenticationTestTemplate {

@@ -20,8 +20,8 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
-import tech.beshu.ror.acl.AclActionHandler;
-import tech.beshu.ror.acl.AclStaticContext;
+import tech.beshu.ror.accesscontrol.AclActionHandler;
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext;
 
 import java.io.IOException;
 import java.util.List;
@@ -36,29 +36,29 @@ public class ForbiddenResponse extends BytesRestResponse {
   }
 
   public static ForbiddenResponse create(RestChannel channel,
-      List<AclActionHandler.ForbiddenCause> causes, AclStaticContext aclStaticContext) {
-    RestStatus restStatus = responseRestStatus(aclStaticContext);
+                                         List<AclActionHandler.ForbiddenCause> causes, AccessControlStaticContext accessControlStaticContext) {
+    RestStatus restStatus = responseRestStatus(accessControlStaticContext);
     ForbiddenResponse response = new ForbiddenResponse(
         restStatus,
-        createErrorResponse(channel, restStatus, builder -> addRootCause(builder, causes, aclStaticContext))
+        createErrorResponse(channel, restStatus, builder -> addRootCause(builder, causes, accessControlStaticContext))
     );
-    if (aclStaticContext.doesRequirePassword()) {
+    if (accessControlStaticContext.doesRequirePassword()) {
       response.addHeader("WWW-Authenticate", "Basic");
     }
     return response;
   }
 
   private static void addRootCause(XContentBuilder builder, List<AclActionHandler.ForbiddenCause> causes,
-      AclStaticContext aclStaticContext) {
+                                   AccessControlStaticContext accessControlStaticContext) {
     try {
-      builder.field("reason", aclStaticContext.forbiddenRequestMessage());
+      builder.field("reason", accessControlStaticContext.forbiddenRequestMessage());
       builder.field("due_to", causes.stream().map(AclActionHandler.ForbiddenCause::stringify).collect(Collectors.toList()));
     } catch (IOException e) {
       throw new IllegalStateException("Cannot create root cause", e);
     }
   }
 
-  private static RestStatus responseRestStatus(AclStaticContext aclStaticContext) {
-    return aclStaticContext.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN;
+  private static RestStatus responseRestStatus(AccessControlStaticContext accessControlStaticContext) {
+    return accessControlStaticContext.doesRequirePassword() ? RestStatus.UNAUTHORIZED : RestStatus.FORBIDDEN;
   }
 }

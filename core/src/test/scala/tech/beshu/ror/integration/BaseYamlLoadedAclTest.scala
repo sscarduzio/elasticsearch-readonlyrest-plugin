@@ -18,8 +18,8 @@ package tech.beshu.ror.integration
 
 import java.time.Clock
 
-import tech.beshu.ror.acl.Acl
-import tech.beshu.ror.acl.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.AccessControl
+import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.configuration.RawRorConfig
@@ -39,7 +39,7 @@ trait BaseYamlLoadedAclTest extends BlockContextAssertion {
     new RawRorConfigBasedCoreFactory
   }
 
-  lazy val acl: Acl = factory
+  lazy val acl: AccessControl = factory
     .createCoreFrom(
       RawRorConfig.fromString(configYaml).right.get,
       MockHttpClientsFactory

@@ -22,11 +22,11 @@ import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.cluster.ClusterState
 import org.elasticsearch.cluster.metadata.MetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
-import tech.beshu.ror.acl.domain.IndexName
-import tech.beshu.ror.acl.domain.UriPath.{CatTemplatePath, RestMetadataPath}
-import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
+import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, RestMetadataPath}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.rradmin.RRMetadataResponse
 
 import scala.collection.JavaConverters._

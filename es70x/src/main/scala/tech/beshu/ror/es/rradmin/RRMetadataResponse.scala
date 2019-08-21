@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.Constants
-import tech.beshu.ror.acl.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 
 import scala.collection.JavaConverters._
 

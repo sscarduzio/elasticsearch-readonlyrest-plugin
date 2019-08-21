@@ -24,11 +24,11 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.AclHandlingResult.Result
-import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.blocks.BlockContext.Outcome
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.{Header, IndexName, User}
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -105,10 +105,10 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             headers = Set(basicAuthHeader("user1:passwd"), header("X-my-group-name-1", "g3"))
           )
 
-          val result = acl.handle(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 2
-          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
@@ -124,10 +124,10 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             headers = Set(basicAuthHeader("user1:passwd"), header("X-my-group-name-2", "g3"))
           )
 
-          val result = acl.handle(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 2
-          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
@@ -143,10 +143,10 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             headers = Set(basicAuthHeader("user2:passwd"))
           )
 
-          val result = acl.handle(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 4
-          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
@@ -162,10 +162,10 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             headers = Set(basicAuthHeader("user1:passwd"))
           )
 
-          val result = acl.handle(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 3
-          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
@@ -192,10 +192,10 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             involvesIndices = true
           )
 
-          val result = acl.handle(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 5
-          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable (array)"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user3".nonempty))),
@@ -221,10 +221,10 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             involvesIndices = true
           )
 
-          val result = acl.handle(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 6
-          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user4".nonempty))),

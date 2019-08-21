@@ -21,16 +21,16 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
-import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule
+import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.Constants
-import tech.beshu.ror.acl.domain.Header.Name
-import tech.beshu.ror.acl.domain.KibanaAccess.{RO, ROStrict, RW}
-import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.headerValues._
+import tech.beshu.ror.accesscontrol.domain.Header.Name
+import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW}
+import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.headerValues._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._

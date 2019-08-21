@@ -21,7 +21,7 @@ import java.nio.file.Path
 import better.files.File
 import cats.Show
 import monix.eval.Task
-import tech.beshu.ror.acl.factory.consts.RorProperties
+import tech.beshu.ror.accesscontrol.factory.consts.RorProperties
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError

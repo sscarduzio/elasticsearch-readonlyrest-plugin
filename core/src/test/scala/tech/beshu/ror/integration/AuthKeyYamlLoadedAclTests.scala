@@ -22,14 +22,14 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, Tag, WordSpec}
-import tech.beshu.ror.acl.AclHandlingResult.Result
-import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.domain.{Header, LoggedUser, User}
-import tech.beshu.ror.acl.domain.Header.Name
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.domain.{Header, User}
+import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Allow
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 
 class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside {
 
@@ -57,9 +57,9 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with
       "allow to proceed" when {
         "request is sent in behalf on admin user" taggedAs Tag("es70x") in {
           val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:container")))
-          val result = acl.handle(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
-          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+          inside(result.handlingResult) { case Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin".nonempty)))) {
               blockContext
@@ -74,9 +74,9 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with
             )
           ))
 
-          val result = acl.handle(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
-          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+          inside(result.handlingResult) { case Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin".nonempty)))) {
               blockContext

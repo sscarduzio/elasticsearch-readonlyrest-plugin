@@ -45,20 +45,19 @@ import scala.concurrent.duration.FiniteDuration;
 import scala.runtime.BoxedUnit;
 import scala.util.Either;
 import tech.beshu.ror.SecurityPermissionException;
-import tech.beshu.ror.acl.AclActionHandler;
-import tech.beshu.ror.acl.AclHandlingResult;
-import tech.beshu.ror.acl.AclResultCommitter;
-import tech.beshu.ror.acl.AclStaticContext;
-import tech.beshu.ror.acl.BlockContextJavaHelper$;
-import tech.beshu.ror.acl.blocks.BlockContext;
-import tech.beshu.ror.acl.request.EsRequestContext;
-import tech.beshu.ror.acl.request.RequestContext;
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult;
+import tech.beshu.ror.accesscontrol.AccessControl.Result;
+import tech.beshu.ror.accesscontrol.AccessControlResultCommitter;
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext;
+import tech.beshu.ror.accesscontrol.AclActionHandler;
+import tech.beshu.ror.accesscontrol.BlockContextJavaHelper$;
+import tech.beshu.ror.accesscontrol.blocks.BlockContext;
+import tech.beshu.ror.accesscontrol.request.EsRequestContext;
+import tech.beshu.ror.accesscontrol.request.RequestContext;
 import tech.beshu.ror.boot.Engine;
 import tech.beshu.ror.boot.Ror$;
 import tech.beshu.ror.boot.RorInstance;
 import tech.beshu.ror.boot.StartingFailure;
-import tech.beshu.ror.es.RequestInfo;
-import tech.beshu.ror.es.ResponseActionListener;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
 import java.security.AccessController;
@@ -161,14 +160,14 @@ public class IndexLevelActionFilter implements ActionFilter {
           responseActionListener -> chain.proceed(task, action, request, responseActionListener);
 
       engine.acl()
-          .handle(requestContext)
+          .handleRegularRequest(requestContext)
           .runAsync(handleAclResult(engine, listener, request, requestContext, requestInfo, proceed, channel), Scheduler$.MODULE$.global());
     } else {
       listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"));
     }
   }
 
-  private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, AclHandlingResult>, BoxedUnit> handleAclResult(
+  private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, Result<RegularRequestResult>>, BoxedUnit> handleAclResult(
       Engine engine,
       ActionListener<Response> listener,
       Request request,
@@ -181,7 +180,7 @@ public class IndexLevelActionFilter implements ActionFilter {
       try (ThreadContext.StoredContext ignored = threadPool.getThreadContext().stashContext()) {
         if(result.isRight()) {
           AclActionHandler handler = createAclActionHandler(engine.context(), requestInfo, request, requestContext, listener, chainProceed, channel);
-          AclResultCommitter.commit(result.right().get(), handler);
+          AccessControlResultCommitter.commit(result.right().get().handlingResult(), handler);
         } else {
           listener.onFailure(new Exception(result.left().get()));
         }
@@ -191,7 +190,7 @@ public class IndexLevelActionFilter implements ActionFilter {
   }
 
   private <Request extends ActionRequest, Response extends ActionResponse> AclActionHandler createAclActionHandler(
-      AclStaticContext aclStaticContext,
+      AccessControlStaticContext accessControlStaticContext,
       RequestInfo requestInfo,
       Request request,
       RequestContext requestContext,
@@ -224,7 +223,7 @@ public class IndexLevelActionFilter implements ActionFilter {
           // Cache disabling for those 2 kind of request is crucial for
           // document level security to work. Otherwise we'd get an answer from
           // the cache some times and would not be filtered
-          if (aclStaticContext.involvesFilter()) {
+          if (accessControlStaticContext.involvesFilter()) {
             if (request instanceof SearchRequest) {
               logger.debug("ACL involves filters, will disable request cache for SearchRequest");
 
@@ -248,7 +247,7 @@ public class IndexLevelActionFilter implements ActionFilter {
 
       @Override
       public void onForbidden(List<ForbiddenCause> causes) {
-        channel.sendResponse(ForbiddenResponse.create(channel, causes, aclStaticContext));
+        channel.sendResponse(ForbiddenResponse.create(channel, causes, accessControlStaticContext));
       }
 
       @Override

@@ -19,15 +19,15 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers.be
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.AclHandlingResult.Result
-import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.domain.User
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class LdapConnectivityCheckYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with ForAllTestContainer with Inside {
@@ -60,9 +60,9 @@ class LdapConnectivityCheckYamlLoadedAclTests extends WordSpec with BaseYamlLoad
     "allow to core to start" when {
       "HA is enabled and one of LDAP hosts is unavailable" in {
         val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("cartman:user2")))
-        val result = acl.handle(request).runSyncUnsafe()
+        val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 1
-        inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+        inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("LDAP test"))
           assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman".nonempty)))) {
             blockContext

@@ -22,10 +22,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.AclHandlingResult.Result
-import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.{LoggedUser, User}
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -90,10 +90,10 @@ class RorKbnAuthYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest w
             .claim("user", "user")
           val request = MockRequestContext.default.copy(headers = Set(header("Authorization", s"Bearer ${jwtBuilder.compact}")))
 
-          val result = acl.handle(request).runSyncUnsafe()
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 2
-          inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user".nonempty)))) {
               blockContext

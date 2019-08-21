@@ -25,11 +25,11 @@ import better.files.File
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.domain.Header.Name
-import tech.beshu.ror.acl.domain._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.Header.Name
+import tech.beshu.ror.accesscontrol.domain._
 import io.circe.yaml._
-import tech.beshu.ror.acl.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.configuration.RawRorConfig
 
 import scala.concurrent.duration.FiniteDuration

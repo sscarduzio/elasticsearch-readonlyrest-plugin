@@ -20,9 +20,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.AclHandlingResult.Result
-import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.domain.IndexName
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.headerFrom
 import tech.beshu.ror.utils.TestsUtils.StringOps
@@ -48,10 +48,10 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with BaseYamlLoade
         System.setProperty("com.readonlyrest.kibana.metadata", "true")
         val request = MockRequestContext.default
 
-        val result = acl.handle(request).runSyncUnsafe()
+        val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
         result.history should have size 1
-        inside(result.handlingResult) { case Result.Allow(blockContext, block) =>
+        inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("Template Tenancy"))
           assertBlockContext(
           responseHeaders = Set(headerFrom("x-ror-kibana_access" -> "admin")),

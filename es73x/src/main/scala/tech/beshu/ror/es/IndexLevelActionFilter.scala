@@ -32,9 +32,10 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.SecurityPermissionException
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.request.{EsRequestContext, RequestContext}
-import tech.beshu.ror.acl.{AclActionHandler, AclHandlingResult, AclResultCommitter, AclStaticContext, BlockContextJavaHelper}
+import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, Result}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.request.{EsRequestContext, RequestContext}
+import tech.beshu.ror.accesscontrol.{AccessControlResultCommitter, AccessControlStaticContext, AclActionHandler, BlockContextJavaHelper}
 import tech.beshu.ror.boot.{Engine, Ror}
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -97,7 +98,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         val proceed = (responseActionListener: ActionListener[Response]) => chain.proceed(task, action, request, responseActionListener)
 
         engine.acl
-          .handle(requestContext)
+          .handleRegularRequest(requestContext)
           .runAsync(handleAclResult(engine, listener, request, requestContext, requestInfo, proceed, channel))
       case None =>
         listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
@@ -111,19 +112,21 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                                     requestInfo: RequestInfo,
                                                                                     proceed: ActionListener[Response] => Unit,
                                                                                     channel: RestChannel) = {
-    result: Either[Throwable, AclHandlingResult] => {
+    result: Either[Throwable, Result[RegularRequestResult]] => {
       import tech.beshu.ror.utils.ScalaOps._
       threadPool.getThreadContext.stashContext.bracket { _ =>
-        if (result.isRight) {
-          val handler = createAclActionHandler(engine.context, requestInfo, request, requestContext, listener, proceed, channel)
-          AclResultCommitter.commit(result.right.get, handler)
+        result match {
+          case Right(r) =>
+            val handler = createAclActionHandler(engine.context, requestInfo, request, requestContext, listener, proceed, channel)
+            AccessControlResultCommitter.commit(r.handlingResult, handler)
+          case Left(ex) =>
+            listener.onFailure(new Exception(ex))
         }
-        else listener.onFailure(new Exception(result.left.get))
       }
     }
   }
 
-  private def createAclActionHandler[Request <: ActionRequest, Response <: ActionResponse](aclStaticContext: AclStaticContext,
+  private def createAclActionHandler[Request <: ActionRequest, Response <: ActionResponse](aclStaticContext: AccessControlStaticContext,
                                                                                            requestInfo: RequestInfo,
                                                                                            request: Request,
                                                                                            requestContext: RequestContext,
@@ -155,7 +158,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                                          request: Request,
                                                                                          requestContext: RequestContext,
                                                                                          blockContext: BlockContext,
-                                                                                         aclStaticContext: AclStaticContext) = {
+                                                                                         aclStaticContext: AccessControlStaticContext) = {
     Try {
       // Cache disabling for those 2 kind of request is crucial for
       // document level security to work. Otherwise we'd get an answer from

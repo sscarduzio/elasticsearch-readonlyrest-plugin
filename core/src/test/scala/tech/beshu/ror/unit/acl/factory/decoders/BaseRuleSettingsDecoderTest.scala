@@ -21,14 +21,14 @@ import java.time.Clock
 import cats.data.NonEmptyList
 import org.scalatest.Matchers.{a, _}
 import org.scalatest.{Inside, Suite, WordSpec}
-import tech.beshu.ror.acl.SequentialAcl
-import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 
 import scala.reflect.ClassTag
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.accesscontrol.acl.Acl
 import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -47,7 +47,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
   def assertDecodingSuccess(yaml: String,
                             assertion: T => Unit,
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(factory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Right(CoreSettings(acl: SequentialAcl, _, _)) =>
+    inside(factory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Right(CoreSettings(acl: Acl, _, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]
