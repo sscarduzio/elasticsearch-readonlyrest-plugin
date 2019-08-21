@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import scala.collection.SortedSet
+import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 class LdapAuthorizationRule(val settings: Settings)
   extends BaseAuthorizationRule {
@@ -38,15 +39,17 @@ class LdapAuthorizationRule(val settings: Settings)
   override protected def authorize(requestContext: RequestContext,
                                    blockContext: BlockContext,
                                    user: LoggedUser): Task[AuthorizationResult] = {
-    blockContext.currentGroup match {
+    requestContext.currentGroup.toOption match {
       case Some(currentGroup) if !settings.permittedGroups.contains(currentGroup) =>
         Task.now(Unauthorized)
       case Some(_) | None =>
-        authorizeWithLdapGroups(blockContext, user)
+        authorizeWithLdapGroups(blockContext, requestContext.currentGroup.toOption, user)
     }
   }
 
-  private def authorizeWithLdapGroups(blockContext: BlockContext, user: LoggedUser): Task[AuthorizationResult] = {
+  private def authorizeWithLdapGroups(blockContext: BlockContext,
+                                      currentGroup: Option[Group],
+                                      user: LoggedUser): Task[AuthorizationResult] = {
     settings
       .ldap
       .groupsOf(user.id)
@@ -59,13 +62,11 @@ class LdapAuthorizationRule(val settings: Settings)
             case None =>
               Unauthorized
             case Some(availableGroups) =>
-              blockContext.currentGroup match {
-                case Some(currentGroup) if !availableGroups.contains(currentGroup) =>
+              currentGroup match {
+                case Some(group) if !availableGroups.contains(group) =>
                   Unauthorized
-                case Some(currentGroup) =>
-                  Authorized(currentGroup, allLdapGroupsIntersection(ldapGroups))
-                case None =>
-                  Authorized(pickCurrentGroupFrom(availableGroups), allLdapGroupsIntersection(ldapGroups))
+                case Some(_) | None =>
+                  Authorized(allLdapGroupsIntersection(ldapGroups))
               }
           }
       }

@@ -179,6 +179,13 @@ object RequestContextOps {
       case AGroup(group) => group.value.value
       case `N/A` => "N/A"
     }
+
+    implicit class ToOption(val requestGroup: RequestGroup) extends AnyVal {
+      def toOption: Option[Group] = requestGroup match {
+        case AGroup(userGroup) => Some(userGroup)
+        case `N/A` => None
+      }
+    }
   }
 }
 

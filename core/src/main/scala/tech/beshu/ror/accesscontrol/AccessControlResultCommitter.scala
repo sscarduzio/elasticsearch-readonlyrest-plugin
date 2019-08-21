@@ -90,10 +90,11 @@ object AclActionHandler {
 
 object BlockContextJavaHelper {
 
+  // todo: remove (because some of them are not needed)
   def responseHeadersFrom(blockContext: BlockContext): Map[String, String] = {
     val responseHeaders =
       blockContext.responseHeaders ++ userRelatedHeadersFrom(blockContext) ++
-        kibanaIndexHeaderFrom(blockContext).toSet ++ currentGroupHeaderFrom(blockContext).toSet ++
+        kibanaIndexHeaderFrom(blockContext).toSet ++
         availableGroupsHeaderFrom(blockContext).toSet
     if (responseHeaders.nonEmpty) responseHeaders.map(h => (h.name.value.value, h.value.value)).toMap
     else Map.empty
@@ -133,10 +134,6 @@ object BlockContextJavaHelper {
 
   private def kibanaIndexHeaderFrom(blockContext: BlockContext): Option[Header] = {
     blockContext.kibanaIndex.map(i => Header(Name.kibanaIndex, i))
-  }
-
-  private def currentGroupHeaderFrom(blockContext: BlockContext): Option[Header] = {
-    blockContext.currentGroup.map(r => Header(Name.currentGroup, r))
   }
 
   private def availableGroupsHeaderFrom(blockContext: BlockContext): Option[Header] = {

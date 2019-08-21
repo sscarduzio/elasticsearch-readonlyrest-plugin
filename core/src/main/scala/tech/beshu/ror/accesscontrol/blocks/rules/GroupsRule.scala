@@ -21,7 +21,7 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.reso
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id._
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 import scala.collection.SortedSet
 
@@ -47,12 +48,12 @@ class GroupsRule(val settings: Settings)
   override val name: Rule.Name = GroupsRule.name
 
   override def tryToAuthenticate(requestContext: RequestContext,
-                                  blockContext: BlockContext): Task[RuleResult] = Task.unit
+                                 blockContext: BlockContext): Task[RuleResult] = Task.unit
     .flatMap { _ =>
       NonEmptySet.fromSet(resolveGroups(requestContext, blockContext)) match {
         case None => Task.now(Rejected())
         case Some(groups) =>
-          blockContext.currentGroup match {
+          requestContext.currentGroup.toOption match {
             case Some(preferredGroup) if !groups.contains(preferredGroup) => Task.now(Rejected())
             case _ => continueCheckingWithUserDefinitions(requestContext, blockContext, groups)
           }
@@ -109,9 +110,7 @@ class GroupsRule(val settings: Settings)
           case RuleResult.Fulfilled(newBlockContext) =>
             newBlockContext.loggedUser match {
               case Some(loggedUser) if loggedUser.id === userDef.id => Some {
-                newBlockContext
-                  .withAddedAvailableGroups(userDef.groups)
-                  .withCurrentGroup(pickCurrentGroupFrom(resolvedGroups))
+                newBlockContext .withAddedAvailableGroups(userDef.groups)
               }
               case Some(_) => None
               case None => None

@@ -20,9 +20,11 @@ package tech.beshu.ror.shims.request;
 import com.google.common.collect.Sets;
 import tech.beshu.ror.utils.MatcherWithWildcards;
 
+import javax.swing.text.html.Option;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 

@@ -40,12 +40,8 @@ abstract class BaseAuthorizationRule
           .map {
             case AuthorizationResult.Unauthorized =>
               Rejected()
-            case AuthorizationResult.Authorized(currentGroup, availableGroups) =>
-              Fulfilled {
-                blockContext
-                  .withCurrentGroup(currentGroup)
-                  .withAddedAvailableGroups(availableGroups)
-              }
+            case AuthorizationResult.Authorized(availableGroups) =>
+              Fulfilled(blockContext.withAddedAvailableGroups(availableGroups))
           }
       case None =>
         Task.now(Rejected())
@@ -61,6 +57,6 @@ object BaseAuthorizationRule {
   trait AuthorizationResult
   object AuthorizationResult {
     case object Unauthorized extends AuthorizationResult
-    final case class Authorized(currentGroup: Group, availableGroups: NonEmptySet[Group]) extends AuthorizationResult
+    final case class Authorized(availableGroups: NonEmptySet[Group]) extends AuthorizationResult
   }
 }

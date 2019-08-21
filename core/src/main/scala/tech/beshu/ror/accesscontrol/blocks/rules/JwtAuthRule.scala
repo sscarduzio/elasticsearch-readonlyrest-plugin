@@ -158,11 +158,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       case Some(NotFound) => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case Some(Found(groups)) if settings.groups.nonEmpty =>
         NonEmptySet.fromSet(SortedSet.empty[Group] ++ groups.intersect(settings.groups)) match {
-          case Some(matchedGroups) => Right {
-            blockContext
-              .withCurrentGroup(matchedGroups.head)
-              .withAddedAvailableGroups(matchedGroups)
-          }
+          case Some(matchedGroups) => Right(blockContext.withAddedAvailableGroups(matchedGroups))
           case None => Left(())
         }
       case Some(Found(_)) | None => Right(blockContext)

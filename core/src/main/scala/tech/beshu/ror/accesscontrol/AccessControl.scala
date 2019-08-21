@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Forbidden
 import tech.beshu.ror.accesscontrol.AccessControl.{MetadataRequestResult, RegularRequestResult, Result}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser}
+import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import scala.collection.SortedSet
@@ -58,9 +58,11 @@ object AccessControl {
 
   sealed trait MetadataRequestResult
   object MetadataRequestResult {
-    final case class Allow(loggedUser: LoggedUser, availableGroups: SortedSet[Group]) extends MetadataRequestResult
+    final case class Allow(loggedUser: Option[LoggedUser],
+                           currentGroup: Group,
+                           availableGroups: SortedSet[Group],
+                           foundKibanaIndex: Option[IndexName]) extends MetadataRequestResult
     case object Forbidden extends MetadataRequestResult
-    final case class Failed(ex: Throwable) extends MetadataRequestResult
     case object PassedThrough extends MetadataRequestResult
   }
 }

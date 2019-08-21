@@ -23,11 +23,14 @@ import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
 import tech.beshu.ror.accesscontrol.AccessControl.{MetadataRequestResult, RegularRequestResult, Result}
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.orders.groupOrder
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Policy}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
+
+import scala.collection.SortedSet
 
 class Acl(val blocks: NonEmptyList[Block])
   extends AccessControl {
@@ -66,7 +69,45 @@ class Acl(val blocks: NonEmptyList[Block])
       }
   }
 
-  override def handleMetadataRequest(context: RequestContext): Task[Result[MetadataRequestResult]] = ???
+  override def handleMetadataRequest(context: RequestContext): Task[Result[MetadataRequestResult]] = {
+    Task
+      .gather(blocks.toList.map(blockExecute(_, context)))
+      .map(_.flatten)
+      .map { blockResults =>
+        val history = blockResults.map(_._2).toVector
+        val result = if(isMatched(blockResults.map(_._1))) {
+          val matched = blockResults.collect { case r@(Matched(block, _), _) if block.policy === Policy.Allow => r }
+          val allGroupsWithRelatedBlockContexts =
+            matched
+              .map(_._1.blockContext)
+              .flatMap(b => b.availableGroups.map((_, b)).toList)
+              .sortBy(_._1)
+          val (currentGroup, blockContext) = allGroupsWithRelatedBlockContexts.head
+          MetadataRequestResult.Allow(
+            blockContext.loggedUser,
+            currentGroup,
+            SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*),
+            blockContext.kibanaIndex
+          )
+        } else {
+          MetadataRequestResult.Forbidden
+        }
+        Result(history, result)
+      }
+  }
+
+  private def blockExecute(block: Block, context: RequestContext) = {
+    block
+      .execute(context)
+      .map(Some.apply)
+      .onErrorRecover { case _ => None }
+  }
+
+  private def isMatched(blockResults: List[Block.ExecutionResult]): Boolean = {
+    blockResults
+      .collect { case r@Matched(block, _) if block.policy === Policy.Allow => r}
+      .nonEmpty
+  }
 
   private def checkBlock(block: Block, requestContent: RequestContext): WriterT[Task, Vector[History], ExecutionResult] = {
     WriterT.apply {

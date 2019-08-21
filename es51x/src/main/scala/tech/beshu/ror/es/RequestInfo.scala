@@ -17,7 +17,7 @@
 package tech.beshu.ror.es
 
 import java.net.InetSocketAddress
-import java.util.UUID
+import java.util.{Optional, UUID}
 import java.{lang, util}
 
 import com.google.common.collect.{Maps, Sets}
@@ -358,4 +358,5 @@ class RequestInfo(channel: RestChannel, taskId: lang.Long, action: String, actio
         else logger.error(s"REFLECTION: Failed to set indices for type ${actionRequest.getClass.getSimpleName} in req id: $extractId")
     }
   }
+
 }

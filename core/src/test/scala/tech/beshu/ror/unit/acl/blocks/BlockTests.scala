@@ -53,7 +53,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
             passingRule("r1") ::
               passingRule("r2", _.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))) ::
               notPassingRule("r3") ::
-              passingRule("r4", _.withCurrentGroup(Group("group1".nonempty))) :: Nil
+              passingRule("r4") :: Nil
           )
         )
         val requestContext = MockRequestContext.default
@@ -141,7 +141,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1", _.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))) ::
-            passingRule("r2", _.withCurrentGroup(Group("group1".nonempty))) ::
+            passingRule("r2") ::
             passingRule("r3", _.withIndices(Set(IndexName("idx1".nonempty)))) ::
             Nil
         )

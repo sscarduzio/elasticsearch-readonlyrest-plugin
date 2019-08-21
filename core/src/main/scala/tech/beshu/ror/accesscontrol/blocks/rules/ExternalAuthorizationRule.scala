@@ -29,6 +29,7 @@ import scala.collection.JavaConverters._
 import StringTNaturalTransformation.instances.stringUserIdNT
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
+import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings)
   extends BaseAuthorizationRule {
@@ -42,11 +43,13 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
   override protected def authorize(requestContext: RequestContext,
                                    blockContext: BlockContext,
                                    user: LoggedUser): Task[AuthorizationResult] = {
-    if(userMatcher.`match`(user.id)) checkUserGroups(user, blockContext)
+    if(userMatcher.`match`(user.id)) checkUserGroups(user, requestContext.currentGroup.toOption, blockContext)
     else Task.now(Unauthorized)
   }
 
-  private def checkUserGroups(user: LoggedUser, blockContext: BlockContext): Task[AuthorizationResult] = {
+  private def checkUserGroups(user: LoggedUser,
+                              currentGroup: Option[Group],
+                              blockContext: BlockContext): Task[AuthorizationResult] = {
     settings
       .service
       .grantsFor(user)
@@ -55,13 +58,13 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
           case None =>
             Unauthorized
           case Some(determinedAvailableGroups) =>
-            blockContext.currentGroup match {
-              case Some(currentGroup) if !determinedAvailableGroups.contains(currentGroup) =>
+            currentGroup match {
+              case Some(group) if !determinedAvailableGroups.contains(group) =>
                 Unauthorized
-              case Some(currentGroup) =>
-                Authorized(currentGroup, determinedAvailableGroups)
+              case Some(_) =>
+                Authorized(determinedAvailableGroups)
               case None =>
-                Authorized(pickCurrentGroupFrom(determinedAvailableGroups), determinedAvailableGroups)
+                Authorized(determinedAvailableGroups)
             }
         }
       }

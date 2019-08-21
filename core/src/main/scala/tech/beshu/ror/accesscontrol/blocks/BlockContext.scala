@@ -16,15 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
-import tech.beshu.ror.accesscontrol.domain.{Group, Header, IndexName, JwtTokenPayload, LoggedUser}
 import tech.beshu.ror.accesscontrol.blocks.RequestContextInitiatedBlockContext.BlockContextData
-import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps.RequestGroup._
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 import scala.collection.SortedSet
 
@@ -36,10 +35,8 @@ trait BlockContext {
   def jsonToken: Option[JwtTokenPayload]
   def withJsonToken(token: JwtTokenPayload): BlockContext
 
-  def currentGroup: Option[Group]
-  def withCurrentGroup(group: Group): BlockContext
-
   def availableGroups: SortedSet[Group]
+  def currentGroup: Option[Group]
   def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext
 
   def responseHeaders: Set[Header]
@@ -81,11 +78,9 @@ object NoOpBlockContext extends BlockContext {
   override val jsonToken: Option[JwtTokenPayload] = None
   override def withJsonToken(token: JwtTokenPayload): BlockContext = this
 
-  override val currentGroup: Option[Group] = None
-  override def withCurrentGroup(group: Group): BlockContext = this
-
   override val availableGroups: SortedSet[Group] = SortedSet.empty
   override def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext = this
+  override val currentGroup: Option[Group] = None
 
   override val responseHeaders: Set[Header] = Set.empty
   override def withAddedResponseHeader(header: Header): BlockContext = this
@@ -114,15 +109,15 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withLoggedUser(user: LoggedUser): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(loggedUser = Some(user)))
 
-  override def currentGroup: Option[Group] = data.currentGroup
-
-  override def withCurrentGroup(group: Group): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(currentGroup = Some(group)))
-
   override def availableGroups: SortedSet[Group] = SortedSet.empty[Group] ++ data.availableGroups
 
   override def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(availableGroups = data.availableGroups ++ groups.toSortedSet))
+
+  override def currentGroup: Option[Group] = data.initialCurrentGroup match {
+    case Some(initialGroup) => Some(initialGroup)
+    case None => availableGroups.headOption
+  }
 
   override def responseHeaders: Set[Header] = data.responseHeaders.toSet
 
@@ -163,7 +158,7 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
 object RequestContextInitiatedBlockContext {
 
   final case class BlockContextData(loggedUser: Option[LoggedUser],
-                                    currentGroup: Option[Group],
+                                    initialCurrentGroup: Option[Group],
                                     availableGroups: Set[Group],
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
@@ -177,10 +172,7 @@ object RequestContextInitiatedBlockContext {
     new RequestContextInitiatedBlockContext(
       BlockContextData(
         loggedUser = None,
-        currentGroup = requestContext.currentGroup match {
-          case AGroup(userGroup) => Some(userGroup)
-          case `N/A` => None
-        },
+        initialCurrentGroup = requestContext.currentGroup.toOption,
         availableGroups = Set.empty,
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,
