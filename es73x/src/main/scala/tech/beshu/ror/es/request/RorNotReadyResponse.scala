@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.es.request
 
 import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestStatus}

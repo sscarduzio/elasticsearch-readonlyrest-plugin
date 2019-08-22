@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 sealed trait ResponseContext {
@@ -24,10 +24,15 @@ sealed trait ResponseContext {
 }
 object ResponseContext {
 
-  final case class Allowed(requestContext: RequestContext,
-                           block: Block,
-                           blockContext: BlockContext,
-                           history: Vector[Block.History])
+  final case class AllowedBy(requestContext: RequestContext,
+                             block: Block,
+                             blockContext: BlockContext,
+                             history: Vector[Block.History])
+    extends ResponseContext
+
+  final case class Allow(requestContext: RequestContext,
+                         userMetadata: UserMetadata,
+                         history: Vector[Block.History])
     extends ResponseContext
 
   final case class ForbiddenBy(requestContext: RequestContext,

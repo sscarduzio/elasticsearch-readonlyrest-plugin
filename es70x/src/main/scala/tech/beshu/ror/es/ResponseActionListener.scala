@@ -25,7 +25,7 @@ import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, RestMetadataPath}
+import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, CurrentUserMetadataPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.rradmin.RRMetadataResponse
 import scala.collection.JavaConverters._
@@ -39,7 +39,7 @@ class ResponseActionListener(baseListener: ActionListener[ActionResponse],
     requestContext.uriPath match {
       case CatTemplatePath(_) =>
         baseListener.onResponse(filterTemplatesInClusterStateResponse(response.asInstanceOf[ClusterStateResponse]))
-      case RestMetadataPath(_) =>
+      case CurrentUserMetadataPath(_) =>
         baseListener.onResponse(new RRMetadataResponse(blockContext))
       case _ =>
         baseListener.onResponse(response)

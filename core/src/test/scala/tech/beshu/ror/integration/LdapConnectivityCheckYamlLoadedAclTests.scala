@@ -62,7 +62,7 @@ class LdapConnectivityCheckYamlLoadedAclTests extends WordSpec with BaseYamlLoad
         val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("cartman:user2")))
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 1
-        inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
+        inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("LDAP test"))
           assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman".nonempty)))) {
             blockContext

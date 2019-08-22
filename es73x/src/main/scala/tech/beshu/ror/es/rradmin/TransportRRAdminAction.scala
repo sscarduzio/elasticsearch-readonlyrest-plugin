@@ -27,7 +27,8 @@ import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.SchedulerPools
 import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager}
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.es.{EsIndexJsonContentProvider, RorInstanceSupplier}
+import tech.beshu.ror.es.RorInstanceSupplier
+import tech.beshu.ror.es.providers.EsIndexJsonContentProvider
 import tech.beshu.ror.providers.JvmPropertiesProvider
 
 class TransportRRAdminAction(transportService: TransportService,

@@ -23,7 +23,7 @@ import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -50,11 +50,18 @@ class AuditingTool(settings: Settings,
 
   private def toAuditResponse(responseContext: ResponseContext) = {
     responseContext match {
-      case ResponseContext.Allowed(requestContext, block, blockContext, history) =>
+      case ResponseContext.AllowedBy(requestContext, block, blockContext, history) =>
         AuditResponseContext.Allowed(
           toAuditRequestContext(requestContext, Some(blockContext), history),
           toAuditVerbosity(block.verbosity),
           block.show
+        )
+      case ResponseContext.Allow(requestContext, metadata, history) =>
+        // todo: audit metadata
+        AuditResponseContext.Allowed(
+          toAuditRequestContext(requestContext, None, history),
+          toAuditVerbosity(Block.Verbosity.Info),
+          "user metadata request"
         )
       case ResponseContext.ForbiddenBy(requestContext, block, blockContext, history) =>
         AuditResponseContext.ForbiddenBy(

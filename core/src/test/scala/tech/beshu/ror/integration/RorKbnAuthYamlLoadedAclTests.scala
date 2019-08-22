@@ -93,7 +93,7 @@ class RorKbnAuthYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest w
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 2
-          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user".nonempty)))) {
               blockContext

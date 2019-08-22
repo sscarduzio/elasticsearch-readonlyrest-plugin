@@ -148,7 +148,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
 
   private def createAllowedResponseContext(policy: Block.Policy, verbosity: Block.Verbosity) = {
     val requestContext = MockRequestContext.default.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
-    Allowed(
+    AllowedBy(
       requestContext,
       new Block(
         Block.Name("mock-block"),

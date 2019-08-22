@@ -225,11 +225,11 @@ object domain {
   }
 
   final case class UriPath(value: String) {
-    def isRestMetadataPath: Boolean = value.startsWith(UriPath.restMetadataPath.value)
+    def isCurrentUserMetadataPath: Boolean = value.startsWith(UriPath.currentUserMetadataPath.value)
     def isCatTemplatePath: Boolean = value.startsWith("/_cat/templates")
   }
   object UriPath {
-    val restMetadataPath = UriPath(Constants.REST_METADATA_PATH)
+    val currentUserMetadataPath = UriPath(Constants.CURRENT_USER_METADATA_PATH)
     implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
 
     object CatTemplatePath {
@@ -239,9 +239,9 @@ object domain {
       }
     }
 
-    object RestMetadataPath {
+    object CurrentUserMetadataPath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
-        if(uriPath.isRestMetadataPath) Some(uriPath)
+        if(uriPath.isCurrentUserMetadataPath) Some(uriPath)
         else None
       }
     }

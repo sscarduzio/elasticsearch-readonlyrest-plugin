@@ -59,7 +59,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with
           val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:container")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
-          inside(result.handlingResult) { case Allow(blockContext, block) =>
+          inside(result.result) { case Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin".nonempty)))) {
               blockContext
@@ -76,7 +76,7 @@ class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
-          inside(result.handlingResult) { case Allow(blockContext, block) =>
+          inside(result.result) { case Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin".nonempty)))) {
               blockContext

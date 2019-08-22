@@ -17,12 +17,12 @@
 package tech.beshu.ror.accesscontrol
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.AccessControl.{MetadataRequestResult, RegularRequestResult, Result}
+import tech.beshu.ror.accesscontrol.AccessControl.{UserMetadataRequestResult, RegularRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 object DisabledAccessControl extends AccessControl {
-  override def handleRegularRequest(requestContext: RequestContext): Task[Result[RegularRequestResult]] =
-    Task.now(Result.withNoHistory(RegularRequestResult.PassedThrough))
-  override def handleMetadataRequest(context: RequestContext): Task[Result[MetadataRequestResult]] =
-    Task.now(Result.withNoHistory(MetadataRequestResult.PassedThrough))
+  override def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]] =
+    Task.now(WithHistory.withNoHistory(RegularRequestResult.PassedThrough))
+  override def handleMetadataRequest(context: RequestContext): Task[WithHistory[UserMetadataRequestResult]] =
+    Task.now(WithHistory.withNoHistory(UserMetadataRequestResult.PassedThrough))
 }

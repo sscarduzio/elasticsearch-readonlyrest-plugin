@@ -42,7 +42,7 @@ public class RestRRAdminAction extends BaseRestHandler implements RestHandler {
     controller.registerHandler(RestRequest.Method.valueOf("GET"), AdminRestApi$.MODULE$.provideRorIndexConfigPath().endpointString(), this);
     controller.registerHandler(RestRequest.Method.valueOf("POST"), AdminRestApi$.MODULE$.updateIndexConfigurationPath().endpointString(), this);
     controller.registerHandler(RestRequest.Method.valueOf("GET"), AdminRestApi$.MODULE$.provideRorFileConfigPath().endpointString(), this);
-    controller.registerHandler(RestRequest.Method.valueOf("GET"), Constants.REST_METADATA_PATH, this);
+    controller.registerHandler(RestRequest.Method.valueOf("GET"), Constants.CURRENT_USER_METADATA_PATH, this);
   }
 
   public String getName() {

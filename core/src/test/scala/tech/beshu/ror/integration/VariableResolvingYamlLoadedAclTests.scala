@@ -108,7 +108,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 2
-          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
@@ -127,7 +127,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 2
-          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
@@ -146,7 +146,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 4
-          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
@@ -165,7 +165,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 3
-          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
@@ -195,7 +195,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 5
-          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable (array)"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user3".nonempty))),
@@ -224,7 +224,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 6
-          inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user4".nonempty))),

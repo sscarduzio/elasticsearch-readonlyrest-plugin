@@ -23,7 +23,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl.{MetadataRequestResult, RegularRequestResult, Result}
+import tech.beshu.ror.accesscontrol.AccessControl.{UserMetadataRequestResult, RegularRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -32,33 +33,52 @@ import tech.beshu.ror.utils.TaskOps._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool: Option[AuditingTool])
   extends AccessControl with Logging {
 
-  override def handleRegularRequest(requestContext: RequestContext): Task[Result[RegularRequestResult]] = {
+  override def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]] = {
     logger.debug(s"checking request: ${requestContext.id.show}")
     underlying
       .handleRegularRequest(requestContext)
       .andThen {
-        case Success(result) =>
-          result.handlingResult match {
+        case Success(resultWithHistory) =>
+          resultWithHistory.result match {
             case RegularRequestResult.Allow(blockContext, block) =>
-              log(Allowed(requestContext, block, blockContext, result.history))
+              log(AllowedBy(requestContext, block, blockContext, resultWithHistory.history))
             case RegularRequestResult.ForbiddenBy(blockContext, block) =>
-              log(ForbiddenBy(requestContext, block, blockContext, result.history))
+              log(ForbiddenBy(requestContext, block, blockContext, resultWithHistory.history))
             case RegularRequestResult.ForbiddenByMismatched(_) =>
-              log(Forbidden(requestContext, result.history))
+              log(Forbidden(requestContext, resultWithHistory.history))
             case RegularRequestResult.Failed(ex) =>
               log(Errored(requestContext, ex))
             case RegularRequestResult.PassedThrough =>
               // ignore
           }
+        case Failure(ex) =>
+          logger.error("Request handling unexpected failure", ex)
       }
   }
 
-  override def handleMetadataRequest(context: RequestContext): Task[Result[MetadataRequestResult]] = ???
+  override def handleMetadataRequest(requestContext: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
+    logger.debug(s"checking user metadata request: ${requestContext.id.show}")
+    underlying
+      .handleMetadataRequest(requestContext)
+      .andThen {
+        case Success(resultWithHistory) =>
+          resultWithHistory.result match {
+            case UserMetadataRequestResult.Allow(userMetadata) =>
+              log(Allow(requestContext, userMetadata, resultWithHistory.history))
+            case UserMetadataRequestResult.Forbidden =>
+              log(Forbidden(requestContext, resultWithHistory.history))
+            case UserMetadataRequestResult.PassedThrough =>
+              // ignore
+          }
+        case Failure(ex) =>
+          logger.error("Request handling unexpected failure", ex)
+      }
+  }
 
   private def log(responseContext: ResponseContext): Unit = {
     if (isLoggableEntry(responseContext)) {
@@ -78,12 +98,15 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
   }
 
   private def isLoggableEntry(context: ResponseContext): Boolean = {
+    def shouldBeLogged(block: Block) = {
+      block.verbosity match {
+        case Verbosity.Info => true
+        case Verbosity.Error => false
+      }
+    }
     context match {
-      case Allowed(_, block, _, _) =>
-        block.verbosity match {
-          case Verbosity.Info => true
-          case Verbosity.Error => false
-        }
+      case AllowedBy(_, block, _, _) => shouldBeLogged(block)
+      case Allow(_, _, _) => true
       case _: ForbiddenBy | _: Forbidden | _: Errored => true
     }
   }
@@ -94,9 +117,13 @@ object AccessControlLoggingDecorator {
 
   private implicit val responseContextShow: Show[ResponseContext] = {
     Show.show {
-      case Allowed(requestContext, block, blockContext, history) =>
+      case AllowedBy(requestContext, block, blockContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(Some(blockContext), history)
         s"""${Constants.ANSI_CYAN}ALLOWED by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
+      case Allow(requestContext, metadata, history) =>
+        // todo: log metadata
+        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, history)
+        s"""${Constants.ANSI_CYAN}ALLOWED req=${requestContext.show}${Constants.ANSI_RESET}"""
       case ForbiddenBy(requestContext, block, blockContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(Some(blockContext), history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""

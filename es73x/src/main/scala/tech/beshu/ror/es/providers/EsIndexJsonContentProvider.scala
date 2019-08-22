@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.es.providers
 
 import java.util
 
@@ -28,6 +28,7 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.boot.Ror
+import tech.beshu.ror.es.IndexJsonContentManager
 import tech.beshu.ror.es.IndexJsonContentManager._
 
 import scala.concurrent.Promise

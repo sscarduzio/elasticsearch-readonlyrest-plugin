@@ -20,7 +20,7 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.rest.BytesRestResponse;
 import org.elasticsearch.rest.RestChannel;
 import org.elasticsearch.rest.RestStatus;
-import tech.beshu.ror.accesscontrol.AclActionHandler;
+import tech.beshu.ror.accesscontrol.AccessControlActionHandler;
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext;
 
 import java.io.IOException;
@@ -36,7 +36,7 @@ public class ForbiddenResponse extends BytesRestResponse {
   }
 
   public static ForbiddenResponse create(RestChannel channel,
-                                         List<AclActionHandler.ForbiddenCause> causes, AccessControlStaticContext accessControlStaticContext) {
+                                         List<AccessControlActionHandler.ForbiddenCause> causes, AccessControlStaticContext accessControlStaticContext) {
     RestStatus restStatus = responseRestStatus(accessControlStaticContext);
     ForbiddenResponse response = new ForbiddenResponse(
         restStatus,
@@ -48,11 +48,11 @@ public class ForbiddenResponse extends BytesRestResponse {
     return response;
   }
 
-  private static void addRootCause(XContentBuilder builder, List<AclActionHandler.ForbiddenCause> causes,
+  private static void addRootCause(XContentBuilder builder, List<AccessControlActionHandler.ForbiddenCause> causes,
                                    AccessControlStaticContext accessControlStaticContext) {
     try {
       builder.field("reason", accessControlStaticContext.forbiddenRequestMessage());
-      builder.field("due_to", causes.stream().map(AclActionHandler.ForbiddenCause::stringify).collect(Collectors.toList()));
+      builder.field("due_to", causes.stream().map(AccessControlActionHandler.ForbiddenCause::stringify).collect(Collectors.toList()));
     } catch (IOException e) {
       throw new IllegalStateException("Cannot create root cause", e);
     }

@@ -16,16 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import cats.data._
 import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
-import tech.beshu.ror.accesscontrol.AclActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
+import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.headerValues._
 import tech.beshu.ror.utils.LoggerOps._
 
 import scala.collection.JavaConverters._
@@ -33,7 +29,8 @@ import scala.util.{Failure, Success, Try}
 
 object AccessControlResultCommitter extends Logging {
 
-  def commit(result: RegularRequestResult, handler: AclActionHandler): Unit = {
+  // todo: to remove?
+  def commit(result: RegularRequestResult, handler: AccessControlActionHandler): Unit = {
     Try {
       result match {
         case RegularRequestResult.Allow(blockContext, _) =>
@@ -41,7 +38,7 @@ object AccessControlResultCommitter extends Logging {
         case RegularRequestResult.ForbiddenBy(_, _) =>
           handler.onForbidden(List[ForbiddenCause](ForbiddenBlockMatch).asJava)
         case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          handler.onForbidden(causes.toList.map(AclActionHandler.fromMismatchedCause).asJava)
+          handler.onForbidden(causes.toList.map(AccessControlActionHandler.fromMismatchedCause).asJava)
         case RegularRequestResult.Failed(ex) =>
           handler.onError(ex)
         case RegularRequestResult.PassedThrough =>
@@ -55,14 +52,14 @@ object AccessControlResultCommitter extends Logging {
   }
 }
 
-trait AclActionHandler {
+trait AccessControlActionHandler {
   def onAllow(blockContext: BlockContext): Unit
   def onForbidden(causes: java.util.List[ForbiddenCause]): Unit
   def onError(t: Throwable): Unit
   def onPassThrough(): Unit
 }
 
-object AclActionHandler {
+object AccessControlActionHandler {
   sealed trait ForbiddenCause {
     def stringify: String
   }
@@ -90,14 +87,11 @@ object AclActionHandler {
 
 object BlockContextJavaHelper {
 
-  // todo: remove (because some of them are not needed)
   def responseHeadersFrom(blockContext: BlockContext): Map[String, String] = {
-    val responseHeaders =
-      blockContext.responseHeaders ++ userRelatedHeadersFrom(blockContext) ++
-        kibanaIndexHeaderFrom(blockContext).toSet ++
-        availableGroupsHeaderFrom(blockContext).toSet
-    if (responseHeaders.nonEmpty) responseHeaders.map(h => (h.name.value.value, h.value.value)).toMap
-    else Map.empty
+    blockContext
+      .responseHeaders
+      .map(h => (h.name.value.value, h.value.value))
+      .toMap
   }
 
   def contextHeadersFrom(blockContext: BlockContext): Map[String, String] = {
@@ -126,19 +120,5 @@ object BlockContextJavaHelper {
       case BlockContext.Outcome.Exist(snapshots) => snapshots.map(_.value.value)
       case BlockContext.Outcome.NotExist => Set.empty
     }
-  }
-
-  private def userRelatedHeadersFrom(blockContext: BlockContext): Option[Header] = {
-    blockContext.loggedUser.map(user => Header(Name.rorUser, user.id))
-  }
-
-  private def kibanaIndexHeaderFrom(blockContext: BlockContext): Option[Header] = {
-    blockContext.kibanaIndex.map(i => Header(Name.kibanaIndex, i))
-  }
-
-  private def availableGroupsHeaderFrom(blockContext: BlockContext): Option[Header] = {
-    NonEmptyList
-      .fromList(blockContext.availableGroups.toList)
-      .map(groups => Header(Name.availableGroups, groups))
   }
 }

@@ -19,24 +19,21 @@ package tech.beshu.ror.accesscontrol
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
-import tech.beshu.ror.accesscontrol.AccessControl.{MetadataRequestResult, RegularRequestResult, Result}
+import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, LoggedUser}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-import scala.collection.SortedSet
-
 trait AccessControl {
-  def handleRegularRequest(context: RequestContext): Task[Result[RegularRequestResult]]
-  def handleMetadataRequest(context: RequestContext): Task[Result[MetadataRequestResult]]
+  def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]]
+  def handleMetadataRequest(requestContext: RequestContext): Task[WithHistory[UserMetadataRequestResult]]
 }
 
 object AccessControl {
 
-  final case class Result[R](history: Vector[History], handlingResult: R)
-  object Result {
-    def withNoHistory[R](handlingResult: R): Result[R] = Result(Vector.empty, handlingResult)
+  final case class WithHistory[RESULT](history: Vector[History], result: RESULT)
+  object WithHistory {
+    def withNoHistory[RESULT](handlingResult: RESULT): WithHistory[RESULT] = WithHistory(Vector.empty, handlingResult)
   }
 
   sealed trait RegularRequestResult
@@ -56,13 +53,10 @@ object AccessControl {
     case object PassedThrough extends RegularRequestResult
   }
 
-  sealed trait MetadataRequestResult
-  object MetadataRequestResult {
-    final case class Allow(loggedUser: Option[LoggedUser],
-                           currentGroup: Group,
-                           availableGroups: SortedSet[Group],
-                           foundKibanaIndex: Option[IndexName]) extends MetadataRequestResult
-    case object Forbidden extends MetadataRequestResult
-    case object PassedThrough extends MetadataRequestResult
+  sealed trait UserMetadataRequestResult
+  object UserMetadataRequestResult {
+    final case class Allow(userMetadata: UserMetadata) extends UserMetadataRequestResult
+    case object Forbidden extends UserMetadataRequestResult
+    case object PassedThrough extends UserMetadataRequestResult
   }
 }

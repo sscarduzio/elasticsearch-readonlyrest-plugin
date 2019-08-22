@@ -14,11 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.es.request
 
 import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestStatus}
-import tech.beshu.ror.accesscontrol.{AclActionHandler, AccessControlStaticContext}
+import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext}
 import tech.beshu.ror.es.utils.ErrorContentBuilderHelper.createErrorResponse
 
 class ForbiddenResponse private(status: RestStatus, builder: XContentBuilder)
@@ -27,7 +27,7 @@ class ForbiddenResponse private(status: RestStatus, builder: XContentBuilder)
 object ForbiddenResponse {
 
   def create(channel: RestChannel,
-             causes: List[AclActionHandler.ForbiddenCause],
+             causes: List[AccessControlActionHandler.ForbiddenCause],
              aclStaticContext: AccessControlStaticContext): ForbiddenResponse = {
     val restStatus = responseRestStatus(aclStaticContext)
     val response = new ForbiddenResponse(
@@ -41,7 +41,7 @@ object ForbiddenResponse {
   }
 
   private def addRootCause(builder: XContentBuilder,
-                           causes: List[AclActionHandler.ForbiddenCause],
+                           causes: List[AccessControlActionHandler.ForbiddenCause],
                            aclStaticContext: AccessControlStaticContext): Unit = {
     builder.field("reason", aclStaticContext.forbiddenRequestMessage)
     builder.field("due_to", causes.map(_.stringify).toArray)

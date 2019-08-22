@@ -21,8 +21,8 @@ import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
-import tech.beshu.ror.accesscontrol.AccessControl.{MetadataRequestResult, RegularRequestResult, Result}
-import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.blocks.{Block, UserMetadata}
 import tech.beshu.ror.accesscontrol.orders.groupOrder
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Policy}
@@ -35,7 +35,7 @@ import scala.collection.SortedSet
 class Acl(val blocks: NonEmptyList[Block])
   extends AccessControl {
 
-  override def handleRegularRequest(context: RequestContext): Task[Result[RegularRequestResult]] = {
+  override def handleRegularRequest(context: RequestContext): Task[WithHistory[RegularRequestResult]] = {
     blocks
       .tail
       .foldLeft(checkBlock(blocks.head, context)) { case (currentResult, block) =>
@@ -62,14 +62,14 @@ class Acl(val blocks: NonEmptyList[Block])
               nonEmptySetOfMismatchedCausesFromHistory(history)
             )
         }
-        Result(history, res)
+        WithHistory(history, res)
       }
       .onErrorHandle { ex =>
-        Result(Vector.empty, RegularRequestResult.Failed(ex))
+        WithHistory(Vector.empty, RegularRequestResult.Failed(ex))
       }
   }
 
-  override def handleMetadataRequest(context: RequestContext): Task[Result[MetadataRequestResult]] = {
+  override def handleMetadataRequest(context: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
     Task
       .gather(blocks.toList.map(blockExecute(_, context)))
       .map(_.flatten)
@@ -83,16 +83,16 @@ class Acl(val blocks: NonEmptyList[Block])
               .flatMap(b => b.availableGroups.map((_, b)).toList)
               .sortBy(_._1)
           val (currentGroup, blockContext) = allGroupsWithRelatedBlockContexts.head
-          MetadataRequestResult.Allow(
+          UserMetadataRequestResult.Allow(UserMetadata(
             blockContext.loggedUser,
             currentGroup,
             SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*),
             blockContext.kibanaIndex
-          )
+          ))
         } else {
-          MetadataRequestResult.Forbidden
+          UserMetadataRequestResult.Forbidden
         }
-        Result(history, result)
+        WithHistory(history, result)
       }
   }
 

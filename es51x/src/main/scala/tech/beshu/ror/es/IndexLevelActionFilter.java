@@ -51,7 +51,7 @@ import tech.beshu.ror.accesscontrol.AccessControl;
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult;
 import tech.beshu.ror.accesscontrol.AccessControlResultCommitter;
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext;
-import tech.beshu.ror.accesscontrol.AclActionHandler;
+import tech.beshu.ror.accesscontrol.AccessControlActionHandler;
 import tech.beshu.ror.accesscontrol.BlockContextJavaHelper$;
 import tech.beshu.ror.accesscontrol.blocks.BlockContext;
 import tech.beshu.ror.accesscontrol.request.EsRequestContext;
@@ -165,12 +165,12 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     };
 
     engine
-        .acl()
+        .accessControl()
         .handleRegularRequest(requestContext)
         .runAsync(handleAclResult(engine, listener, request, requestContext, requestInfo, proceed, channel), Scheduler$.MODULE$.global());
   }
 
-  private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, AccessControl.Result<RegularRequestResult>>, BoxedUnit> handleAclResult(
+  private <Request extends ActionRequest, Response extends ActionResponse> Function1<Either<Throwable, AccessControl.WithHistory<RegularRequestResult>>, BoxedUnit> handleAclResult(
       Engine engine,
       ActionListener<Response> listener,
       Request request,
@@ -182,8 +182,8 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     return result -> {
       try (ThreadContext.StoredContext ignored = threadPool.getThreadContext().stashContext()) {
         if(result.isRight()) {
-          AclActionHandler handler = createAclActionHandler(engine.context(), requestInfo, request, requestContext, listener, chainProceed, channel);
-          AccessControlResultCommitter.commit(result.right().get().handlingResult(), handler);
+          AccessControlActionHandler handler = createAclActionHandler(engine.context(), requestInfo, request, requestContext, listener, chainProceed, channel);
+          AccessControlResultCommitter.commit(result.right().get().result(), handler);
         } else {
           listener.onFailure(new Exception(result.left().get()));
         }
@@ -192,7 +192,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
     };
   }
 
-  private <Request extends ActionRequest, Response extends ActionResponse> AclActionHandler createAclActionHandler(
+  private <Request extends ActionRequest, Response extends ActionResponse> AccessControlActionHandler createAclActionHandler(
       AccessControlStaticContext accessControlStaticContext,
       RequestInfo requestInfo,
       Request request,
@@ -201,7 +201,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
       Consumer<ActionListener<Response>> chainProceed,
       RestChannel channel
   ) {
-    return new AclActionHandler() {
+    return new AccessControlActionHandler() {
       @Override
       public void onAllow(BlockContext blockContext) {
         try {

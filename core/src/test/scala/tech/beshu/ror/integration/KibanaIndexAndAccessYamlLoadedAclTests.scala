@@ -51,7 +51,7 @@ class KibanaIndexAndAccessYamlLoadedAclTests extends WordSpec with BaseYamlLoade
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
         result.history should have size 1
-        inside(result.handlingResult) { case RegularRequestResult.Allow(blockContext, block) =>
+        inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("Template Tenancy"))
           assertBlockContext(
           responseHeaders = Set(headerFrom("x-ror-kibana_access" -> "admin")),

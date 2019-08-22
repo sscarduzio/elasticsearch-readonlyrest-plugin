@@ -414,7 +414,7 @@ object RorInstance {
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-final class Engine(val acl: AccessControl, val context: AccessControlStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
+final class Engine(val accessControl: AccessControl, val context: AccessControlStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
   private [ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()
   }

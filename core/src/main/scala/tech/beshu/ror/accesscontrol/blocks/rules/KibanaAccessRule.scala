@@ -49,7 +49,7 @@ class KibanaAccessRule(val settings: Settings)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
-    if (requestContext.uriPath.isRestMetadataPath) Fulfilled(modifyMatched(blockContext))
+    if (requestContext.uriPath.isCurrentUserMetadataPath) Fulfilled(modifyMatched(blockContext))
     // Allow other actions if devnull is targeted to readers and writers
     else if (requestContext.indices.contains(devNullKibana)) Fulfilled(modifyMatched(blockContext))
     // Any index, read op

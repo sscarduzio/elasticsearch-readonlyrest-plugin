@@ -35,7 +35,7 @@ class RestRRAdminAction(settings: Settings, controller: RestController)
   register("GET", AdminRestApi.provideRorIndexConfigPath.endpointString)
   register("POST", AdminRestApi.updateIndexConfigurationPath.endpointString)
   register("GET", AdminRestApi.provideRorFileConfigPath.endpointString)
-  register("GET", Constants.REST_METADATA_PATH)
+  register("GET", Constants.CURRENT_USER_METADATA_PATH)
   
   override val getName: String = "ror-admin-handler"
 
