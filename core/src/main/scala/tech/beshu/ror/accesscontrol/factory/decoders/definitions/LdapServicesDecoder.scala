@@ -70,11 +70,6 @@ object LdapServicesDecoder {
             decodeLdapService(c)
         }
         .fold(error => Task.now(Left(error)), identity)
-        .map(_.map {
-          case service: LdapAuthService => new LoggableLdapServiceDecorator(service)
-          case service: LdapAuthenticationService => new LoggableLdapAuthenticationServiceDecorator(service)
-          case service: LdapAuthorizationService => new LoggableLdapAuthorizationServiceDecorator(service)
-        })
     }
 
   private def decodeLdapService(cursor: HCursor) = {

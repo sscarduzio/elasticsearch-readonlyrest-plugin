@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Matchers._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapAuthenticationServiceDecorator, LoggableLdapAuthenticationServiceDecorator}
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -56,6 +57,7 @@ class LdapAuthenticationRuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthenticationServiceDecorator].underlying shouldBe a [UnboundidLdapAuthenticationService]
           }
         )
       }
@@ -81,7 +83,8 @@ class LdapAuthenticationRuleSettingsTests
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [CacheableLdapAuthenticationServiceDecorator]
+            rule.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthenticationServiceDecorator].underlying shouldBe a [CacheableLdapAuthenticationServiceDecorator]
           }
         )
       }
@@ -107,6 +110,7 @@ class LdapAuthenticationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.ldap shouldBe a [LoggableLdapAuthenticationServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthenticationServiceDecorator].underlying shouldBe a [UnboundidLdapAuthenticationService]
           }
         )
       }

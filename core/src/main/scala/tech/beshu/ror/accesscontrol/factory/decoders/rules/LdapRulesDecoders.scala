@@ -50,6 +50,7 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService])
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthenticationService](ldapDefinitions.items, name, LdapAuthenticationRule.name)
       }
+      .map(new LoggableLdapAuthenticationServiceDecorator(_))
       .map(service => new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service)))
       .decoder
   )
@@ -99,10 +100,12 @@ object LdapAuthorizationRuleDecoder {
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService](ldapDefinitions.items, name, LdapAuthorizationRule.name)
             .map(new CacheableLdapAuthorizationServiceDecorator(_, ttl))
+            .map(new LoggableLdapAuthorizationServiceDecorator(_))
             .map(LdapAuthorizationRule.Settings(_, groups, groups))
         case (name, None, groups) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthorizationService](ldapDefinitions.items, name, LdapAuthorizationRule.name)
+            .map(new LoggableLdapAuthorizationServiceDecorator(_))
             .map(LdapAuthorizationRule.Settings(_, groups, groups))
       }
       .decoder
@@ -131,10 +134,12 @@ object LdapAuthRuleDecoder {
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthService](ldapDefinitions.items, name, LdapAuthRule.name)
             .map(new CacheableLdapServiceDecorator(_, ttl))
+            .map(new LoggableLdapServiceDecorator(_))
             .map(createLdapAuthRule(_, groups))
         case (name, None, groups) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthService](ldapDefinitions.items, name, LdapAuthRule.name)
+            .map(new LoggableLdapServiceDecorator(_))
             .map(createLdapAuthRule(_, groups))
       }
       .decoder

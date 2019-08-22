@@ -63,7 +63,8 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [LoggableLdapServiceDecorator]
+            rule.settings.ldap shouldBe a [LoggableLdapAuthorizationServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a [ComposedLdapAuthService]
             rule.settings.permittedGroups should be (NonEmptySet.one(Group("group3".nonempty)))
           }
         )
@@ -93,7 +94,8 @@ class LdapAuthorizationRuleSettingsTests
                |    search_groups_base_DN: "ou=People,dc=example,dc=com"
                |""".stripMargin,
           assertion = rule => {
-            rule.settings.ldap shouldBe a [CacheableLdapAuthorizationServiceDecorator]
+            rule.settings.ldap shouldBe a [LoggableLdapAuthorizationServiceDecorator]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a [CacheableLdapAuthorizationServiceDecorator]
             rule.settings.permittedGroups should be (NonEmptySet.one(Group("group3".nonempty)))
           }
         )
