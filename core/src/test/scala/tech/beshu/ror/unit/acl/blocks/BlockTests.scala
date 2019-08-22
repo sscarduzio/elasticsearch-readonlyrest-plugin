@@ -161,7 +161,6 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
 
           assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
-            currentGroup = Some(Group("group1".nonempty)),
             indices = Outcome.Exist(Set(IndexName("idx1".nonempty)))
           ) {
             blockContext

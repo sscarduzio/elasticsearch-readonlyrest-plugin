@@ -112,7 +112,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
-              currentGroup = Some(groupFrom("g3")),
+              currentGroup = Some(groupFrom("g1")),
               availableGroups = allUser1Groups
             ) {
               blockContext
@@ -131,7 +131,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
-              currentGroup = Some(groupFrom("g3")),
+              currentGroup = Some(groupFrom("g1")),
               availableGroups = allUser1Groups
             ) {
               blockContext
@@ -150,7 +150,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
-              currentGroup = Some(groupFrom("gs2")),
+              currentGroup = Some(groupFrom("g1")),
               availableGroups = allUser2Groups
             ) {
               blockContext
@@ -169,7 +169,7 @@ class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAc
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
-              currentGroup = Some(groupFrom("gs1")),
+              currentGroup = Some(groupFrom("g1")),
               availableGroups = allUser1Groups
             ) {
               blockContext

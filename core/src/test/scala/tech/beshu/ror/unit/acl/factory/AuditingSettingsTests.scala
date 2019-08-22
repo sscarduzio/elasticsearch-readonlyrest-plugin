@@ -165,7 +165,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
           """
             |readonlyrest:
             |  audit_collector: true
-            |  audit_serializer: "tech.beshu.ror.acl.blocks.RuleOrdering"
+            |  audit_serializer: "tech.beshu.ror.accesscontrol.blocks.RuleOrdering"
             |
             |  access_control_rules:
             |
@@ -178,7 +178,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         inside(core) { case Left(errors) =>
           errors.length should be(1)
           errors.head should be (AuditingSettingsCreationError(Message(
-            "Class tech.beshu.ror.acl.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
+            "Class tech.beshu.ror.accesscontrol.blocks.RuleOrdering is not a subclass of tech.beshu.ror.audit.AuditLogSerializer or tech.beshu.ror.requestcontext.AuditLogSerializer"
           )))
         }
       }

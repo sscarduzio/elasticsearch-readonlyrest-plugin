@@ -110,7 +110,7 @@ class GroupsRule(val settings: Settings)
           case RuleResult.Fulfilled(newBlockContext) =>
             newBlockContext.loggedUser match {
               case Some(loggedUser) if loggedUser.id === userDef.id => Some {
-                newBlockContext .withAddedAvailableGroups(userDef.groups)
+                newBlockContext.withAddedAvailableGroups(userDef.groups)
               }
               case Some(_) => None
               case None => None
