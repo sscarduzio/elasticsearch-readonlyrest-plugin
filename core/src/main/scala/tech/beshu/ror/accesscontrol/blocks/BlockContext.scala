@@ -42,6 +42,9 @@ trait BlockContext {
   def responseHeaders: Set[Header]
   def withAddedResponseHeader(header: Header): BlockContext
 
+  def hiddenKibanaApps: Set[KibanaApp]
+  def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext
+
   def contextHeaders: Set[Header]
   def withAddedContextHeader(header: Header): BlockContext
 
@@ -85,6 +88,9 @@ object NoOpBlockContext extends BlockContext {
   override val responseHeaders: Set[Header] = Set.empty
   override def withAddedResponseHeader(header: Header): BlockContext = this
 
+  override val hiddenKibanaApps: Set[KibanaApp] = Set.empty
+  override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext = this
+
   override val contextHeaders: Set[Header] = Set.empty
   override def withAddedContextHeader(header: Header): BlockContext = this
 
@@ -124,6 +130,11 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withAddedResponseHeader(header: Header): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(responseHeaders = data.responseHeaders :+ header))
 
+  override def hiddenKibanaApps: Set[KibanaApp] = data.hiddenKibanaApps
+
+  override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(hiddenKibanaApps = apps))
+
   override def contextHeaders: Set[Header] = data.contextHeaders.toSet
 
   override def withAddedContextHeader(header: Header): BlockContext =
@@ -160,6 +171,7 @@ object RequestContextInitiatedBlockContext {
   final case class BlockContextData(loggedUser: Option[LoggedUser],
                                     initialCurrentGroup: Option[Group],
                                     availableGroups: Set[Group],
+                                    hiddenKibanaApps: Set[KibanaApp],
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
                                     kibanaIndex: Option[IndexName],
@@ -174,6 +186,7 @@ object RequestContextInitiatedBlockContext {
         loggedUser = None,
         initialCurrentGroup = requestContext.currentGroup.toOption,
         availableGroups = Set.empty,
+        hiddenKibanaApps = Set.empty,
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,
         kibanaIndex = None,

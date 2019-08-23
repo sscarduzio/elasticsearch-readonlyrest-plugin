@@ -82,13 +82,28 @@ class Acl(val blocks: NonEmptyList[Block])
               .map(_._1.blockContext)
               .flatMap(b => b.availableGroups.map((_, b)).toList)
               .sortBy(_._1)
-          val (currentGroup, blockContext) = allGroupsWithRelatedBlockContexts.head
-          UserMetadataRequestResult.Allow(UserMetadata(
-            blockContext.loggedUser,
-            currentGroup,
-            SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*),
-            blockContext.kibanaIndex
-          ))
+          val userMetadata = allGroupsWithRelatedBlockContexts
+            .headOption
+            .map { case (currentGroup, blockContext) =>
+              UserMetadata(
+                blockContext.loggedUser,
+                Some(currentGroup),
+                SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*),
+                blockContext.kibanaIndex,
+                blockContext.hiddenKibanaApps
+              )
+            }
+            .getOrElse {
+              val blockContext = matched.head._1.blockContext
+              UserMetadata(
+                blockContext.loggedUser,
+                None,
+                SortedSet.empty,
+                blockContext.kibanaIndex,
+                blockContext.hiddenKibanaApps
+              )
+            }
+          UserMetadataRequestResult.Allow(userMetadata)
         } else {
           UserMetadataRequestResult.Forbidden
         }

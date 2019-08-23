@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror}
 import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider}
-import tech.beshu.ror.es.request.RequestInfo
+import tech.beshu.ror.es.request.{RequestInfo, RorNotReadyResponse}
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.utils.AccessControllerHelper._

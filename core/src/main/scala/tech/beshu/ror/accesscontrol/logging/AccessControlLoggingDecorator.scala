@@ -118,20 +118,19 @@ object AccessControlLoggingDecorator {
   private implicit val responseContextShow: Show[ResponseContext] = {
     Show.show {
       case AllowedBy(requestContext, block, blockContext, history) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(Some(blockContext), history)
+        implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)
         s"""${Constants.ANSI_CYAN}ALLOWED by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
       case Allow(requestContext, metadata, history) =>
-        // todo: log metadata
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, history)
+        implicit val requestShow: Show[RequestContext] = RequestContext.show(metadata.loggedUser, metadata.foundKibanaIndex, history)
         s"""${Constants.ANSI_CYAN}ALLOWED req=${requestContext.show}${Constants.ANSI_RESET}"""
       case ForbiddenBy(requestContext, block, blockContext, history) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(Some(blockContext), history)
+        implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
       case Forbidden(requestContext, history) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, history)
+        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by default req=${requestContext.show}${Constants.ANSI_RESET}"""
       case Errored(requestContext, _) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, Vector.empty)
+        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector.empty)
         s"""${Constants.ANSI_YELLOW}ERRORED by error req=${requestContext.show}${Constants.ANSI_RESET}"""
     }
   }

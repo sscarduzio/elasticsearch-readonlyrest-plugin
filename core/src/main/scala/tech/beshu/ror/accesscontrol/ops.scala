@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
@@ -123,6 +123,7 @@ object show {
       case f: ADocumentField => f.value
       case f: NegatedDocumentField => s"~${f.value}"
     }
+    implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val indexNameShow: Show[IndexName] = Show.show(_.value.value)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
@@ -134,13 +135,6 @@ object show {
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val blockContextShow: Show[BlockContext] = Show.show { bc =>
-      def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {
-        if(traversable.isEmpty) None
-        else Some(s"$name=${traversable.map(_.show).mkString(",")}")
-      }
-      def showOption[T : Show](name: String, option: Option[T]) = {
-        option.map(v => s"$name=${v.show}")
-      }
       (showOption("user", bc.loggedUser) ::
         showOption("group", bc.currentGroup) ::
         showTraversable("av_groups", bc.availableGroups) ::
@@ -150,6 +144,14 @@ object show {
         showTraversable("context_hdr", bc.contextHeaders) ::
         showTraversable("repositories", bc.repositories.getOrElse(Set.empty)) ::
         showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
+        Nil flatten) mkString ";"
+    }
+    implicit val userMetadataShow: Show[UserMetadata] = Show.show { u =>
+      (showOption("user", u.loggedUser) ::
+        showOption("curr_group", u.currentGroup) ::
+        showTraversable("av_groups", u.availableGroups) ::
+        showOption("kibana_idx", u.foundKibanaIndex) ::
+        showTraversable("hidden_apps", u.hiddenKibanaApps) ::
         Nil flatten) mkString ";"
     }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
@@ -194,6 +196,13 @@ object show {
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
       case ValidationError.KibanaAccessRuleTogetherWithActionsRule =>
         s"The '${block.show}' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block."
+    }
+    private def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {
+      if(traversable.isEmpty) None
+      else Some(s"$name=${traversable.map(_.show).mkString(",")}")
+    }
+    private def showOption[T : Show](name: String, option: Option[T]) = {
+      option.map(v => s"$name=${v.show}")
     }
   }
 }

@@ -25,9 +25,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -69,11 +69,12 @@ object RequestContext extends Logging {
     implicit val show: Show[Id] = Show.show(_.value)
   }
 
-  def show(blockContext: Option[BlockContext],
+  def show(loggedUser: Option[LoggedUser],
+           kibanaIndex: Option[IndexName],
            history: Vector[Block.History]): Show[RequestContext] =
     Show.show { r =>
       def stringifyLoggedUser = {
-        blockContext.flatMap(_.loggedUser) match {
+        loggedUser match {
           case Some(DirectlyLoggedUser(user)) => s"${user.show}"
           case Some(ImpersonatedUser(user, impersonatedBy)) => s"${impersonatedBy.show} (as ${user.show})"
           case None => "[user not logged]"
@@ -98,7 +99,7 @@ object RequestContext extends Logging {
          | CGR:${r.currentGroup.show},
          | USR:$stringifyLoggedUser,
          | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
-         | KDX:${blockContext.flatMap(_.kibanaIndex).map(_.show).getOrElse("null")},
+         | KDX:${kibanaIndex.map(_.show).getOrElse("null")},
          | ACT:${r.action.show},
          | OA:${r.remoteAddress.map(_.show).getOrElse("null")},
          | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.show).getOrElse("null")},

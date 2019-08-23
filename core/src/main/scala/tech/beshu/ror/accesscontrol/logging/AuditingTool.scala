@@ -57,11 +57,10 @@ class AuditingTool(settings: Settings,
           block.show
         )
       case ResponseContext.Allow(requestContext, metadata, history) =>
-        // todo: audit metadata
         AuditResponseContext.Allowed(
           toAuditRequestContext(requestContext, None, history),
           toAuditVerbosity(Block.Verbosity.Info),
-          "user metadata request"
+          metadata.show
         )
       case ResponseContext.ForbiddenBy(requestContext, block, blockContext, history) =>
         AuditResponseContext.ForbiddenBy(

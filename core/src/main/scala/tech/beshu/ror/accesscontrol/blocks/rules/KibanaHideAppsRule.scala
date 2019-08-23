@@ -18,15 +18,13 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.MatchingAlwaysRule
+import tech.beshu.ror.accesscontrol.domain.KibanaApp
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.domain.Header.Name.kibanaHiddenApps
-import tech.beshu.ror.accesscontrol.domain.{Header, KibanaApp}
 import tech.beshu.ror.accesscontrol.show.logs._
 
 class KibanaHideAppsRule(val settings: Settings)
@@ -34,17 +32,12 @@ class KibanaHideAppsRule(val settings: Settings)
 
   override val name: Rule.Name = KibanaHideAppsRule.name
 
-  private val kibanaAppsHeader = new Header(
-    kibanaHiddenApps,
-    NonEmptyString.unsafeFrom(settings.kibanaAppsToHide.toSortedSet.map(_.value.value).mkString(","))
-  )
-
   override def process(requestContext: RequestContext,
                        blockContext: BlockContext): Task[BlockContext] = Task {
     blockContext.loggedUser match {
       case Some(user) =>
-        logger.debug(s"setting hidden apps for user ${user.show}: ${kibanaAppsHeader.value.show}")
-        blockContext.withAddedResponseHeader(kibanaAppsHeader)
+        logger.debug(s"setting hidden apps for user ${user.show}: ${settings.kibanaAppsToHide.toList.map(_.show).mkString(",")}")
+        blockContext.withHiddenKibanaApps(settings.kibanaAppsToHide.toSortedSet)
       case None =>
         blockContext
     }
