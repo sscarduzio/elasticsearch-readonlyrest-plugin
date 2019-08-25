@@ -1,5 +1,6 @@
 package tech.beshu.ror.es.request.usermetadata
 
+import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.Constants
@@ -24,8 +25,11 @@ private class RRMetadataResponse(userMetadata: UserMetadata)
     val sourceMap: Map[String, _] =
       userMetadata.loggedUser.map(u => (Constants.HEADER_USER_ROR, u.id.value.value)).toMap ++
         userMetadata.currentGroup.map(g => (Constants.HEADER_GROUP_CURRENT, g.value.value)).toMap ++
-        userMetadata.foundKibanaIndex.map(i => (Constants.HEADER_KIBANA_INDEX, i.value.value)).toMap +
-        (Constants.HEADER_GROUPS_AVAILABLE -> userMetadata.availableGroups.map(_.value.value).toList.toArray) ++
+        userMetadata.foundKibanaIndex.map(i => (Constants.HEADER_KIBANA_INDEX, i.value.value)).toMap ++
+        NonEmptyList
+          .fromList(userMetadata.availableGroups.toList)
+          .map(groups => (Constants.HEADER_GROUPS_AVAILABLE, groups.map(_.value.value).toList.toArray))
+          .toMap ++
         stringifyKibanaAppsFrom(userMetadata).map(Constants.HEADER_KIBANA_HIDDEN_APPS -> _).toMap
     builder.map(sourceMap.asJava)
     builder

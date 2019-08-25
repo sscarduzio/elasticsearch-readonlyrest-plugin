@@ -23,22 +23,21 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
       |  access_control_rules:
       |
       |  - name: "User 1 - index1"
-      |    indices: ["index_user1_1"]
+      |    users: ["user1"]
       |    groups: [group2, group3]
       |
       |  - name: "User 1 - index2"
-      |    indices: ["index_user1_2"]
+      |    users: ["user1"]
       |    groups: [group2, group1]
       |
       |  - name: "User 2"
-      |    indices: ["index_user2"]
+      |    users: ["user2"]
       |    groups: [group2, group3]
       |    kibana_index: "user2_kibana_index"
       |    kibana_hide_apps: ["user2_app1", "user2_app2"]
       |
       |  - name: "User 3"
       |    auth_key: "user3:pass"
-      |    indices: ["index_user3"]
       |    kibana_index: "user3_kibana_index"
       |    kibana_hide_apps: ["user3_app1", "user3_app2"]
       |
@@ -58,11 +57,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
     "handling current user metadata kibana plugin request" should {
       "allow to proceed" when {
         "several blocks are matched" in {
-          val request = MockRequestContext.default.copy(
-            headers = Set(basicAuthHeader("user1:pass")),
-            indices = Set(IndexName("index_user1_*".nonempty)),
-            involvesIndices = true
-          )
+          val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user1:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 4
           inside(result.result) { case Allow(userMetadata) =>
@@ -74,11 +69,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           }
         }
         "at least one block is matched" in {
-          val request = MockRequestContext.default.copy(
-            headers = Set(basicAuthHeader("user2:pass")),
-            indices = Set(IndexName("index_user2".nonempty)),
-            involvesIndices = true
-          )
+          val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user2:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 4
           inside(result.result) { case Allow(userMetadata) =>
@@ -90,11 +81,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           }
         }
         "block with no available groups collected is matched" in {
-          val request = MockRequestContext.default.copy(
-            headers = Set(basicAuthHeader("user3:pass")),
-            indices = Set(IndexName("index_user3".nonempty)),
-            involvesIndices = true
-          )
+          val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user3:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 4
           inside(result.result) { case Allow(userMetadata) =>
@@ -108,10 +95,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
       }
       "return forbidden" when {
         "no block is matched" in {
-          val request = MockRequestContext.default.copy(
-            headers = Set(basicAuthHeader("user4:pass")),
-            involvesIndices = true
-          )
+          val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user4:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 4
           inside(result.result) { case Forbidden => }
