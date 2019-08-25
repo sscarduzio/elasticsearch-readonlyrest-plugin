@@ -22,12 +22,12 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
-import tech.beshu.ror.accesscontrol.blocks.{Block, UserMetadata}
-import tech.beshu.ror.accesscontrol.orders.groupOrder
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Policy}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
+import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.orders.{forbiddenByMismatchedCauseOrder, groupOrder}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import scala.collection.SortedSet
@@ -76,39 +76,43 @@ class Acl(val blocks: NonEmptyList[Block])
       .map { blockResults =>
         val history = blockResults.map(_._2).toVector
         val result = if(isMatched(blockResults.map(_._1))) {
-          val matched = blockResults.collect { case r@(Matched(block, _), _) if block.policy === Policy.Allow => r }
-          val allGroupsWithRelatedBlockContexts =
-            matched
-              .map(_._1.blockContext)
-              .flatMap(b => b.availableGroups.map((_, b)).toList)
-              .sortBy(_._1)
-          val userMetadata = allGroupsWithRelatedBlockContexts
-            .headOption
-            .map { case (currentGroup, blockContext) =>
-              UserMetadata(
-                blockContext.loggedUser,
-                Some(currentGroup),
-                SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*),
-                blockContext.kibanaIndex,
-                blockContext.hiddenKibanaApps
-              )
-            }
-            .getOrElse {
-              val blockContext = matched.head._1.blockContext
-              UserMetadata(
-                blockContext.loggedUser,
-                None,
-                SortedSet.empty,
-                blockContext.kibanaIndex,
-                blockContext.hiddenKibanaApps
-              )
-            }
+          val userMetadata = userMetadataFrom(blockResults)
           UserMetadataRequestResult.Allow(userMetadata)
         } else {
           UserMetadataRequestResult.Forbidden
         }
         WithHistory(history, result)
       }
+  }
+
+  private def userMetadataFrom(blockResults: List[(ExecutionResult, History)]) = {
+    val matched = blockResults.collect { case r@(Matched(block, _), _) if block.policy === Policy.Allow => r }
+    val allGroupsWithRelatedBlockContexts =
+      matched
+        .map(_._1.blockContext)
+        .flatMap(b => b.availableGroups.map((_, b)).toList)
+        .sortBy(_._1)
+    allGroupsWithRelatedBlockContexts
+      .headOption
+      .map { case (currentGroup, blockContext) =>
+        createUserMetadata(blockContext, Some(currentGroup), SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*))
+      }
+      .getOrElse {
+        val blockContext = matched.head._1.blockContext
+        createUserMetadata(blockContext, None, SortedSet.empty)
+      }
+  }
+
+  private def createUserMetadata(blockContext: BlockContext, currentGroup: Option[Group], availableGroups: SortedSet[Group]) = {
+    UserMetadata(
+      blockContext.loggedUser,
+      currentGroup,
+      availableGroups,
+      blockContext.kibanaIndex,
+      blockContext.hiddenKibanaApps,
+      blockContext.kibanaAccess,
+      blockContext.userOrigin
+    )
   }
 
   private def blockExecute(block: Block, context: RequestContext) = {

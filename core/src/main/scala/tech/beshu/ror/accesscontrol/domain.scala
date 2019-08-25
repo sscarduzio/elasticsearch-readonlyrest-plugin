@@ -201,6 +201,8 @@ object domain {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }
 
+  final case class UserOrigin(value: NonEmptyString)
+
   sealed abstract class DocumentField(val value: String)
   object DocumentField {
     final case class ADocumentField(override val value: String) extends DocumentField(value)

@@ -121,7 +121,7 @@ object SingleExtractable {
 
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, String] = {
-      blockContext.jsonToken match {
+      blockContext.jwt match {
         case Some(payload) =>
           payload.claims.customClaim(varClaim) match {
             case Found(SingleValue(value)) =>

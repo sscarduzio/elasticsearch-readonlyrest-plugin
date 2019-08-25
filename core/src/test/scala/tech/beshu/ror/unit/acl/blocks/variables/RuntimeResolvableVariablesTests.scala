@@ -144,7 +144,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
-              .withJsonToken(JwtTokenPayload {
+              .withJwt(JwtTokenPayload {
                 val claims = new DefaultClaims()
                 claims.put("tech", Map("beshu" -> Map("mainGroup" -> "group1").asJava).asJava)
                 claims
@@ -157,7 +157,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
-              .withJsonToken(JwtTokenPayload {
+              .withJwt(JwtTokenPayload {
                 val claims = new DefaultClaims()
                 claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
                 claims
@@ -170,7 +170,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
-              .withJsonToken(JwtTokenPayload {
+              .withJwt(JwtTokenPayload {
                 val claims = new DefaultClaims()
                 claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
                 claims
@@ -193,7 +193,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
-              .withJsonToken(JwtTokenPayload {
+              .withJwt(JwtTokenPayload {
                 val claims = new DefaultClaims()
                 claims.put("tech", Map("beshu" -> Map("groups" -> List("group1", "group2").asJava).asJava).asJava)
                 claims

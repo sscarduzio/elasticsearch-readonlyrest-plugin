@@ -22,9 +22,8 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.headerFrom
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class KibanaIndexAndAccessYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside  {
@@ -54,8 +53,8 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends WordSpec with Bas
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("Template Tenancy"))
           assertBlockContext(
-          responseHeaders = Set(headerFrom("x-ror-kibana_access" -> "admin")),
-          kibanaIndex = Some(IndexName(".kibana_template".nonempty))
+            kibanaIndex = Some(IndexName(".kibana_template".nonempty)),
+            kibanaAccess = Some(KibanaAccess.Admin)
           ) {
             blockContext
           }

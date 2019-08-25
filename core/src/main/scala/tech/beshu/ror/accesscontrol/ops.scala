@@ -146,12 +146,21 @@ object show {
         showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
         Nil flatten) mkString ";"
     }
+    private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
+      case KibanaAccess.RO => "ro"
+      case KibanaAccess.ROStrict => "ro_strict"
+      case KibanaAccess.RW => "rw"
+      case KibanaAccess.Admin => "admin"
+    }
+    private implicit val userOriginShow: Show[UserOrigin] = Show.show(_.value.value)
     implicit val userMetadataShow: Show[UserMetadata] = Show.show { u =>
       (showOption("user", u.loggedUser) ::
         showOption("curr_group", u.currentGroup) ::
         showTraversable("av_groups", u.availableGroups) ::
         showOption("kibana_idx", u.foundKibanaIndex) ::
         showTraversable("hidden_apps", u.hiddenKibanaApps) ::
+        showOption("kibana_access", u.kibanaAccess) ::
+        showOption("user_origin", u.userOrigin) ::
         Nil flatten) mkString ";"
     }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
@@ -225,12 +234,6 @@ object headerValues {
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
   implicit val transientFilterHeaderValue: ToHeaderValue[Filter] = ToHeaderValue { filter =>
     NonEmptyString.unsafeFrom(FilterTransient.createFromFilter(filter.value.value).serialize())
-  }
-  implicit val kibanaAccessHeaderValue: ToHeaderValue[KibanaAccess] = ToHeaderValue {
-    case KibanaAccess.RO => NonEmptyString.unsafeFrom("ro")
-    case KibanaAccess.ROStrict => NonEmptyString.unsafeFrom("ro_strict")
-    case KibanaAccess.RW => NonEmptyString.unsafeFrom("rw")
-    case KibanaAccess.Admin => NonEmptyString.unsafeFrom("admin")
   }
   implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
 }

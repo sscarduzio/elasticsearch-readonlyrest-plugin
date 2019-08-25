@@ -26,6 +26,7 @@ readonlyrest:
       groups: [group2, group3]
       kibana_index: "user2_kibana_index"
       kibana_hide_apps: ["user2_app1", "user2_app2"]
+      kibana_access: ro
 
     - name: "User 3"
       auth_key: "user3:pass"

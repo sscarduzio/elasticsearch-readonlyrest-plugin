@@ -86,7 +86,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
           finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
-        } yield finalBlockContext.withJsonToken(tokenPayload)
+        } yield finalBlockContext.withJwt(tokenPayload)
         claimProcessingResult match {
           case Left(_) =>
             Task.now(Rejected())

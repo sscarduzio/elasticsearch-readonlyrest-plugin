@@ -22,21 +22,18 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.Header.Name.kibanaAccess
-import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
-import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW}
-import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
-import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
+import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.headerValues._
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.util.Try
 
@@ -138,8 +135,8 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def modifyMatched(blockContext: BlockContext, kibanaIndex: Option[IndexName] = None) = {
-    def applyKibanaAccessHeader = (bc: BlockContext) => {
-      if (settings.kibanaMetadataEnabled) bc.withAddedResponseHeader(Header(kibanaAccess, settings.access))
+    def applyKibanaAccess = (bc: BlockContext) => {
+      if (settings.kibanaMetadataEnabled) bc.withKibanaAccess(settings.access)
       else bc
     }
 
@@ -150,7 +147,7 @@ class KibanaAccessRule(val settings: Settings)
       }
     }
 
-    (applyKibanaAccessHeader :: applyKibanaIndex :: Nil).reduceLeft(_ andThen _).apply(blockContext)
+    (applyKibanaAccess :: applyKibanaIndex :: Nil).reduceLeft(_ andThen _).apply(blockContext)
   }
 
   private val kibanaCanBeModified: Boolean = settings.access match {

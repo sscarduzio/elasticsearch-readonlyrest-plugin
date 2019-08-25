@@ -32,8 +32,8 @@ trait BlockContext {
   def loggedUser: Option[LoggedUser]
   def withLoggedUser(user: LoggedUser): BlockContext
 
-  def jsonToken: Option[JwtTokenPayload]
-  def withJsonToken(token: JwtTokenPayload): BlockContext
+  def jwt: Option[JwtTokenPayload]
+  def withJwt(token: JwtTokenPayload): BlockContext
 
   def availableGroups: SortedSet[Group]
   def currentGroup: Option[Group]
@@ -42,14 +42,8 @@ trait BlockContext {
   def responseHeaders: Set[Header]
   def withAddedResponseHeader(header: Header): BlockContext
 
-  def hiddenKibanaApps: Set[KibanaApp]
-  def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext
-
   def contextHeaders: Set[Header]
   def withAddedContextHeader(header: Header): BlockContext
-
-  def kibanaIndex: Option[IndexName]
-  def withKibanaIndex(index: IndexName): BlockContext
 
   def indices: Outcome[Set[IndexName]]
   def withIndices(indices: Set[IndexName]): BlockContext
@@ -59,6 +53,19 @@ trait BlockContext {
 
   def snapshots: Outcome[Set[IndexName]]
   def withSnapshots(indices: Set[IndexName]): BlockContext
+
+  def hiddenKibanaApps: Set[KibanaApp]
+  def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext
+
+  def userOrigin: Option[UserOrigin]
+  def withUserOrigin(origin: UserOrigin): BlockContext
+
+  def kibanaAccess: Option[KibanaAccess]
+  def withKibanaAccess(access: KibanaAccess): BlockContext
+
+  def kibanaIndex: Option[IndexName]
+  def withKibanaIndex(index: IndexName): BlockContext
+
 }
 
 object BlockContext {
@@ -78,8 +85,8 @@ object NoOpBlockContext extends BlockContext {
   override val loggedUser: Option[LoggedUser] = None
   override def withLoggedUser(user: LoggedUser): BlockContext = this
 
-  override val jsonToken: Option[JwtTokenPayload] = None
-  override def withJsonToken(token: JwtTokenPayload): BlockContext = this
+  override val jwt: Option[JwtTokenPayload] = None
+  override def withJwt(token: JwtTokenPayload): BlockContext = this
 
   override val availableGroups: SortedSet[Group] = SortedSet.empty
   override def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext = this
@@ -91,11 +98,17 @@ object NoOpBlockContext extends BlockContext {
   override val hiddenKibanaApps: Set[KibanaApp] = Set.empty
   override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext = this
 
+  override val kibanaAccess: Option[KibanaAccess] = None
+  override def withKibanaAccess(access: KibanaAccess): BlockContext = this
+
   override val contextHeaders: Set[Header] = Set.empty
   override def withAddedContextHeader(header: Header): BlockContext = this
 
   override val kibanaIndex: Option[IndexName] = None
   override def withKibanaIndex(index: IndexName): BlockContext = this
+
+  override val userOrigin: Option[UserOrigin] = None
+  override def withUserOrigin(origin: UserOrigin): BlockContext = this
 
   override val indices: Outcome[Set[IndexName]] = Outcome.NotExist
   override def withIndices(indices: Set[IndexName]): BlockContext = this
@@ -135,6 +148,16 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(hiddenKibanaApps = apps))
 
+  override def kibanaAccess: Option[KibanaAccess] = data.kibanaAccess
+
+  override def withKibanaAccess(access: KibanaAccess): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(kibanaAccess = Some(access)))
+
+  override def userOrigin: Option[UserOrigin] = data.userOrigin
+
+  override def withUserOrigin(origin: UserOrigin): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(userOrigin = Some(origin)))
+
   override def contextHeaders: Set[Header] = data.contextHeaders.toSet
 
   override def withAddedContextHeader(header: Header): BlockContext =
@@ -160,9 +183,9 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withSnapshots(snapshots: Set[IndexName]): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(snapshots = Outcome.Exist(snapshots)))
 
-  override def jsonToken: Option[JwtTokenPayload] = data.jsonToken
+  override def jwt: Option[JwtTokenPayload] = data.jsonToken
 
-  override def withJsonToken(token: JwtTokenPayload): BlockContext =
+  override def withJwt(token: JwtTokenPayload): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(jsonToken = Some(token)))
 }
 
@@ -175,6 +198,8 @@ object RequestContextInitiatedBlockContext {
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
                                     kibanaIndex: Option[IndexName],
+                                    kibanaAccess: Option[KibanaAccess],
+                                    userOrigin: Option[UserOrigin],
                                     indices: Outcome[Set[IndexName]],
                                     repositories: Outcome[Set[IndexName]],
                                     snapshots: Outcome[Set[IndexName]],
@@ -190,6 +215,8 @@ object RequestContextInitiatedBlockContext {
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,
         kibanaIndex = None,
+        kibanaAccess = None,
+        userOrigin = None,
         indices = Outcome.NotExist,
         repositories = Outcome.NotExist,
         snapshots = Outcome.NotExist,

@@ -6,7 +6,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult._
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, KibanaApp, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, KibanaAccess, KibanaApp, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.accesscontrol.orders.groupOrder
 import monix.execution.Scheduler.Implicits.global
@@ -35,6 +35,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
       |    groups: [group2, group3]
       |    kibana_index: "user2_kibana_index"
       |    kibana_hide_apps: ["user2_app1", "user2_app2"]
+      |    kibana_access: ro
       |
       |  - name: "User 3"
       |    auth_key: "user3:pass"
@@ -66,6 +67,8 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
             userMetadata.availableGroups should be (SortedSet(Group("group1".nonempty), Group("group3".nonempty)))
             userMetadata.foundKibanaIndex should be (None)
             userMetadata.hiddenKibanaApps should be (Set.empty)
+            userMetadata.kibanaAccess should be (None)
+            userMetadata.userOrigin should be (None)
           }
         }
         "at least one block is matched" in {
@@ -78,6 +81,8 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
             userMetadata.availableGroups should be (SortedSet(Group("group2".nonempty), Group("group4".nonempty)))
             userMetadata.foundKibanaIndex should be (Some(IndexName("user2_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1".nonempty), KibanaApp("user2_app2".nonempty)))
+            userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))
+            userMetadata.userOrigin should be (None)
           }
         }
         "block with no available groups collected is matched" in {
@@ -90,6 +95,8 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
             userMetadata.availableGroups should be (Set.empty)
             userMetadata.foundKibanaIndex should be (Some(IndexName("user3_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user3_app1".nonempty), KibanaApp("user3_app2".nonempty)))
+            userMetadata.kibanaAccess should be (None)
+            userMetadata.userOrigin should be (None)
           }
         }
       }

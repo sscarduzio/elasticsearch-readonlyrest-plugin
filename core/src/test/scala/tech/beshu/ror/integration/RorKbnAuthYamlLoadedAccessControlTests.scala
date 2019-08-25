@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration
 
 import io.jsonwebtoken.Jwts
+import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.Keys
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -25,9 +26,11 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{JwtTokenPayload, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
+
+import scala.collection.JavaConverters._
 
 class RorKbnAuthYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
@@ -83,11 +86,11 @@ class RorKbnAuthYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoade
     "is configured using config above" should {
       "allow to proceed" when {
         "JWT token with empty list of groups is defined" in {
+          val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test", "user" -> "user", "groups" -> "").asJava)
           val jwtBuilder = Jwts.builder
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
             .setSubject("test")
-            .claim("groups", "")
-            .claim("user", "user")
+            .setClaims(claims)
           val request = MockRequestContext.default.copy(headers = Set(header("Authorization", s"Bearer ${jwtBuilder.compact}")))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -95,7 +98,10 @@ class RorKbnAuthYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoade
           result.history should have size 2
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user".nonempty)))) {
+            assertBlockContext(
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user".nonempty))),
+              jwt = Some(JwtTokenPayload(claims))
+            ) {
               blockContext
             }
           }

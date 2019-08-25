@@ -75,7 +75,7 @@ class RorKbnAuthRule(val settings: Settings)
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
           finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
-        } yield handleUserOriginResult(finalBlockContext, userOrigin).withJsonToken(tokenPayload)
+        } yield handleUserOriginResult(finalBlockContext, userOrigin).withJwt(tokenPayload)
         claimProcessingResult match {
           case Left(_) =>
             Rejected()
@@ -129,7 +129,7 @@ class RorKbnAuthRule(val settings: Settings)
 
   private def handleUserOriginResult(blockContext: BlockContext, result: ClaimSearchResult[Header]): BlockContext = {
     result match {
-      case Found(header) => blockContext.withAddedResponseHeader(header)
+      case Found(header) => blockContext.withUserOrigin(UserOrigin(header.value))
       case ClaimSearchResult.NotFound => blockContext
     }
   }
