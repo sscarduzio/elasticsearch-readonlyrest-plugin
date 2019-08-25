@@ -37,7 +37,7 @@ import tech.beshu.ror.utils.TestsUtils._
 
 import scala.collection.JavaConverters._
 
-class VariableResolvingYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside {
+class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
   private lazy val (pub, secret) = TestsUtils.generateRsaRandomKeys
   override protected def configYaml: String =

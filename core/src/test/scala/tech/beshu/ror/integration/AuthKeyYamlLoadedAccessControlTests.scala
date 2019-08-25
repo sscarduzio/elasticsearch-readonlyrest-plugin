@@ -31,7 +31,7 @@ import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Allow
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 
-class AuthKeyYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with MockFactory with Inside {
+class AuthKeyYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
   protected def configYaml: String =
     """

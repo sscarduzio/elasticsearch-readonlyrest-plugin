@@ -30,7 +30,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
-class LdapConnectivityCheckYamlLoadedAclTests extends WordSpec with BaseYamlLoadedAclTest with ForAllTestContainer with Inside {
+class LdapConnectivityCheckYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with ForAllTestContainer with Inside {
 
   override val container: LdapContainer = new LdapContainer("LDAP1", "/test_example.ldif")
 

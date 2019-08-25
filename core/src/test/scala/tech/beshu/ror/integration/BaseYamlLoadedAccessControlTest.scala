@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.integration
 
+import cats.implicits._
 import java.time.Clock
-
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
@@ -26,7 +26,7 @@ import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 
-trait BaseYamlLoadedAclTest extends BlockContextAssertion {
+trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
   protected def configYaml: String
 
@@ -41,7 +41,7 @@ trait BaseYamlLoadedAclTest extends BlockContextAssertion {
 
   lazy val acl: AccessControl = factory
     .createCoreFrom(
-      RawRorConfig.fromString(configYaml).right.get,
+      RawRorConfig.fromString(configYaml).fold(err => throw new IllegalStateException(err.show), identity),
       MockHttpClientsFactory
     )
     .map {
