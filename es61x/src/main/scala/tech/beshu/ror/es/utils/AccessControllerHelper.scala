@@ -14,16 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.utils
 
-package tech.beshu.ror.es.utils;
+import java.security.{AccessController, PrivilegedAction}
 
-import org.elasticsearch.rest.RestChannel;
+object AccessControllerHelper {
 
-/**
- * Created by sscarduzio on 25/11/2016.
- */
-public class ThreadRepo {
-
-  public static ThreadLocal<RestChannel> channel = new ThreadLocal<>();
-
+  def doPrivileged[T](action: => T): T = {
+    AccessController.doPrivileged(new PrivilegedAction[T] {
+      override def run(): T = action
+    })
+  }
 }
