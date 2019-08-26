@@ -40,8 +40,6 @@ class RegularResponseActionListener(baseListener: ActionListener[ActionResponse]
     requestContext.uriPath match {
       case CatTemplatePath(_) =>
         baseListener.onResponse(filterTemplatesInClusterStateResponse(response.asInstanceOf[ClusterStateResponse]))
-      case CurrentUserMetadataPath(_) =>
-        baseListener.onResponse(new RRMetadataResponse(blockContext))
       case _ =>
         baseListener.onResponse(response)
     }
