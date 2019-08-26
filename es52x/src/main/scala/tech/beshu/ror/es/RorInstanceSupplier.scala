@@ -14,14 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.rradmin;
+package tech.beshu.ror.es
 
-import org.elasticsearch.action.ActionRequestBuilder;
-import org.elasticsearch.client.ElasticsearchClient;
+import java.util.concurrent.atomic.AtomicReference
+import java.util.function.Supplier
 
-public class RRAdminRequestBuilder extends ActionRequestBuilder<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
+import tech.beshu.ror.boot.RorInstance
 
-  public RRAdminRequestBuilder(ElasticsearchClient client, RRAdminAction action) {
-    super(client, action, new RRAdminRequest());
+object RorInstanceSupplier extends Supplier[Option[RorInstance]]{
+  private val rorInstanceAtomicReference = new AtomicReference(Option.empty[RorInstance])
+
+  override def get(): Option[RorInstance] = rorInstanceAtomicReference.get()
+
+  def update(rorInstance: RorInstance): Unit = {
+    rorInstanceAtomicReference.set(Some(rorInstance))
   }
 }
