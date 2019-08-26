@@ -16,14 +16,8 @@
  */
 package tech.beshu.ror.es.rradmin
 
-import org.elasticsearch.action.Action
-import tech.beshu.ror.adminapi.AdminRestApi
+import org.elasticsearch.action.ActionRequestBuilder
+import org.elasticsearch.client.ElasticsearchClient
 
-class RRAdminAction extends Action[RRAdminResponse](RRAdminAction.name) {
-  override def newResponse(): RRAdminResponse =
-    new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable)
-}
-object RRAdminAction {
-  val name = "cluster:admin/rradmin/refreshsettings"
-  val instance = new RRAdminAction()
-}
+class RRAdminRequestBuilder(client: ElasticsearchClient, action: RRAdminAction)
+  extends ActionRequestBuilder[RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder](client, action, new RRAdminRequest)

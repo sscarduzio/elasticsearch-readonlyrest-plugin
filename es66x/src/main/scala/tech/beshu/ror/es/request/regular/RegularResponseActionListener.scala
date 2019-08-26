@@ -25,7 +25,7 @@ import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, CurrentUserMetadataPath}
+import tech.beshu.ror.accesscontrol.domain.UriPath.CatTemplatePath
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import scala.collection.JavaConverters._
@@ -80,6 +80,7 @@ class RegularResponseActionListener(baseListener: ActionListener[ActionResponse]
     new ClusterStateResponse(
       response.getClusterName,
       modifiedClusterState,
+      response.getTotalCompressedSize.getBytes,
       response.isWaitForTimedOut
     )
   }

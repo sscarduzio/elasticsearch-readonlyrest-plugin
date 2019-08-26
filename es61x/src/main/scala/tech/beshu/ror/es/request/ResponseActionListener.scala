@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.request.regular
+package tech.beshu.ror.es.request
 
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
@@ -27,18 +27,21 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.findTempl
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, CurrentUserMetadataPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.es.rradmin.RRMetadataResponse
 
 import scala.collection.JavaConverters._
 
-class RegularResponseActionListener(baseListener: ActionListener[ActionResponse],
-                                    requestContext: RequestContext,
-                                    blockContext: BlockContext)
+class ResponseActionListener(baseListener: ActionListener[ActionResponse],
+                             requestContext: RequestContext,
+                             blockContext: BlockContext)
   extends ActionListener[ActionResponse] {
 
   override def onResponse(response: ActionResponse): Unit = {
     requestContext.uriPath match {
       case CatTemplatePath(_) =>
         baseListener.onResponse(filterTemplatesInClusterStateResponse(response.asInstanceOf[ClusterStateResponse]))
+      case CurrentUserMetadataPath(_) =>
+        baseListener.onResponse(new RRMetadataResponse(blockContext))
       case _ =>
         baseListener.onResponse(response)
     }
@@ -80,7 +83,7 @@ class RegularResponseActionListener(baseListener: ActionListener[ActionResponse]
     new ClusterStateResponse(
       response.getClusterName,
       modifiedClusterState,
-      response.isWaitForTimedOut
+      response.getTotalCompressedSize.getBytes
     )
   }
 }

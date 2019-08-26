@@ -19,9 +19,11 @@ package tech.beshu.ror.es.rradmin
 import monix.execution.Scheduler
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
-import org.elasticsearch.tasks.Task
+import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.SchedulerPools
@@ -31,28 +33,34 @@ import tech.beshu.ror.es.providers.EsIndexJsonContentProvider
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.providers.JvmPropertiesProvider
 
-class TransportRRAdminAction(transportService: TransportService,
+class TransportRRAdminAction(settings: Settings,
+                             threadPool: ThreadPool,
+                             transportService: TransportService,
                              actionFilters: ActionFilters,
+                             indexNameExpressionResolver: IndexNameExpressionResolver,
                              env: Environment,
                              indexContentProvider: EsIndexJsonContentProvider,
                              ignore: Unit) // hack!
   extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
-    RRAdminAction.name, transportService, actionFilters, () => new RRAdminRequest
+    settings, RRAdminAction.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAdminRequest
   ) {
 
   @Inject
-  def this(transportService: TransportService,
+  def this(settings: Settings,
+           threadPool: ThreadPool,
+           transportService: TransportService,
+           indexNameExpressionResolver: IndexNameExpressionResolver,
            actionFilters: ActionFilters,
            env: Environment,
            indexContentProvider: EsIndexJsonContentProvider) {
-    this(transportService, actionFilters, env, indexContentProvider, ())
+    this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, env, indexContentProvider, ())
   }
 
   private implicit val adminRestApiScheduler: Scheduler = SchedulerPools.adminRestApiScheduler
   private val indexConfigManager = new IndexConfigManager(indexContentProvider)
   private val fileConfigLoader = new FileConfigLoader(env.configFile(), JvmPropertiesProvider)
 
-  override def doExecute(task: Task, request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
+  override def doExecute(request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
     getApi match {
       case Some(api) => doPrivileged {
         api

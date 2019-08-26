@@ -30,7 +30,6 @@ import org.elasticsearch.client.node.NodeClient;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
-import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.component.LifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
@@ -59,24 +58,21 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
-import org.elasticsearch.transport.RemoteClusterService;
 import org.elasticsearch.transport.Transport;
-import org.elasticsearch.transport.TransportService;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.RorSsl;
 import tech.beshu.ror.configuration.RorSsl$;
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
-import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper;
 import tech.beshu.ror.es.ssl.SSLNetty4HttpServerTransport;
 import tech.beshu.ror.es.ssl.SSLNetty4InternodeServerTransport;
 import tech.beshu.ror.es.utils.ThreadRepo;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -85,9 +81,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -120,7 +114,7 @@ public class ReadonlyRestPlugin extends Plugin
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
       this.ilaf = new IndexLevelActionFilter(clusterService, (NodeClient) client, threadPool, environment,
-          TransportServiceInterceptor.getRemoteClusterServiceSupplier());
+          TransportServiceInterceptor.remoteClusterServiceSupplier());
       return null;
     });
 
@@ -201,7 +195,7 @@ public class ReadonlyRestPlugin extends Plugin
   @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+        new ActionHandler(RRAdminAction.instance(), TransportRRAdminAction.class));
   }
 
   @Override
@@ -217,49 +211,8 @@ public class ReadonlyRestPlugin extends Plugin
   public UnaryOperator<RestHandler> getRestHandlerWrapper(ThreadContext threadContext) {
     return restHandler -> (RestHandler) (request, channel, client) -> {
       // Need to make sure we've fetched cluster-wide configuration at least once. This is super fast, so NP.
-      ThreadRepo.channel.set(channel);
+      ThreadRepo.setRestChannel(channel);
       restHandler.handleRequest(request, channel, client);
     };
-  }
-
-  public static class TransportServiceInterceptor extends AbstractLifecycleComponent {
-
-    private static RemoteClusterServiceSupplier remoteClusterServiceSupplier;
-
-    @Inject
-    public TransportServiceInterceptor(Settings settings, final TransportService transportService) {
-      super(settings);
-      Optional.ofNullable(transportService.getRemoteClusterService()).ifPresent(r -> getRemoteClusterServiceSupplier().update(r));
-    }
-
-    public synchronized static RemoteClusterServiceSupplier getRemoteClusterServiceSupplier() {
-      if (remoteClusterServiceSupplier == null) {
-        remoteClusterServiceSupplier = new RemoteClusterServiceSupplier();
-      }
-      return remoteClusterServiceSupplier;
-    }
-
-    @Override
-    protected void doStart() { /* unused */ }
-
-    @Override
-    protected void doStop() {  /* unused */ }
-
-    @Override
-    protected void doClose() throws IOException {  /* unused */ }
-  }
-
-  private static class RemoteClusterServiceSupplier implements Supplier<Optional<RemoteClusterService>> {
-
-    private final AtomicReference<Optional<RemoteClusterService>> remoteClusterServiceAtomicReference = new AtomicReference(Optional.empty());
-
-    @Override
-    public Optional<RemoteClusterService> get() {
-      return remoteClusterServiceAtomicReference.get();
-    }
-
-    private void update(RemoteClusterService service) {
-      remoteClusterServiceAtomicReference.set(Optional.ofNullable(service));
-    }
   }
 }

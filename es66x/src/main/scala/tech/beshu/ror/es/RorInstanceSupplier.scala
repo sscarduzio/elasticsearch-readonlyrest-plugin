@@ -14,16 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.rradmin
+package tech.beshu.ror.es
 
-import org.elasticsearch.action.Action
-import tech.beshu.ror.adminapi.AdminRestApi
+import java.util.concurrent.atomic.AtomicReference
+import java.util.function.Supplier
 
-class RRAdminAction extends Action[RRAdminResponse](RRAdminAction.name) {
-  override def newResponse(): RRAdminResponse =
-    new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable)
-}
-object RRAdminAction {
-  val name = "cluster:admin/rradmin/refreshsettings"
-  val instance = new RRAdminAction()
+import tech.beshu.ror.boot.RorInstance
+
+object RorInstanceSupplier extends Supplier[Option[RorInstance]]{
+  private val rorInstanceAtomicReference = new AtomicReference(Option.empty[RorInstance])
+
+  override def get(): Option[RorInstance] = rorInstanceAtomicReference.get()
+
+  def update(rorInstance: RorInstance): Unit = {
+    rorInstanceAtomicReference.set(Some(rorInstance))
+  }
 }
