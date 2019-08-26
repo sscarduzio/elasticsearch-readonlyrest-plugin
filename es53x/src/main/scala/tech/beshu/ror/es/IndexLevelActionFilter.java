@@ -61,6 +61,12 @@ import tech.beshu.ror.boot.Engine;
 import tech.beshu.ror.boot.Ror$;
 import tech.beshu.ror.boot.RorInstance;
 import tech.beshu.ror.boot.StartingFailure;
+import tech.beshu.ror.es.provider.EsAuditSink;
+import tech.beshu.ror.es.provider.EsIndexJsonContentProvider;
+import tech.beshu.ror.es.request.ForbiddenResponse;
+import tech.beshu.ror.es.request.RequestInfo;
+import tech.beshu.ror.es.request.regular.RegularResponseActionListener;
+import tech.beshu.ror.es.request.RorNotReadyResponse;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
 import java.security.AccessController;
@@ -242,7 +248,7 @@ public class IndexLevelActionFilter extends AbstractComponent implements ActionF
             }
           }
 
-          return (ActionListener<Response>) new ResponseActionListener((ActionListener<ActionResponse>) listener,
+          return (ActionListener<Response>) new RegularResponseActionListener((ActionListener<ActionResponse>) listener,
               requestContext, blockContext);
         } catch (Throwable e) {
           logger.error("on allow exception", e);

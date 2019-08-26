@@ -58,6 +58,12 @@ import tech.beshu.ror.boot.Engine;
 import tech.beshu.ror.boot.Ror$;
 import tech.beshu.ror.boot.RorInstance;
 import tech.beshu.ror.boot.StartingFailure;
+import tech.beshu.ror.es.providers.EsAuditSink;
+import tech.beshu.ror.es.providers.EsIndexJsonContentProvider;
+import tech.beshu.ror.es.requests.ForbiddenResponse;
+import tech.beshu.ror.es.requests.RequestInfo;
+import tech.beshu.ror.es.requests.ResponseActionListener;
+import tech.beshu.ror.es.requests.RorNotReadyResponse;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
 import java.security.AccessController;

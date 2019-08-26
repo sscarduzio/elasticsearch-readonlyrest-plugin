@@ -30,8 +30,7 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestFilter;
 import org.elasticsearch.rest.RestFilterChain;
 import org.elasticsearch.rest.RestRequest;
-
-import java.io.IOException;
+import tech.beshu.ror.es.utils.ThreadRepo;
 
 public class ReadonlyRestAction extends BaseRestHandler {
 

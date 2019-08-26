@@ -31,7 +31,7 @@ import tech.beshu.ror.adminapi.AdminRestApi;
 import tech.beshu.ror.boot.SchedulerPools$;
 import tech.beshu.ror.configuration.FileConfigLoader;
 import tech.beshu.ror.configuration.IndexConfigManager;
-import tech.beshu.ror.es.EsIndexJsonContentProvider;
+import tech.beshu.ror.es.provider.EsIndexJsonContentProvider;
 import tech.beshu.ror.es.RorInstanceSupplier;
 import tech.beshu.ror.providers.JvmPropertiesProvider$;
 
