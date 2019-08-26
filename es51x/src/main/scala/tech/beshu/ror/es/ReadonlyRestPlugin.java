@@ -112,7 +112,7 @@ public class ReadonlyRestPlugin extends Plugin
   @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+        new ActionHandler(RRAdminAction.instance(), TransportRRAdminAction.class));
   }
 
   @Override

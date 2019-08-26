@@ -14,15 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es
 
-package tech.beshu.ror.es.utils;
+import java.util.concurrent.atomic.AtomicReference
+import java.util.function.Supplier
 
-import org.elasticsearch.rest.RestChannel;
+import tech.beshu.ror.boot.RorInstance
 
-/**
- * Created by sscarduzio on 25/11/2016.
- */
-public class ThreadRepo {
-  public static ThreadLocal<RestChannel> channel = new ThreadLocal<>();
-  public static ThreadLocal<Long> taskId = new ThreadLocal<>();
+object RorInstanceSupplier extends Supplier[Option[RorInstance]]{
+  private val rorInstanceAtomicReference = new AtomicReference(Option.empty[RorInstance])
+
+  override def get(): Option[RorInstance] = rorInstanceAtomicReference.get()
+
+  def update(rorInstance: RorInstance): Unit = {
+    rorInstanceAtomicReference.set(Some(rorInstance))
+  }
 }

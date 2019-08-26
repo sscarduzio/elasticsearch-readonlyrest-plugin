@@ -40,8 +40,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
     RestFilter rf = new RestFilter() {
       @Override
       public void process(RestRequest request, RestChannel channel, NodeClient client, RestFilterChain filterChain) throws Exception {
-        ThreadRepo.channel.set(channel);
-
+        ThreadRepo.setRestChannel(channel);
         filterChain.continueProcessing(request, channel, client);
       }
     };
