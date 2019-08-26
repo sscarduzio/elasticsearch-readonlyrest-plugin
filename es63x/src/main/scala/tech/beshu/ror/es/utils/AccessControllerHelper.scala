@@ -14,33 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.utils
 
-package tech.beshu.ror.es.rradmin;
+import java.security.{AccessController, PrivilegedAction}
 
-import org.elasticsearch.action.ActionRequest;
-import org.elasticsearch.action.ActionRequestValidationException;
-import org.elasticsearch.rest.RestRequest;
-import tech.beshu.ror.adminapi.AdminRestApi;
+object AccessControllerHelper {
 
-public class RRAdminRequest extends ActionRequest {
-
-  private RestRequest request;
-
-  public RRAdminRequest() {
+  def doPrivileged[T](action: => T): T = {
+    AccessController.doPrivileged(new PrivilegedAction[T] {
+      override def run(): T = action
+    })
   }
-
-  public RRAdminRequest(RestRequest request) {
-    this.request = request;
-  }
-
-  public AdminRestApi.AdminRequest getAdminRequest() {
-    return new AdminRestApi.AdminRequest(request.method().name(), request.path(), request.content().utf8ToString());
-  }
-
-  @Override
-  public ActionRequestValidationException validate() {
-    return null;
-  }
-
-
 }

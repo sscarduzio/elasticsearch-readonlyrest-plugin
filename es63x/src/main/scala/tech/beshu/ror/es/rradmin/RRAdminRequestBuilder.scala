@@ -14,15 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.rradmin
 
-package tech.beshu.ror.es.rradmin;
+import org.elasticsearch.action.ActionRequestBuilder
+import org.elasticsearch.client.ElasticsearchClient
 
-import org.elasticsearch.action.ActionRequestBuilder;
-import org.elasticsearch.client.ElasticsearchClient;
-
-public class RRAdminRequestBuilder extends ActionRequestBuilder<RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder> {
-
-  public RRAdminRequestBuilder(ElasticsearchClient client, RRAdminAction action) {
-    super(client, action, new RRAdminRequest());
-  }
-}
+class RRAdminRequestBuilder(client: ElasticsearchClient, action: RRAdminAction)
+  extends ActionRequestBuilder[RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder](client, action, new RRAdminRequest)
