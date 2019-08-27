@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.orders.{forbiddenByMismatchedCauseOrder, gro
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import scala.collection.SortedSet
+import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 class Acl(val blocks: NonEmptyList[Block])
   extends AccessControl {
@@ -76,7 +77,7 @@ class Acl(val blocks: NonEmptyList[Block])
       .map { blockResults =>
         val history = blockResults.map(_._2).toVector
         val result = if(isMatched(blockResults.map(_._1))) {
-          val userMetadata = userMetadataFrom(blockResults)
+          val userMetadata = userMetadataFrom(blockResults, context.currentGroup.toOption)
           UserMetadataRequestResult.Allow(userMetadata)
         } else {
           UserMetadataRequestResult.Forbidden
@@ -85,22 +86,27 @@ class Acl(val blocks: NonEmptyList[Block])
       }
   }
 
-  private def userMetadataFrom(blockResults: List[(ExecutionResult, History)]) = {
+  private def userMetadataFrom(blockResults: List[(ExecutionResult, History)],
+                               preferredGroup: Option[Group]) = {
     val matched = blockResults.collect { case r@(Matched(block, _), _) if block.policy === Policy.Allow => r }
     val allGroupsWithRelatedBlockContexts =
       matched
         .map(_._1.blockContext)
         .flatMap(b => b.availableGroups.map((_, b)).toList)
         .sortBy(_._1)
-    allGroupsWithRelatedBlockContexts
-      .headOption
+    lazy val defaultMatchedBlockUserMetadata = {
+      val blockContext = matched.head._1.blockContext
+      createUserMetadata(blockContext, None, SortedSet.empty)
+    }
+    val foundDesiredGroupBlock = preferredGroup match {
+      case Some(pg) => allGroupsWithRelatedBlockContexts.find(_._1 === pg)
+      case None => allGroupsWithRelatedBlockContexts.headOption
+    }
+    foundDesiredGroupBlock
       .map { case (currentGroup, blockContext) =>
         createUserMetadata(blockContext, Some(currentGroup), SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*))
       }
-      .getOrElse {
-        val blockContext = matched.head._1.blockContext
-        createUserMetadata(blockContext, None, SortedSet.empty)
-      }
+      .getOrElse(defaultMatchedBlockUserMetadata)
   }
 
   private def createUserMetadata(blockContext: BlockContext, currentGroup: Option[Group], availableGroups: SortedSet[Group]) = {

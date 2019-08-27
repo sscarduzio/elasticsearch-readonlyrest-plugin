@@ -58,7 +58,7 @@ class IndexLevelActionFilter(settings: Settings,
     this(settings, clusterService, client, threadPool, env, ())
   }
 
-  private val rorInstance = {
+  private val rorInstance = doPrivileged {
     val startingResult = Ror
       .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
       .runSyncUnsafe(1 minute)

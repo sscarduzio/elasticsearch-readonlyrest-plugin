@@ -50,42 +50,6 @@ public class LocalGroupsTest {
       );
 
   @Test
-  public void testOK_GoodCredsWithGoodRule() throws Exception {
-    HttpResponse r = mkRequest("user", "passwd", matchingEndpoint);
-
-    assertEquals(
-        200,
-        r.getStatusLine().getStatusCode()
-    );
-
-    // Piggy back response headers testing (too long to spin up another multiContainerDependent)
-    assertEquals("user", r.getHeaders("x-ror-username")[0].getValue());
-    assertEquals(".kibana_user", r.getHeaders("x-ror-kibana_index")[0].getValue());
-    assertEquals("timelion", r.getHeaders("x-ror-kibana-hidden-apps")[0].getValue());
-    assertEquals("admin", r.getHeaders("x-ror-kibana_access")[0].getValue().toLowerCase());
-    assertEquals("testgroup", r.getHeaders("x-ror-current-group")[0].getValue());
-    assertEquals("extra_group,foogroup,testgroup", r.getHeaders("x-ror-available-groups")[0].getValue());
-  }
-
-  @Test
-  public void testOK_GoodCredsWithGoodRuleWithMatchingPreferredgroup() throws Exception {
-    HttpResponse r = mkRequest("user", "passwd", matchingEndpoint, "foogroup");
-
-    assertEquals(
-        200,
-        r.getStatusLine().getStatusCode()
-    );
-
-    // Piggy back response headers testing (too long to spin up another multiContainerDependent)
-    assertEquals("user", r.getHeaders("x-ror-username")[0].getValue());
-    assertEquals(".kibana_foogroup", r.getHeaders("x-ror-kibana_index")[0].getValue());
-    assertEquals("foo:app", r.getHeaders("x-ror-kibana-hidden-apps")[0].getValue());
-    assertEquals("admin", r.getHeaders("x-ror-kibana_access")[0].getValue().toLowerCase());
-    assertEquals("foogroup", r.getHeaders("x-ror-current-group")[0].getValue());
-    assertEquals("extra_group,foogroup,testgroup", r.getHeaders("x-ror-available-groups")[0].getValue());
-  }
-
-  @Test
   public void testOK_GoodCredsWithGoodRuleWithNoNMatchingPreferredGroup() throws Exception {
     HttpResponse r = mkRequest("user", "passwd", matchingEndpoint, "extra_group");
 
@@ -124,13 +88,33 @@ public class LocalGroupsTest {
     Map<String, Object> bodyMap = new Gson().fromJson(body, type);
     assertEquals(".kibana_user", bodyMap.get("x-ror-kibana_index"));
     assertEquals("user", bodyMap.get("x-ror-username"));
-    assertEquals("[timelion]", bodyMap.get("x-ror-kibana-hidden-apps").toString());
+    assertEquals("timelion", bodyMap.get("x-ror-kibana-hidden-apps").toString());
     assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
-    assertEquals("testgroup", bodyMap.get("x-ror-current-group"));
+    assertEquals("extra_group", bodyMap.get("x-ror-current-group"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("testgroup"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("extra_group"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("foogroup"));
+  }
 
+  @Test
+  public void testIdentityRetrievalWithPreferedGroup() throws Exception {
+
+    HttpResponse response = mkRequest("user", "passwd", "/_readonlyrest/metadata/current_user", "foogroup");
+    assertEquals(response.getStatusLine().getStatusCode(), 200);
+    Type type = new TypeToken<Map<String, Object>>() {
+    }.getType();
+
+    String body = EntityUtils.toString(response.getEntity());
+    System.out.println("identity object: " + body);
+    Map<String, Object> bodyMap = new Gson().fromJson(body, type);
+    assertEquals(".kibana_foogroup", bodyMap.get("x-ror-kibana_index"));
+    assertEquals("user", bodyMap.get("x-ror-username"));
+    assertEquals("foo:app", bodyMap.get("x-ror-kibana-hidden-apps").toString());
+    assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
+    assertEquals("foogroup", bodyMap.get("x-ror-current-group"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("testgroup"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("extra_group"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("foogroup"));
   }
 
   private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {

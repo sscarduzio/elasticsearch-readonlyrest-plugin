@@ -21,15 +21,17 @@ import java.util.function.Supplier
 
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.transport.{RemoteClusterService, TransportService}
 
-class TransportServiceInterceptor(transportService: TransportService,
+class TransportServiceInterceptor(settings: Settings,
+                                  transportService: TransportService,
                                   ignore: Unit) // hack!
-  extends AbstractLifecycleComponent() {
+  extends AbstractLifecycleComponent(settings) {
 
   @Inject
-  def this(transportService: TransportService) {
-    this(transportService, ())
+  def this(settings: Settings, transportService: TransportService) {
+    this(settings, transportService, ())
   }
   Option(transportService.getRemoteClusterService).foreach { r: RemoteClusterService =>
     TransportServiceInterceptor.remoteClusterServiceSupplier.update(r)

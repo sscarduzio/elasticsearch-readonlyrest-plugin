@@ -26,9 +26,15 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi._
 import tech.beshu.ror.es.rradmin.{RRAdminAction, RRAdminRequest, RRAdminResponse}
 
-@Inject
-class RestRRAdminAction(settings: Settings, controller: RestController)
+class RestRRAdminAction(settings: Settings,
+                        controller: RestController,
+                        ignore: Unit) // hack!
   extends BaseRestHandler(settings) with RestHandler {
+
+  @Inject
+  def this(settings: Settings, controller: RestController) {
+    this(settings, controller, ())
+  }
 
   register("POST", AdminRestApi.forceReloadRorPath.endpointString)
   register("GET", AdminRestApi.provideRorIndexConfigPath.endpointString)
