@@ -77,7 +77,8 @@ class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestCon
           Dn("ou=Groups,dc=example,dc=com".nonempty),
           "cn".nonempty,
           "uniqueMember".nonempty,
-          "(cn=*)".nonempty
+          "(cn=*)".nonempty,
+          true
         ))
       )
       .runSyncUnsafe()
