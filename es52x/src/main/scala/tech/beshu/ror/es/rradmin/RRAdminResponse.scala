@@ -44,9 +44,8 @@ class RRAdminResponse(response: Either[Throwable, AdminRestApi.AdminResponse])
   }
 
   private def addResponseJson(builder: XContentBuilder, status: String, message: String): Unit = {
-    builder.startObject
+    // No need to wrap in object in pre-5.3.x!// No need to wrap in object in pre-5.3.x!
     builder.field("status", status)
     builder.field("message", message)
-    builder.endObject
   }
 }
