@@ -108,6 +108,19 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
         }
       }
     }
+    "not allow to reload current settings" when {
+      "config is malformed" when {
+        "LDAP is not achievable" in {
+          val result = rorWithIndexConfigAdminActionManager.actionPost(
+            "_readonlyrest/admin/config",
+            s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))}"}"""
+          )
+          result.getResponseCode should be(200)
+          result.getResponseJson.get("status") should be("ok")
+          result.getResponseJson.get("message") should be("updated settings")
+        }
+      }
+    }
   }
 }
 

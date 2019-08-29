@@ -22,7 +22,6 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.{LdapAuthService, LdapAuthenti
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.acl.factory.decoders.definitions.LdapServicesDecoder
-import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils.StringOps
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
 

@@ -16,25 +16,30 @@
  */
 package tech.beshu.ror.configuration
 
+import java.io.StringReader
+
 import better.files.File
+import cats.effect.Resource
 import cats.{Eq, Show}
 import io.circe.yaml.parser
 import io.circe.{Json, ParsingFailure}
+import monix.eval.Task
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
 
 final case class RawRorConfig(configJson: Json, raw: String)
 
 object RawRorConfig {
 
-  def fromFile(file: File): Either[ParsingRorConfigError, RawRorConfig] = {
-    val rawContent = file.contentAsString
-    handleParseResult(parser.parse(rawContent))
-      .map(RawRorConfig(_, rawContent))
+  def fromFile(file: File): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
+    fromString(file.contentAsString)
   }
 
-  def fromString(content: String): Either[ParsingRorConfigError, RawRorConfig] = {
-    handleParseResult(parser.parse(content))
-      .map(RawRorConfig(_, content))
+  def fromString(content: String): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
+    val contentResource = Resource.make(Task(new StringReader(content))) { reader => Task(reader.close()) }
+    contentResource.use { reader => Task {
+      handleParseResult(parser.parse(reader))
+        .map(RawRorConfig(_, content))
+    }}
   }
 
   private def handleParseResult(result: Either[ParsingFailure, Json]) = {

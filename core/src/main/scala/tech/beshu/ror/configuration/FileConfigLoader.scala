@@ -20,6 +20,7 @@ import java.nio.file.Path
 
 import better.files.File
 import cats.Show
+import cats.data.EitherT
 import monix.eval.Task
 import tech.beshu.ror.acl.factory.consts.RorProperties
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
@@ -40,12 +41,19 @@ class FileConfigLoader(esConfigFolderPath: Path,
     }
   }
 
-  override def load(): Task[Either[ConfigLoaderError[FileConfigError], RawRorConfig]] = Task {
+  override def load(): Task[Either[ConfigLoaderError[FileConfigError], RawRorConfig]] = {
     val file = rawConfigFile
-    for {
-      _ <- Either.cond(file.exists, file, SpecializedError(FileNotExist(file)))
-      config <- RawRorConfig.fromFile(file).left.map(ParsingError.apply)
-    } yield config
+    (for {
+      _ <- checkIfFileExist(file)
+      config <- loadConfigFromFile(file)
+    } yield config).value
+  }
+
+  private def checkIfFileExist(file: File): EitherT[Task, ConfigLoaderError[FileConfigError], File] =
+    EitherT.cond(file.exists, file, SpecializedError(FileNotExist(file)))
+
+  private def loadConfigFromFile(file: File): EitherT[Task, ConfigLoaderError[FileConfigError], RawRorConfig] = {
+    EitherT(RawRorConfig.fromFile(file).map(_.left.map(ParsingError.apply)))
   }
 }
 

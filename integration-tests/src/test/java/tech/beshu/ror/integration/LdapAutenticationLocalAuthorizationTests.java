@@ -21,7 +21,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
-import tech.beshu.ror.utils.containers.LdapContainer;
+import tech.beshu.ror.utils.containers.JavaLdapContainer;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
@@ -37,7 +37,7 @@ public class LdapAutenticationLocalAuthorizationTests {
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProjectJ.fromSystemProperty(),
           new MultiContainer.Builder()
-              .add("LDAP1", () -> LdapContainer.create("/ldap_separate_authc_authz_mixed_local/ldap.ldif"))
+              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_separate_authc_authz_mixed_local/ldap.ldif"))
               .build(),
           "/ldap_authc_local_authz/elasticsearch.yml",
           new ElasticsearchTweetsInitializer()

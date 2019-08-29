@@ -41,9 +41,9 @@ import java.util.Optional;
 
 import static tech.beshu.ror.utils.containers.ContainerUtils.checkTimeout;
 
-public class LdapContainer extends GenericContainer<LdapContainer> {
+public class JavaLdapContainer extends GenericContainer<JavaLdapContainer> {
 
-  private static Logger logger = LogManager.getLogger(LdapContainer.class);
+  private static Logger logger = LogManager.getLogger(JavaLdapContainer.class);
 
   private static int LDAP_PORT = 389;
   private static Duration LDAP_CONNECT_TIMEOUT = Duration.ofSeconds(5);
@@ -54,14 +54,14 @@ public class LdapContainer extends GenericContainer<LdapContainer> {
   private static String LDAP_ADMIN_PASSWORD = "password";
   private static Duration WAIT_BETWEEN_RETRIES = Duration.ofSeconds(1);
 
-  private LdapContainer(ImageFromDockerfile imageFromDockerfile) {
+  private JavaLdapContainer(ImageFromDockerfile imageFromDockerfile) {
     super(imageFromDockerfile);
   }
 
-  public static LdapContainer create(String ldapInitScript) {
+  public static JavaLdapContainer create(String ldapInitScript) {
     File ldapInitScriptFile = ContainerUtils.getResourceFile(ldapInitScript);
     logger.info("Creating LDAP container ...");
-    LdapContainer container = new LdapContainer(
+    JavaLdapContainer container = new JavaLdapContainer(
         new ImageFromDockerfile()
             .withDockerfileFromBuilder(builder -> builder
                 .from("osixia/openldap:1.1.7")

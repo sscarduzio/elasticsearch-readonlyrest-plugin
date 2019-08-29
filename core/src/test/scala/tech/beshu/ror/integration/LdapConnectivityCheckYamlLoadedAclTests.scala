@@ -23,7 +23,6 @@ import tech.beshu.ror.acl.AclHandlingResult.Result
 import tech.beshu.ror.acl.blocks.Block
 import tech.beshu.ror.acl.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._

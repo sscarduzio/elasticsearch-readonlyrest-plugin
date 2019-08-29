@@ -122,7 +122,7 @@ class AdminRestApi(rorInstance: RorInstance,
       case configJsonValue :: Nil  =>
         configJsonValue.asString match {
           case Some(configString) =>
-            EitherT.fromEither[Task](RawRorConfig.fromString(configString).left.map(error => Failure(error.show)))
+            EitherT(RawRorConfig.fromString(configString).map(_.left.map(error => Failure(error.show))))
           case None =>
             liftFailure("Malformed settings payload - settings key value is not string")
         }

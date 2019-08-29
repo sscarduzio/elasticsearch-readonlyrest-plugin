@@ -29,7 +29,6 @@ import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnection
 import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.acl.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
 
 import scala.concurrent.duration._

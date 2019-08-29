@@ -17,6 +17,7 @@
 package tech.beshu.ror.acl.blocks.definitions.ldap.implementations
 
 import cats.data.NonEmptyList
+import cats.effect.Resource
 import cats.implicits._
 import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
@@ -35,16 +36,24 @@ object LdapConnectionPoolProvider extends Logging {
     val options = ldapOptions(connectionConfig)
     val server = ldapServerSet(connectionConfig.connectionMethod, options, connectionConfig.trustAllCerts)
     val bindReq = bindRequest(connectionConfig.bindRequestUser)
-    val bindResult = retry(
-      Task(server.getConnection)
-        .bracket(
-          use = connection => Task {
-            connection.bind(bindReq)
-          }
-        )(
-          release = connection => Task(connection.close())
-        )
-    )
+    val bindResult = retry {
+      val resource = Resource.make(Task(server.getConnection)) { conn =>
+        Task(conn.close())
+      }
+      resource.use { connection =>
+        Task(connection.bind(bindReq))
+      }
+    }
+//    val bindResult = retry(
+//      Task(server.getConnection)
+//        .bracket(
+//          use = connection => Task {
+//            connection.bind(bindReq)
+//          }
+//        )(
+//          release = connection => Task(connection.close())
+//        )
+//    )
     bindResult
       .map(_.getResultCode == ResultCode.SUCCESS)
       .recover { case NonFatal(ex) =>
