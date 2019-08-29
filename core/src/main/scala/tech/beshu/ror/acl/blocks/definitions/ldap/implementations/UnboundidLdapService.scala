@@ -155,7 +155,8 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
   }
 
   private def searchFilterFrom(mode: DefaultGroupSearch, user: LdapUser) = {
-    s"(&${mode.groupSearchFilter}(${mode.uniqueMemberAttribute}=${Filter.encodeValue(user.dn.value.value)}))"
+    if (mode.groupAttributeIsDN) s"(&${mode.groupSearchFilter}(${mode.uniqueMemberAttribute}=${Filter.encodeValue(user.dn.value.value)}))"
+    else s"(&${mode.groupSearchFilter}(${mode.uniqueMemberAttribute}=${user.id.value}))"
   }
 
   private def searchGroupsLdapRequest(listener: AsyncSearchResultListener,
@@ -316,7 +317,8 @@ object UserGroupsSearchFilterConfig {
     final case class DefaultGroupSearch(searchGroupBaseDN: Dn,
                                         groupNameAttribute: NonEmptyString,
                                         uniqueMemberAttribute: NonEmptyString,
-                                        groupSearchFilter: NonEmptyString)
+                                        groupSearchFilter: NonEmptyString,
+                                        groupAttributeIsDN: Boolean)
       extends UserGroupsSearchMode
 
     final case class GroupsFromUserAttribute(searchGroupBaseDN: Dn,

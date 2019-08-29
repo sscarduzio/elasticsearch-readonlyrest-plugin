@@ -153,11 +153,13 @@ object LdapServicesDecoder {
         groupNameAttribute <- c.downNonEmptyOptionalField("group_name_attribute")
         uniqueMemberAttribute <- c.downNonEmptyOptionalField("unique_member_attribute")
         groupSearchFilter <- c.downNonEmptyOptionalField("group_search_filter")
+        groupAttributeIsDN <- c.downField("group_attribute_is_dn").as[Option[Boolean]]
       } yield DefaultGroupSearch(
         searchGroupBaseDn,
         groupNameAttribute.getOrElse(NonEmptyString.unsafeFrom("cn")),
         uniqueMemberAttribute.getOrElse(NonEmptyString.unsafeFrom("uniqueMember")),
-        groupSearchFilter.getOrElse(NonEmptyString.unsafeFrom("(cn=*)"))
+        groupSearchFilter.getOrElse(NonEmptyString.unsafeFrom("(cn=*)")),
+        groupAttributeIsDN.getOrElse(true)
       )
     }
 
