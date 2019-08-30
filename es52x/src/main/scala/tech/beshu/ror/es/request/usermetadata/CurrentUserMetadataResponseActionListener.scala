@@ -25,8 +25,6 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess
 
-import scala.collection.JavaConverters._
-
 class CurrentUserMetadataResponseActionListener(baseListener: ActionListener[ActionResponse],
                                                 userMetadata: UserMetadata)
   extends ActionListener[ActionResponse] {
@@ -41,7 +39,7 @@ private class RRMetadataResponse(userMetadata: UserMetadata)
   extends ActionResponse with ToXContent {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val sourceMap: Map[String, _] =
+    val sourceMap: Map[String, AnyRef] =
       userMetadata.loggedUser.map(u => (Constants.HEADER_USER_ROR, u.id.value.value)).toMap ++
         userMetadata.currentGroup.map(g => (Constants.HEADER_GROUP_CURRENT, g.value.value)).toMap ++
         userMetadata.foundKibanaIndex.map(i => (Constants.HEADER_KIBANA_INDEX, i.value.value)).toMap ++
@@ -52,7 +50,7 @@ private class RRMetadataResponse(userMetadata: UserMetadata)
         stringifyKibanaAppsFrom(userMetadata).map(Constants.HEADER_KIBANA_HIDDEN_APPS -> _).toMap ++
         userMetadata.kibanaAccess.map(ka => (Constants.HEADER_KIBANA_ACCESS, ka.show)).toMap ++
         userMetadata.userOrigin.map(uo => (Constants.HEADER_USER_ORIGIN, uo.value)).toMap
-    builder.map(sourceMap.asJava)
+    sourceMap.foreach { case (key, value) => builder.field(key, value) }
     builder
   }
 
