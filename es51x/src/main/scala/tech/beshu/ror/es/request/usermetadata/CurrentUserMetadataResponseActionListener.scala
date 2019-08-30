@@ -49,7 +49,7 @@ private class RRMetadataResponse(userMetadata: UserMetadata)
           .toMap ++
         stringifyKibanaAppsFrom(userMetadata).map(Constants.HEADER_KIBANA_HIDDEN_APPS -> _).toMap ++
         userMetadata.kibanaAccess.map(ka => (Constants.HEADER_KIBANA_ACCESS, ka.show)).toMap ++
-        userMetadata.userOrigin.map(uo => (Constants.HEADER_USER_ORIGIN, uo.value)).toMap
+        userMetadata.userOrigin.map(uo => (Constants.HEADER_USER_ORIGIN, uo.value.value)).toMap
     sourceMap.foreach { case (key, value) => builder.field(key, value) }
     builder
   }
