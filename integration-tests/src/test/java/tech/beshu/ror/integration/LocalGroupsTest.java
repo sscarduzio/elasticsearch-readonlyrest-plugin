@@ -51,7 +51,7 @@ public class LocalGroupsTest {
 
   @Test
   public void testOK_GoodCredsWithGoodRuleWithNoNMatchingPreferredGroup() throws Exception {
-    HttpResponse r = mkRequest("user", "passwd", matchingEndpoint, "extra_group");
+    HttpResponse r = mkRequest("user", "passwd", matchingEndpoint, "group_extra");
 
     assertEquals(
         401,
@@ -90,9 +90,9 @@ public class LocalGroupsTest {
     assertEquals("user", bodyMap.get("x-ror-username"));
     assertEquals("[timelion]", bodyMap.get("x-ror-kibana-hidden-apps").toString());
     assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
-    assertEquals("extra_group", bodyMap.get("x-ror-current-group"));
-    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("testgroup"));
-    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("extra_group"));
+    assertEquals("a_testgroup", bodyMap.get("x-ror-current-group"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("a_testgroup"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("group_extra"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("foogroup"));
   }
 
@@ -112,8 +112,6 @@ public class LocalGroupsTest {
     assertEquals("[foo:app]", bodyMap.get("x-ror-kibana-hidden-apps").toString());
     assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
     assertEquals("foogroup", bodyMap.get("x-ror-current-group"));
-    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("testgroup"));
-    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("extra_group"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("foogroup"));
   }
 
