@@ -52,7 +52,9 @@ import tech.beshu.ror.configuration.RorSsl$;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
-import tech.beshu.ror.es.security.RoleIndexSearcherWrapper;
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper;
+import tech.beshu.ror.es.ssl.SSLTransportNetty4;
+import tech.beshu.ror.es.utils.ThreadRepo;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
 import java.util.Collections;
@@ -113,7 +115,7 @@ public class ReadonlyRestPlugin extends Plugin
   @SuppressWarnings({ "unchecked", "rawtypes" })
   public List<ActionHandler<? extends ActionRequest, ? extends ActionResponse>> getActions() {
     return Collections.singletonList(
-        new ActionHandler(RRAdminAction.INSTANCE, TransportRRAdminAction.class));
+        new ActionHandler(RRAdminAction.instance(), TransportRRAdminAction.class));
   }
 
   @Override
@@ -125,7 +127,7 @@ public class ReadonlyRestPlugin extends Plugin
   public UnaryOperator<RestHandler> getRestHandlerWrapper(ThreadContext threadContext) {
     return restHandler -> (RestHandler) (request, channel, client) -> {
       // Need to make sure we've fetched cluster-wide configuration at least once. This is super fast, so NP.
-      ThreadRepo.channel.set(channel);
+      ThreadRepo.setRestChannel(channel);
       restHandler.handleRequest(request, channel, client);
     };
   }

@@ -19,10 +19,10 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import eu.timepit.refined._
 import eu.timepit.refined.numeric.Positive
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.refined._
+import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.refined._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

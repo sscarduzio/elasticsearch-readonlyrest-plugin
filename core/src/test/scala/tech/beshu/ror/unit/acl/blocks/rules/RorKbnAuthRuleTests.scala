@@ -25,13 +25,13 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
-import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod
-import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain._
+import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
@@ -39,6 +39,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import io.jsonwebtoken.impl.DefaultClaims
 
 class RorKbnAuthRuleTests
   extends WordSpec with MockFactory with Inside with BlockContextAssertion {
@@ -47,6 +48,7 @@ class RorKbnAuthRuleTests
     "match" when {
       "token has valid HS256 signature" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val claims = new DefaultClaims(Map("sub" -> "test", "user" -> "user1", "groups" -> List("group1", "group2").asJava).asJava)
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test".nonempty),
@@ -55,23 +57,21 @@ class RorKbnAuthRuleTests
           tokenHeader = Header(
             Header.Name.authorization,
             {
-              val jwtBuilder = Jwts.builder
-                .signWith(key)
-                .setSubject("test")
-                .claim("user", "user1")
-                .claim("groups", List("group1", "group2").asJava)
+              val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
               NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
             }
           )
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              jwt = Some(JwtTokenPayload(claims))
             )(blockContext)
         }
       }
       "token has valid RS256 signature" in {
         val (pub, secret) = TestsUtils.generateRsaRandomKeys
+        val claims = new DefaultClaims(Map("sub" -> "test", "user" -> "user1", "groups" -> List("group1", "group2").asJava).asJava)
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test".nonempty),
@@ -80,23 +80,21 @@ class RorKbnAuthRuleTests
           tokenHeader = Header(
             Header.Name.authorization,
             {
-              val jwtBuilder = Jwts.builder
-                .signWith(secret)
-                .setSubject("test")
-                .claim("user", "user1")
-                .claim("groups", List("group1", "group2").asJava)
+              val jwtBuilder = Jwts.builder.signWith(secret).setClaims(claims)
               NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
             }
           )
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              jwt = Some(JwtTokenPayload(claims))
             )(blockContext)
         }
       }
       "groups claim name is defined and no groups field is passed in token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test", "user" -> "user1").asJava)
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test".nonempty),
@@ -106,22 +104,21 @@ class RorKbnAuthRuleTests
           tokenHeader = Header(
             Header.Name.authorization,
             {
-              val jwtBuilder = Jwts.builder
-                .signWith(key)
-                .setSubject("test")
-                .claim("user", "user1")
+              val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
               NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
             }
           )
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              jwt = Some(JwtTokenPayload(claims))
             )(blockContext)
         }
       }
       "rule groups are defined and intersection between those groups and Ror Kbn ones is not empty" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
+        val claims = new DefaultClaims(Map("sub" -> "test", "user" -> "user1", "groups" -> List("group1", "group2").asJava).asJava)
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test".nonempty),
@@ -131,11 +128,7 @@ class RorKbnAuthRuleTests
           tokenHeader = Header(
             Header.Name.authorization,
             {
-              val jwtBuilder = Jwts.builder
-                .signWith(key)
-                .setSubject("test")
-                .claim("user", "user1")
-                .claim("groups", List("group1", "group2").asJava)
+              val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
               NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
             }
           )
@@ -144,7 +137,8 @@ class RorKbnAuthRuleTests
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(Group("group2".nonempty)),
-              availableGroups = Set(Group("group2".nonempty))
+              availableGroups = Set(Group("group2".nonempty)),
+              jwt = Some(JwtTokenPayload(claims))
             )(blockContext)
         }
       }

@@ -21,22 +21,22 @@ import monix.eval.Task
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.acl.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.domain._
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils.{AssertionType, BlockContextAssertion}
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.acl.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService}
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService}
+import tech.beshu.ror.accesscontrol.orders._
 
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import TestsUtils._
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 
 class LdapAuthRuleTests
   extends WordSpec

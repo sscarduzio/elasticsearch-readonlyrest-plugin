@@ -20,9 +20,9 @@ import cats.data.NonEmptyList
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariable.ResolvingError
-import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.acl.blocks.variables.startup.StartupResolvableVariableCreator.{CreationError, createMultiVariableFrom, createSingleVariableFrom}
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariable.ResolvingError
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.{CreationError, createMultiVariableFrom, createSingleVariableFrom}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils._

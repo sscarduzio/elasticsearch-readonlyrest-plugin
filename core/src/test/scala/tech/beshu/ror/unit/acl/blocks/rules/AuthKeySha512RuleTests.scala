@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
-import tech.beshu.ror.acl.blocks.rules.{AuthKeySha512Rule, BasicAuthenticationRule}
-import tech.beshu.ror.acl.domain.User
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeySha512Rule, BasicAuthenticationRule}
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.TestsUtils._
 
 class AuthKeySha512RuleTests extends BasicAuthenticationTestTemplate {

@@ -22,14 +22,14 @@ import cats.data.NonEmptyList
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.acl.SequentialAcl
-import tech.beshu.ror.acl.blocks.Block
-import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.acl.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.accesscontrol.acl.Acl
 import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -323,7 +323,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
           |""".stripMargin)
 
       inside(factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()) {
-        case Right(CoreSettings(acl: SequentialAcl, _, _)) =>
+        case Right(CoreSettings(acl: Acl, _, _)) =>
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
           firstBlock.policy should be(Block.Policy.Forbid)

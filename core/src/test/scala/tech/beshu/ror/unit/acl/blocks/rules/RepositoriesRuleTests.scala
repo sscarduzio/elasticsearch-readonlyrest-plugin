@@ -20,14 +20,14 @@ import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.blocks.BlockContext.Outcome
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.{BaseSpecializedIndicesRule, RepositoriesRule}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.acl.domain.{Action, IndexName}
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.{BaseSpecializedIndicesRule, RepositoriesRule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.domain.{Action, IndexName}
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion

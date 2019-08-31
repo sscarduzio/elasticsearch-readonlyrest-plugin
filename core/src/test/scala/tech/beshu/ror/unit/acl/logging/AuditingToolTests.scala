@@ -24,17 +24,17 @@ import com.softwaremill.sttp.Method
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.blocks.{Block, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.acl.blocks.rules.MethodsRule
-import tech.beshu.ror.acl.logging.ResponseContext._
-import tech.beshu.ror.acl.logging.AuditingTool
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.blocks.{Block, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
+import tech.beshu.ror.accesscontrol.logging.ResponseContext._
+import tech.beshu.ror.accesscontrol.logging.AuditingTool
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.mocks.MockRequestContext
 import monix.execution.Scheduler.Implicits.global
 import org.json.JSONObject
-import tech.beshu.ror.acl.blocks.Block.{Policy, Verbosity}
-import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.AuditSink
 
@@ -148,7 +148,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
 
   private def createAllowedResponseContext(policy: Block.Policy, verbosity: Block.Verbosity) = {
     val requestContext = MockRequestContext.default.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
-    Allowed(
+    AllowedBy(
       requestContext,
       new Block(
         Block.Name("mock-block"),

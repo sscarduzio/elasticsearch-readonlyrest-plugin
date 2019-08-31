@@ -21,15 +21,15 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.definitions.ExternalAuthenticationService
-import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule
-import tech.beshu.ror.acl.blocks.rules.ExternalAuthenticationRule.Settings
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.acl.domain.Credentials
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.User.Id
-import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
+import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.domain.Credentials
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.User.Id
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
 
 class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {

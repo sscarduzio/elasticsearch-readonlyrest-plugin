@@ -21,15 +21,15 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
 import org.scalatest.Matchers._
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.acl.domain.User
-import tech.beshu.ror.acl.blocks.definitions._
-import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule
-import tech.beshu.ror.acl.blocks.rules.ExternalAuthorizationRule.Settings
-import tech.beshu.ror.acl.factory.HttpClientsFactory
-import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.blocks.definitions._
+import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule.Settings
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 
 class ExternalAuthorizationRuleSettingsTests

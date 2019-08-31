@@ -20,8 +20,8 @@ import java.time.Instant
 
 import com.softwaremill.sttp.Method
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.request.RequestContext
 
 final case class MockRequestContext(override val timestamp: Instant = Instant.now(),
                                     override val taskId: Long = 0L,
@@ -32,7 +32,7 @@ final case class MockRequestContext(override val timestamp: Instant = Instant.no
                                     override val remoteAddress: Option[Address] = Address.from("localhost"),
                                     override val localAddress: Address = Address.from("localhost").get,
                                     override val method: Method = Method("GET"),
-                                    override val uriPath: UriPath = UriPath.restMetadataPath,
+                                    override val uriPath: UriPath = UriPath.currentUserMetadataPath,
                                     override val contentLength: Information = Bytes(0),
                                     override val content: String = "",
                                     override val indices: Set[IndexName] = Set.empty,

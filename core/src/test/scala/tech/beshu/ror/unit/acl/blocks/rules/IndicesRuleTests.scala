@@ -21,15 +21,15 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.blocks.rules.IndicesRule
-import tech.beshu.ror.acl.domain.{Action, IndexName, IndexWithAliases}
-import tech.beshu.ror.acl.orders.indexOrder
+import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule
+import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, IndexWithAliases}
+import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.BlockContext.Outcome
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.utils.TestsUtils._
 
 class IndicesRuleTests extends WordSpec with MockFactory {

@@ -21,11 +21,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import squants.information.{Bytes, Information, Kilobytes}
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.rules.MaxBodyLengthRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class MaxBodyLengthRuleTests extends WordSpec with MockFactory {
 

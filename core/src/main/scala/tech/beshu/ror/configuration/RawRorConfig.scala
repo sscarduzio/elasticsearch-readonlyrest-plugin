@@ -52,13 +52,9 @@ object RawRorConfig {
   }
 
   sealed trait ParsingRorConfigError
-
   object ParsingRorConfigError {
-
     case object NoRorSection extends ParsingRorConfigError
-
     case object MoreThanOneRorSection extends ParsingRorConfigError
-
     final case class InvalidContent(throwable: Throwable) extends ParsingRorConfigError
 
     implicit val show: Show[ParsingRorConfigError] = Show.show {

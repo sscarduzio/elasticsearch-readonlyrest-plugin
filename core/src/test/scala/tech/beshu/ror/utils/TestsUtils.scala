@@ -25,11 +25,11 @@ import better.files.File
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.domain.Header.Name
-import tech.beshu.ror.acl.domain._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.domain.Header.Name
+import tech.beshu.ror.accesscontrol.domain._
 import io.circe.yaml._
-import tech.beshu.ror.acl.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.configuration.RawRorConfig
 
 import scala.concurrent.duration.FiniteDuration
@@ -62,25 +62,33 @@ object TestsUtils {
       }
     }
 
-    def assertBlockContext(responseHeaders: Set[Header] = Set.empty,
-                           contextHeaders: Set[Header] = Set.empty,
-                           kibanaIndex: Option[IndexName] = None,
-                           loggedUser: Option[LoggedUser] = None,
+    def assertBlockContext(loggedUser: Option[LoggedUser] = None,
+                           jwt: Option[JwtTokenPayload] = None,
                            currentGroup: Option[Group] = None,
                            availableGroups: Set[Group] = Set.empty,
+                           responseHeaders: Set[Header] = Set.empty,
+                           contextHeaders: Set[Header] = Set.empty,
                            indices: Outcome[Set[IndexName]] = Outcome.NotExist,
                            repositories: Outcome[Set[IndexName]] = Outcome.NotExist,
-                           snapshots: Outcome[Set[IndexName]] = Outcome.NotExist)
+                           snapshots: Outcome[Set[IndexName]] = Outcome.NotExist,
+                           hiddenKibanaApps: Set[KibanaApp] = Set.empty,
+                           userOrigin: Option[UserOrigin] = None,
+                           kibanaAccess: Option[KibanaAccess] = None,
+                           kibanaIndex: Option[IndexName] = None)
                           (blockContext: BlockContext): Unit = {
+      blockContext.loggedUser should be(loggedUser)
+      blockContext.jwt should be (jwt)
+      blockContext.currentGroup should be (currentGroup)
+      blockContext.availableGroups should be (availableGroups)
       blockContext.responseHeaders should be(responseHeaders)
       blockContext.contextHeaders should be(contextHeaders)
-      blockContext.kibanaIndex should be(kibanaIndex)
-      blockContext.loggedUser should be(loggedUser)
-      blockContext.currentGroup should be(currentGroup)
-      blockContext.availableGroups should be(availableGroups)
       blockContext.indices should be(indices)
       blockContext.repositories should be(repositories)
       blockContext.snapshots should be(snapshots)
+      blockContext.hiddenKibanaApps should be (hiddenKibanaApps)
+      blockContext.userOrigin should be (userOrigin)
+      blockContext.kibanaAccess should be (kibanaAccess)
+      blockContext.kibanaIndex should be(kibanaIndex)
     }
   }
 

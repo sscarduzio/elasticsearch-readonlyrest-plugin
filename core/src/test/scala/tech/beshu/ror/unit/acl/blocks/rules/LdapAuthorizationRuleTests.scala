@@ -22,13 +22,13 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthorizationService
-import tech.beshu.ror.acl.blocks.rules.LdapAuthorizationRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationService
+import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, _}
 

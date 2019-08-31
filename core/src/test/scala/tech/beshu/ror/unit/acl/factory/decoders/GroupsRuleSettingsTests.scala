@@ -19,15 +19,15 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Inside
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.definitions.UserDef
-import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.acl.domain.{Credentials, Group, PlainTextSecret, User}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.domain.{Credentials, Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
 
 class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] with Inside {

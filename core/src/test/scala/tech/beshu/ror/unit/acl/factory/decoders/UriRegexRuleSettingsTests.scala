@@ -18,12 +18,12 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.rules.UriRegexRule
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.ToBeResolved
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.ToBeResolved
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule] with MockFactory {
 

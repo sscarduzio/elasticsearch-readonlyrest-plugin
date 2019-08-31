@@ -22,15 +22,15 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.blocks.Block.{ExecutionResult, History}
-import tech.beshu.ror.acl.blocks.BlockContext.Outcome
-import tech.beshu.ror.acl.blocks.rules.Rule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.acl.blocks.{Block, BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.{Group, IndexName, User}
-import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, User}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
 import tech.beshu.ror.utils.TestsUtils._
@@ -53,7 +53,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
             passingRule("r1") ::
               passingRule("r2", _.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))) ::
               notPassingRule("r3") ::
-              passingRule("r4", _.withCurrentGroup(Group("group1".nonempty))) :: Nil
+              passingRule("r4") :: Nil
           )
         )
         val requestContext = MockRequestContext.default
@@ -141,7 +141,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1", _.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))) ::
-            passingRule("r2", _.withCurrentGroup(Group("group1".nonempty))) ::
+            passingRule("r2") ::
             passingRule("r3", _.withIndices(Set(IndexName("idx1".nonempty)))) ::
             Nil
         )
@@ -161,7 +161,6 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
 
           assertBlockContext(
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
-            currentGroup = Some(Group("group1".nonempty)),
             indices = Outcome.Exist(Set(IndexName("idx1".nonempty)))
           ) {
             blockContext

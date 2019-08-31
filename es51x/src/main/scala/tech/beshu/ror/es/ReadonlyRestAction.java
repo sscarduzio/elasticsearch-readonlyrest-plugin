@@ -30,8 +30,7 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestFilter;
 import org.elasticsearch.rest.RestFilterChain;
 import org.elasticsearch.rest.RestRequest;
-
-import java.io.IOException;
+import tech.beshu.ror.es.utils.ThreadRepo;
 
 public class ReadonlyRestAction extends BaseRestHandler {
 
@@ -41,8 +40,7 @@ public class ReadonlyRestAction extends BaseRestHandler {
     RestFilter rf = new RestFilter() {
       @Override
       public void process(RestRequest request, RestChannel channel, NodeClient client, RestFilterChain filterChain) throws Exception {
-        ThreadRepo.channel.set(channel);
-
+        ThreadRepo.setRestChannel(channel);
         filterChain.continueProcessing(request, channel, client);
       }
     };

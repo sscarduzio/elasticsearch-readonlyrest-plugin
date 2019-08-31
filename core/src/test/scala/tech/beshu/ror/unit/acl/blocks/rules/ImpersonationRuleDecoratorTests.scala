@@ -21,16 +21,16 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.blocks.RequestContextInitiatedBlockContext
-import tech.beshu.ror.acl.blocks.definitions.ImpersonatorDef
-import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.acl.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule}
-import tech.beshu.ror.acl.domain.LoggedUser.ImpersonatedUser
-import tech.beshu.ror.acl.domain.{Credentials, Header, PlainTextSecret, User}
-import tech.beshu.ror.acl.orders.userIdOrder
+import tech.beshu.ror.accesscontrol.blocks.RequestContextInitiatedBlockContext
+import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
+import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.orders.userIdOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 

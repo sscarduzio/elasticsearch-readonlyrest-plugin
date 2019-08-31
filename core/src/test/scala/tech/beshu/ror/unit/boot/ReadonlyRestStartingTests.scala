@@ -26,10 +26,10 @@ import org.scalatest.Matchers._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.{CoreFactory, CoreSettings}
-import tech.beshu.ror.acl.{Acl, AclStaticContext, DisabledAclStaticContext}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
+import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext, DisabledAccessControlStaticContext$}
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.configuration.SslConfiguration.{KeyPass, KeystorePassword}
 import tech.beshu.ror.configuration.{RawRorConfig, RorSsl, SslConfiguration}
@@ -145,7 +145,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
 
       val coreFactory = mock[CoreFactory]
-      mockCoreFactory(coreFactory, resourcesPath + originIndexConfigFile, DisabledAclStaticContext)
+      mockCoreFactory(coreFactory, resourcesPath + originIndexConfigFile, DisabledAccessControlStaticContext$)
       mockCoreFactory(coreFactory, resourcesPath + updatedIndexConfigFile)
 
       val result = readonlyRestBoot(coreFactory)
@@ -159,11 +159,11 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       inside(result) { case Right(instance) =>
         eventually {
           instance.engine.isDefined should be(true)
-          instance.engine.get.context should be (DisabledAclStaticContext)
+          instance.engine.get.context should be (DisabledAccessControlStaticContext$)
         }
         eventually {
           instance.engine.isDefined should be(true)
-          instance.engine.get.context should not be DisabledAclStaticContext
+          instance.engine.get.context should not be DisabledAccessControlStaticContext$
         }
       }
     }
@@ -399,13 +399,13 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                                resourceFileName: String,
-                               aclStaticContext: AclStaticContext = mock[AclStaticContext]) = {
+                               aclStaticContext: AccessControlStaticContext = mock[AccessControlStaticContext]) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
-      .returns(Task.now(Right(CoreSettings(mock[Acl], aclStaticContext, None))))
+      .returns(Task.now(Right(CoreSettings(mock[AccessControl], aclStaticContext, None))))
     mockedCoreFactory
   }
 

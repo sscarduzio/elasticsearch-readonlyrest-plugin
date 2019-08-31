@@ -21,13 +21,13 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
 import org.scalatest.Matchers._
 import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthenticationService
-import tech.beshu.ror.acl.blocks.rules.LdapAuthenticationRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.{LoggedUser, PlainTextSecret, User}
-import tech.beshu.ror.acl.domain.User.Id
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService
+import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.{LoggedUser, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import tech.beshu.ror.utils.TestsUtils.StringOps

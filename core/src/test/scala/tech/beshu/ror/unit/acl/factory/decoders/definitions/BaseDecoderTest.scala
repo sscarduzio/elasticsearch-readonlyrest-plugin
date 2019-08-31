@@ -20,9 +20,9 @@ import cats.implicits._
 import cats.{Comonad, Functor}
 import io.circe.DecodingFailure
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.acl.utils.ADecoder
-import tech.beshu.ror.acl.utils.CirceOps.DecodingFailureOps
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.accesscontrol.utils.ADecoder
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 
 import scala.language.higherKinds
 

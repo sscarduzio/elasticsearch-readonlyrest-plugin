@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.mocks
 
-import tech.beshu.ror.acl.factory.HttpClientsFactory
-import tech.beshu.ror.acl.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
+import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 
 object MockHttpClientsFactory extends HttpClientsFactory {
 

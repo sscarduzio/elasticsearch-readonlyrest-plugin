@@ -23,11 +23,11 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.blocks.definitions.ldap.Dn
-import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
-import tech.beshu.ror.acl.blocks.definitions.ldap.implementations._
-import tech.beshu.ror.acl.domain.{PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
+import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._

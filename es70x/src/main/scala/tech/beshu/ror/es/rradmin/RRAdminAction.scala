@@ -20,7 +20,8 @@ import org.elasticsearch.action.Action
 import tech.beshu.ror.adminapi.AdminRestApi
 
 class RRAdminAction extends Action[RRAdminResponse](RRAdminAction.name) {
-  override def newResponse(): RRAdminResponse = new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable)
+  override def newResponse(): RRAdminResponse =
+    new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable)
 }
 object RRAdminAction {
   val name = "cluster:admin/rradmin/refreshsettings"
