@@ -88,7 +88,7 @@ public class LocalGroupsTest {
     Map<String, Object> bodyMap = new Gson().fromJson(body, type);
     assertEquals(".kibana_user", bodyMap.get("x-ror-kibana_index"));
     assertEquals("user", bodyMap.get("x-ror-username"));
-    assertEquals("timelion", bodyMap.get("x-ror-kibana-hidden-apps").toString());
+    assertEquals("[timelion]", bodyMap.get("x-ror-kibana-hidden-apps").toString());
     assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
     assertEquals("extra_group", bodyMap.get("x-ror-current-group"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("testgroup"));
@@ -109,7 +109,7 @@ public class LocalGroupsTest {
     Map<String, Object> bodyMap = new Gson().fromJson(body, type);
     assertEquals(".kibana_foogroup", bodyMap.get("x-ror-kibana_index"));
     assertEquals("user", bodyMap.get("x-ror-username"));
-    assertEquals("foo:app", bodyMap.get("x-ror-kibana-hidden-apps").toString());
+    assertEquals("[foo:app]", bodyMap.get("x-ror-kibana-hidden-apps").toString());
     assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
     assertEquals("foogroup", bodyMap.get("x-ror-current-group"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("testgroup"));

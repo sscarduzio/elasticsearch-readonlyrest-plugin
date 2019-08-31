@@ -55,9 +55,9 @@ class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
           result.getResponseJson.size() should be (6)
           result.getResponseJson.get("x-ror-username") should be("user2")
           result.getResponseJson.get("x-ror-current-group") should be("group2")
-          result.getResponseJson.get("x-ror-available-groups") should be(List("group2", "group4").asJava)
+          result.getResponseJson.get("x-ror-available-groups") should be(List("group2").asJava)
           result.getResponseJson.get("x-ror-kibana_index") should be("user2_kibana_index")
-          result.getResponseJson.get("x-ror-kibana-hidden-apps") should be("user2_app1,user2_app2")
+          result.getResponseJson.get("x-ror-kibana-hidden-apps") should be(List("user2_app1","user2_app2").asJava)
           result.getResponseJson.get("x-ror-kibana_access") should be("ro")
         }
         "block with no available groups collected is matched" in {
@@ -69,7 +69,7 @@ class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
           result.getResponseJson.size() should be (3)
           result.getResponseJson.get("x-ror-username") should be("user3")
           result.getResponseJson.get("x-ror-kibana_index") should be("user3_kibana_index")
-          result.getResponseJson.get("x-ror-kibana-hidden-apps") should be("user3_app1,user3_app2")
+          result.getResponseJson.get("x-ror-kibana-hidden-apps") should be(List("user3_app1","user3_app2").asJava)
         }
       }
       "return forbidden" when {
