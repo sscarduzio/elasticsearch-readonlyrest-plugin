@@ -22,6 +22,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.CurrentUserMetadataManager
+
 import scala.collection.JavaConverters._
 
 class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
@@ -45,6 +46,18 @@ class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
           result.getResponseJson.get("x-ror-username") should be("user1")
           result.getResponseJson.get("x-ror-current-group") should be("group1")
           result.getResponseJson.get("x-ror-available-groups") should be(List("group1", "group3").asJava)
+        }
+        "several blocks are matched and current group is set" in {
+          val user1MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user4", "pass"))
+
+          val result = user1MetadataManager.fetchMetadata("group6")
+
+          assertEquals(200, result.getResponseCode)
+          result.getResponseJson.size() should be (4)
+          result.getResponseJson.get("x-ror-username") should be("user4")
+          result.getResponseJson.get("x-ror-current-group") should be("group6")
+          result.getResponseJson.get("x-ror-available-groups") should be(List("group6").asJava)
+          result.getResponseJson.get("x-ror-kibana_index") should be("user4_group6_kibana_index")
         }
         "at least one block is matched" in {
           val user2MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user2", "pass"))
@@ -74,9 +87,16 @@ class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
       }
       "return forbidden" when {
         "no block is matched" in {
+          val unknownUserMetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("userXXX", "pass"))
+
+          val result = unknownUserMetadataManager.fetchMetadata()
+
+          assertEquals(401, result.getResponseCode)
+        }
+        "current group is set but it doesn't exist on available groups list" in {
           val user4MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user4", "pass"))
 
-          val result = user4MetadataManager.fetchMetadata()
+          val result = user4MetadataManager.fetchMetadata("group7")
 
           assertEquals(401, result.getResponseCode)
         }

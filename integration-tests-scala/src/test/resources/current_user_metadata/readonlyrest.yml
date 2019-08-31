@@ -33,6 +33,16 @@ readonlyrest:
       kibana_index: "user3_kibana_index"
       kibana_hide_apps: ["user3_app1", "user3_app2"]
 
+    - name: "User 4 - index1"
+      users: ["user4"]
+      kibana_index: "user4_group5_kibana_index"
+      groups: [group5]
+
+    - name: "User 4 - index2"
+      users: ["user4"]
+      kibana_index: "user4_group6_kibana_index"
+      groups: [group6]
+
   users:
 
     - username: user1
@@ -42,3 +52,7 @@ readonlyrest:
     - username: user2
       groups: ["group2", "group4"]
       auth_key: "user2:pass"
+
+    - username: user4
+      groups: ["group5", "group6"]
+      auth_key: "user4:pass"

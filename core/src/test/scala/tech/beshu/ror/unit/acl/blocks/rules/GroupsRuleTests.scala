@@ -59,7 +59,7 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
           loggedUser = None,
           preferredGroup = None
         )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1".nonempty), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1".nonempty), groupFrom("g1"), Set(groupFrom("g1")))
         )
       }
       "user is not logged but there is one auth rule which matches and current group is set" in {
@@ -68,13 +68,13 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
             groups = NonEmptySet.one(AlreadyResolved(groupFrom("g1").nel)),
             usersDefinitions = NonEmptySet.of(
               UserDef(User.Id("user2".nonempty), NonEmptySet.of(groupFrom("g1"), groupFrom("g2")), alwaysRejectingAuthRule),
-              UserDef(User.Id("user1".nonempty), NonEmptySet.of(groupFrom("g1"), groupFrom("g2")), alwaysFulfillingAuthRule(User.Id("user1".nonempty)))
+              UserDef(User.Id("user1".nonempty), NonEmptySet.of(groupFrom("g1")), alwaysFulfillingAuthRule(User.Id("user1".nonempty)))
             )
           ),
           loggedUser = None,
           preferredGroup = Some(groupFrom("g1"))
         )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1".nonempty), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1".nonempty), groupFrom("g1"), Set(groupFrom("g1")))
         )
       }
       "user is logged and there is one auth rule which matches" in {
@@ -89,7 +89,7 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
           loggedUser = Some(User.Id("user1".nonempty)),
           preferredGroup = None
         )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1".nonempty), groupFrom("g1"), Set(groupFrom("g1"), groupFrom("g2")))
+          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1".nonempty), groupFrom("g1"), Set(groupFrom("g1")))
         )
       }
     }

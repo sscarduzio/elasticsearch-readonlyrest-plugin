@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
+import eu.timepit.refined.types.string.NonEmptyString
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
@@ -23,6 +24,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess}
+import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.unit.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAccessRule] with MockFactory {
@@ -146,8 +149,8 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
         )
       }
       "some access is defined with disabled ror metadata" in {
-        System.setProperty("com.readonlyrest.kibana.metadata", "false")
         assertDecodingSuccess(
+          aFactory = factory(new TestsPropertiesProvider(Map(PropName(NonEmptyString.unsafeFrom("com.readonlyrest.kibana.metadata")) -> "false"))),
           yaml =
             """
               |readonlyrest:
