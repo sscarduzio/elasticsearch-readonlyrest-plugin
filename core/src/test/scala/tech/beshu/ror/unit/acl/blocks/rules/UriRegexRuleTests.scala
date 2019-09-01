@@ -100,7 +100,7 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
         MockRequestContext(uriPath = uriPath)
       case ToBeResolved(_) =>
         (blockContext.loggedUser _).expects().returning(None)
-        MockRequestContext.default
+        MockRequestContext.default.copy(uriPath = uriPath)
     }
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

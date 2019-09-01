@@ -18,12 +18,14 @@ package tech.beshu.ror.integration
 
 import cats.implicits._
 import java.time.Clock
+
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers._
+import tech.beshu.ror.unit.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
@@ -31,11 +33,11 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
   protected def configYaml: String
 
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  protected implicit def propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     new RawRorConfigBasedCoreFactory
   }
 

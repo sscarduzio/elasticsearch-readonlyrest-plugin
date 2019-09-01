@@ -47,16 +47,15 @@ private class RRMetadataResponse(userMetadata: UserMetadata)
           .fromList(userMetadata.availableGroups.toList)
           .map(groups => (Constants.HEADER_GROUPS_AVAILABLE, groups.map(_.value.value).toList.toArray))
           .toMap ++
-        stringifyKibanaAppsFrom(userMetadata).map(Constants.HEADER_KIBANA_HIDDEN_APPS -> _).toMap ++
+        NonEmptyList
+            .fromList(userMetadata.hiddenKibanaApps.toList)
+            .map(apps => (Constants.HEADER_KIBANA_HIDDEN_APPS, apps.map(_.value.value).toList.toArray))
+            .toMap ++
         userMetadata.kibanaAccess.map(ka => (Constants.HEADER_KIBANA_ACCESS, ka.show)).toMap ++
         userMetadata.userOrigin.map(uo => (Constants.HEADER_USER_ORIGIN, uo.value.value)).toMap
     sourceMap.foreach { case (key, value) => builder.field(key, value) }
     builder
   }
-
-  private def stringifyKibanaAppsFrom(userMetadata: UserMetadata) =
-    if (userMetadata.hiddenKibanaApps.isEmpty) None
-    else Some(userMetadata.hiddenKibanaApps.map(_.value.value).mkString(","))
 
   private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
     case KibanaAccess.RO => "ro"

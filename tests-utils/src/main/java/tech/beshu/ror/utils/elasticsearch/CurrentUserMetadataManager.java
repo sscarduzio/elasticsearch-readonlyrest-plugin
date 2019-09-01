@@ -19,6 +19,8 @@ package tech.beshu.ror.utils.elasticsearch;
 import org.apache.http.client.methods.HttpGet;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
+import java.util.Optional;
+
 public class CurrentUserMetadataManager extends BaseManager {
 
   public CurrentUserMetadataManager(RestClient restClient) {
@@ -26,11 +28,17 @@ public class CurrentUserMetadataManager extends BaseManager {
   }
 
   public JsonResponse fetchMetadata() {
-    return call(createSearchRequest(), JsonResponse::new);
+    return call(createSearchRequest(Optional.empty()), JsonResponse::new);
   }
 
-  private HttpGet createSearchRequest() {
-    return new HttpGet(restClient.from("/_readonlyrest/metadata/current_user"));
+  public JsonResponse fetchMetadata(String preferredGroup) {
+    return call(createSearchRequest(Optional.of(preferredGroup)), JsonResponse::new);
+  }
+
+  private HttpGet createSearchRequest(Optional<String> preferredGroup) {
+    HttpGet request = new HttpGet(restClient.from("/_readonlyrest/metadata/current_user"));
+    preferredGroup.ifPresent(group -> request.addHeader("x-ror-current-group", group));
+    return request;
   }
 
 }

@@ -110,7 +110,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           inside(result.result) { case Allow(userMetadata) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group6".nonempty)))
-            userMetadata.availableGroups should be (SortedSet(Group("group5".nonempty), Group("group6".nonempty)))
+            userMetadata.availableGroups should be (SortedSet(Group("group6".nonempty)))
             userMetadata.foundKibanaIndex should be (Some(IndexName("user4_group6_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
@@ -124,7 +124,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           inside(result.result) { case Allow(userMetadata) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group2".nonempty)))
-            userMetadata.availableGroups should be (SortedSet(Group("group2".nonempty), Group("group4".nonempty)))
+            userMetadata.availableGroups should be (SortedSet(Group("group2".nonempty)))
             userMetadata.foundKibanaIndex should be (Some(IndexName("user2_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1".nonempty), KibanaApp("user2_app2".nonempty)))
             userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))

@@ -19,35 +19,37 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import java.time.Clock
 
 import cats.data.NonEmptyList
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers.{a, _}
 import org.scalatest.{Inside, Suite, WordSpec}
+import tech.beshu.ror.accesscontrol.acl.Acl
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
+import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.mocks.MockHttpClientsFactory
+import tech.beshu.ror.providers._
+import tech.beshu.ror.unit.utils.TestsPropertiesProvider
+import tech.beshu.ror.utils.TestsUtils._
 
 import scala.reflect.ClassTag
-import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.accesscontrol.acl.Acl
-import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
-import tech.beshu.ror.utils.TestsUtils._
 
 abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with Inside {
   this: Suite =>
 
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
-  private val factory = {
+  protected def factory(propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default) = {
+    implicit val _ = propertiesProvider
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     new RawRorConfigBasedCoreFactory
   }
 
   def assertDecodingSuccess(yaml: String,
                             assertion: T => Unit,
+                            aFactory: RawRorConfigBasedCoreFactory = factory(),
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(factory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Right(CoreSettings(acl: Acl, _, _)) =>
+    inside(aFactory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Right(CoreSettings(acl: Acl, _, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]
@@ -57,8 +59,9 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
 
   def assertDecodingFailure(yaml: String,
                             assertion: NonEmptyList[AclCreationError] => Unit,
+                            aFactory: RawRorConfigBasedCoreFactory = factory(),
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(factory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Left(error) =>
+    inside(aFactory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Left(error) =>
       assertion(error)
     }
   }

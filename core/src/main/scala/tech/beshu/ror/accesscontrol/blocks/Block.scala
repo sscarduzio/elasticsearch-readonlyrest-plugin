@@ -73,9 +73,9 @@ class Block(val name: Name,
       .run
       .map(_.swap)
       .andThen {
-        case Success((Matched(_, _), _)) =>
+        case Success((Matched(_, blockContext), _)) =>
           val block: Block = this
-          logger.debug(s"${ANSI_CYAN}matched ${block.show}$ANSI_RESET")
+          logger.debug(s"${ANSI_CYAN}matched ${block.show} { found: ${blockContext.show} }$ANSI_RESET")
         case Success((_: Mismatched, history)) =>
           implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector(history))
           logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")

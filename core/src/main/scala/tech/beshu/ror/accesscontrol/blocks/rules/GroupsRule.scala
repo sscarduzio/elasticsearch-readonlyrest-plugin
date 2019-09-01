@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id._
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 import scala.collection.SortedSet
@@ -99,37 +98,35 @@ class GroupsRule(val settings: Settings)
                                        blockContext: BlockContext,
                                        resolvedGroups: NonEmptySet[Group])
                                       (userDef: UserDef) = {
-    if (userDef.groups.intersect(resolvedGroups).isEmpty) Task.now(None)
-    else {
-      userDef
-        .authenticationRule
-        .check(requestContext, blockContext)
-        .map {
-          case RuleResult.Rejected(_) =>
-            None
-          case RuleResult.Fulfilled(newBlockContext) =>
-            newBlockContext.loggedUser match {
-              case Some(loggedUser) if loggedUser.id === userDef.id => Some {
-                newBlockContext.withAddedAvailableGroups(userDef.groups)
-              }
-              case Some(_) => None
-              case None => None
+      NonEmptySet.fromSet(userDef.groups.intersect(resolvedGroups)) match {
+        case None =>
+          Task.now(None)
+        case Some(availableGroups) =>
+          userDef
+            .authenticationRule
+            .check(requestContext, blockContext)
+            .map {
+              case RuleResult.Rejected(_) =>
+                None
+              case RuleResult.Fulfilled(newBlockContext) =>
+                newBlockContext.loggedUser match {
+                  case Some(loggedUser) if loggedUser.id === userDef.id => Some {
+                    newBlockContext.withAddedAvailableGroups(availableGroups)
+                  }
+                  case Some(_) => None
+                  case None => None
+                }
             }
-        }
-        .onErrorRecover { case ex =>
-          logger.debug(s"Authentication error; req=${requestContext.id.show}", ex)
-          None
-        }
-    }
+            .onErrorRecover { case ex =>
+              logger.debug(s"Authentication error; req=${requestContext.id.show}", ex)
+              None
+            }
+      }
   }
 
   private def resolveGroups(requestContext: RequestContext,
                             blockContext: BlockContext) = {
     SortedSet.empty[Group] ++ resolveAll(settings.groups, requestContext, blockContext)
-  }
-
-  private def pickCurrentGroupFrom(resolvedGroups: NonEmptySet[Group]): Group = {
-    resolvedGroups.toSortedSet.toList.minBy(_.value)
   }
 }
 

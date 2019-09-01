@@ -113,8 +113,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
-              currentGroup = Some(groupFrom("g1")),
-              availableGroups = allUser1Groups
+              currentGroup = Some(groupFrom("g3")),
+              availableGroups = Set(groupFrom("g3"))
             ) {
               blockContext
             }
@@ -132,8 +132,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
-              currentGroup = Some(groupFrom("g1")),
-              availableGroups = allUser1Groups
+              currentGroup = Some(groupFrom("g3")),
+              availableGroups = Set(groupFrom("g3"))
             ) {
               blockContext
             }
@@ -151,8 +151,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
-              currentGroup = Some(groupFrom("g1")),
-              availableGroups = allUser2Groups
+              currentGroup = Some(groupFrom("gs2")),
+              availableGroups = Set(groupFrom("gs2"))
             ) {
               blockContext
             }
@@ -170,8 +170,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
-              currentGroup = Some(groupFrom("g1")),
-              availableGroups = allUser1Groups
+              currentGroup = Some(groupFrom("gs1")),
+              availableGroups = Set(groupFrom("gs1"))
             ) {
               blockContext
             }
@@ -248,11 +248,4 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
     case EnvVarName(n) if n.value == "sys_group_2" => Some("s2")
     case _ => None
   }
-
-  private val allUser1Groups =
-    Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"), groupFrom("gs1"))
-
-  private val allUser2Groups =
-    Set(groupFrom("g1"), groupFrom("g2"), groupFrom("g3"), groupFrom("gs2"))
-
 }
