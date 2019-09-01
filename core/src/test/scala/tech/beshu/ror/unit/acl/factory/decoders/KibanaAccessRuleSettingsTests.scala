@@ -16,16 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import eu.timepit.refined.types.string.NonEmptyString
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess}
-import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.unit.utils.TestsPropertiesProvider
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAccessRule] with MockFactory {
@@ -47,7 +44,6 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
             rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
-            rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
       }
@@ -66,7 +62,6 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RW)
             rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
-            rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
       }
@@ -85,7 +80,6 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.ROStrict)
             rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
-            rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
       }
@@ -104,7 +98,6 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
             rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
-            rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
       }
@@ -124,7 +117,6 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
             rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana_admin".nonempty)))
-            rule.settings.kibanaMetadataEnabled should be (true)
           }
         )
       }
@@ -144,27 +136,6 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
             rule.settings.kibanaIndex shouldBe a [ToBeResolved[_]]
-            rule.settings.kibanaMetadataEnabled should be (true)
-          }
-        )
-      }
-      "some access is defined with disabled ror metadata" in {
-        assertDecodingSuccess(
-          aFactory = factory(new TestsPropertiesProvider(Map(PropName(NonEmptyString.unsafeFrom("com.readonlyrest.kibana.metadata")) -> "false"))),
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    kibana_access: admin
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
-            rule.settings.kibanaMetadataEnabled should be (false)
           }
         )
       }

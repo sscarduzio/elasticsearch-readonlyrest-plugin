@@ -212,7 +212,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
   }
 
   private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana".nonempty)) = {
-    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), kibanaMetadataEnabled = true)
+    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex))
   }
 
   private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings): BlockContext => Unit =

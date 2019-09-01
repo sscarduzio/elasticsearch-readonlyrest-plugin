@@ -69,7 +69,8 @@ object Rule {
     implicit val show: Show[Name] = Show.show(_.value)
   }
 
-  trait MatchingAlwaysRule extends Rule {
+  trait MatchingAlwaysRule {
+    this: Rule =>
 
     def process(requestContext: RequestContext,
                 blockContext: BlockContext): Task[BlockContext]
@@ -81,9 +82,9 @@ object Rule {
 
   trait RegularRule extends Rule
 
-  trait AuthorizationRule extends Rule
+  trait AuthorizationRule extends UserMetadataRelatedRule
 
-  trait AuthenticationRule extends Rule {
+  trait AuthenticationRule extends UserMetadataRelatedRule {
 
     private lazy val enhancedImpersonatorDefs =
       impersonators
@@ -169,6 +170,8 @@ object Rule {
       case object CannotCheck extends UserExistence
     }
   }
+
+  trait UserMetadataRelatedRule extends Rule
 
   trait NoImpersonationSupport {
     this: AuthenticationRule =>

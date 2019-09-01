@@ -56,7 +56,7 @@ class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
           result.getResponseJson.size() should be (4)
           result.getResponseJson.get("x-ror-username") should be("user4")
           result.getResponseJson.get("x-ror-current-group") should be("group6")
-          result.getResponseJson.get("x-ror-available-groups") should be(List("group6").asJava)
+          result.getResponseJson.get("x-ror-available-groups") should be(List("group5", "group6").asJava)
           result.getResponseJson.get("x-ror-kibana_index") should be("user4_group6_kibana_index")
         }
         "at least one block is matched" in {
@@ -97,6 +97,13 @@ class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
           val user4MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user4", "pass"))
 
           val result = user4MetadataManager.fetchMetadata("group7")
+
+          assertEquals(401, result.getResponseCode)
+        }
+        "block with no available groups collected is matched and current group is set" in {
+          val user3MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user3", "pass"))
+
+          val result = user3MetadataManager.fetchMetadata("group7")
 
           assertEquals(401, result.getResponseCode)
         }

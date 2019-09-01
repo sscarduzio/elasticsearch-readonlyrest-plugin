@@ -28,10 +28,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, Autho
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id._
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 
 import scala.collection.SortedSet
 
@@ -51,14 +51,12 @@ class GroupsRule(val settings: Settings)
     .flatMap { _ =>
       NonEmptySet.fromSet(resolveGroups(requestContext, blockContext)) match {
         case None => Task.now(Rejected())
-        case Some(groups) =>
-          requestContext.currentGroup.toOption match {
-            case Some(preferredGroup) if !groups.contains(preferredGroup) => Task.now(Rejected())
-            case _ => continueCheckingWithUserDefinitions(requestContext, blockContext, groups)
-          }
+        case Some(groups) if requestContext.isCurrentGroupEligible(groups) =>
+          continueCheckingWithUserDefinitions(requestContext, blockContext, groups)
+        case Some(_) =>
+          Task.now(Rejected())
       }
     }
-
 
   private def continueCheckingWithUserDefinitions(requestContext: RequestContext,
                                                   blockContext: BlockContext,

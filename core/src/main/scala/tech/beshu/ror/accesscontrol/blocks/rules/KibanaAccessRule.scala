@@ -25,7 +25,7 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{UserMetadataRelatedRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
@@ -38,7 +38,7 @@ import tech.beshu.ror.utils.MatcherWithWildcards
 import scala.util.Try
 
 class KibanaAccessRule(val settings: Settings)
-  extends RegularRule with Logging {
+  extends UserMetadataRelatedRule with Logging {
 
   import KibanaAccessRule.stringActionNT
 
@@ -136,8 +136,7 @@ class KibanaAccessRule(val settings: Settings)
 
   private def modifyMatched(blockContext: BlockContext, kibanaIndex: Option[IndexName] = None) = {
     def applyKibanaAccess = (bc: BlockContext) => {
-      if (settings.kibanaMetadataEnabled) bc.withKibanaAccess(settings.access)
-      else bc
+      bc.withKibanaAccess(settings.access)
     }
 
     def applyKibanaIndex = (bc: BlockContext) => {
@@ -159,7 +158,7 @@ class KibanaAccessRule(val settings: Settings)
 object KibanaAccessRule {
   val name = Rule.Name("kibana_access")
 
-  final case class Settings(access: KibanaAccess, kibanaIndex: RuntimeSingleResolvableVariable[IndexName], kibanaMetadataEnabled: Boolean)
+  final case class Settings(access: KibanaAccess, kibanaIndex: RuntimeSingleResolvableVariable[IndexName])
 
   private object Matchers {
     val roMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RO_ACTIONS))
