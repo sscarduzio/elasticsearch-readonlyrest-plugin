@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -42,16 +43,16 @@ class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestCon
       "returns non empty set of groups" when {
         "user has groups" in {
           authorizationService.groupsOf(User.Id("morgan".nonempty)).runSyncUnsafe() should be {
-            Set(Group("group2".nonempty), Group("group3".nonempty), Group("groupAll".nonempty))
+            UniqueList.of(Group("groupAll".nonempty), Group("group3".nonempty), Group("group2".nonempty))
           }
         }
       }
       "returns empty set of groups" when {
         "user has no groups" in {
-          authorizationService.groupsOf(User.Id("devito".nonempty)).runSyncUnsafe() should be (Set.empty[Group])
+          authorizationService.groupsOf(User.Id("devito".nonempty)).runSyncUnsafe() should be (UniqueList.empty[Group])
         }
         "there is no user with given name" in {
-          authorizationService.groupsOf(User.Id("unknown".nonempty)).runSyncUnsafe() should be (Set.empty[Group])
+          authorizationService.groupsOf(User.Id("unknown".nonempty)).runSyncUnsafe() should be (UniqueList.empty[Group])
         }
       }
     }
@@ -78,7 +79,7 @@ class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestCon
           "cn".nonempty,
           "uniqueMember".nonempty,
           "(cn=*)".nonempty,
-          true
+          groupAttributeIsDN = true
         ))
       )
       .runSyncUnsafe()

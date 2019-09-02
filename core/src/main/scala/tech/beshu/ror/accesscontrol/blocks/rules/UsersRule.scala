@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{UserMetadataRelatedRule, RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{UserMetadataRelatedRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, User}
@@ -44,7 +44,7 @@ class UsersRule(val settings: Settings)
   }
 
   private def matchUser(user: LoggedUser, requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
-    val resolvedIds = resolveAll(settings.userIds, requestContext, blockContext).toSet
+    val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, requestContext, blockContext).toSet
     RuleResult.fromCondition(blockContext) {
       new MatcherWithWildcards(resolvedIds.map(_.value.value).asJava).`match`(user.id.value.value)
     }

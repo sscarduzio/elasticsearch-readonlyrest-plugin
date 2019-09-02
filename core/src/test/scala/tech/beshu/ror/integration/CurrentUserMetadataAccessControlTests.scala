@@ -16,19 +16,16 @@
  */
 package tech.beshu.ror.integration
 
-import cats.implicits._
+import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult._
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, KibanaAccess, KibanaApp, User}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.accesscontrol.orders.groupOrder
-import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.utils.TestsUtils._
-
-import scala.collection.SortedSet
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
@@ -96,8 +93,8 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1".nonempty))))
-            userMetadata.currentGroup should be (Some(Group("group1".nonempty)))
-            userMetadata.availableGroups should be (SortedSet(Group("group1".nonempty), Group("group3".nonempty)))
+            userMetadata.currentGroup should be (Some(Group("group3".nonempty)))
+            userMetadata.availableGroups should be (UniqueList.of(Group("group3".nonempty), Group("group1".nonempty)))
             userMetadata.foundKibanaIndex should be (None)
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
@@ -113,7 +110,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           inside(result.result) { case Allow(userMetadata) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group6".nonempty)))
-            userMetadata.availableGroups should be (SortedSet(Group("group5".nonempty), Group("group6".nonempty)))
+            userMetadata.availableGroups should be (UniqueList.of(Group("group5".nonempty), Group("group6".nonempty)))
             userMetadata.foundKibanaIndex should be (Some(IndexName("user4_group6_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
@@ -127,7 +124,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           inside(result.result) { case Allow(userMetadata) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group2".nonempty)))
-            userMetadata.availableGroups should be (SortedSet(Group("group2".nonempty)))
+            userMetadata.availableGroups should be (UniqueList.of(Group("group2".nonempty)))
             userMetadata.foundKibanaIndex should be (Some(IndexName("user2_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1".nonempty), KibanaApp("user2_app2".nonempty)))
             userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))
@@ -141,7 +138,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           inside(result.result) { case Allow(userMetadata) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3".nonempty))))
             userMetadata.currentGroup should be (None)
-            userMetadata.availableGroups should be (Set.empty)
+            userMetadata.availableGroups should be (UniqueList.empty)
             userMetadata.foundKibanaIndex should be (Some(IndexName("user3_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user3_app1".nonempty), KibanaApp("user3_app2".nonempty)))
             userMetadata.kibanaAccess should be (None)

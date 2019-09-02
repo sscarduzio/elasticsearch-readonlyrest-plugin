@@ -21,8 +21,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.{ClaimName, Group, Header, User}
-import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult._
+import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomClaimValue}
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
 import scala.language.{implicitConversions, postfixOps}
@@ -57,20 +58,22 @@ class ClaimsOps(val claims: Claims) extends Logging {
       )
   }
 
-  def groupsClaim(claimName: ClaimName): ClaimSearchResult[Set[Group]] = {
+  def groupsClaim(claimName: ClaimName): ClaimSearchResult[UniqueList[Group]] = {
     Try(claimName.name.read[Any](claims))
       .map {
         case value: String =>
-          Found((value :: Nil).flatMap(toGroup).toSet)
+          Found(UniqueList.fromList((value :: Nil).flatMap(toGroup)))
         case collection: java.util.Collection[_] =>
           Found {
-            collection.asScala
-              .collect {
-                case value: String => value
-                case value: Long => value.toString
-              }
-              .flatMap(toGroup)
-              .toSet
+            UniqueList.fromList {
+              collection.asScala
+                .collect {
+                  case value: String => value
+                  case value: Long => value.toString
+                }
+                .flatMap(toGroup)
+                .toList
+            }
           }
         case _ =>
           NotFound

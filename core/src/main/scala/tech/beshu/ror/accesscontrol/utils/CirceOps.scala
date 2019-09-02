@@ -43,6 +43,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.authentication
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult._
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.collection.SortedSet
 import scala.language.{existentials, higherKinds}
@@ -53,6 +54,12 @@ object CirceOps {
     val decodeStringLike: Decoder[String] = Decoder.decodeString.or(Decoder.decodeInt.map(_.show))
 
     implicit val decodeStringLikeNonEmpty: Decoder[NonEmptyString] = decodeStringLike.emap(NonEmptyString.from)
+
+    implicit def decodeUniqueNonEmptyList[T](implicit decodeT: Decoder[T]): Decoder[UniqueNonEmptyList[T]] =
+      Decoder.decodeNonEmptyList(decodeT).map(UniqueNonEmptyList.fromNonEmptyList)
+
+    implicit def decodeUniqueList[T](implicit decodeT: Decoder[T]): Decoder[UniqueList[T]] =
+      Decoder.decodeList[T].map(UniqueList.fromList)
 
     def decodeStringLikeOrNonEmptySet[T: Order](fromString: String => T): Decoder[NonEmptySet[T]] =
       decodeStringLike
@@ -79,8 +86,26 @@ object CirceOps {
         else Right(NonEmptySet.fromSetUnsafe(SortedSet.empty[T] ++ valuesSet))
       }
 
+    def decodeStringLikeOrUniqueNonEmptyListE[T](fromString: String => Either[String, T]): Decoder[UniqueNonEmptyList[T]] =
+      decodeStringLike.map(str => UniqueNonEmptyList.unsafeFromList(str :: Nil)).or(decodeUniqueNonEmptyList[String]).emap { uniqueList =>
+        val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
+          case ((errors, values), elem) =>
+            fromString(elem) match {
+              case Right(value) => (errors, values + value)
+              case Left(error) => (errors + error, values)
+            }
+        }
+        if (errorsUniqueList.nonEmpty) Left(errorsUniqueList.mkString(","))
+        else Right(UniqueNonEmptyList.unsafeFromList(valuesUniqueList.toList))
+      }
+
     def decodeStringLikeOrNonEmptySet[T: Order : Decoder]: Decoder[NonEmptySet[T]] =
       decodeStringLikeOrNonEmptySetE { str =>
+        Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
+      }
+
+    def decoderStringLikeOrUniqueNonEmptyList[T : Decoder]: Decoder[UniqueNonEmptyList[T]] =
+      decodeStringLikeOrUniqueNonEmptyListE { str =>
         Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
       }
 
@@ -95,6 +120,20 @@ object CirceOps {
         }
         if (errorsSet.nonEmpty) Left(errorsSet.mkString(","))
         else Right(valuesSet)
+      }
+    }
+
+    def decodeStringLikeOrUniqueList[T : Decoder]: Decoder[UniqueList[T]] = {
+      decodeStringLike.map(str => UniqueList.fromList(str :: Nil)).or(decodeUniqueList[String]).emap { uniqueList =>
+        val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
+          case ((errors, values), elem) =>
+            Decoder[T].decodeJson(Json.fromString(elem)) match {
+              case Right(value) => (errors, values + value)
+              case Left(error) => (errors + error.message, values)
+            }
+        }
+        if (errorsUniqueList.nonEmpty) Left(errorsUniqueList.mkString(","))
+        else Right(valuesUniqueList)
       }
     }
 

@@ -56,7 +56,7 @@ class IndicesRule(val settings: Settings)
   }
 
   private def process(requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
-    val resolvedAllowedIndices = resolveAll(settings.allowedIndices, requestContext, blockContext).toSet
+    val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, requestContext, blockContext).toSet
     val matcher: Matcher = initialMatcher.getOrElse(MatcherWithWildcardsScalaAdapter.create(resolvedAllowedIndices))
     // Cross cluster search awareness
     if (isSearchAction(requestContext)) {

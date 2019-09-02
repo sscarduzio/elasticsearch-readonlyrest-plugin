@@ -36,6 +36,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[ExternalAuthorizationService])
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
@@ -51,7 +52,7 @@ object ExternalAuthorizationRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("user_groups_provider").as[ExternalAuthorizationService.Name]
-          groups <- c.downField("groups").as[NonEmptySet[Group]]
+          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]]
           users <- c.downField("users").as[Option[NonEmptySet[User.Id]]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups, users.getOrElse(NonEmptySet.one(User.Id(NonEmptyString.unsafeFrom("*")))))

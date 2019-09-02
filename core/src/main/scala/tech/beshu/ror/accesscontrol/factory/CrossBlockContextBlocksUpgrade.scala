@@ -16,14 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
-import cats.implicits._
 import cats.data._
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthorizationRule, Rule}
-import tech.beshu.ror.accesscontrol.domain.Group
-import tech.beshu.ror.accesscontrol.orders._
-
-import scala.collection.SortedSet
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 object CrossBlockContextBlocksUpgrade {
 
@@ -33,11 +29,11 @@ object CrossBlockContextBlocksUpgrade {
       case (modifiedBlocks, currentBlock) =>
         val upgradedRules = currentBlock.rules.foldLeft(Vector.empty[Rule]) {
           case (modifiedRules, currentRule: LdapAuthorizationRule) =>
-            modifiedRules :+ new LdapAuthorizationRule(currentRule.settings.copy(allLdapGroups = NonEmptySet.fromSetUnsafe(crossBlocksAvailableLdapGroups)))
+            modifiedRules :+ new LdapAuthorizationRule(currentRule.settings.copy(allLdapGroups = UniqueNonEmptyList.unsafeFromSortedSet(crossBlocksAvailableLdapGroups)))
           case (modifiedRules, currentRule: LdapAuthRule) =>
             modifiedRules :+ new LdapAuthRule(
               currentRule.authentication,
-              new LdapAuthorizationRule(currentRule.authorization.settings.copy(allLdapGroups = NonEmptySet.fromSetUnsafe(crossBlocksAvailableLdapGroups)))
+              new LdapAuthorizationRule(currentRule.authorization.settings.copy(allLdapGroups = UniqueNonEmptyList.unsafeFromSortedSet(crossBlocksAvailableLdapGroups)))
             )
           case (modifiedRules, currentRule) =>
             modifiedRules :+ currentRule
@@ -54,7 +50,7 @@ object CrossBlockContextBlocksUpgrade {
   }
 
   private def getAllAvailableLdapGroups(blocks: NonEmptyList[Block]) = {
-    SortedSet.empty[Group] ++
+    UniqueList.fromList(
       blocks.toList
         .flatMap(_
           .rules
@@ -64,6 +60,6 @@ object CrossBlockContextBlocksUpgrade {
           }
           .flatMap(_.settings.permittedGroups.toNonEmptyList.toList)
         )
-        .toSet
+    )
   }
 }

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
-import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -32,6 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDec
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -89,7 +89,7 @@ object LdapAuthorizationRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groups <- c.downField("groups").as[NonEmptySet[Group]]
+          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups)
       }
@@ -123,7 +123,7 @@ object LdapAuthRuleDecoder {
       .instance { c =>
         for {
           name <- c.downField("name").as[LdapService.Name]
-          groups <- c.downField("groups").as[NonEmptySet[Group]]
+          groups <- c.downField("groups").as[UniqueNonEmptyList[Group]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
         } yield (name, ttl, groups)
       }
@@ -144,7 +144,7 @@ object LdapAuthRuleDecoder {
       }
       .decoder
 
-  private def createLdapAuthRule(ldapService: LdapAuthService, groups: NonEmptySet[Group]) = {
+  private def createLdapAuthRule(ldapService: LdapAuthService, groups: UniqueNonEmptyList[Group]) = {
     new LdapAuthRule(
       new LdapAuthenticationRule(LdapAuthenticationRule.Settings(ldapService)),
       new LdapAuthorizationRule(LdapAuthorizationRule.Settings(ldapService, groups, groups))

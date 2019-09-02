@@ -16,20 +16,18 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.data.NonEmptySet
 import cats.implicits._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, UserMetadataRelatedRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -37,8 +35,8 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, No
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-import scala.collection.SortedSet
 import scala.util.Try
 
 class RorKbnAuthRule(val settings: Settings)
@@ -115,12 +113,12 @@ class RorKbnAuthRule(val settings: Settings)
     }
   }
 
-  private def handleGroupsClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[Set[Group]]) = {
+  private def handleGroupsClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[UniqueList[Group]]) = {
     result match {
       case NotFound if settings.groups.nonEmpty => Left(())
       case NotFound => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
       case Found(groups) if settings.groups.nonEmpty =>
-        NonEmptySet.fromSet(SortedSet.empty[Group] ++ groups.intersect(settings.groups)) match {
+        UniqueNonEmptyList.fromSortedSet(settings.groups.intersect(groups)) match {
           case Some(matchedGroups) => Right(blockContext.withAddedAvailableGroups(matchedGroups))
           case None => Left(())
         }
@@ -140,7 +138,7 @@ class RorKbnAuthRule(val settings: Settings)
 object RorKbnAuthRule {
   val name = Rule.Name("ror_kbn_auth")
 
-  final case class Settings(rorKbn: RorKbnDef, groups: Set[Group])
+  final case class Settings(rorKbn: RorKbnDef, groups: UniqueList[Group])
 
   private val userClaimName = ClaimName(JsonPath.compile("user"))
   private val groupsClaimName = ClaimName(JsonPath.compile("groups"))

@@ -40,6 +40,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import io.jsonwebtoken.impl.DefaultClaims
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthRuleTests
   extends WordSpec with MockFactory with Inside with BlockContextAssertion {
@@ -100,7 +101,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Set.empty,
+          configuredGroups = UniqueList.empty,
           tokenHeader = Header(
             Header.Name.authorization,
             {
@@ -124,7 +125,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Set(groupFrom("group3"), groupFrom("group2")),
+          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
           tokenHeader = Header(
             Header.Name.authorization,
             {
@@ -137,7 +138,7 @@ class RorKbnAuthRuleTests
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(Group("group2".nonempty)),
-              availableGroups = Set(Group("group2".nonempty)),
+              availableGroups = UniqueList.of(Group("group2".nonempty)),
               jwt = Some(JwtTokenPayload(claims))
             )(blockContext)
         }
@@ -213,7 +214,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Set(Group("g1".nonempty)),
+          configuredGroups = UniqueList.of(Group("g1".nonempty)),
           tokenHeader = Header(
             Header.Name.authorization,
             {
@@ -234,7 +235,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = Set(groupFrom("group3"), groupFrom("group4")),
+          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group4")),
           tokenHeader = Header(
             Header.Name.authorization,
             {
@@ -252,18 +253,18 @@ class RorKbnAuthRuleTests
   }
 
   private def assertMatchRule(configuredRorKbnDef: RorKbnDef,
-                              configuredGroups: Set[Group] = Set.empty,
+                              configuredGroups: UniqueList[Group] = UniqueList.empty,
                               tokenHeader: Header)
                              (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredRorKbnDef: RorKbnDef,
-                                 configuredGroups: Set[Group] = Set.empty,
+                                 configuredGroups: UniqueList[Group] = UniqueList.empty,
                                  tokenHeader: Header): Unit =
     assertRule(configuredRorKbnDef, configuredGroups, tokenHeader, blockContextAssertion = None)
 
   private def assertRule(configuredRorKbnDef: RorKbnDef,
-                         configuredGroups: Set[Group] = Set.empty,
+                         configuredGroups: UniqueList[Group] = UniqueList.empty,
                          tokenHeader: Header,
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups))

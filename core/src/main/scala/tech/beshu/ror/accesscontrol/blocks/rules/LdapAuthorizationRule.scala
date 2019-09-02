@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.data.NonEmptySet
-import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationService
@@ -25,11 +23,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.Authoriza
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser}
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-
-import scala.collection.SortedSet
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class LdapAuthorizationRule(val settings: Settings)
   extends BaseAuthorizationRule {
@@ -53,12 +49,12 @@ class LdapAuthorizationRule(val settings: Settings)
     settings
       .ldap
       .groupsOf(user.id)
-      .map(groups => NonEmptySet.fromSet(SortedSet.empty[Group] ++ groups))
+      .map(groups => UniqueNonEmptyList.fromSortedSet(groups))
       .map {
         case None =>
           Unauthorized
         case Some(ldapGroups) =>
-          NonEmptySet.fromSet(SortedSet.empty[Group] ++ ldapGroups.intersect(settings.permittedGroups)) match {
+          UniqueNonEmptyList.fromSortedSet(settings.permittedGroups.intersect(ldapGroups)) match {
             case None =>
               Unauthorized
             case Some(availableGroups) =>
@@ -72,8 +68,8 @@ class LdapAuthorizationRule(val settings: Settings)
       }
   }
 
-  private def allLdapGroupsIntersection(availableGroups: NonEmptySet[Group]) = {
-    NonEmptySet.fromSetUnsafe(settings.allLdapGroups.intersect(availableGroups))
+  private def allLdapGroupsIntersection(availableGroups: UniqueNonEmptyList[Group]) = {
+    UniqueNonEmptyList.unsafeFromSortedSet(settings.allLdapGroups.intersect(availableGroups)) // it is safe here
   }
 }
 
@@ -81,6 +77,6 @@ object LdapAuthorizationRule {
   val name = Rule.Name("ldap_authorization")
 
   final case class Settings(ldap: LdapAuthorizationService,
-                            permittedGroups: NonEmptySet[Group],
-                            allLdapGroups: NonEmptySet[Group])
+                            permittedGroups: UniqueNonEmptyList[Group],
+                            allLdapGroups: UniqueNonEmptyList[Group])
 }

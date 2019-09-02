@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 abstract class BaseAuthorizationRule
   extends AuthorizationRule {
@@ -57,6 +58,6 @@ object BaseAuthorizationRule {
   trait AuthorizationResult
   object AuthorizationResult {
     case object Unauthorized extends AuthorizationResult
-    final case class Authorized(availableGroups: NonEmptySet[Group]) extends AuthorizationResult
+    final case class Authorized(availableGroups: UniqueNonEmptyList[Group]) extends AuthorizationResult
   }
 }

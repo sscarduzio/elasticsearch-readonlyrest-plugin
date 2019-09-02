@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.CacheableLdapAuthent
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.utils.{CacheableAction, CacheableActionWithKeyMapping}
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.higherKinds
@@ -66,7 +67,7 @@ class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationSe
                                                  ttl: FiniteDuration Refined Positive)
   extends LdapAuthorizationService {
 
-  private val cacheableGroupsOf = new CacheableAction[User.Id, Set[Group]](ttl, underlying.groupsOf)
+  private val cacheableGroupsOf = new CacheableAction[User.Id, UniqueList[Group]](ttl, underlying.groupsOf)
   private val cacheableLdapUserService = new CacheableLdapUserServiceDecorator(underlying, ttl)
 
   override val id: LdapService.Name = underlying.id
@@ -74,7 +75,7 @@ class CacheableLdapAuthorizationServiceDecorator(underlying: LdapAuthorizationSe
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     cacheableLdapUserService.ldapUserBy(userId)
 
-  override def groupsOf(id: User.Id): Task[Set[domain.Group]] =
+  override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] =
     cacheableGroupsOf.call(id)
 }
 
@@ -93,7 +94,7 @@ class CacheableLdapServiceDecorator(underlying: LdapAuthService,
   override def authenticate(user: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
     cacheableLdapAuthenticationService.authenticate(user, secret)
 
-  override def groupsOf(id: User.Id): Task[Set[domain.Group]] =
+  override def groupsOf(id: User.Id): Task[UniqueList[domain.Group]] =
     cacheableLdapAuthorizationService.groupsOf(id)
 }
 

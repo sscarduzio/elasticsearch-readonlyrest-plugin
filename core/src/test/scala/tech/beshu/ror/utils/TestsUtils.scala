@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain._
 import io.circe.yaml._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
@@ -54,7 +55,7 @@ object TestsUtils {
         kibanaIndex = expected.kibanaIndex,
         loggedUser = expected.loggedUser,
         currentGroup = expected.currentGroup,
-        availableGroups = expected.availableGroups.toSet,
+        availableGroups = expected.availableGroups,
         indices = expected.indices,
         repositories = expected.repositories,
         snapshots = expected.snapshots) {
@@ -65,7 +66,7 @@ object TestsUtils {
     def assertBlockContext(loggedUser: Option[LoggedUser] = None,
                            jwt: Option[JwtTokenPayload] = None,
                            currentGroup: Option[Group] = None,
-                           availableGroups: Set[Group] = Set.empty,
+                           availableGroups: UniqueList[Group] = UniqueList.empty,
                            responseHeaders: Set[Header] = Set.empty,
                            contextHeaders: Set[Header] = Set.empty,
                            indices: Outcome[Set[IndexName]] = Outcome.NotExist,

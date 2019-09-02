@@ -23,6 +23,7 @@ import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.util.{Failure, Success}
 
@@ -61,7 +62,7 @@ class LoggableLdapAuthorizationServiceDecorator(val underlying: LdapAuthorizatio
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] =
     loggableLdapUserService.ldapUserBy(userId)
 
-  override def groupsOf(userId: User.Id): Task[Set[domain.Group]] = {
+  override def groupsOf(userId: User.Id): Task[UniqueList[domain.Group]] = {
     logger.debug(s"Trying to fetch user [id=${userId.show}] groups from LDAP [${id.show}]")
     underlying
       .groupsOf(userId)
@@ -88,7 +89,7 @@ class LoggableLdapServiceDecorator(val underlying: LdapAuthService)
   override def authenticate(userId: User.Id, secret: domain.PlainTextSecret): Task[Boolean] =
     loggableLdapAuthenticationService.authenticate(userId, secret)
 
-  override def groupsOf(userId: User.Id): Task[Set[domain.Group]] =
+  override def groupsOf(userId: User.Id): Task[UniqueList[domain.Group]] =
     loggableLdapAuthorizationService.groupsOf(userId)
 }
 
