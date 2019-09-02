@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess, KibanaApp}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.consts.RorProperties
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.KibanaRulesDecoderHelper.kibanaIndexDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.orders._
@@ -66,7 +65,7 @@ class KibanaAccessRuleDecoder(implicit propertiesProvider: PropertiesProvider)
       case "admin" => Right(KibanaAccess.Admin)
       case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
-      .map(KibanaAccessRule.Settings(_, kibanaIndexName, RorProperties.readRorMetadataFlag))
+      .map(KibanaAccessRule.Settings(_, kibanaIndexName))
       .map(s => new KibanaAccessRule(s))
       .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),

@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.request
 import java.time.Instant
 
 import cats.Show
+import cats.data.NonEmptySet
 import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
@@ -134,6 +135,16 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
     findHeader(Header.Name.currentGroup) match {
       case None => RequestGroup.`N/A`
       case Some(Header(_, value)) => RequestGroup.AGroup(Group(value))
+    }
+  }
+
+  def isCurrentGroupEligible(groups: NonEmptySet[Group]): Boolean = {
+    requestContext.currentGroup match {
+      case RequestGroup.AGroup(preferredGroup) =>
+        if(requestContext.uriPath.isCurrentUserMetadataPath) true
+        else groups.contains(preferredGroup)
+      case RequestGroup.`N/A` =>
+        true
     }
   }
 

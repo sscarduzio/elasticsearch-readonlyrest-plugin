@@ -112,6 +112,8 @@ public class LocalGroupsTest {
     assertEquals("[foo:app]", bodyMap.get("x-ror-kibana-hidden-apps").toString());
     assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
     assertEquals("foogroup", bodyMap.get("x-ror-current-group"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("a_testgroup"));
+    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("group_extra"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("foogroup"));
   }
 

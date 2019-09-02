@@ -29,9 +29,9 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.orders.{forbiddenByMismatchedCauseOrder, groupOrder}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 import scala.collection.SortedSet
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 class Acl(val blocks: NonEmptyList[Block])
   extends AccessControl {
@@ -72,41 +72,50 @@ class Acl(val blocks: NonEmptyList[Block])
 
   override def handleMetadataRequest(context: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
     Task
-      .gather(blocks.toList.map(blockExecute(_, context)))
+      .gather(blocks.toList.map(executeBlocksUserMetadataRulesOnly(_, context)))
       .map(_.flatten)
       .map { blockResults =>
         val history = blockResults.map(_._2).toVector
-        val result = if(isMatched(blockResults.map(_._1))) {
-          val userMetadata = userMetadataFrom(blockResults, context.currentGroup.toOption)
-          UserMetadataRequestResult.Allow(userMetadata)
-        } else {
-          UserMetadataRequestResult.Forbidden
+        val result = matchedAllowedBlocks(blockResults.map(_._1)) match {
+          case Right(matchedResults) =>
+            userMetadataFrom(matchedResults, context.currentGroup.toOption) match {
+              case Some(userMetadata) => UserMetadataRequestResult.Allow(userMetadata)
+              case None => UserMetadataRequestResult.Forbidden
+            }
+          case Left(_) =>
+            UserMetadataRequestResult.Forbidden
         }
         WithHistory(history, result)
       }
   }
 
-  private def userMetadataFrom(blockResults: List[(ExecutionResult, History)],
+  private def userMetadataFrom(matchedResults: NonEmptyList[Matched],
                                preferredGroup: Option[Group]) = {
-    val matched = blockResults.collect { case r@(Matched(block, _), _) if block.policy === Policy.Allow => r }
     val allGroupsWithRelatedBlockContexts =
-      matched
-        .map(_._1.blockContext)
+      matchedResults
+        .toList
+        .map(_.blockContext)
         .flatMap(b => b.availableGroups.map((_, b)).toList)
         .sortBy(_._1)
-    lazy val defaultMatchedBlockUserMetadata = {
-      val blockContext = matched.head._1.blockContext
-      createUserMetadata(blockContext, None, SortedSet.empty)
+    preferredGroup match {
+      case Some(pg) =>
+        allGroupsWithRelatedBlockContexts
+          .find(_._1 === pg)
+          .map { case (currentGroup, blockContext) =>
+            createUserMetadata(blockContext, Some(currentGroup), SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*))
+          }
+      case None =>
+        Some {
+          allGroupsWithRelatedBlockContexts
+            .headOption
+            .map { case (currentGroup, blockContext) =>
+              createUserMetadata(blockContext, Some(currentGroup), SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*))
+            }
+            .getOrElse {
+              createUserMetadata(matchedResults.head.blockContext, None, SortedSet.empty)
+            }
+        }
     }
-    val foundDesiredGroupBlock = preferredGroup match {
-      case Some(pg) => allGroupsWithRelatedBlockContexts.find(_._1 === pg)
-      case None => allGroupsWithRelatedBlockContexts.headOption
-    }
-    foundDesiredGroupBlock
-      .map { case (currentGroup, blockContext) =>
-        createUserMetadata(blockContext, Some(currentGroup), SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*))
-      }
-      .getOrElse(defaultMatchedBlockUserMetadata)
   }
 
   private def createUserMetadata(blockContext: BlockContext, currentGroup: Option[Group], availableGroups: SortedSet[Group]) = {
@@ -121,17 +130,21 @@ class Acl(val blocks: NonEmptyList[Block])
     )
   }
 
-  private def blockExecute(block: Block, context: RequestContext) = {
+  private def executeBlocksUserMetadataRulesOnly(block: Block, context: RequestContext) = {
     block
-      .execute(context)
+      .executeUserMetadataRuleOnly(context)
       .map(Some.apply)
       .onErrorRecover { case _ => None }
   }
 
-  private def isMatched(blockResults: List[Block.ExecutionResult]): Boolean = {
-    blockResults
-      .collect { case r@Matched(block, _) if block.policy === Policy.Allow => r}
-      .nonEmpty
+  private def matchedAllowedBlocks(blockResults: List[Block.ExecutionResult]) = {
+    NonEmptyList
+      .fromList {
+        blockResults.collect { case r@Matched(block, _) if block.policy === Policy.Allow => r }
+      } match {
+      case Some(nel) => Right(nel)
+      case None => Left(())
+    }
   }
 
   private def checkBlock(block: Block, requestContent: RequestContext): WriterT[Task, Vector[History], ExecutionResult] = {

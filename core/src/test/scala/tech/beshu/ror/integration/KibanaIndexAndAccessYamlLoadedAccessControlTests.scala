@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration
 
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
@@ -25,8 +24,6 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.unit.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class KibanaIndexAndAccessYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside  {
@@ -43,9 +40,6 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends WordSpec with Bas
       |    kibana_index: ".kibana_template"
       |
       """.stripMargin
-
-  override implicit protected def propertiesProvider: TestsPropertiesProvider =
-    new TestsPropertiesProvider(Map(PropName(NonEmptyString.unsafeFrom("com.readonlyrest.kibana.metadata")) -> "true"))
 
   "An ACL" when {
     "kibana index and kibana access rules are used" should {

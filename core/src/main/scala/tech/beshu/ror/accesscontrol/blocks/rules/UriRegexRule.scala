@@ -31,21 +31,16 @@ class UriRegexRule(val settings: Settings)
   override val name: Rule.Name = UriRegexRule.name
 
   override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] =
-    if(requestContext.uriPath.isCurrentUserMetadataPath) {
-      Task.now(RuleResult.Fulfilled(blockContext))
-    } else {
-      Task {
-        RuleResult.fromCondition(blockContext) {
-          settings
-            .uriPattern
-            .resolve(requestContext, blockContext)
-            .exists {
-              _.matcher(requestContext.uriPath.value).find()
-            }
+                     blockContext: BlockContext): Task[RuleResult] = Task {
+    RuleResult.fromCondition(blockContext) {
+      settings
+        .uriPattern
+        .resolve(requestContext, blockContext)
+        .exists {
+          _.matcher(requestContext.uriPath.value).find()
         }
-      }
     }
+  }
 }
 
 object UriRegexRule {

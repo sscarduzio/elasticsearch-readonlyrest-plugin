@@ -19,16 +19,16 @@ package tech.beshu.ror.accesscontrol.blocks
 import cats.data.{NonEmptyList, WriterT}
 import cats.implicits._
 import cats.{Eq, Show}
-import org.apache.logging.log4j.scala.Logging
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block._
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.utils.TaskOps._
-import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult, UserMetadataRelatedRule}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
 
@@ -39,8 +39,17 @@ class Block(val name: Name,
   extends Logging {
 
   def execute(requestContext: RequestContext): BlockResultWithHistory = {
+    processRules(rules.toList, requestContext)
+  }
+
+  def executeUserMetadataRuleOnly(requestContext: RequestContext): BlockResultWithHistory = {
+    processRules(rules.collect { case r: UserMetadataRelatedRule => r }, requestContext)
+  }
+
+  private def processRules(selectedRules: List[Rule],
+                           requestContext: RequestContext): BlockResultWithHistory = {
     val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
-    rules
+    selectedRules
       .foldLeft(matched(initBlockContext)) {
         case (currentResult, rule) =>
           for {
