@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Ite
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CacheableAction
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
@@ -42,7 +43,7 @@ import scala.util.{Failure, Success, Try}
 trait ExternalAuthorizationService extends Item {
   override type Id = Name
   def id: Id
-  def grantsFor(loggedUser: LoggedUser): Task[Set[Group]]
+  def grantsFor(loggedUser: LoggedUser): Task[UniqueList[Group]]
 
   override implicit def show: Show[Name] = Name.nameShow
 }
@@ -67,7 +68,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
   extends ExternalAuthorizationService
   with Logging {
 
-  override def grantsFor(loggedUser: LoggedUser): Task[Set[Group]] = {
+  override def grantsFor(loggedUser: LoggedUser): Task[UniqueList[Group]] = {
     httpClient
       .send(createRequest(loggedUser))
       .flatMap { response =>
@@ -94,7 +95,7 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
     }
   }
 
-  private def groupsFromResponseBody(body: String): Set[Group] = {
+  private def groupsFromResponseBody(body: String): UniqueList[Group] = {
     val groupsFromPath =
       Try(groupsJsonPath.read[java.util.List[String]](body))
         .map(
@@ -105,10 +106,10 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
     groupsFromPath match {
       case Success(groups) =>
         logger.debug(s"Groups returned by groups provider '${id.show}': ${groups.map(_.show).mkString(",")}")
-        groups.toSet
+        UniqueList.fromList(groups.toList)
       case Failure(ex) =>
         logger.debug(s"Group based authorization response exception - provider '${id.show}'", ex)
-        Set.empty
+        UniqueList.empty
     }
   }
 
@@ -152,10 +153,10 @@ class CacheableExternalAuthorizationServiceDecorator(underlying: ExternalAuthori
                                                      ttl: FiniteDuration Refined Positive)
   extends ExternalAuthorizationService {
 
-  private val cacheableGrantsFor = new CacheableAction[LoggedUser, Set[Group]](ttl, underlying.grantsFor)
+  private val cacheableGrantsFor = new CacheableAction[LoggedUser, UniqueList[Group]](ttl, underlying.grantsFor)
 
   override val id: ExternalAuthorizationService#Id = underlying.id
 
-  override def grantsFor(loggedUser: LoggedUser): Task[Set[Group]] =
+  override def grantsFor(loggedUser: LoggedUser): Task[UniqueList[Group]] =
     cacheableGrantsFor.call(loggedUser)
 }

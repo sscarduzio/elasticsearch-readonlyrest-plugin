@@ -46,7 +46,7 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
     if (!isSpecializedIndexAction(requestContext.action)) Fulfilled(blockContext)
     else {
       checkAllowedIndices(
-        resolveAll(settings.allowedIndices, requestContext, blockContext).toSet,
+        resolveAll(settings.allowedIndices.toNonEmptyList, requestContext, blockContext).toSet,
         requestContext,
         blockContext
       )

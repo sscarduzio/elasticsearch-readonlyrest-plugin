@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import static tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions.assertions;
 
-public class LdapIntegrationGroupsHeadersTests {
+public class LdapIntegrationGroupsTests {
 
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =

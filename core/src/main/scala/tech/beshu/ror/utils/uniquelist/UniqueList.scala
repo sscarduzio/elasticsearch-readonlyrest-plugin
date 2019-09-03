@@ -14,15 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks
+package tech.beshu.ror.utils.uniquelist
 
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, KibanaAccess, KibanaApp, LoggedUser, UserOrigin}
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import scala.collection.SortedSet
 
-final case class UserMetadata(loggedUser: Option[LoggedUser],
-                              currentGroup: Option[Group],
-                              availableGroups: UniqueList[Group],
-                              foundKibanaIndex: Option[IndexName],
-                              hiddenKibanaApps: Set[KibanaApp],
-                              kibanaAccess: Option[KibanaAccess],
-                              userOrigin: Option[UserOrigin])
+class UniqueList[T] private (vector: Vector[T])
+  extends BaseUniqueList[T, UniqueList[T]](
+    vector,
+    newVector => new UniqueList(newVector)
+  )
+
+object UniqueList {
+  def empty[T]: UniqueList[T] = fromVector(Vector.empty)
+  def of[T](t: T*): UniqueList[T] = fromList(t.toList)
+  def fromList[T](list: List[T]): UniqueList[T] = fromVector(list.toVector)
+  def fromVector[T](vector: Vector[T]): UniqueList[T] = new UniqueList[T](vector)
+  def fromSortedSet[T](set: SortedSet[T]): UniqueList[T] = fromVector(set.toVector)
+}

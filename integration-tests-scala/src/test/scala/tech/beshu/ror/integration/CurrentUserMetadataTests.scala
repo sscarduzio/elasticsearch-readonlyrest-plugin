@@ -44,8 +44,8 @@ class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
           assertEquals(200, result.getResponseCode)
           result.getResponseJson.size() should be (3)
           result.getResponseJson.get("x-ror-username") should be("user1")
-          result.getResponseJson.get("x-ror-current-group") should be("group1")
-          result.getResponseJson.get("x-ror-available-groups") should be(List("group1", "group3").asJava)
+          result.getResponseJson.get("x-ror-current-group") should be("group3")
+          result.getResponseJson.get("x-ror-available-groups") should be(List("group3", "group1").asJava)
         }
         "several blocks are matched and current group is set" in {
           val user1MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user4", "pass"))

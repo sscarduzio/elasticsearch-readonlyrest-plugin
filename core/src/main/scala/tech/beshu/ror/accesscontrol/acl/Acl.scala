@@ -27,11 +27,10 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Poli
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.Group
-import tech.beshu.ror.accesscontrol.orders.{forbiddenByMismatchedCauseOrder, groupOrder}
+import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-
-import scala.collection.SortedSet
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class Acl(val blocks: NonEmptyList[Block])
   extends AccessControl {
@@ -96,29 +95,28 @@ class Acl(val blocks: NonEmptyList[Block])
         .toList
         .map(_.blockContext)
         .flatMap(b => b.availableGroups.map((_, b)).toList)
-        .sortBy(_._1)
     preferredGroup match {
       case Some(pg) =>
         allGroupsWithRelatedBlockContexts
-          .find(_._1 === pg)
+          .find(_._1 == pg)
           .map { case (currentGroup, blockContext) =>
-            createUserMetadata(blockContext, Some(currentGroup), SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*))
+            createUserMetadata(blockContext, Some(currentGroup), UniqueList.fromList(allGroupsWithRelatedBlockContexts.map(_._1)))
           }
       case None =>
         Some {
           allGroupsWithRelatedBlockContexts
             .headOption
             .map { case (currentGroup, blockContext) =>
-              createUserMetadata(blockContext, Some(currentGroup), SortedSet(allGroupsWithRelatedBlockContexts.map(_._1): _*))
+              createUserMetadata(blockContext, Some(currentGroup), UniqueList.fromList(allGroupsWithRelatedBlockContexts.map(_._1)))
             }
             .getOrElse {
-              createUserMetadata(matchedResults.head.blockContext, None, SortedSet.empty)
+              createUserMetadata(matchedResults.head.blockContext, None, UniqueList.empty)
             }
         }
     }
   }
 
-  private def createUserMetadata(blockContext: BlockContext, currentGroup: Option[Group], availableGroups: SortedSet[Group]) = {
+  private def createUserMetadata(blockContext: BlockContext, currentGroup: Option[Group], availableGroups: UniqueList[Group]) = {
     UserMetadata(
       blockContext.loggedUser,
       currentGroup,

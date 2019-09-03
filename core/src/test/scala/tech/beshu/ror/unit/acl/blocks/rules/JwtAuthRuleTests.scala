@@ -38,6 +38,7 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -193,7 +194,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Set.empty,
+          configuredGroups = UniqueList.empty,
           tokenHeader = Header(
             Header.Name.authorization,
             {
@@ -252,7 +253,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Set(groupFrom("group3"), groupFrom("group2")),
+          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
           tokenHeader = Header(
             Header.Name.authorization,
             {
@@ -265,7 +266,7 @@ class JwtAuthRuleTests
             loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
             jwt = Some(JwtTokenPayload(claims)),
             currentGroup = Some(Group("group2".nonempty)),
-            availableGroups = Set(Group("group2".nonempty))
+            availableGroups = UniqueList.of(Group("group2".nonempty))
           )(blockContext)
         }
       }
@@ -405,7 +406,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups.subgroups")))
           ),
-          configuredGroups = Set(Group("group1".nonempty)),
+          configuredGroups = UniqueList.of(Group("group1".nonempty)),
           tokenHeader = Header(
             Header.Name.authorization,
             {
@@ -429,7 +430,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          configuredGroups = Set(groupFrom("group3"), groupFrom("group4")),
+          configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group4")),
           tokenHeader = Header(
             Header.Name.authorization,
             {
@@ -447,18 +448,18 @@ class JwtAuthRuleTests
   }
 
   private def assertMatchRule(configuredJwtDef: JwtDef,
-                              configuredGroups: Set[Group] = Set.empty,
+                              configuredGroups: UniqueList[Group] = UniqueList.empty,
                               tokenHeader: Header)
                              (blockContextAssertion: BlockContext => Unit): Unit =
     assertRule(configuredJwtDef, configuredGroups, tokenHeader, Some(blockContextAssertion))
 
   private def assertNotMatchRule(configuredJwtDef: JwtDef,
-                                 configuredGroups: Set[Group] = Set.empty,
+                                 configuredGroups: UniqueList[Group] = UniqueList.empty,
                                  tokenHeader: Header): Unit =
     assertRule(configuredJwtDef, configuredGroups, tokenHeader, blockContextAssertion = None)
 
   private def assertRule(configuredJwtDef: JwtDef,
-                         configuredGroups: Set[Group] = Set.empty,
+                         configuredGroups: UniqueList[Group] = UniqueList.empty,
                          tokenHeader: Header,
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups))

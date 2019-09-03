@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.request
 import java.time.Instant
 
 import cats.Show
-import cats.data.NonEmptySet
 import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
@@ -32,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
 
@@ -138,7 +138,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
     }
   }
 
-  def isCurrentGroupEligible(groups: NonEmptySet[Group]): Boolean = {
+  def isCurrentGroupEligible(groups: UniqueNonEmptyList[Group]): Boolean = {
     requestContext.currentGroup match {
       case RequestGroup.AGroup(preferredGroup) =>
         if(requestContext.uriPath.isCurrentUserMetadataPath) true

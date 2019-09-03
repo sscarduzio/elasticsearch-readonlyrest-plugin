@@ -28,8 +28,9 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.JwtDefinitionsDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import DecoderHelpers.decodeUniqueList
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
   extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
@@ -50,21 +51,21 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
 
 private object JwtAuthRuleDecoder {
 
-  private implicit val groupsSetDecoder: Decoder[Set[RuntimeSingleResolvableVariable[Group]]] =
-    DecoderHelpers.decodeStringLikeOrSet[RuntimeSingleResolvableVariable[Group]]
+  private implicit val groupsSetDecoder: Decoder[UniqueList[RuntimeSingleResolvableVariable[Group]]] =
+    DecoderHelpers.decodeStringLikeOrUniqueList[RuntimeSingleResolvableVariable[Group]]
 
-  private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, Set[Group])] =
+  private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, UniqueList[Group])] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .map(JwtDef.Name.apply)
-      .map((_, Set.empty))
+      .map((_, UniqueList.empty))
 
-  private val nameAndGroupsExtendedDecoder: Decoder[(JwtDef.Name, Set[Group])] =
+  private val nameAndGroupsExtendedDecoder: Decoder[(JwtDef.Name, UniqueList[Group])] =
     Decoder.instance { c =>
       for {
         jwtDefName <- c.downField("name").as[JwtDef.Name]
-        groups <- c.downFields("roles", "groups").as[Option[Set[Group]]]
-      } yield (jwtDefName, groups.getOrElse(Set.empty))
+        groups <- c.downFields("roles", "groups").as[Option[UniqueList[Group]]]
+      } yield (jwtDefName, groups.getOrElse(UniqueList.empty))
     }
 
 }

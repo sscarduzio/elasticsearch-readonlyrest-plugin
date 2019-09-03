@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
-import cats.data.NonEmptySet
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
@@ -27,6 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, HCursorOps, _}
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 object UsersDefinitionsDecoder {
 
@@ -64,7 +64,7 @@ object UsersDefinitionsDecoder {
         val groupsKey = "groups"
         for {
           username <- c.downField(usernameKey).as[User.Id]
-          groups <- c.downField(groupsKey).as[NonEmptySet[Group]]
+          groups <- c.downField(groupsKey).as[UniqueNonEmptyList[Group]]
           rule <- c.withoutKeys(Set(usernameKey, groupsKey))
             .tryDecodeAuthRule(username)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))

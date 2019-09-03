@@ -45,6 +45,8 @@ import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
@@ -114,9 +116,9 @@ object common extends Logging {
   implicit val userIdDecoder: Decoder[User.Id] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply)
 
-  implicit val groupsNesDecoder: Decoder[NonEmptySet[Group]] =
+  implicit val groupsUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[Group]] =
     SyncDecoderCreator
-      .from(DecoderHelpers.decodeStringLikeOrNonEmptySet[Group])
+      .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[Group])
       .withError(ValueLevelCreationError(Message("Non empty list of groups are required")))
       .decoder
 

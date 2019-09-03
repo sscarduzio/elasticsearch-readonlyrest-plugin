@@ -35,6 +35,7 @@ import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
 
@@ -114,7 +115,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(groupFrom("g3")),
-              availableGroups = Set(groupFrom("g3"))
+              availableGroups = UniqueList.of(groupFrom("g3"))
             ) {
               blockContext
             }
@@ -133,7 +134,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(groupFrom("g3")),
-              availableGroups = Set(groupFrom("g3"))
+              availableGroups = UniqueList.of(groupFrom("g3"))
             ) {
               blockContext
             }
@@ -152,7 +153,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
               currentGroup = Some(groupFrom("gs2")),
-              availableGroups = Set(groupFrom("gs2"))
+              availableGroups = UniqueList.of(groupFrom("gs2"))
             ) {
               blockContext
             }
@@ -171,7 +172,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
               currentGroup = Some(groupFrom("gs1")),
-              availableGroups = Set(groupFrom("gs1"))
+              availableGroups = UniqueList.of(groupFrom("gs1"))
             ) {
               blockContext
             }

@@ -16,16 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.data.NonEmptySet
-import cats.implicits._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-
-import scala.collection.SortedSet
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 trait BlockContext {
 
@@ -35,9 +31,9 @@ trait BlockContext {
   def jwt: Option[JwtTokenPayload]
   def withJwt(token: JwtTokenPayload): BlockContext
 
-  def availableGroups: SortedSet[Group]
+  def availableGroups: UniqueList[Group]
   def currentGroup: Option[Group]
-  def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext
+  def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext
 
   def responseHeaders: Set[Header]
   def withAddedResponseHeader(header: Header): BlockContext
@@ -88,8 +84,8 @@ object NoOpBlockContext extends BlockContext {
   override val jwt: Option[JwtTokenPayload] = None
   override def withJwt(token: JwtTokenPayload): BlockContext = this
 
-  override val availableGroups: SortedSet[Group] = SortedSet.empty
-  override def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext = this
+  override val availableGroups: UniqueList[Group] = UniqueList.empty
+  override def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext = this
   override val currentGroup: Option[Group] = None
 
   override val responseHeaders: Set[Header] = Set.empty
@@ -128,10 +124,10 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withLoggedUser(user: LoggedUser): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(loggedUser = Some(user)))
 
-  override def availableGroups: SortedSet[Group] = SortedSet.empty[Group] ++ data.availableGroups
+  override def availableGroups: UniqueList[Group] = data.availableGroups
 
-  override def withAddedAvailableGroups(groups: NonEmptySet[Group]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(availableGroups = data.availableGroups ++ groups.toSortedSet))
+  override def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(availableGroups = UniqueList.fromSortedSet(data.availableGroups ++ groups.toUniqueList)))
 
   override def currentGroup: Option[Group] = data.initialCurrentGroup match {
     case Some(initialGroup) => Some(initialGroup)
@@ -193,7 +189,7 @@ object RequestContextInitiatedBlockContext {
 
   final case class BlockContextData(loggedUser: Option[LoggedUser],
                                     initialCurrentGroup: Option[Group],
-                                    availableGroups: Set[Group],
+                                    availableGroups: UniqueList[Group],
                                     hiddenKibanaApps: Set[KibanaApp],
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
@@ -210,7 +206,7 @@ object RequestContextInitiatedBlockContext {
       BlockContextData(
         loggedUser = None,
         initialCurrentGroup = requestContext.currentGroup.toOption,
-        availableGroups = Set.empty,
+        availableGroups = UniqueList.empty,
         hiddenKibanaApps = Set.empty,
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,

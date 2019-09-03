@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 
 import cats.Order
+import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
-import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -33,11 +33,12 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.User
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.utils.LdapConnectionPoolOps._
+import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
-import tech.beshu.ror.utils.LoggerOps._
 
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
                                                  connectionPool: LDAPConnectionPool,
@@ -90,7 +91,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, requestTimeout)
     with LdapAuthorizationService {
 
-  override def groupsOf(id: User.Id): Task[Set[Group]] = {
+  override def groupsOf(id: User.Id): Task[UniqueList[Group]] = {
     ldapUserBy(id)
       .flatMap {
         case Some(user) =>
@@ -99,11 +100,11 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
             case groupsFromUserAttribute: GroupsFromUserAttribute => groupsFrom(groupsFromUserAttribute, user)
           }
         case None =>
-          Task.now(Set.empty)
+          Task.now(UniqueList.empty)
       }
   }
 
-  private def groupsFrom(defaultSearchGroupMode: DefaultGroupSearch, user: LdapUser): Task[Set[Group]] = {
+  private def groupsFrom(defaultSearchGroupMode: DefaultGroupSearch, user: LdapUser): Task[UniqueList[Group]] = {
     val searchFilter = searchFilterFrom(defaultSearchGroupMode, user)
     logger.debug(s"LDAP search string: $searchFilter | groupNameAttr: ${defaultSearchGroupMode.groupNameAttribute}")
     connectionPool
@@ -111,13 +112,14 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       .flatMap {
         case Right(results) =>
           Task {
-            results
-              .flatMap { r =>
-                Option(r.getAttributeValue(defaultSearchGroupMode.groupNameAttribute.value))
-                  .flatMap(NonEmptyString.unapply)
-              }
-              .map(Group.apply)
-              .toSet
+            UniqueList.fromList(
+              results
+                .flatMap { r =>
+                  Option(r.getAttributeValue(defaultSearchGroupMode.groupNameAttribute.value))
+                    .flatMap(NonEmptyString.unapply)
+                }
+                .map(Group.apply)
+            )
           }
         case Left(errorResult) =>
           logger.error(s"LDAP getting user groups returned error: [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")
@@ -128,22 +130,24 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
       }
   }
 
-  private def groupsFrom(mode: GroupsFromUserAttribute, user: LdapUser): Task[Set[Group]] = {
+  private def groupsFrom(mode: GroupsFromUserAttribute, user: LdapUser): Task[UniqueList[Group]] = {
     logger.debug(s"LDAP search string: ${user.dn.value.value} | groupsFromUserAttribute: ${mode.groupsFromUserAttribute.value}")
     connectionPool
       .process(searchUserGroupsLdapRequest(_, user, mode), requestTimeout)
       .flatMap {
         case Right(results) =>
           Task {
-            results
-              .flatMap { r =>
-                Option(r.getAttributeValues(mode.groupsFromUserAttribute.value))
-                  .toList.flatMap(_.toList)
-                  .flatMap(groupNameFromDn(_, mode))
-                  .flatMap(NonEmptyString.unapply)
-              }
-              .map(Group.apply)
-              .toSet
+            UniqueList
+              .fromList(
+                results
+                  .flatMap { r =>
+                    Option(r.getAttributeValues(mode.groupsFromUserAttribute.value))
+                      .toList.flatMap(_.toList)
+                      .flatMap(groupNameFromDn(_, mode))
+                      .flatMap(NonEmptyString.unapply)
+                  }
+                  .map(Group.apply)
+              )
           }
         case Left(errorResult) =>
           logger.error(s"LDAP getting user groups returned error [code=${errorResult.getResultCode}, cause=${errorResult.getResultString}]")

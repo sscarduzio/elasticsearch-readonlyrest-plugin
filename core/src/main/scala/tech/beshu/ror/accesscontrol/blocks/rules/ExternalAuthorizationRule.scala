@@ -16,20 +16,22 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
-import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.MatcherWithWildcards
-import scala.collection.JavaConverters._
-import StringTNaturalTransformation.instances.stringUserIdNT
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
+import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+
+import scala.collection.JavaConverters._
 
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings)
   extends BaseAuthorizationRule {
@@ -54,16 +56,14 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
       .service
       .grantsFor(user)
       .map { userGroups =>
-        NonEmptySet.fromSet(settings.permittedGroups.toSortedSet.intersect(userGroups)) match {
+        UniqueNonEmptyList.fromSortedSet(settings.permittedGroups.intersect(userGroups)) match {
           case None =>
             Unauthorized
           case Some(determinedAvailableGroups) =>
             currentGroup match {
               case Some(group) if !determinedAvailableGroups.contains(group) =>
                 Unauthorized
-              case Some(_) =>
-                Authorized(determinedAvailableGroups)
-              case None =>
+              case Some(_) | None =>
                 Authorized(determinedAvailableGroups)
             }
         }
@@ -76,7 +76,7 @@ object ExternalAuthorizationRule {
   val name = Rule.Name("groups_provider_authorization")
 
   final case class Settings(service: ExternalAuthorizationService,
-                            permittedGroups: NonEmptySet[Group],
+                            permittedGroups: UniqueNonEmptyList[Group],
                             users: NonEmptySet[User.Id])
 
 }

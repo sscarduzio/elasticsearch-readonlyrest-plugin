@@ -35,7 +35,7 @@ import scala.collection.SortedSet
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef])
   extends RuleDecoderWithoutAssociatedFields[GroupsRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Group]]
+    .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]]
     .toSyncDecoder
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>

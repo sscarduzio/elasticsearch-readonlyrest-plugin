@@ -28,8 +28,9 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.RorKbnDefinitionsDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import DecoderHelpers.decodeUniqueList
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
   extends RuleDecoderWithoutAssociatedFields[RorKbnAuthRule](
@@ -50,21 +51,21 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
 
 private object RorKbnAuthRuleDecoder {
 
-  private implicit val groupsSetDecoder: Decoder[Set[RuntimeSingleResolvableVariable[Group]]] =
-    DecoderHelpers.decodeStringLikeOrSet[RuntimeSingleResolvableVariable[Group]]
+  private implicit val groupsSetDecoder: Decoder[UniqueList[RuntimeSingleResolvableVariable[Group]]] =
+    DecoderHelpers.decodeStringLikeOrUniqueList[RuntimeSingleResolvableVariable[Group]]
 
-  private val nameAndGroupsSimpleDecoder: Decoder[(RorKbnDef.Name, Set[Group])] =
+  private val nameAndGroupsSimpleDecoder: Decoder[(RorKbnDef.Name, UniqueList[Group])] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .map(RorKbnDef.Name.apply)
-      .map((_, Set.empty))
+      .map((_, UniqueList.empty))
 
-  private val nameAndGroupsExtendedDecoder: Decoder[(RorKbnDef.Name, Set[Group])] =
+  private val nameAndGroupsExtendedDecoder: Decoder[(RorKbnDef.Name, UniqueList[Group])] =
     Decoder.instance { c =>
       for {
         rorKbnDefName <- c.downField("name").as[RorKbnDef.Name]
-        groups <- c.downFields("roles", "groups").as[Option[Set[Group]]]
-      } yield (rorKbnDefName, groups.getOrElse(Set.empty))
+        groups <- c.downFields("roles", "groups").as[Option[UniqueList[Group]]]
+      } yield (rorKbnDefName, groups.getOrElse(UniqueList.empty))
     }
 
 }

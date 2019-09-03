@@ -88,7 +88,6 @@ object orders {
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[PlainTextSecret] = Order.by(_.value)
   implicit val indexOrder: Order[IndexName] = Order.by(_.value)
-  implicit val groupOrder: Order[Group] = Order.by(_.value.value)
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
