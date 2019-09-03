@@ -93,7 +93,8 @@ dependencies {
     compile group: 'io.lemonlabs',                          name: 'scala-uri_2.12',                         version: '1.4.1'
     compile group: 'org.typelevel',                         name: 'squants_2.12',                           version: '1.4.0'
     compile group: 'com.unboundid',                         name: 'unboundid-ldapsdk',                      version: '4.0.9'
-    
+
+    testCompile project(':tests-utils')
     testCompile group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.2'
     testRuntime group: 'ch.qos.logback',                    name: 'logback-classic',                        version: '1.2.3'
     testRuntime group: 'org.pegdown',                       name: 'pegdown',                                version: '1.4.2'

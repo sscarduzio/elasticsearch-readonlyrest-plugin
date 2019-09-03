@@ -16,27 +16,25 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import cats.data._
 import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.acl.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.domain._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils
-import tech.beshu.ror.utils.TestsUtils.{AssertionType, BlockContextAssertion}
-import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.acl.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService}
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.utils.TestsUtils.{AssertionType, BlockContextAssertion, _}
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-import scala.util.{Failure, Success, Try}
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import TestsUtils._
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
+import scala.util.{Failure, Success, Try}
 
 class LdapAuthRuleTests
   extends WordSpec
@@ -52,16 +50,16 @@ class LdapAuthRuleTests
             mockLdapAuthenticationService(User.Id("user1".nonempty), PlainTextSecret("pass".nonempty), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.now(Set(Group("g1".nonempty)))),
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
+            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.now(UniqueList.of(Group("g1".nonempty)))),
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = basicAuthHeader("user1:pass")
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
             user = User.Id("user1".nonempty),
             group = groupFrom("g1"),
-            availableGroups = Set(groupFrom("g1"))
+            availableGroups = UniqueList.of(groupFrom("g1"))
           )
         )
       }
@@ -72,8 +70,8 @@ class LdapAuthRuleTests
           authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = None
         )
@@ -85,8 +83,8 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = Some(basicAuthHeader("user1:pass"))
         )
@@ -97,9 +95,9 @@ class LdapAuthRuleTests
             mockLdapAuthenticationService(User.Id("user1".nonempty), PlainTextSecret("pass".nonempty), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.now(Set.empty)),
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
+            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.now(UniqueList.empty)),
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = Some(basicAuthHeader("user1:pass"))
         )
@@ -111,8 +109,8 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = basicAuthHeader("user1:pass"),
           TestException("authentication failure")
@@ -125,8 +123,8 @@ class LdapAuthRuleTests
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mockLdapAuthorizationService(User.Id("user1".nonempty), Task.raiseError(TestException("authorization failure"))),
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty)),
-            NonEmptySet.of(Group("g1".nonempty), Group("g2".nonempty))
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
+            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
           ),
           basicHeader = basicAuthHeader("user1:pass"),
           TestException("authorization failure")
@@ -178,7 +176,7 @@ class LdapAuthRuleTests
     service
   }
 
-  private def mockLdapAuthorizationService(user: User.Id, result: Task[Set[Group]]) = {
+  private def mockLdapAuthorizationService(user: User.Id, result: Task[UniqueList[Group]]) = {
     val service = mock[LdapAuthorizationService]
     (service.groupsOf _).expects(user).returning(result)
     service
@@ -186,7 +184,7 @@ class LdapAuthRuleTests
 
   private def defaultOutputBlockContextAssertion(user: User.Id,
                                                  group: Group,
-                                                 availableGroups: Set[Group]): BlockContext => Unit =
+                                                 availableGroups: UniqueList[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
         loggedUser = Some(DirectlyLoggedUser(user)),

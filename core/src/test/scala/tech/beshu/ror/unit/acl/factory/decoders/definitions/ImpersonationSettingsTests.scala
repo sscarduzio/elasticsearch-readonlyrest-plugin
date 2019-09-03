@@ -18,14 +18,14 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.acl.blocks.definitions.{ExternalAuthenticationService, JwtDef, ProxyAuth, RorKbnDef}
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule}
-import tech.beshu.ror.acl.domain.User
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.acl.factory.decoders.definitions.{Definitions, ImpersonationDefinitionsDecoder}
-import tech.beshu.ror.acl.orders.userIdOrder
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef, ProxyAuth, RorKbnDef}
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule}
+import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ImpersonationDefinitionsDecoder}
+import tech.beshu.ror.accesscontrol.orders.userIdOrder
 import tech.beshu.ror.utils.TestsUtils._
 
 class ImpersonationSettingsTests extends BaseDecoderTest(

@@ -16,19 +16,18 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import cats.data.NonEmptySet
 import org.scalatest.Inside
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.definitions.UserDef
-import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
-import tech.beshu.ror.acl.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.acl.domain.{Credentials, Group, PlainTextSecret, User}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.domain.{Credentials, Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] with Inside {
 
@@ -52,12 +51,12 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |
               |""".stripMargin,
           assertion = rule => {
-            val groups: NonEmptySet[RuntimeMultiResolvableVariable[Group]] = NonEmptySet.one(AlreadyResolved(groupFrom("group1").nel))
+            val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
               name should be(User.Id("cartman".nonempty))
-              userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
+              userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman".nonempty), PlainTextSecret("pass".nonempty)))
@@ -88,14 +87,14 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |
               |""".stripMargin,
           assertion = rule => {
-            val groups: NonEmptySet[RuntimeMultiResolvableVariable[Group]] =
-              NonEmptySet.of(AlreadyResolved(groupFrom("group1").nel), AlreadyResolved(groupFrom("group2").nel))
+            val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] =
+              UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel), AlreadyResolved(groupFrom("group2").nel))
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions.toSortedSet
             inside(sortedUserDefinitions.head) { case UserDef(name, userGroups, authRule) =>
               name should be(User.Id("cartman".nonempty))
-              userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
+              userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman".nonempty), PlainTextSecret("pass".nonempty)))
@@ -103,7 +102,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             }
             inside(sortedUserDefinitions.tail.head) { case UserDef(name, userGroups, authRule) =>
               name should be(User.Id("morgan".nonempty))
-              userGroups should be(NonEmptySet.of(groupFrom("group2"), groupFrom("group3")))
+              userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
               authRule shouldBe an[AuthKeySha1Rule]
               authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
                 BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty))
@@ -130,14 +129,14 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.groups.toSortedSet.size shouldBe 2
-            rule.settings.groups.toSortedSet.head should be(AlreadyResolved(groupFrom("group1").nel))
-            rule.settings.groups.toSortedSet.tail.head shouldBe a [ToBeResolved[_]]
+            rule.settings.groups.size shouldBe 2
+            rule.settings.groups.head should be(AlreadyResolved(groupFrom("group1").nel))
+            rule.settings.groups.tail.head shouldBe a [ToBeResolved[_]]
 
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
               name should be(User.Id("cartman".nonempty))
-              userGroups should be(NonEmptySet.of(groupFrom("group1"), groupFrom("group3")))
+              userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman".nonempty), PlainTextSecret("pass".nonempty)))

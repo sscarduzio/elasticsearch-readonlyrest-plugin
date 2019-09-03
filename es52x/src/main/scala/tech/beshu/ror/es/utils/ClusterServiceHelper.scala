@@ -17,8 +17,8 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.cluster.service.ClusterService
-import tech.beshu.ror.acl.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.acl.blocks.rules.utils.StringTNaturalTransformation.instances.identityNT
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.identityNT
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._

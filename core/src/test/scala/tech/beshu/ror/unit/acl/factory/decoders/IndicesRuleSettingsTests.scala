@@ -19,13 +19,13 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.rules.IndicesRule
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.acl.domain.IndexName
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
 
 class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] with MockFactory {

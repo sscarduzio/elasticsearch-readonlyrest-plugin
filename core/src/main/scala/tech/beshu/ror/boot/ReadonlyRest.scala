@@ -26,10 +26,10 @@ import monix.execution.Scheduler.{global => scheduler}
 import monix.execution.atomic.{Atomic, AtomicAny}
 import monix.execution.{Cancelable, CancelablePromise, Scheduler}
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
-import tech.beshu.ror.acl.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.acl.logging.{AclLoggingDecorator, AuditingTool}
-import tech.beshu.ror.acl.{Acl, AclStaticContext}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
+import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool}
+import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
 import tech.beshu.ror.boot.RorInstance.{ForceReloadError, Mode}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
@@ -166,7 +166,7 @@ trait ReadonlyRest extends Logging {
           .right
           .map { coreSettings =>
             val engine = new Engine(
-              new AclLoggingDecorator(
+              new AccessControlLoggingDecorator(
                 coreSettings.aclEngine,
                 coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
               ),
@@ -414,7 +414,7 @@ object RorInstance {
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-final class Engine(val acl: Acl, val context: AclStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
+final class Engine(val accessControl: AccessControl, val context: AccessControlStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
   private [ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()
   }

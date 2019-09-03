@@ -28,14 +28,14 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.TestsUtils.scalaFiniteDuration2JavaDuration
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule
-import tech.beshu.ror.acl.blocks.rules.SessionMaxIdleRule.Settings
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.request.RequestContext
-import tech.beshu.ror.acl.domain.{Header, User}
-import tech.beshu.ror.acl.refined._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
+import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.domain.{Header, User}
+import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.providers.UuidProvider
 import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, fixedUuidProvider, rorSessionCookie, someday}
 

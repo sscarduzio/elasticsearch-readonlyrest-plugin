@@ -20,12 +20,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.acl.domain.IndexName
+import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._

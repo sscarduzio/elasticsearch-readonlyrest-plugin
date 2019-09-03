@@ -20,22 +20,19 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
-import tech.beshu.ror.acl.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.Constants
-import tech.beshu.ror.acl.domain.Header.Name
-import tech.beshu.ror.acl.domain.KibanaAccess.{RO, ROStrict, RW}
-import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.headerValues._
+import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, StringOps}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssertion {
 
@@ -60,8 +57,9 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
           assertNotMatchRule(settingsOf(RO), action, Set(IndexName(".kibana".nonempty)))
           assertMatchRule(settingsOf(RW), action, Set(IndexName(".kibana".nonempty))) {
             assertBlockContext(
-              responseHeaders = Set(Header(Name.kibanaAccess, RW: KibanaAccess)),
-              kibanaIndex = Some(IndexName(".kibana".nonempty))
+              //responseHeaders = Set(Header(Name.kibanaAccess, RW: KibanaAccess)),
+              kibanaIndex = Some(IndexName(".kibana".nonempty)),
+              kibanaAccess = Some(RW)
             )
           }
         }
@@ -103,8 +101,8 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
           assertNotMatchRule(settingsOf(RO, IndexName(".custom_kibana".nonempty)), action, Set(IndexName(".custom_kibana".nonempty)))
           assertMatchRule(settingsOf(RW, IndexName(".custom_kibana".nonempty)), action, Set(IndexName(".custom_kibana".nonempty))) {
             assertBlockContext(
-              responseHeaders = Set(Header(Name.kibanaAccess, RW: KibanaAccess)),
-              kibanaIndex = Some(IndexName(".custom_kibana".nonempty))
+              kibanaIndex = Some(IndexName(".custom_kibana".nonempty)),
+              kibanaAccess = Some(RW)
             )
           }
         }
@@ -148,8 +146,8 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
       assertNotMatchRule(settingsOf(RO, IndexName(".kibana".nonempty)), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings")))
       assertMatchRule(settingsOf(RW, IndexName(".kibana".nonempty)), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings"))) {
         assertBlockContext(
-            responseHeaders = Set(Header(Name.kibanaAccess, RW: KibanaAccess)),
-            kibanaIndex = None
+          kibanaIndex = None,
+          kibanaAccess = Some(RW)
         )
       }
     }
@@ -157,8 +155,8 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
       def assertMatchClusterRule(access: KibanaAccess) = {
         assertMatchRule(settingsOf(access, IndexName(".kibana".nonempty)), Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"), Set.empty, Some(UriPath("/_ccr/auto_follow"))) {
           assertBlockContext(
-            responseHeaders = Set(Header(Name.kibanaAccess, access)),
-            kibanaIndex = None
+            kibanaIndex = None,
+            kibanaAccess = Some(access)
           )
         }
       }
@@ -171,14 +169,14 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
     assertNotMatchRule(settingsOf(ROStrict, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath))
     assertMatchRule(settingsOf(RO, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath)) {
       assertBlockContext(
-        responseHeaders = Set(Header(Name.kibanaAccess, RO: KibanaAccess)),
-        kibanaIndex = Some(customKibanaIndex)
+        kibanaIndex = Some(customKibanaIndex),
+        kibanaAccess = Some(RO)
       )
     }
     assertMatchRule(settingsOf(RW, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath)) {
       assertBlockContext(
-        responseHeaders = Set(Header(Name.kibanaAccess, RW: KibanaAccess)),
-        kibanaIndex = Some(customKibanaIndex)
+        kibanaIndex = Some(customKibanaIndex),
+        kibanaAccess = Some(RW)
       )
     }
   }
@@ -214,12 +212,12 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
   }
 
   private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana".nonempty)) = {
-    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), kibanaMetadataEnabled = true)
+    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex))
   }
 
   private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(responseHeaders = Set(Header(Name.kibanaAccess, settings.access)))(blockContext)
+      assertBlockContext(kibanaAccess = Some(settings.access))(blockContext)
     }
 
 }

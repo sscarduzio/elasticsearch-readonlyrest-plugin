@@ -19,11 +19,11 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 
-import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.domain.KibanaApp
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.domain.KibanaApp
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaHideAppsRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaHideAppsRule] {

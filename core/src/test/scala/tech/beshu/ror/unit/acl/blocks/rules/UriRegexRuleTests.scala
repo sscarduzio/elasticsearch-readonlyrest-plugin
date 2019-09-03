@@ -23,16 +23,16 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.rules.UriRegexRule
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.acl.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.User.Id
-import tech.beshu.ror.acl.domain.{LoggedUser, UriPath}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.User.Id
+import tech.beshu.ror.accesscontrol.domain.{LoggedUser, UriPath}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -100,7 +100,7 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
         MockRequestContext(uriPath = uriPath)
       case ToBeResolved(_) =>
         (blockContext.loggedUser _).expects().returning(None)
-        MockRequestContext.default
+        MockRequestContext.default.copy(uriPath = uriPath)
     }
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

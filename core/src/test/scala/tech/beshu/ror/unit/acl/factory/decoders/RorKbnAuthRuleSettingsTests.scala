@@ -21,14 +21,15 @@ import java.util.Base64
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.definitions.RorKbnDef
-import tech.beshu.ror.acl.blocks.definitions.RorKbnDef.SignatureCheckMethod
-import tech.beshu.ror.acl.blocks.rules.RorKbnAuthRule
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
+import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
+import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
+import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[RorKbnAuthRule] with MockFactory {
@@ -55,7 +56,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1".nonempty))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.groups should be(Set.empty)
+            rule.settings.groups should be(UniqueList.empty)
           }
         )
       }
@@ -80,7 +81,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1".nonempty))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.groups should be(Set.empty)
+            rule.settings.groups should be(UniqueList.empty)
           }
         )
       }
@@ -106,7 +107,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1".nonempty))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Hmac]
-            rule.settings.groups should be(Set(groupFrom("group1"), groupFrom("group2")))
+            rule.settings.groups should be(UniqueList.of(groupFrom("group1"), groupFrom("group2")))
           }
         )
       }
@@ -132,7 +133,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1".nonempty))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
-            rule.settings.groups should be(Set.empty)
+            rule.settings.groups should be(UniqueList.empty)
           }
         )
       }
@@ -157,7 +158,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1".nonempty))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
-            rule.settings.groups should be(Set.empty)
+            rule.settings.groups should be(UniqueList.empty)
           }
         )
       }
@@ -185,7 +186,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1".nonempty))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Rsa]
-            rule.settings.groups should be(Set.empty)
+            rule.settings.groups should be(UniqueList.empty)
           }
         )
       }
@@ -211,7 +212,7 @@ class RorKbnAuthRuleSettingsTests
           assertion = rule => {
             rule.settings.rorKbn.id should be(RorKbnDef.Name("kbn1".nonempty))
             rule.settings.rorKbn.checkMethod shouldBe a [SignatureCheckMethod.Ec]
-            rule.settings.groups should be(Set.empty)
+            rule.settings.groups should be(UniqueList.empty)
           }
         )
       }

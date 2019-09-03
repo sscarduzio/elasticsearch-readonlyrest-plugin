@@ -17,11 +17,11 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.rules.KibanaIndexRule
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.acl.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.acl.domain.IndexName
+import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaIndexRule] {

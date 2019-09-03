@@ -17,11 +17,11 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
-import tech.beshu.ror.acl.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.acl.blocks.rules.AuthKeySha512Rule
-import tech.beshu.ror.acl.domain.User
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.acl.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeySha512Rule
+import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.TestsUtils._
 
 class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha512Rule] {

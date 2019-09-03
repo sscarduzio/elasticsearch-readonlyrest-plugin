@@ -21,14 +21,14 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.acl.blocks.BlockContext
-import tech.beshu.ror.acl.blocks.rules.KibanaHideAppsRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.Fulfilled
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain.User.Id
-import tech.beshu.ror.acl.domain.{KibanaApp, LoggedUser}
-import tech.beshu.ror.acl.orders._
-import tech.beshu.ror.acl.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
+import tech.beshu.ror.accesscontrol.domain.KibanaApp
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.User.Id
+import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
@@ -41,7 +41,7 @@ class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
         (blockContext.loggedUser _).expects().returning(Some(DirectlyLoggedUser(Id("user1".nonempty))))
-        (blockContext.withAddedResponseHeader _).expects(headerFrom("x-ror-kibana-hidden-apps" -> "app1")).returning(newBlockContext)
+        (blockContext.withHiddenKibanaApps _).expects(Set(KibanaApp("app1".nonempty))).returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext) )
       }
       "not set kibana app header if user is not logged" in {

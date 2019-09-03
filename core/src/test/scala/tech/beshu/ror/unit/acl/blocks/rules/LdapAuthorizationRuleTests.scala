@@ -16,21 +16,20 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import cats.data.NonEmptySet
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.acl.blocks.definitions.ldap.LdapAuthorizationService
-import tech.beshu.ror.acl.blocks.rules.LdapAuthorizationRule
-import tech.beshu.ror.acl.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.acl.blocks.{BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.acl.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.acl.domain._
-import tech.beshu.ror.acl.orders._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationService
+import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, _}
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -47,17 +46,17 @@ class LdapAuthorizationRuleTests
       "user has at least one LDAP group which is permitted" in {
         assertMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapService(User.Id("user1".nonempty), Task.now(Set(groupFrom("g1"), groupFrom("g2")))),
-            permittedGroups = NonEmptySet.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
-            allLdapGroups = NonEmptySet.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
+            ldap = mockLdapService(User.Id("user1".nonempty), Task.now(UniqueList.of(groupFrom("g1"), groupFrom("g2")))),
+            permittedGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
+            allLdapGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
           ),
           loggedUser = Some(User.Id("user1".nonempty)),
           preferredGroup = None
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
             user = User.Id("user1".nonempty),
-            group = groupFrom("g1"),
-            availableGroups = Set(groupFrom("g1"), groupFrom("g2"))
+            group = groupFrom("g2"),
+            availableGroups = UniqueList.of(groupFrom("g2"), groupFrom("g1"))
           )
         )
       }
@@ -67,8 +66,8 @@ class LdapAuthorizationRuleTests
         assertNotMatchRule(
           settings = LdapAuthorizationRule.Settings(
             ldap = mock[LdapAuthorizationService],
-            permittedGroups = NonEmptySet.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
-            allLdapGroups = NonEmptySet.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
+            permittedGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1")),
+            allLdapGroups = UniqueNonEmptyList.of(groupFrom("g3"), groupFrom("g2"), groupFrom("g1"))
           ),
           loggedUser = None,
           preferredGroup = None
@@ -77,9 +76,9 @@ class LdapAuthorizationRuleTests
       "user has no group which is permitted" in {
         assertNotMatchRule(
           settings = LdapAuthorizationRule.Settings(
-            ldap = mockLdapService(User.Id("user1".nonempty), Task.now(Set(groupFrom("g5")))),
-            permittedGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1")),
-            allLdapGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1"))
+            ldap = mockLdapService(User.Id("user1".nonempty), Task.now(UniqueList.of(groupFrom("g5")))),
+            permittedGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1")),
+            allLdapGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1"))
           ),
           loggedUser = Some(User.Id("user1".nonempty)),
           preferredGroup = None
@@ -89,8 +88,8 @@ class LdapAuthorizationRuleTests
         assertNotMatchRule(
           settings = LdapAuthorizationRule.Settings(
             ldap = mock[LdapAuthorizationService],
-            permittedGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1")),
-            allLdapGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1"))
+            permittedGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1")),
+            allLdapGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1"))
           ),
           loggedUser = Some(User.Id("user1".nonempty)),
           preferredGroup = Some(groupFrom("g3"))
@@ -100,8 +99,8 @@ class LdapAuthorizationRuleTests
         assertRuleThrown(
           settings = LdapAuthorizationRule.Settings(
             ldap = mockLdapService(User.Id("user1".nonempty), Task.raiseError(TestException("LDAP failed"))),
-            permittedGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1")),
-            allLdapGroups = NonEmptySet.of(groupFrom("g2"), groupFrom("g1"))
+            permittedGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1")),
+            allLdapGroups = UniqueNonEmptyList.of(groupFrom("g2"), groupFrom("g1"))
           ),
           loggedUser = Some(User.Id("user1".nonempty)),
           preferredGroup = None,
@@ -145,7 +144,7 @@ class LdapAuthorizationRuleTests
     }
   }
 
-  private def mockLdapService(user: User.Id, result: Task[Set[Group]]) = {
+  private def mockLdapService(user: User.Id, result: Task[UniqueList[Group]]) = {
     val service = mock[LdapAuthorizationService]
     (service.groupsOf _).expects(user).returning(result)
     service
@@ -153,7 +152,7 @@ class LdapAuthorizationRuleTests
 
   private def defaultOutputBlockContextAssertion(user: User.Id,
                                                  group: Group,
-                                                 availableGroups: Set[Group]): BlockContext => Unit =
+                                                 availableGroups: UniqueList[Group]): BlockContext => Unit =
     (blockContext: BlockContext) => {
       assertBlockContext(
         loggedUser = Some(DirectlyLoggedUser(user)),
