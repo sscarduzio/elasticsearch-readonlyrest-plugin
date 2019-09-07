@@ -73,7 +73,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with NetworkPlugin {
 
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
-  // ES using Netty underlying and Finch is using Netty underlying. Seems that ES has reimplemented own available processor
+  // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
   // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
   // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception
   doPrivileged {
