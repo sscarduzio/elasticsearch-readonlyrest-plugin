@@ -101,7 +101,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         for {
           aclAndContext <- aclDecoder(httpClientFactory)
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
-          obfuscatedHeaders <- AsyncDecoderCreator.from(Decoder.decodeOption(ObfuscatedHeadersDefinitionsDecoder.instance))
+          obfuscatedHeaders <- AsyncDecoderCreator.from(ObfuscatedHeadersDefinitionsDecoder.instance)
         } yield CoreSettings(aclEngine = aclAndContext._1,
           aclStaticContext = aclAndContext._2,
           auditingSettings = auditingTools,
