@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.definitions.ProxyAuth
+import tech.beshu.ror.accesscontrol.blocks.definitions.{ObfuscatedHeaders, ProxyAuth}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
@@ -34,10 +34,16 @@ object ProxyAuthDefinitionsDecoder {
   implicit val proxyAuthNameDecoder: Decoder[ProxyAuth.Name] = Decoder.decodeString.map(ProxyAuth.Name.apply)
 
   private implicit val proxyAuthDecoder: SyncDecoder[ProxyAuth] = {
+    // replace with commmon?
+    // import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
     implicit val headerNameDecoder: Decoder[Header.Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Header.Name.apply)
     Decoder
       .forProduct2[ProxyAuth, ProxyAuth.Name, Header.Name]("name", "user_id_header")(ProxyAuth.apply)
       .toSyncDecoder
       .withErrorFromJson(value => DefinitionsLevelCreationError(MalformedValue(value)))
   }
+}
+object ObfuscatedHeadersDefinitionsDecoder {
+  import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
+  lazy val instance: Decoder[ObfuscatedHeaders] = Decoder.forProduct1("obfuscated_headers")(ObfuscatedHeaders.apply)
 }

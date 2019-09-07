@@ -405,7 +405,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
-      .returns(Task.now(Right(CoreSettings(mock[AccessControl], aclStaticContext, None))))
+      .returns(Task.now(Right(CoreSettings(mock[AccessControl], aclStaticContext, None, None))))
     mockedCoreFactory
   }
 

@@ -19,6 +19,7 @@ package tech.beshu.ror.unit.acl.factory
 import java.time.Clock
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
@@ -30,6 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCore
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.acl.Acl
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -127,6 +129,27 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |""".stripMargin)
         val acl = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(MalformedValue("name: \"proxy1\"\n")))))
+      }
+    }
+    "where testing configuration prsing should be placed?" when {
+      "the section exists, and obfuscated header is defined" in {
+        val config = rorConfigFrom(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    type: allow
+            |    auth_key: admin:container
+            |
+            |  obfuscated_headers:
+            |  - CorpoAuth
+            |""".stripMargin)
+        val acl = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val headers = acl.right.get.obfuscatedHeaders.get.headers
+        headers should have size 1
+        headers.head should be(Header.Name(NonEmptyString.unsafeFrom("CorpoAuth")))
       }
     }
     "return blocks level error" when {
@@ -323,7 +346,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
           |""".stripMargin)
 
       inside(factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()) {
-        case Right(CoreSettings(acl: Acl, _, _)) =>
+        case Right(CoreSettings(acl: Acl, _, _, _)) =>
           val firstBlock = acl.blocks.head
           firstBlock.name should be(Block.Name("test_block1"))
           firstBlock.policy should be(Block.Policy.Forbid)

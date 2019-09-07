@@ -28,6 +28,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.acl.Acl
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
+import tech.beshu.ror.accesscontrol.blocks.definitions.ObfuscatedHeaders
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
@@ -50,7 +51,10 @@ import tech.beshu.ror.utils.YamlOps
 
 import scala.language.implicitConversions
 
-final case class CoreSettings(aclEngine: AccessControl, aclStaticContext: AccessControlStaticContext, auditingSettings: Option[AuditingTool.Settings])
+final case class CoreSettings(aclEngine: AccessControl,
+                              aclStaticContext: AccessControlStaticContext,
+                              auditingSettings: Option[AuditingTool.Settings],
+                              obfuscatedHeaders: Option[ObfuscatedHeaders])
 
 trait CoreFactory {
   def createCoreFrom(config: RawRorConfig,
@@ -92,15 +96,16 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       core <-
       if (!enabled) {
         AsyncDecoderCreator
-          .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
+          .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None, None)))
       } else {
-        aclDecoder(httpClientFactory)
-          .flatMap { case (acl, context) =>
-            AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
-              .map { auditingTools =>
-                CoreSettings(acl, context, auditingTools)
-              }
-          }
+        for {
+          aclAndContext <- aclDecoder(httpClientFactory)
+          auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
+          obfuscatedHeaders <- AsyncDecoderCreator.from(Decoder.decodeOption(ObfuscatedHeadersDefinitionsDecoder.instance))
+        } yield CoreSettings(aclEngine = aclAndContext._1,
+          aclStaticContext = aclAndContext._2,
+          auditingSettings = auditingTools,
+          obfuscatedHeaders = obfuscatedHeaders)
       }
     } yield core
 
@@ -119,11 +124,11 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
     val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
-        for {
-          last <- collectedRuleResults
-          current <- decodeRuleInCursorContext(currentRuleName, definitions).map(_.map(_.map(_ :: Nil)))
-        } yield Monoid.combine(last, current)
-      }
+      for {
+        last <- collectedRuleResults
+        current <- decodeRuleInCursorContext(currentRuleName, definitions).map(_.map(_.map(_ :: Nil)))
+      } yield Monoid.combine(last, current)
+    }
       .run(c)
       .value
 
@@ -186,27 +191,27 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       .decoder
   }
 
-  private implicit def blockDecoder(definitions: DefinitionsPack): Decoder[Block] = {
+  private def blockDecoder(definitions: DefinitionsPack): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
       Decoder
         .decodeString
         .toSyncDecoder
         .emapE[Block.Policy] {
-          case "allow" => Right(Block.Policy.Allow)
-          case "forbid" => Right(Block.Policy.Forbid)
-          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
-        }
+        case "allow" => Right(Block.Policy.Allow)
+        case "forbid" => Right(Block.Policy.Forbid)
+        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
+      }
         .decoder
     implicit val verbosityDecoder: Decoder[Verbosity] =
       Decoder
         .decodeString
         .toSyncDecoder
         .emapE[Verbosity] {
-          case "info" => Right(Verbosity.Info)
-          case "error" => Right(Verbosity.Error)
-          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
-        }
+        case "info" => Right(Verbosity.Info)
+        case "error" => Right(Verbosity.Error)
+        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
+      }
         .decoder
     Decoder
       .instance { c =>
@@ -244,7 +249,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     }
   }
 
-  private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
+  private def aclDecoder(httpClientFactory: HttpClientsFactory): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
@@ -257,7 +262,15 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, impersonationDefs))
         blocks <- {
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
-            blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs, ldapServices, impersonationDefs))
+            blockDecoder(DefinitionsPack(
+              proxies = authProxies,
+              users = userDefs,
+              authenticationServices = authenticationServices,
+              authorizationServices = authorizationServices,
+              jwts = jwtDefs,
+              rorKbns = rorKbnDefs,
+              ldaps = ldapServices,
+              impersonators = impersonationDefs))
           }
           DecoderHelpers
             .decodeFieldList[Block, Task](Attributes.acl, RulesLevelCreationError.apply)
