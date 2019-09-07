@@ -20,6 +20,9 @@ import java.nio.file.Path
 import java.time.Clock
 
 import cats.data.EitherT
+import cats.effect.Resource
+import cats.implicits._
+import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.Scheduler.{global => scheduler}
@@ -42,6 +45,7 @@ import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigMana
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.ScalaOps.value
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.concurrent.duration._
@@ -412,9 +416,197 @@ object RorInstance {
   }
 }
 
+class RorInstance2 private(boot: ReadonlyRest,
+                           mode: RorInstance2.Mode,
+                           initialEngine: (Engine, RawRorConfig),
+                           reloadInProgress: Semaphore[Task],
+                           indexConfigManager: IndexConfigManager,
+                           auditSink: AuditSink)
+  extends Logging {
+
+  import RorInstance2._
+
+  logger.info ("Readonly REST plugin core was loaded ...")
+  mode match {
+    case Mode.WithPeriodicIndexCheck => scheduleIndexConfigChecking()
+    case Mode.NoPeriodicIndexCheck => Cancelable.empty
+  }
+
+  private val currentEngine = Atomic(initialEngine)
+
+  def stop(): Task[Unit] = {
+    reloadInProgress.withPermit {
+      Task(currentEngine.get()._1.shutdown())
+    }
+  }
+
+  def forceReload(config: RawRorConfig): Task[Either[ReloadError, Unit]] = {
+    reloadInProgress.withPermit {
+      value {
+        reloadEngine(config)
+      }
+    }
+  }
+
+  // todo: is it safe?
+  private def scheduleIndexConfigChecking(): Cancelable = {
+    logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${RorInstance2.indexConfigCheckingSchedulerDelay}")
+    scheduler.scheduleOnce(RorInstance2.indexConfigCheckingSchedulerDelay) {
+      logger.debug("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
+      tryEngineReload()
+        .runAsync {
+          case Right(Right(_)) =>
+          case Right(Left(ScheduledReloadError.EngineReloadError(ReloadError.ConfigUpToDate))) =>
+            logger.debug("[CLUSTERWIDE SETTINGS] Settings are up to date. Nothing to reload.")
+            scheduleIndexConfigChecking()
+          case Right(Left(ScheduledReloadError.EngineReloadError(ReloadError.ReloadingFailed(startingFailure)))) =>
+            logger.debug(s"[CLUSTERWIDE SETTINGS] ReadonlyREST starting failed: ${startingFailure.message}")
+            scheduleIndexConfigChecking()
+          case Right(Left(ScheduledReloadError.ReloadingInProgress)) =>
+            logger.debug(s"[CLUSTERWIDE SETTINGS] Reloading in progress ... skipping")
+            scheduleIndexConfigChecking()
+          case Right(Left(ScheduledReloadError.IndexConfigError(error))) =>
+            logger.debug(s"[CLUSTERWIDE SETTINGS] Loading config from index failed: ${error.show}")
+            scheduleIndexConfigChecking()
+          case Left(ex) =>
+            logger.error("[CLUSTERWIDE SETTINGS] Checking index settings failed: error", ex)
+            scheduleIndexConfigChecking()
+        }
+    }
+  }
+
+  private def tryEngineReload() = {
+    val criticalSection = Resource.make(reloadInProgress.tryAcquire) {
+      case true => reloadInProgress.release
+      case false => Task.unit
+    }
+    criticalSection.use {
+      case true => value {
+        for {
+          newConfig <- EitherT(loadRorConfigFromIndex())
+          _ <- reloadEngine(newConfig)
+            .leftMap(ScheduledReloadError.EngineReloadError.apply)
+            .leftWiden[ScheduledReloadError]
+        } yield ()
+      }
+      case false =>
+        Task.now(Left(ScheduledReloadError.ReloadingInProgress))
+    }
+  }
+
+  private def reloadEngine(newConfig: RawRorConfig) = {
+    for {
+      _ <- shouldBeReloaded(newConfig)
+      newEngine <- reloadWith(newConfig)
+      oldEngine <- replaceCurrentEngine(newEngine, newConfig)
+      _ <- scheduleDelayedShutdown(oldEngine)
+    } yield ()
+  }
+
+  private def loadRorConfigFromIndex() = {
+    indexConfigManager
+      .load()
+      .map(_.left.map(ScheduledReloadError.IndexConfigError.apply))
+  }
+
+  private def shouldBeReloaded(config: RawRorConfig): EitherT[Task, ReloadError, Unit] = {
+    val (_, currentConfig) = currentEngine.get()
+    EitherT.cond[Task](
+      currentConfig != config,
+      (),
+      ReloadError.ConfigUpToDate
+    )
+  }
+
+  private def reloadWith(config: RawRorConfig): EitherT[Task, ReloadError, Engine] = EitherT {
+    tryToLoadRorCore(config)
+      .map(_.leftMap(ReloadError.ReloadingFailed.apply))
+  }
+
+  private def replaceCurrentEngine(newEngine: Engine, newEngineConfig: RawRorConfig) = {
+    EitherT.right[ReloadError](Task.now {
+      currentEngine.getAndSet((newEngine, newEngineConfig))._1
+    })
+  }
+
+  private def scheduleDelayedShutdown(engine: Engine) = {
+    EitherT.right[ReloadError](Task.now {
+      scheduler.scheduleOnce(RorInstance2.delayOfOldEngineShutdown) {
+        engine.shutdown()
+      }
+    })
+  }
+
+  private def tryToLoadRorCore(config: RawRorConfig) = boot.loadRorCore(config, auditSink)
+}
+
+object RorInstance2 {
+
+  sealed trait ReloadError
+  object ReloadError {
+    object ConfigUpToDate extends ReloadError
+    final case class ReloadingFailed(failure: StartingFailure) extends ReloadError
+  }
+
+  private sealed trait ScheduledReloadError
+  private object ScheduledReloadError {
+    final case class IndexConfigError(underlying: ConfigLoaderError[IndexConfigManager.IndexConfigError]) extends ScheduledReloadError
+    case object ReloadingInProgress extends ScheduledReloadError
+    final case class EngineReloadError(error: ReloadError) extends ScheduledReloadError
+  }
+
+  def createWithPeriodicIndexCheck(boot: ReadonlyRest,
+                                   engine: Engine,
+                                   config: RawRorConfig,
+                                   indexConfigManager: IndexConfigManager,
+                                   auditSink: AuditSink): Task[RorInstance2] = {
+    create(boot, Mode.WithPeriodicIndexCheck, engine, config, indexConfigManager, auditSink)
+  }
+
+  def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
+                                      engine: Engine,
+                                      config: RawRorConfig,
+                                      indexConfigManager: IndexConfigManager,
+                                      auditSink: AuditSink): Task[RorInstance2] = {
+    create(boot, Mode.NoPeriodicIndexCheck, engine, config, indexConfigManager, auditSink)
+  }
+
+  private def create(boot: ReadonlyRest,
+                     mode: RorInstance2.Mode,
+                     engine: Engine,
+                     config: RawRorConfig,
+                     indexConfigManager: IndexConfigManager,
+                     auditSink: AuditSink) = {
+    Semaphore[Task](1)
+      .map { isReloadInProgressSemaphore =>
+        new RorInstance2(boot, mode, (engine, config), isReloadInProgressSemaphore, indexConfigManager, auditSink)
+      }
+  }
+
+  private sealed trait Mode
+  private object Mode {
+    case object WithPeriodicIndexCheck extends Mode
+    case object NoPeriodicIndexCheck extends Mode
+  }
+
+  private val indexConfigCheckingSchedulerDelay = 5 second
+  private val delayOfOldEngineShutdown = 10 seconds
+
+  sealed trait ForceReloadError
+  object ForceReloadError {
+    final case class CannotReload(startingFailure: StartingFailure) extends ForceReloadError
+    case object ReloadingError extends ForceReloadError
+    case object StoppedInstance extends ForceReloadError
+    case object ConfigUpToDate extends ForceReloadError
+  }
+}
+
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-final class Engine(val accessControl: AccessControl, val context: AccessControlStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
+final class Engine(val accessControl: AccessControl,
+                   val context: AccessControlStaticContext,
+                   httpClientsFactory: AsyncHttpClientsFactory) {
+
   private [ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()
   }

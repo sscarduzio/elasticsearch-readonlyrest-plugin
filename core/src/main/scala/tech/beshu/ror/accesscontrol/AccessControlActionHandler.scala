@@ -16,41 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import cats.implicits._
-import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
-import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
+import tech.beshu.ror.accesscontrol.AccessControlActionHandler.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.utils.LoggerOps._
-
-import scala.collection.JavaConverters._
-import scala.util.{Failure, Success, Try}
-
-object AccessControlResultCommitter extends Logging {
-
-  // todo: to remove?
-  def commit(result: RegularRequestResult, handler: AccessControlActionHandler): Unit = {
-    Try {
-      result match {
-        case RegularRequestResult.Allow(blockContext, _) =>
-          handler.onAllow(blockContext)
-        case RegularRequestResult.ForbiddenBy(_, _) =>
-          handler.onForbidden(List[ForbiddenCause](ForbiddenBlockMatch).asJava)
-        case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          handler.onForbidden(causes.toList.map(AccessControlActionHandler.fromMismatchedCause).asJava)
-        case RegularRequestResult.Failed(ex) =>
-          handler.onError(ex)
-        case RegularRequestResult.PassedThrough =>
-          handler.onPassThrough()
-      }
-    }
-  } match {
-    case Success(_) =>
-    case Failure(ex) =>
-      logger.errorEx("ACL committing result failure", ex)
-  }
-}
 
 trait AccessControlActionHandler {
   def onAllow(blockContext: BlockContext): Unit

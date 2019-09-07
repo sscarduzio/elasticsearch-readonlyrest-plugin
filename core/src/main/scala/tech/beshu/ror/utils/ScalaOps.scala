@@ -134,4 +134,5 @@ object ScalaOps {
     }
   }
 
+  def value[F[_], A, B](eitherT: EitherT[F, A, B]): F[Either[A, B]] = eitherT.value
 }
