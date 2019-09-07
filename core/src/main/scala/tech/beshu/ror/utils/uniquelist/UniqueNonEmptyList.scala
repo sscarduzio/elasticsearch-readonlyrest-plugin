@@ -44,12 +44,12 @@ object UniqueNonEmptyList {
   }
 
   def fromNonEmptyList[T](list: NonEmptyList[T]): UniqueNonEmptyList[T] =
-    new UniqueNonEmptyList[T](list.toList.toVector)
+    new UniqueNonEmptyList[T](list.toList.toVector.distinct)
 
   def unsafeFromSortedSet[T](set: SortedSet[T]): UniqueNonEmptyList[T] =
     fromSortedSet(set).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty set"))
 
   def fromSortedSet[T](set: SortedSet[T]): Option[UniqueNonEmptyList[T]] =
-    if(set.nonEmpty) Some(new UniqueNonEmptyList[T](set.toVector))
+    if(set.nonEmpty) Some(new UniqueNonEmptyList[T](set.toVector.distinct))
     else None
 }

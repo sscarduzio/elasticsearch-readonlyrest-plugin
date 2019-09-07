@@ -66,7 +66,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
       |    users: ["user4"]
       |    actions: ["cluster:*"]
       |    kibana_index: "user4_group6_kibana_index"
-      |    groups: [group6]
+      |    groups: [group6, group5]
       |
       |  users:
       |
