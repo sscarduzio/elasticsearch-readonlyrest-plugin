@@ -38,11 +38,11 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    uri_re: ^/secret-idx/.*
+              |    uri_re: ["^/secret-idx/.*"]
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.uriPattern.resolve(mock[RequestContext], mock[BlockContext]).map(_.pattern()) shouldBe Right("^/secret-idx/.*")
+            rule.settings.uriPatterns.head.resolve(mock[RequestContext], mock[BlockContext]).map(_.pattern()) shouldBe Right("^/secret-idx/.*")
           }
         )
       }
@@ -59,7 +59,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.uriPattern shouldBe a [ToBeResolved[_]]
+            rule.settings.uriPatterns.head shouldBe a [ToBeResolved[_]]
           }
         )
       }

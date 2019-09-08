@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol
 
+import java.util.regex.Pattern
+
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.{Order, Show}
@@ -91,6 +93,7 @@ object orders {
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
+  implicit val patternOrder: Order[Pattern] = Order.by(_.pattern)
   implicit val forbiddenByMismatchedCauseOrder: Order[ForbiddenByMismatched.Cause] = Order.by {
     case ForbiddenByMismatched.Cause.OperationNotAllowed => 1
     case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2

@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import java.util.regex.Pattern
 
+import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -31,8 +32,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{LoggedUser, UriPath}
+import tech.beshu.ror.accesscontrol.orders.patternOrder
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -90,7 +92,7 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     assertRule(uriRegex, uriPath, isMatched = false, isUserLogged, userName)
 
   private def assertRule(uriRegex: RuntimeSingleResolvableVariable[Pattern], uriPath: UriPath, isMatched: Boolean, isUserLogged: Boolean, userName: NonEmptyString) = {
-    val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
+    val rule = new UriRegexRule(UriRegexRule.Settings(NonEmptySet.of(uriRegex)))
     val blockContext = mock[BlockContext]
     val requestContext = uriRegex match {
       case AlreadyResolved(_) =>

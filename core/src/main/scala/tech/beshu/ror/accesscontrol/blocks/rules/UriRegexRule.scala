@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import java.util.regex.Pattern
 
+import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
@@ -34,7 +35,7 @@ class UriRegexRule(val settings: Settings)
                      blockContext: BlockContext): Task[RuleResult] = Task {
     RuleResult.fromCondition(blockContext) {
       settings
-        .uriPattern
+        .uriPatterns.head
         .resolve(requestContext, blockContext)
         .exists {
           _.matcher(requestContext.uriPath.value).find()
@@ -46,6 +47,6 @@ class UriRegexRule(val settings: Settings)
 object UriRegexRule {
   val name = Rule.Name("uri_re")
 
-  final case class Settings(uriPattern: RuntimeSingleResolvableVariable[Pattern])
+  final case class Settings(uriPatterns: NonEmptySet[RuntimeSingleResolvableVariable[Pattern]])
 
 }
