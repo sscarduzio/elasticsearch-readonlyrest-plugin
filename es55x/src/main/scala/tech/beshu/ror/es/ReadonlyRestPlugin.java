@@ -37,6 +37,7 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.env.Environment;
@@ -52,6 +53,7 @@ import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.netty4.Netty4Utils;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.configuration.RorSsl;
@@ -64,6 +66,8 @@ import tech.beshu.ror.es.ssl.SSLTransportNetty4;
 import tech.beshu.ror.es.utils.ThreadRepo;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -82,6 +86,13 @@ public class ReadonlyRestPlugin extends Plugin
   private IndexLevelActionFilter ilaf;
 
   public ReadonlyRestPlugin(Settings s) {
+    // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
+    // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
+    // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception
+    AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
+      Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s));
+      return null;
+    });
     Environment environment = new Environment(s);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
     FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);

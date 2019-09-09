@@ -72,8 +72,13 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with IngestPlugin
     with NetworkPlugin {
 
-  Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s)) // todo: test
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
+  // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
+  // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
+  // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception
+  doPrivileged {
+    Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
+  }
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
