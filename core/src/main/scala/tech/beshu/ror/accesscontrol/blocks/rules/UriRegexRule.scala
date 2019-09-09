@@ -35,10 +35,12 @@ class UriRegexRule(val settings: Settings)
                      blockContext: BlockContext): Task[RuleResult] = Task {
     RuleResult.fromCondition(blockContext) {
       settings
-        .uriPatterns.head
-        .resolve(requestContext, blockContext)
-        .exists {
-          _.matcher(requestContext.uriPath.value).find()
+        .uriPatterns
+        .exists { pattern =>
+          pattern.resolve(requestContext, blockContext)
+            .exists {
+              _.matcher(requestContext.uriPath.value).find()
+            }
         }
     }
   }
