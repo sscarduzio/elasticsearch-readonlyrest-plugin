@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
+import cats.data.NonEmptySet
+import cats.implicits._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
@@ -29,7 +31,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
 
   "A UriRegexRule" should {
     "be able to be loaded from config" when {
-      "uri patten is defined" in {
+      "single uri patten is defined" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -38,11 +40,30 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    uri_re: ["^/secret-idx/.*"]
+              |    uri_re: "^/secret-idx/.*"
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.uriPatterns.head.resolve(mock[RequestContext], mock[BlockContext]).map(_.pattern()) shouldBe Right("^/secret-idx/.*")
+            rule.settings.uriPatterns.head.resolve(mock[RequestContext], mock[BlockContext]).map(_.pattern) shouldBe Right("^/secret-idx/.*")
+          }
+        )
+      }
+      "rule is defined as list of patterns" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    uri_re: ["^/secret-idx/.*", "^/secret/.*"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            val patternsAsStrings = rule.settings.uriPatterns
+              .map(_.resolve(mock[RequestContext], mock[BlockContext]).map(_.pattern).right.get)
+            patternsAsStrings shouldBe NonEmptySet.of("^/secret-idx/.*", "^/secret/.*")
           }
         )
       }
@@ -96,6 +117,25 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |
               |  - name: test_block1
               |    uri_re: "abc["
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message("Cannot compile pattern: abc[")))
+          }
+        )
+      }
+
+      "any of patterns present in list is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    uri_re: ["^/secret-idx/.*", "abc["]
               |
               |""".stripMargin,
           assertion = errors => {
