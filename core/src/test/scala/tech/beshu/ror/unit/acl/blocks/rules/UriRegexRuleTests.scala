@@ -78,7 +78,7 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
           uriPath = UriPath("/one")
         )
       }
-      "none of configured list of patterns matches uri from request" in {
+      "none of configured patterns matches uri from request" in {
         assertNotMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""\/\d\d\d$""", """\/\d$""", """\/\w\w\d$""")),
           uriPath = UriPath("/one")

@@ -36,14 +36,18 @@ class UriRegexRule(val settings: Settings)
     RuleResult.fromCondition(blockContext) {
       settings
         .uriPatterns
-        .exists { pattern =>
-          pattern.resolve(requestContext, blockContext)
-            .exists {
-              _.matcher(requestContext.uriPath.value).find()
-            }
-        }
+        .exists(variableMatchingRequestedUri(requestContext, blockContext))
     }
   }
+
+  private def variableMatchingRequestedUri(requestContext: RequestContext,
+                                           blockContext: BlockContext)
+                                          (patternVariable: RuntimeSingleResolvableVariable[Pattern]): Boolean =
+    patternVariable
+      .resolve(requestContext, blockContext)
+      .exists {
+        _.matcher(requestContext.uriPath.value).find()
+      }
 }
 
 object UriRegexRule {

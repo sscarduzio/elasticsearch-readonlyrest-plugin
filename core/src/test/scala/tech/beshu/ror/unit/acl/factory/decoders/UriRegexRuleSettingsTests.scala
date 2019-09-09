@@ -126,7 +126,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
         )
       }
 
-      "any of patterns present in list is malformed" in {
+      "some of patterns present in list is malformed" in {
         assertDecodingFailure(
           yaml =
             """
