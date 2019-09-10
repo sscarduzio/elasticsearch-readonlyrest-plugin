@@ -19,30 +19,29 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import java.util.regex.Pattern
 
 import cats.implicits._
+import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.UriRegexRuleDecoder.patternDecoder
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
-import UriRegexRuleDecoder.patternConvertible
+import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 import scala.util.Try
 
 class UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .singleVariableDecoder[Pattern]
-    .toSyncDecoder
-    .emapE {
-      case Right(pattern) => Right(new UriRegexRule(UriRegexRule.Settings(pattern)))
-      case Left(error) => Left(RulesLevelCreationError(Message(error.show)))
-    }
-    .decoder
+    .decodeStringLikeOrNonEmptySet[RuntimeSingleResolvableVariable[Pattern]]
+    .map(patterns => new UriRegexRule(UriRegexRule.Settings(patterns)))
 )
 
 object UriRegexRuleDecoder {
+
   implicit val patternConvertible: Convertible[Pattern] = new Convertible[Pattern] {
     override def convert: String => Either[Convertible.ConvertError, Pattern] = str => {
       Try(Pattern.compile(str))
@@ -51,4 +50,15 @@ object UriRegexRuleDecoder {
         .map(_ => ConvertError(s"Cannot compile pattern: $str"))
     }
   }
+
+  implicit val patternDecoder: Decoder[RuntimeSingleResolvableVariable[Pattern]] =
+    DecoderHelpers
+      .decodeStringLikeNonEmpty
+      .toSyncDecoder
+      .emapE { str =>
+        RuntimeResolvableVariableCreator
+          .createSingleResolvableVariableFrom[Pattern](str)
+          .left.map(error => RulesLevelCreationError(Message(error.show)))
+      }
+      .decoder
 }
