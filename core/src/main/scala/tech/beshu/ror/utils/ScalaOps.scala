@@ -133,6 +133,4 @@ object ScalaOps {
       value.map(v => AutoCloseableOps(v).bracket(convert))
     }
   }
-
-  def value[F[_], A, B](eitherT: EitherT[F, A, B]): F[Either[A, B]] = eitherT.value
 }

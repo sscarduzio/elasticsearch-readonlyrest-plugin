@@ -28,9 +28,9 @@ import io.finch.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import shapeless.HNil
-import tech.beshu.ror.adminapi.AdminRestApi.{AdminRequest, AdminResponse, ApiCallResult, ConfigNotFound, Failure, Success, forceReloadRorPath, provideRorFileConfigPath, provideRorIndexConfigPath, updateIndexConfigurationPath}
 import tech.beshu.ror.boot.RorInstance
-import tech.beshu.ror.boot.RorInstance.ForceReloadError
+import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
+import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
@@ -46,23 +46,24 @@ class AdminRestApi(rorInstance: RorInstance,
   extends EndpointModule[Task] {
 
   import AdminRestApi.encoders._
+  import AdminRestApi._
 
   private val forceReloadRorEndpoint: Endpoint[Task, ApiCallResult] = post(forceReloadRorPath.endpointPath) {
     rorInstance
       .forceReloadFromIndex()
       .map {
         case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST settings were reloaded with success!"))
-        case Left(ForceReloadError.CannotReload(failure)) => Ok(Failure(failure.message))
-        case Left(ForceReloadError.ConfigUpToDate) => Ok(Failure("Current settings are up to date"))
-        case Left(ForceReloadError.ReloadingError) => Ok(Failure("Reloading unexpected error"))
-        case Left(ForceReloadError.StoppedInstance) => Ok(Failure("ROR is stopped"))
+        case Left(IndexConfigReloadError.LoadingConfigError(error)) => Ok(Failure(error.show))
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate)) => Ok(Failure("Current settings are up to date"))
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)) => Ok(Failure("ROR is stopped"))
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(failure))) => Ok(Failure(failure.message))
       }
   }
 
   private val updateIndexConfigurationEndpoint = post(updateIndexConfigurationPath.endpointPath :: stringBody) { body: String =>
     val result = for {
       config <- rorConfigFrom(body)
-      _ <- saveRorConfig(config)
+      _ <- forceRealoadAndSaveNewConfig(config)
     } yield ()
     result.value.map {
       case Right(_) => Ok[ApiCallResult](Success("updated settings"))
@@ -131,8 +132,18 @@ class AdminRestApi(rorInstance: RorInstance,
     }
   }
 
-  private def saveRorConfig(config: RawRorConfig) = {
-    EitherT.right[Failure](indexConfigManager.save(config))
+  private def forceRealoadAndSaveNewConfig(config: RawRorConfig) = {
+    EitherT(rorInstance.forceReloadAndSave(config))
+      .leftMap {
+        case IndexConfigSavingError(error) =>
+          Failure(s"Cannot save new settings: ${error.show}")
+        case ReloadError(RawConfigReloadError.ConfigUpToDate) =>
+          Failure(s"Current settings are already loaded")
+        case ReloadError(RawConfigReloadError.RorInstanceStopped) =>
+          Failure(s"ROR instance is being stopped")
+        case ReloadError(RawConfigReloadError.ReloadingFailed(failure)) =>
+          Failure(s"Cannot reload new settings: ${failure.message}")
+      }
   }
 
 }
