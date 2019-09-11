@@ -157,7 +157,7 @@ trait ReadonlyRest extends Logging {
           noIndexFallback
       }
   }
-  private def createLoggingContext(headerNames: Option[Set[Header.Name]]): LoggingContext = ???
+
   private[ror] def loadRorCore(config: RawRorConfig, auditSink: AuditSink): Task[Either[StartingFailure, Engine]] = {
     val httpClientsFactory = new AsyncHttpClientsFactory
     coreFactory

@@ -52,6 +52,7 @@ class Block(val name: Name,
   private def processRules(selectedRules: List[Rule],
                            requestContext: RequestContext)
                           (implicit loggingContext: LoggingContext): BlockResultWithHistory = {
+    import loggingContext._
     val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
     selectedRules
       .foldLeft(matched(initBlockContext)) {
@@ -88,10 +89,8 @@ class Block(val name: Name,
       .andThen {
         case Success((Matched(_, blockContext), _)) =>
           val block: Block = this
-          import loggingContext._
           logger.debug(s"${ANSI_CYAN}matched ${block.show} { found: ${blockContext.show} }$ANSI_RESET")
         case Success((_: Mismatched, history)) =>
-          import loggingContext._
           implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector(history))
           logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
       }
