@@ -114,10 +114,6 @@ object show {
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
-    implicit val headerShow: Show[Header] = Show.show {
-//      case Header(name, _) if name === Header.Name.authorization => s"${name.show}=<OMITTED>"
-      case Header(name, value) => s"${name.show}=${value.value.show}"
-    }
     implicit val documentFieldShow: Show[DocumentField] = Show.show {
       case f: ADocumentField => f.value
       case f: NegatedDocumentField => s"~${f.value}"
@@ -133,7 +129,7 @@ object show {
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
-    implicit val blockContextShow: Show[BlockContext] = Show.show { bc =>
+    implicit def blockContextShow(implicit showHeader:Show[Header]): Show[BlockContext] = Show.show { bc =>
       (showOption("user", bc.loggedUser) ::
         showOption("group", bc.currentGroup) ::
         showTraversable("av_groups", bc.availableGroups) ::
@@ -171,7 +167,7 @@ object show {
         }
       }"
     }
-    implicit val historyShow: Show[History] = Show.show { h =>
+    implicit def historyShow(implicit headerShow:Show[Header]): Show[History] = Show.show { h =>
       s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}], RESOLVED:[${h.blockContext.show}]]"""
     }
     implicit val policyShow: Show[Policy] = Show.show {

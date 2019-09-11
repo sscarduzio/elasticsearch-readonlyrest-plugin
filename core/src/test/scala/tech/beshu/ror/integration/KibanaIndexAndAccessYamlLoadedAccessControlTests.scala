@@ -27,6 +27,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class KibanaIndexAndAccessYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside  {
+  import tech.beshu.ror.utils.TestsUtils.loggingContext
 
   override protected def configYaml: String =
     """

@@ -24,7 +24,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult
-import tech.beshu.ror.accesscontrol.blocks.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.{LoggingContext, UserMetadata}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
@@ -41,10 +41,12 @@ class CurrentUserMetadataRequestHandler[Request <: ActionRequest, Response <: Ac
                                                                                               chain: ActionFilterChain[Request, Response],
                                                                                               channel: RestChannel,
                                                                                               threadPool: ThreadPool)
-                                                                                             (implicit scheduler: Scheduler)
+                                                                                             (implicit scheduler: Scheduler,
+                                                                                              loggingContext: LoggingContext)
   extends Logging {
 
-  def handle(requestInfo: RequestInfo, requestContext: RequestContext): Unit = {
+  def handle(requestInfo: RequestInfo, requestContext: RequestContext)
+            (implicit loggingContext: LoggingContext): Unit = {
     engine.accessControl
       .handleMetadataRequest(requestContext)
       .runAsync {

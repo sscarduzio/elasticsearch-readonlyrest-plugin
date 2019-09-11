@@ -27,7 +27,7 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, LoggingContext}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextJavaHelper}
 import tech.beshu.ror.boot.Engine
@@ -49,7 +49,8 @@ class RegularRequestHandler[Request <: ActionRequest, Response <: ActionResponse
                                                                                  (implicit scheduler: Scheduler)
   extends Logging {
 
-  def handle(requestInfo: RequestInfo, requestContext: RequestContext): Unit = {
+  def handle(requestInfo: RequestInfo, requestContext: RequestContext)
+            (implicit loggingContext: LoggingContext): Unit = {
     engine.accessControl
       .handleRegularRequest(requestContext)
       .runAsync {

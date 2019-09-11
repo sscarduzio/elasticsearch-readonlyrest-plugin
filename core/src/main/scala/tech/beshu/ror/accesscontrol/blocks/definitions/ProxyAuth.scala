@@ -32,5 +32,3 @@ object ProxyAuth {
   implicit val nameEq: Eq[Name] = Eq.fromUniversalEquals
   implicit val nameShow: Show[Name] = Show.show(_.value)
 }
-
-final case class ObfuscatedHeaders(headers:Set[Header.Name])

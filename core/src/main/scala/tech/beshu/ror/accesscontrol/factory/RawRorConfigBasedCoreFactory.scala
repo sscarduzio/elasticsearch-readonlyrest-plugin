@@ -26,9 +26,8 @@ import io.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.acl.Acl
-import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.{Block, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
-import tech.beshu.ror.accesscontrol.blocks.definitions.ObfuscatedHeaders
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._

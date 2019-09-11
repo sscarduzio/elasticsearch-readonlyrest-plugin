@@ -22,10 +22,11 @@ import java.time.Duration
 import java.util.Base64
 
 import better.files.File
+import cats.Show
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
 import io.circe.yaml._
@@ -37,6 +38,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 
 object TestsUtils {
+  implicit val loggingContext: LoggingContext = new LoggingContext()(showHeader= Show.fromToString[Header])
 
   def basicAuthHeader(value: String): Header =
     Header(Name(NonEmptyString.unsafeFrom("Authorization")), NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes)))

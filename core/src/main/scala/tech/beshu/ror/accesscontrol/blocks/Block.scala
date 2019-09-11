@@ -26,28 +26,29 @@ import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Misma
 import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult, UserMetadataRelatedRule}
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
-
+final class LoggingContext(implicit val showHeader:Show[Header]) //FIXME: MV
 class Block(val name: Name,
             val policy: Policy,
             val verbosity: Verbosity,
             val rules: NonEmptyList[Rule])
   extends Logging {
 
-  def execute(requestContext: RequestContext): BlockResultWithHistory = {
+  def execute(requestContext: RequestContext)(implicit loggingContext: LoggingContext): BlockResultWithHistory = {
     processRules(rules.toList, requestContext)
   }
 
-  def executeUserMetadataRuleOnly(requestContext: RequestContext): BlockResultWithHistory = {
+  def executeUserMetadataRuleOnly(requestContext: RequestContext)(implicit loggingContext: LoggingContext): BlockResultWithHistory = {
     processRules(rules.collect { case r: UserMetadataRelatedRule => r }, requestContext)
   }
 
   private def processRules(selectedRules: List[Rule],
-                           requestContext: RequestContext): BlockResultWithHistory = {
+                           requestContext: RequestContext)(implicit loggingContext: LoggingContext): BlockResultWithHistory = {
     val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
     selectedRules
       .foldLeft(matched(initBlockContext)) {
@@ -84,8 +85,10 @@ class Block(val name: Name,
       .andThen {
         case Success((Matched(_, blockContext), _)) =>
           val block: Block = this
+          import loggingContext._
           logger.debug(s"${ANSI_CYAN}matched ${block.show} { found: ${blockContext.show} }$ANSI_RESET")
         case Success((_: Mismatched, history)) =>
+          import loggingContext._
           implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector(history))
           logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
       }

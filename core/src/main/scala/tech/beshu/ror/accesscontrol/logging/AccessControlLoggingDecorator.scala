@@ -23,9 +23,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl.{UserMetadataRequestResult, RegularRequestResult, WithHistory}
-import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.blocks.{Block, LoggingContext}
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -38,7 +39,8 @@ import scala.util.{Failure, Success}
 class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool: Option[AuditingTool])
   extends AccessControl with Logging {
 
-  override def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]] = {
+  override def handleRegularRequest(requestContext: RequestContext)
+                                   (implicit loggingContext: LoggingContext): Task[WithHistory[RegularRequestResult]] = {
     logger.debug(s"checking request: ${requestContext.id.show}")
     underlying
       .handleRegularRequest(requestContext)
@@ -61,7 +63,8 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       }
   }
 
-  override def handleMetadataRequest(requestContext: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
+  override def handleMetadataRequest(requestContext: RequestContext)
+                                    (implicit loggingContext: LoggingContext): Task[WithHistory[UserMetadataRequestResult]] = {
     logger.debug(s"checking user metadata request: ${requestContext.id.show}")
     underlying
       .handleMetadataRequest(requestContext)
@@ -80,8 +83,10 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       }
   }
 
-  private def log(responseContext: ResponseContext): Unit = {
+  private def log(responseContext: ResponseContext)
+                 (implicit loggingContext: LoggingContext): Unit = {
     if (isLoggableEntry(responseContext)) {
+      import loggingContext._
       import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator.responseContextShow
       logger.info(responseContext.show)
     }
@@ -115,7 +120,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
 
 object AccessControlLoggingDecorator {
 
-  private implicit val responseContextShow: Show[ResponseContext] = {
+  private implicit def responseContextShow(implicit headerShow:Show[Header]): Show[ResponseContext] = {
     Show.show {
       case AllowedBy(requestContext, block, blockContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)

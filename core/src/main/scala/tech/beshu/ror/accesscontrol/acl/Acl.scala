@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMet
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Policy}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, LoggingContext, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -35,7 +35,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 class Acl(val blocks: NonEmptyList[Block]) // TODO: rename to AccessControlList
   extends AccessControl {
 
-  override def handleRegularRequest(context: RequestContext): Task[WithHistory[RegularRequestResult]] = {
+  override def handleRegularRequest(context: RequestContext)
+                                   (implicit loggingContext: LoggingContext): Task[WithHistory[RegularRequestResult]] = {
     blocks
       .tail
       .foldLeft(checkBlock(blocks.head, context)) { case (currentResult, block) =>
@@ -69,7 +70,8 @@ class Acl(val blocks: NonEmptyList[Block]) // TODO: rename to AccessControlList
       }
   }
 
-  override def handleMetadataRequest(context: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
+  override def handleMetadataRequest(context: RequestContext)
+                                    (implicit loggingContext: LoggingContext): Task[WithHistory[UserMetadataRequestResult]] = {
     Task
       .gather(blocks.toList.map(executeBlocksUserMetadataRulesOnly(_, context)))
       .map(_.flatten)
@@ -128,7 +130,8 @@ class Acl(val blocks: NonEmptyList[Block]) // TODO: rename to AccessControlList
     )
   }
 
-  private def executeBlocksUserMetadataRulesOnly(block: Block, context: RequestContext) = {
+  private def executeBlocksUserMetadataRulesOnly(block: Block, context: RequestContext)
+                                                (implicit loggingContext: LoggingContext)= {
     block
       .executeUserMetadataRuleOnly(context)
       .map(Some.apply)
@@ -145,7 +148,8 @@ class Acl(val blocks: NonEmptyList[Block]) // TODO: rename to AccessControlList
     }
   }
 
-  private def checkBlock(block: Block, requestContent: RequestContext): WriterT[Task, Vector[History], ExecutionResult] = {
+  private def checkBlock(block: Block, requestContent: RequestContext)
+                        (implicit loggingContext: LoggingContext): WriterT[Task, Vector[History], ExecutionResult] = {
     WriterT.apply {
       block
         .execute(requestContent)

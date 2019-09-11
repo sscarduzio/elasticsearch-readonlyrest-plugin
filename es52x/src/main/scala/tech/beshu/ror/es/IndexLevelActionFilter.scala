@@ -29,6 +29,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SecurityPermissionException
+import tech.beshu.ror.accesscontrol.blocks.LoggingContext
 import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror}
@@ -100,7 +101,8 @@ class IndexLevelActionFilter(settings: Settings,
                                                                                   channel: RestChannel): Unit = {
     val requestInfo = new RequestInfo(channel, task.getId, action, request, clusterService, threadPool)
     val requestContext = requestContextFrom(requestInfo)
-    requestContext.uriPath match {
+        implicit val loggingContext: LoggingContext = engine.loggingContext
+        requestContext.uriPath match {
       case CurrentUserMetadataPath(_) =>
         val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
         handler.handle(requestInfo, requestContext)

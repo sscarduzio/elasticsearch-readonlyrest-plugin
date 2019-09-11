@@ -25,7 +25,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.{Block, LoggingContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
@@ -72,7 +72,8 @@ object RequestContext extends Logging {
 
   def show(loggedUser: Option[LoggedUser],
            kibanaIndex: Option[IndexName],
-           history: Vector[Block.History]): Show[RequestContext] =
+           history: Vector[Block.History])
+          (implicit headerShow: Show[Header]): Show[RequestContext] =
     Show.show { r =>
       def stringifyLoggedUser = {
         loggedUser match {
@@ -93,7 +94,6 @@ object RequestContext extends Logging {
         if (idx.isEmpty) "<N/A>"
         else idx.mkString(",")
       }
-
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
@@ -141,7 +141,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   def isCurrentGroupEligible(groups: UniqueNonEmptyList[Group]): Boolean = {
     requestContext.currentGroup match {
       case RequestGroup.AGroup(preferredGroup) =>
-        if(requestContext.uriPath.isCurrentUserMetadataPath) true
+        if (requestContext.uriPath.isCurrentUserMetadataPath) true
         else groups.contains(preferredGroup)
       case RequestGroup.`N/A` =>
         true

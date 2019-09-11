@@ -30,6 +30,7 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.SecurityPermissionException
+import tech.beshu.ror.accesscontrol.blocks.LoggingContext
 import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror}
@@ -93,6 +94,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       case Some(remoteClusterService) =>
         val requestInfo = new RequestInfo(channel, task.getId, action, request, clusterService, threadPool, remoteClusterService)
         val requestContext = requestContextFrom(requestInfo)
+        implicit val loggingContext: LoggingContext = engine.loggingContext
         requestContext.uriPath match {
           case CurrentUserMetadataPath(_) =>
             val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
