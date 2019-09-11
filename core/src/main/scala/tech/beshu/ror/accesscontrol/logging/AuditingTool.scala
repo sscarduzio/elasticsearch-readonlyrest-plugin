@@ -23,12 +23,13 @@ import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, LoggingContext}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.configuration.LoggingContext
 import tech.beshu.ror.es.AuditSink
 
 class AuditingTool(settings: Settings,

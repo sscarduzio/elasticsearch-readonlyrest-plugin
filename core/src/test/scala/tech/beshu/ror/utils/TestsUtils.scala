@@ -26,12 +26,12 @@ import cats.Show
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, LoggingContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
 import io.circe.yaml._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{LoggingContext, RawRorConfig}
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration.FiniteDuration

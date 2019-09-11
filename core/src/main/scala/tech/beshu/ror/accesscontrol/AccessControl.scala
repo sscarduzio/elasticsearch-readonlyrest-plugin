@@ -21,8 +21,9 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, LoggingContext, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.configuration.LoggingContext
 
 trait AccessControl {
   def handleRegularRequest(requestContext: RequestContext)

@@ -44,8 +44,3 @@ object ProxyAuthDefinitionsDecoder {
       .withErrorFromJson(value => DefinitionsLevelCreationError(MalformedValue(value)))
   }
 }
-object ObfuscatedHeadersDefinitionsDecoder {
-  import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
-  lazy val instance: Decoder[Option[ObfuscatedHeaders]] =
-    Decoder.forProduct1[Option[ObfuscatedHeaders], Option[Set[Header.Name]]]("obfuscated_headers")(_.map(ObfuscatedHeaders.apply))
-}

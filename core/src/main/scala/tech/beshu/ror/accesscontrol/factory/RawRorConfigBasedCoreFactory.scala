@@ -26,14 +26,14 @@ import io.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.acl.Acl
-import tech.beshu.ror.accesscontrol.blocks.{Block, LoggingContext}
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
 import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
-import tech.beshu.ror.accesscontrol.factory.decoders.AuditingSettingsDecoder
+import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, ObfuscatedHeadersDefinitionsDecoder}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
@@ -99,10 +99,11 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       } else {
         for {
           aclAndContext <- aclDecoder(httpClientFactory)
+          (acl, context) = aclAndContext
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
           obfuscatedHeaders <- AsyncDecoderCreator.from(ObfuscatedHeadersDefinitionsDecoder.instance)
-        } yield CoreSettings(aclEngine = aclAndContext._1,
-          aclStaticContext = aclAndContext._2,
+        } yield CoreSettings(aclEngine = acl,
+          aclStaticContext = context,
           auditingSettings = auditingTools,
           obfuscatedHeaders = obfuscatedHeaders)
       }

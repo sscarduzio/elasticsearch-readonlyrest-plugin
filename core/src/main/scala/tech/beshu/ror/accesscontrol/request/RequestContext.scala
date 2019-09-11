@@ -25,7 +25,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.blocks.{Block, LoggingContext}
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
@@ -141,8 +141,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   def isCurrentGroupEligible(groups: UniqueNonEmptyList[Group]): Boolean = {
     requestContext.currentGroup match {
       case RequestGroup.AGroup(preferredGroup) =>
-        if (requestContext.uriPath.isCurrentUserMetadataPath) true
-        else groups.contains(preferredGroup)
+        requestContext.uriPath.isCurrentUserMetadataPath || groups.contains(preferredGroup)
       case RequestGroup.`N/A` =>
         true
     }

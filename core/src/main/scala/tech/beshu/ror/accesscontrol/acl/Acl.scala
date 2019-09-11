@@ -25,11 +25,12 @@ import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMet
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Policy}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, LoggingContext, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+import tech.beshu.ror.configuration.LoggingContext
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class Acl(val blocks: NonEmptyList[Block]) // TODO: rename to AccessControlList

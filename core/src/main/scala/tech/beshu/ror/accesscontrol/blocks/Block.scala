@@ -29,26 +29,29 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult, 
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.configuration.LoggingContext
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
-final class LoggingContext(implicit val showHeader:Show[Header]) //FIXME: MV
 class Block(val name: Name,
             val policy: Policy,
             val verbosity: Verbosity,
             val rules: NonEmptyList[Rule])
   extends Logging {
 
-  def execute(requestContext: RequestContext)(implicit loggingContext: LoggingContext): BlockResultWithHistory = {
+  def execute(requestContext: RequestContext)
+             (implicit loggingContext: LoggingContext): BlockResultWithHistory = {
     processRules(rules.toList, requestContext)
   }
 
-  def executeUserMetadataRuleOnly(requestContext: RequestContext)(implicit loggingContext: LoggingContext): BlockResultWithHistory = {
+  def executeUserMetadataRuleOnly(requestContext: RequestContext)
+                                 (implicit loggingContext: LoggingContext): BlockResultWithHistory = {
     processRules(rules.collect { case r: UserMetadataRelatedRule => r }, requestContext)
   }
 
   private def processRules(selectedRules: List[Rule],
-                           requestContext: RequestContext)(implicit loggingContext: LoggingContext): BlockResultWithHistory = {
+                           requestContext: RequestContext)
+                          (implicit loggingContext: LoggingContext): BlockResultWithHistory = {
     val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
     selectedRules
       .foldLeft(matched(initBlockContext)) {

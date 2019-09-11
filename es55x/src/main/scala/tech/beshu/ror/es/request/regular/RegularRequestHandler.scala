@@ -27,10 +27,11 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, LoggingContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextJavaHelper}
 import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.configuration.LoggingContext
 import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._

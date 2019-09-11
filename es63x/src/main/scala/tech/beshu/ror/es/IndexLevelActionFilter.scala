@@ -30,10 +30,10 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.SecurityPermissionException
-import tech.beshu.ror.accesscontrol.blocks.LoggingContext
 import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror}
+import tech.beshu.ror.configuration.LoggingContext
 import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider}
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
