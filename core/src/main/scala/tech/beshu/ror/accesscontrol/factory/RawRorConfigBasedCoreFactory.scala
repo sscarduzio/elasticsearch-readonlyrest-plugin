@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
 import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, ObfuscatedHeadersDefinitionsDecoder}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
-import tech.beshu.ror.accesscontrol.logging.{AuditingTool, ObfuscatedHeaders}
+import tech.beshu.ror.accesscontrol.logging.{AuditingTool, LoggingContext, LoggingContextFactory, ObfuscatedHeaders}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
@@ -98,10 +98,11 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
           .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None, None)))
       } else {
         for {
-          aclAndContext <- aclDecoder(httpClientFactory)
+          obfuscatedHeaders <- AsyncDecoderCreator.from(ObfuscatedHeadersDefinitionsDecoder.instance)
+          loggingContext = LoggingContextFactory.create(obfuscatedHeaders)
+          aclAndContext <- aclDecoder(httpClientFactory,loggingContext)
           (acl, context) = aclAndContext
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
-          obfuscatedHeaders <- AsyncDecoderCreator.from(ObfuscatedHeadersDefinitionsDecoder.instance)
         } yield CoreSettings(aclEngine = acl,
           aclStaticContext = context,
           auditingSettings = auditingTools,
@@ -249,7 +250,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     }
   }
 
-  private def aclDecoder(httpClientFactory: HttpClientsFactory): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
+  private def aclDecoder(httpClientFactory: HttpClientsFactory, loggingContext: LoggingContext): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
@@ -292,7 +293,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         acl = {
           val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
           upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
-          new Acl(upgradedBlocks): AccessControl
+          new Acl(upgradedBlocks, loggingContext): AccessControl
         }
       } yield (acl, staticContext)
       decoder.apply(c)

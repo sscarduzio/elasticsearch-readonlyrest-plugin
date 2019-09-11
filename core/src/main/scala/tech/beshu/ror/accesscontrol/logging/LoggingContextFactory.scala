@@ -1,7 +1,9 @@
 package tech.beshu.ror.accesscontrol.logging
 
 import cats.Show
+import cats.implicits._
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.show.logs._
 
 object LoggingContextFactory {
   def create(obfuscatedHeaders: Option[ObfuscatedHeaders]): LoggingContext = new LoggingContext()(

@@ -42,8 +42,7 @@ class CurrentUserMetadataRequestHandler[Request <: ActionRequest, Response <: Ac
                                                                                               chain: ActionFilterChain[Request, Response],
                                                                                               channel: RestChannel,
                                                                                               threadPool: ThreadPool)
-                                                                                             (implicit scheduler: Scheduler,
-                                                                                              loggingContext: LoggingContext)
+                                                                                             (implicit scheduler: Scheduler)
   extends Logging {
 
   def handle(requestInfo: RequestInfo, requestContext: RequestContext)

@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class Acl(val blocks: NonEmptyList[Block]) // TODO: rename to AccessControlList
+class Acl(val blocks: NonEmptyList[Block], implicit val loggingContext: LoggingContext) // TODO: rename to AccessControlList
   extends AccessControl {
 
   override def handleRegularRequest(context: RequestContext)
