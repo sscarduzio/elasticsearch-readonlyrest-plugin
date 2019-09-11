@@ -93,7 +93,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
       case Some(remoteClusterService) =>
         val requestInfo = new RequestInfo(channel, task.getId, action, request, clusterService, threadPool, remoteClusterService)
         val requestContext = requestContextFrom(requestInfo)
-        implicit val loggingContext = engine.loggingContext
         requestContext.uriPath match {
           case CurrentUserMetadataPath(_) =>
             val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
