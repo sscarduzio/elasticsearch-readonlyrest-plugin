@@ -116,8 +116,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
             s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))}"}"""
           )
           result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ok")
-          result.getResponseJson.get("message") should be("updated settings")
+          result.getResponseJson.get("status") should be("ko")
+          result.getResponseJson.get("message") should be("Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389")
         }
       }
     }

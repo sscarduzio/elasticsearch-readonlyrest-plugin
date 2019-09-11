@@ -30,6 +30,8 @@ import monix.execution.atomic.Atomic
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
+import tech.beshu.ror.accesscontrol.factory.consts.RorProperties
+import tech.beshu.ror.accesscontrol.factory.consts.RorProperties.RefreshInterval
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
@@ -55,11 +57,11 @@ object Ror extends ReadonlyRest {
   val blockingScheduler: Scheduler= Scheduler.io("blocking-index-content-provider")
 
   override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  override protected implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
   override protected implicit val clock: Clock = Clock.systemUTC()
 
   override protected val coreFactory: CoreFactory = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
     implicit val _ = envVarsProvider
     new RawRorConfigBasedCoreFactory
   }
@@ -67,9 +69,10 @@ object Ror extends ReadonlyRest {
 
 trait ReadonlyRest extends Logging {
 
-  protected def envVarsProvider: EnvVarsProvider
-  protected implicit def clock: Clock
   protected def coreFactory: CoreFactory
+  protected def envVarsProvider: EnvVarsProvider
+  protected implicit def propertiesProvider: PropertiesProvider
+  protected implicit def clock: Clock
 
   def start(esConfigPath: Path,
             auditSink: AuditSink,
@@ -207,6 +210,7 @@ class RorInstance private(boot: ReadonlyRest,
                           reloadInProgress: Semaphore[Task],
                           indexConfigManager: IndexConfigManager,
                           auditSink: AuditSink)
+                          (implicit propertiesProvider: PropertiesProvider)
   extends Logging {
 
   import RorInstance._
@@ -214,7 +218,15 @@ class RorInstance private(boot: ReadonlyRest,
 
   logger.info ("Readonly REST plugin core was loaded ...")
   mode match {
-    case Mode.WithPeriodicIndexCheck => scheduleIndexConfigChecking()
+    case Mode.WithPeriodicIndexCheck =>
+      RorProperties.rorIndexSettingReloadInterval match {
+        case Some(RefreshInterval.Disabled) =>
+          logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
+        case Some(RefreshInterval.Enabled(interval)) =>
+          scheduleIndexConfigChecking(interval)
+        case None =>
+          scheduleIndexConfigChecking(RorInstance.indexConfigCheckingSchedulerDelay)
+      }
     case Mode.NoPeriodicIndexCheck => Cancelable.empty
   }
 
@@ -224,6 +236,7 @@ class RorInstance private(boot: ReadonlyRest,
 
   def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
     reloadInProgress.withPermit {
+      logger.debug("Reloading of provided settings was forced")
       value {
         for {
           _ <- reloadEngine(config).leftMap(IndexConfigReloadWithUpdateError.ReloadError.apply)
@@ -241,6 +254,7 @@ class RorInstance private(boot: ReadonlyRest,
 
   def forceReloadFromIndex(): Task[Either[IndexConfigReloadError, Unit]] = {
     reloadInProgress.withPermit {
+      logger.debug("Reloading of in-index settings was forced")
       reloadEngineUsingIndexConfig().value
     }
   }
@@ -254,30 +268,30 @@ class RorInstance private(boot: ReadonlyRest,
   }
 
   // todo: is it safe?
-  private def scheduleIndexConfigChecking(): Cancelable = {
-    logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within ${RorInstance.indexConfigCheckingSchedulerDelay}")
-    scheduler.scheduleOnce(RorInstance.indexConfigCheckingSchedulerDelay) {
+  private def scheduleIndexConfigChecking(interval: FiniteDuration): Cancelable = {
+    logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within $interval")
+    scheduler.scheduleOnce(interval) {
       logger.debug("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
       tryEngineReload()
         .runAsync {
           case Right(Right(_)) =>
           case Right(Left(ReloadingInProgress)) =>
             logger.debug(s"[CLUSTERWIDE SETTINGS] Reloading in progress ... skipping")
-            scheduleIndexConfigChecking()
+            scheduleIndexConfigChecking(interval)
           case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate)))) =>
             logger.debug("[CLUSTERWIDE SETTINGS] Settings are up to date. Nothing to reload.")
-            scheduleIndexConfigChecking()
+            scheduleIndexConfigChecking(interval)
           case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)))) =>
             logger.debug("[CLUSTERWIDE SETTINGS] Stopping periodic settings check - application is being stopped")
           case Right(Left(EngineReloadError(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(startingFailure))))) =>
             logger.debug(s"[CLUSTERWIDE SETTINGS] ReadonlyREST starting failed: ${startingFailure.message}")
-            scheduleIndexConfigChecking()
+            scheduleIndexConfigChecking(interval)
           case Right(Left(EngineReloadError(IndexConfigReloadError.LoadingConfigError(error)))) =>
             logger.debug(s"[CLUSTERWIDE SETTINGS] Loading config from index failed: ${error.show}")
-            scheduleIndexConfigChecking()
+            scheduleIndexConfigChecking(interval)
           case Left(ex) =>
             logger.error("[CLUSTERWIDE SETTINGS] Checking index settings failed: error", ex)
-            scheduleIndexConfigChecking()
+            scheduleIndexConfigChecking(interval)
         }
     }
   }
@@ -391,7 +405,8 @@ object RorInstance {
                                    engine: Engine,
                                    config: RawRorConfig,
                                    indexConfigManager: IndexConfigManager,
-                                   auditSink: AuditSink): Task[RorInstance] = {
+                                   auditSink: AuditSink)
+                                  (implicit propertiesProvider: PropertiesProvider): Task[RorInstance] = {
     create(boot, Mode.WithPeriodicIndexCheck, engine, config, indexConfigManager, auditSink)
   }
 
@@ -399,7 +414,8 @@ object RorInstance {
                                       engine: Engine,
                                       config: RawRorConfig,
                                       indexConfigManager: IndexConfigManager,
-                                      auditSink: AuditSink): Task[RorInstance] = {
+                                      auditSink: AuditSink)
+                                     (implicit propertiesProvider: PropertiesProvider): Task[RorInstance] = {
     create(boot, Mode.NoPeriodicIndexCheck, engine, config, indexConfigManager, auditSink)
   }
 
@@ -408,7 +424,8 @@ object RorInstance {
                      engine: Engine,
                      config: RawRorConfig,
                      indexConfigManager: IndexConfigManager,
-                     auditSink: AuditSink) = {
+                     auditSink: AuditSink)
+                    (implicit propertiesProvider: PropertiesProvider) = {
     Semaphore[Task](1)
       .map { isReloadInProgressSemaphore =>
         new RorInstance(boot, mode, (engine, config), isReloadInProgressSemaphore, indexConfigManager, auditSink)
