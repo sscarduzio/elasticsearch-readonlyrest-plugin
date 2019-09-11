@@ -20,9 +20,9 @@ import cats.Id
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.ProxyAuth
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.factory.ObfuscatedHeaders
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
+import tech.beshu.ror.accesscontrol.logging.ObfuscatedHeaders
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder}
 

@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Forbidden
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
+import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.configuration.LoggingContext
 
 trait AccessControl {
   def handleRegularRequest(requestContext: RequestContext)

@@ -1,6 +1,5 @@
-package tech.beshu.ror.accesscontrol.factory
+package tech.beshu.ror.accesscontrol.logging
 
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.configuration.LoggingContext
 
 final case class ObfuscatedHeaders(headers:Set[Header.Name])

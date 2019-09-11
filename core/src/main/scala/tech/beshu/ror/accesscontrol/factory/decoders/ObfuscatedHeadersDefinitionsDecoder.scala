@@ -2,7 +2,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.factory.ObfuscatedHeaders
+import tech.beshu.ror.accesscontrol.logging.ObfuscatedHeaders
 
 object ObfuscatedHeadersDefinitionsDecoder {
 

@@ -25,9 +25,9 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.UserMetadata
+import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.configuration.LoggingContext
 import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._

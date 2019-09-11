@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.configuration.LoggingContext
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.concurrent.duration._

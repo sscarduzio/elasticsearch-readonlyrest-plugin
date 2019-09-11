@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.configuration.LoggingContext
 
 object DisabledAccessControl extends AccessControl {
   override def handleRegularRequest(requestContext: RequestContext)

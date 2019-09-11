@@ -28,8 +28,8 @@ import monix.execution.{Cancelable, CancelablePromise, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
-import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, LoggingContextFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool}
+import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext, LoggingContextFactory}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
 import tech.beshu.ror.boot.RorInstance.{ForceReloadError, Mode}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
@@ -39,7 +39,7 @@ import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
-import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, LoggingContext, RawRorConfig}
+import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.LoggerOps._

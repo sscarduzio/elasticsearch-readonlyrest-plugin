@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
 import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, ObfuscatedHeadersDefinitionsDecoder}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
-import tech.beshu.ror.accesscontrol.logging.AuditingTool
+import tech.beshu.ror.accesscontrol.logging.{AuditingTool, ObfuscatedHeaders}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}

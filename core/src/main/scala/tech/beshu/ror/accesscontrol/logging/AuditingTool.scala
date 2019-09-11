@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.configuration.LoggingContext
 import tech.beshu.ror.es.AuditSink
 
 class AuditingTool(settings: Settings,

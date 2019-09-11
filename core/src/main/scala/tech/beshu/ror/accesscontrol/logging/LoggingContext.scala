@@ -1,4 +1,4 @@
-package tech.beshu.ror.configuration
+package tech.beshu.ror.accesscontrol.logging
 
 import cats.Show
 import tech.beshu.ror.accesscontrol.domain.Header
