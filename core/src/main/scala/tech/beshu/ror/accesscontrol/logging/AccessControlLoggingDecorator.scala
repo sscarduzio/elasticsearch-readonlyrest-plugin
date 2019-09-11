@@ -37,10 +37,10 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool: Option[AuditingTool])
+                                   (implicit loggingContext: LoggingContext)
   extends AccessControl with Logging {
 
-  override def handleRegularRequest(requestContext: RequestContext)
-                                   (implicit loggingContext: LoggingContext): Task[WithHistory[RegularRequestResult]] = {
+  override def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]] = {
     logger.debug(s"checking request: ${requestContext.id.show}")
     underlying
       .handleRegularRequest(requestContext)
@@ -63,8 +63,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       }
   }
 
-  override def handleMetadataRequest(requestContext: RequestContext)
-                                    (implicit loggingContext: LoggingContext): Task[WithHistory[UserMetadataRequestResult]] = {
+  override def handleMetadataRequest(requestContext: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
     logger.debug(s"checking user metadata request: ${requestContext.id.show}")
     underlying
       .handleMetadataRequest(requestContext)

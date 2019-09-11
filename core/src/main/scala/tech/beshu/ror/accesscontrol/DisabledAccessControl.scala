@@ -22,10 +22,8 @@ import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 object DisabledAccessControl extends AccessControl {
-  override def handleRegularRequest(requestContext: RequestContext)
-                                   (implicit loggingContext: LoggingContext): Task[WithHistory[RegularRequestResult]] =
+  override def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]] =
     Task.now(WithHistory.withNoHistory(RegularRequestResult.PassedThrough))
-  override def handleMetadataRequest(context: RequestContext)
-                                    (implicit loggingContext: LoggingContext): Task[WithHistory[UserMetadataRequestResult]] =
+  override def handleMetadataRequest(context: RequestContext): Task[WithHistory[UserMetadataRequestResult]] =
     Task.now(WithHistory.withNoHistory(UserMetadataRequestResult.PassedThrough))
 }

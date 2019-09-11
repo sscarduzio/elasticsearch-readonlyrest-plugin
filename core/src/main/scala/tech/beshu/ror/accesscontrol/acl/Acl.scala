@@ -36,8 +36,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 class Acl(val blocks: NonEmptyList[Block], implicit val loggingContext: LoggingContext) // TODO: rename to AccessControlList
   extends AccessControl {
 
-  override def handleRegularRequest(context: RequestContext)
-                                   (implicit loggingContext: LoggingContext): Task[WithHistory[RegularRequestResult]] = {
+  override def handleRegularRequest(context: RequestContext): Task[WithHistory[RegularRequestResult]] = {
     blocks
       .tail
       .foldLeft(checkBlock(blocks.head, context)) { case (currentResult, block) =>
@@ -71,8 +70,7 @@ class Acl(val blocks: NonEmptyList[Block], implicit val loggingContext: LoggingC
       }
   }
 
-  override def handleMetadataRequest(context: RequestContext)
-                                    (implicit loggingContext: LoggingContext): Task[WithHistory[UserMetadataRequestResult]] = {
+  override def handleMetadataRequest(context: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
     Task
       .gather(blocks.toList.map(executeBlocksUserMetadataRulesOnly(_, context)))
       .map(_.flatten)
