@@ -44,16 +44,6 @@ object LdapConnectionPoolProvider extends Logging {
         Task(connection.bind(bindReq))
       }
     }
-//    val bindResult = retry(
-//      Task(server.getConnection)
-//        .bracket(
-//          use = connection => Task {
-//            connection.bind(bindReq)
-//          }
-//        )(
-//          release = connection => Task(connection.close())
-//        )
-//    )
     bindResult
       .map(_.getResultCode == ResultCode.SUCCESS)
       .recover { case NonFatal(ex) =>
