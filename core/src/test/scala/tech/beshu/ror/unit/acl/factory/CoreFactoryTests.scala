@@ -131,7 +131,40 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(MalformedValue("name: \"proxy1\"\n")))))
       }
     }
-    "where testing configuration prsing should be placed?" when {
+    "return headers list" when {
+      "the section is not defined" in {
+        val config = rorConfigFrom(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    type: allow
+            |    auth_key: admin:container
+            |
+            |""".stripMargin)
+        val acl = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val obfuscatedHeaders = acl.right.get.obfuscatedHeaders
+        obfuscatedHeaders shouldEqual None
+      }
+      "the section exists, and obfuscated header is not defined" in {
+        val config = rorConfigFrom(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    type: allow
+            |    auth_key: admin:container
+            |
+            |  obfuscated_headers:
+            |""".stripMargin)
+        val acl = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val headers = acl.right.get.obfuscatedHeaders.get.headers
+        headers shouldBe 'empty
+      }
       "the section exists, and obfuscated header is defined" in {
         val config = rorConfigFrom(
           """
