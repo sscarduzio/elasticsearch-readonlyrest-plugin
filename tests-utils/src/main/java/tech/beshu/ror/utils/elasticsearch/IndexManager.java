@@ -42,8 +42,16 @@ public class IndexManager extends BaseManager {
     return call(createDeleteIndicesRequest(), SimpleResponse::new);
   }
 
+  public SimpleResponse remove(String indexName) {
+    return call(createDeleteIndex(indexName), GetIndexResult::new);
+  }
+
   private HttpUriRequest createGetIndexRequest(String indexName) {
     return new HttpGet(restClient.from("/" + indexName));
+  }
+
+  private HttpUriRequest createDeleteIndex(String indexName) {
+    return new HttpDelete(restClient.from("/" + indexName));
   }
 
   private HttpUriRequest createDeleteIndicesRequest() {

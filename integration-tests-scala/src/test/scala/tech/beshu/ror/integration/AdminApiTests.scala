@@ -19,13 +19,14 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.{BeforeAndAfterEach, WordSpec}
+import tech.beshu.ror.integration.AdminApiTests.{insertInIndexConfig, removeConfigIndex}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster}
-import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager}
+import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
-class AdminApiTests extends WordSpec with ForAllTestContainer {
+class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfterEach {
 
   private val rorWithIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
@@ -36,7 +37,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
   private val rorWithNoIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR2",
     rorConfigFileName = "/admin_api/readonlyrest.yml",
-    numberOfInstances = 1
+    numberOfInstances = 1,
+    configHotReloadingEnabled = false
   )
   override val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
 
@@ -44,27 +46,88 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
   private lazy val rorWithNoIndexConfigAdminActionManager = new ActionManager(rorWithNoIndexConfig.nodesContainers.head.adminClient)
 
   "An admin REST API" should {
-    "allow admin to force reload current settings" in {
-      val result = rorWithIndexConfigAdminActionManager.actionPost("_readonlyrest/admin/refreshconfig")
-      result.getResponseCode should be(200)
-      if (result.getResponseJson.get("status") == "ok") {
-        result.getResponseJson.get("message") should be("ReadonlyREST settings were reloaded with success!")
-      } else {
-        result.getResponseJson.get("message") should be("Current settings are up to date")
+    "provide a method for force refresh ROR config" which {
+      "is going to reload ROR core" when {
+        "in-index config is newer than current one" in {
+          insertInIndexConfig(
+            new DocumentManager(rorWithNoIndexConfig.nodesContainers.head.adminClient),
+            "/admin_api/readonlyrest_index.yml"
+          )
+
+          val result = rorWithNoIndexConfigAdminActionManager.actionPost(
+            "_readonlyrest/admin/refreshconfig", ""
+          )
+          result.getResponseCode should be(200)
+          result.getResponseJson.get("status") should be("ok")
+          result.getResponseJson.get("message") should be("ReadonlyREST settings were reloaded with success!")
+        }
+      }
+      "return info that config is up to date" when {
+        "in-index config is the same as current one" in {
+          insertInIndexConfig(
+            new DocumentManager(rorWithNoIndexConfig.nodesContainers.head.adminClient),
+            "/admin_api/readonlyrest.yml"
+          )
+
+          val result = rorWithNoIndexConfigAdminActionManager.actionPost(
+            "_readonlyrest/admin/refreshconfig", ""
+          )
+          result.getResponseCode should be(200)
+          result.getResponseJson.get("status") should be("ko")
+          result.getResponseJson.get("message") should be("Current settings are already loaded")
+        }
+      }
+      "return info that in-index config does not exist" when {
+        "there is no in-index settings configured yet" in {
+          val result = rorWithNoIndexConfigAdminActionManager.actionPost(
+            "_readonlyrest/admin/refreshconfig", ""
+          )
+          result.getResponseCode should be(200)
+          result.getResponseJson.get("status") should be("ko")
+          result.getResponseJson.get("message") should be("Cannot find settings index")
+        }
+      }
+      "return info that cannot reload config" when {
+        "config cannot be reloaded (eg. because LDAP is not achievable)" in {
+          insertInIndexConfig(
+            new DocumentManager(rorWithNoIndexConfig.nodesContainers.head.adminClient),
+            "/admin_api/readonlyrest_with_ldap.yml"
+          )
+
+          val result = rorWithNoIndexConfigAdminActionManager.actionPost(
+            "_readonlyrest/admin/refreshconfig", ""
+          )
+          result.getResponseCode should be(200)
+          result.getResponseJson.get("status") should be("ko")
+          result.getResponseJson.get("message") should be("Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389")
+        }
       }
     }
-    "provide update index configuration method" which {
-      "updates index config when passed config is correct" in {
-        val result = rorWithIndexConfigAdminActionManager.actionPost(
-          "_readonlyrest/admin/config",
-          s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_to_update.yml"))}"}"""
-        )
-        result.getResponseCode should be(200)
-        result.getResponseJson.get("status") should be("ok")
-        result.getResponseJson.get("message") should be("updated settings")
+    "provide a method for update in-index config" which {
+      "is going to reload ROR core and store new in-index config" when {
+        "configuration is new and correct" in {
+          val result = rorWithIndexConfigAdminActionManager.actionPost(
+            "_readonlyrest/admin/config",
+            s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_to_update.yml"))}"}"""
+          )
+          result.getResponseCode should be(200)
+          result.getResponseJson.get("status") should be("ok")
+          result.getResponseJson.get("message") should be("updated settings")
+        }
       }
-      "not allow to update index configuration" when {
-        "passed config is malformed" in {
+      "return info that config is up to date" when {
+        "in-index config is the same as provided one" in {
+          val result = rorWithIndexConfigAdminActionManager.actionPost(
+            "_readonlyrest/admin/config",
+            s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
+          )
+          result.getResponseCode should be(200)
+          result.getResponseJson.get("status") should be("ko")
+          result.getResponseJson.get("message") should be("Current settings are already loaded")
+        }
+      }
+      "return info that config is malformed" when {
+        "invalid JSON is provided" in {
           val result = rorWithIndexConfigAdminActionManager.actionPost(
             "_readonlyrest/admin/config",
             s"${escapeJava(getResourceContent("/admin_api/readonlyrest_to_update.yml"))}"
@@ -74,43 +137,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
           result.getResponseJson.get("message") should be("JSON body malformed")
         }
       }
-    }
-    "get content of file config" in {
-      val result = rorWithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/file")
-      result.getResponseCode should be(200)
-      result.getResponseJson.get("status") should be("ok")
-      result.getResponseJson.get("message").asInstanceOf[String] should be {
-        getResourceContent("/admin_api/readonlyrest.yml")
-      }
-    }
-    "get content of index config" in {
-      val result = rorWithIndexConfigAdminActionManager.actionPost(
-        "_readonlyrest/admin/config",
-        s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
-      )
-      result.getResponseCode should be(200)
-      result.getResponseJson.get("status") should be("ok")
-
-      val getIndexConfigResult = rorWithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config")
-      getIndexConfigResult.getResponseCode should be(200)
-      getIndexConfigResult.getResponseJson.get("status") should be("ok")
-      getIndexConfigResult.getResponseJson.get("message").asInstanceOf[String] should be {
-        getResourceContent("/admin_api/readonlyrest_index.yml")
-      }
-    }
-    "return 'empty' status" when {
-      "there is no in-index config" in {
-        val getIndexConfigResult = rorWithNoIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config")
-        getIndexConfigResult.getResponseCode should be(200)
-        getIndexConfigResult.getResponseJson.get("status") should be("empty")
-        getIndexConfigResult.getResponseJson.get("message").asInstanceOf[String] should be {
-          "Cannot find settings index"
-        }
-      }
-    }
-    "not allow to reload current settings" when {
-      "config is malformed" when {
-        "LDAP is not achievable" in {
+      "return info that cannot reload" when {
+        "ROR core cannot be reloaded" in {
           val result = rorWithIndexConfigAdminActionManager.actionPost(
             "_readonlyrest/admin/config",
             s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))}"}"""
@@ -121,6 +149,49 @@ class AdminApiTests extends WordSpec with ForAllTestContainer {
         }
       }
     }
+    "provide a method for fetching current in-index config" which {
+      "return current config" when {
+        "there is one in index" in {
+          val result = rorWithIndexConfigAdminActionManager.actionPost(
+            "_readonlyrest/admin/config",
+            s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
+          )
+          result.getResponseCode should be(200)
+          result.getResponseJson.get("status") should be("ok")
+
+          val getIndexConfigResult = rorWithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config")
+          getIndexConfigResult.getResponseCode should be(200)
+          getIndexConfigResult.getResponseJson.get("status") should be("ok")
+          getIndexConfigResult.getResponseJson.get("message").asInstanceOf[String] should be {
+            getResourceContent("/admin_api/readonlyrest_index.yml")
+          }
+        }
+      }
+      "return info that there is no in-index config" when {
+        "there is none in index" in {
+          val getIndexConfigResult = rorWithNoIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config")
+          getIndexConfigResult.getResponseCode should be(200)
+          getIndexConfigResult.getResponseJson.get("status") should be("empty")
+          getIndexConfigResult.getResponseJson.get("message").asInstanceOf[String] should be {
+            "Cannot find settings index"
+          }
+        }
+      }
+    }
+    "provide a method for fetching current file config" which {
+      "return current config" in {
+        val result = rorWithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/file")
+        result.getResponseCode should be(200)
+        result.getResponseJson.get("status") should be("ok")
+        result.getResponseJson.get("message").asInstanceOf[String] should be {
+          getResourceContent("/admin_api/readonlyrest.yml")
+        }
+      }
+    }
+  }
+
+  override protected def beforeEach(): Unit = {
+    removeConfigIndex(new IndexManager(rorWithNoIndexConfig.nodesContainers.head.adminClient))
   }
 }
 
@@ -130,9 +201,18 @@ object AdminApiTests {
     val documentManager = new DocumentManager(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
+    insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
+  }
+
+  private def insertInIndexConfig(documentManager: DocumentManager, resourceFilePath: String): Unit = {
     documentManager.insertDoc(
       "/.readonlyrest/settings/1",
-      s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
+      s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}"""
     )
   }
+
+  private def removeConfigIndex(indexManager: IndexManager): Unit = {
+    indexManager.remove(".readonlyrest")
+  }
+
 }

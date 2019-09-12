@@ -54,9 +54,9 @@ class AdminRestApi(rorInstance: RorInstance,
       .map {
         case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST settings were reloaded with success!"))
         case Left(IndexConfigReloadError.LoadingConfigError(error)) => Ok(Failure(error.show))
-        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate)) => Ok(Failure("Current settings are up to date"))
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate)) => Ok(Failure("Current settings are already loaded"))
         case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)) => Ok(Failure("ROR is stopped"))
-        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(failure))) => Ok(Failure(failure.message))
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(failure))) => Ok(Failure(s"Cannot reload new settings: ${failure.message}"))
       }
   }
 

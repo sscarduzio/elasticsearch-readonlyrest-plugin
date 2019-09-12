@@ -18,8 +18,8 @@ package tech.beshu.ror.unit.boot
 
 import java.time.Clock
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext, 
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.configuration.SslConfiguration.{KeyPass, KeystorePassword}
 import tech.beshu.ror.configuration.{RawRorConfig, RorSsl, SslConfiguration}
-import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound}
+import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.unit.utils.TestsPropertiesProvider
@@ -186,7 +186,15 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val coreFactory = mock[CoreFactory]
         mockCoreFactory(coreFactory, resourcesPath + initialIndexConfigFile)
         mockCoreFactory(coreFactory, resourcesPath + firstNewIndexConfigFile)
-        mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + firstNewIndexConfigFile)
+        mockCoreFactory(coreFactory, resourcesPath + secondNewIndexConfigFile,
+          createCoreResult =
+            Task.sleep(100 millis).map(_ => Right(CoreSettings(mock[AccessControl], mock[AccessControlStaticContext], None))) // very long creation
+        )
+        mockIndexJsonContentManagerSaveCall(
+          mockedIndexJsonContentManager,
+          resourcesPath + firstNewIndexConfigFile,
+          Task.sleep(500 millis).map(_ => Right(())) // very long saving
+        )
 
         val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
           .start(
@@ -206,12 +214,12 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
               instance
                 .forceReloadAndSave(rorConfigFromResource(resourcesPath + firstNewIndexConfigFile))
                 .map { result =>
-                  mockCoreFactory(coreFactory, resourcesPath + secondNewIndexConfigFile)
+                  // schedule after first finish
                   mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + secondNewIndexConfigFile)
                   result
                 },
               Task
-                .sleep(1 second)
+                .sleep(200 millis)
                 .flatMap { _ =>
                   instance.forceReloadAndSave(rorConfigFromResource(resourcesPath + secondNewIndexConfigFile))
                 }
@@ -493,11 +501,13 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     mockedManager
   }
 
-  private def mockIndexJsonContentManagerSaveCall(mockedManager: IndexJsonContentManager, resourceFileName: String) = {
+  private def mockIndexJsonContentManagerSaveCall(mockedManager: IndexJsonContentManager,
+                                                  resourceFileName: String,
+                                                  saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(()))) = {
     (mockedManager.saveContent _)
       .expects(".readonlyrest", "settings", "1", Map("settings" -> getResourceContent(resourceFileName)).asJava)
       .once()
-      .returns(Task.now(Right(())))
+      .returns(saveResult)
     mockedManager
   }
 
@@ -510,6 +520,18 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       })
       .once()
       .returns(Task.now(Right(CoreSettings(mock[AccessControl], aclStaticContext, None))))
+    mockedCoreFactory
+  }
+
+  private def mockCoreFactory(mockedCoreFactory: CoreFactory,
+                              resourceFileName: String,
+                              createCoreResult: Task[Either[NonEmptyList[AclCreationError], CoreSettings]]) = {
+    (mockedCoreFactory.createCoreFrom _)
+      .expects(where {
+        (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
+      })
+      .once()
+      .returns(createCoreResult)
     mockedCoreFactory
   }
 

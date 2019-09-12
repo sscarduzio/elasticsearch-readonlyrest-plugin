@@ -235,8 +235,8 @@ class RorInstance private(boot: ReadonlyRest,
   def engine: Option[Engine] = currentEngine.get().map(_._1)
 
   def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
+    logger.debug("Reloading of provided settings was forced")
     reloadInProgress.withPermit {
-      logger.debug("Reloading of provided settings was forced")
       value {
         for {
           _ <- reloadEngine(config).leftMap(IndexConfigReloadWithUpdateError.ReloadError.apply)
@@ -267,7 +267,6 @@ class RorInstance private(boot: ReadonlyRest,
     }
   }
 
-  // todo: is it safe?
   private def scheduleIndexConfigChecking(interval: FiniteDuration): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within $interval")
     scheduler.scheduleOnce(interval) {
@@ -337,6 +336,8 @@ class RorInstance private(boot: ReadonlyRest,
   private def shouldBeReloaded(config: RawRorConfig): EitherT[Task, RawConfigReloadError, Unit] = {
     currentEngine.get() match {
       case Some((_, currentConfig)) =>
+        logger.info(s"Old config: ${currentConfig.hashCode()}; new config: ${config.hashCode()}")
+        logger.info(s"Old config: ${currentConfig.raw}; new config: ${config.raw}")
         EitherT.cond[Task](
           currentConfig != config,
           (),

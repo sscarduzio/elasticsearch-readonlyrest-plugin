@@ -58,28 +58,30 @@ object ReadonlyRestEsContainer extends StrictLogging {
 
   val adminCredentials: (String, String) = ("admin", "container")
 
-  def create(nodeName: String,
-             seedNodes: NonEmptyList[String],
-             esVersion: String,
-             rorPluginFile: File,
-             rorConfigFile: File,
-             initializer: ElasticsearchNodeDataInitializer): ReadonlyRestEsContainer = {
+  final case class Config(nodeName: String,
+                          nodes: NonEmptyList[String],
+                          esVersion: String,
+                          rorPluginFile: File,
+                          rorConfigFile: File,
+                          configHotReloadingEnabled: Boolean = true)
+
+  def create(config: Config, initializer: ElasticsearchNodeDataInitializer): ReadonlyRestEsContainer = {
     val rorContainer = new ReadonlyRestEsContainer(
-      nodeName,
-      esVersion,
+      config.nodeName,
+      config.esVersion,
       new org.testcontainers.containers.GenericContainer(
-        ESWithReadonlyRestImage.create(nodeName, seedNodes, esVersion, rorPluginFile, rorConfigFile)
+        ESWithReadonlyRestImage.create(config)
       )
     )
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
     rorContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     rorContainer.container.addExposedPort(9200)
     rorContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(esVersion, rorContainer.name, Coeval(rorContainer.adminClient), initializer)
+      new ElasticsearchNodeWaitingStrategy(config.esVersion, rorContainer.name, Coeval(rorContainer.adminClient), initializer)
         .withStartupTimeout(3 minutes)
     )
     rorContainer.container.setNetwork(Network.SHARED)
-    rorContainer.container.setNetworkAliases((nodeName :: Nil).asJava)
+    rorContainer.container.setNetworkAliases((config.nodeName :: Nil).asJava)
     rorContainer
   }
 

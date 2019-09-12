@@ -41,15 +41,25 @@ object ReadonlyRestEsCluster {
                                   numberOfInstances: Int = 2,
                                   nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
                                   clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer,
-                                  dependentServicesContainers: List[DependencyDef] = Nil): ReadonlyRestEsClusterContainer =
-    createLocalClusterContainer(name, ContainerUtils.getResourceFile(rorConfigFileName), numberOfInstances, nodeDataInitializer, clusterInitializer, Nil)
+                                  dependentServicesContainers: List[DependencyDef] = Nil,
+                                  configHotReloadingEnabled: Boolean = true): ReadonlyRestEsClusterContainer =
+    createLocalClusterContainer(
+      name,
+      ContainerUtils.getResourceFile(rorConfigFileName),
+      numberOfInstances,
+      nodeDataInitializer,
+      clusterInitializer,
+      Nil,
+      configHotReloadingEnabled
+    )
 
   def createLocalClusterContainer(name: String,
                                   rorConfigFile: File,
                                   numberOfInstances: Int,
                                   nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                   clusterInitializer: ReadonlyRestEsClusterInitializer,
-                                  dependentServicesContainers: List[DependencyDef]): ReadonlyRestEsClusterContainer = {
+                                  dependentServicesContainers: List[DependencyDef],
+                                  configHotReloadingEnabled: Boolean): ReadonlyRestEsClusterContainer = {
     if (numberOfInstances < 1) throw new IllegalArgumentException("ES Cluster should have at least one instance")
     val project = RorPluginGradleProject.fromSystemProperty
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
@@ -58,7 +68,10 @@ object ReadonlyRestEsCluster {
     val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, numberOfInstances)(_ + 1).toList.map(idx => s"${name}_$idx"))
     new ReadonlyRestEsClusterContainer(
       nodeNames.map { name =>
-        Task(ReadonlyRestEsContainer.create(name, nodeNames, esVersion, rorPluginFile, rorConfigFile, nodeDataInitializer))
+        Task(ReadonlyRestEsContainer.create(
+          ReadonlyRestEsContainer.Config(name, nodeNames, esVersion, rorPluginFile, rorConfigFile, configHotReloadingEnabled),
+          nodeDataInitializer
+        ))
       },
       dependentServicesContainers,
       clusterInitializer

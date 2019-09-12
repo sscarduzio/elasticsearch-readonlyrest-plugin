@@ -16,12 +16,10 @@
  */
 package tech.beshu.ror.utils.containers
 
-import java.io.File
-
-import cats.data.NonEmptyList
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
+import tech.beshu.ror.utils.containers.ReadonlyRestEsContainer.Config
 import tech.beshu.ror.utils.misc.Version
 
 object ESWithReadonlyRestImage extends StrictLogging {
@@ -31,11 +29,8 @@ object ESWithReadonlyRestImage extends StrictLogging {
   private val javaOptionsFileName = "jvm.options"
   private val keystoreFileName = "keystore.jks"
 
-  def create(nodeName: String,
-             nodes: NonEmptyList[String],
-             esVersion: String,
-             rorPluginFile: File,
-             rorConfigFile: File): ImageFromDockerfile = {
+  def create(config: Config): ImageFromDockerfile = {
+    import config._
     val baseDockerImage =
       if (Version.greaterOrEqualThan(esVersion, 6, 3, 0)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
       else "docker.elastic.co/elasticsearch/elasticsearch"
@@ -81,8 +76,16 @@ object ESWithReadonlyRestImage extends StrictLogging {
             .run(s"echo 'cluster.name: test-cluster' >> /usr/share/elasticsearch/config/elasticsearch.yml")
         }
 
+        val javaOpts = List(
+          "-Xms512m",
+          "-Xmx512m",
+          "-Djava.security.egd=file:/dev/./urandoms",
+          "-Dcom.unboundid.ldap.sdk.debug.enabled=true",
+          if (!configHotReloadingEnabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
+        ).mkString(" ")
+
         builder.user("elasticsearch")
-          .env("ES_JAVA_OPTS", "-Xms512m -Xmx512m -Djava.security.egd=file:/dev/./urandoms -Dcom.unboundid.ldap.sdk.debug.enabled=true")
+          .env("ES_JAVA_OPTS", javaOpts)
           .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + rorPluginFile.getName)
 
         logger.info("Dockerfile\n" + builder.build)
