@@ -336,8 +336,6 @@ class RorInstance private(boot: ReadonlyRest,
   private def shouldBeReloaded(config: RawRorConfig): EitherT[Task, RawConfigReloadError, Unit] = {
     currentEngine.get() match {
       case Some((_, currentConfig)) =>
-        logger.info(s"Old config: ${currentConfig.hashCode()}; new config: ${config.hashCode()}")
-        logger.info(s"Old config: ${currentConfig.raw}; new config: ${config.raw}")
         EitherT.cond[Task](
           currentConfig != config,
           (),

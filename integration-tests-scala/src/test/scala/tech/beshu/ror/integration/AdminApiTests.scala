@@ -152,13 +152,6 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
     "provide a method for fetching current in-index config" which {
       "return current config" when {
         "there is one in index" in {
-          val result = rorWithIndexConfigAdminActionManager.actionPost(
-            "_readonlyrest/admin/config",
-            s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
-          )
-          result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ok")
-
           val getIndexConfigResult = rorWithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config")
           getIndexConfigResult.getResponseCode should be(200)
           getIndexConfigResult.getResponseJson.get("status") should be("ok")
@@ -191,7 +184,17 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
   }
 
   override protected def beforeEach(): Unit = {
+    // back to configuration loaded on container start
+    rorWithNoIndexConfigAdminActionManager.actionPost(
+      "_readonlyrest/admin/config",
+      s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest.yml"))}"}"""
+    )
     removeConfigIndex(new IndexManager(rorWithNoIndexConfig.nodesContainers.head.adminClient))
+
+    rorWithIndexConfigAdminActionManager.actionPost(
+      "_readonlyrest/admin/config",
+      s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
+    )
   }
 }
 
@@ -205,7 +208,7 @@ object AdminApiTests {
   }
 
   private def insertInIndexConfig(documentManager: DocumentManager, resourceFilePath: String): Unit = {
-    documentManager.insertDoc(
+    documentManager.insertDocAndWaitForRefresh(
       "/.readonlyrest/settings/1",
       s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}"""
     )
