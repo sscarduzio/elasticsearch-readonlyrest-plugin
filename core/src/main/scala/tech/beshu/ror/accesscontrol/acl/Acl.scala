@@ -129,7 +129,7 @@ class Acl(val blocks: NonEmptyList[Block], implicit val loggingContext: LoggingC
     )
   }
 
-  private def executeBlocksUserMetadataRulesOnly(block: Block, context: RequestContext)= {
+  private def executeBlocksUserMetadataRulesOnly(block: Block, context: RequestContext) = {
     block
       .executeUserMetadataRuleOnly(context)
       .map(Some.apply)
