@@ -82,8 +82,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       }
   }
 
-  private def log(responseContext: ResponseContext)
-                 (implicit loggingContext: LoggingContext): Unit = {
+  private def log(responseContext: ResponseContext): Unit = {
     if (isLoggableEntry(responseContext)) {
       import loggingContext._
       import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator.responseContextShow

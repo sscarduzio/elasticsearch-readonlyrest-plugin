@@ -167,15 +167,10 @@ trait ReadonlyRest extends Logging {
           .right
           .map { coreSettings =>
             implicit val loggingContext = LoggingContextFactory.create(coreSettings.obfuscatedHeaders)
-            val engine = new Engine(
-              accessControl = new AccessControlLoggingDecorator(
-                coreSettings.aclEngine,
-                coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
-              ),
-              context = coreSettings.aclStaticContext,
-              httpClientsFactory = httpClientsFactory,
-              loggingContext = loggingContext
-            )
+            val engine = new Engine(accessControl = new AccessControlLoggingDecorator(
+                            coreSettings.aclEngine,
+                            coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
+                          ), context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory)
             engine
           }
           .left
@@ -417,7 +412,7 @@ object RorInstance {
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
-final class Engine(val accessControl: AccessControl, val context: AccessControlStaticContext, httpClientsFactory: AsyncHttpClientsFactory, val loggingContext: LoggingContext) {
+final class Engine(val accessControl: AccessControl, val context: AccessControlStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
   private[ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()
   }

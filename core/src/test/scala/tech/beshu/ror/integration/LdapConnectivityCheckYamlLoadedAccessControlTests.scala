@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with ForAllTestContainer with Inside {
-  import tech.beshu.ror.utils.TestsUtils.loggingContext
 
   override val container: LdapContainer = new LdapContainer("LDAP1", "/test_example.ldif")
 

@@ -129,8 +129,7 @@ class Acl(val blocks: NonEmptyList[Block], implicit val loggingContext: LoggingC
     )
   }
 
-  private def executeBlocksUserMetadataRulesOnly(block: Block, context: RequestContext)
-                                                (implicit loggingContext: LoggingContext)= {
+  private def executeBlocksUserMetadataRulesOnly(block: Block, context: RequestContext)= {
     block
       .executeUserMetadataRuleOnly(context)
       .map(Some.apply)
@@ -147,8 +146,7 @@ class Acl(val blocks: NonEmptyList[Block], implicit val loggingContext: LoggingC
     }
   }
 
-  private def checkBlock(block: Block, requestContent: RequestContext)
-                        (implicit loggingContext: LoggingContext): WriterT[Task, Vector[History], ExecutionResult] = {
+  private def checkBlock(block: Block, requestContent: RequestContext): WriterT[Task, Vector[History], ExecutionResult] = {
     WriterT.apply {
       block
         .execute(requestContent)

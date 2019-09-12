@@ -33,8 +33,6 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 
 class AuthKeyYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
-  import tech.beshu.ror.utils.TestsUtils.loggingContext
-
   protected def configYaml: String =
     """
       |other_non_ror_settings:
