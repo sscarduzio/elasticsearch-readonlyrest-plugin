@@ -6,14 +6,9 @@ import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.show.logs._
 
 object LoggingContextFactory {
-  def create(obfuscatedHeaders: Option[ObfuscatedHeaders]): LoggingContext = {
-    val headers = getHeaders(obfuscatedHeaders, default)
-    new LoggingContext()(createShow(headers))
+  def create(obfuscatedHeaders: Set[Header.Name]): LoggingContext = {
+    new LoggingContext()(createShow(obfuscatedHeaders))
   }
-  private val default = Set(Header.Name.authorization)
-
-  private def getHeaders(obfuscatedHeaders: Option[ObfuscatedHeaders], default:Set[Header.Name]) =
-    obfuscatedHeaders.map(_.headers).getOrElse(default)
 
   private def createShow(headers: Set[Header.Name]) =
     Show.show[Header] {

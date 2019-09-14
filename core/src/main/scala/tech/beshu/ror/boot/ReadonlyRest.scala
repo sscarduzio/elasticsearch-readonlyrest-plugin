@@ -166,7 +166,7 @@ trait ReadonlyRest extends Logging {
         result
           .right
           .map { coreSettings =>
-            implicit val loggingContext = LoggingContextFactory.create(coreSettings.obfuscatedHeaders)
+            implicit val loggingContext = LoggingContextFactory.create(coreSettings.aclStaticContext.obfuscatedHeaders)
             val engine = new Engine(accessControl = new AccessControlLoggingDecorator(
                             coreSettings.aclEngine,
                             coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))

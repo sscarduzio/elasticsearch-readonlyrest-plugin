@@ -4,7 +4,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.logging.{LoggingContextFactory, ObfuscatedHeaders}
+import tech.beshu.ror.accesscontrol.logging.LoggingContextFactory
 
 class LoggingContextFactoryTest
   extends WordSpec
@@ -20,9 +20,9 @@ class LoggingContextFactoryTest
     "create Show[Header] instance" when {
       "no configuration is provided" in {
         val table = Table(("conf", "authorization", "custom", "secret"),
-          (None, "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=secret"),
-          (Some(ObfuscatedHeaders(Set(Header.Name.authorization))), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=secret"),
-          (Some(ObfuscatedHeaders(Set(Header.Name.authorization, secretHeaderName))), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=<OMITTED>"),
+          (Set.empty[Header.Name], "Authorization=secretButAuth", "CustomHeader=business value", "Secret=secret"),
+          (Set(Header.Name.authorization), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=secret"),
+          (Set(Header.Name.authorization, secretHeaderName), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=<OMITTED>"),
         )
         forAll(table) { (conf, authorization, custom, secret) =>
           LoggingContextFactory.create(conf).showHeader.show(basicHeader) shouldEqual authorization

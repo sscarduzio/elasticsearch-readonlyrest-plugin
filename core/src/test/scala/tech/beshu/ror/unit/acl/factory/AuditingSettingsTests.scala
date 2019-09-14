@@ -55,7 +55,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |
           """.stripMargin)
         val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, None, _)) => }
+        inside(core) { case Right(CoreSettings(_, _, None)) => }
       }
       "audit collector is disabled" in {
         val config = rorConfigFrom(
@@ -71,7 +71,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |
           """.stripMargin)
         val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, None, _)) => }
+        inside(core) { case Right(CoreSettings(_, _, None)) => }
       }
     }
     "be able to be loaded from config" when {
@@ -89,7 +89,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |
           """.stripMargin)
         val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings), _)) =>
+        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
@@ -110,7 +110,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |
           """.stripMargin)
         val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings), _)) =>
+        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("custom_template_20181231")
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
@@ -131,7 +131,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |
           """.stripMargin)
         val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings), _)) =>
+        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
           auditingSettings.logSerializer shouldBe a[QueryAuditLogSerializer]
@@ -152,7 +152,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |
           """.stripMargin)
         val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
-        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings), _)) =>
+        inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
           auditingSettings.logSerializer shouldBe a[DeprecatedAuditLogSerializerAdapter[_]]

@@ -48,7 +48,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
     )
     .map {
       case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
-      case Right(CoreSettings(aclEngine, _, _, _)) => aclEngine
+      case Right(CoreSettings(aclEngine, _, _)) => aclEngine
     }
     .runSyncUnsafe()
 }
