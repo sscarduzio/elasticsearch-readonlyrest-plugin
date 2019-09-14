@@ -58,7 +58,7 @@ object Ror extends ReadonlyRest {
   override protected val coreFactory: CoreFactory = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-    implicit val _envVarsProvider: EnvVarsProvider = envVarsProvider
+    implicit val envVarsProviderImplicit: EnvVarsProvider = envVarsProvider
     new RawRorConfigBasedCoreFactory
   }
 }
@@ -166,10 +166,12 @@ trait ReadonlyRest extends Logging {
           .right
           .map { coreSettings =>
             implicit val loggingContext = LoggingContext(coreSettings.aclStaticContext.obfuscatedHeaders)
-            val engine = new Engine(accessControl = new AccessControlLoggingDecorator(
-              coreSettings.aclEngine,
-              coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
-            ), context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory)
+            val engine = new Engine(
+              accessControl = new AccessControlLoggingDecorator(
+                underlying = coreSettings.aclEngine,
+                auditingTool = coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
+              ),
+              context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory)
             engine
           }
           .left
