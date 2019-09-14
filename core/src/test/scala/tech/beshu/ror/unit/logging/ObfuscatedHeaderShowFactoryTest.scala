@@ -4,9 +4,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.logging.LoggingContextFactory
+import tech.beshu.ror.accesscontrol.logging.ObfuscatedHeaderShowFactory
 
-class LoggingContextFactoryTest
+class ObfuscatedHeaderShowFactoryTest
   extends WordSpec
     with TableDrivenPropertyChecks
     with Matchers {
@@ -25,9 +25,9 @@ class LoggingContextFactoryTest
           (Set(Header.Name.authorization, secretHeaderName), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=<OMITTED>"),
         )
         forAll(table) { (conf, authorization, custom, secret) =>
-          LoggingContextFactory.create(conf).showHeader.show(basicHeader) shouldEqual authorization
-          LoggingContextFactory.create(conf).showHeader.show(customHeader) shouldEqual custom
-          LoggingContextFactory.create(conf).showHeader.show(secretHeader) shouldEqual secret
+          ObfuscatedHeaderShowFactory.create(conf).show(basicHeader) shouldEqual authorization
+          ObfuscatedHeaderShowFactory.create(conf).show(customHeader) shouldEqual custom
+          ObfuscatedHeaderShowFactory.create(conf).show(secretHeader) shouldEqual secret
         }
 
       }

@@ -27,12 +27,13 @@ import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult, UserMetadataRelatedRule}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.logging.LoggingContext
+import tech.beshu.ror.accesscontrol.logging.{LoggingContext, ObfuscatedHeaderShowFactory}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
+
 class Block(val name: Name,
             val policy: Policy,
             val verbosity: Verbosity,
@@ -52,7 +53,7 @@ class Block(val name: Name,
   private def processRules(selectedRules: List[Rule],
                            requestContext: RequestContext)
                           (implicit loggingContext: LoggingContext): BlockResultWithHistory = {
-    import loggingContext._
+    implicit val showHeader: Show[Header] = ObfuscatedHeaderShowFactory.create(loggingContext.obfuscatedHeaders)
     val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
     selectedRules
       .foldLeft(matched(initBlockContext)) {

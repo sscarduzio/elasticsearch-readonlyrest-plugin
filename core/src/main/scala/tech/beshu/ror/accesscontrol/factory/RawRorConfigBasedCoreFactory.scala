@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
 import tech.beshu.ror.accesscontrol.factory.decoders.AuditingSettingsDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
-import tech.beshu.ror.accesscontrol.logging.{AuditingTool, LoggingContextFactory}
+import tech.beshu.ror.accesscontrol.logging.{AuditingTool,LoggingContext}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
@@ -294,7 +294,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         acl = {
           val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
           upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
-          val loggingContext = LoggingContextFactory.create(staticContext.obfuscatedHeaders)
+          val loggingContext = LoggingContext(staticContext.obfuscatedHeaders)
           new AccessControlList(upgradedBlocks)(loggingContext): AccessControl
         }
       } yield (acl, staticContext)

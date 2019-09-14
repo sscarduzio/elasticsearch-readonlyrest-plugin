@@ -26,10 +26,9 @@ import monix.execution.Scheduler.{global => scheduler}
 import monix.execution.atomic.{Atomic, AtomicAny}
 import monix.execution.{Cancelable, CancelablePromise, Scheduler}
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext, LoggingContextFactory}
+import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
 import tech.beshu.ror.boot.RorInstance.{ForceReloadError, Mode}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
@@ -166,11 +165,11 @@ trait ReadonlyRest extends Logging {
         result
           .right
           .map { coreSettings =>
-            implicit val loggingContext = LoggingContextFactory.create(coreSettings.aclStaticContext.obfuscatedHeaders)
+            implicit val loggingContext = LoggingContext(coreSettings.aclStaticContext.obfuscatedHeaders)
             val engine = new Engine(accessControl = new AccessControlLoggingDecorator(
-                            coreSettings.aclEngine,
-                            coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
-                          ), context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory)
+              coreSettings.aclEngine,
+              coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
+            ), context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory)
             engine
           }
           .left

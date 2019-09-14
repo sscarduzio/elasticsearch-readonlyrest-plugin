@@ -39,7 +39,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 
 object TestsUtils {
-  implicit val loggingContext: LoggingContext = new LoggingContext()(showHeader= Show.fromToString[Header])
+  implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
 
   def basicAuthHeader(value: String): Header =
     Header(Name(NonEmptyString.unsafeFrom("Authorization")), NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes)))
