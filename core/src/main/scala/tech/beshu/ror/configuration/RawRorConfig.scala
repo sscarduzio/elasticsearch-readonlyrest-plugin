@@ -21,10 +21,10 @@ import java.io.StringReader
 import better.files.File
 import cats.effect.Resource
 import cats.{Eq, Show}
-import io.circe.yaml.parser
 import io.circe.{Json, ParsingFailure}
 import monix.eval.Task
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
+import tech.beshu.ror.utils.yaml
 
 final case class RawRorConfig(configJson: Json, raw: String)
 
@@ -37,7 +37,7 @@ object RawRorConfig {
   def fromString(content: String): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
     val contentResource = Resource.make(Task(new StringReader(content))) { reader => Task(reader.close()) }
     contentResource.use { reader => Task {
-      handleParseResult(parser.parse(reader))
+      handleParseResult(yaml.parser.parse(reader))
         .map(RawRorConfig(_, content))
     }}
   }
