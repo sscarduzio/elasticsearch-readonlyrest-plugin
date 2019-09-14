@@ -14,27 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils
+package tech.beshu.ror.utils.yaml
 
-import better.files.File
-import io.circe.Decoder
-import io.circe.yaml.parser
+import java.io.{Reader, StringReader}
 
-class JsonFile(file: File) {
+import io.circe.{Json, JsonNumber, JsonObject, ParsingFailure}
+import org.yaml.snakeyaml.Yaml
+import org.yaml.snakeyaml.constructor.SafeConstructor
+import org.yaml.snakeyaml.nodes._
+import tech.beshu.ror.com.fasterxml.jackson.databind.ObjectMapper
+import tech.beshu.ror.com.fasterxml.jackson.dataformat.yaml.YAMLMapper
 
-  def parse[T](implicit decoder: Decoder[T]): Either[String, T] = {
-    file.fileReader { reader =>
-      parser
-        .parse(reader)
-        .left.map(_.message)
-        .right
-        .flatMap { json =>
-          decoder
-            .decodeJson(json)
-            .left.map(_.message)
-        }
-    }
+object YamlOps {
+
+  def jsonToYamlString(json: Json): String = {
+    val objectMapper = new ObjectMapper()
+    val yamlMapper = new YAMLMapper()
+    yamlMapper
+      .writeValueAsString(objectMapper.readTree(json.noSpaces))
+      .replace("---\n", "")
   }
+
 }
-
-

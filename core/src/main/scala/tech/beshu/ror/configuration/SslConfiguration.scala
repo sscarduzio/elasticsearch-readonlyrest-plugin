@@ -21,9 +21,9 @@ import java.nio.file.{Path, Paths}
 
 import better.files._
 import io.circe.{Decoder, DecodingFailure, HCursor}
-import io.circe.yaml._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.utils.yaml
 
 import scala.language.implicitConversions
 
@@ -63,7 +63,8 @@ object RorSsl extends Logging {
   private def loadSslConfigFromFile(file: File)
                                    (implicit rorSslDecoder: Decoder[RorSsl]) = {
     file.fileReader { reader =>
-      parser
+      yaml
+        .parser
         .parse(reader)
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
         .right

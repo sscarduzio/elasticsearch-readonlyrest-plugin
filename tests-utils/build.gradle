@@ -23,7 +23,6 @@ repositories {
 
 dependencies {
     compile group: 'com.github.pathikrit',           name: 'better-files_2.12',             version: '3.8.0'
-    compile group: 'io.circe',                       name: 'circe-yaml_2.12',               version: '0.10.0'
     compile group: 'com.github.cb372',               name: 'cats-retry-core_2.12',          version: '0.2.5'
     compile group: 'commons-io',                     name: 'commons-io',                    version: '2.6'
     compile group: 'org.apache.commons',             name: 'commons-lang3',                 version: '3.9'

@@ -71,7 +71,6 @@ dependencies {
     compile group: 'io.circe',                              name: 'circe-generic_2.12',                     version: '0.11.1'
     compile group: 'io.circe',                              name: 'circe-generic-extras_2.12',              version: '0.11.1'
     compile group: 'io.circe',                              name: 'circe-parser_2.12',                      version: '0.11.1'
-    compile group: 'io.circe',                              name: 'circe-yaml_2.12',                        version: '0.10.0'
     compile group: 'commons-codec',                         name: 'commons-codec',                          version: '1.10'
     compile group: 'com.softwaremill.sttp',                 name: 'core_2.12',                              version: '1.5.1'
     compile group: 'com.github.finagle',                    name: 'finchx-circe_2.12',                      version: '0.29.0'
@@ -91,6 +90,7 @@ dependencies {
     compile group: 'org.scala-lang',                        name: 'scala-library',                          version: '2.12.7'
     compile group: 'org.scala-lang.modules',                name: 'scala-java8-compat_2.12',                version: '0.9.0'
     compile group: 'io.lemonlabs',                          name: 'scala-uri_2.12',                         version: '1.4.1'
+    compile group: 'org.yaml',                              name: 'snakeyaml',                              version: '1.17'
     compile group: 'org.typelevel',                         name: 'squants_2.12',                           version: '1.4.0'
     compile group: 'com.unboundid',                         name: 'unboundid-ldapsdk',                      version: '4.0.9'
 
