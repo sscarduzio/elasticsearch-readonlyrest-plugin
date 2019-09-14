@@ -19,6 +19,7 @@ package tech.beshu.ror.es;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
+import io.netty.util.NettyRuntime;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
 import org.elasticsearch.ElasticsearchException;

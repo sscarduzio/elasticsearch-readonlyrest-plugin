@@ -133,5 +133,4 @@ object ScalaOps {
       value.map(v => AutoCloseableOps(v).bracket(convert))
     }
   }
-
 }

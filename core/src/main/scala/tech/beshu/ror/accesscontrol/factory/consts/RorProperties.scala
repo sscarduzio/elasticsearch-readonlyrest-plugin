@@ -16,10 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.factory.consts
 
+import java.util.concurrent.TimeUnit
+
 import better.files.File
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
+
+import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
 object RorProperties {
 
@@ -27,4 +32,20 @@ object RorProperties {
     propertiesProvider
       .getProperty(PropName(NonEmptyString.unsafeFrom("com.readonlyrest.settings.file.path")))
       .map(File(_))
+
+  def rorIndexSettingReloadInterval(implicit propertiesProvider: PropertiesProvider): Option[RefreshInterval] =
+    propertiesProvider
+      .getProperty(PropName(NonEmptyString.unsafeFrom("com.readonlyrest.settings.refresh.interval")))
+      .flatMap { refreshIntervalString => Try(refreshIntervalString.toInt).toOption }
+      .flatMap {
+        case interval if interval == 0 => Some(RefreshInterval.Disabled)
+        case interval if interval > 0 => Some(RefreshInterval.Enabled(FiniteDuration(interval, TimeUnit.SECONDS)))
+        case _ => None
+      }
+
+  sealed trait RefreshInterval
+  object RefreshInterval {
+    case object Disabled extends RefreshInterval
+    final case class Enabled(interval: FiniteDuration) extends RefreshInterval
+  }
 }

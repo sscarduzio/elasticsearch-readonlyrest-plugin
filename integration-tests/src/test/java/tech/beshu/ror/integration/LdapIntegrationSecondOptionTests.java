@@ -21,7 +21,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
-import tech.beshu.ror.utils.containers.LdapContainer;
+import tech.beshu.ror.utils.containers.JavaLdapContainer;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
@@ -35,8 +35,8 @@ public class LdapIntegrationSecondOptionTests {
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProjectJ.fromSystemProperty(),
           new MultiContainer.Builder()
-              .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-              .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+              .add("LDAP2", () -> JavaLdapContainer.create("/ldap_integration_1st/ldap.ldif"))
               .build(),
           "/ldap_integration_2nd/ldap_second_option_test_elasticsearch.yml",
           new ElasticsearchTweetsInitializer()

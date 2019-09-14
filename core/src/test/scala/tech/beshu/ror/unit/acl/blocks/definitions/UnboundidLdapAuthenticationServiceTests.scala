@@ -29,8 +29,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Ldap
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.containers.LdapContainer
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -45,15 +45,21 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
     "has method to authenticate" which {
       "returns true" when {
         "user exists in LDAP and its credentials are correct" in {
-          createSimpleAuthenticationService().authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty)).runSyncUnsafe() should be(true)
+          createSimpleAuthenticationService()
+            .authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty))
+            .runSyncUnsafe() should be(true)
         }
       }
       "returns false" when {
         "user doesn't exist in LDAP" in {
-          createSimpleAuthenticationService().authenticate(User.Id("unknown".nonempty), PlainTextSecret("user1".nonempty)).runSyncUnsafe() should be(false)
+          createSimpleAuthenticationService()
+            .authenticate(User.Id("unknown".nonempty), PlainTextSecret("user1".nonempty))
+            .runSyncUnsafe() should be(false)
         }
         "user has invalid credentials" in {
-          createSimpleAuthenticationService().authenticate(User.Id("morgan".nonempty), PlainTextSecret("invalid_secret".nonempty)).runSyncUnsafe() should be(false)
+          createSimpleAuthenticationService()
+            .authenticate(User.Id("morgan".nonempty), PlainTextSecret("invalid_secret".nonempty))
+            .runSyncUnsafe() should be(false)
         }
       }
     }
@@ -61,7 +67,9 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
       "Round robin HA method is configured" when {
         "one of servers goes down" in {
           def assertMorganCanAuthenticate(service: UnboundidLdapAuthenticationService) = {
-            service.authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty)).runSyncUnsafe() should be(true)
+            service
+              .authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty))
+              .runSyncUnsafe() should be(true)
           }
           val service = createHaAuthenticationService()
           (for {

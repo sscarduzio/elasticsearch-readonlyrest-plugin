@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Ldap
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
-import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._

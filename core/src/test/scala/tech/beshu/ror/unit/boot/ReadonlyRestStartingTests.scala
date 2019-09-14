@@ -19,6 +19,7 @@ package tech.beshu.ror.unit.boot
 import java.time.Clock
 
 import cats.data.NonEmptyList
+import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -33,12 +34,15 @@ import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext, 
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.configuration.SslConfiguration.{KeyPass, KeystorePassword}
 import tech.beshu.ror.configuration.{RawRorConfig, RorSsl, SslConfiguration}
-import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound}
+import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
+import tech.beshu.ror.unit.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource}
 
 import scala.collection.JavaConverters._
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory with Eventually {
 
@@ -132,6 +136,98 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           eventually {
             instance.engine.isDefined should be(true)
           }
+        }
+      }
+    }
+    "be able to be reloaded" when {
+      "new config is different than old one" in {
+        val resourcesPath = "/boot_tests/config_reloading/"
+        val initialIndexConfigFile = "readonlyrest_initial.yml"
+        val newIndexConfigFile = "readonlyrest_first.yml"
+
+        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + initialIndexConfigFile)
+
+        val coreFactory = mock[CoreFactory]
+        mockCoreFactory(coreFactory, resourcesPath + initialIndexConfigFile)
+        mockCoreFactory(coreFactory, resourcesPath + newIndexConfigFile)
+        mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + newIndexConfigFile)
+
+        val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
+          .start(
+            getResourcePath(resourcesPath),
+            mock[AuditSink],
+            mockedIndexJsonContentManager
+          )
+          .runSyncUnsafe()
+
+        inside(result) { case Right(instance) =>
+          eventually {
+            instance.engine.isDefined should be(true)
+          }
+          val oldEngine = instance.engine.get
+          val reload1Result = instance
+            .forceReloadAndSave(rorConfigFromResource(resourcesPath + newIndexConfigFile))
+            .runSyncUnsafe()
+          reload1Result should be(Right(()))
+
+          assert(oldEngine != instance.engine.get, "Engine was not reloaded")
+        }
+      }
+      "two parallel force reloads are invoked" in {
+        val resourcesPath = "/boot_tests/config_reloading/"
+        val initialIndexConfigFile = "readonlyrest_initial.yml"
+        val firstNewIndexConfigFile = "readonlyrest_first.yml"
+        val secondNewIndexConfigFile = "readonlyrest_second.yml"
+
+        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + initialIndexConfigFile)
+
+        val coreFactory = mock[CoreFactory]
+        mockCoreFactory(coreFactory, resourcesPath + initialIndexConfigFile)
+        mockCoreFactory(coreFactory, resourcesPath + firstNewIndexConfigFile)
+        mockCoreFactory(coreFactory, resourcesPath + secondNewIndexConfigFile,
+          createCoreResult =
+            Task.sleep(100 millis).map(_ => Right(CoreSettings(mock[AccessControl], mock[AccessControlStaticContext], None))) // very long creation
+        )
+        mockIndexJsonContentManagerSaveCall(
+          mockedIndexJsonContentManager,
+          resourcesPath + firstNewIndexConfigFile,
+          Task.sleep(500 millis).map(_ => Right(())) // very long saving
+        )
+
+        val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
+          .start(
+            getResourcePath(resourcesPath),
+            mock[AuditSink],
+            mockedIndexJsonContentManager
+          )
+          .runSyncUnsafe()
+
+        inside(result) { case Right(instance) =>
+          eventually {
+            instance.engine.isDefined should be(true)
+          }
+
+          val results = Task
+            .gather(List(
+              instance
+                .forceReloadAndSave(rorConfigFromResource(resourcesPath + firstNewIndexConfigFile))
+                .map { result =>
+                  // schedule after first finish
+                  mockIndexJsonContentManagerSaveCall(mockedIndexJsonContentManager, resourcesPath + secondNewIndexConfigFile)
+                  result
+                },
+              Task
+                .sleep(200 millis)
+                .flatMap { _ =>
+                  instance.forceReloadAndSave(rorConfigFromResource(resourcesPath + secondNewIndexConfigFile))
+                }
+            ))
+            .runSyncUnsafe()
+            .sequence
+
+          results should be (Right(List((), ())))
         }
       }
     }
@@ -379,11 +475,19 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     }
   }
 
-  private def readonlyRestBoot(factory: CoreFactory) = {
+  private def readonlyRestBoot(factory: CoreFactory,
+                               refreshInterval: Option[FiniteDuration] = None) = {
     new ReadonlyRest {
       override implicit protected val clock: Clock = Clock.systemUTC()
       override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
       override protected def coreFactory: CoreFactory = factory
+      override implicit protected def propertiesProvider: PropertiesProvider =
+        TestsPropertiesProvider.usingMap(
+          refreshInterval match {
+            case Some(interval) => Map("com.readonlyrest.settings.refresh.interval" -> interval.toSeconds.toString)
+            case None => Map.empty
+          }
+        )
     }
   }
 
@@ -397,15 +501,37 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     mockedManager
   }
 
+  private def mockIndexJsonContentManagerSaveCall(mockedManager: IndexJsonContentManager,
+                                                  resourceFileName: String,
+                                                  saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(()))) = {
+    (mockedManager.saveContent _)
+      .expects(".readonlyrest", "settings", "1", Map("settings" -> getResourceContent(resourceFileName)).asJava)
+      .once()
+      .returns(saveResult)
+    mockedManager
+  }
+
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
-                               resourceFileName: String,
-                               aclStaticContext: AccessControlStaticContext = mock[AccessControlStaticContext]) = {
+                              resourceFileName: String,
+                              aclStaticContext: AccessControlStaticContext = mock[AccessControlStaticContext]) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(Task.now(Right(CoreSettings(mock[AccessControl], aclStaticContext, None))))
+    mockedCoreFactory
+  }
+
+  private def mockCoreFactory(mockedCoreFactory: CoreFactory,
+                              resourceFileName: String,
+                              createCoreResult: Task[Either[NonEmptyList[AclCreationError], CoreSettings]]) = {
+    (mockedCoreFactory.createCoreFrom _)
+      .expects(where {
+        (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
+      })
+      .once()
+      .returns(createCoreResult)
     mockedCoreFactory
   }
 
