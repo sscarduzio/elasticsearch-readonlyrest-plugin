@@ -136,6 +136,19 @@ object SingleExtractable {
       }
     }
   }
+
+  case object CurrentGroupVar extends SingleExtractable {
+
+    override def extractUsing(requestContext: RequestContext,
+                              blockContext: BlockContext): Either[ExtractError, String] = {
+      blockContext
+        .currentGroup
+        .map(_.value.value) match {
+        case Some(value) => Right(value)
+        case None => Left(ExtractError(s"Cannot extract user current group from block context"))
+      }
+    }
+  }
 }
 
 sealed trait MultiExtractable extends Extractable[NonEmptyList[String]] {
@@ -200,4 +213,14 @@ object MultiExtractable {
     }
   }
 
+  case object CurrentGroupVar extends MultiExtractable {
+    private val singleCurrentGroupExtractable = SingleExtractable.CurrentGroupVar
+
+    override def extractUsing(requestContext: RequestContext,
+                              blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
+      singleCurrentGroupExtractable
+        .extractUsing(requestContext, blockContext)
+        .map(parseCsvValue)
+    }
+  }
 }

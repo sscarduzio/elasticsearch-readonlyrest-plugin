@@ -31,7 +31,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
 
   "A UriRegexRule" should {
     "be able to be loaded from config" when {
-      "single uri patten is defined" in {
+      "single uri pattern is defined" in {
         assertDecodingSuccess(
           yaml =
             """

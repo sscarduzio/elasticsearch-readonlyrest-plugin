@@ -50,7 +50,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           }
         )
       }
-      "index is defined with variable" in {
+      "index is defined with user variable" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -60,6 +60,24 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |
               |  - name: test_block1
               |    indices: "index_@{user}"
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.allowedIndices.length should be (1)
+            rule.settings.allowedIndices.head shouldBe a [ToBeResolved[_]]
+          }
+        )
+      }
+      "index is defined with group variable" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    indices: "index_@{acl:current_group}"
               |
               |""".stripMargin,
           assertion = rule => {
