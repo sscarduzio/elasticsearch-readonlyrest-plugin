@@ -63,6 +63,13 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
           uriPath = UriPath("/mia")
         )
       }
+      "configured pattern with variable containing namespace matches uri from request when user is logged" in {
+        mockLoggedUser(Some("mia"))
+        assertMatchRule(
+          uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{acl:user}$""")),
+          uriPath = UriPath("/mia")
+        )
+      }
       "second configured pattern with variable matches uri from request when user is logged" in {
         mockLoggedUser(Some("mia"))
         assertMatchRule(

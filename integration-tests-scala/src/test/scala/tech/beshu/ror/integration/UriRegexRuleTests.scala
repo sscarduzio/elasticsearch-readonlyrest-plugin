@@ -40,6 +40,10 @@ class UriRegexRuleTests extends WordSpec with ForAllTestContainer {
       "one of configured patterns matches requested uri" in {
         assertRuleMatchForUser("user3")
       }
+
+      "one of configured patterns resolves based on defined group of user" in {
+        assertRuleMatchForUser("user5")
+      }
     }
 
     "not allow health check" when {

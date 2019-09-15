@@ -117,13 +117,21 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
           )
         variable shouldBe Right("simone")
       }
+      "user variable is used with namespace and there is logged user" in {
+        val variable = forceCreateSingleVariable("@{acl:user}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default).withLoggedUser(DirectlyLoggedUser(User.Id("simone".nonempty)))
+          )
+        variable shouldBe Right("simone")
+      }
       "user multivariable is used and there is logged user" in {
         val variable = forceCreateMultiVariable("@explode{user}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default).withLoggedUser(DirectlyLoggedUser(User.Id("simone,tony".nonempty)))
           )
-        variable shouldBe Right(NonEmptyList.of("simone", "tony"))
+        variable shouldBe Right(NonEmptyList.of("simone,tony"))
       }
     }
     "have not been resolved" when {
@@ -157,6 +165,14 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
             fromRequestContext(requestContext)
           )
         variable shouldBe Right("g1")
+      }
+      "current group multivariable is used and some groups has been added as available" in {
+        val variable = forceCreateMultiVariable("@explode{acl:current_group}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default).withAddedAvailableGroups(UniqueNonEmptyList.of(groupFrom("g1,g2"), groupFrom("g3")))
+          )
+        variable shouldBe Right(NonEmptyList.of("g1,g2"))
       }
     }
   }

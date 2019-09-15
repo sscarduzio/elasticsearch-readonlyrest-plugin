@@ -188,7 +188,7 @@ object MultiExtractable {
                               blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
       singleUserIdExtractable
         .extractUsing(requestContext, blockContext)
-        .map(parseCsvValue)
+        .map(NonEmptyList.one)
     }
   }
 
@@ -220,7 +220,7 @@ object MultiExtractable {
                               blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
       singleCurrentGroupExtractable
         .extractUsing(requestContext, blockContext)
-        .map(parseCsvValue)
+        .map(NonEmptyList.one)
     }
   }
 }

@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.ToBeResolved
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule] with MockFactory {
@@ -104,6 +104,24 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               """uri_re: null
                 |""".stripMargin
             )))
+          }
+        )
+      }
+      "uri pattern uses multivariable" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    uri_re: "^/user/@explode{user}/.*"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Cannot use multi value variable in non-array context")))
           }
         )
       }

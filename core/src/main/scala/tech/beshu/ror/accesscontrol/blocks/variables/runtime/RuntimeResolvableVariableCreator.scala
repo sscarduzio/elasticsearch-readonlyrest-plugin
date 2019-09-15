@@ -109,6 +109,8 @@ object RuntimeResolvableVariableCreator extends Logging {
     value match {
       case regexes.userVar() =>
         Right(`type`.createUserIdExtractable())
+      case regexes.userWithNamespaceVar() =>
+        Right(`type`.createUserIdExtractable())
       case regexes.jwtPayloadPathVar(path) =>
         createJwtExtractable(path, `type`)
       case regexes.explicitHeaderVar(headerName) =>
@@ -141,6 +143,7 @@ object RuntimeResolvableVariableCreator extends Logging {
 
   private object regexes {
     val userVar: Regex = "user".r
+    val userWithNamespaceVar: Regex = "acl:user".r
     val explicitHeaderVar: Regex = "header:(.*)".r
     val jwtPayloadPathVar: Regex = "jwt:(.*)".r
     val currentGroupVar: Regex = "acl:current_group".r
