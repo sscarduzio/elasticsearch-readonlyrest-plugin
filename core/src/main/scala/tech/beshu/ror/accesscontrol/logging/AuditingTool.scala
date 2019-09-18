@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.show.ObfuscatedHeaderShowFactory
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.AuditSink

@@ -25,10 +25,11 @@ import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult, UserMetadataRelatedRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, UserMetadataRelatedRule}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.logging.{LoggingContext, ObfuscatedHeaderShowFactory}
+import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.show.ObfuscatedHeaderShowFactory
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 

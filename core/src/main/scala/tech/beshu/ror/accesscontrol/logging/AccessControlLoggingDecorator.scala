@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.show.ObfuscatedHeaderShowFactory
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 
