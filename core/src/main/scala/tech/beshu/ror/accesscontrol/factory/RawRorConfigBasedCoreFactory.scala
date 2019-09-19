@@ -176,7 +176,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     rulesNelDecoder(definitions)
       .toSyncDecoder
       .emapE { rules =>
-        RulesValidator.validate(rules) match {
+        RulesValidator.validate(rules.sorted) match {
           case Validated.Valid(_) => Right(rules)
           case Validated.Invalid(errors) =>
             implicit val validationErrorShow: Show[ValidationError] = blockValidationErrorShow(blockName)

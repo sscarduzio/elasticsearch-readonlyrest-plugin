@@ -45,7 +45,7 @@ class IndicesRule(val settings: Settings)
 
   import IndicesCheckContinuation._
   override type VARIABLE = RuntimeMultiResolvableVariable[IndexName]
-  override val uses = settings.allowedIndices.toNonEmptyList
+  override val usedVariables = settings.allowedIndices.toNonEmptyList
   override val name: Rule.Name = IndicesRule.name
 
   private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))

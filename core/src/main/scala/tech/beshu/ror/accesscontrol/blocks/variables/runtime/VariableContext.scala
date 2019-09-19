@@ -1,3 +1,19 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.data.NonEmptyList
@@ -19,25 +35,24 @@ object VariableContext {
   trait UsingVariable {
     this: Rule =>
     type VARIABLE <: RuntimeResolvableVariable[_]
-    def uses: NonEmptyList[VARIABLE]
+    def usedVariables: NonEmptyList[VARIABLE]
 
-    def extractVariablesTypes: List[VariableType] = {
-      uses.toList.flatMap {
-        case v: RuntimeSingleResolvableVariable[_] => v match {
-            case RuntimeSingleResolvableVariable.AlreadyResolved(_) => List.empty
-            case RuntimeSingleResolvableVariable.ToBeResolved(extractables) =>
-              extractables.collect { case e: VariableContext.VariableType => e }
-          }
-        case v: RuntimeMultiResolvableVariable[_] => v match {
-          case RuntimeMultiResolvableVariable.AlreadyResolved(_) => List.empty
-          case RuntimeMultiResolvableVariable.ToBeResolved(extractables) =>
-            extractables.collect {
-              case e: SingleExtractableWrapper if e.extractable.isInstanceOf[VariableContext.VariableType] => e.extractable.asInstanceOf[VariableContext.VariableType]
-              case e: VariableContext.VariableType => e
-            }
-        }
+    def extractVariablesTypesFromExtractables: List[VariableType] = {
+      usedVariables.toList flatMap {
+        case RuntimeSingleResolvableVariable.ToBeResolved(extractables) => extractSingle(extractables)
+        case RuntimeMultiResolvableVariable.ToBeResolved(extractables) => extractMulti(extractables)
+        case _ => List.empty
       }
     }
+
+    private def extractSingle(extractables: NonEmptyList[SingleExtractable]) =
+      extractables.collect { case e: VariableContext.VariableType => e }
+
+    private def extractMulti(extractables: NonEmptyList[MultiExtractable]) =
+      extractables.collect {
+        case SingleExtractableWrapper(extractable: VariableContext.VariableType) => extractable
+        case e: VariableContext.VariableType => e
+      }
   }
 
   sealed trait Requirement {
@@ -77,7 +92,7 @@ object VariableContext {
 
     def check[A <: Rule with UsingVariable](verifiedRule: A, otherRules: NonEmptyList[Rule]) = {
       val rulesBefore = findRulesListedBeforeGivenRule(verifiedRule, otherRules)
-      verifiedRule.extractVariablesTypes
+      verifiedRule.extractVariablesTypesFromExtractables
         .flatMap(checkSingleVariableBasedOn(rulesBefore))
     }
 

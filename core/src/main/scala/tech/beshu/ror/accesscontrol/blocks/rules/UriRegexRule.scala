@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 class UriRegexRule(val settings: Settings)
   extends RegularRule with UsingVariable {
   override type VARIABLE = RuntimeSingleResolvableVariable[Pattern]
-  override val uses = settings.uriPatterns.toNonEmptyList
+  override val usedVariables = settings.uriPatterns.toNonEmptyList
 
   override val name: Rule.Name = UriRegexRule.name
 
