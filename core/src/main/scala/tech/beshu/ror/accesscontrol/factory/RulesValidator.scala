@@ -21,13 +21,16 @@ import cats.data.{NonEmptyList, Validated, _}
 import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, KibanaAccessRule, Rule}
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableContext.{Requirement, RequirementChecker, UsingVariable}
+import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError.RuleDoesNotMeetRequirement
 
 object RulesValidator {
 
   def validate(rules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
     (
       validateAuthorizationWithAuthenticationPrinciple(rules),
-      validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules)
+      validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules),
+      validateRequirementsForRulesUsingVariables(rules)
     ).mapN { case _ => () }
   }
 
@@ -36,6 +39,20 @@ object RulesValidator {
       case None => Validated.Valid(())
       case Some(_) if rules.exists(_.isInstanceOf[AuthenticationRule]) => Validated.Valid(())
       case Some(_) => Validated.Invalid(NonEmptyList.one(ValidationError.AuthorizationWithoutAuthentication))
+    }
+  }
+
+  private def validateRequirementsForRulesUsingVariables(rules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
+    rules.collect { case r: UsingVariable => r }
+      .map { rule =>
+        val allNotCompliedRequirements = RequirementChecker.check(rule, rules).collect { case r: Requirement.Result.NotComplied => r }
+        allNotCompliedRequirements match {
+          case Nil => Validated.Valid(())
+          case head :: tail => Validated.Invalid(NonEmptyList(head, tail).map(_.reason).map(RuleDoesNotMeetRequirement))
+        }
+      } match {
+      case Nil => Validated.Valid(())
+      case ::(head, tl) => NonEmptyList(head, tl).sequence_
     }
   }
 
@@ -54,6 +71,7 @@ object RulesValidator {
   object ValidationError {
     case object AuthorizationWithoutAuthentication extends ValidationError
     case object KibanaAccessRuleTogetherWithActionsRule extends ValidationError
+    final case class RuleDoesNotMeetRequirement(reason: Requirement.Result.Reason) extends ValidationError
   }
 
 }

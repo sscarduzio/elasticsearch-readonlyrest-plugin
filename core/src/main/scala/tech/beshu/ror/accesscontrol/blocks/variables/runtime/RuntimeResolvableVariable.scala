@@ -21,6 +21,7 @@ import cats.implicits._
 import com.github.tototoshi.csv.{CSVParser, DefaultCSVFormat}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.variables.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.Extractable.ExtractError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
@@ -91,7 +92,7 @@ object SingleExtractable {
                               blockContext: BlockContext): Either[ExtractError, String] = Right(value)
   }
 
-  case object UserIdVar extends SingleExtractable {
+  case object UserIdVar extends SingleExtractable with VariableType.User {
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, String] = {
       blockContext
@@ -103,7 +104,7 @@ object SingleExtractable {
     }
   }
 
-  final case class HeaderVar(header: Header.Name) extends SingleExtractable {
+  final case class HeaderVar(header: Header.Name) extends SingleExtractable with VariableType.Header {
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, String] = {
       requestContext
@@ -116,7 +117,7 @@ object SingleExtractable {
     }
   }
 
-  final case class JwtPayloadVar(jsonPath: JsonPath) extends SingleExtractable {
+  final case class JwtPayloadVar(jsonPath: JsonPath) extends SingleExtractable with VariableType.Jwt {
     private val varClaim = ClaimName(jsonPath)
 
     override def extractUsing(requestContext: RequestContext,
@@ -137,7 +138,7 @@ object SingleExtractable {
     }
   }
 
-  case object CurrentGroupVar extends SingleExtractable {
+  case object CurrentGroupVar extends SingleExtractable with VariableType.CurrentGroup {
 
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, String] = {
@@ -181,7 +182,7 @@ object MultiExtractable {
         .map(NonEmptyList.one)
   }
 
-  case object UserIdVar extends MultiExtractable {
+  case object UserIdVar extends MultiExtractable with VariableType.User {
     private val singleUserIdExtractable = SingleExtractable.UserIdVar
 
     override def extractUsing(requestContext: RequestContext,
@@ -192,7 +193,7 @@ object MultiExtractable {
     }
   }
 
-  final case class HeaderVar(header: Header.Name) extends MultiExtractable {
+  final case class HeaderVar(header: Header.Name) extends MultiExtractable with VariableType.Header {
     private val singleHeaderExtractable = SingleExtractable.HeaderVar(header)
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
@@ -202,7 +203,7 @@ object MultiExtractable {
     }
   }
 
-  final case class JwtPayloadVar(jsonPath: JsonPath) extends MultiExtractable {
+  final case class JwtPayloadVar(jsonPath: JsonPath) extends MultiExtractable with VariableType.Jwt {
     private val singleJwtPayloadExtractable = SingleExtractable.JwtPayloadVar(jsonPath)
 
     override def extractUsing(requestContext: RequestContext,
@@ -213,7 +214,7 @@ object MultiExtractable {
     }
   }
 
-  case object CurrentGroupVar extends MultiExtractable {
+  case object CurrentGroupVar extends MultiExtractable with VariableType.CurrentGroup {
     private val singleCurrentGroupExtractable = SingleExtractable.CurrentGroupVar
 
     override def extractUsing(requestContext: RequestContext,

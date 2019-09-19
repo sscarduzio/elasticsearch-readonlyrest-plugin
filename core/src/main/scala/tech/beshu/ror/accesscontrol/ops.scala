@@ -207,6 +207,8 @@ object show {
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
       case ValidationError.KibanaAccessRuleTogetherWithActionsRule =>
         s"The '${block.show}' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block."
+      case ValidationError.RuleDoesNotMeetRequirement(details) =>
+        s"The '${block.show}' block doesn't meet requirements for defined variables. ${details.value}"
     }
     private def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {
       if(traversable.isEmpty) None
