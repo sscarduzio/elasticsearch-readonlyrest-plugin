@@ -21,7 +21,7 @@ import cats.data.{NonEmptyList, Validated, _}
 import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, KibanaAccessRule, Rule}
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableContext.{Requirement, RequirementChecker, UsingVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{Requirement, RequirementChecker, UsingVariable}
 import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError.RuleDoesNotMeetRequirement
 
 object RulesValidator {

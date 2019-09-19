@@ -1,24 +1,43 @@
-package tech.beshu.ror.accesscontrol.blocks.variables
+package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableContext.Requirement.Result.Reason
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Requirement.Result.Reason
 
 object VariableContext {
 
   sealed trait VariableType
 
   object VariableType {
-
     trait User extends VariableType
     trait CurrentGroup extends VariableType
     trait Header extends VariableType
     trait Jwt extends VariableType
-
   }
 
   trait UsingVariable {
-    def uses: List[VariableType]
+    this: Rule =>
+    type VARIABLE <: RuntimeResolvableVariable[_]
+    def uses: NonEmptyList[VARIABLE]
+
+    def extractVariablesTypes: List[VariableType] = {
+      uses.toList.flatMap {
+        case v: RuntimeSingleResolvableVariable[_] => v match {
+            case RuntimeSingleResolvableVariable.AlreadyResolved(_) => List.empty
+            case RuntimeSingleResolvableVariable.ToBeResolved(extractables) =>
+              extractables.collect { case e: VariableContext.VariableType => e }
+          }
+        case v: RuntimeMultiResolvableVariable[_] => v match {
+          case RuntimeMultiResolvableVariable.AlreadyResolved(_) => List.empty
+          case RuntimeMultiResolvableVariable.ToBeResolved(extractables) =>
+            extractables.collect {
+              case e: SingleExtractableWrapper if e.extractable.isInstanceOf[VariableContext.VariableType] => e.extractable.asInstanceOf[VariableContext.VariableType]
+              case e: VariableContext.VariableType => e
+            }
+        }
+      }
+    }
   }
 
   sealed trait Requirement {
@@ -49,27 +68,22 @@ object VariableContext {
           case _ => Result.Complied
         }
     }
-
   }
-
 
   object RequirementChecker {
 
     def findRulesListedBeforeGivenRule[A <: Rule with UsingVariable](rule: A, otherRules: NonEmptyList[Rule]) =
       otherRules.toList.takeWhile(_ != rule)
 
-    def check[A <: Rule with UsingVariable](rule: A, otherRules: NonEmptyList[Rule]) = {
-      val rulesBefore = findRulesListedBeforeGivenRule(rule, otherRules)
-      val results = rule.uses
-        .flatMap { usedVariable =>
-          val maybeRequirement = Requirements.definedFor(usedVariable)
-          val result = maybeRequirement
-            .map { req =>
-              req.checkIfComplies(rulesBefore)
-            }
-          result
-        }
-      results
+    def check[A <: Rule with UsingVariable](verifiedRule: A, otherRules: NonEmptyList[Rule]) = {
+      val rulesBefore = findRulesListedBeforeGivenRule(verifiedRule, otherRules)
+      verifiedRule.extractVariablesTypes
+        .flatMap(checkSingleVariableBasedOn(rulesBefore))
+    }
+
+    private def checkSingleVariableBasedOn (rulesBefore: List[Rule])(usedVariable: VariableType) = {
+        Requirements.definedFor(usedVariable)
+          .map(_.checkIfComplies(rulesBefore))
     }
   }
 

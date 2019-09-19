@@ -25,10 +25,13 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule.{CanPass, Settings}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation, ZeroKnowledgeIndexFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.domain.Action.{mSearchAction, searchAction}
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.orders._
@@ -36,14 +39,13 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 
 import scala.language.postfixOps
-import StringTNaturalTransformation.instances.stringIndexNameNT
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
 
 class IndicesRule(val settings: Settings)
-  extends RegularRule with Logging {
+  extends RegularRule with Logging with UsingVariable {
 
   import IndicesCheckContinuation._
-
+  override type VARIABLE = RuntimeMultiResolvableVariable[IndexName]
+  override val uses = settings.allowedIndices.toNonEmptyList
   override val name: Rule.Name = IndicesRule.name
 
   private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))

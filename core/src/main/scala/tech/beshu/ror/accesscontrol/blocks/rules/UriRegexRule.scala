@@ -23,14 +23,14 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableContext
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class UriRegexRule(val settings: Settings)
   extends RegularRule with UsingVariable {
+  override type VARIABLE = RuntimeSingleResolvableVariable[Pattern]
+  override val uses = settings.uriPatterns.toNonEmptyList
 
   override val name: Rule.Name = UriRegexRule.name
 
@@ -40,13 +40,6 @@ class UriRegexRule(val settings: Settings)
       settings
         .uriPatterns
         .exists(variableMatchingRequestedUri(requestContext, blockContext))
-    }
-  }
-
-  override def uses: List[VariableContext.VariableType] = {
-    settings.uriPatterns.toNonEmptyList.toList.flatMap {
-      case AlreadyResolved(_) => List.empty
-      case ToBeResolved(extractables) => extractables.collect { case e: VariableContext.VariableType => e }
     }
   }
 

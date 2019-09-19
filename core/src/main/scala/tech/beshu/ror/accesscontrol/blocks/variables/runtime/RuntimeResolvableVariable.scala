@@ -21,7 +21,7 @@ import cats.implicits._
 import com.github.tototoshi.csv.{CSVParser, DefaultCSVFormat}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.variables.VariableContext.VariableType
+import VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.Extractable.ExtractError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
