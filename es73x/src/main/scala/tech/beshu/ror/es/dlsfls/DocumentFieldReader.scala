@@ -28,8 +28,9 @@ import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
 import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XContentType}
 import tech.beshu.ror.Constants
-import DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader
+import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader
 import tech.beshu.ror.utils.MatcherWithWildcardsAndNegations
+import ujson._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -120,16 +121,76 @@ private class DocumentFieldReader(reader: LeafReader, fields: Set[String])
           visitor.binaryField(fieldInfo, value)
         } else {
           val xContentTypeMapTuple = XContentHelper.convertToMap(new BytesArray(value), false, XContentType.JSON)
-          val map = xContentTypeMapTuple.v2
 
-          val it = map.keySet.iterator
-          while (it.hasNext) if (!policy.canKeep(it.next)) it.remove()
+          val xBuilder = buildFilteredResponse(
+            XContentBuilder.builder(xContentTypeMapTuple.v1.xContent),
+            ujson.read(value)
+          )
 
-          val xBuilder = XContentBuilder.builder(xContentTypeMapTuple.v1.xContent).map(map)
           val out = new ByteArrayOutputStream
           BytesReference.bytes(xBuilder).writeTo(out)
           visitor.binaryField(fieldInfo, out.toByteArray)
         }
+      }
+
+      private def buildFilteredResponse(builder: XContentBuilder, json: Value): XContentBuilder = {
+        buildFilteredResponse(builder, None, json,  "")
+      }
+
+      private def buildFilteredResponse(builder: XContentBuilder, key: Option[String], json: Value, collectedField: String): XContentBuilder = {
+        def startObject(currentBuilder: XContentBuilder) = key match {
+          case Some(name) => currentBuilder.startObject(name)
+          case None => currentBuilder.startObject()
+        }
+        def startArray(currentBuilder: XContentBuilder) = key match {
+          case Some(name) => currentBuilder.startArray(name)
+          case None => currentBuilder.startArray()
+        }
+        json match {
+          case Obj(map) =>
+            map
+              .foldLeft(startObject(builder)) {
+                case (currentBuilder, (fieldName, fieldValue)) =>
+                  val newlyCollectedField = currentField(collectedField, fieldName)
+                  if(policy.canKeep(newlyCollectedField)) {
+                    buildFilteredResponse(currentBuilder, Some(fieldName), fieldValue, newlyCollectedField)
+                  } else {
+                    currentBuilder
+                  }
+              }
+              .endObject()
+          case Arr(values) =>
+            values
+              .foldLeft(startArray(builder)) {
+                case (currentBuilder, arrayObject) =>
+                  buildFilteredResponse(currentBuilder, None, arrayObject, collectedField)
+              }
+              .endArray()
+          case Str(value) =>
+            key match {
+              case Some(aKey) => builder.field(aKey, value)
+              case None => builder.value(value)
+            }
+          case Num(value) =>
+            key match {
+              case Some(aKey) => builder.field(aKey, value)
+              case None => builder.value(value)
+            }
+          case Bool(value) =>
+            key match {
+              case Some(aKey) => builder.field(aKey, value)
+              case None => builder.value(value)
+            }
+          case Null =>
+            key match {
+              case Some(aKey) => builder.nullField(aKey)
+              case None => builder.nullValue()
+            }
+        }
+      }
+
+      private def currentField(collectedField: String, currentFieldPart: String) = {
+        if(collectedField.isEmpty) currentFieldPart else s"$collectedField.$currentFieldPart"
       }
     })
   }
@@ -142,9 +203,7 @@ private class DocumentFieldReader(reader: LeafReader, fields: Set[String])
     private val fieldsMatcher = new MatcherWithWildcardsAndNegations(fields.asJava)
 
     def canKeep(field: String): Boolean = {
-      val indexOfDot = field.lastIndexOf('.')
-      val newField = if (indexOfDot > 0) field.substring(0, indexOfDot) else field
-      Constants.FIELDS_ALWAYS_ALLOW.contains(newField) || fieldsMatcher.`match`(newField)
+      Constants.FIELDS_ALWAYS_ALLOW.contains(field) || fieldsMatcher.`match`(field)
     }
   }
 

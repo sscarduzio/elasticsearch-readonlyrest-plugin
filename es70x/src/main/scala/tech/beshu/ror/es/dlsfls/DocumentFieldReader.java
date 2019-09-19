@@ -74,8 +74,13 @@ public class DocumentFieldReader extends FilterLeafReader {
       remainingFieldsInfo = fInfos;
     }
     else {
-      Set<FieldInfo> remainingFields = StreamSupport.stream(fInfos.spliterator(), false).filter(x -> policy.canKeep(x.name)).collect(Collectors.toSet());
-      this.remainingFieldsInfo = new FieldInfos(remainingFields.toArray(new FieldInfo[remainingFields.size()]));
+      this.remainingFieldsInfo = new FieldInfos(
+          StreamSupport
+              .stream(fInfos.spliterator(), false)
+              .filter(x -> policy.canKeep(x.name))
+              .distinct()
+              .toArray(FieldInfo[]::new)
+      );
     }
     if (logger.isDebugEnabled()) {
       logger.debug("always allow: " + Constants.FIELDS_ALWAYS_ALLOW);
@@ -225,7 +230,9 @@ public class DocumentFieldReader extends FilterLeafReader {
           visitor.binaryField(fieldInfo, value);
           return;
         }
-        Tuple<XContentType, Map<String, Object>> xContentTypeMapTuple = XContentHelper.convertToMap(new BytesArray(value), false, XContentType.JSON);
+        Tuple<XContentType, Map<String, Object>> xContentTypeMapTuple = XContentHelper.convertToMap(
+            new BytesArray(value), false, XContentType.JSON
+        );
         Map<String, Object> map = xContentTypeMapTuple.v2();
 
         Iterator<String> it = map.keySet().iterator();
@@ -304,10 +311,10 @@ public class DocumentFieldReader extends FilterLeafReader {
     }
 
     public boolean canKeep(String field) {
-      int indexOfDot = field.lastIndexOf('.');
-      if(indexOfDot > 0){
-        field = field.substring(0, indexOfDot);
-      }
+//      int indexOfDot = field.lastIndexOf('.');
+//      if(indexOfDot > 0){
+//        field = field.substring(0, indexOfDot);
+//      }
       if (Constants.FIELDS_ALWAYS_ALLOW.contains(field)) {
         return true;
       }
