@@ -28,7 +28,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
-import io.circe.yaml._
+import tech.beshu.ror.utils._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -140,8 +140,8 @@ object TestsUtils {
     (pair.getPublic, pair.getPrivate)
   }
 
-  def rorConfigFrom(yaml: String): RawRorConfig = {
-    RawRorConfig(parser.parse(yaml).right.get, yaml)
+  def rorConfigFrom(yamlContent: String): RawRorConfig = {
+    RawRorConfig(yaml.parser.parse(yamlContent).right.get, yamlContent)
   }
 
   def rorConfigFromResource(resource: String): RawRorConfig = {

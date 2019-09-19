@@ -23,6 +23,7 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.utils.ADecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
+import tech.beshu.ror.utils.yaml
 
 import scala.language.higherKinds
 
@@ -51,9 +52,10 @@ abstract class BaseDecoderTest[F[_] : Functor, A, B](decoder: ADecoder[F, A])
     decode(yaml).map(_.fold(ex => throw ex, identity))
   }
 
-  private def decode(yaml: String): F[Either[DecodingFailure, A]] = {
-    io.circe.yaml.parser
-      .parse(yaml)
+  private def decode(yamlContent: String): F[Either[DecodingFailure, A]] = {
+    yaml
+      .parser
+      .parse(yamlContent)
       .map(json =>
         decoder
           .apply(json.hcursor)

@@ -107,6 +107,18 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
   }
 
+  private def badTokenLogger(ex: Throwable, token: JwtToken): Unit = {
+    val tokenParts = token.show.split(".")
+    val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length == 3) {
+      // signed JWT, last block is the cryptographic digest, which should be treated as a secret.
+      s"${tokenParts(0)}.${tokenParts(1)} (omitted digest)"
+    }
+    else {
+      token.show
+    }
+    logger.errorEx(s"JWT token '${printableToken}' parsing error: " + ex.getClass.getSimpleName + " " + ex.getMessage, ex)
+  }
+
   private def claimsFrom(token: JwtToken) = {
     settings.jwt.checkMethod match {
       case NoCheck(_) =>
@@ -116,8 +128,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
               .toEither
               .map(JwtTokenPayload.apply)
               .left.map { ex =>
-              logger.errorEx(s"JWT token '${token.show}' parsing error: " + ex.getClass.getSimpleName, ex)
-              ()
+                badTokenLogger(ex, token)
             }
           case _ =>
             Left(())
@@ -127,8 +138,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
           .toEither
           .map(JwtTokenPayload.apply)
           .left.map { ex =>
-          logger.errorEx(s"JWT token '${token.show}' parsing error: " + ex.getClass.getSimpleName, ex)
-          ()
+            badTokenLogger(ex, token)
         }
     }
   }

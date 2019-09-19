@@ -24,7 +24,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.utils.YamlOps
+import tech.beshu.ror.utils.yaml.YamlOps
 
 import scala.annotation.tailrec
 import scala.language.{higherKinds, implicitConversions}
