@@ -38,7 +38,7 @@ public class MatcherWithWildcardsAndNegations {
     m = new MatcherWithWildcards(Sets.newHashSet(fieldLists.get(false)));
     this.positivePatterns = m.getMatchers().isEmpty() ? null : m;
 
-    m = new MatcherWithWildcards(Sets.newHashSet(fieldLists.get(true).stream().map(x -> x.substring(1, x.length())).collect(Collectors.toSet())));
+    m = new MatcherWithWildcards(Sets.newHashSet(fieldLists.get(true).stream().map(x -> x.substring(1)).collect(Collectors.toSet())));
     this.negativePatterns = m.getMatchers().isEmpty() ? null : m;
   }
 
@@ -49,7 +49,7 @@ public class MatcherWithWildcardsAndNegations {
     }
 
     // If positive matchers exist and the field does not match them, we bar it.
-    if (this.positivePatterns != null && !this.positivePatterns.match(fieldName)) {
+    if (this.positivePatterns != null && !this.positivePatterns.match(fieldName) && !this.positivePatterns.match(fieldName + ".*")) {
       return false;
     }
 

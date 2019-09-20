@@ -13,9 +13,22 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: Test restricted access
-      type: allow
+    - name: Nested field test1
+      auth_key: "user1:pass"
       indices: ["*"]
-      fields: ["~items.endDate", "~secrets*"]
-      auth_key: dev:test
+      fields: ["_source", "items.endDate", "secrets"]
 
+    - name: Nested field test2
+      auth_key: "user2:pass"
+      indices: ["*"]
+      fields: ["_source", "items.*Date", "secrets*"]
+
+    - name: Nested field test3
+      auth_key: "user3:pass"
+      indices: ["*"]
+      fields: ["~items.endDate", "~secrets"]
+
+    - name: Nested field test4
+      auth_key: "user4:pass"
+      indices: ["*"]
+      fields: ["~items.*Date", "~secrets*"]
