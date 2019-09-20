@@ -22,7 +22,6 @@ import java.time.Duration
 import java.util.Base64
 
 import better.files.File
-import cats.Show
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
