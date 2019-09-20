@@ -19,9 +19,10 @@ package tech.beshu.ror.accesscontrol.logging
 import java.time.{Clock, Instant}
 import java.time.format.DateTimeFormatter
 
+import cats.Show
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.Address
+import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
@@ -33,7 +34,8 @@ import tech.beshu.ror.es.AuditSink
 
 class AuditingTool(settings: Settings,
                    auditSink: AuditSink)
-                  (implicit clock: Clock) {
+                  (implicit clock: Clock,
+                   loggingContext: LoggingContext) {
 
   def audit(response: ResponseContext): Task[Unit] = {
     safeRunSerializer(response)
@@ -79,6 +81,7 @@ class AuditingTool(settings: Settings,
                                     blockContext: Option[BlockContext],
                                     historyEntries: Vector[History]): AuditRequestContext = {
     new AuditRequestContext {
+      implicit val showHeader:Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       override val timestamp: Instant = requestContext.timestamp
       override val id: String = requestContext.id.value
       override val indices: Set[String] = requestContext.indices.map(_.value.value)

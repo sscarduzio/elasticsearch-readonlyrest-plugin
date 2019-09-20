@@ -188,7 +188,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         mockCoreFactory(coreFactory, resourcesPath + firstNewIndexConfigFile)
         mockCoreFactory(coreFactory, resourcesPath + secondNewIndexConfigFile,
           createCoreResult =
-            Task.sleep(100 millis).map(_ => Right(CoreSettings(mock[AccessControl], mock[AccessControlStaticContext], None))) // very long creation
+            Task.sleep(100 millis).map(_ => Right(CoreSettings(mock[AccessControl], mockAccessControlStaticContext, None))) // very long creation
         )
         mockIndexJsonContentManagerSaveCall(
           mockedIndexJsonContentManager,
@@ -512,8 +512,8 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
   }
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
-                              resourceFileName: String,
-                              aclStaticContext: AccessControlStaticContext = mock[AccessControlStaticContext]) = {
+                               resourceFileName: String,
+                               aclStaticContext: AccessControlStaticContext = mockAccessControlStaticContext) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
@@ -523,6 +523,14 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     mockedCoreFactory
   }
 
+  private def mockAccessControlStaticContext = {
+    val mockedContext = mock[AccessControlStaticContext]
+    (mockedContext.obfuscatedHeaders _)
+      .expects()
+      .once()
+      .returns(Set.empty)
+    mockedContext
+  }
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                               resourceFileName: String,
                               createCoreResult: Task[Either[NonEmptyList[AclCreationError], CoreSettings]]) = {

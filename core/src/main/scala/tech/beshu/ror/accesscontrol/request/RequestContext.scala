@@ -72,7 +72,8 @@ object RequestContext extends Logging {
 
   def show(loggedUser: Option[LoggedUser],
            kibanaIndex: Option[IndexName],
-           history: Vector[Block.History]): Show[RequestContext] =
+           history: Vector[Block.History])
+          (implicit headerShow: Show[Header]): Show[RequestContext] =
     Show.show { r =>
       def stringifyLoggedUser = {
         loggedUser match {
@@ -93,7 +94,6 @@ object RequestContext extends Logging {
         if (idx.isEmpty) "<N/A>"
         else idx.mkString(",")
       }
-
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
@@ -141,8 +141,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   def isCurrentGroupEligible(groups: UniqueNonEmptyList[Group]): Boolean = {
     requestContext.currentGroup match {
       case RequestGroup.AGroup(preferredGroup) =>
-        if(requestContext.uriPath.isCurrentUserMetadataPath) true
-        else groups.contains(preferredGroup)
+        requestContext.uriPath.isCurrentUserMetadataPath || groups.contains(preferredGroup)
       case RequestGroup.`N/A` =>
         true
     }
