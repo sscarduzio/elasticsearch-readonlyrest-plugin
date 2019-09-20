@@ -27,12 +27,14 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Poli
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class Acl(val blocks: NonEmptyList[Block])
+class AccessControlList(val blocks: NonEmptyList[Block])
+                       (implicit val loggingContext: LoggingContext)
   extends AccessControl {
 
   override def handleRegularRequest(context: RequestContext): Task[WithHistory[RegularRequestResult]] = {

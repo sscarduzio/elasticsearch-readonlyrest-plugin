@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -37,6 +38,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 
 object TestsUtils {
+  implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
 
   def basicAuthHeader(value: String): Header =
     Header(Name(NonEmptyString.unsafeFrom("Authorization")), NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes)))

@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.consts.RorProperties
 import tech.beshu.ror.accesscontrol.factory.consts.RorProperties.RefreshInterval
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool}
+import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
@@ -62,7 +62,8 @@ object Ror extends ReadonlyRest {
 
   override protected val coreFactory: CoreFactory = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    implicit val _ = envVarsProvider
+    implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
+    implicit val envVarsProviderImplicit: EnvVarsProvider = envVarsProvider
     new RawRorConfigBasedCoreFactory
   }
 }
@@ -176,14 +177,13 @@ trait ReadonlyRest extends Logging {
         result
           .right
           .map { coreSettings =>
+            implicit val loggingContext = LoggingContext(coreSettings.aclStaticContext.obfuscatedHeaders)
             val engine = new Engine(
-              new AccessControlLoggingDecorator(
-                coreSettings.aclEngine,
-                coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
+              accessControl = new AccessControlLoggingDecorator(
+                underlying = coreSettings.aclEngine,
+                auditingTool = coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
               ),
-              coreSettings.aclStaticContext,
-              httpClientsFactory
-            )
+              context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory)
             engine
           }
           .left

@@ -20,16 +20,20 @@ import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.rules.{FieldsRule, FilterRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.accesscontrol.domain.Header
 
 trait AccessControlStaticContext {
   def involvesFilter: Boolean
   def doesRequirePassword: Boolean
   def forbiddenRequestMessage: String
+  def obfuscatedHeaders: Set[Header.Name]
 }
 
 class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
                                         showBasicAuthPrompt: Boolean,
-                                        val forbiddenRequestMessage: String)
+                                        val forbiddenRequestMessage: String,
+                                        override val obfuscatedHeaders: Set[Header.Name],
+                                       )
   extends AccessControlStaticContext {
 
   val involvesFilter: Boolean = {
@@ -64,4 +68,5 @@ object DisabledAccessControlStaticContext$ extends AccessControlStaticContext {
   override val involvesFilter: Boolean = false
   override val doesRequirePassword: Boolean = false
   override val forbiddenRequestMessage: String = ""
+  override val obfuscatedHeaders: Set[Header.Name] = Set.empty
 }

@@ -39,6 +39,7 @@ import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
 import tech.beshu.ror.es.AuditSink
 
 class AuditingToolTests extends WordSpec with MockFactory {
+  import tech.beshu.ror.utils.TestsUtils.loggingContext
 
   "Auditing tool used with DefaultAuditLogSerializer" should {
     "not submit any audit entry" when {
