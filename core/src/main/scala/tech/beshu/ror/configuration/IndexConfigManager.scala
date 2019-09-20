@@ -36,12 +36,12 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager)
   override def load(): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
     indexContentManager
       .sourceOf(auditIndexConsts.indexName, auditIndexConsts.typeName, auditIndexConsts.id)
-      .map {
+      .flatMap {
         case Right(source) =>
           source.asScala
             .collect { case (key: String, value: String) => (key, value) }.toMap
             .find(_._1 == auditIndexConsts.settingsKey)
-            .map { case (_, rorYamlString) => RawRorConfig.fromString(rorYamlString).left.map(ParsingError.apply) }
+            .map { case (_, rorYamlString) => RawRorConfig.fromString(rorYamlString).map(_.left.map(ParsingError.apply)) }
             .getOrElse(configLoaderError(IndexConfigUnknownStructure))
         case Left(CannotReachContentSource) =>
           configLoaderError(IndexConfigNotExist)
@@ -67,7 +67,7 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager)
       }
   }
 
-  private def configLoaderError(error: IndexConfigError) = Left(SpecializedError[IndexConfigError](error))
+  private def configLoaderError(error: IndexConfigError) = Task.now(Left(SpecializedError[IndexConfigError](error)))
 }
 
 object IndexConfigManager {

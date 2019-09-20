@@ -100,7 +100,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     preferredGroup match {
       case Some(pg) =>
         allGroupsWithRelatedBlockContexts
-          .find(_._1 == pg)
+          .find { case (group, _) => group == pg }
           .map { case (currentGroup, blockContext) =>
             createUserMetadata(blockContext, Some(currentGroup), UniqueList.fromList(allGroupsWithRelatedBlockContexts.map(_._1)))
           }

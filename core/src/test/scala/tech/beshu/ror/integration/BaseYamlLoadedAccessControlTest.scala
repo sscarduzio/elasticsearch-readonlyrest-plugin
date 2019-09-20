@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.integration
 
-import cats.implicits._
 import java.time.Clock
 
-import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.mocks.MockHttpClientsFactory
+import cats.implicits._
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.accesscontrol.AccessControl
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory
 import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers._
 import tech.beshu.ror.unit.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
@@ -41,14 +41,13 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
     new RawRorConfigBasedCoreFactory
   }
 
-  lazy val acl: AccessControl = factory
-    .createCoreFrom(
-      RawRorConfig.fromString(configYaml).fold(err => throw new IllegalStateException(err.show), identity),
-      MockHttpClientsFactory
-    )
-    .map {
-      case Left(err) => throw new IllegalStateException(s"Cannot create ACL: $err")
-      case Right(CoreSettings(aclEngine, _, _)) => aclEngine
-    }
-    .runSyncUnsafe()
+  lazy val acl: AccessControl = {
+    val aclEngineT = for {
+      config <- RawRorConfig.fromString(configYaml)
+        .map(_.fold(err => throw new IllegalStateException(err.show), identity))
+      core <- factory.createCoreFrom(config, MockHttpClientsFactory)
+        .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), identity))
+    } yield core.aclEngine
+    aclEngineT.runSyncUnsafe()
+  }
 }

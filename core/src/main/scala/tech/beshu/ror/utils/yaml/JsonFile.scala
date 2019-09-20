@@ -14,13 +14,28 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.misc;
+package tech.beshu.ror.utils.yaml
 
-import io.circe.Json;
-import io.circe.yaml.parser.package$;
+import better.files.File
+import io.circe.Decoder
+import tech.beshu.ror.utils.yaml
 
-public class CirceJsonHelper {
-  public static Json jsonFrom(String yaml) {
-    return package$.MODULE$.parse(yaml).right().get();
+class JsonFile(file: File) {
+
+  def parse[T](implicit decoder: Decoder[T]): Either[String, T] = {
+    file.fileReader { reader =>
+      yaml
+        .parser
+        .parse(reader)
+        .left.map(_.message)
+        .right
+        .flatMap { json =>
+          decoder
+            .decodeJson(json)
+            .left.map(_.message)
+        }
+    }
   }
 }
+
+

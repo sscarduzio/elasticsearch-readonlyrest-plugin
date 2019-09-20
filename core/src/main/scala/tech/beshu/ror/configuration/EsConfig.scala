@@ -24,7 +24,7 @@ import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
-import tech.beshu.ror.utils.JsonFile
+import tech.beshu.ror.utils.yaml.JsonFile
 
 final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings, ssl: RorSsl)
 

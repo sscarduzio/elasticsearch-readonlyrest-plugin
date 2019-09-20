@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
@@ -52,6 +53,10 @@ public class DocumentManager extends BaseManager {
     Failsafe.with(retryPolicy).get(() -> isDocumentIndexed(docPath));
   }
 
+  public void removeDoc(String docPath) {
+    call(createRemoveDocRequest(docPath, true), SimpleResponse::new);
+  }
+
   public void createAlias(String alias, Set<String> indexes) {
     makeCreateIndexAliasCall(alias, indexes);
     RetryPolicy<Boolean> retryPolicy = new RetryPolicy<Boolean>()
@@ -74,10 +79,25 @@ public class DocumentManager extends BaseManager {
               ? new ImmutableMap.Builder<String, String>().put("refresh", "wait_for").build()
               : Maps.newHashMap()
       ));
-      request.setHeader("refresh", "true");
       request.setHeader("timeout", "50s");
       request.setHeader("Content-Type", "application/json");
       request.setEntity(new StringEntity(content));
+      return request;
+    } catch (Exception ex) {
+      throw new IllegalStateException(ex);
+    }
+  }
+
+  private HttpDelete createRemoveDocRequest(String docPath, boolean waitForRefresh) {
+    try {
+      HttpDelete request = new HttpDelete(restClient.from(
+          docPath,
+          waitForRefresh
+              ? new ImmutableMap.Builder<String, String>().put("refresh", "wait_for").build()
+              : Maps.newHashMap()
+      ));
+      request.setHeader("timeout", "50s");
+      request.setHeader("Content-Type", "application/json");
       return request;
     } catch (Exception ex) {
       throw new IllegalStateException(ex);

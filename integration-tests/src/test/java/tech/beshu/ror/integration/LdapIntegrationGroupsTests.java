@@ -22,7 +22,7 @@ import org.junit.Test;
 import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
-import tech.beshu.ror.utils.containers.LdapContainer;
+import tech.beshu.ror.utils.containers.JavaLdapContainer;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
@@ -37,7 +37,7 @@ public class LdapIntegrationGroupsTests {
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProjectJ.fromSystemProperty(),
           new MultiContainer.Builder()
-              .add("LDAP1", () -> LdapContainer.create("/ldap_integration_group_headers/ldap.ldif"))
+              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_integration_group_headers/ldap.ldif"))
               .build(),
           "/ldap_integration_group_headers/elasticsearch.yml",
           new ElasticsearchTweetsInitializer()

@@ -14,20 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils
+package tech.beshu.ror.utils.containers
 
 import java.io.InputStream
 
 import com.dimafeng.testcontainers.GenericContainer
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.LazyLogging
 import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, ResultCode}
 import com.unboundid.ldif.LDIFReader
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.apache.logging.log4j.scala.Logging
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
-import ScalaOps.retryBackoff
-import tech.beshu.ror.utils.LdapContainer.defaults
+import tech.beshu.ror.utils.containers.LdapContainer.defaults
+import tech.beshu.ror.utils.misc.ScalaUtils._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -56,7 +55,7 @@ class LdapContainer(name: String, ldapInitScript: String)
   }
 }
 
-object LdapContainer extends StrictLogging {
+object LdapContainer {
 
   object defaults {
     val connectionTimeout: FiniteDuration = 5 seconds
@@ -79,15 +78,13 @@ object LdapContainer extends StrictLogging {
           .map(dc => s"cn=${defaults.ldap.adminName},$dc")
       }
     }
-
   }
-
 }
 
 private class LdapWaitStrategy(name: String,
                                ldapInitScript: String)
   extends AbstractWaitStrategy
-    with Logging {
+    with LazyLogging {
 
   override def waitUntilReady(): Unit = {
     logger.info(s"Waiting for LDAP container '$name' ...")
