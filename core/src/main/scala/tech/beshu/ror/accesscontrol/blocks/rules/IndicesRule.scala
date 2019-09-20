@@ -44,7 +44,7 @@ class IndicesRule(val settings: Settings)
   extends RegularRule with Logging with UsingVariable {
 
   import IndicesCheckContinuation._
-  override type VARIABLE = RuntimeMultiResolvableVariable[IndexName]
+
   override val usedVariables = settings.allowedIndices.toNonEmptyList
   override val name: Rule.Name = IndicesRule.name
 

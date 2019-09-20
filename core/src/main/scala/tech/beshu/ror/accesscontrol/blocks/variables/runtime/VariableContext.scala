@@ -34,15 +34,15 @@ object VariableContext {
 
   trait UsingVariable {
     this: Rule =>
-    type VARIABLE <: RuntimeResolvableVariable[_]
-    def usedVariables: NonEmptyList[VARIABLE]
+    def usedVariables: NonEmptyList[RuntimeResolvableVariable[_]]
 
     def extractVariablesTypesFromExtractables: List[VariableType] = {
-      usedVariables.toList flatMap {
-        case RuntimeSingleResolvableVariable.ToBeResolved(extractables) => extractSingle(extractables)
-        case RuntimeMultiResolvableVariable.ToBeResolved(extractables) => extractMulti(extractables)
-        case _ => List.empty
-      }
+      usedVariables.toList
+        .flatMap {
+          case RuntimeSingleResolvableVariable.ToBeResolved(extractables) => extractSingle(extractables)
+          case RuntimeMultiResolvableVariable.ToBeResolved(extractables) => extractMulti(extractables)
+          case _ => List.empty
+        }
     }
 
     private def extractSingle(extractables: NonEmptyList[SingleExtractable]) =
@@ -60,6 +60,15 @@ object VariableContext {
   }
 
   object Requirement {
+
+    def definedFor(variableType: VariableType): Option[Requirement] = {
+      variableType match {
+        case _: VariableType.User => Some(Requirement.OneOfRuleBeforeIsAuthenticationRule)
+        case _: VariableType.CurrentGroup => Some(Requirement.OneOfRuleBeforeIsAuthorizationRule)
+        case _: VariableType.Header => None
+        case _: VariableType.Jwt => None
+      }
+    }
 
     sealed trait Result
     object Result {
@@ -87,31 +96,18 @@ object VariableContext {
 
   object RequirementChecker {
 
-    def findRulesListedBeforeGivenRule[A <: Rule with UsingVariable](rule: A, otherRules: NonEmptyList[Rule]) =
-      otherRules.toList.takeWhile(_ != rule)
-
     def check[A <: Rule with UsingVariable](verifiedRule: A, otherRules: NonEmptyList[Rule]) = {
       val rulesBefore = findRulesListedBeforeGivenRule(verifiedRule, otherRules)
       verifiedRule.extractVariablesTypesFromExtractables
         .flatMap(checkSingleVariableBasedOn(rulesBefore))
     }
 
-    private def checkSingleVariableBasedOn (rulesBefore: List[Rule])(usedVariable: VariableType) = {
-        Requirements.definedFor(usedVariable)
-          .map(_.checkIfComplies(rulesBefore))
+    private def findRulesListedBeforeGivenRule[A <: Rule with UsingVariable](rule: A, otherRules: NonEmptyList[Rule]) =
+      otherRules.toList.takeWhile(_ != rule)
+
+    private def checkSingleVariableBasedOn(rulesBefore: List[Rule])(usedVariable: VariableType) = {
+      Requirement.definedFor(usedVariable)
+        .map(_.checkIfComplies(rulesBefore))
     }
   }
-
-  object Requirements {
-
-    def definedFor(variableType: VariableType): Option[Requirement] = {
-      variableType match {
-        case _: VariableType.User => Some(Requirement.OneOfRuleBeforeIsAuthenticationRule)
-        case _: VariableType.CurrentGroup => Some(Requirement.OneOfRuleBeforeIsAuthorizationRule)
-        case _: VariableType.Header => None
-        case _: VariableType.Jwt => None
-      }
-    }
-  }
-
 }
