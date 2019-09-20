@@ -123,11 +123,11 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
     val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
-      for {
-        last <- collectedRuleResults
-        current <- decodeRuleInCursorContext(currentRuleName, definitions).map(_.map(_.map(_ :: Nil)))
-      } yield Monoid.combine(last, current)
-    }
+        for {
+          last <- collectedRuleResults
+          current <- decodeRuleInCursorContext(currentRuleName, definitions).map(_.map(_.map(_ :: Nil)))
+        } yield Monoid.combine(last, current)
+      }
       .run(c)
       .value
 
@@ -198,20 +198,20 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         .decodeString
         .toSyncDecoder
         .emapE[Block.Policy] {
-        case "allow" => Right(Block.Policy.Allow)
-        case "forbid" => Right(Block.Policy.Forbid)
-        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
-      }
+          case "allow" => Right(Block.Policy.Allow)
+          case "forbid" => Right(Block.Policy.Forbid)
+          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
+        }
         .decoder
     implicit val verbosityDecoder: Decoder[Verbosity] =
       Decoder
         .decodeString
         .toSyncDecoder
         .emapE[Verbosity] {
-        case "info" => Right(Verbosity.Info)
-        case "error" => Right(Verbosity.Error)
-        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
-      }
+          case "info" => Right(Verbosity.Info)
+          case "error" => Right(Verbosity.Error)
+          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
+        }
         .decoder
     Decoder
       .instance { c =>

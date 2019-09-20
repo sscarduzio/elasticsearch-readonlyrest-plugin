@@ -50,7 +50,7 @@ import scala.util.Success
 
 object Ror extends ReadonlyRest {
 
-  val blockingScheduler: Scheduler = Scheduler.io("blocking-index-content-provider")
+  val blockingScheduler: Scheduler= Scheduler.io("blocking-index-content-provider")
 
   override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   override protected implicit val clock: Clock = Clock.systemUTC()
@@ -192,11 +192,11 @@ trait ReadonlyRest extends Logging {
   private def lift(sf: StartingFailure) = Task.now(Left(sf))
 }
 
-class RorInstance private(boot: ReadonlyRest,
-                          mode: Mode,
-                          initialEngine: (Engine, RawRorConfig),
-                          indexConfigManager: IndexConfigManager,
-                          auditSink: AuditSink)
+class RorInstance private (boot: ReadonlyRest,
+                           mode: Mode,
+                           initialEngine: (Engine, RawRorConfig),
+                           indexConfigManager: IndexConfigManager,
+                           auditSink: AuditSink)
   extends Logging {
 
   logger.info("Readonly REST plugin core was loaded ...")
@@ -218,27 +218,27 @@ class RorInstance private(boot: ReadonlyRest,
   def forceReloadFromIndex(): Task[Either[ForceReloadError, Unit]] = {
     val promise = CancelablePromise[Either[ForceReloadError, Unit]]()
     tryReloadingEngine()
-      .runAsync {
-        case Right(Right(Some(state))) =>
-          state match {
-            case State.Initiated(_) =>
-              logger.error(s"[CLUSTERWIDE SETTINGS] Unexpected state: Initialized")
-              promise.success(Left(ForceReloadError.ReloadingError))
-            case State.EngineLoaded(_, _) =>
-              promise.success(Right(()))
-            case State.Stopped =>
-              promise.success(Left(ForceReloadError.StoppedInstance))
-          }
-        case Right(Right(None)) =>
-          logger.debug("[CLUSTERWIDE SETTINGS] Index settings is the same as loaded one. Nothing to do.")
-          promise.success(Left(ForceReloadError.ConfigUpToDate))
-        case Right(Left(startingFailure)) =>
-          logger.debug(s"[CLUSTERWIDE SETTINGS] ROR configuration starting failed: ${startingFailure.message}")
-          promise.success(Left(ForceReloadError.CannotReload(startingFailure)))
-        case Left(ex) =>
-          logger.errorEx("[CLUSTERWIDE SETTINGS] Force reloading failed", ex)
-          promise.success(Left(ForceReloadError.ReloadingError))
-      }
+        .runAsync {
+          case Right(Right(Some(state))) =>
+            state match {
+              case State.Initiated(_) =>
+                logger.error(s"[CLUSTERWIDE SETTINGS] Unexpected state: Initialized")
+                promise.success(Left(ForceReloadError.ReloadingError))
+              case State.EngineLoaded(_, _) =>
+                promise.success(Right(()))
+              case State.Stopped =>
+                promise.success(Left(ForceReloadError.StoppedInstance))
+            }
+          case Right(Right(None)) =>
+            logger.debug("[CLUSTERWIDE SETTINGS] Index settings is the same as loaded one. Nothing to do.")
+            promise.success(Left(ForceReloadError.ConfigUpToDate))
+          case Right(Left(startingFailure)) =>
+            logger.debug(s"[CLUSTERWIDE SETTINGS] ROR configuration starting failed: ${startingFailure.message}")
+            promise.success(Left(ForceReloadError.CannotReload(startingFailure)))
+          case Left(ex) =>
+            logger.errorEx("[CLUSTERWIDE SETTINGS] Force reloading failed", ex)
+            promise.success(Left(ForceReloadError.ReloadingError))
+        }
     Task.fromCancelablePromise(promise)
   }
 
@@ -363,7 +363,7 @@ class RorInstance private(boot: ReadonlyRest,
     Task.fromCancelablePromise(promise)
   }
 
-  private[this] sealed trait State
+  private [this] sealed trait State
   private object State {
     sealed case class Initiated(scheduledInitLoadingJob: Cancelable) extends State
     sealed case class EngineLoaded(engine: EngineLoaded.EngineWithConfig, scheduledInitLoadingJob: Cancelable) extends State
@@ -414,7 +414,7 @@ object RorInstance {
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
 
 final class Engine(val accessControl: AccessControl, val context: AccessControlStaticContext, httpClientsFactory: AsyncHttpClientsFactory) {
-  private[ror] def shutdown(): Unit = {
+  private [ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()
   }
 }
