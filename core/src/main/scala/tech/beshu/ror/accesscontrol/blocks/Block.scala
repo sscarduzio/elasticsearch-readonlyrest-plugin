@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, UserMetadataR
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.show.ObfuscatedHeaderShowFactory
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 
@@ -39,22 +38,20 @@ class Block(val name: Name,
             val policy: Policy,
             val verbosity: Verbosity,
             val rules: NonEmptyList[Rule])
+           (implicit loggingContext: LoggingContext)
   extends Logging {
 
-  def execute(requestContext: RequestContext)
-             (implicit loggingContext: LoggingContext): BlockResultWithHistory = {
+  def execute(requestContext: RequestContext): BlockResultWithHistory = {
     processRules(rules.toList, requestContext)
   }
 
-  def executeUserMetadataRuleOnly(requestContext: RequestContext)
-                                 (implicit loggingContext: LoggingContext): BlockResultWithHistory = {
+  def executeUserMetadataRuleOnly(requestContext: RequestContext): BlockResultWithHistory = {
     processRules(rules.collect { case r: UserMetadataRelatedRule => r }, requestContext)
   }
 
   private def processRules(selectedRules: List[Rule],
-                           requestContext: RequestContext)
-                          (implicit loggingContext: LoggingContext): BlockResultWithHistory = {
-    implicit val showHeader: Show[Header] = ObfuscatedHeaderShowFactory.create(loggingContext.obfuscatedHeaders)
+                           requestContext: RequestContext): BlockResultWithHistory = {
+    implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
     val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
     selectedRules
       .foldLeft(matched(initBlockContext)) {

@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
 import tech.beshu.ror.accesscontrol.factory.decoders.AuditingSettingsDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
-import tech.beshu.ror.accesscontrol.logging.{AuditingTool,LoggingContext}
+import tech.beshu.ror.accesscontrol.logging.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
@@ -190,7 +190,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       .decoder
   }
 
-  private def blockDecoder(definitions: DefinitionsPack): Decoder[Block] = {
+  private def blockDecoder(definitions: DefinitionsPack)
+                          (implicit loggingContext: LoggingContext): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
       Decoder
@@ -235,18 +236,23 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       }
   }
 
-  private def aclStaticContextDecoder(blocks: NonEmptyList[Block]): Decoder[EnabledAccessControlStaticContext] = {
+  private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
     import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
+    Decoder.instance(_.downField("obfuscated_headers").as[Option[Set[Header.Name]]])
+      .map(_.getOrElse(Set(Header.Name.authorization)))
+  }
+
+  private def aclStaticContextDecoder(blocks: NonEmptyList[Block],
+                                      obfuscatedHeaders:Set[Header.Name]): Decoder[EnabledAccessControlStaticContext] = {
     Decoder.instance { c =>
       for {
         basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
         forbiddenMessage <- c.downField("response_if_req_forbidden").as[Option[String]]
-        obfuscatedHeaders <- c.downField("obfuscated_headers").as[Option[Set[Header.Name]]]
       } yield new EnabledAccessControlStaticContext(
         blocks,
         basicAuthPrompt.getOrElse(true),
         forbiddenMessage.getOrElse("forbidden"),
-        obfuscatedHeaders.getOrElse(Set(Header.Name.authorization)),
+        obfuscatedHeaders,
       )
     }
   }
@@ -262,7 +268,9 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
         impersonationDefs <- AsyncDecoderCreator.from(ImpersonationDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, impersonationDefs))
+        obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocks <- {
+          implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
             blockDecoder(DefinitionsPack(
               proxies = authProxies,
@@ -290,12 +298,12 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
                 }
             }
         }
-        staticContext <- AsyncDecoderCreator.from(aclStaticContextDecoder(blocks))
+        staticContext <- AsyncDecoderCreator.from(aclStaticContextDecoder(blocks, obfuscatedHeaders))
         acl = {
+          implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
           val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
           upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
-          val loggingContext = LoggingContext(staticContext.obfuscatedHeaders)
-          new AccessControlList(upgradedBlocks)(loggingContext): AccessControl
+          new AccessControlList(upgradedBlocks): AccessControl
         }
       } yield (acl, staticContext)
       decoder.apply(c)

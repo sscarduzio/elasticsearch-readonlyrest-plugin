@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.show.ObfuscatedHeaderShowFactory
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.AuditSink
@@ -82,7 +81,7 @@ class AuditingTool(settings: Settings,
                                     blockContext: Option[BlockContext],
                                     historyEntries: Vector[History]): AuditRequestContext = {
     new AuditRequestContext {
-      implicit val showHeader:Show[Header] = ObfuscatedHeaderShowFactory.create(loggingContext.obfuscatedHeaders)
+      implicit val showHeader:Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       override val timestamp: Instant = requestContext.timestamp
       override val id: String = requestContext.id.value
       override val indices: Set[String] = requestContext.indices.map(_.value.value)

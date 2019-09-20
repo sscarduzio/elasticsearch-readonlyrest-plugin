@@ -99,15 +99,6 @@ object orders {
 }
 
 object show {
-  object ObfuscatedHeaderShowFactory {
-    def create(obfuscatedHeaders: Set[Header.Name])(implicit showHeaderName:Show[Header.Name]): Show[Header] = {
-      Show.show[Header] {
-        case Header(name, _) if obfuscatedHeaders.contains(name) => s"${name.show}=<OMITTED>"
-        case Header(name, value) => s"${name.show}=${value.value.show}"
-      }
-    }
-  }
-
   object logs {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
     implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
@@ -202,6 +193,12 @@ object show {
         "Cannot use more than one multi-value variable"
       case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
         s"Variable malformed, cause: $cause"
+    }
+    def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
+      Show.show[Header] {
+        case Header(name, _) if obfuscatedHeaders.contains(name) => s"${name.show}=<OMITTED>"
+        case Header(name, value) => s"${name.show}=${value.value.show}"
+      }
     }
     def blockValidationErrorShow(block: Block.Name): Show[ValidationError] = Show.show {
       case ValidationError.AuthorizationWithoutAuthentication =>

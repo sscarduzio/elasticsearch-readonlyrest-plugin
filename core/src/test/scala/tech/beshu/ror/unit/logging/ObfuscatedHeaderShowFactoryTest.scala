@@ -4,7 +4,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.show.ObfuscatedHeaderShowFactory
 
 class ObfuscatedHeaderShowFactoryTest
   extends WordSpec
@@ -26,9 +25,9 @@ class ObfuscatedHeaderShowFactoryTest
           (Set(Header.Name.authorization, secretHeaderName), "Authorization=<OMITTED>", "CustomHeader=business value", "Secret=<OMITTED>"),
         )
         forAll(table) { (conf, authorization, custom, secret) =>
-          ObfuscatedHeaderShowFactory.create(conf).show(basicHeader) shouldEqual authorization
-          ObfuscatedHeaderShowFactory.create(conf).show(customHeader) shouldEqual custom
-          ObfuscatedHeaderShowFactory.create(conf).show(secretHeader) shouldEqual secret
+          obfuscatedHeaderShow(conf).show(basicHeader) shouldEqual authorization
+          obfuscatedHeaderShow(conf).show(customHeader) shouldEqual custom
+          obfuscatedHeaderShow(conf).show(secretHeader) shouldEqual secret
         }
 
       }

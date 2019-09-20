@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.show.ObfuscatedHeaderShowFactory
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
 
@@ -85,7 +84,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
 
   private def log(responseContext: ResponseContext): Unit = {
     if (isLoggableEntry(responseContext)) {
-      implicit val showHeader:Show[Header] = ObfuscatedHeaderShowFactory.create(loggingContext.obfuscatedHeaders)
+      implicit val showHeader:Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator.responseContextShow
       logger.info(responseContext.show)
     }

@@ -399,7 +399,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
 
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
                                resourceFileName: String,
-                               aclStaticContext: AccessControlStaticContext = mock[AccessControlStaticContext]) = {
+                               aclStaticContext: AccessControlStaticContext = mockAccessControlStaticContext) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
         (config: RawRorConfig, _) => config == rorConfigFromResource(resourceFileName)
@@ -407,6 +407,15 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       .once()
       .returns(Task.now(Right(CoreSettings(mock[AccessControl], aclStaticContext, None))))
     mockedCoreFactory
+  }
+
+  private def mockAccessControlStaticContext = {
+    val mockedContext = mock[AccessControlStaticContext]
+    (mockedContext.obfuscatedHeaders _)
+      .expects()
+      .once()
+      .returns(Set.empty)
+    mockedContext
   }
 
   private def mockFailedCoreFactory(mockedCoreFactory: CoreFactory,
