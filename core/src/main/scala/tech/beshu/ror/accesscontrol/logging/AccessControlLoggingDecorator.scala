@@ -23,9 +23,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl.{UserMetadataRequestResult, RegularRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -36,6 +37,7 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool: Option[AuditingTool])
+                                   (implicit loggingContext: LoggingContext)
   extends AccessControl with Logging {
 
   override def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]] = {
@@ -82,6 +84,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
 
   private def log(responseContext: ResponseContext): Unit = {
     if (isLoggableEntry(responseContext)) {
+      implicit val showHeader:Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator.responseContextShow
       logger.info(responseContext.show)
     }
@@ -115,7 +118,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
 
 object AccessControlLoggingDecorator {
 
-  private implicit val responseContextShow: Show[ResponseContext] = {
+  private implicit def responseContextShow(implicit headerShow:Show[Header]): Show[ResponseContext] = {
     Show.show {
       case AllowedBy(requestContext, block, blockContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)

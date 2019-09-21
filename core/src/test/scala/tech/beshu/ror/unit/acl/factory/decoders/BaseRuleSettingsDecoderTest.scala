@@ -22,7 +22,7 @@ import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers.{a, _}
 import org.scalatest.{Inside, Suite, WordSpec}
-import tech.beshu.ror.accesscontrol.acl.Acl
+import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
@@ -49,7 +49,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
                             assertion: T => Unit,
                             aFactory: RawRorConfigBasedCoreFactory = factory(),
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(aFactory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Right(CoreSettings(acl: Acl, _, _)) =>
+    inside(aFactory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Right(CoreSettings(acl: AccessControlList, _, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]

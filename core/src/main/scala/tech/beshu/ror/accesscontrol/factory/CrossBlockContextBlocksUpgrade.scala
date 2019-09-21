@@ -19,11 +19,13 @@ package tech.beshu.ror.accesscontrol.factory
 import cats.data._
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthorizationRule, Rule}
+import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 object CrossBlockContextBlocksUpgrade {
 
-  def upgrade(blocks: NonEmptyList[Block]): NonEmptyList[Block] = {
+  def upgrade(blocks: NonEmptyList[Block])
+             (implicit loggingContext: LoggingContext): NonEmptyList[Block] = {
     val crossBlocksAvailableLdapGroups = getAllAvailableLdapGroups(blocks)
     val upgradedBlocks = blocks.foldLeft(Vector.empty[Block]) {
       case (modifiedBlocks, currentBlock) =>
