@@ -22,13 +22,15 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.LocalHostsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class LocalHostsRule(val settings: Settings)
-  extends BaseHostsRule {
+  extends BaseHostsRule with UsingVariable {
 
   override val name: Rule.Name = LocalHostsRule.name
+  override val usedVariables = settings.allowedAddresses.toNonEmptyList
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = {

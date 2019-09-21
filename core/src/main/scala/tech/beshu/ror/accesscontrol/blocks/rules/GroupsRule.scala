@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -41,9 +42,11 @@ class GroupsRule(val settings: Settings)
   extends AuthenticationRule
     with NoImpersonationSupport
     with AuthorizationRule
+    with UsingVariable
     with Logging {
 
   override val name: Rule.Name = GroupsRule.name
+  override val usedVariables = settings.groups.toNonEmptyList
 
   override def tryToAuthenticate(requestContext: RequestContext,
                                  blockContext: BlockContext): Task[RuleResult] = Task.unit
