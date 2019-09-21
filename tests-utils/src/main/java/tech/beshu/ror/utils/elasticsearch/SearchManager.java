@@ -51,18 +51,33 @@ public class SearchManager extends BaseManager {
     return call(createSearchRequest(endpoint), SearchResult::new);
   }
 
+  public SearchResult storeScript(String scriptId, String query) { return call(createStoreScriptRequestRequest(scriptId, query), SearchResult::new); }
+  public SearchResult templateSearch(String query, List<String> indices) { return call(createTemplateSearchRequest(query, indices), SearchResult::new); }
   public MSearchResult mSearch(String query) {
     return call(createMSearchRequest(query), MSearchResult::new);
   }
 
-  private HttpGet createSearchRequest(String endpoint) {
-    String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
-    HttpGet request = new HttpGet(restClient.from(endpoint));
-    request.setHeader("timeout", "50s");
-    request.setHeader("x-caller-" + caller, "true");
-    return request;
-  }
-
+    private HttpPost createStoreScriptRequestRequest(String scriptId, String query) {
+        try {
+            HttpPost request = new HttpPost(restClient.from("/_scripts/" + scriptId));
+            request.addHeader("Content-type", "application/json");
+            request.setEntity(new StringEntity(query));
+            return request;
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+    private HttpPost createTemplateSearchRequest(String query, List<String> indices) {
+        String queryIndices = String.join(",", indices);
+        try {
+            HttpPost request = new HttpPost(restClient.from("/"+queryIndices+"/_search/template"));
+            request.addHeader("Content-type", "application/json");
+            request.setEntity(new StringEntity(query));
+            return request;
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException(e);
+        }
+    }
   private HttpPost createMSearchRequest(String query) {
     try {
       HttpPost request = new HttpPost(restClient.from("/_msearch"));
@@ -72,6 +87,13 @@ public class SearchManager extends BaseManager {
     } catch (UnsupportedEncodingException e) {
       throw new IllegalStateException(e);
     }
+  }
+  private HttpGet createSearchRequest(String endpoint) {
+    String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
+    HttpGet request = new HttpGet(restClient.from(endpoint));
+    request.setHeader("timeout", "50s");
+    request.setHeader("x-caller-" + caller, "true");
+    return request;
   }
 
   public static class SearchResult extends JsonResponse {
