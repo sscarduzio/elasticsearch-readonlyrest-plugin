@@ -282,7 +282,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    uri_re: "some_@{user}"
             |""".stripMargin)
         val acl = factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. None of present rules is authentication rule")))))
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. Variable used to extract user requires one of the rules defined in block to be authentication rule")))))
       }
     "block uses current group variable without defining authorization rule beforehand" in {
         val config = rorConfigFrom(
@@ -295,7 +295,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    uri_re: "some_@{acl:current_group}"
             |""".stripMargin)
         val acl = factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. None of present rules is authorization rule")))))
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. Variable used to extract current group requires one of the rules defined in block to be authorization rule")))))
       }
     }
     "return rule level error" when {

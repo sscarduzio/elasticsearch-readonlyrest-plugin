@@ -21,7 +21,8 @@ import cats.data.{NonEmptyList, Validated, _}
 import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, KibanaAccessRule, Rule}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{Requirement, RequirementChecker, UsingVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{RequirementVerifier, UsingVariable}
 import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError.RuleDoesNotMeetRequirement
 
 object RulesValidator {
@@ -42,17 +43,19 @@ object RulesValidator {
     }
   }
 
-  private def validateRequirementsForRulesUsingVariables(rules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
-    rules.collect { case r: UsingVariable => r }
-      .map { rule =>
-        val allNotCompliedRequirements = RequirementChecker.check(rule, rules).collect { case r: Requirement.Result.NotComplied => r }
-        allNotCompliedRequirements match {
-          case Nil => Validated.Valid(())
-          case head :: tail => Validated.Invalid(NonEmptyList(head, tail).map(_.reason).map(RuleDoesNotMeetRequirement))
-        }
-      } match {
+  private def validateRequirementsForRulesUsingVariables(allRules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
+    allRules.collect { case r: UsingVariable => r }
+      .map(validateRequirementsForSingleRule(allRules)) match {
       case Nil => Validated.Valid(())
       case ::(head, tl) => NonEmptyList(head, tl).sequence_
+    }
+  }
+
+  private def validateRequirementsForSingleRule[A <: Rule with UsingVariable](allRules: NonEmptyList[Rule])(ruleWithVariables: A) = {
+    val allNotCompliedRequirements = RequirementVerifier.verify(ruleWithVariables, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
+    allNotCompliedRequirements match {
+      case Nil => Validated.Valid(())
+      case head :: tail => Validated.Invalid(NonEmptyList(head, tail).map(RuleDoesNotMeetRequirement))
     }
   }
 
@@ -71,7 +74,7 @@ object RulesValidator {
   object ValidationError {
     case object AuthorizationWithoutAuthentication extends ValidationError
     case object KibanaAccessRuleTogetherWithActionsRule extends ValidationError
-    final case class RuleDoesNotMeetRequirement(reason: Requirement.Result.Reason) extends ValidationError
+    final case class RuleDoesNotMeetRequirement(nonCompliant: ComplianceResult.NonCompliantWith) extends ValidationError
   }
 
 }

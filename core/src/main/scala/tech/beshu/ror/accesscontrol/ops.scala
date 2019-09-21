@@ -33,7 +33,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{UsageRequirement, VariableType}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.{ComplianceResult, OneOfRuleBeforeMustBeAuthenticationRule, OneOfRuleBeforeMustBeAuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
@@ -202,13 +204,28 @@ object show {
       case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
         s"Variable malformed, cause: $cause"
     }
+
+    implicit val variableTypeShow: Show[VariableContext.VariableType] = Show.show {
+      case _: VariableType.User => "user"
+      case _: VariableType.CurrentGroup => "current group"
+      case _: VariableType.Header => "header"
+      case _: VariableType.Jwt => "JWT"
+    }
+
+    implicit val requirementCompliementShow: Show[ComplianceResult.NonCompliantWith] = Show.show {
+      case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
+        s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
+      case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthorizationRule(variableType)) =>
+        s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authorization rule"
+    }
+
     def blockValidationErrorShow(block: Block.Name): Show[ValidationError] = Show.show {
       case ValidationError.AuthorizationWithoutAuthentication =>
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
       case ValidationError.KibanaAccessRuleTogetherWithActionsRule =>
         s"The '${block.show}' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block."
-      case ValidationError.RuleDoesNotMeetRequirement(details) =>
-        s"The '${block.show}' block doesn't meet requirements for defined variables. ${details.value}"
+      case ValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
+        s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
     }
     private def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {
       if(traversable.isEmpty) None
