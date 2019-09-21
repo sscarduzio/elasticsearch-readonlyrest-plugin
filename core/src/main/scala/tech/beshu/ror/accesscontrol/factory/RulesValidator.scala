@@ -52,8 +52,8 @@ object RulesValidator {
   }
 
   private def validateRequirementsForSingleRule[A <: Rule with UsingVariable](allRules: NonEmptyList[Rule])(ruleWithVariables: A) = {
-    val allNotCompliedRequirements = RequirementVerifier.verify(ruleWithVariables, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
-    allNotCompliedRequirements match {
+    val allNonCompliantResults = RequirementVerifier.verify(ruleWithVariables, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
+    allNonCompliantResults match {
       case Nil => Validated.Valid(())
       case head :: tail => Validated.Invalid(NonEmptyList(head, tail).map(RuleDoesNotMeetRequirement))
     }
