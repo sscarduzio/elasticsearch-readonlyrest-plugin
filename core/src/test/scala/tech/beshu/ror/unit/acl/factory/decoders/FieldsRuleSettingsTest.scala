@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.orders.documentFieldOrder
+import tech.beshu.ror.utils.TestsUtils._
 
 class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
 
@@ -43,7 +44,9 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(ADocumentField("field1"), NegatedDocumentField("_all"))
+            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(
+              ADocumentField("field1".nonempty), NegatedDocumentField("_all".nonempty)
+            )
             rule.settings.fields should be(expectedFields)
           }
         )
@@ -61,7 +64,9 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(ADocumentField("field1"), ADocumentField("field2"), NegatedDocumentField("_all"))
+            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(
+              ADocumentField("field1".nonempty), ADocumentField("field2".nonempty), NegatedDocumentField("_all".nonempty)
+            )
             rule.settings.fields should be(expectedFields)
           }
         )
@@ -79,7 +84,9 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(ADocumentField("field1"), NegatedDocumentField("_all"))
+            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(
+              ADocumentField("field1".nonempty), NegatedDocumentField("_all".nonempty)
+            )
             rule.settings.fields should be(expectedFields)
           }
         )
@@ -97,7 +104,9 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(ADocumentField("field1"), ADocumentField("field2"), NegatedDocumentField("_all"))
+            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(
+              ADocumentField("field1".nonempty), ADocumentField("field2".nonempty), NegatedDocumentField("_all".nonempty)
+            )
             rule.settings.fields should be(expectedFields)
           }
         )

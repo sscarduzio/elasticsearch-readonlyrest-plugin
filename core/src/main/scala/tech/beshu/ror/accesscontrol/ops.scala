@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol
 
 import java.util.regex.Pattern
 
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import cats.{Order, Show}
 import com.softwaremill.sttp.{Method, Uri}
@@ -39,14 +39,17 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering, U
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
-import tech.beshu.ror.accesscontrol.header.ToHeaderValue
+import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.FilterTransient
+import upickle.default
 
+import scala.collection.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
+import scala.util.Try
 
 object header {
 
@@ -69,6 +72,10 @@ object header {
   }
   object ToHeaderValue {
     def apply[T](func: T => NonEmptyString): ToHeaderValue[T] = (t: T) => func(t)
+  }
+
+  trait FromHeaderValue[T] {
+    def fromRawValue(value: NonEmptyString): Try[T]
   }
 }
 
@@ -117,8 +124,8 @@ object show {
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val documentFieldShow: Show[DocumentField] = Show.show {
-      case f: ADocumentField => f.value
-      case f: NegatedDocumentField => s"~${f.value}"
+      case f: ADocumentField => f.value.value
+      case f: NegatedDocumentField => s"~${f.value.value}"
     }
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
@@ -237,6 +244,29 @@ object headerValues {
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
   implicit val transientFilterHeaderValue: ToHeaderValue[Filter] = ToHeaderValue { filter =>
     NonEmptyString.unsafeFrom(FilterTransient.createFromFilter(filter.value.value).serialize())
+  }
+  implicit val transientFieldsToHeaderValue: ToHeaderValue[NonEmptySet[DocumentField]] = ToHeaderValue { filters =>
+    implicit val nesW: default.Writer[NonEmptyString] = default.StringWriter.comap(_.value)
+    implicit val documentFieldW: default.Writer[DocumentField] = default.Writer.merge(
+      upickle.default.macroW[DocumentField.ADocumentField],
+      upickle.default.macroW[DocumentField.NegatedDocumentField]
+    )
+    implicit val setR: default.Writer[NonEmptySet[DocumentField]] =
+      default.SeqLikeWriter[Set, DocumentField].comap(_.toSortedSet)
+    val filtersJsonString = upickle.default.write(filters)
+    NonEmptyString.unsafeFrom(filtersJsonString)
+  }
+  implicit val transientFieldsFromHeaderValue: FromHeaderValue[NonEmptySet[DocumentField]] = (value: NonEmptyString) => {
+    implicit val nesR: default.Reader[NonEmptyString] = default.StringReader.map(NonEmptyString.unsafeFrom)
+    implicit val documentFieldR: default.Reader[DocumentField] = default.Reader.merge(
+      upickle.default.macroR[DocumentField.ADocumentField],
+      upickle.default.macroR[DocumentField.NegatedDocumentField]
+    )
+    import tech.beshu.ror.accesscontrol.orders._
+    implicit val setR: default.Reader[NonEmptySet[DocumentField]] =
+      default.SeqLikeReader[Set, DocumentField]
+        .map(set => NonEmptySet.fromSetUnsafe(SortedSet.empty[DocumentField] ++ set))
+    Try(upickle.default.read[NonEmptySet[DocumentField]](value.value))
   }
   implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
 }

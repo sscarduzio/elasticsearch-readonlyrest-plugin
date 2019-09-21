@@ -19,6 +19,7 @@ package tech.beshu.ror.es.dlsfls
 import java.io.ByteArrayOutputStream
 import java.util.{Iterator => JavaIterator}
 
+import cats.data.NonEmptySet
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.StoredFieldVisitor.Status
@@ -28,17 +29,18 @@ import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
 import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XContentType}
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader
-import tech.beshu.ror.utils.MatcherWithWildcardsAndNegations
+import tech.beshu.ror.fls.FieldsPolicy
 import ujson._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-private class DocumentFieldReader(reader: LeafReader, fields: Set[String])
+private class DocumentFieldReader(reader: LeafReader, fields: NonEmptySet[DocumentField])
   extends FilterLeafReader(reader) with Logging {
 
-  private val policy = new FieldPolicy(fields)
+  private val policy = new FieldsPolicy(fields)
   private val remainingFieldsInfo = {
     val fInfos = in.getFieldInfos
     val newfInfos = if (fInfos.asScala.isEmpty) {
@@ -199,22 +201,14 @@ private class DocumentFieldReader(reader: LeafReader, fields: Set[String])
 
   override def getReaderCacheHelper: IndexReader.CacheHelper = this.in.getCoreCacheHelper
 
-  private class FieldPolicy(fields: Set[String]) {
-    private val fieldsMatcher = new MatcherWithWildcardsAndNegations(fields.asJava)
-
-    def canKeep(field: String): Boolean = {
-      Constants.FIELDS_ALWAYS_ALLOW.contains(field) || fieldsMatcher.`match`(field)
-    }
-  }
-
 }
 
 object DocumentFieldReader {
-  def wrap(in: DirectoryReader, fields: Set[String]): DocumentFieldDirectoryReader =
+  def wrap(in: DirectoryReader, fields: NonEmptySet[DocumentField]): DocumentFieldDirectoryReader =
     new DocumentFieldDirectoryReader(in, fields)
 }
 
-final class DocumentFieldDirectoryReader(in: DirectoryReader, fields: Set[String])
+final class DocumentFieldDirectoryReader(in: DirectoryReader, fields: NonEmptySet[DocumentField])
   extends FilterDirectoryReader(in, new DocumentFieldDirectorySubReader(fields)) {
 
   override protected def doWrapDirectoryReader(in: DirectoryReader) =
@@ -225,7 +219,7 @@ final class DocumentFieldDirectoryReader(in: DirectoryReader, fields: Set[String
 }
 
 object DocumentFieldDirectoryReader {
-  private class DocumentFieldDirectorySubReader(fields: Set[String])
+  private class DocumentFieldDirectorySubReader(fields: NonEmptySet[DocumentField])
     extends FilterDirectoryReader.SubReaderWrapper {
 
     override def wrap(reader: LeafReader): LeafReader = {

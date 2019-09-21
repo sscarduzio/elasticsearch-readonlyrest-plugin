@@ -57,7 +57,6 @@ dependencies {
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
 
     compile group: 'org.apache.logging.log4j',              name: 'log4j-core',           version: '2.11.0'
-    compile group: 'com.lihaoyi',                           name: 'upickle_2.12',         version: '0.7.1'
 }
 
 license {

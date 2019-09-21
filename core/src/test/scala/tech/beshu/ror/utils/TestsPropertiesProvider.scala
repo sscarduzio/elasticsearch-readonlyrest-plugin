@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.utils
+package tech.beshu.ror.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.providers.PropertiesProvider
