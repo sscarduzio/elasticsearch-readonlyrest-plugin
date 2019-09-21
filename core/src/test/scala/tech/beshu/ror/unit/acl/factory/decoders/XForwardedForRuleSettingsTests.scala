@@ -77,6 +77,7 @@ class XForwardedForRuleSettingsTests extends BaseRuleSettingsDecoderTest[XForwar
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    x_forwarded_for: ["proxy1", "@{user}_proxy"]
               |
               |""".stripMargin,

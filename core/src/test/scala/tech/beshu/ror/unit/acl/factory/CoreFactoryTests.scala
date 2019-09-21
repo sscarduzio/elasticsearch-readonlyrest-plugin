@@ -450,7 +450,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |""".stripMargin)
 
         inside(factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()) {
-          case Right(CoreSettings(acl: Acl, _, _)) =>
+          case Right(CoreSettings(acl: AccessControlList, _, _)) =>
             val firstBlock = acl.blocks.head
             firstBlock.name should be(Block.Name("test_block1"))
             firstBlock.rules should have size 2

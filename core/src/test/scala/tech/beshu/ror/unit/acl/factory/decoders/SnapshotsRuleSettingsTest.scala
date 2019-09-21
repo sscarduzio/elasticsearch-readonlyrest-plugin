@@ -58,6 +58,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    snapshots: "index_@{user}"
               |
               |""".stripMargin,
@@ -95,6 +96,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    snapshots: [index1, "index_@{user}"]
               |
               |""".stripMargin,

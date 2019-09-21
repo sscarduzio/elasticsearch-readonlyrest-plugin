@@ -59,25 +59,8 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    indices: "index_@{user}"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.allowedIndices.length should be (1)
-            rule.settings.allowedIndices.head shouldBe a [ToBeResolved[_]]
-          }
-        )
-      }
-      "index is defined with group variable" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    indices: "index_@{acl:current_group}"
               |
               |""".stripMargin,
           assertion = rule => {
@@ -114,6 +97,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    indices: [index1, "index_@{user}"]
               |
               |""".stripMargin,
