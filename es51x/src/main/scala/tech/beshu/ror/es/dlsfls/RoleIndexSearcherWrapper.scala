@@ -128,7 +128,7 @@ class RoleIndexSearcherWrapper(indexService: IndexService) extends IndexSearcher
     val boolQuery = new BooleanQuery.Builder
     boolQuery.setMinimumNumberShouldMatch(1)
     val queryShardContext = indexService.newQueryShardContext(shardId.id, null, null)
-    val parser = JsonXContent.jsonXContent.createParser(queryShardContext.getXContentRegistry, filter)
+    val parser = JsonXContent.jsonXContent.createParser(filter)
     val queryBuilder = queryShardContext.newParseContext(parser).parseInnerQueryBuilder.get
     val parsedQuery = queryShardContext.toQuery(queryBuilder)
     boolQuery.add(parsedQuery.query, BooleanClause.Occur.SHOULD)
