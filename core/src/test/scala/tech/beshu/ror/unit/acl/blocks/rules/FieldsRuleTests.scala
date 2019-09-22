@@ -41,7 +41,9 @@ class FieldsRuleTests extends WordSpec with MockFactory {
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
         (requestContext.isReadOnlyRequest _).expects().returning(true)
-        (blockContext.withAddedContextHeader _).expects(headerFrom("_fields" -> "_field1,_field2")).returning(newBlockContext)
+        (blockContext.withAddedContextHeader _)
+          .expects(headerFrom("_fields" -> "W3siJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5Eb2N1bWVudEZpZWxkLkFEb2N1bWVudEZpZWxkIiwidmFsdWUiOiJfZmllbGQxIn0seyIkdHlwZSI6InRlY2guYmVzaHUucm9yLmFjY2Vzc2NvbnRyb2wuZG9tYWluLkRvY3VtZW50RmllbGQuQURvY3VtZW50RmllbGQiLCJ2YWx1ZSI6Il9maWVsZDIifV0="))
+          .returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
       }
     }

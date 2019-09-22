@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.dlsfls
 
-import java.io.ByteArrayOutputStream
 import java.util.{Iterator => JavaIterator}
 
 import cats.data.NonEmptySet
@@ -85,14 +84,6 @@ private class DocumentFieldReader(reader: LeafReader, fields: NonEmptySet[Docume
   override def getSortedSetDocValues(field: String): SortedSetDocValues =
     if (policy.canKeep(field)) in.getSortedSetDocValues(field) else null
 
-  override def getPointValues(field: String): PointValues =
-    if (policy.canKeep(field)) in.getPointValues(field) else null
-
-  override def terms(field: String): Terms =
-    if (policy.canKeep(field)) in.terms(field) else null
-
-  override def getMetaData: LeafMetaData = in.getMetaData
-
   override def getLiveDocs: Bits = in.getLiveDocs
 
   override def numDocs: Int = in.numDocs
@@ -129,9 +120,7 @@ private class DocumentFieldReader(reader: LeafReader, fields: NonEmptySet[Docume
             ujson.read(value)
           )
 
-          val out = new ByteArrayOutputStream
-          BytesReference.bytes(xBuilder).writeTo(out)
-          visitor.binaryField(fieldInfo, out.toByteArray)
+          visitor.binaryField(fieldInfo, BytesReference.toBytes(xBuilder.bytes()))
         }
       }
 
@@ -196,11 +185,6 @@ private class DocumentFieldReader(reader: LeafReader, fields: NonEmptySet[Docume
       }
     })
   }
-
-  override def getCoreCacheHelper: IndexReader.CacheHelper = this.in.getCoreCacheHelper
-
-  override def getReaderCacheHelper: IndexReader.CacheHelper = this.in.getCoreCacheHelper
-
 }
 
 object DocumentFieldReader {
@@ -214,8 +198,7 @@ final class DocumentFieldDirectoryReader(in: DirectoryReader, fields: NonEmptySe
   override protected def doWrapDirectoryReader(in: DirectoryReader) =
     new DocumentFieldDirectoryReader(in, fields)
 
-  override def getReaderCacheHelper: IndexReader.CacheHelper =
-    in.getReaderCacheHelper
+  override val getCoreCacheKey: AnyRef = in.getCoreCacheKey
 }
 
 object DocumentFieldDirectoryReader {

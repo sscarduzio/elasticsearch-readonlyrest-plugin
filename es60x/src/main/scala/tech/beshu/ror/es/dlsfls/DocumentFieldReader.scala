@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.dlsfls
 
-import java.io.ByteArrayOutputStream
 import java.util.{Iterator => JavaIterator}
 
 import cats.data.NonEmptySet
@@ -129,9 +128,7 @@ private class DocumentFieldReader(reader: LeafReader, fields: NonEmptySet[Docume
             ujson.read(value)
           )
 
-          val out = new ByteArrayOutputStream
-          BytesReference.bytes(xBuilder).writeTo(out)
-          visitor.binaryField(fieldInfo, out.toByteArray)
+          visitor.binaryField(fieldInfo, BytesReference.toBytes(xBuilder.bytes()))
         }
       }
 

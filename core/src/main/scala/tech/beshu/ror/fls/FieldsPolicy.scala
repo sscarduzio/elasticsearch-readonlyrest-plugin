@@ -10,46 +10,60 @@ import tech.beshu.ror.accesscontrol.domain.DocumentField.NegatedDocumentField
 
 class FieldsPolicy(fields: NonEmptySet[DocumentField]) {
 
+  private val enhancedFields = fields.toList.map(new FieldsPolicy.EnhancedDocumentField(_))
+
   def canKeep(field: String): Boolean = {
     Constants.FIELDS_ALWAYS_ALLOW.contains(field) || {
-      if (fields.head.isInstanceOf[NegatedDocumentField]) {
-        !fields.exists(f => blacklistMatch(f.value.value, field))
+      if (enhancedFields.head.isNegated) {
+        !enhancedFields.exists(f => blacklistMatch(f, field))
       } else {
-        fields.exists(f => whitelistMatch(f.value.value, field))
+        enhancedFields.exists(f => whitelistMatch(f, field))
       }
     }
   }
 
-  private def whitelistMatch(pattern: String, field: String): Boolean = {
-    val patternParts = pattern.split("\\.").toList
+  private def whitelistMatch(enhancedField: FieldsPolicy.EnhancedDocumentField, field: String): Boolean = {
     val fieldParts = field.split("\\.").toList
-    if(patternParts.length < fieldParts.length) false
+    if(enhancedField.fieldPartPatterns.length < fieldParts.length) false
     else {
-      val foundMismatch = fieldParts.zip(patternParts)
+      val foundMismatch = fieldParts.zip(enhancedField.fieldPartPatterns)
         .exists { case (fieldPart, patternPart) =>
-          if (fieldParts == patternParts) false
+          if (fieldPart == patternPart.pattern()) false
           else !wildcardedPatternMatch(patternPart, fieldPart)
         }
       !foundMismatch
     }
   }
 
-  private def blacklistMatch(pattern: String, field: String): Boolean = {
-    val patternParts = pattern.split("\\.").toList
+  private def blacklistMatch(enhancedField: FieldsPolicy.EnhancedDocumentField, field: String): Boolean = {
     val fieldParts = field.split("\\.").toList
-    if(patternParts.length > fieldParts.length) false
+    if(enhancedField.fieldPartPatterns.length  > fieldParts.length) false
     else {
-      val foundMismatch = patternParts.zip(fieldParts)
+      val foundMismatch = enhancedField.fieldPartPatterns.zip(fieldParts)
         .forall { case (patternPart, fieldPart) =>
-          if (patternPart == fieldPart) true
+          if (patternPart.pattern() == fieldPart) true
           else wildcardedPatternMatch(patternPart, fieldPart)
         }
       foundMismatch
     }
   }
 
-  private def wildcardedPatternMatch(pattern: String, value: String): Boolean = {
-    Pattern.compile(s"^${pattern.replace("*", ".*")}$$").matcher(value).find()
+  private def wildcardedPatternMatch(pattern: Pattern, value: String): Boolean = {
+    pattern.matcher(value).find()
   }
 
+}
+
+object FieldsPolicy {
+  private class EnhancedDocumentField(field: DocumentField) {
+    val fieldPartPatterns: List[Pattern] =
+      field.value.value
+        .split("\\.").toList
+        .map { part =>
+          Pattern.compile(s"^${part.replace("*", ".*")}$$")
+        }
+
+    val isNegated: Boolean = field.isInstanceOf[NegatedDocumentField]
+
+  }
 }

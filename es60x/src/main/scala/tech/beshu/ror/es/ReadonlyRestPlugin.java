@@ -87,9 +87,6 @@ public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final RorSsl sslConfig;
-
-  @Inject
-  private IndexLevelActionFilter ilaf;
   private Environment environment;
 
   @Inject
@@ -161,11 +158,6 @@ public class ReadonlyRestPlugin extends Plugin
     } else {
       return Collections.EMPTY_MAP;
     }
-  }
-
-  @Override
-  public void close() {
-    ilaf.stop();
   }
 
   @Override

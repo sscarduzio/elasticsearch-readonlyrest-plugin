@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol
 
+import java.util.Base64
 import java.util.regex.Pattern
 
 import cats.data.{NonEmptyList, NonEmptySet}
@@ -254,7 +255,9 @@ object headerValues {
     implicit val setR: default.Writer[NonEmptySet[DocumentField]] =
       default.SeqLikeWriter[Set, DocumentField].comap(_.toSortedSet)
     val filtersJsonString = upickle.default.write(filters)
-    NonEmptyString.unsafeFrom(filtersJsonString)
+    NonEmptyString.unsafeFrom(
+      Base64.getEncoder.encodeToString(filtersJsonString.getBytes("UTF-8"))
+    )
   }
   implicit val transientFieldsFromHeaderValue: FromHeaderValue[NonEmptySet[DocumentField]] = (value: NonEmptyString) => {
     implicit val nesR: default.Reader[NonEmptyString] = default.StringReader.map(NonEmptyString.unsafeFrom)
@@ -266,7 +269,9 @@ object headerValues {
     implicit val setR: default.Reader[NonEmptySet[DocumentField]] =
       default.SeqLikeReader[Set, DocumentField]
         .map(set => NonEmptySet.fromSetUnsafe(SortedSet.empty[DocumentField] ++ set))
-    Try(upickle.default.read[NonEmptySet[DocumentField]](value.value))
+    Try(upickle.default.read[NonEmptySet[DocumentField]](
+      new String(Base64.getDecoder.decode(value.value), "UTF-8")
+    ))
   }
   implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
 }

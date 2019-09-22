@@ -28,18 +28,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-        source should be (ujson.read(
-          s"""
-             |{
-             |  "items":[
-             |    {"endDate":"2019-07-31"},
-             |    {"endDate":"2019-06-30"},
-             |    {"endDate":"2019-09-30"}
-             |  ],
-             |  "secrets":[{},{}]
-             |}
-             |""".stripMargin
-        ))
+        source should be (ujson.read("""{"dummy2":"true"}"""))
       }
       "whitelist mode with wildcard is used" in {
         val searchManager = new SearchManager(container.nodesContainers.head.client("user2", "pass"))
@@ -61,7 +50,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-        source should be (ujson.read("""{"dummy2":"true"}"""))
+        source should be (ujson.read("""{"dummy":"a1"}"""))
       }
       "blacklist mode with wildcard is used" in {
         val searchManager = new SearchManager(container.nodesContainers.head.client("user4", "pass"))
@@ -85,7 +74,18 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-       source should be (ujson.read("""{"dummy":"a1"}"""))
+       source should be (ujson.read(
+         """
+           |{
+           |  "items":[
+           |    {"endDate":"2019-07-31"},
+           |    {"endDate":"2019-06-30"},
+           |    {"endDate":"2019-09-30"}
+           |  ],
+           |  "secrets":[{},{}]
+           |}
+           |""".stripMargin
+         ))
       }
       "whitelist mode with wildcard is used" in {
         val searchManager = new SearchManager(container.nodesContainers.head.client("user2", "pass"))
@@ -163,21 +163,25 @@ object FieldLevelSecurityTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDocAndWaitForRefresh("/testfiltera/documents/doc-a1", "{\"dummy\":\"a1\", \"dummy2\": \"true\"}")
+    documentManager.insertDocAndWaitForRefresh(
+      "/testfiltera/documents/doc-a1",
+      """{"dummy":"a1", "dummy2": "true"}"""
+    )
     documentManager.insertDocAndWaitForRefresh(
       "/nestedtest/documents/1",
-      "{" +
-        "\"id\":1," +
-        "\"items\": [" +
-        "{\"itemId\": 1, \"text\":\"text1\",\"startDate\":\"2019-05-22\",\"endDate\":\"2019-07-31\"}," +
-        "{\"itemId\": 2, \"text\":\"text2\",\"startDate\":\"2019-05-22\",\"endDate\":\"2019-06-30\"}," +
-        "{\"itemId\": 3, \"text\":\"text3\",\"startDate\":\"2019-05-22\",\"endDate\":\"2019-09-30\"}" +
-        "]," +
-        "\"secrets\": [" +
-        "{\"key\":1, \"text\":\"secret1\"}," +
-        "{\"key\":2, \"text\":\"secret2\"}" +
-        "]" +
-        "}"
+      """
+        |{
+        |  "id":1,
+        |  "items": [
+        |    {"itemId": 1, "text":"text1", "startDate": "2019-05-22", "endDate": "2019-07-31"},
+        |    {"itemId": 2, "text":"text2", "startDate": "2019-05-22", "endDate": "2019-06-30"},
+        |    {"itemId": 3, "text":"text3", "startDate": "2019-05-22", "endDate": "2019-09-30"}
+        |  ],
+        |  "secrets": [
+        |    {"key":1, "text": "secret1"},
+        |    {"key":2, "text": "secret2"}
+        |  ]
+        |}""".stripMargin
     )
   }
 }
