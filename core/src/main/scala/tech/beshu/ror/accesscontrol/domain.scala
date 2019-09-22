@@ -207,9 +207,6 @@ object domain {
   object DocumentField {
     final case class ADocumentField(override val value: NonEmptyString) extends DocumentField(value)
     final case class NegatedDocumentField(override val value: NonEmptyString) extends DocumentField(value)
-
-    val all = ADocumentField(NonEmptyString.unsafeFrom("_all"))
-    val notAll = NegatedDocumentField(NonEmptyString.unsafeFrom("_all"))
   }
 
   final case class Type(value: String) extends AnyVal
