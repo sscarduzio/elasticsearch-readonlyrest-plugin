@@ -17,35 +17,29 @@
 package tech.beshu.ror.utils.elasticsearch;
 
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.Optional;
 
-public class ClusterStateManager extends BaseManager {
+public class CurrentUserMetadataManagerJ extends JBaseManager {
 
-  public ClusterStateManager(RestClient restClient) {
+  public CurrentUserMetadataManagerJ(RestClient restClient) {
     super(restClient);
   }
 
-  public SimpleResponse healthCheck() {
-    return call(createHealthCheckRequest(), SimpleResponse::new);
+  public JsonResponse fetchMetadata() {
+    return call(createSearchRequest(Optional.empty()), JsonResponse::new);
   }
 
-  public TextLinesResponse catTemplates() {
-    return call(createCatTemplatesRequest(Optional.empty()), TextLinesResponse::new);
+  public JsonResponse fetchMetadata(String preferredGroup) {
+    return call(createSearchRequest(Optional.of(preferredGroup)), JsonResponse::new);
   }
 
-  public TextLinesResponse catTemplates(String templateName) {
-    return call(createCatTemplatesRequest(Optional.of(templateName)), TextLinesResponse::new);
-  }
-
-  private HttpUriRequest createHealthCheckRequest() {
-    return new HttpGet(restClient.from("/_cat/health"));
-  }
-
-  private HttpUriRequest createCatTemplatesRequest(Optional<String> templateName) {
-    return new HttpGet(restClient.from("/_cat/templates" + templateName.map(t -> "/" + t).orElse("")));
+  private HttpGet createSearchRequest(Optional<String> preferredGroup) {
+    HttpGet request = new HttpGet(restClient.from("/_readonlyrest/metadata/current_user"));
+    preferredGroup.ifPresent(group -> request.addHeader("x-ror-current-group", group));
+    return request;
   }
 
 }
+

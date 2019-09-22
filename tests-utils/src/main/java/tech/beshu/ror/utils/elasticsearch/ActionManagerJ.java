@@ -25,9 +25,9 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.UnsupportedEncodingException;
 
-public class ActionManager extends BaseManager {
+public class ActionManagerJ extends JBaseManager {
 
-  public ActionManager(RestClient restClient) {
+  public ActionManagerJ(RestClient restClient) {
     super(restClient);
   }
 

@@ -28,16 +28,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class SearchManager extends BaseManager {
+public class SearchManagerJ extends JBaseManager {
 
   private final Map<String, String> additionalHeaders;
 
-  public SearchManager(RestClient restClient) {
+  public SearchManagerJ(RestClient restClient) {
     super(restClient);
     this.additionalHeaders = new HashMap<>();
   }
 
-  public SearchManager(RestClient restClient, Map<String, String> additionalHeaders) {
+  public SearchManagerJ(RestClient restClient, Map<String, String> additionalHeaders) {
     super(restClient);
     this.additionalHeaders = additionalHeaders;
   }
@@ -82,14 +82,14 @@ public class SearchManager extends BaseManager {
 
     public List<Map<String, Object>> getSearchHits() {
       return isSuccess()
-          ? (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("hits")).get("hits")
+          ? (List<Map<String, Object>>) ((Map<String, Object>) getResponseJsonMap().get("hits")).get("hits")
           : Lists.newArrayList();
     }
 
     public List<Map<String, Object>> getError() {
       return isSuccess()
           ? Lists.newArrayList()
-          : (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("error")).get("root_cause");
+          : (List<Map<String, Object>>) ((Map<String, Object>) getResponseJsonMap().get("error")).get("root_cause");
     }
   }
 
@@ -102,14 +102,14 @@ public class SearchManager extends BaseManager {
     public List<Map<String, Object>> getMSearchHits() {
       if(!isSuccess()) return Lists.newArrayList();
 
-      List<Map<String, Object>> responses = (List<Map<String, Object>>)getResponseJson().get("responses");
+      List<Map<String, Object>> responses = (List<Map<String, Object>>) getResponseJsonMap().get("responses");
       return (List<Map<String, Object>>) ((Map<String, Object>)responses.get(0).get("hits")).get("hits");
     }
 
     public List<Map<String, Object>> getError() {
       return isSuccess()
           ? Lists.newArrayList()
-          : (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("error")).get("root_cause");
+          : (List<Map<String, Object>>) ((Map<String, Object>) getResponseJsonMap().get("error")).get("root_cause");
     }
   }
 

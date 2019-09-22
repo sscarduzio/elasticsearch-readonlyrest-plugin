@@ -31,11 +31,11 @@ import java.util.function.Function;
 
 import static tech.beshu.ror.utils.misc.HttpResponseHelper.stringBodyFrom;
 
-public abstract class BaseManager {
+public abstract class JBaseManager {
 
   protected final RestClient restClient;
 
-  protected BaseManager(RestClient restClient) {
+  protected JBaseManager(RestClient restClient) {
     this.restClient = restClient;
   }
 
@@ -111,7 +111,7 @@ public abstract class BaseManager {
           : Maps.newHashMap();
     }
 
-    public Map<String, Object> getResponseJson() {
+    public Map<String, Object> getResponseJsonMap() {
       return responseJson;
     }
 

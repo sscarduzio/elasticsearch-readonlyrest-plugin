@@ -28,9 +28,9 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 import java.time.Duration;
 import java.util.function.BiPredicate;
 
-public class TemplateManager extends BaseManager {
+public class TemplateManagerJ extends JBaseManager {
 
-  public TemplateManager(RestClient restClient) {
+  public TemplateManagerJ(RestClient restClient) {
     super(restClient);
   }
 
@@ -90,7 +90,7 @@ public class TemplateManager extends BaseManager {
   }
 
   private Boolean isTemplateIndexed(String templateName) {
-    return getTemplates().getResponseJson().containsKey(templateName);
+    return getTemplates().getResponseJsonMap().containsKey(templateName);
   }
 
   private BiPredicate<Boolean, Throwable> isNotIndexedYet() {

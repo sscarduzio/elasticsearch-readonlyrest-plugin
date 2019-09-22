@@ -34,9 +34,9 @@ import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
-public class DocumentManager extends BaseManager {
+public class DocumentManagerJ extends JBaseManager {
 
-  public DocumentManager(RestClient restClient) {
+  public DocumentManagerJ(RestClient restClient) {
     super(restClient);
   }
 
@@ -123,7 +123,7 @@ public class DocumentManager extends BaseManager {
 
   private Boolean isDocumentIndexed(String docPath) {
     JsonResponse response = call(new HttpGet(restClient.from(docPath)), JsonResponse::new);
-    Boolean inserted = Optional.ofNullable((Boolean) response.getResponseJson().get("found")).orElse(false);
+    Boolean inserted = Optional.ofNullable((Boolean) response.getResponseJsonMap().get("found")).orElse(false);
     System.out.println("INSERTED: " + inserted);
     return inserted;
   }

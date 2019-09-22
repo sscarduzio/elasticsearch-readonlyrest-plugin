@@ -28,9 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class IndexManager extends BaseManager {
+public class IndexManagerJ extends JBaseManager {
 
-  public IndexManager(RestClient restClient) {
+  public IndexManagerJ(RestClient restClient) {
     super(restClient);
   }
 
@@ -66,7 +66,7 @@ public class IndexManager extends BaseManager {
 
     public Set<String> getAliases() {
       if(!isSuccess()) return Sets.newHashSet();
-      List<Object> responses = getResponseJson().values().stream().collect(Collectors.toList());
+      List<Object> responses = getResponseJsonMap().values().stream().collect(Collectors.toList());
       return ((Map<String, Object>) ((Map<String, Object>)responses.get(0)).get("aliases")).keySet();
     }
   }

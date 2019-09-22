@@ -22,9 +22,9 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.UnsupportedEncodingException;
 
-public class DeleteByQueryManager extends BaseManager {
+public class DeleteByQueryManagerJ extends JBaseManager {
 
-  public DeleteByQueryManager(RestClient restClient) {
+  public DeleteByQueryManagerJ(RestClient restClient) {
     super(restClient);
   }
 

@@ -21,8 +21,8 @@ import net.jodah.failsafe.RetryPolicy;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.elasticsearch.SearchManager;
-import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult;
+import tech.beshu.ror.utils.elasticsearch.SearchManagerJ;
+import tech.beshu.ror.utils.elasticsearch.SearchManagerJ.MSearchResult;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 
@@ -42,9 +42,9 @@ public class MSearchWithFilterTests {
 
   private String matchAllIndicesQuery =  "{\"index\":\"*\"}\n" + "{\"query\" : {\"match_all\" : {}}}\n";
 
-  private SearchManager adminSearchManager = new SearchManager(container.getAdminClient());
-  private SearchManager user1SearchManager = new SearchManager(container.getBasicAuthClient("test1", "dev"));
-  private SearchManager user2SearchManager = new SearchManager(container.getBasicAuthClient("test2", "dev"));
+  private SearchManagerJ adminSearchManager = new SearchManagerJ(container.getAdminClient());
+  private SearchManagerJ user1SearchManager = new SearchManagerJ(container.getBasicAuthClient("test1", "dev"));
+  private SearchManagerJ user2SearchManager = new SearchManagerJ(container.getBasicAuthClient("test2", "dev"));
 
   @Test
   public void userShouldOnlySeeFacebookPostsFilterTest() {

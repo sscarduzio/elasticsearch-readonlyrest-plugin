@@ -30,11 +30,11 @@ import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
-public class AuditIndexManager extends BaseManager {
+public class AuditIndexManagerJ extends JBaseManager {
 
   private final String indexName;
 
-  public AuditIndexManager(RestClient restClient, String indexName) {
+  public AuditIndexManagerJ(RestClient restClient, String indexName) {
     super(restClient);
     this.indexName = indexName;
   }
@@ -68,7 +68,7 @@ public class AuditIndexManager extends BaseManager {
 
     public List<Map<String, Object>> getEntries() {
       if(!isSuccess()) return Lists.newArrayList();
-      List<Map<String, Object>> entries = (List<Map<String, Object>>) ((Map<String, Object>) getResponseJson().get("hits")).get("hits");
+      List<Map<String, Object>> entries = (List<Map<String, Object>>) ((Map<String, Object>) getResponseJsonMap().get("hits")).get("hits");
       return entries.stream().map(entry -> (Map<String, Object>)entry.get("_source")).collect(Collectors.toList());
     }
   }
