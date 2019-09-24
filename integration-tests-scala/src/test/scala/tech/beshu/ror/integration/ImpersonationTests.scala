@@ -21,7 +21,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import org.scalatest.Matchers._
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.collection.JavaConverters._
@@ -38,7 +38,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
   "Impersonation can be done" when {
     "user uses local auth rule" when {
       "impersonator can be properly authenticated" in {
-        val searchManager = new SearchManager(
+        val searchManager = new SearchManagerJ(
           container.nodesContainers.head.client("admin1", "pass"),
           Map("impersonate_as" -> "dev1").asJava
         )
@@ -51,7 +51,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
   }
   "Impersonation cannot be done" when {
     "there is no such user with admin privileges" in {
-      val searchManager = new SearchManager(
+      val searchManager = new SearchManagerJ(
         container.nodesContainers.head.client("unknown", "pass"),
         Map("impersonate_as" -> "dev1").asJava
       )
@@ -64,7 +64,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
       result.getError.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
     }
     "user with admin privileges cannot be authenticated" in {
-      val searchManager = new SearchManager(
+      val searchManager = new SearchManagerJ(
         container.nodesContainers.head.client("admin1", "wrong_pass"),
         Map("impersonate_as" -> "dev1").asJava
       )
@@ -77,7 +77,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
       result.getError.get(0).asScala("due_to").asInstanceOf[java.util.List[String]].asScala should contain ("IMPERSONATION_NOT_ALLOWED")
     }
     "admin user is authenticated but cannot impersonate given user" in {
-      val searchManager = new SearchManager(
+      val searchManager = new SearchManagerJ(
         container.nodesContainers.head.client("admin2", "pass"),
         Map("impersonate_as" -> "dev1").asJava
       )
@@ -91,7 +91,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
     }
     "not supported authentication rule is used" which {
       "is full hashed auth credentials" in {
-        val searchManager = new SearchManager(
+        val searchManager = new SearchManagerJ(
           container.nodesContainers.head.client("admin1", "pass"),
           Map("impersonate_as" -> "dev1").asJava
         )
@@ -109,7 +109,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
 object ImpersonationTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient)
+    val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
   }

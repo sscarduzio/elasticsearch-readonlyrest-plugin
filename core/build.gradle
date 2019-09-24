@@ -93,6 +93,7 @@ dependencies {
     compile group: 'org.yaml',                              name: 'snakeyaml',                              version: '1.17'
     compile group: 'org.typelevel',                         name: 'squants_2.12',                           version: '1.4.0'
     compile group: 'com.unboundid',                         name: 'unboundid-ldapsdk',                      version: '4.0.9'
+    compile group: 'com.lihaoyi',                           name: 'upickle_2.12',                           version: '0.7.1'
 
     testCompile project(':tests-utils')
     testCompile group: 'org.apache.logging.log4j',          name: 'log4j-core',                             version: '2.11.2'

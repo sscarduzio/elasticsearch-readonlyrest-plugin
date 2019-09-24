@@ -42,6 +42,7 @@ dependencies {
     compile group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.25.0'
     compile group: 'com.unboundid',                  name: 'unboundid-ldapsdk',             version: '4.0.9'
     compile group: 'com.mashape.unirest',            name: 'unirest-java',                  version: '1.4.9'
+    compile group: 'com.lihaoyi',                    name: 'upickle_2.12',                  version: '0.7.1'
 }
 
 license {

@@ -1,0 +1,53 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      auth_key: admin:container
+      verbosity: error
+
+    - name: getter_a_positive
+      auth_key: "user1:pass"
+      indices: ["testfiltera"]
+      fields: ["_source","dummy2"]
+
+    - name: getter_a_positive_wc
+      auth_key: "user2:pass"
+      indices: ["testfiltera"]
+      fields: ["_source","du*2"]
+
+    - name: getter_a_negative
+      auth_key: "user3:pass"
+      indices: ["testfiltera"]
+      fields: ["~dummy2"]
+
+    - name: getter_a_negative_wc
+      auth_key: "user4:pass"
+      indices: ["testfiltera"]
+      fields: ["~du*2"]
+
+    - name: Nested field test1
+      auth_key: "user1:pass"
+      indices: ["nestedtest"]
+      fields: ["_source", "items.endDate", "secrets"]
+
+    - name: Nested field test2
+      auth_key: "user2:pass"
+      indices: ["nestedtest"]
+      fields: ["_source", "items.*Date", "secrets.*"]
+
+    - name: Nested field test3
+      auth_key: "user3:pass"
+      indices: ["nestedtest"]
+      fields: ["~items.endDate", "~secrets"]
+
+    - name: Nested field test4
+      auth_key: "user4:pass"
+      indices: ["nestedtest"]
+      fields: ["~items.*Date", "~secrets.*"]

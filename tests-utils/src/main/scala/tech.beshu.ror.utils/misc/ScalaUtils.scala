@@ -33,7 +33,7 @@ object ScalaUtils {
     }
   }
 
-  implicit class AutoCloseableOps[A <: AutoCloseable](val value: A) extends AnyVal {
+  implicit class AutoCloseableOps[A <: AutoCloseable](val value: A) {
     def bracket[B](convert: A => B): B = {
       try {
         convert(value)
@@ -69,4 +69,5 @@ object ScalaUtils {
           Task.raiseError(ex)
     }
   }
+
 }

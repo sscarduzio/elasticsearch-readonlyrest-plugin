@@ -53,10 +53,10 @@ compileScala {
 dependencies {
     compile project(path: ':core')
 
-    compile 'org.apache.logging.log4j:log4j-core:2.11.0'
-
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
+
+    compile group: 'org.apache.logging.log4j',              name: 'log4j-core',           version: '2.11.0'
 }
 
 license {
@@ -69,6 +69,9 @@ license {
     }
 }
 
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
+}
 
 tasks.withType(Zip) { task ->
     task.doLast {
