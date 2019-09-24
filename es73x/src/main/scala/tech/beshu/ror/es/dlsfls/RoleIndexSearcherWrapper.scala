@@ -22,6 +22,7 @@ import java.util.function.{Function => JavaFunction}
 import cats.data.StateT
 import cats.implicits._
 import com.google.common.base.Strings
+import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.search.{BooleanClause, BooleanQuery, ConstantScoreQuery}
@@ -35,6 +36,7 @@ import org.elasticsearch.index.IndexService
 import org.elasticsearch.index.shard.{ShardId, ShardUtils}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.utils.FilterTransient
+import tech.beshu.ror.accesscontrol.headerValues.transientFieldsFromHeaderValue
 
 import scala.util.{Failure, Success, Try}
 
@@ -71,8 +73,21 @@ object RoleIndexSearcherWrapper extends Logging {
       }
 
       private def fieldsFromHeaderValue(value: String) = {
-        if(!Strings.isNullOrEmpty(value)) Try(value.split(",").map(_.trim).toSet)
-        else Failure(new IllegalStateException(s"FLS: ${Constants.FIELDS_TRANSIENT} present, but contains no value"))
+        lazy val failure = Failure(new IllegalStateException("FLS: Couldn't extract FLS fields from threadContext"))
+        for {
+          nel <- NonEmptyString.from(value) match {
+            case Right(nel) => Success(nel)
+            case Left(_) =>
+              logger.debug("FLS: empty header value")
+              failure
+          }
+          fields <- transientFieldsFromHeaderValue.fromRawValue(nel) match {
+            case result@Success(_) => result
+            case Failure(ex) =>
+              logger.debug(s"FLS: Cannot decode fields from ${Constants.FIELDS_TRANSIENT} header value", ex)
+              failure
+          }
+        } yield fields
       }
 
       private def prepareDocumentFilterReader(threadContext: ThreadContext, indexService: IndexService): StateT[Try, DirectoryReader, DirectoryReader] = {

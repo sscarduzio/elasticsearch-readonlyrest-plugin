@@ -82,9 +82,6 @@ public class ReadonlyRestPlugin extends Plugin
 
   private final RorSsl sslConfig;
 
-  @Inject
-  private IndexLevelActionFilter ilaf;
-
   public ReadonlyRestPlugin(Settings s) {
     // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
     // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
@@ -99,11 +96,6 @@ public class ReadonlyRestPlugin extends Plugin
     this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())
         .map(result -> ScalaJavaHelper$.MODULE$.getOrElse(result, error -> new ElasticsearchException(error.message())))
         .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
-  }
-
-  @Override
-  public void close() {
-    ilaf.stop();
   }
 
   @Override
