@@ -146,7 +146,7 @@ object SingleExtractable {
         .currentGroup
         .map(_.value.value) match {
         case Some(value) => Right(value)
-        case None => Left(ExtractError(s"Cannot extract user current group from block context"))
+        case None => Left(ExtractError(s"There was no current group for request: ${requestContext.id.show}"))
       }
     }
   }

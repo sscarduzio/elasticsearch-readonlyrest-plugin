@@ -175,6 +175,16 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
         variable shouldBe Right(NonEmptyList.of("g1,g2"))
       }
     }
+    "have not been resolved" when {
+      "current group is not available in given block context" in {
+        val variable = forceCreateSingleVariable("@{acl:current_group}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default)
+          )
+        variable shouldBe Left(CannotExtractValue("There was no current group for request: mock"))
+      }
+    }
   }
 
   "A jwt variable" should {
