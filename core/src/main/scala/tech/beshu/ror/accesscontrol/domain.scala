@@ -203,13 +203,10 @@ object domain {
 
   final case class UserOrigin(value: NonEmptyString)
 
-  sealed abstract class DocumentField(val value: String)
+  sealed abstract class DocumentField(val value: NonEmptyString)
   object DocumentField {
-    final case class ADocumentField(override val value: String) extends DocumentField(value)
-    final case class NegatedDocumentField(override val value: String) extends DocumentField(value)
-
-    val all = ADocumentField("_all")
-    val notAll = NegatedDocumentField("_all")
+    final case class ADocumentField(override val value: NonEmptyString) extends DocumentField(value)
+    final case class NegatedDocumentField(override val value: NonEmptyString) extends DocumentField(value)
   }
 
   final case class Type(value: String) extends AnyVal

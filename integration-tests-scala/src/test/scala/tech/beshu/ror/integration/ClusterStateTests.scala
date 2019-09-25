@@ -20,7 +20,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.WordSpec
 import org.scalatest.Matchers._
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
+import tech.beshu.ror.utils.elasticsearch.ClusterStateManagerJ
 
 class ClusterStateTests  extends WordSpec with ForAllTestContainer {
 
@@ -30,7 +30,7 @@ class ClusterStateTests  extends WordSpec with ForAllTestContainer {
     numberOfInstances = 1
   )
 
-  private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
+  private lazy val adminClusterStateManager = new ClusterStateManagerJ(container.nodesContainers.head.adminClient)
 
   "/_cat/state should work as expected" in {
     val response = adminClusterStateManager.healthCheck()

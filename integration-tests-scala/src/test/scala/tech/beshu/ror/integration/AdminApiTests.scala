@@ -22,7 +22,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.AdminApiTests.{insertInIndexConfig, removeConfigIndex}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster}
-import tech.beshu.ror.utils.elasticsearch.{ActionManager, DocumentManager, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -42,15 +42,15 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
   )
   override val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
 
-  private lazy val rorWithIndexConfigAdminActionManager = new ActionManager(rorWithIndexConfig.nodesContainers.head.adminClient)
-  private lazy val rorWithNoIndexConfigAdminActionManager = new ActionManager(rorWithNoIndexConfig.nodesContainers.head.adminClient)
+  private lazy val rorWithIndexConfigAdminActionManager = new ActionManagerJ(rorWithIndexConfig.nodesContainers.head.adminClient)
+  private lazy val rorWithNoIndexConfigAdminActionManager = new ActionManagerJ(rorWithNoIndexConfig.nodesContainers.head.adminClient)
 
   "An admin REST API" should {
     "provide a method for force refresh ROR config" which {
       "is going to reload ROR core" when {
         "in-index config is newer than current one" in {
           insertInIndexConfig(
-            new DocumentManager(rorWithNoIndexConfig.nodesContainers.head.adminClient),
+            new DocumentManagerJ(rorWithNoIndexConfig.nodesContainers.head.adminClient),
             "/admin_api/readonlyrest_index.yml"
           )
 
@@ -58,14 +58,14 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
             "_readonlyrest/admin/refreshconfig", ""
           )
           result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ok")
-          result.getResponseJson.get("message") should be("ReadonlyREST settings were reloaded with success!")
+          result.getResponseJsonMap.get("status") should be("ok")
+          result.getResponseJsonMap.get("message") should be("ReadonlyREST settings were reloaded with success!")
         }
       }
       "return info that config is up to date" when {
         "in-index config is the same as current one" in {
           insertInIndexConfig(
-            new DocumentManager(rorWithNoIndexConfig.nodesContainers.head.adminClient),
+            new DocumentManagerJ(rorWithNoIndexConfig.nodesContainers.head.adminClient),
             "/admin_api/readonlyrest.yml"
           )
 
@@ -73,8 +73,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
             "_readonlyrest/admin/refreshconfig", ""
           )
           result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ko")
-          result.getResponseJson.get("message") should be("Current settings are already loaded")
+          result.getResponseJsonMap.get("status") should be("ko")
+          result.getResponseJsonMap.get("message") should be("Current settings are already loaded")
         }
       }
       "return info that in-index config does not exist" when {
@@ -83,14 +83,14 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
             "_readonlyrest/admin/refreshconfig", ""
           )
           result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ko")
-          result.getResponseJson.get("message") should be("Cannot find settings index")
+          result.getResponseJsonMap.get("status") should be("ko")
+          result.getResponseJsonMap.get("message") should be("Cannot find settings index")
         }
       }
       "return info that cannot reload config" when {
         "config cannot be reloaded (eg. because LDAP is not achievable)" in {
           insertInIndexConfig(
-            new DocumentManager(rorWithNoIndexConfig.nodesContainers.head.adminClient),
+            new DocumentManagerJ(rorWithNoIndexConfig.nodesContainers.head.adminClient),
             "/admin_api/readonlyrest_with_ldap.yml"
           )
 
@@ -98,8 +98,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
             "_readonlyrest/admin/refreshconfig", ""
           )
           result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ko")
-          result.getResponseJson.get("message") should be("Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389")
+          result.getResponseJsonMap.get("status") should be("ko")
+          result.getResponseJsonMap.get("message") should be("Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389")
         }
       }
     }
@@ -111,8 +111,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
             s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_to_update.yml"))}"}"""
           )
           result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ok")
-          result.getResponseJson.get("message") should be("updated settings")
+          result.getResponseJsonMap.get("status") should be("ok")
+          result.getResponseJsonMap.get("message") should be("updated settings")
         }
       }
       "return info that config is up to date" when {
@@ -122,8 +122,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
             s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
           )
           result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ko")
-          result.getResponseJson.get("message") should be("Current settings are already loaded")
+          result.getResponseJsonMap.get("status") should be("ko")
+          result.getResponseJsonMap.get("message") should be("Current settings are already loaded")
         }
       }
       "return info that config is malformed" when {
@@ -133,8 +133,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
             s"${escapeJava(getResourceContent("/admin_api/readonlyrest_to_update.yml"))}"
           )
           result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ko")
-          result.getResponseJson.get("message") should be("JSON body malformed")
+          result.getResponseJsonMap.get("status") should be("ko")
+          result.getResponseJsonMap.get("message") should be("JSON body malformed")
         }
       }
       "return info that cannot reload" when {
@@ -144,8 +144,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
             s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))}"}"""
           )
           result.getResponseCode should be(200)
-          result.getResponseJson.get("status") should be("ko")
-          result.getResponseJson.get("message") should be("Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389")
+          result.getResponseJsonMap.get("status") should be("ko")
+          result.getResponseJsonMap.get("message") should be("Cannot reload new settings: Errors:\nThere was a problem with LDAP connection to: ldap://localhost:389")
         }
       }
     }
@@ -154,8 +154,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
         "there is one in index" in {
           val getIndexConfigResult = rorWithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config")
           getIndexConfigResult.getResponseCode should be(200)
-          getIndexConfigResult.getResponseJson.get("status") should be("ok")
-          getIndexConfigResult.getResponseJson.get("message").asInstanceOf[String] should be {
+          getIndexConfigResult.getResponseJsonMap.get("status") should be("ok")
+          getIndexConfigResult.getResponseJsonMap.get("message").asInstanceOf[String] should be {
             getResourceContent("/admin_api/readonlyrest_index.yml")
           }
         }
@@ -164,8 +164,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
         "there is none in index" in {
           val getIndexConfigResult = rorWithNoIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config")
           getIndexConfigResult.getResponseCode should be(200)
-          getIndexConfigResult.getResponseJson.get("status") should be("empty")
-          getIndexConfigResult.getResponseJson.get("message").asInstanceOf[String] should be {
+          getIndexConfigResult.getResponseJsonMap.get("status") should be("empty")
+          getIndexConfigResult.getResponseJsonMap.get("message").asInstanceOf[String] should be {
             "Cannot find settings index"
           }
         }
@@ -175,8 +175,8 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
       "return current config" in {
         val result = rorWithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/file")
         result.getResponseCode should be(200)
-        result.getResponseJson.get("status") should be("ok")
-        result.getResponseJson.get("message").asInstanceOf[String] should be {
+        result.getResponseJsonMap.get("status") should be("ok")
+        result.getResponseJsonMap.get("message").asInstanceOf[String] should be {
           getResourceContent("/admin_api/readonlyrest.yml")
         }
       }
@@ -189,7 +189,7 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
       "_readonlyrest/admin/config",
       s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest.yml"))}"}"""
     )
-    removeConfigIndex(new IndexManager(rorWithNoIndexConfig.nodesContainers.head.adminClient))
+    removeConfigIndex(new IndexManagerJ(rorWithNoIndexConfig.nodesContainers.head.adminClient))
 
     rorWithIndexConfigAdminActionManager.actionPost(
       "_readonlyrest/admin/config",
@@ -201,20 +201,20 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
 object AdminApiTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient)
+    val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
     insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
   }
 
-  private def insertInIndexConfig(documentManager: DocumentManager, resourceFilePath: String): Unit = {
+  private def insertInIndexConfig(documentManager: DocumentManagerJ, resourceFilePath: String): Unit = {
     documentManager.insertDocAndWaitForRefresh(
       "/.readonlyrest/settings/1",
       s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}"""
     )
   }
 
-  private def removeConfigIndex(indexManager: IndexManager): Unit = {
+  private def removeConfigIndex(indexManager: IndexManagerJ): Unit = {
     indexManager.remove(".readonlyrest")
   }
 

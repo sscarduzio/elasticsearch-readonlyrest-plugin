@@ -66,9 +66,6 @@ public class ReadonlyRestPlugin extends Plugin
 
   private final RorSsl sslConfig;
 
-  @Inject
-  private IndexLevelActionFilter ilaf;
-
   public ReadonlyRestPlugin(Settings s) {
     Environment environment = new Environment(s);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
@@ -76,11 +73,6 @@ public class ReadonlyRestPlugin extends Plugin
     this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())
         .map(result -> ScalaJavaHelper$.MODULE$.getOrElse(result, error -> new ElasticsearchException(error.message())))
         .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
-  }
-
-  @Override
-  public void close() {
-    ilaf.stop();
   }
 
   @Override

@@ -16,18 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
-import eu.timepit.refined.types.string.NonEmptyString
+import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, Header}
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
+import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.ScalaOps._
 
 class FieldsRule(val settings: Settings)
   extends RegularRule {
@@ -42,18 +43,16 @@ class FieldsRule(val settings: Settings)
 
   private val transientFieldsHeader = new Header(
     Name.transientFields,
-    NonEmptyString.unsafeFrom(settings.fields.map(_.show).mkString(","))
+    transientFieldsToHeaderValue.toRawValue(settings.fields)
   )
 }
 
 object FieldsRule {
   val name = Rule.Name("fields")
 
-  final case class Settings private(fields: Set[DocumentField])
+  final case class Settings private(fields: NonEmptySet[DocumentField])
   object Settings {
-    def ofFields(fields: NonEmptySet[ADocumentField], notAll: Option[NegatedDocumentField]): Settings =
-      Settings(fields.toSortedSet ++ notAll.toSet)
-    def ofNegatedFields(fields: NonEmptySet[NegatedDocumentField], notAll: Option[NegatedDocumentField]): Settings =
-      Settings(fields.toSortedSet ++ notAll.toSet)
+    def ofFields(fields: NonEmptySet[ADocumentField]): Settings = Settings(fields.widen[DocumentField])
+    def ofNegatedFields(fields: NonEmptySet[NegatedDocumentField]): Settings = Settings(fields.widen[DocumentField])
   }
 }

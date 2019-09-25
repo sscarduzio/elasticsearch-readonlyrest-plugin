@@ -19,8 +19,8 @@ package tech.beshu.ror.integration;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse;
-import tech.beshu.ror.utils.elasticsearch.DeleteByQueryManager;
+import tech.beshu.ror.utils.elasticsearch.JBaseManager.SimpleResponse;
+import tech.beshu.ror.utils.elasticsearch.DeleteByQueryManagerJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
@@ -36,8 +36,8 @@ public class DeleteByQueryTests {
       Optional.of(new ElasticsearchTweetsInitializer())
   );
 
-  private DeleteByQueryManager blueTeamDeleteByQueryManager = new DeleteByQueryManager(container.getBasicAuthClient("blue", "dev"));
-  private DeleteByQueryManager redTeamDeleteByQueryManager = new DeleteByQueryManager(container.getBasicAuthClient("red", "dev"));
+  private DeleteByQueryManagerJ blueTeamDeleteByQueryManager = new DeleteByQueryManagerJ(container.getBasicAuthClient("blue", "dev"));
+  private DeleteByQueryManagerJ redTeamDeleteByQueryManager = new DeleteByQueryManagerJ(container.getBasicAuthClient("red", "dev"));
 
   private String matchAllQuery = "{\"query\" : {\"match_all\" : {}}}\n";
 

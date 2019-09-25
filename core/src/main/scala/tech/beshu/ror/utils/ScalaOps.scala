@@ -17,11 +17,12 @@
 package tech.beshu.ror.utils
 
 import cats.Functor
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import com.twitter.{util => twitter}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 
+import scala.collection.SortedSet
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.language.{higherKinds, implicitConversions, postfixOps}
@@ -132,5 +133,10 @@ object ScalaOps {
       import cats.implicits._
       value.map(v => AutoCloseableOps(v).bracket(convert))
     }
+  }
+
+  implicit class NonEmptySetOps[T](val value: NonEmptySet[T]) extends AnyVal {
+    import cats.implicits._
+    def widen[S >: T : Ordering]: NonEmptySet[S] = NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
   }
 }

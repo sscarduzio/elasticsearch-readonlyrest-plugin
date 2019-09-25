@@ -37,7 +37,7 @@ import tech.beshu.ror.configuration.{RawRorConfig, RorSsl, SslConfiguration}
 import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
-import tech.beshu.ror.unit.utils.TestsPropertiesProvider
+import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource}
 
 import scala.collection.JavaConverters._

@@ -22,7 +22,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
@@ -35,8 +35,8 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESV
     CrossClusterSearchTests.remoteClustersInitializer()
   )
 
-  private lazy val user1SearchManager = new SearchManager(container.localClusters.head.nodesContainers.head.client("dev1", "test"))
-  private lazy val user2SearchManager = new SearchManager(container.localClusters.head.nodesContainers.head.client("dev2", "test"))
+  private lazy val user1SearchManager = new SearchManagerJ(container.localClusters.head.nodesContainers.head.client("dev1", "test"))
+  private lazy val user2SearchManager = new SearchManagerJ(container.localClusters.head.nodesContainers.head.client("dev2", "test"))
 
   "A cluster search for given index" should {
     "return 200 and allow user to its content" when {
@@ -58,7 +58,7 @@ class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESV
 object CrossClusterSearchTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient)
+    val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test1_index/test/2", "{\"hello\":\"ROR\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")

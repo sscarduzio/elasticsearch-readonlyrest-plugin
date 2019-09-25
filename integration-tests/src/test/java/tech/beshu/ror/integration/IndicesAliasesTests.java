@@ -21,11 +21,11 @@ import com.google.common.collect.Sets;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.elasticsearch.DocumentManager;
-import tech.beshu.ror.utils.elasticsearch.IndexManager;
-import tech.beshu.ror.utils.elasticsearch.IndexManager.GetIndexResult;
-import tech.beshu.ror.utils.elasticsearch.SearchManager;
-import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult;
+import tech.beshu.ror.utils.elasticsearch.DocumentManagerJ;
+import tech.beshu.ror.utils.elasticsearch.IndexManagerJ;
+import tech.beshu.ror.utils.elasticsearch.IndexManagerJ.GetIndexResult;
+import tech.beshu.ror.utils.elasticsearch.SearchManagerJ;
+import tech.beshu.ror.utils.elasticsearch.SearchManagerJ.SearchResult;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import java.util.Optional;
@@ -40,7 +40,7 @@ public class IndicesAliasesTests {
       ESWithReadonlyRestContainer.create(
           RorPluginGradleProjectJ.fromSystemProperty(), "/indices_aliases_test/elasticsearch.yml",
           Optional.of(client -> {
-            DocumentManager documentManager = new DocumentManager(client);
+            DocumentManagerJ documentManager = new DocumentManagerJ(client);
             documentManager.insertDoc("/my_data/test/1", "{\"hello\":\"world\"}");
             documentManager.insertDoc("/my_data/test/2", "{\"hello\":\"there\", \"public\":1}");
             documentManager.insertDoc("/my_data/_alias/public_data", "{\"filter\":{\"term\":{\"public\":1}}}");
@@ -55,11 +55,11 @@ public class IndicesAliasesTests {
           })
       );
 
-  private SearchManager restrictedDevSearchManager = new SearchManager(container.getBasicAuthClient("restricted", "dev"));
-  private SearchManager unrestrictedDevSearchManager = new SearchManager(container.getBasicAuthClient("unrestricted", "dev"));
-  private IndexManager adminIndexManager = new IndexManager(container.getAdminClient());
-  private IndexManager perfmonIndexManager = new IndexManager(container.getBasicAuthClient("perfmon", "dev"));
-  private SearchManager vietMyanSearchManager = new SearchManager(container.getBasicAuthClient("VIET_MYAN", "dev"));
+  private SearchManagerJ restrictedDevSearchManager = new SearchManagerJ(container.getBasicAuthClient("restricted", "dev"));
+  private SearchManagerJ unrestrictedDevSearchManager = new SearchManagerJ(container.getBasicAuthClient("unrestricted", "dev"));
+  private IndexManagerJ adminIndexManager = new IndexManagerJ(container.getAdminClient());
+  private IndexManagerJ perfmonIndexManager = new IndexManagerJ(container.getBasicAuthClient("perfmon", "dev"));
+  private SearchManagerJ vietMyanSearchManager = new SearchManagerJ(container.getBasicAuthClient("VIET_MYAN", "dev"));
 
   @Test
   public void testDirectIndexQuery() {
