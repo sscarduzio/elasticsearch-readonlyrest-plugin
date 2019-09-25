@@ -36,11 +36,11 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
   */
 class FilterRule(val settings: Settings)
   extends RegularRule
-    with UsingVariable
+
     with Logging {
 
   override val name: Rule.Name = FilterRule.name
-  override val usedVariables = NonEmptyList.one(settings.filter)
+//  override val usedVariablesBy = NonEmptyList.one(settings.filter)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {

@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterS
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.domain.Action.{mSearchAction, searchAction}
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.orders._
@@ -40,13 +39,11 @@ import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.reso
 
 import scala.language.postfixOps
 
-class IndicesRule(val settings: Settings)
-  extends RegularRule with Logging with UsingVariable {
+class IndicesRule(val settings: Settings) extends RegularRule with Logging {
 
   import IndicesCheckContinuation._
 
   override val name: Rule.Name = IndicesRule.name
-  override val usedVariables = settings.allowedIndices.toNonEmptyList
 
   private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 

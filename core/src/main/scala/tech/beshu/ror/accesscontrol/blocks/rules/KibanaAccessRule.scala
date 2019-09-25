@@ -18,7 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import java.util.regex.Pattern
 
-import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -29,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, UserMetadataRelatedRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
@@ -41,13 +39,11 @@ import scala.util.Try
 
 class KibanaAccessRule(val settings: Settings)
   extends UserMetadataRelatedRule
-    with UsingVariable
     with Logging {
 
   import KibanaAccessRule.stringActionNT
 
   override val name: Rule.Name = KibanaAccessRule.name
-  override val usedVariables = NonEmptyList.one(settings.kibanaIndex)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {

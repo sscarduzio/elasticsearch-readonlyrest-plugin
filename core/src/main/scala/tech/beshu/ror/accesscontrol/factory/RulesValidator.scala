@@ -44,14 +44,15 @@ object RulesValidator {
   }
 
   private def validateRequirementsForRulesUsingVariables(allRules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
-    allRules.collect { case r: UsingVariable => r }
-      .map(validateRequirementsForSingleRule(allRules)) match {
+    import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable._
+    allRules.toList
+      .map(rule => validateRequirementsForSingleRule(allRules)(rule)) match {
       case Nil => Validated.Valid(())
       case ::(head, tl) => NonEmptyList(head, tl).sequence_
     }
   }
 
-  private def validateRequirementsForSingleRule[A <: Rule with UsingVariable](allRules: NonEmptyList[Rule])(ruleWithVariables: A) = {
+  private def validateRequirementsForSingleRule[A <: Rule : UsingVariable](allRules: NonEmptyList[Rule])(ruleWithVariables: A) = {
     val allNonCompliantResults = RequirementVerifier.verify(ruleWithVariables, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
     allNonCompliantResults match {
       case Nil => Validated.Valid(())

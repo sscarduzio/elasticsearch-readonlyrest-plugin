@@ -23,16 +23,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.HostsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
-class HostsRule(val settings: Settings)
-  extends BaseHostsRule with UsingVariable {
+class HostsRule(val settings: Settings) extends BaseHostsRule  {
 
   override val name: Rule.Name = HostsRule.name
-  override val usedVariables = settings.allowedHosts.toNonEmptyList
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = {

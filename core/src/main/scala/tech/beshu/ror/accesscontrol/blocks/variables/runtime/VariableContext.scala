@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.{BaseSpecializedIndicesRule, FilterRule, GroupsRule, HostsRule, IndicesRule, KibanaAccessRule, KibanaIndexRule, LocalHostsRule, Rule, UriRegexRule, UsersRule, XForwardedForRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
 
 object VariableContext {
@@ -31,27 +31,25 @@ object VariableContext {
     trait Jwt extends VariableType
   }
 
-  trait UsingVariable {
-    this: Rule =>
-    def usedVariables: NonEmptyList[RuntimeResolvableVariable[_]]
+  trait UsingVariable[T <: Rule] {
+    def usedVariablesBy(rule: T): List[RuntimeResolvableVariable[_]]
+  }
 
-    def extractVariablesTypesFromExtractables: List[VariableType] = {
-      usedVariables.toList
-        .flatMap {
-          case RuntimeSingleResolvableVariable.ToBeResolved(extractables) => extractSingle(extractables)
-          case RuntimeMultiResolvableVariable.ToBeResolved(extractables) => extractMulti(extractables)
-          case _ => List.empty
-        }
+  object UsingVariable {
+    implicit val usingVariableRules: UsingVariable[Rule] = {
+      case rule: BaseSpecializedIndicesRule => rule.settings.allowedIndices.toNonEmptyList.toList
+      case rule: FilterRule => rule.settings.filter :: Nil
+      case rule: GroupsRule => rule.settings.groups.toList
+      case rule: HostsRule => rule.settings.allowedHosts.toNonEmptyList.toList
+      case rule: IndicesRule => rule.settings.allowedIndices.toNonEmptyList.toList
+      case rule: KibanaAccessRule => rule.settings.kibanaIndex :: Nil
+      case rule: KibanaIndexRule => rule.settings.kibanaIndex :: Nil
+      case rule: LocalHostsRule => rule.settings.allowedAddresses.toNonEmptyList.toList
+      case rule: UriRegexRule => rule.settings.uriPatterns.toNonEmptyList.toList
+      case rule: UsersRule => rule.settings.userIds.toNonEmptyList.toList
+      case rule: XForwardedForRule => rule.settings.allowedAddresses.toNonEmptyList.toList
+      case _ => List.empty
     }
-
-    private def extractSingle(extractables: NonEmptyList[SingleExtractable]) =
-      extractables.collect { case e: VariableContext.VariableType => e }
-
-    private def extractMulti(extractables: NonEmptyList[MultiExtractable]) =
-      extractables.collect {
-        case SingleExtractableWrapper(extractable: VariableContext.VariableType) => extractable
-        case e: VariableContext.VariableType => e
-      }
   }
 
   sealed trait UsageRequirement {
@@ -94,18 +92,37 @@ object VariableContext {
 
   object RequirementVerifier {
 
-    def verify[A <: Rule with UsingVariable](verifiedRule: A, otherRules: NonEmptyList[Rule]) = {
+    def verify[A <: Rule : UsingVariable](verifiedRule: A, otherRules: NonEmptyList[Rule]) = {
       val rulesBefore = findRulesListedBeforeGivenRule(verifiedRule, otherRules)
-      verifiedRule.extractVariablesTypesFromExtractables
+      val usedVariables = implicitly[UsingVariable[A]].usedVariablesBy(verifiedRule)
+      extractVariablesTypesFromExtractables(usedVariables)
         .flatMap(checkSingleVariableBasedOn(rulesBefore))
     }
 
-    private def findRulesListedBeforeGivenRule[A <: Rule with UsingVariable](rule: A, otherRules: NonEmptyList[Rule]) =
+    private def findRulesListedBeforeGivenRule[A <: Rule: UsingVariable](rule: A, otherRules: NonEmptyList[Rule]) =
       otherRules.toList.takeWhile(_ != rule)
 
     private def checkSingleVariableBasedOn(rulesBefore: List[Rule])(usedVariable: VariableType) = {
       UsageRequirement.definedFor(usedVariable)
         .map(_.checkIfComplies(rulesBefore))
     }
+
+    private def extractVariablesTypesFromExtractables(usedVariables: List[RuntimeResolvableVariable[_]]): List[VariableType] = {
+      usedVariables
+        .flatMap {
+          case RuntimeSingleResolvableVariable.ToBeResolved(extractables) => extractSingle(extractables)
+          case RuntimeMultiResolvableVariable.ToBeResolved(extractables) => extractMulti(extractables)
+          case _ => List.empty
+        }
+    }
+
+    private def extractSingle(extractables: NonEmptyList[SingleExtractable]) =
+      extractables.collect { case e: VariableContext.VariableType => e }
+
+    private def extractMulti(extractables: NonEmptyList[MultiExtractable]) =
+      extractables.collect {
+        case SingleExtractableWrapper(extractable: VariableContext.VariableType) => extractable
+        case e: VariableContext.VariableType => e
+      }
   }
 }

@@ -24,14 +24,11 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-class UriRegexRule(val settings: Settings)
-  extends RegularRule with UsingVariable {
+class UriRegexRule(val settings: Settings) extends RegularRule {
 
   override val name: Rule.Name = UriRegexRule.name
-  override val usedVariables = settings.uriPatterns.toNonEmptyList
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {

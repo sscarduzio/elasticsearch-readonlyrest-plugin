@@ -16,23 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.data.NonEmptyList
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, UserMetadataRelatedRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class KibanaIndexRule(val settings: Settings)
   extends UserMetadataRelatedRule
-    with UsingVariable
     with MatchingAlwaysRule {
 
   override val name: Rule.Name = KibanaIndexRule.name
-  override val usedVariables = NonEmptyList.one(settings.kibanaIndex)
 
   override def process(requestContext: RequestContext,
                        blockContext: BlockContext): Task[BlockContext] = Task {
