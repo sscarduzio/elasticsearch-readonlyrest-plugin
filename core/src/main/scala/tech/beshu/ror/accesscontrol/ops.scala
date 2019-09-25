@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import java.util.Base64
+import java.util.{Base64, Locale}
 import java.util.regex.Pattern
 
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
-import cats.{Order, Show}
+import cats.{Eq, Order, Show}
 import com.softwaremill.sttp.{Method, Uri}
 import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
@@ -206,8 +206,9 @@ object show {
         s"Variable malformed, cause: $cause"
     }
     def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
+      implicit val caseInsensitiveEq:Eq[Header.Name] = (a,b) => usUpperCase(a) === usUpperCase(b)
       Show.show[Header] {
-        case Header(name, _) if obfuscatedHeaders.contains(name) => s"${name.show}=<OMITTED>"
+        case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
         case Header(name, value) => s"${name.show}=${value.value.show}"
       }
     }
@@ -225,6 +226,8 @@ object show {
       option.map(v => s"$name=${v.show}")
     }
   }
+  private def usUpperCase(a: Header.Name) =
+    a.value.value.toUpperCase(Locale.US)
 }
 
 object refined {
