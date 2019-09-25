@@ -22,12 +22,13 @@ import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, KibanaAccessRule, Rule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{RequirementVerifier, UsingVariable}
-import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError.RuleDoesNotMeetRequirement
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.RuleDoesNotMeetRequirement
 
-object RulesValidator {
+object BlockValidator {
 
-  def validate(rules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
+  def validate(rules: NonEmptyList[Rule]): ValidatedNel[BlockValidationError, Unit] = {
     (
       validateAuthorizationWithAuthenticationPrinciple(rules),
       validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules),
@@ -35,16 +36,15 @@ object RulesValidator {
     ).mapN { case _ => () }
   }
 
-  private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
+  private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[Rule]): ValidatedNel[BlockValidationError, Unit] = {
     rules.find(_.isInstanceOf[AuthorizationRule]) match {
       case None => Validated.Valid(())
       case Some(_) if rules.exists(_.isInstanceOf[AuthenticationRule]) => Validated.Valid(())
-      case Some(_) => Validated.Invalid(NonEmptyList.one(ValidationError.AuthorizationWithoutAuthentication))
+      case Some(_) => Validated.Invalid(NonEmptyList.one(BlockValidationError.AuthorizationWithoutAuthentication))
     }
   }
 
-  private def validateRequirementsForRulesUsingVariables(allRules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
-    import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable._
+  private def validateRequirementsForRulesUsingVariables(allRules: NonEmptyList[Rule]): ValidatedNel[BlockValidationError, Unit] = {
     allRules.toList
       .map(rule => validateRequirementsForSingleRule(allRules)(rule)) match {
       case Nil => Validated.Valid(())
@@ -60,22 +60,22 @@ object RulesValidator {
     }
   }
 
-  private def validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[Rule]): ValidatedNel[ValidationError, Unit] = {
+  private def validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[Rule]): ValidatedNel[BlockValidationError, Unit] = {
     val kibanaAccessRules = rules.collect { case r: KibanaAccessRule => r }
     val actionsRules = rules.collect { case r: ActionsRule => r}
     (kibanaAccessRules, actionsRules) match {
       case (Nil, Nil) => Validated.Valid(())
       case (Nil, _) => Validated.Valid(())
       case (_, Nil) => Validated.Valid(())
-      case (_, _) => Validated.Invalid(NonEmptyList.one(ValidationError.KibanaAccessRuleTogetherWithActionsRule))
+      case (_, _) => Validated.Invalid(NonEmptyList.one(BlockValidationError.KibanaAccessRuleTogetherWithActionsRule))
     }
   }
 
-  sealed trait ValidationError
-  object ValidationError {
-    case object AuthorizationWithoutAuthentication extends ValidationError
-    case object KibanaAccessRuleTogetherWithActionsRule extends ValidationError
-    final case class RuleDoesNotMeetRequirement(nonCompliant: ComplianceResult.NonCompliantWith) extends ValidationError
+  sealed trait BlockValidationError
+  object BlockValidationError {
+    case object AuthorizationWithoutAuthentication extends BlockValidationError
+    case object KibanaAccessRuleTogetherWithActionsRule extends BlockValidationError
+    final case class RuleDoesNotMeetRequirement(nonCompliant: ComplianceResult.NonCompliantWith) extends BlockValidationError
   }
 
 }

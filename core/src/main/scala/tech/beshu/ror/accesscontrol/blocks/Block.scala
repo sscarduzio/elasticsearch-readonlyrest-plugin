@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.data.{NonEmptyList, WriterT}
+import cats.data.{NonEmptyList, Validated, WriterT}
 import cats.implicits._
 import cats.{Eq, Show}
 import monix.eval.Task
@@ -27,7 +27,12 @@ import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, UserMetadataRelatedRule}
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.factory.BlockValidator
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.BlocksLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
@@ -88,6 +93,7 @@ class Block(val name: Name,
       .andThen {
         case Success((Matched(_, blockContext), _)) =>
           val block: Block = this
+
           logger.debug(s"${ANSI_CYAN}matched ${block.show} { found: ${blockContext.show} }$ANSI_RESET")
         case Success((_: Mismatched, history)) =>
           implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector(history))
@@ -109,6 +115,32 @@ class Block(val name: Name,
 object Block {
 
   type BlockResultWithHistory = Task[(Block.ExecutionResult, History)]
+
+  def createFrom(name: Name,
+                 policy: Option[Policy],
+                 verbosity: Option[Verbosity],
+                 rules: NonEmptyList[Rule])
+                (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
+    val sortedRules = rules.sorted
+    BlockValidator.validate(sortedRules) match {
+      case Validated.Valid(_) => Right(createBlockInstance(name, policy, verbosity, sortedRules))
+      case Validated.Invalid(errors) =>
+        implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
+        Left(BlocksLevelCreationError(Message(errors.map(_.show).mkString_("\n"))))
+    }
+  }
+
+  private def createBlockInstance(name: Name,
+                                  policy: Option[Policy],
+                                  verbosity: Option[Verbosity],
+                                  rules: NonEmptyList[Rule])
+                                 (implicit loggingContext: LoggingContext) =
+    new Block(
+      name,
+      policy.getOrElse(Block.Policy.Allow),
+      verbosity.getOrElse(Block.Verbosity.Info),
+      rules
+    )
 
   final case class Name(value: String) extends AnyVal
   final case class History(block: Block.Name, items: Vector[HistoryItem], blockContext: BlockContext)

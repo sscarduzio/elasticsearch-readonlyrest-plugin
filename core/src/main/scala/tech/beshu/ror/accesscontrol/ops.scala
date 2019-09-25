@@ -41,7 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
@@ -226,12 +226,12 @@ object show {
         case Header(name, value) => s"${name.show}=${value.value.show}"
       }
     }
-    def blockValidationErrorShow(block: Block.Name): Show[ValidationError] = Show.show {
-      case ValidationError.AuthorizationWithoutAuthentication =>
+    def blockValidationErrorShow(block: Block.Name): Show[BlockValidationError] = Show.show {
+      case BlockValidationError.AuthorizationWithoutAuthentication =>
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
-      case ValidationError.KibanaAccessRuleTogetherWithActionsRule =>
+      case BlockValidationError.KibanaAccessRuleTogetherWithActionsRule =>
         s"The '${block.show}' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block."
-      case ValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
+      case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
         s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
     }
     private def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {

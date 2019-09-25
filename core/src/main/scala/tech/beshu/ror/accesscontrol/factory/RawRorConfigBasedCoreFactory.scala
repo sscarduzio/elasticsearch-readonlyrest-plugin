@@ -18,13 +18,13 @@ package tech.beshu.ror.accesscontrol.factory
 
 import java.time.Clock
 
-import cats.Show
-import cats.data.{NonEmptyList, State, Validated}
+import cats.data.{NonEmptyList, State}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
@@ -33,17 +33,14 @@ import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
 import tech.beshu.ror.accesscontrol.factory.decoders.AuditingSettingsDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.accesscontrol.logging.{AuditingTool, LoggingContext}
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
-import tech.beshu.ror.accesscontrol._
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
@@ -176,20 +173,6 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       }
     })
 
-  private def rulesDecoder(blockName: Block.Name, definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = {
-    rulesNelDecoder(definitions)
-      .toSyncDecoder
-      .emapE { rules =>
-        RulesValidator.validate(rules.sorted) match {
-          case Validated.Valid(_) => Right(rules)
-          case Validated.Invalid(errors) =>
-            implicit val validationErrorShow: Show[ValidationError] = blockValidationErrorShow(blockName)
-            Left(BlocksLevelCreationError(Message(errors.map(_.show).mkString_("\n"))))
-        }
-      }
-      .decoder
-  }
-
   private def blockDecoder(definitions: DefinitionsPack)
                           (implicit loggingContext: LoggingContext): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
@@ -219,19 +202,17 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          rules <- rulesDecoder(name, definitions)
+          rules <- rulesNelDecoder(definitions)
+            .toSyncDecoder
+            .decoder
             .tryDecode(c.withFocus(
               _.mapObject(_
                 .remove(Attributes.Block.name)
                 .remove(Attributes.Block.policy)
                 .remove(Attributes.Block.verbosity))
             ))
-        } yield new Block(
-          name,
-          policy.getOrElse(Block.Policy.Allow),
-          verbosity.getOrElse(Block.Verbosity.Info),
-          rules.sorted
-        )
+          block <- Block.createFrom(name, policy, verbosity, rules).left.map(DecodingFailureOps.fromError(_))
+        } yield block
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }
   }
