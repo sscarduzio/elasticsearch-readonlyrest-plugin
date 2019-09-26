@@ -16,11 +16,12 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
-import tech.beshu.ror.utils.httpclient.RestClient
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.HttpGet
+import org.apache.http.client.methods.{HttpGet, HttpPost}
+import org.apache.http.entity.StringEntity
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
 import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
+import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.Value
 
 import scala.util.Try
@@ -28,8 +29,18 @@ import scala.util.Try
 class SearchManager(client: RestClient)
   extends BaseManager(client) {
 
-  def search(endpoint: String): SearchResult = {
+  def search(endpoint: String, query: String): SearchResult =
+    call(createSearchRequest(endpoint, query), new SearchResult(_))
+
+  def search(endpoint: String): SearchResult =
     call(createSearchRequest(endpoint), new SearchResult(_))
+
+  private def createSearchRequest(endpoint: String, query: String) = {
+    val request = new HttpPost(client.from(endpoint))
+    request.setHeader("timeout", "50s")
+    request.addHeader("Content-type", "application/json")
+    request.setEntity(new StringEntity(query))
+    request
   }
 
   private def createSearchRequest(endpoint: String) = {

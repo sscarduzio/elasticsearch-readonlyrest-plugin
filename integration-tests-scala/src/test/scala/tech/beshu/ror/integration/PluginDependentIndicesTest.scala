@@ -20,12 +20,10 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, ScriptManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-import scala.collection.JavaConverters._
-
-class PluginDependentIndicesTest extends WordSpec  with ForAllTestContainer with Matchers{
+class PluginDependentIndicesTest extends WordSpec with ForAllTestContainer with Matchers {
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/plugin_indices/readonlyrest.yml",
@@ -36,6 +34,9 @@ class PluginDependentIndicesTest extends WordSpec  with ForAllTestContainer with
     "user uses local auth rule" when {
       "mustache template can be used" in {
         val searchManager = new SearchManager(
+          container.nodesContainers.head.client("dev1", "test")
+        )
+        val scriptManager = new ScriptManager(
           container.nodesContainers.head.client("dev1", "test")
         )
         val templateId = "template1"
@@ -54,11 +55,9 @@ class PluginDependentIndicesTest extends WordSpec  with ForAllTestContainer with
             |        }
             |    }
             |}
-            |
-            |
           """.stripMargin
 
-        val storeResult = searchManager.storeScript(templateId, script)
+        val storeResult = scriptManager.store(s"/_scripts/$templateId", script)
         assertEquals(200, storeResult.getResponseCode)
 
         val query =
@@ -70,9 +69,11 @@ class PluginDependentIndicesTest extends WordSpec  with ForAllTestContainer with
              |    }
              |}
           """.stripMargin
-        val result = searchManager.templateSearch(query, List("test1_index").asJava)
+        val result = searchManager.search("/test1_index/_search/template", query)
         result.getResponseCode shouldEqual 200
-        result.getSearchHits should have size 1
+        val searchJson = result.searchHits
+        val source = searchJson.get(0)("_source")
+        source should be(ujson.read("""{"hello":"world"}"""))
 
       }
     }
@@ -81,7 +82,7 @@ class PluginDependentIndicesTest extends WordSpec  with ForAllTestContainer with
 
 object PluginDependentIndicesTest {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient)
+    val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}") //Test doesn't pass without this line
   }
