@@ -46,7 +46,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
       |  - name: "User 2"
       |    users: ["user2"]
       |    groups: [group2, group3]
-      |    uri_re: ^/user2-idx/.*
+      |    uri_re: ^/_readonlyrest/metadata/current_user$
       |    kibana_index: "user2_kibana_index"
       |    kibana_hide_apps: ["user2_app1", "user2_app2"]
       |    kibana_access: ro
@@ -58,13 +58,13 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
       |
       |  - name: "User 4 - index1"
       |    users: ["user4"]
-      |    actions: ["cluster:*"]
+      |    actions: ["default-action"]
       |    kibana_index: "user4_group5_kibana_index"
       |    groups: [group5]
       |
       |  - name: "User 4 - index2"
       |    users: ["user4"]
-      |    actions: ["cluster:*"]
+      |    actions: ["default-action"]
       |    kibana_index: "user4_group6_kibana_index"
       |    groups: [group6, group5]
       |

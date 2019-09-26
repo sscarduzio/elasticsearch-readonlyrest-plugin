@@ -82,9 +82,9 @@ object Rule {
 
   trait RegularRule extends Rule
 
-  trait AuthorizationRule extends UserMetadataRelatedRule
+  trait AuthorizationRule extends Rule
 
-  trait AuthenticationRule extends UserMetadataRelatedRule {
+  trait AuthenticationRule extends Rule {
 
     private lazy val enhancedImpersonatorDefs =
       impersonators
@@ -170,8 +170,6 @@ object Rule {
       case object CannotCheck extends UserExistence
     }
   }
-
-  trait UserMetadataRelatedRule extends Rule
 
   trait NoImpersonationSupport {
     this: AuthenticationRule =>

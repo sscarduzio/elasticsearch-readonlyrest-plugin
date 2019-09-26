@@ -132,7 +132,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
 
   private def executeBlocksUserMetadataRulesOnly(block: Block, context: RequestContext) = {
     block
-      .executeUserMetadataRuleOnly(context)
+      .execute(context)
       .map(Some.apply)
       .onErrorRecover { case _ => None }
   }
