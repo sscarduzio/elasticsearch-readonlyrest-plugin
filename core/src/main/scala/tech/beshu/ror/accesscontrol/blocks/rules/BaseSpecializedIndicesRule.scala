@@ -35,7 +35,8 @@ import tech.beshu.ror.utils.MatcherWithWildcards
 import scala.collection.JavaConverters._
 import scala.collection.SortedSet
 
-abstract class BaseSpecializedIndicesRule(val settings: Settings) extends RegularRule {
+abstract class BaseSpecializedIndicesRule(val settings: Settings)
+  extends RegularRule {
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 

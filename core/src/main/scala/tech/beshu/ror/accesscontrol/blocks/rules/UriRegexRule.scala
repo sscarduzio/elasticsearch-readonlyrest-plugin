@@ -26,7 +26,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-class UriRegexRule(val settings: Settings) extends RegularRule {
+class UriRegexRule(val settings: Settings)
+  extends RegularRule {
 
   override val name: Rule.Name = UriRegexRule.name
 

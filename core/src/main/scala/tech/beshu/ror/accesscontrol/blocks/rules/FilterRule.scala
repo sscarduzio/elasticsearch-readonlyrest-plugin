@@ -16,16 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.data.NonEmptyList
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{Filter, Header}
 import tech.beshu.ror.accesscontrol.headerValues.transientFilterHeaderValue
@@ -35,12 +33,9 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
   * Document level security (DLS) rule.
   */
 class FilterRule(val settings: Settings)
-  extends RegularRule
-
-    with Logging {
+  extends RegularRule with Logging {
 
   override val name: Rule.Name = FilterRule.name
-//  override val usedVariablesBy = NonEmptyList.one(settings.filter)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {

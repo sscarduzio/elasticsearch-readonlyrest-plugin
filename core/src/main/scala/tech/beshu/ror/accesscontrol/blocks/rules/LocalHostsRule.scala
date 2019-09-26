@@ -25,7 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-class LocalHostsRule(val settings: Settings) extends BaseHostsRule  {
+class LocalHostsRule(val settings: Settings)
+  extends BaseHostsRule  {
 
   override val name: Rule.Name = LocalHostsRule.name
 

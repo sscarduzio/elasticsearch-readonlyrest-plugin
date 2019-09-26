@@ -27,7 +27,8 @@ import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
-class XForwardedForRule(val settings: Settings) extends BaseHostsRule  {
+class XForwardedForRule(val settings: Settings)
+  extends BaseHostsRule  {
 
   override val name: Rule.Name = XForwardedForRule.name
 

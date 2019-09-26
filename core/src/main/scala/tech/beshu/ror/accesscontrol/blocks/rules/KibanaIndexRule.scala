@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class KibanaIndexRule(val settings: Settings)
-  extends UserMetadataRelatedRule
-    with MatchingAlwaysRule {
+  extends UserMetadataRelatedRule with MatchingAlwaysRule {
 
   override val name: Rule.Name = KibanaIndexRule.name
 

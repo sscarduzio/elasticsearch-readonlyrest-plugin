@@ -30,7 +30,8 @@ import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 
-class UsersRule(val settings: Settings) extends UserMetadataRelatedRule  {
+class UsersRule(val settings: Settings)
+  extends UserMetadataRelatedRule  {
 
   override val name: Rule.Name = UsersRule.name
 

@@ -38,8 +38,7 @@ import tech.beshu.ror.utils.MatcherWithWildcards
 import scala.util.Try
 
 class KibanaAccessRule(val settings: Settings)
-  extends UserMetadataRelatedRule
-    with Logging {
+  extends UserMetadataRelatedRule with Logging {
 
   import KibanaAccessRule.stringActionNT
 

@@ -39,7 +39,8 @@ import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.reso
 
 import scala.language.postfixOps
 
-class IndicesRule(val settings: Settings) extends RegularRule with Logging {
+class IndicesRule(val settings: Settings)
+  extends RegularRule with Logging {
 
   import IndicesCheckContinuation._
 
@@ -145,7 +146,7 @@ class IndicesRule(val settings: Settings) extends RegularRule with Logging {
     val indices = requestContext.indices
     indices.toList match {
       case index :: Nil =>
-        if(matcher.`match`(index)) stop(CanPass.Yes(Set.empty))
+        if (matcher.`match`(index)) stop(CanPass.Yes(Set.empty))
         else continue
       case _ if matcher.filter(indices) === indices =>
         stop(CanPass.Yes(Set.empty))
@@ -162,9 +163,9 @@ class IndicesRule(val settings: Settings) extends RegularRule with Logging {
       case (acc, index) if !index.hasWildcard && !real.contains(index) => acc + index
       case (acc, _) => acc
     }
-    if(nonExistent.nonEmpty && !requestContext.isCompositeRequest) {
+    if (nonExistent.nonEmpty && !requestContext.isCompositeRequest) {
       stop(CanPass.No)
-    } else if(nonExistent.nonEmpty && (indices -- nonExistent).isEmpty) {
+    } else if (nonExistent.nonEmpty && (indices -- nonExistent).isEmpty) {
       stop(CanPass.No)
     } else {
       continue
@@ -178,7 +179,7 @@ class IndicesRule(val settings: Settings) extends RegularRule with Logging {
       stop(CanPass.No)
     } else {
       val allowedExpansion = matcher.filter(expansion)
-      if(allowedExpansion.nonEmpty) {
+      if (allowedExpansion.nonEmpty) {
         stop(CanPass.Yes(allowedExpansion))
       } else {
         continue
@@ -197,7 +198,7 @@ class IndicesRule(val settings: Settings) extends RegularRule with Logging {
         .filter(ia => requestAliases.intersect(ia.aliases).nonEmpty)
         .map(_.index)
     val allowedRealIndices = matcher.filter(realIndicesRelatedToRequestAliases)
-    if(allowedRealIndices.nonEmpty) {
+    if (allowedRealIndices.nonEmpty) {
       stop(CanPass.Yes(allowedRealIndices))
     } else {
       continue
@@ -209,7 +210,7 @@ class IndicesRule(val settings: Settings) extends RegularRule with Logging {
     requestContext match {
       case rc if rc.action.isTemplate || rc.uriPath.isCatTemplatePath =>
         val allowed = findTemplatesIndicesPatterns(rc.templateIndicesPatterns, allowedIndices)
-        if(allowed.nonEmpty) stop(CanPass.Yes(allowed))
+        if (allowed.nonEmpty) stop(CanPass.Yes(allowed))
         else stop(CanPass.No)
       case _ =>
         continue
