@@ -89,11 +89,11 @@ class RegularRequestHandler[Request <: ActionRequest, Response <: ActionResponse
                       requestInfo: RequestInfo,
                       blockContext: BlockContext): Unit = {
     val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-    requestInfo.writeResponseHeaders(BlockContextJavaHelper.responseHeadersFrom(blockContext).asJava)
-    requestInfo.writeToThreadContextHeaders(BlockContextJavaHelper.contextHeadersFrom(blockContext).asJava)
-    requestInfo.writeIndices(BlockContextJavaHelper.indicesFrom(blockContext).asJava)
-    requestInfo.writeSnapshots(BlockContextJavaHelper.snapshotsFrom(blockContext).asJava)
-    requestInfo.writeRepositories(BlockContextJavaHelper.repositoriesFrom(blockContext).asJava)
+    requestInfo.writeResponseHeaders(BlockContextJavaHelper.responseHeadersFrom(blockContext))
+    requestInfo.writeToThreadContextHeaders(BlockContextJavaHelper.contextHeadersFrom(blockContext))
+    requestInfo.writeIndices(BlockContextJavaHelper.indicesFrom(blockContext))
+    requestInfo.writeSnapshots(BlockContextJavaHelper.snapshotsFrom(blockContext))
+    requestInfo.writeRepositories(BlockContextJavaHelper.repositoriesFrom(blockContext))
 
     proceed(searchListener)
   }

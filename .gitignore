@@ -33,6 +33,7 @@ integration-tests/src/test/eshome/plugins/readonlyrest/plugin-descriptor.propert
 integration-tests/src/main/resources/plugin-descriptor.properties
 integration-tests/src/test/eshome/logs/
 integration-tests/src/test/eshome/data/
+integration-tests/src/test/eshome/modules/
 integration-tests/src/test/eshome/*.log
 target/
 

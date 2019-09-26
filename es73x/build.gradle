@@ -100,11 +100,12 @@ task cleanOldData {
     }
 }
 
-task jarHellCheck(type: JavaExec) {
-    outputs.upToDateWhen { false }
-    main = "org.elasticsearch.bootstrap.JarHell"
-    classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
-}
+// todo: fixme
+//task jarHellCheck(type: JavaExec) {
+//    outputs.upToDateWhen { false }
+//    main = "org.elasticsearch.bootstrap.JarHell"
+//    classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
+//}
 
 task configureEsVersion() {
     doLast {
@@ -127,7 +128,7 @@ task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) 
     ])
 }
 
-task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, jar, resolvePluginDescriptorTemplate]) {
+task ror(type: Zip, dependsOn: [cleanOldData, jar, resolvePluginDescriptorTemplate]) {
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
     into('.')
