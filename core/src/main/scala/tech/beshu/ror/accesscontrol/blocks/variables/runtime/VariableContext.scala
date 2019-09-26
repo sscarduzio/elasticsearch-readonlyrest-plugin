@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.blocks.rules.{BaseSpecializedIndicesRule, FilterRule, GroupsRule, HostsRule, IndicesRule, KibanaAccessRule, KibanaIndexRule, LocalHostsRule, Rule, UriRegexRule, UsersRule, XForwardedForRule}
+import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
 
 object VariableContext {
