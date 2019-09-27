@@ -33,7 +33,7 @@ class HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boolea
   ruleDecoderCreator = acceptXForwardedFor =>
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-      .map(nes => RuleWithVariableUsageDefinition(new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor)))),
+      .map(nes => RuleWithVariableUsageDefinition.create(new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor)))),
   associatedFields = NonEmptySet.one("accept_x-forwarded-for_header"),
   associatedFieldsDecoder =
     Decoder.instance(_.downField("accept_x-forwarded-for_header").as[Boolean])
@@ -43,7 +43,7 @@ class HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boolea
 class LocalHostsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-    .map(addresses => RuleWithVariableUsageDefinition(new LocalHostsRule(LocalHostsRule.Settings(addresses))))
+    .map(addresses => RuleWithVariableUsageDefinition.create(new LocalHostsRule(LocalHostsRule.Settings(addresses))))
 )
 
 private object HostRulesDecodersHelper {

@@ -41,7 +41,7 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef])
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>
       NonEmptySet.fromSet(SortedSet.empty[UserDef] ++ usersDefinitions.items) match {
-        case Some(userDefs) => Right(RuleWithVariableUsageDefinition(new GroupsRule(GroupsRule.Settings(groups, userDefs))))
+        case Some(userDefs) => Right(RuleWithVariableUsageDefinition.create(new GroupsRule(GroupsRule.Settings(groups, userDefs))))
         case None => Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.name.show}` requires them.")))
       }
     }

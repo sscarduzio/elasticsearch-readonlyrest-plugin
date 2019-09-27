@@ -50,7 +50,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
         case (name, None) =>
           findAuthenticationService(authenticationServices.items, name)
       }
-      .map(service => RuleWithVariableUsageDefinition(new ExternalAuthenticationRule(Settings(service))))
+      .map(service => RuleWithVariableUsageDefinition.create(new ExternalAuthenticationRule(Settings(service))))
       .decoder
   )
 

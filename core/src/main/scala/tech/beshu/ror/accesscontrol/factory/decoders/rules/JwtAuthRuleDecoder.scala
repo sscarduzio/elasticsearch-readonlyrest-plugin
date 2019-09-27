@@ -45,7 +45,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
       }
     }
     .map { case (jwtDef, groups) =>
-      RuleWithVariableUsageDefinition(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups)))
+      RuleWithVariableUsageDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups)))
     }
     .decoder
 )

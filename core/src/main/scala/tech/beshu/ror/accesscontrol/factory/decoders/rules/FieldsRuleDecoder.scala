@@ -60,7 +60,7 @@ object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
         Right(settings)
       }
     }
-    .map(settings => RuleWithVariableUsageDefinition(new FieldsRule(settings)))
+    .map(settings => RuleWithVariableUsageDefinition.create(new FieldsRule(settings)))
     .decoder
 )
 

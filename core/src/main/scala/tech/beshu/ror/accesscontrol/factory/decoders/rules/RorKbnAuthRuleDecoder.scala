@@ -45,7 +45,7 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
         }
       }
       .map { case (rorKbnDef, groups) =>
-        RuleWithVariableUsageDefinition(new RorKbnAuthRule(RorKbnAuthRule.Settings(rorKbnDef, groups)))
+        RuleWithVariableUsageDefinition.create(new RorKbnAuthRule(RorKbnAuthRule.Settings(rorKbnDef, groups)))
       }
       .decoder
   )

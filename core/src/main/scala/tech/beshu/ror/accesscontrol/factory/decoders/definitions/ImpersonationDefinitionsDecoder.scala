@@ -58,7 +58,7 @@ object ImpersonationDefinitionsDecoder {
           authRule <- c.withoutKeys(Set(impersonatorKey, usersKey))
             .tryDecodeAuthRule(impersonator)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))
-        } yield ImpersonatorDef(impersonator, authRule, users)
+        } yield ImpersonatorDef(impersonator, authRule.rule, users)
       }
       .withError(DefinitionsLevelCreationError.apply, Message("Impersonation definition malformed"))
       .decoder

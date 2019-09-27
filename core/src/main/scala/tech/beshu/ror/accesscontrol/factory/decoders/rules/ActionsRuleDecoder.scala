@@ -26,5 +26,5 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 object ActionsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet(Action.apply)
-    .map(actions => RuleWithVariableUsageDefinition(new ActionsRule(ActionsRule.Settings(actions))))
+    .map(actions => RuleWithVariableUsageDefinition.create(new ActionsRule(ActionsRule.Settings(actions))))
 )

@@ -43,7 +43,7 @@ class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[Extern
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
     ExternalAuthorizationRuleDecoder
       .settingsDecoder(authotizationServices)
-      .map(settings => RuleWithVariableUsageDefinition(new ExternalAuthorizationRule(settings)))
+      .map(settings => RuleWithVariableUsageDefinition.create(new ExternalAuthorizationRule(settings)))
   )
 
 object ExternalAuthorizationRuleDecoder {

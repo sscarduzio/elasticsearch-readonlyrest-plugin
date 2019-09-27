@@ -34,6 +34,6 @@ object MaxBodyLengthRuleDecoder extends RuleDecoderWithoutAssociatedFields(
       if (value >= 0) Right(Bytes(value))
       else Left(RulesLevelCreationError(Message(s"Invalid max body length: $value")))
     }
-    .map(maxBodyLength => RuleWithVariableUsageDefinition(new MaxBodyLengthRule(Settings(maxBodyLength))))
+    .map(maxBodyLength => RuleWithVariableUsageDefinition.create(new MaxBodyLengthRule(Settings(maxBodyLength))))
     .decoder
 )

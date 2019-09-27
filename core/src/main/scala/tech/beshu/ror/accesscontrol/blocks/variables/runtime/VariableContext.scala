@@ -45,17 +45,17 @@ object VariableContext {
     case object NotUsingVariable extends VariableUsage[Nothing]
 
     implicit val filterRule: VariableUsage[FilterRule] = UsingVariable[FilterRule](rule => NonEmptyList.one(rule.settings.filter))
-    implicit val groupsRule: VariableUsage[GroupsRule] = UsingVariable(rule => rule.settings.groups.toNonEmptyList)
-    implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable(rule => rule.settings.allowedHosts.toNonEmptyList)
-    implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable(rule => rule.settings.allowedIndices.toNonEmptyList)
-    implicit val kibanaAccessRule: VariableUsage[KibanaAccessRule] = UsingVariable(rule => NonEmptyList.one(rule.settings.kibanaIndex))
-    implicit val kibanaIndexRule: VariableUsage[KibanaIndexRule] = UsingVariable(rule => NonEmptyList.one(rule.settings.kibanaIndex))
-    implicit val localHostsRule: VariableUsage[LocalHostsRule] = UsingVariable(rule => rule.settings.allowedAddresses.toNonEmptyList)
-    implicit val repositoriesRule: VariableUsage[RepositoriesRule] = UsingVariable(rule => rule.settings.allowedIndices.toNonEmptyList)
-    implicit val snapshotsRule: VariableUsage[SnapshotsRule] = UsingVariable(rule => rule.settings.allowedIndices.toNonEmptyList)
-    implicit val uriRegexRule: VariableUsage[UriRegexRule] = UsingVariable(rule => rule.settings.uriPatterns.toNonEmptyList)
-    implicit val usersRule:  VariableUsage[UsersRule] = UsingVariable(rule => rule.settings.userIds.toNonEmptyList)
-    implicit val xForwarderForRule: VariableUsage[XForwardedForRule] = UsingVariable(rule => rule.settings.allowedAddresses.toNonEmptyList)
+    implicit val groupsRule: VariableUsage[GroupsRule] = UsingVariable[GroupsRule](rule => rule.settings.groups.toNonEmptyList)
+    implicit val hostsRule: VariableUsage[HostsRule] = UsingVariable[HostsRule](rule => rule.settings.allowedHosts.toNonEmptyList)
+    implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
+    implicit val kibanaAccessRule: VariableUsage[KibanaAccessRule] = UsingVariable[KibanaAccessRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
+    implicit val kibanaIndexRule: VariableUsage[KibanaIndexRule] = UsingVariable[KibanaIndexRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
+    implicit val localHostsRule: VariableUsage[LocalHostsRule] = UsingVariable[LocalHostsRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
+    implicit val repositoriesRule: VariableUsage[RepositoriesRule] = UsingVariable[RepositoriesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
+    implicit val snapshotsRule: VariableUsage[SnapshotsRule] = UsingVariable[SnapshotsRule](rule => rule.settings.allowedIndices.toNonEmptyList)
+    implicit val uriRegexRule: VariableUsage[UriRegexRule] = UsingVariable[UriRegexRule](rule => rule.settings.uriPatterns.toNonEmptyList)
+    implicit val usersRule:  VariableUsage[UsersRule] = UsingVariable[UsersRule](rule => rule.settings.userIds.toNonEmptyList)
+    implicit val xForwarderForRule: VariableUsage[XForwardedForRule] = UsingVariable[XForwardedForRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
 
     implicit val actionsRule: VariableUsage[ActionsRule] = NotUsingVariable
     implicit val apiKeyRule: VariableUsage[ApiKeysRule] = NotUsingVariable

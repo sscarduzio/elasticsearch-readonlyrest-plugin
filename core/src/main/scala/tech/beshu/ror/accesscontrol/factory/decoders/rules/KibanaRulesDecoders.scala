@@ -41,14 +41,14 @@ import tech.beshu.ror.providers.PropertiesProvider
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeNonEmptyStringLikeOrNonEmptySet(KibanaApp.apply)
-    .map(apps => RuleWithVariableUsageDefinition(new KibanaHideAppsRule(Settings(apps))))
+    .map(apps => RuleWithVariableUsageDefinition.create(new KibanaHideAppsRule(Settings(apps))))
 )
 
 class KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   KibanaRulesDecoderHelper
     .kibanaIndexDecoder
     .map { index =>
-      RuleWithVariableUsageDefinition(new KibanaIndexRule(KibanaIndexRule.Settings(index)))
+      RuleWithVariableUsageDefinition.create(new KibanaIndexRule(KibanaIndexRule.Settings(index)))
     }
 )
 
@@ -67,7 +67,7 @@ class KibanaAccessRuleDecoder(implicit propertiesProvider: PropertiesProvider)
       case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
       .map(KibanaAccessRule.Settings(_, kibanaIndexName))
-      .map(s => new KibanaAccessRule(s))
+      .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
       .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),
   associatedFieldsDecoder =

@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 class IndicesRuleDecoders extends RuleDecoderWithoutAssociatedFields[IndicesRule](
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
-    .map(indices => RuleWithVariableUsageDefinition(new IndicesRule(IndicesRule.Settings(indices))))
+    .map(indices => RuleWithVariableUsageDefinition.create(new IndicesRule(IndicesRule.Settings(indices))))
 )
 
 class SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
@@ -52,7 +52,7 @@ class SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsR
       else
         Right(indices)
     }
-    .map(indices => RuleWithVariableUsageDefinition(new SnapshotsRule(BaseSpecializedIndicesRule.Settings(indices))))
+    .map(indices => RuleWithVariableUsageDefinition.create(new SnapshotsRule(BaseSpecializedIndicesRule.Settings(indices))))
     .decoder
 )
 
@@ -68,7 +68,7 @@ class RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[Reposit
       else
         Right(indices)
     }
-    .map(indices => RuleWithVariableUsageDefinition(new RepositoriesRule(BaseSpecializedIndicesRule.Settings(indices))))
+    .map(indices => RuleWithVariableUsageDefinition.create(new RepositoriesRule(BaseSpecializedIndicesRule.Settings(indices))))
     .decoder
 )
 

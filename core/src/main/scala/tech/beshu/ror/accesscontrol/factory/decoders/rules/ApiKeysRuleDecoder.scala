@@ -26,5 +26,5 @@ import tech.beshu.ror.accesscontrol.orders._
 object ApiKeysRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeNonEmptyStringLikeOrNonEmptySet(ApiKey.apply)
-    .map(apiKeys => RuleWithVariableUsageDefinition(new ApiKeysRule(ApiKeysRule.Settings(apiKeys))))
+    .map(apiKeys => RuleWithVariableUsageDefinition.create(new ApiKeysRule(ApiKeysRule.Settings(apiKeys))))
 )

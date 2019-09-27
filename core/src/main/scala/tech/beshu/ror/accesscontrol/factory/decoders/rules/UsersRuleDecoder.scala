@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 class UsersRuleDecoder() extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[User.Id]]
-    .map(users => RuleWithVariableUsageDefinition(new UsersRule(Settings(users))))
+    .map(users => RuleWithVariableUsageDefinition.create(new UsersRule(Settings(users))))
 )
 
 private object UsersRuleDecoderHelper {

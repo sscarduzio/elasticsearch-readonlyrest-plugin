@@ -46,7 +46,7 @@ class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth]) exten
             case None => Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Cannot find proxy auth with name: ${name.show}"))))
           }
       }
-    } yield RuleWithVariableUsageDefinition(new ProxyAuthRule(settings))
+    } yield RuleWithVariableUsageDefinition.create(new ProxyAuthRule(settings))
   }
 )
 

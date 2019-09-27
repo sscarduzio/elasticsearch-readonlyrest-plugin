@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.orders._
 object MethodsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[Method]
-    .map(methods => RuleWithVariableUsageDefinition(new MethodsRule(Settings(methods))))
+    .map(methods => RuleWithVariableUsageDefinition.create(new MethodsRule(Settings(methods))))
 )
 
 private object MethodsRuleDecoderHelper {

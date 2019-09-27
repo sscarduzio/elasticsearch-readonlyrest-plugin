@@ -26,5 +26,5 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 class FilterRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     DecoderHelpers
       .alwaysRightSingleVariableDecoder(AlwaysRightConvertible.from(Filter.apply))
-      .map(filter => RuleWithVariableUsageDefinition(new FilterRule(FilterRule.Settings(filter))))
+      .map(filter => RuleWithVariableUsageDefinition.create(new FilterRule(FilterRule.Settings(filter))))
 )

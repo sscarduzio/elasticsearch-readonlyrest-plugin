@@ -39,7 +39,7 @@ import scala.util.Try
 class UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Pattern]]
-    .map(patterns => RuleWithVariableUsageDefinition(new UriRegexRule(UriRegexRule.Settings(patterns))))
+    .map(patterns => RuleWithVariableUsageDefinition.create(new UriRegexRule(UriRegexRule.Settings(patterns))))
 )
 
 object UriRegexRuleDecoder {

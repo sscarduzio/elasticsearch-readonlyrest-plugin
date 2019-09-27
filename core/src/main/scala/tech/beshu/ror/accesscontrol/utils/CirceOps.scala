@@ -28,7 +28,7 @@ import io.circe.parser._
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
@@ -326,7 +326,7 @@ object CirceOps {
             imperonatorsDefinitions
           ) match {
             case Some(authRuleDecoder) => authRuleDecoder
-            case None => DecoderHelpers.failed[_<: AuthenticationRule](
+            case None => DecoderHelpers.failed[RuleWithVariableUsageDefinition[AuthenticationRule]](
               DefinitionsLevelCreationError(Message(s"Rule $key is not authentication rule"))
             )
           }

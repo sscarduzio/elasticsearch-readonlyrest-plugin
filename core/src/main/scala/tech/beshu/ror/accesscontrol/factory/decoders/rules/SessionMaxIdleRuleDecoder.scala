@@ -31,7 +31,7 @@ class SessionMaxIdleRuleDecoder(implicit clock: Clock, uuidProvider: UuidProvide
   extends RuleDecoderWithoutAssociatedFields(
     common
       .positiveFiniteDurationDecoder
-      .map(maxIdle => RuleWithVariableUsageDefinition(new SessionMaxIdleRule(Settings(maxIdle))))
+      .map(maxIdle => RuleWithVariableUsageDefinition.create(new SessionMaxIdleRule(Settings(maxIdle))))
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .decoder

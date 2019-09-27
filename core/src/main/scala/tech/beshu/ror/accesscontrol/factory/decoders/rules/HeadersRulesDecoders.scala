@@ -29,13 +29,13 @@ import tech.beshu.ror.utils.StringWiseSplitter._
 object HeadersAndRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySetE(headerFromString)
-    .map(headers => RuleWithVariableUsageDefinition(new HeadersAndRule(HeadersAndRule.Settings(headers))))
+    .map(headers => RuleWithVariableUsageDefinition.create(new HeadersAndRule(HeadersAndRule.Settings(headers))))
 )
 
 object HeadersOrRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySetE(headerFromString)
-    .map(headers => RuleWithVariableUsageDefinition(new HeadersOrRule(HeadersOrRule.Settings(headers))))
+    .map(headers => RuleWithVariableUsageDefinition.create(new HeadersOrRule(HeadersOrRule.Settings(headers))))
 )
 
 private object HeadersHelper {

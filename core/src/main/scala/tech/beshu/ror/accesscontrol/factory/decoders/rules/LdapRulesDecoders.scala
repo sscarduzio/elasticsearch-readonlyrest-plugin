@@ -52,7 +52,7 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService])
             .findLdapService[LdapAuthenticationService](ldapDefinitions.items, name, LdapAuthenticationRule.name)
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
-      .map(service => RuleWithVariableUsageDefinition(new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))))
+      .map(service => RuleWithVariableUsageDefinition.create(new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))))
       .decoder
   )
 
@@ -80,7 +80,7 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService])
   extends RuleDecoderWithoutAssociatedFields[LdapAuthorizationRule](
     LdapAuthorizationRuleDecoder
       .settingsDecoder(ldapDefinitions)
-      .map(settings => RuleWithVariableUsageDefinition(new LdapAuthorizationRule(settings)))
+      .map(settings => RuleWithVariableUsageDefinition.create(new LdapAuthorizationRule(settings)))
   )
 
 object LdapAuthorizationRuleDecoder {
@@ -115,7 +115,7 @@ object LdapAuthorizationRuleDecoder {
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService])
   extends RuleDecoderWithoutAssociatedFields[LdapAuthRule](
     LdapAuthRuleDecoder.instance(ldapDefinitions)
-    .map(RuleWithVariableUsageDefinition(_))
+    .map(RuleWithVariableUsageDefinition.create(_))
   )
 
 object LdapAuthRuleDecoder {
