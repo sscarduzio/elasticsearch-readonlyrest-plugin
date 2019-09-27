@@ -32,6 +32,7 @@ object ResponseContext {
 
   final case class Allow(requestContext: RequestContext,
                          userMetadata: UserMetadata,
+                         block: Block,
                          history: Vector[Block.History])
     extends ResponseContext
 
