@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.Base64
+import java.util.{Base64, Locale}
 
 import cats.Eq
 import cats.data.NonEmptyList
@@ -77,7 +77,7 @@ object domain {
       val transientFilter = Name(NonEmptyString.unsafeFrom(Constants.FILTER_TRANSIENT))
       val impersonateAs = Name(NonEmptyString.unsafeFrom("impersonate_as"))
 
-      implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase)
+      implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
     }
 
     def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)
