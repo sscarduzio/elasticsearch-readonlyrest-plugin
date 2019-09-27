@@ -34,9 +34,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.{ComplianceResult, OneOfRuleBeforeMustBeAuthenticationRule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{UsageRequirement, VariableType}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.{ComplianceResult, OneOfRuleBeforeMustBeAuthenticationRule, OneOfRuleBeforeMustBeAuthorizationRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
@@ -218,8 +218,6 @@ object show {
     implicit val complianceResultShow: Show[ComplianceResult.NonCompliantWith] = Show.show {
       case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
         s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
-      case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthorizationRule(variableType)) =>
-        s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authorization rule"
     }
     def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
       Show.show[Header] {

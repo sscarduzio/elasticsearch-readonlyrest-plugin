@@ -98,7 +98,7 @@ object VariableContext {
     def definedFor(variableType: VariableType): Option[UsageRequirement] = {
       variableType match {
         case v: VariableType.User => Some(UsageRequirement.OneOfRuleBeforeMustBeAuthenticationRule(v))
-        case v: VariableType.CurrentGroup => Some(UsageRequirement.OneOfRuleBeforeMustBeAuthorizationRule(v))
+        case v: VariableType.CurrentGroup => None
         case _: VariableType.Header => None
         case _: VariableType.Jwt => None
       }
@@ -107,14 +107,6 @@ object VariableContext {
     final case class OneOfRuleBeforeMustBeAuthenticationRule(requiredBy: VariableType) extends UsageRequirement {
       override def checkIfComplies(rulesBefore: List[Rule]): ComplianceResult =
         rulesBefore.collect { case rule: Rule.AuthenticationRule => rule } match {
-          case Nil => ComplianceResult.NonCompliantWith(this)
-          case _ => ComplianceResult.Compliant
-        }
-    }
-
-    final case class OneOfRuleBeforeMustBeAuthorizationRule(requiredBy: VariableType) extends UsageRequirement {
-      override def checkIfComplies(rulesBefore: List[Rule]): ComplianceResult =
-        rulesBefore.collect { case rule: Rule.AuthorizationRule => rule } match {
           case Nil => ComplianceResult.NonCompliantWith(this)
           case _ => ComplianceResult.Compliant
         }

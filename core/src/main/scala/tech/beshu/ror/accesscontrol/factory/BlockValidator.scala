@@ -59,7 +59,7 @@ object BlockValidator {
     allRules.toList
       .map(validateRequirementsForSingleRule(allRules.map(_.rule))) match {
       case Nil => Validated.Valid(())
-      case ::(head, tl) => NonEmptyList(head, tl).sequence_
+      case head :: tail => NonEmptyList(head, tail).sequence_
     }
   }
 

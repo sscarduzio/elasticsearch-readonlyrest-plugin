@@ -340,19 +340,6 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         val acl = factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. Variable used to extract user requires one of the rules defined in block to be authentication rule")))))
       }
-    "block uses current group variable without defining authorization rule beforehand" in {
-        val config = rorConfigFrom(
-          """
-            |readonlyrest:
-            |
-            |  access_control_rules:
-            |
-            |  - name: test_block
-            |    uri_re: "some_@{acl:current_group}"
-            |""".stripMargin)
-        val acl = factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. Variable used to extract current group requires one of the rules defined in block to be authorization rule")))))
-      }
     }
     "return rule level error" when {
       "no rules are defined in block" in {
@@ -434,19 +421,6 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |
             |  - name: test_block2
             |    uri_re: "/endpoint_@{acl:current_group}"
-            |    auth_key: admin:container
-            |    groups_provider_authorization:
-            |      user_groups_provider: "GroupsService1"
-            |      groups: ["group3"]
-            |      users: user1
-            |
-            |  user_groups_providers:
-            |
-            |  - name: GroupsService1
-            |    groups_endpoint: "http://localhost:8080/groups"
-            |    auth_token_name: "user"
-            |    auth_token_passed_as: QUERY_PARAM
-            |    response_groups_json_path: "$..groups[?(@.name)].name"
             |""".stripMargin)
 
         inside(factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()) {
@@ -457,7 +431,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
 
             val secondBlock = acl.blocks.tail.head
             secondBlock.name should be(Block.Name("test_block2"))
-            secondBlock.rules should have size 3
+            secondBlock.rules should have size 1
         }
       }
     }
