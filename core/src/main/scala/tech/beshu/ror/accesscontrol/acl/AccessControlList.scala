@@ -73,14 +73,14 @@ class AccessControlList(val blocks: NonEmptyList[Block])
 
   override def handleMetadataRequest(context: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
     Task
-      .gather(blocks.toList.map(executeBlocksUserMetadataRulesOnly(_, context)))
+      .gather(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
       .map(_.flatten)
       .map { blockResults =>
         val history = blockResults.map(_._2).toVector
         val result = matchedAllowedBlocks(blockResults.map(_._1)) match {
           case Right(matchedResults) =>
             userMetadataFrom(matchedResults, context.currentGroup.toOption) match {
-              case Some(userMetadata) => UserMetadataRequestResult.Allow(userMetadata)
+              case Some((userMetadata, matchedBlock)) => UserMetadataRequestResult.Allow(userMetadata, matchedBlock)
               case None => UserMetadataRequestResult.Forbidden
             }
           case Left(_) =>
@@ -92,27 +92,34 @@ class AccessControlList(val blocks: NonEmptyList[Block])
 
   private def userMetadataFrom(matchedResults: NonEmptyList[Matched],
                                preferredGroup: Option[Group]) = {
-    val allGroupsWithRelatedBlockContexts =
+    val allGroupsWithRelatedResults =
       matchedResults
         .toList
-        .map(_.blockContext)
-        .flatMap(b => b.availableGroups.map((_, b)).toList)
+        .flatMap { case m@Matched(_, blockContext) =>
+          blockContext.availableGroups.map((_, m)).toList
+        }
     preferredGroup match {
       case Some(pg) =>
-        allGroupsWithRelatedBlockContexts
+        allGroupsWithRelatedResults
           .find { case (group, _) => group == pg }
-          .map { case (currentGroup, blockContext) =>
-            createUserMetadata(blockContext, Some(currentGroup), UniqueList.fromList(allGroupsWithRelatedBlockContexts.map(_._1)))
+          .map { case (currentGroup, Matched(block, blockContext)) =>
+            val allGroups = UniqueList.fromList(allGroupsWithRelatedResults.map(_._1))
+            val userMetadata = createUserMetadata(blockContext, Some(currentGroup), allGroups)
+            (userMetadata, block)
           }
       case None =>
         Some {
-          allGroupsWithRelatedBlockContexts
+          allGroupsWithRelatedResults
             .headOption
-            .map { case (currentGroup, blockContext) =>
-              createUserMetadata(blockContext, Some(currentGroup), UniqueList.fromList(allGroupsWithRelatedBlockContexts.map(_._1)))
+            .map { case (currentGroup, Matched(block, blockContext)) =>
+              val allGroups = UniqueList.fromList(allGroupsWithRelatedResults.map(_._1))
+              val userMetadata = createUserMetadata(blockContext, Some(currentGroup), allGroups)
+              (userMetadata, block)
             }
             .getOrElse {
-              createUserMetadata(matchedResults.head.blockContext, None, UniqueList.empty)
+              val Matched(block, blockContext) = matchedResults.head
+              val userMetadata = createUserMetadata(matchedResults.head.blockContext, None, UniqueList.empty)
+              (userMetadata, block)
             }
         }
     }
@@ -130,7 +137,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     )
   }
 
-  private def executeBlocksUserMetadataRulesOnly(block: Block, context: RequestContext) = {
+  private def executeBlocksForUserMetadata(block: Block, context: RequestContext) = {
     block
       .execute(context)
       .map(Some.apply)

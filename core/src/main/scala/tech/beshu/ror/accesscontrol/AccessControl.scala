@@ -55,7 +55,7 @@ object AccessControl {
 
   sealed trait UserMetadataRequestResult
   object UserMetadataRequestResult {
-    final case class Allow(userMetadata: UserMetadata) extends UserMetadataRequestResult
+    final case class Allow(userMetadata: UserMetadata, block: Block) extends UserMetadataRequestResult
     case object Forbidden extends UserMetadataRequestResult
     case object PassedThrough extends UserMetadataRequestResult
   }
