@@ -91,7 +91,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user1:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
-          inside(result.result) { case Allow(userMetadata) =>
+          inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group3".nonempty)))
             userMetadata.availableGroups should be (UniqueList.of(Group("group3".nonempty), Group("group1".nonempty)))
@@ -107,7 +107,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
-          inside(result.result) { case Allow(userMetadata) =>
+          inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group6".nonempty)))
             userMetadata.availableGroups should be (UniqueList.of(Group("group5".nonempty), Group("group6".nonempty)))
@@ -121,7 +121,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user2:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
-          inside(result.result) { case Allow(userMetadata) =>
+          inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group2".nonempty)))
             userMetadata.availableGroups should be (UniqueList.of(Group("group2".nonempty)))
@@ -135,7 +135,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user3:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
-          inside(result.result) { case Allow(userMetadata) =>
+          inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3".nonempty))))
             userMetadata.currentGroup should be (None)
             userMetadata.availableGroups should be (UniqueList.empty)
