@@ -20,6 +20,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.{BaseSpecializedIndicesRule, IndicesRule, RepositoriesRule, SnapshotsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
@@ -36,7 +37,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 class IndicesRuleDecoders extends RuleDecoderWithoutAssociatedFields[IndicesRule](
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
-    .map(indices => new IndicesRule(IndicesRule.Settings(indices)))
+    .map(indices => RuleWithVariableUsageDefinition(new IndicesRule(IndicesRule.Settings(indices))))
 )
 
 class SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
@@ -51,7 +52,7 @@ class SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsR
       else
         Right(indices)
     }
-    .map(indices => new SnapshotsRule(BaseSpecializedIndicesRule.Settings(indices)))
+    .map(indices => RuleWithVariableUsageDefinition(new SnapshotsRule(BaseSpecializedIndicesRule.Settings(indices))))
     .decoder
 )
 
@@ -67,7 +68,7 @@ class RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[Reposit
       else
         Right(indices)
     }
-    .map(indices => new RepositoriesRule(BaseSpecializedIndicesRule.Settings(indices)))
+    .map(indices => RuleWithVariableUsageDefinition(new RepositoriesRule(BaseSpecializedIndicesRule.Settings(indices))))
     .decoder
 )
 

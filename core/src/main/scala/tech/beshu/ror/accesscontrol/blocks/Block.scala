@@ -25,7 +25,7 @@ import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, UserMetadataRelatedRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition, UserMetadataRelatedRule}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -119,7 +119,7 @@ object Block {
   def createFrom(name: Name,
                  policy: Option[Policy],
                  verbosity: Option[Verbosity],
-                 rules: NonEmptyList[Rule])
+                 rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
                 (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
     BlockValidator.validate(sortedRules) match {
@@ -133,13 +133,13 @@ object Block {
   private def createBlockInstance(name: Name,
                                   policy: Option[Policy],
                                   verbosity: Option[Verbosity],
-                                  rules: NonEmptyList[Rule])
+                                  rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
                                  (implicit loggingContext: LoggingContext) =
     new Block(
       name,
       policy.getOrElse(Block.Policy.Allow),
       verbosity.getOrElse(Block.Verbosity.Info),
-      rules
+      rules.map(_.rule)
     )
 
   final case class Name(value: String) extends AnyVal

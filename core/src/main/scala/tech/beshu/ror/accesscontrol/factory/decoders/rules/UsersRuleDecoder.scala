@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import io.circe.Decoder
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -30,7 +31,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 class UsersRuleDecoder() extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[User.Id]]
-    .map(users => new UsersRule(Settings(users)))
+    .map(users => RuleWithVariableUsageDefinition(new UsersRule(Settings(users))))
 )
 
 private object UsersRuleDecoderHelper {

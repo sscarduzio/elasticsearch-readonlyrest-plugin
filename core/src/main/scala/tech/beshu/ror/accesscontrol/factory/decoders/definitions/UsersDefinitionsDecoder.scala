@@ -57,7 +57,7 @@ object UsersDefinitionsDecoder {
                                       ldapDefinitions: Definitions[LdapService],
                                       rorKbnDefinitions: Definitions[RorKbnDef],
                                       impersonatorDefs: Definitions[ImpersonatorDef]): Decoder[UserDef] = {
-    implicit val _ = Some(impersonatorDefs)
+    implicit val imer: Option[Definitions[ImpersonatorDef]] = Some(impersonatorDefs)
     SyncDecoderCreator
       .instance { c =>
         val usernameKey = "username"

@@ -21,6 +21,7 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
@@ -40,14 +41,14 @@ import tech.beshu.ror.providers.PropertiesProvider
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeNonEmptyStringLikeOrNonEmptySet(KibanaApp.apply)
-    .map(apps => new KibanaHideAppsRule(Settings(apps)))
+    .map(apps => RuleWithVariableUsageDefinition(new KibanaHideAppsRule(Settings(apps))))
 )
 
 class KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   KibanaRulesDecoderHelper
     .kibanaIndexDecoder
     .map { index =>
-      new KibanaIndexRule(KibanaIndexRule.Settings(index))
+      RuleWithVariableUsageDefinition(new KibanaIndexRule(KibanaIndexRule.Settings(index)))
     }
 )
 

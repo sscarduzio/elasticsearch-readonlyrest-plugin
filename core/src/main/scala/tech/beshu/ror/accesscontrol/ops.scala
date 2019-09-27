@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{History, HistoryItem, Name, Po
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{UsageRequirement, VariableType}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.{ComplianceResult, OneOfRuleBeforeMustBeAuthenticationRule, OneOfRuleBeforeMustBeAuthorizationRule}
@@ -103,6 +103,7 @@ object orders {
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
+  implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleWithVariableUsageDefinition[Rule]] = Order.by(_.rule)
   implicit val patternOrder: Order[Pattern] = Order.by(_.pattern)
   implicit val forbiddenByMismatchedCauseOrder: Order[ForbiddenByMismatched.Cause] = Order.by {
     case ForbiddenByMismatched.Cause.OperationNotAllowed => 1

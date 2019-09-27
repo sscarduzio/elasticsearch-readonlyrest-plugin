@@ -18,10 +18,13 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.blocks.rules.ActionsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 
 object ActionsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers.decodeStringLikeOrNonEmptySet(Action.apply).map(actions => new ActionsRule(ActionsRule.Settings(actions)))
+  DecoderHelpers
+    .decodeStringLikeOrNonEmptySet(Action.apply)
+    .map(actions => RuleWithVariableUsageDefinition(new ActionsRule(ActionsRule.Settings(actions))))
 )

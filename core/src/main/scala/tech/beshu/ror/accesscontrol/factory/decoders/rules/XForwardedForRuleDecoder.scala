@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.XForwardedForRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
@@ -27,5 +28,5 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 class XForwardedForRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-    .map(addresses => new XForwardedForRule(XForwardedForRule.Settings(addresses)))
+    .map(addresses => RuleWithVariableUsageDefinition(new XForwardedForRule(XForwardedForRule.Settings(addresses))))
 )

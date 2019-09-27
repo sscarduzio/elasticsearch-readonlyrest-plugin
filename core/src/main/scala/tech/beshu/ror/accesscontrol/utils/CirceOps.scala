@@ -326,7 +326,7 @@ object CirceOps {
             imperonatorsDefinitions
           ) match {
             case Some(authRuleDecoder) => authRuleDecoder
-            case None => DecoderHelpers.failed[AuthenticationRule](
+            case None => DecoderHelpers.failed[_<: AuthenticationRule](
               DefinitionsLevelCreationError(Message(s"Rule $key is not authentication rule"))
             )
           }

@@ -21,6 +21,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthService, _}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
@@ -51,7 +52,7 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService])
             .findLdapService[LdapAuthenticationService](ldapDefinitions.items, name, LdapAuthenticationRule.name)
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
-      .map(service => new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service)))
+      .map(service => RuleWithVariableUsageDefinition(new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))))
       .decoder
   )
 
@@ -79,7 +80,7 @@ class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService])
   extends RuleDecoderWithoutAssociatedFields[LdapAuthorizationRule](
     LdapAuthorizationRuleDecoder
       .settingsDecoder(ldapDefinitions)
-      .map(new LdapAuthorizationRule(_))
+      .map(settings => RuleWithVariableUsageDefinition(new LdapAuthorizationRule(settings)))
   )
 
 object LdapAuthorizationRuleDecoder {
@@ -114,6 +115,7 @@ object LdapAuthorizationRuleDecoder {
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService])
   extends RuleDecoderWithoutAssociatedFields[LdapAuthRule](
     LdapAuthRuleDecoder.instance(ldapDefinitions)
+    .map(RuleWithVariableUsageDefinition(_))
   )
 
 object LdapAuthRuleDecoder {

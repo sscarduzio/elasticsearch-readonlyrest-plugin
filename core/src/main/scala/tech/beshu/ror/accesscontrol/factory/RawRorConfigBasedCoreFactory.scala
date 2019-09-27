@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
@@ -116,8 +117,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     }
   }
 
-  private implicit def rulesNelDecoder(definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
-    val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
+  private implicit def rulesNelDecoder(definitions: DefinitionsPack): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
+    val init = State.pure[ACursor, Option[Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](None)
     val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
@@ -145,7 +146,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     }
   }
 
-  private def decodeRuleInCursorContext(name: String, definitions: DefinitionsPack): State[ACursor, Option[Decoder.Result[Rule]]] =
+  private def decodeRuleInCursorContext(name: String, definitions: DefinitionsPack): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] =
     State(cursor => {
       if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {

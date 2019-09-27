@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -42,7 +43,7 @@ class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[Extern
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
     ExternalAuthorizationRuleDecoder
       .settingsDecoder(authotizationServices)
-      .map(new ExternalAuthorizationRule(_))
+      .map(settings => RuleWithVariableUsageDefinition(new ExternalAuthorizationRule(settings)))
   )
 
 object ExternalAuthorizationRuleDecoder {

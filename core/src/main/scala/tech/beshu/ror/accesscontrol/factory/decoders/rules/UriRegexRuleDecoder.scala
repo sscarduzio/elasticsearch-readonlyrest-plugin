@@ -20,9 +20,11 @@ import java.util.regex.Pattern
 
 import cats.implicits._
 import io.circe.Decoder
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.uriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -37,7 +39,7 @@ import scala.util.Try
 class UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Pattern]]
-    .map(patterns => new UriRegexRule(UriRegexRule.Settings(patterns)))
+    .map(patterns => RuleWithVariableUsageDefinition(new UriRegexRule(UriRegexRule.Settings(patterns))))
 )
 
 object UriRegexRuleDecoder {

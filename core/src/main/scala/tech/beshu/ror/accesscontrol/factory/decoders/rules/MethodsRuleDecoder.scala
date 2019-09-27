@@ -21,6 +21,7 @@ import com.softwaremill.sttp.Method._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
@@ -31,7 +32,7 @@ import tech.beshu.ror.accesscontrol.orders._
 object MethodsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[Method]
-    .map(methods => new MethodsRule(Settings(methods)))
+    .map(methods => RuleWithVariableUsageDefinition(new MethodsRule(Settings(methods))))
 )
 
 private object MethodsRuleDecoderHelper {

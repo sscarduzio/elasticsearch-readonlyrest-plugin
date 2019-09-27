@@ -28,7 +28,6 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService.AuthTokenSendMethod.{UsingHeader, UsingQueryParam}
 import tech.beshu.ror.accesscontrol.blocks.definitions.HttpExternalAuthorizationService._
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item

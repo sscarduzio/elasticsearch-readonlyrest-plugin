@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import java.time.Clock
 
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -30,7 +31,7 @@ class SessionMaxIdleRuleDecoder(implicit clock: Clock, uuidProvider: UuidProvide
   extends RuleDecoderWithoutAssociatedFields(
     common
       .positiveFiniteDurationDecoder
-      .map(maxIdle => new SessionMaxIdleRule(Settings(maxIdle)))
+      .map(maxIdle => RuleWithVariableUsageDefinition(new SessionMaxIdleRule(Settings(maxIdle))))
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)
       .decoder

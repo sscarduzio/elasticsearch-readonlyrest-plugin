@@ -22,6 +22,7 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ProxyAuth
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
@@ -45,7 +46,7 @@ class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth]) exten
             case None => Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Cannot find proxy auth with name: ${name.show}"))))
           }
       }
-    } yield new ProxyAuthRule(settings)
+    } yield RuleWithVariableUsageDefinition(new ProxyAuthRule(settings))
   }
 )
 

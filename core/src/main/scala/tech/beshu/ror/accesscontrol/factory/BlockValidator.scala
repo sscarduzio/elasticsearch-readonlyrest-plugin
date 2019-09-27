@@ -19,16 +19,16 @@ package tech.beshu.ror.accesscontrol.factory
 import cats.data.Validated._
 import cats.data.{NonEmptyList, Validated, _}
 import cats.syntax.all._
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, KibanaAccessRule, Rule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{RequirementVerifier, VariableUsage}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsingVariable._
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{RequirementVerifier, UsingVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.RuleDoesNotMeetRequirement
 
 object BlockValidator {
 
-  def validate(rules: NonEmptyList[Rule]): ValidatedNel[BlockValidationError, Unit] = {
+  def validate(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     (
       validateAuthorizationWithAuthenticationPrinciple(rules),
       validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules),
@@ -36,38 +36,42 @@ object BlockValidator {
     ).mapN { case _ => () }
   }
 
-  private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[Rule]): ValidatedNel[BlockValidationError, Unit] = {
-    rules.find(_.isInstanceOf[AuthorizationRule]) match {
+  private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+    rules.find(_.rule.isInstanceOf[AuthorizationRule]) match {
       case None => Validated.Valid(())
-      case Some(_) if rules.exists(_.isInstanceOf[AuthenticationRule]) => Validated.Valid(())
+      case Some(_) if rules.exists(_.rule.isInstanceOf[AuthenticationRule]) => Validated.Valid(())
       case Some(_) => Validated.Invalid(NonEmptyList.one(BlockValidationError.AuthorizationWithoutAuthentication))
     }
   }
 
-  private def validateRequirementsForRulesUsingVariables(allRules: NonEmptyList[Rule]): ValidatedNel[BlockValidationError, Unit] = {
-    allRules.toList
-      .map(rule => validateRequirementsForSingleRule(allRules)(rule)) match {
-      case Nil => Validated.Valid(())
-      case ::(head, tl) => NonEmptyList(head, tl).sequence_
-    }
-  }
-
-  private def validateRequirementsForSingleRule[A <: Rule : UsingVariable](allRules: NonEmptyList[Rule])(ruleWithVariables: A) = {
-    val allNonCompliantResults = RequirementVerifier.verify(ruleWithVariables, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
-    allNonCompliantResults match {
-      case Nil => Validated.Valid(())
-      case head :: tail => Validated.Invalid(NonEmptyList(head, tail).map(RuleDoesNotMeetRequirement))
-    }
-  }
-
-  private def validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[Rule]): ValidatedNel[BlockValidationError, Unit] = {
-    val kibanaAccessRules = rules.collect { case r: KibanaAccessRule => r }
-    val actionsRules = rules.collect { case r: ActionsRule => r}
+  private def validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+    val kibanaAccessRules = rules.map(_.rule).collect { case r: KibanaAccessRule => r }
+    val actionsRules = rules.map(_.rule).collect { case r: ActionsRule => r}
     (kibanaAccessRules, actionsRules) match {
       case (Nil, Nil) => Validated.Valid(())
       case (Nil, _) => Validated.Valid(())
       case (_, Nil) => Validated.Valid(())
       case (_, _) => Validated.Invalid(NonEmptyList.one(BlockValidationError.KibanaAccessRuleTogetherWithActionsRule))
+    }
+  }
+
+  private def validateRequirementsForRulesUsingVariables(allRules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
+    allRules.toList
+      .map(validateRequirementsForSingleRule(allRules.map(_.rule))) match {
+      case Nil => Validated.Valid(())
+      case ::(head, tl) => NonEmptyList(head, tl).sequence_
+    }
+  }
+
+  private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])(ruleWithVariables: RuleWithVariableUsageDefinition[Rule]) = {
+    ruleWithVariables match {
+      case RuleWithVariableUsageDefinition(_, NotUsingVariable) => Validated.Valid(())
+      case RuleWithVariableUsageDefinition(rule, usingVariable: UsingVariable[Rule]) =>
+        val allNonCompliantResults = RequirementVerifier.verify(rule, usingVariable, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
+        allNonCompliantResults match {
+          case Nil => Validated.Valid(())
+          case head :: tail => Validated.Invalid(NonEmptyList(head, tail).map(RuleDoesNotMeetRequirement))
+        }
     }
   }
 

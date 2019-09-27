@@ -28,6 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.UsingVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, NoOpBlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User
@@ -44,6 +46,12 @@ sealed trait Rule {
 }
 
 object Rule {
+
+  final case class RuleWithVariableUsageDefinition[+T <: Rule] private(rule: T, usingVariable: VariableUsage[T])
+
+  object RuleWithVariableUsageDefinition {
+    def apply[T <: Rule: VariableUsage](rule: T) = new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]])
+  }
 
   sealed trait RuleResult
   object RuleResult {
