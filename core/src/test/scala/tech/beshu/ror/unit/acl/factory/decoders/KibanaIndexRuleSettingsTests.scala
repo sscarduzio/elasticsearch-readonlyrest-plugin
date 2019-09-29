@@ -54,6 +54,7 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    kibana_index: "@{user}_kibana_index"
               |
               |""".stripMargin,

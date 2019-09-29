@@ -58,6 +58,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    repositories: "index_@{user}"
               |
               |""".stripMargin,
@@ -95,6 +96,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    repositories: [index1, "index_@{user}"]
               |
               |""".stripMargin,

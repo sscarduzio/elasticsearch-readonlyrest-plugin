@@ -129,6 +129,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: admin:pass
               |    kibana_access: admin
               |    kibana_index: .kibana_@{user}
               |

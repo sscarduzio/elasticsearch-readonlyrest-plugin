@@ -120,6 +120,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    groups: [group1, "group_@{user}"]
               |
               |  users:

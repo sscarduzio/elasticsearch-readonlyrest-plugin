@@ -50,7 +50,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           }
         )
       }
-      "index is defined with variable" in {
+      "index is defined with user variable" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -59,6 +59,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    indices: "index_@{user}"
               |
               |""".stripMargin,
@@ -96,6 +97,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    indices: [index1, "index_@{user}"]
               |
               |""".stripMargin,

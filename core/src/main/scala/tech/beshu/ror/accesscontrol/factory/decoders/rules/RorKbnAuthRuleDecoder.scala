@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.RorKbnDefinitio
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import DecoderHelpers.decodeUniqueList
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
@@ -44,7 +45,7 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
         }
       }
       .map { case (rorKbnDef, groups) =>
-        new RorKbnAuthRule(RorKbnAuthRule.Settings(rorKbnDef, groups))
+        RuleWithVariableUsageDefinition.create(new RorKbnAuthRule(RorKbnAuthRule.Settings(rorKbnDef, groups)))
       }
       .decoder
   )

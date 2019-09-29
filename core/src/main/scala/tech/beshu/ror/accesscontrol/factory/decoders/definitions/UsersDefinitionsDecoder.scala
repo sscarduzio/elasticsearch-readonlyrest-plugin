@@ -20,6 +20,7 @@ import cats.Id
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -65,10 +66,10 @@ object UsersDefinitionsDecoder {
         for {
           username <- c.downField(usernameKey).as[User.Id]
           groups <- c.downField(groupsKey).as[UniqueNonEmptyList[Group]]
-          rule <- c.withoutKeys(Set(usernameKey, groupsKey))
+          ruleWithVariableUsage <- c.withoutKeys(Set(usernameKey, groupsKey))
             .tryDecodeAuthRule(username)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))
-        } yield UserDef(username, groups, rule)
+        } yield UserDef(username, groups, ruleWithVariableUsage.rule)
       }
       .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
       .decoder

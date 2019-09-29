@@ -33,13 +33,15 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{History, HistoryItem, Name, Po
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.{ComplianceResult, OneOfRuleBeforeMustBeAuthenticationRule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering, UserMetadata}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
@@ -101,6 +103,7 @@ object orders {
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
+  implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleWithVariableUsageDefinition[Rule]] = Order.by(_.rule)
   implicit val patternOrder: Order[Pattern] = Order.by(_.pattern)
   implicit val forbiddenByMismatchedCauseOrder: Order[ForbiddenByMismatched.Cause] = Order.by {
     case ForbiddenByMismatched.Cause.OperationNotAllowed => 1
@@ -205,17 +208,30 @@ object show {
       case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
         s"Variable malformed, cause: $cause"
     }
+    implicit val variableTypeShow: Show[VariableContext.VariableType] = Show.show {
+      case _: VariableType.User => "user"
+      case _: VariableType.CurrentGroup => "current group"
+      case _: VariableType.Header => "header"
+      case _: VariableType.Jwt => "JWT"
+    }
+
+    implicit val complianceResultShow: Show[ComplianceResult.NonCompliantWith] = Show.show {
+      case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
+        s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
+    }
     def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
       Show.show[Header] {
         case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
         case Header(name, value) => s"${name.show}=${value.value.show}"
       }
     }
-    def blockValidationErrorShow(block: Block.Name): Show[ValidationError] = Show.show {
-      case ValidationError.AuthorizationWithoutAuthentication =>
+    def blockValidationErrorShow(block: Block.Name): Show[BlockValidationError] = Show.show {
+      case BlockValidationError.AuthorizationWithoutAuthentication =>
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
-      case ValidationError.KibanaAccessRuleTogetherWithActionsRule =>
+      case BlockValidationError.KibanaAccessRuleTogetherWithActionsRule =>
         s"The '${block.show}' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block."
+      case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
+        s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
     }
     private def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {
       if(traversable.isEmpty) None

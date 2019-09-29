@@ -18,12 +18,12 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import java.util.regex.Pattern
 
-import cats.data.NonEmptySet
+import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class UriRegexRule(val settings: Settings)
@@ -42,9 +42,14 @@ class UriRegexRule(val settings: Settings)
 
   private def variableMatchingRequestedUri(requestContext: RequestContext,
                                            blockContext: BlockContext)
-                                          (patternVariable: RuntimeSingleResolvableVariable[Pattern]): Boolean =
+                                          (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
     patternVariable
       .resolve(requestContext, blockContext)
+      .exists(matchingResolvedPattern(requestContext))
+
+  private def matchingResolvedPattern(requestContext: RequestContext)
+                                     (patterns: NonEmptyList[Pattern]): Boolean =
+    patterns
       .exists {
         _.matcher(requestContext.uriPath.value).find()
       }
@@ -53,6 +58,6 @@ class UriRegexRule(val settings: Settings)
 object UriRegexRule {
   val name = Rule.Name("uri_re")
 
-  final case class Settings(uriPatterns: NonEmptySet[RuntimeSingleResolvableVariable[Pattern]])
+  final case class Settings(uriPatterns: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]])
 
 }

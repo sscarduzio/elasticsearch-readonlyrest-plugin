@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleD
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.FieldsRuleDecoderHelper._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.orders._
@@ -59,7 +60,7 @@ object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
         Right(settings)
       }
     }
-    .map(new FieldsRule(_))
+    .map(settings => RuleWithVariableUsageDefinition.create(new FieldsRule(settings)))
     .decoder
 )
 

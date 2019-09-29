@@ -58,6 +58,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    users: "@{user}"
               |
               |""".stripMargin,

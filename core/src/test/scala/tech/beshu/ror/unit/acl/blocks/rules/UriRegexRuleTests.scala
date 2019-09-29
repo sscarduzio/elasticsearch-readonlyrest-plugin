@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeMultiResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.accesscontrol.domain.User.Id
@@ -60,6 +60,13 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
         mockLoggedUser(Some("mia"))
         assertMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{user}$""")),
+          uriPath = UriPath("/mia")
+        )
+      }
+      "configured pattern with variable containing namespace matches uri from request when user is logged" in {
+        mockLoggedUser(Some("mia"))
+        assertMatchRule(
+          uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{acl:user}$""")),
           uriPath = UriPath("/mia")
         )
       }
@@ -101,13 +108,13 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(uriRegex: NonEmptySet[RuntimeSingleResolvableVariable[Pattern]], uriPath: UriPath) =
+  private def assertMatchRule(uriRegex: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]], uriPath: UriPath) =
     assertRule(uriRegex, uriPath, isMatched = true)
 
-  private def assertNotMatchRule(uriRegex: NonEmptySet[RuntimeSingleResolvableVariable[Pattern]], uriPath: UriPath) =
+  private def assertNotMatchRule(uriRegex: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]], uriPath: UriPath) =
     assertRule(uriRegex, uriPath, isMatched = false)
 
-  private def assertRule(uriRegex: NonEmptySet[RuntimeSingleResolvableVariable[Pattern]], uriPath: UriPath, isMatched: Boolean) = {
+  private def assertRule(uriRegex: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]], uriPath: UriPath, isMatched: Boolean) = {
     val rule = new UriRegexRule(UriRegexRule.Settings(uriRegex))
     val requestContext = MockRequestContext(uriPath = uriPath)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
@@ -116,7 +123,7 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def patternValueFrom(values: NonEmptySet[String]): NonEmptySet[RuntimeSingleResolvableVariable[Pattern]] = {
+  private def patternValueFrom(values: NonEmptySet[String]): NonEmptySet[RuntimeMultiResolvableVariable[Pattern]] = {
     values
       .map { value =>
         implicit val patternConvertible: Convertible[Pattern] = new Convertible[Pattern] {
@@ -125,7 +132,7 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
           }
         }
         RuntimeResolvableVariableCreator
-          .createSingleResolvableVariableFrom[Pattern](value.nonempty)
+          .createMultiResolvableVariableFrom[Pattern](value.nonempty)
           .right
           .getOrElse(throw new IllegalStateException(s"Cannot create Pattern Value from $value"))
       }
