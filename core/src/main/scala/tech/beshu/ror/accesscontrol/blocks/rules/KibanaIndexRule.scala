@@ -19,13 +19,13 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, UserMetadataRelatedRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RegularRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.domain.IndexName
 
 class KibanaIndexRule(val settings: Settings)
-  extends UserMetadataRelatedRule with MatchingAlwaysRule {
+  extends RegularRule with MatchingAlwaysRule {
 
   override val name: Rule.Name = KibanaIndexRule.name
 

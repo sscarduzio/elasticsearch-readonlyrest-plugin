@@ -25,7 +25,7 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, UserMetadataRelatedRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
@@ -38,7 +38,7 @@ import tech.beshu.ror.utils.MatcherWithWildcards
 import scala.util.Try
 
 class KibanaAccessRule(val settings: Settings)
-  extends UserMetadataRelatedRule with Logging {
+  extends RegularRule with Logging {
 
   import KibanaAccessRule.stringActionNT
 

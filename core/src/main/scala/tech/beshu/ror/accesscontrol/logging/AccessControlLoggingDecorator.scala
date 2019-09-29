@@ -70,8 +70,8 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       .andThen {
         case Success(resultWithHistory) =>
           resultWithHistory.result match {
-            case UserMetadataRequestResult.Allow(userMetadata) =>
-              log(Allow(requestContext, userMetadata, resultWithHistory.history))
+            case UserMetadataRequestResult.Allow(userMetadata, block) =>
+              log(Allow(requestContext, userMetadata, block, resultWithHistory.history))
             case UserMetadataRequestResult.Forbidden =>
               log(Forbidden(requestContext, resultWithHistory.history))
             case UserMetadataRequestResult.PassedThrough =>
@@ -109,7 +109,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
     }
     context match {
       case AllowedBy(_, block, _, _) => shouldBeLogged(block)
-      case Allow(_, _, _) => true
+      case Allow(_, _, _, _) => true
       case _: ForbiddenBy | _: Forbidden | _: Errored => true
     }
   }
@@ -123,9 +123,9 @@ object AccessControlLoggingDecorator {
       case AllowedBy(requestContext, block, blockContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)
         s"""${Constants.ANSI_CYAN}ALLOWED by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
-      case Allow(requestContext, metadata, history) =>
+      case Allow(requestContext, metadata, block, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(metadata.loggedUser, metadata.foundKibanaIndex, history)
-        s"""${Constants.ANSI_CYAN}ALLOWED req=${requestContext.show}${Constants.ANSI_RESET}"""
+        s"""${Constants.ANSI_CYAN}ALLOWED by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
       case ForbiddenBy(requestContext, block, blockContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
