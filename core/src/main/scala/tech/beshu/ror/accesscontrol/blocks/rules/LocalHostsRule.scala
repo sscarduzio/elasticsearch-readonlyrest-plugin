@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class LocalHostsRule(val settings: Settings)
-  extends BaseHostsRule  {
+  extends BaseHostsRule {
 
   override val name: Rule.Name = LocalHostsRule.name
 

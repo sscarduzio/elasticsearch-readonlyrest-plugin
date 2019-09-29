@@ -79,9 +79,7 @@ object VariableContext {
     implicit val proxyAuthRule: VariableUsage[ProxyAuthRule] = NotUsingVariable
     implicit val rorKbnAuthRule: VariableUsage[RorKbnAuthRule] = NotUsingVariable
     implicit val sessionMaxIdleRule: VariableUsage[SessionMaxIdleRule] = NotUsingVariable
-
   }
-
 
   sealed trait UsageRequirement {
     def checkIfComplies(rulesBefore: List[Rule]): UsageRequirement.ComplianceResult
@@ -98,7 +96,7 @@ object VariableContext {
     def definedFor(variableType: VariableType): Option[UsageRequirement] = {
       variableType match {
         case v: VariableType.User => Some(UsageRequirement.OneOfRuleBeforeMustBeAuthenticationRule(v))
-        case v: VariableType.CurrentGroup => None
+        case _: VariableType.CurrentGroup => None
         case _: VariableType.Header => None
         case _: VariableType.Jwt => None
       }

@@ -55,10 +55,10 @@ object ImpersonationDefinitionsDecoder {
         for {
           impersonator <- c.downField(impersonatorKey).as[User.Id]
           users <- c.downField(usersKey).as[NonEmptySet[User.Id]]
-          authRule <- c.withoutKeys(Set(impersonatorKey, usersKey))
+          ruleWithVariableUsage <- c.withoutKeys(Set(impersonatorKey, usersKey))
             .tryDecodeAuthRule(impersonator)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))
-        } yield ImpersonatorDef(impersonator, authRule.rule, users)
+        } yield ImpersonatorDef(impersonator, ruleWithVariableUsage.rule, users)
       }
       .withError(DefinitionsLevelCreationError.apply, Message("Impersonation definition malformed"))
       .decoder

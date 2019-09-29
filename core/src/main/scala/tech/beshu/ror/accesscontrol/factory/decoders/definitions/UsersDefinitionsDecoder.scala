@@ -58,7 +58,7 @@ object UsersDefinitionsDecoder {
                                       ldapDefinitions: Definitions[LdapService],
                                       rorKbnDefinitions: Definitions[RorKbnDef],
                                       impersonatorDefs: Definitions[ImpersonatorDef]): Decoder[UserDef] = {
-    implicit val imer: Option[Definitions[ImpersonatorDef]] = Some(impersonatorDefs)
+    implicit val _ = Some(impersonatorDefs)
     SyncDecoderCreator
       .instance { c =>
         val usernameKey = "username"
@@ -66,11 +66,10 @@ object UsersDefinitionsDecoder {
         for {
           username <- c.downField(usernameKey).as[User.Id]
           groups <- c.downField(groupsKey).as[UniqueNonEmptyList[Group]]
-          rule <- c.withoutKeys(Set(usernameKey, groupsKey))
+          ruleWithVariableUsage <- c.withoutKeys(Set(usernameKey, groupsKey))
             .tryDecodeAuthRule(username)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))
-//          r:  RuleWithVariableUsageDefinition[AuthenticationRule] = rule
-        } yield UserDef(username, groups, rule.rule)
+        } yield UserDef(username, groups, ruleWithVariableUsage.rule)
       }
       .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
       .decoder

@@ -47,7 +47,7 @@ sealed trait Rule {
 
 object Rule {
 
-  final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, usingVariable: VariableUsage[T])
+  final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, variableUsage: VariableUsage[T])
 
   object RuleWithVariableUsageDefinition {
     def create[T <: Rule: VariableUsage](rule: T) = new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]])

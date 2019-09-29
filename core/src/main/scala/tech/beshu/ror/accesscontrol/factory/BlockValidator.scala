@@ -63,8 +63,8 @@ object BlockValidator {
     }
   }
 
-  private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])(ruleWithVariables: RuleWithVariableUsageDefinition[Rule]) = {
-    ruleWithVariables match {
+  private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])(ruleDefinition: RuleWithVariableUsageDefinition[Rule]) = {
+    ruleDefinition match {
       case RuleWithVariableUsageDefinition(_, NotUsingVariable) => Validated.Valid(())
       case RuleWithVariableUsageDefinition(rule, usingVariable: UsingVariable[Rule]) =>
         val allNonCompliantResults = RequirementVerifier.verify(rule, usingVariable, allRules).collect { case r: ComplianceResult.NonCompliantWith => r }
