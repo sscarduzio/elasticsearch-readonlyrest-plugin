@@ -19,11 +19,12 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, ScriptManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class PluginDependentIndicesTest extends WordSpec with ForAllTestContainer with Matchers {
+class PluginDependentIndicesTest extends WordSpec with ForAllTestContainer with ESVersionSupport with Matchers {
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/plugin_indices/readonlyrest.yml",
@@ -32,7 +33,7 @@ class PluginDependentIndicesTest extends WordSpec with ForAllTestContainer with 
   )
   "Search can be done" when {
     "user uses local auth rule" when {
-      "mustache template can be used" in {
+      "mustache template can be used" excludeES("es51x", "es52x", "es53x")  in {
         val searchManager = new SearchManager(
           container.nodesContainers.head.client("dev1", "test")
         )

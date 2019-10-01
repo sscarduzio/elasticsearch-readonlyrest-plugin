@@ -51,33 +51,10 @@ public class SearchManagerJ extends JBaseManager {
     return call(createSearchRequest(endpoint), SearchResult::new);
   }
 
-  public SearchResult storeScript(String scriptId, String query) { return call(createStoreScriptRequestRequest(scriptId, query), SearchResult::new); }
-  public SearchResult templateSearch(String query, List<String> indices) { return call(createTemplateSearchRequest(query, indices), SearchResult::new); }
   public MSearchResult mSearch(String query) {
     return call(createMSearchRequest(query), MSearchResult::new);
   }
 
-    private HttpPost createStoreScriptRequestRequest(String scriptId, String query) {
-        try {
-            HttpPost request = new HttpPost(restClient.from("/_scripts/" + scriptId));
-            request.addHeader("Content-type", "application/json");
-            request.setEntity(new StringEntity(query));
-            return request;
-        } catch (UnsupportedEncodingException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-    private HttpPost createTemplateSearchRequest(String query, List<String> indices) {
-        String queryIndices = String.join(",", indices);
-        try {
-            HttpPost request = new HttpPost(restClient.from("/"+queryIndices+"/_search/template"));
-            request.addHeader("Content-type", "application/json");
-            request.setEntity(new StringEntity(query));
-            return request;
-        } catch (UnsupportedEncodingException e) {
-            throw new IllegalStateException(e);
-        }
-    }
   private HttpPost createMSearchRequest(String query) {
     try {
       HttpPost request = new HttpPost(restClient.from("/_msearch"));
