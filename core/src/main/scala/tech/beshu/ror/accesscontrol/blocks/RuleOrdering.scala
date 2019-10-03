@@ -59,6 +59,9 @@ object RuleOrdering {
     classOf[LdapAuthenticationRule],
     classOf[ExternalAuthenticationRule],
     classOf[GroupsRule],
+    // all authorization rules should be placed after any authentication rule
+    classOf[LdapAuthorizationRule],
+    classOf[ExternalAuthorizationRule],
     // Inspection rules next; these act based on properties of the request.
     classOf[KibanaAccessRule],
     classOf[LocalHostsRule],
@@ -75,9 +78,6 @@ object RuleOrdering {
     classOf[IndicesRule],
     classOf[ActionsRule],
     classOf[UsersRule],
-    // all authorization rules should be placed before any authentication rule
-    classOf[LdapAuthorizationRule],
-    classOf[ExternalAuthorizationRule],
     // At the end the sync rule chain are those that can mutate the client request.
     classOf[KibanaHideAppsRule],
     classOf[KibanaIndexRule],

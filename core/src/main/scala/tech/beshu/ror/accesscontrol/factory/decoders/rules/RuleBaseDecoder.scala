@@ -21,13 +21,14 @@ import io.circe.CursorOp.DownField
 import io.circe.Decoder.Result
 import io.circe.{ACursor, Decoder, HCursor}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
 
 sealed abstract class RuleBaseDecoder[T <: Rule](val associatedFields: Set[String])
-  extends Decoder[T] {
-  def decode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[T] = {
+  extends Decoder[RuleWithVariableUsageDefinition[T]] {
+  def decode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[RuleWithVariableUsageDefinition[T]] = {
     doDecode(value, associatedFieldsJson)
       .left
       .map(df => df.overrideDefaultErrorWith(RulesLevelCreationError {
@@ -41,35 +42,35 @@ sealed abstract class RuleBaseDecoder[T <: Rule](val associatedFields: Set[Strin
       }))
   }
 
-  protected def doDecode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[T]
+  protected def doDecode(value: ACursor, associatedFieldsJson: ACursor): Decoder.Result[RuleWithVariableUsageDefinition[T]]
 }
 
 object RuleBaseDecoder {
-  private [decoders] class RuleDecoderWithoutAssociatedFields[T <: Rule](decoder: Decoder[T])
+  private [decoders] class RuleDecoderWithoutAssociatedFields[T <: Rule](decoder: Decoder[RuleWithVariableUsageDefinition[T]])
     extends RuleBaseDecoder[T](Set.empty) {
-    override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[T] = decoder.tryDecode(value)
-    override def apply(c: HCursor): Result[T] = decoder.apply(c)
+    override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[RuleWithVariableUsageDefinition[T]] = decoder.tryDecode(value)
+    override def apply(c: HCursor): Result[RuleWithVariableUsageDefinition[T]] = decoder.apply(c)
   }
 
-  private [decoders] class RuleDecoderWithAssociatedFields[T <: Rule, S](ruleDecoderCreator: S => Decoder[T],
+  private [decoders] class RuleDecoderWithAssociatedFields[T <: Rule, S](ruleDecoderCreator: S => Decoder[RuleWithVariableUsageDefinition[T]],
                                                                          associatedFields: NonEmptySet[String],
                                                                          associatedFieldsDecoder: Decoder[S])
     extends RuleBaseDecoder[T](associatedFields.toSortedSet) {
-    override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[T] = {
+    override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[RuleWithVariableUsageDefinition[T]] = {
       for {
         decodedAssociatedFields <- associatedFieldsDecoder.tryDecode(associatedFieldsJson)
         rule <- ruleDecoderCreator(decodedAssociatedFields).tryDecode(value)
       } yield rule
     }
 
-    override def apply(c: HCursor): Result[T] =
+    override def apply(c: HCursor): Result[RuleWithVariableUsageDefinition[T]] =
       Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message("Rule with associated fields decoding failed"))))
   }
 
   private[decoders] def failed[T <: Rule](error: RulesLevelCreationError): RuleBaseDecoder[T] =
     new RuleBaseDecoder[T](Set.empty) {
       private val decodingFailureResult = Left(DecodingFailureOps.fromError(error))
-      override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[T] = decodingFailureResult
-      override def apply(c: HCursor): Result[T] = decodingFailureResult
+      override def doDecode(value: ACursor, associatedFieldsJson: ACursor): Result[RuleWithVariableUsageDefinition[T]] = decodingFailureResult
+      override def apply(c: HCursor): Result[RuleWithVariableUsageDefinition[T]] = decodingFailureResult
     }
 }

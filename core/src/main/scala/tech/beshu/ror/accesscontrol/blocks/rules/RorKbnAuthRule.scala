@@ -41,7 +41,6 @@ import scala.util.Try
 
 class RorKbnAuthRule(val settings: Settings)
   extends AuthenticationRule
-    with UserMetadataRelatedRule
     with NoImpersonationSupport
     with AuthorizationRule
     with Logging {

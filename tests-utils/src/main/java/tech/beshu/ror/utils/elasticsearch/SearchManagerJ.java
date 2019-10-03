@@ -55,14 +55,6 @@ public class SearchManagerJ extends JBaseManager {
     return call(createMSearchRequest(query), MSearchResult::new);
   }
 
-  private HttpGet createSearchRequest(String endpoint) {
-    String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
-    HttpGet request = new HttpGet(restClient.from(endpoint));
-    request.setHeader("timeout", "50s");
-    request.setHeader("x-caller-" + caller, "true");
-    return request;
-  }
-
   private HttpPost createMSearchRequest(String query) {
     try {
       HttpPost request = new HttpPost(restClient.from("/_msearch"));
@@ -72,6 +64,13 @@ public class SearchManagerJ extends JBaseManager {
     } catch (UnsupportedEncodingException e) {
       throw new IllegalStateException(e);
     }
+  }
+  private HttpGet createSearchRequest(String endpoint) {
+    String caller = Thread.currentThread().getStackTrace()[2].getMethodName();
+    HttpGet request = new HttpGet(restClient.from(endpoint));
+    request.setHeader("timeout", "50s");
+    request.setHeader("x-caller-" + caller, "true");
+    return request;
   }
 
   public static class SearchResult extends JsonResponse {

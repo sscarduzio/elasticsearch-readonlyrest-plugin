@@ -26,3 +26,12 @@ readonlyrest:
     - name: "user4"
       auth_key: "user4:pass"
       uri_re: ["^/\\d\\d\\d$", "^/\\w$", "^/not_match$", "^/_cat$"]
+
+    - name: "user5 resolved using current group"
+      groups: ["cat"]
+      uri_re: ["^/\\d\\d\\d$", "^/_@{acl:current_group}.*$"]
+
+  users:
+    - username: "user5"
+      groups: ["cat", "some_group"]
+      auth_key: "user5:pass"

@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.domain.Filter
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
@@ -25,5 +26,5 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 class FilterRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     DecoderHelpers
       .alwaysRightSingleVariableDecoder(AlwaysRightConvertible.from(Filter.apply))
-      .map(filter => new FilterRule(FilterRule.Settings(filter)))
+      .map(filter => RuleWithVariableUsageDefinition.create(new FilterRule(FilterRule.Settings(filter))))
 )

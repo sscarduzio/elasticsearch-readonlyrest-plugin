@@ -20,10 +20,12 @@ import java.util.regex.Pattern
 
 import cats.implicits._
 import io.circe.Decoder
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.uriRegexRule
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
@@ -36,8 +38,8 @@ import scala.util.Try
 
 class UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeSingleResolvableVariable[Pattern]]
-    .map(patterns => new UriRegexRule(UriRegexRule.Settings(patterns)))
+    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Pattern]]
+    .map(patterns => RuleWithVariableUsageDefinition.create(new UriRegexRule(UriRegexRule.Settings(patterns))))
 )
 
 object UriRegexRuleDecoder {
@@ -51,13 +53,13 @@ object UriRegexRuleDecoder {
     }
   }
 
-  implicit val patternDecoder: Decoder[RuntimeSingleResolvableVariable[Pattern]] =
+  implicit val patternDecoder: Decoder[RuntimeMultiResolvableVariable[Pattern]] =
     DecoderHelpers
       .decodeStringLikeNonEmpty
       .toSyncDecoder
       .emapE { str =>
         RuntimeResolvableVariableCreator
-          .createSingleResolvableVariableFrom[Pattern](str)
+          .createMultiResolvableVariableFrom[Pattern](str)
           .left.map(error => RulesLevelCreationError(Message(error.show)))
       }
       .decoder

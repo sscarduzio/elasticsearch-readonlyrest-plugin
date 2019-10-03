@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{JwtTokenPayload, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
 
@@ -116,13 +117,21 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
           )
         variable shouldBe Right("simone")
       }
+      "user variable is used with namespace and there is logged user" in {
+        val variable = forceCreateSingleVariable("@{acl:user}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default).withLoggedUser(DirectlyLoggedUser(User.Id("simone".nonempty)))
+          )
+        variable shouldBe Right("simone")
+      }
       "user multivariable is used and there is logged user" in {
         val variable = forceCreateMultiVariable("@explode{user}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default).withLoggedUser(DirectlyLoggedUser(User.Id("simone,tony".nonempty)))
           )
-        variable shouldBe Right(NonEmptyList.of("simone", "tony"))
+        variable shouldBe Right(NonEmptyList.of("simone,tony"))
       }
     }
     "have not been resolved" when {
@@ -133,6 +142,47 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
             fromRequestContext(MockRequestContext.default)
           )
         variable shouldBe Left(CannotExtractValue("Cannot extract user ID from block context"))
+      }
+    }
+  }
+
+  "A current group variable" should {
+    "have been resolved" when {
+      "current group variable is used and some groups has been added as available" in {
+        val variable = forceCreateSingleVariable("@{acl:current_group}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default).withAddedAvailableGroups(UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")))
+          )
+        variable shouldBe Right("g1")
+      }
+
+      "current group variable is used and initial group is present" in {
+        val requestContext = MockRequestContext(headers = Set(headerFrom("x-ror-current-group" -> "g1")))
+        val variable = forceCreateSingleVariable("@{acl:current_group}")
+          .resolve(
+            requestContext,
+            fromRequestContext(requestContext)
+          )
+        variable shouldBe Right("g1")
+      }
+      "current group multivariable is used and some groups has been added as available" in {
+        val variable = forceCreateMultiVariable("@explode{acl:current_group}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default).withAddedAvailableGroups(UniqueNonEmptyList.of(groupFrom("g1,g2"), groupFrom("g3")))
+          )
+        variable shouldBe Right(NonEmptyList.of("g1,g2"))
+      }
+    }
+    "have not been resolved" when {
+      "current group is not available in given block context" in {
+        val variable = forceCreateSingleVariable("@{acl:current_group}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default)
+          )
+        variable shouldBe Left(CannotExtractValue("There was no current group for request: mock"))
       }
     }
   }

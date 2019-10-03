@@ -62,7 +62,7 @@ class CurrentUserMetadataRequestHandler[Request <: ActionRequest, Response <: Ac
                            requestInfo: RequestInfo): Unit = {
     Try {
       result match {
-        case UserMetadataRequestResult.Allow(userMetadata) =>
+        case UserMetadataRequestResult.Allow(userMetadata, _) =>
           onAllow(requestContext, requestInfo, userMetadata)
         case UserMetadataRequestResult.Forbidden =>
           onForbidden()

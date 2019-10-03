@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.JwtDefinitionsD
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import DecoderHelpers.decodeUniqueList
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
@@ -44,7 +45,7 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
       }
     }
     .map { case (jwtDef, groups) =>
-      new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups))
+      RuleWithVariableUsageDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups)))
     }
     .decoder
 )

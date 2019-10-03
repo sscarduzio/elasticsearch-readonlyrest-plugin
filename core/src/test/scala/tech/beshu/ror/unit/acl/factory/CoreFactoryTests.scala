@@ -327,6 +327,19 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         val acl = factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block.")))))
       }
+      "block uses user variable without defining authentication rule beforehand" in {
+        val config = rorConfigFrom(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    uri_re: "some_@{user}"
+            |""".stripMargin)
+        val acl = factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. Variable used to extract user requires one of the rules defined in block to be authentication rule")))))
+      }
     }
     "return rule level error" when {
       "no rules are defined in block" in {
@@ -391,6 +404,35 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
           secondBlock.policy should be(Block.Policy.Allow)
           secondBlock.verbosity should be(Block.Verbosity.Error)
           secondBlock.rules should have size 1
+      }
+    }
+
+    "return ACL with blocks defined in config" when {
+      "each block meets requirements for variables" in {
+        val config = rorConfigFrom(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block1
+            |    auth_key: admin:container
+            |    indices: ["test", "other_@{user}"]
+            |
+            |  - name: test_block2
+            |    uri_re: "/endpoint_@{acl:current_group}"
+            |""".stripMargin)
+
+        inside(factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()) {
+          case Right(CoreSettings(acl: AccessControlList, _, _)) =>
+            val firstBlock = acl.blocks.head
+            firstBlock.name should be(Block.Name("test_block1"))
+            firstBlock.rules should have size 2
+
+            val secondBlock = acl.blocks.tail.head
+            secondBlock.name should be(Block.Name("test_block2"))
+            secondBlock.rules should have size 1
+        }
       }
     }
   }

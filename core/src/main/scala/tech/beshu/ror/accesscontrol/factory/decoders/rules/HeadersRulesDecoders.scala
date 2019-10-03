@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.{HeadersAndRule, HeadersOrRule}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.domain.Header.Name
@@ -26,11 +27,15 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.StringWiseSplitter._
 
 object HeadersAndRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers.decodeStringLikeOrNonEmptySetE(headerFromString).map(headers => new HeadersAndRule(HeadersAndRule.Settings(headers)))
+  DecoderHelpers
+    .decodeStringLikeOrNonEmptySetE(headerFromString)
+    .map(headers => RuleWithVariableUsageDefinition.create(new HeadersAndRule(HeadersAndRule.Settings(headers))))
 )
 
 object HeadersOrRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers.decodeStringLikeOrNonEmptySetE(headerFromString).map(headers => new HeadersOrRule(HeadersOrRule.Settings(headers)))
+  DecoderHelpers
+    .decodeStringLikeOrNonEmptySetE(headerFromString)
+    .map(headers => RuleWithVariableUsageDefinition.create(new HeadersOrRule(HeadersOrRule.Settings(headers))))
 )
 
 private object HeadersHelper {

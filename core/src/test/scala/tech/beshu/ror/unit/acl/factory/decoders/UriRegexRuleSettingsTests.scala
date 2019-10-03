@@ -22,16 +22,16 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.ToBeResolved
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.ToBeResolved
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule] with MockFactory {
 
   "A UriRegexRule" should {
     "be able to be loaded from config" when {
-      "single uri patten is defined" in {
+      "single uri pattern is defined" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -44,7 +44,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.uriPatterns.head.resolve(mock[RequestContext], mock[BlockContext]).map(_.pattern) shouldBe Right("^/secret-idx/.*")
+            rule.settings.uriPatterns.head.resolve(mock[RequestContext], mock[BlockContext]).map(_.head).map(_.pattern) shouldBe Right("^/secret-idx/.*")
           }
         )
       }
@@ -62,12 +62,12 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |""".stripMargin,
           assertion = rule => {
             val patternsAsStrings = rule.settings.uriPatterns
-              .map(_.resolve(mock[RequestContext], mock[BlockContext]).map(_.pattern).right.get)
+              .map(_.resolve(mock[RequestContext], mock[BlockContext]).map(_.head).map(_.pattern).right.get)
             patternsAsStrings shouldBe NonEmptySet.of("^/secret-idx/.*", "^/secret/.*")
           }
         )
       }
-      "uri patten is defined with variable" in {
+      "uri pattern is defined with variable" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -76,7 +76,26 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    uri_re: "^/user/@{user}/.*"
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.uriPatterns.head shouldBe a [ToBeResolved[_]]
+          }
+        )
+      }
+      "uri pattern is defined with multi variable" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    auth_key: user:pass
+              |    uri_re: ["^/user/@explode{user}/.*"]
               |
               |""".stripMargin,
           assertion = rule => {

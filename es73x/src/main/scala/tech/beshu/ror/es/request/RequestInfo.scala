@@ -124,6 +124,10 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           // todo: The only way we can filter this kind of request is going Lucene level like "filter" rule.
           Set.empty[String]
         }
+      case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
+        invokeMethodCached(ar, ar.getClass, "getRequest")
+          .asInstanceOf[SearchRequest]
+          .indices().toSet
       case ar: CompositeIndicesRequest =>
         logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${ar.getClass.getSimpleName}")
         Set.empty[String]

@@ -54,6 +54,7 @@ class FilterRuleSettingsTests extends BaseRuleSettingsDecoderTest[FilterRule] {
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    filter: "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
               |
               |""".stripMargin,
