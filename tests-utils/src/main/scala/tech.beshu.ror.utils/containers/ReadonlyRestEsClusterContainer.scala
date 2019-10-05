@@ -42,7 +42,8 @@ object ReadonlyRestEsCluster {
                                   nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
                                   clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer,
                                   dependentServicesContainers: List[DependencyDef] = Nil,
-                                  configHotReloadingEnabled: Boolean = true): ReadonlyRestEsClusterContainer =
+                                  configHotReloadingEnabled: Boolean = true,
+                                  internodeSslEnabled: Boolean = false): ReadonlyRestEsClusterContainer =
     createLocalClusterContainer(
       name,
       ContainerUtils.getResourceFile(rorConfigFileName),
@@ -50,7 +51,8 @@ object ReadonlyRestEsCluster {
       nodeDataInitializer,
       clusterInitializer,
       Nil,
-      configHotReloadingEnabled
+      configHotReloadingEnabled,
+      internodeSslEnabled
     )
 
   def createLocalClusterContainer(name: String,
@@ -59,7 +61,8 @@ object ReadonlyRestEsCluster {
                                   nodeDataInitializer: ElasticsearchNodeDataInitializer,
                                   clusterInitializer: ReadonlyRestEsClusterInitializer,
                                   dependentServicesContainers: List[DependencyDef],
-                                  configHotReloadingEnabled: Boolean): ReadonlyRestEsClusterContainer = {
+                                  configHotReloadingEnabled: Boolean,
+                                  internodeSslEnabled: Boolean): ReadonlyRestEsClusterContainer = {
     if (numberOfInstances < 1) throw new IllegalArgumentException("ES Cluster should have at least one instance")
     val project = RorPluginGradleProject.fromSystemProperty
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
@@ -69,7 +72,7 @@ object ReadonlyRestEsCluster {
     new ReadonlyRestEsClusterContainer(
       nodeNames.map { name =>
         Task(ReadonlyRestEsContainer.create(
-          ReadonlyRestEsContainer.Config(name, nodeNames, esVersion, rorPluginFile, rorConfigFile, configHotReloadingEnabled),
+          ReadonlyRestEsContainer.Config(name, nodeNames, esVersion, rorPluginFile, rorConfigFile, configHotReloadingEnabled, internodeSslEnabled),
           nodeDataInitializer
         ))
       },

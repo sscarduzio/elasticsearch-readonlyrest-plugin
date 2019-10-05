@@ -54,7 +54,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
       super.initChannel(ch)
       logger.info(">> internode SSL channel initializing")
       val sslCtxBuilder = SslContextBuilder.forClient()
-      if (ssl.verifyClientAuth) {
+      if (!ssl.verifyClientAuth) {
         sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE)
       }
       val sslCtx = sslCtxBuilder.build()
@@ -105,7 +105,6 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
             new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
             null
           )
-          // Cert verification enable by default for internode
           if (ssl.verifyClientAuth) sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
