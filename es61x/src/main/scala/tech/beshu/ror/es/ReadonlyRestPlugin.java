@@ -71,7 +71,7 @@ import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
 import tech.beshu.ror.es.ssl.SSLNetty4InternodeServerTransport;
-import tech.beshu.ror.es.ssl.SSLTransportNetty4;
+import tech.beshu.ror.es.ssl.SSLNetty4HttpServerTransport;
 import tech.beshu.ror.es.utils.ThreadRepo;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
@@ -194,7 +194,7 @@ public class ReadonlyRestPlugin extends Plugin
     if(sslConfig.externalSsl().isDefined()) {
       return Collections.singletonMap(
           "ssl_netty4", () ->
-              new SSLTransportNetty4(
+              new SSLNetty4HttpServerTransport(
                   settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, sslConfig.externalSsl().get()
               ));
     } else {

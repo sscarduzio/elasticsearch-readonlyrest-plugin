@@ -48,13 +48,13 @@ import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class SSLTransportNetty4 extends Netty4HttpServerTransport {
+public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
   private final SslConfiguration ssl;
 
-  public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, SslConfiguration ssl) {
+  public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
+                                      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, SslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.ssl = ssl;
   }
@@ -83,7 +83,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
     private Optional<SslContext> context = Optional.empty();
 
     SSLHandler(final Netty4HttpServerTransport transport) {
-      super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
+      super(transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, SSLNetty4HttpServerTransport.this.threadPool.getThreadContext());
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
         SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
         return null;
