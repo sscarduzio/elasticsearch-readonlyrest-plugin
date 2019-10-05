@@ -40,6 +40,7 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.common.util.PageCacheRecycler;
 import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
@@ -58,6 +59,7 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.Transport;
 import org.elasticsearch.transport.netty4.Netty4Utils;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import scala.concurrent.duration.FiniteDuration;
@@ -68,6 +70,7 @@ import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
+import tech.beshu.ror.es.ssl.SSLNetty4InternodeServerTransport;
 import tech.beshu.ror.es.ssl.SSLTransportNetty4;
 import tech.beshu.ror.es.utils.ThreadRepo;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
@@ -152,6 +155,30 @@ public class ReadonlyRestPlugin extends Plugin
     return ImmutableList.of(
         Setting.groupSetting("readonlyrest.", Setting.Property.Dynamic, Setting.Property.NodeScope)
     );
+  }
+
+  @Override
+  public Map<String, Supplier<Transport>> getTransports(Settings settings,
+                                                        ThreadPool threadPool,
+                                                        BigArrays bigArrays,
+                                                        PageCacheRecycler pageCacheRecycler,
+                                                        CircuitBreakerService circuitBreakerService,
+                                                        NamedWriteableRegistry namedWriteableRegistry,
+                                                        NetworkService networkService) {
+    if(sslConfig.interNodeSsl().isDefined()) {
+      return Collections.singletonMap("ror_ssl_internode", () ->
+              new SSLNetty4InternodeServerTransport(
+                      settings,
+                      threadPool,
+                      networkService,
+                      bigArrays,
+                      namedWriteableRegistry,
+                      circuitBreakerService,
+                      sslConfig.interNodeSsl().get())
+      );
+    } else {
+      return Collections.EMPTY_MAP;
+    }
   }
 
   @Override
