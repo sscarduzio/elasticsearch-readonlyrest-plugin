@@ -46,15 +46,15 @@ import javax.net.ssl.SSLHandshakeException;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 
-public class SSLTransportNetty4 extends Netty4HttpServerTransport {
+public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
   private final SslConfiguration ssl;
 
   private SslContext sslContext;
 
-  public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, SslConfiguration ssl) {
+  public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
+                                      ThreadPool threadPool, SslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool);
     this.ssl = ssl;
     SSLCertParser$.MODULE$.run(new SSLContextCreatorImpl(ssl), ssl);
@@ -83,7 +83,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
 
     SSLHandler(final Netty4HttpServerTransport transport) {
-      super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
+      super(transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, SSLNetty4HttpServerTransport.this.threadPool.getThreadContext());
     }
 
     protected void initChannel(final Channel ch) throws Exception {
