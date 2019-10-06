@@ -75,7 +75,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
         logger.info(">> internode SSL channel initializing");
 
         SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
-        if (!ssl.verifyClientAuth()) {
+        if (!ssl.certificateVerificationEnabled()) {
           sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         }
         SslContext sslCtx = sslCtxBuilder.build();
@@ -141,7 +141,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
           );
 
           // Cert verification enable by default for internode
-          if (ssl.verifyClientAuth()) {
+          if (ssl.clientAuthenticationEnabled()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
           }
 

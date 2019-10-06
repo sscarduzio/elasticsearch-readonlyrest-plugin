@@ -100,7 +100,7 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
         );
       }
 
-      if (ssl.verifyClientAuth()) {
+      if (ssl.clientAuthenticationEnabled()) {
         eng.setNeedClientAuth(true);
       }
 

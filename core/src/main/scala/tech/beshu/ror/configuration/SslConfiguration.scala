@@ -83,7 +83,8 @@ final case class SslConfiguration(keystoreFile: JFile,
                                   keyAlias: Option[SslConfiguration.KeyAlias],
                                   allowedProtocols: Set[SslConfiguration.Protocol],
                                   allowedCiphers: Set[SslConfiguration.Cipher],
-                                  verifyClientAuth: Boolean)
+                                  clientAuthenticationEnabled: Boolean,
+                                  certificateVerificationEnabled: Boolean)
 
 object SslConfiguration {
 
@@ -109,6 +110,8 @@ private object SslDecoders {
     val keyAlias = "key_alias"
     val allowedCiphers = "allowed_ciphers"
     val allowedProtocols = "allowed_protocols"
+    val certificateVerification = "certificate_verification"
+    val clientAuthentication = "client_authentication"
     val verification = "verification"
     val enable = "enable"
   }
@@ -136,15 +139,18 @@ private object SslDecoders {
         keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
         ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
         protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
-        verify <- c.downField(consts.verification).as[Option[Boolean]]
+        clientAuthentication <- c.downField(consts.clientAuthentication).as[Option[Boolean]]
+        certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
+        verification <- c.downField(consts.verification).as[Option[Boolean]]
       } yield SslConfiguration(
-        keystoreFile,
-        keystorePassword,
-        keyPass,
-        keyAlias,
-        protocols.getOrElse(Set.empty[Protocol]),
-        ciphers.getOrElse(Set.empty[Cipher]),
-        verify.getOrElse(false)
+        keystoreFile = keystoreFile,
+        keystorePassword = keystorePassword,
+        keyPass = keyPass,
+        keyAlias = keyAlias,
+        allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
+        allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
+        clientAuthenticationEnabled =  clientAuthentication.orElse(verification).getOrElse(false),
+        certificateVerificationEnabled =  certificateVerification.orElse(verification).getOrElse(false)
       )
     }
   }
