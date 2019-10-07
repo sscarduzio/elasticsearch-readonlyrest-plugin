@@ -378,7 +378,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
   "A ReadonlyREST ES API SSL settings" should {
     "be loaded from elasticsearch config file" in {
       val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
-      inside(ssl.externalSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
+      inside(ssl.externalSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false, false)) =>
         file.getName should be("keystore.jks")
         keystorePassword should be(KeystorePassword("readonlyrest1"))
         keyPass should be(KeyPass("readonlyrest2"))
@@ -390,7 +390,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     "be loaded from readonlyrest config file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
-        inside(ssl.externalSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
+        inside(ssl.externalSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false, false)) =>
           file.getName should be("keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
@@ -430,7 +430,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
   "A ReadonlyREST internode SSL settings" should {
     "be loaded from elasticsearch config file" in {
       val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
-      inside(ssl.interNodeSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
+      inside(ssl.interNodeSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false, false)) =>
         file.getName should be("keystore.jks")
         keystorePassword should be(KeystorePassword("readonlyrest1"))
         keyPass should be(KeyPass("readonlyrest2"))
@@ -442,7 +442,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     "be loaded from readonlyrest config file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
-        inside(ssl.interNodeSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
+        inside(ssl.interNodeSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false, false)) =>
           file.getName should be("keystore.jks")
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
