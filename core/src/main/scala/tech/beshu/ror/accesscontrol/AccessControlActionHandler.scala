@@ -34,7 +34,7 @@ object AccessControlActionHandler {
   case object ForbiddenBlockMatch extends ForbiddenCause {
     override def stringify: String = "FORBIDDEN_BY_BLOCK"
   }
-  case object OpetationNotAllowed extends ForbiddenCause {
+  case object OperationNotAllowed extends ForbiddenCause {
     override def stringify: String = "OPERATION_NOT_ALLOWED"
   }
   case object ImpersonationNotSupported extends ForbiddenCause {
@@ -46,7 +46,7 @@ object AccessControlActionHandler {
 
   def fromMismatchedCause(cause: Cause): ForbiddenCause = {
     cause match {
-      case Cause.OperationNotAllowed => OpetationNotAllowed
+      case Cause.OperationNotAllowed => OperationNotAllowed
       case Cause.ImpersonationNotSupported => ImpersonationNotSupported
       case Cause.ImpersonationNotAllowed => ImpersonationNotAllowed
     }

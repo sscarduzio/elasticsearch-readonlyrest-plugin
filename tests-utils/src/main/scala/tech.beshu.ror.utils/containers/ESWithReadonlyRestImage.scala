@@ -31,9 +31,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
 
   def create(config: Config): ImageFromDockerfile = {
     import config._
-    val baseDockerImage =
-      if (Version.greaterOrEqualThan(esVersion, 6, 3, 0)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
-      else "docker.elastic.co/elasticsearch/elasticsearch"
+    val baseDockerImage = "docker.elastic.co/elasticsearch/elasticsearch"
 
     new ImageFromDockerfile()
       .withFileFromFile(rorPluginFile.getAbsolutePath, rorPluginFile)
@@ -52,6 +50,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
           .copy(rorConfigFileName, "/usr/share/elasticsearch/config/readonlyrest.yml")
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")

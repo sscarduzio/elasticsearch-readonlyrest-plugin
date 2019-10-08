@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.regular
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -26,9 +27,10 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
-import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
+import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
 import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextJavaHelper}
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
@@ -89,13 +91,19 @@ class RegularRequestHandler[Request <: ActionRequest, Response <: ActionResponse
                       requestInfo: RequestInfo,
                       blockContext: BlockContext): Unit = {
     val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-    requestInfo.writeResponseHeaders(BlockContextJavaHelper.responseHeadersFrom(blockContext))
-    requestInfo.writeToThreadContextHeaders(BlockContextJavaHelper.contextHeadersFrom(blockContext))
-    requestInfo.writeIndices(BlockContextJavaHelper.indicesFrom(blockContext))
-    requestInfo.writeSnapshots(BlockContextJavaHelper.snapshotsFrom(blockContext))
-    requestInfo.writeRepositories(BlockContextJavaHelper.repositoriesFrom(blockContext))
 
-    proceed(searchListener)
+    val result = for {
+      _ <- requestInfo.writeResponseHeaders(BlockContextJavaHelper.responseHeadersFrom(blockContext))
+      _ <- requestInfo.writeToThreadContextHeaders(BlockContextJavaHelper.contextHeadersFrom(blockContext))
+      _ <- requestInfo.writeIndices(BlockContextJavaHelper.indicesFrom(blockContext))
+      _ <- requestInfo.writeSnapshots(BlockContextJavaHelper.snapshotsFrom(blockContext))
+      _ <- requestInfo.writeRepositories(BlockContextJavaHelper.repositoriesFrom(blockContext))
+    } yield ()
+
+    result match {
+      case WriteResult.Success(_) => proceed(searchListener)
+      case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
+    }
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {

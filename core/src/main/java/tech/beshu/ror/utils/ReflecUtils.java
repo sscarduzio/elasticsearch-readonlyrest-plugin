@@ -30,6 +30,12 @@ import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.Set;
 
+import static org.reflections.ReflectionUtils.getAllFields;
+import static org.reflections.ReflectionUtils.getAllMethods;
+import static org.reflections.ReflectionUtils.withModifier;
+import static org.reflections.ReflectionUtils.withName;
+import static org.reflections.ReflectionUtils.withParametersCount;
+
 /**
  * Created by sscarduzio on 24/03/2017.
  */
@@ -68,7 +74,7 @@ public class ReflecUtils {
       try {
         Method m;
         try {
-          m = c.getDeclaredMethod( method);
+          m = c.getDeclaredMethod(method);
         } catch (NoSuchMethodException nsme) {
           m = c.getMethod(method);
         }
@@ -94,7 +100,7 @@ public class ReflecUtils {
           Method m = exploreClassMethods(clazz, methodName, String[].class);
           if (m != null) {
             Object result = m.invoke(o);
-            return result != null ? (String[])result : new String[0];
+            return result != null ? (String[]) result : new String[0];
           }
 
           m = exploreClassMethods(clazz, methodName, String.class);
@@ -127,7 +133,7 @@ public class ReflecUtils {
       if (methodName.equals(m.getName()) && m.getReturnType().equals(returnClass)) {
         if (methodsCache.size() > Constants.CACHE_WATERMARK) {
           new Exception("Method cache has exceeded the watermark of " + Constants.CACHE_WATERMARK +
-                          " keys, currently at " + methodsCache.size()).printStackTrace();
+              " keys, currently at " + methodsCache.size()).printStackTrace();
         }
         m.setAccessible(true);
         methodsCache.put(cacheKey, m);
@@ -138,14 +144,14 @@ public class ReflecUtils {
   }
 
   public static boolean setIndices(Object o, Set<String> fieldNames, Set<String> newIndices) {
-    if(newIndices.isEmpty()) return false;
+    if (newIndices.isEmpty()) return false;
     final boolean[] res = {false};
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       @SuppressWarnings("unchecked")
-      Set<Field> indexFields = ReflectionUtils.getAllFields(
-        o.getClass(),
-        (Field field) -> field != null && fieldNames.contains(field.getName()) &&
-          (field.getType().equals(String.class) || field.getType().equals(String[].class))
+      Set<Field> indexFields = getAllFields(
+          o.getClass(),
+          (Field field) -> field != null && fieldNames.contains(field.getName()) &&
+              (field.getType().equals(String.class) || field.getType().equals(String[].class))
       );
       String firstIndex = newIndices.iterator().next();
       for (Field f : indexFields) {
@@ -153,18 +159,48 @@ public class ReflecUtils {
         try {
           if (f.getType().equals(String[].class)) {
             f.set(o, newIndices.toArray(new String[]{}));
-          }
-          else {
+          } else {
             f.set(o, firstIndex);
           }
           res[0] = true;
         } catch (IllegalAccessException | IllegalArgumentException e) {
           logger.error("could not find index or indices field to replace: " +
-                         e.getMessage() + " and then " + e.getMessage());
+              e.getMessage() + " and then " + e.getMessage());
         }
       }
       return null;
     });
     return res[0];
+  }
+
+  public static Method getMethodOf(Class<?> aClass, int modifier, String name, int paramsCount) {
+    Set<Method> allMethods = getAllMethods(
+        aClass,
+        withModifier(modifier),
+        withName(name),
+        withParametersCount(paramsCount)
+    );
+    if (allMethods.size() == 0) {
+      throw new IllegalArgumentException("Cannot find method '" + name + "' of class " + aClass.getSimpleName());
+    } else if (allMethods.size() == 1) {
+      return allMethods.toArray(new Method[0])[0];
+    } else {
+      throw new IllegalArgumentException("More than one method with name '" + name + "' of class " + aClass.getSimpleName());
+    }
+  }
+
+  public static Field getFieldOf(Class<?> aClass, int modifier, String name) {
+    Set<Field> allFields = getAllFields(
+        aClass,
+        withModifier(modifier),
+        withName(name)
+    );
+    if (allFields.size() == 0) {
+      throw new IllegalArgumentException("Cannot find field with name '" + name + "' of class " + aClass.getSimpleName());
+    } else if (allFields.size() == 1) {
+      return allFields.toArray(new Field[0])[0];
+    } else {
+      throw new IllegalArgumentException("More than one field with name '" + name + "' of class " + aClass.getSimpleName());
+    }
   }
 }

@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.request
 
 import java.net.InetSocketAddress
-import java.util.UUID
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
@@ -49,6 +48,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.{extractStringArrayFromPrivateMethod, invokeMethodCached}
@@ -250,8 +250,8 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override val extractHasRemoteClusters: Boolean = remoteClusterService.isCrossClusterSearchEnabled
 
-  override def writeSnapshots(newSnapshots: Set[String]): Unit = {
-    if (newSnapshots.isEmpty) return
+  override def writeSnapshots(newSnapshots: Set[String]): WriteResult[Unit] = {
+    if (newSnapshots.isEmpty) return WriteResult.Success(())
 
     // We limit this to read requests, as all the write requests are single-snapshot oriented.
     actionRequest match {
@@ -261,10 +261,11 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         ar.snapshots(newSnapshots.toArray)
       case _ =>
     }
+    WriteResult.Success(())
   }
 
-  override def writeRepositories(newRepositories: Set[String]): Unit = {
-    if (newRepositories.isEmpty) return
+  override def writeRepositories(newRepositories: Set[String]): WriteResult[Unit] = {
+    if (newRepositories.isEmpty) return WriteResult.Success(())
 
     // We limit this to read requests, as all the write requests are single-snapshot oriented.
     val newRepositoriesA = newRepositories.toArray
@@ -275,31 +276,36 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       case ar: VerifyRepositoryRequest => ar.name(newRepositoriesA(0))
       case _ =>
     }
+    WriteResult.Success(())
   }
 
-  override def writeResponseHeaders(hMap: Map[String, String]): Unit = {
+  override def writeResponseHeaders(hMap: Map[String, String]): WriteResult[Unit] = {
     val threadContext = threadPool.getThreadContext
     hMap.foreach { case (key, value) =>
       threadContext.addResponseHeader(key, value)
     }
+    WriteResult.Success(())
   }
 
-  override def writeToThreadContextHeaders(hMap: Map[String, String]): Unit = {
+  override def writeToThreadContextHeaders(hMap: Map[String, String]): WriteResult[Unit] = {
     val threadContext = threadPool.getThreadContext
     hMap.foreach { case (key, value) =>
       threadContext.putHeader(key, value)
     }
+    WriteResult.Success(())
   }
 
-  override def writeIndices(newIndices: Set[String]): Unit = {
+  override def writeIndices(newIndices: Set[String]): WriteResult[Unit] = {
     val indices = newIndices.filter(i => i != "" && i != "<no-index>").toList
-    if (indices.isEmpty) return
+    if (indices.isEmpty) return WriteResult.Success(())
 
     actionRequest match {
-      case ar: IndicesRequest.Replaceable if extractURI.startsWith("/_cat/templates") =>
+      case _: IndicesRequest.Replaceable if extractURI.startsWith("/_cat/templates") =>
         // workaround for filtering templates of /_cat/templates action
+        WriteResult.Success(())
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
+        WriteResult.Success(())
       case ar: BulkShardRequest => // This should not be necessary anymore because nowadays we either allow or forbid write requests.
         val singleIndex = indices.head
         val uuid = extractIndexMetadata(singleIndex).toList.head
@@ -312,6 +318,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
               case Success(_) =>
             }
           }
+        WriteResult.Success(())
       case ar: MultiSearchRequest =>
         ar.requests().asScala.foreach { sr =>
           if (sr.indices.length == 0 || sr.indices().contains("*")) {
@@ -331,6 +338,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             }
           }
         }
+        WriteResult.Success(())
       case ar: MultiGetRequest =>
         val it = ar.getItems.iterator
         while (it.hasNext) {
@@ -340,6 +348,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           val remaining = indices.intersect(newIndices)
           if (remaining.isEmpty) it.remove()
         }
+        WriteResult.Success(())
       case ar: IndicesAliasesRequest =>
         val it = ar.getAliasActions.iterator
         while (it.hasNext) {
@@ -352,6 +361,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             act.indices(remaining.toList: _*)
           }
         }
+        WriteResult.Success(())
       case ar: GetIndexTemplatesRequest =>
         val requestTemplateNames = ar.names().toSet
         val allowedTemplateNames = findTemplatesOfIndices(clusterService, indices.toSet)
@@ -361,15 +371,21 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         if (templateNamesToReturn.isEmpty) {
           // hack! there is no other way to return empty list of templates (at the moment should not be used, but
           // I leave it as a protection
-          ar.names(UUID.randomUUID + "*")
+          WriteResult.Failure
         } else {
           ar.names(templateNamesToReturn.toList: _*)
+          WriteResult.Success(())
         }
       case _ =>
         // Optimistic reflection attempt
         val okSetResult = ReflecUtils.setIndices(actionRequest, Set("index", "indices").asJava, indices.toSet.asJava)
-        if (okSetResult) logger.debug(s"REFLECTION: success changing indices: $indices correctly set as $extractIndices")
-        else logger.error(s"REFLECTION: Failed to set indices for type ${actionRequest.getClass.getSimpleName} in req id: $extractId")
+        if (okSetResult) {
+          logger.debug(s"REFLECTION: success changing indices: $indices correctly set as $extractIndices")
+          WriteResult.Success(())
+        } else {
+          logger.error(s"REFLECTION: Failed to set indices for type ${actionRequest.getClass.getSimpleName} in req id: $extractId")
+          WriteResult.Failure
+        }
     }
   }
 }

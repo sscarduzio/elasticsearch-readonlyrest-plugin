@@ -59,7 +59,7 @@ class PluginDependentIndicesTest extends WordSpec with ForAllTestContainer with 
           """.stripMargin
 
         val storeResult = scriptManager.store(s"/_scripts/$templateId", script)
-        assertEquals(200, storeResult.getResponseCode)
+        assertEquals(200, storeResult.responseCode)
 
         val query =
           s"""
@@ -71,7 +71,7 @@ class PluginDependentIndicesTest extends WordSpec with ForAllTestContainer with 
              |}
           """.stripMargin
         val result = searchManager.search("/test1_index/_search/template", query)
-        result.getResponseCode shouldEqual 200
+        result.responseCode shouldEqual 200
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
         source should be(ujson.read("""{"hello":"world"}"""))
