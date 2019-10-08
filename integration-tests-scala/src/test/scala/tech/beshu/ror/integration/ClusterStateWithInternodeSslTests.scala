@@ -35,7 +35,7 @@ class ClusterStateWithInternodeSslTests extends WordSpec with ForAllTestContaine
 
   "Health check" should {
     "be successful" when {
-      "internode ssl between nodes is enabled" in {
+      "internode ssl is enabled" in {
         val response = adminClusterStateManager.healthCheck()
 
         response.getResponseCode should be(200)

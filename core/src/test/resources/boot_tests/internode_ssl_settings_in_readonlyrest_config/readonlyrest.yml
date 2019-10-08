@@ -5,6 +5,8 @@ readonlyrest:
     keystore_file: "keystore.jks"
     keystore_pass: readonlyrest1
     key_pass: readonlyrest2
+    client_authentication: true
+    certificate_verification: true
 
   access_control_rules:
 

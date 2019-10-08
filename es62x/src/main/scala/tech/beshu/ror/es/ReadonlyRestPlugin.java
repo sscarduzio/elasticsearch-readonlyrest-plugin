@@ -161,6 +161,7 @@ public class ReadonlyRestPlugin extends Plugin
   public Map<String, Supplier<Transport>> getTransports(Settings settings,
                                                         ThreadPool threadPool,
                                                         BigArrays bigArrays,
+                                                        PageCacheRecycler pageCacheRecycler,
                                                         CircuitBreakerService circuitBreakerService,
                                                         NamedWriteableRegistry namedWriteableRegistry,
                                                         NetworkService networkService) {
