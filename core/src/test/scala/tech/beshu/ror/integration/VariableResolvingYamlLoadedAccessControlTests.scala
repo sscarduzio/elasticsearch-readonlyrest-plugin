@@ -39,12 +39,15 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
 
-class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
+class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
+  with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
   private lazy val (pub, secret) = TestsUtils.generateRsaRandomKeys
   override protected def configYaml: String =
     s"""
       |readonlyrest:
+      |
+      |  enable: $${READONLYREST_ENABLE}
       |
       |  access_control_rules:
       |   - name: "CONTAINER ADMIN"
@@ -247,6 +250,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
   override implicit protected def envVarsProvider: EnvVarsProvider = {
     case EnvVarName(n) if n.value == "sys_group_1" => Some("s1")
     case EnvVarName(n) if n.value == "sys_group_2" => Some("s2")
+    case EnvVarName(n) if n.value == "READONLYREST_ENABLE" => Some("true")
     case _ => None
   }
 }
