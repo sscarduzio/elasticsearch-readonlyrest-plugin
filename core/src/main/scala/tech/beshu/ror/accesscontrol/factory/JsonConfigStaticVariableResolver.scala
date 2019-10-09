@@ -42,7 +42,9 @@ object JsonConfigStaticVariableResolver {
       .mapArray(_.flatMap { json =>
         json.asString.flatMap(NonEmptyString.unapply) match {
           case Some(str) =>
-            tryToResolveAllStaticMultipleVars(str, errors).map(Json.fromString).toList
+            tryToResolveAllStaticMultipleVars(str, errors)
+              .map(resolvedStringToJson)
+              .toList
           case None =>
             mapJson(json, errors) :: Nil
         }
@@ -50,12 +52,20 @@ object JsonConfigStaticVariableResolver {
       .mapBoolean(identity)
       .mapNumber(identity)
       .mapObject(_.mapValues(mapJson(_, errors)))
-      .mapString { str =>
-        NonEmptyString.unapply(str) match {
+      .withString { str =>
+        val resolved = NonEmptyString.unapply(str) match {
           case Some(nes) => tryToResolveAllStaticSingleVars(nes, errors)
           case None => str
         }
+        resolvedStringToJson(resolved)
       }
+  }
+
+  private def resolvedStringToJson(resolvedStr: String) = {
+    io.circe.parser.parse(resolvedStr) match {
+      case Right(newJsonValue) => newJsonValue
+      case Left(_) => Json.fromString(resolvedStr)
+    }
   }
 
   private def tryToResolveAllStaticSingleVars(str: NonEmptyString, errors: ResolvingErrors)

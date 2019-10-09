@@ -376,12 +376,11 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           ar.names(templateNamesToReturn.toList: _*)
           WriteResult.Success(())
         }
-      case _ if extractURI.startsWith("/_sql") =>
-        if(newIndices == extractIndices) {
-          WriteResult.Success(())
-        } else {
-          WriteResult.Failure
+      case ar: CompositeIndicesRequest if extractURI.startsWith("/_sql") =>
+        if(newIndices != extractIndices) {
+          SqlQueryUtils.modifyIndicesOf(ar, indices)
         }
+        WriteResult.Success(())
       case _ =>
         // Optimistic reflection attempt
         val okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), indices.toSet.asJava)

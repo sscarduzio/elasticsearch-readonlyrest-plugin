@@ -4,10 +4,19 @@ import java.lang.reflect.Modifier
 
 import org.elasticsearch.action.CompositeIndicesRequest
 import tech.beshu.ror.utils.ReflecUtils
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
 object SqlQueryUtils {
+
+  def modifyIndicesOf(request: CompositeIndicesRequest, indices: List[String]): CompositeIndicesRequest = {
+    ReflecUtils
+      .getMethodOf(request.getClass, Modifier.PUBLIC, "query", 1)
+      .invoke(request, s"DESCRIBE LIKE '${indices.mkString(",")}'")
+    // todo: 
+    request
+  }
 
   def indicesFrom(request: CompositeIndicesRequest): Set[String] = {
     val query = ReflecUtils.invokeMethodCached(request, request.getClass, "query").asInstanceOf[String]
@@ -38,7 +47,11 @@ final class SqlParser(implicit classLoader: ClassLoader) {
 
 }
 
-sealed trait Statement
+sealed trait Statement {
+  protected def splitToIndicesPatterns(value: String): Set[String] = {
+    value.split(',').asSafeSet.filter(_.nonEmpty)
+  }
+}
 
 final class SimpleStatement(val underlyingObject: AnyRef)
                            (implicit classLoader: ClassLoader)
@@ -50,7 +63,8 @@ final class SimpleStatement(val underlyingObject: AnyRef)
     }
     tableInfoList
       .map(tableIdentifierFrom)
-      .map(indexFrom)
+      .map(indicesStringFrom)
+      .flatMap(splitToIndicesPatterns)
       .toSet
   }
 
@@ -82,8 +96,8 @@ final class SimpleStatement(val underlyingObject: AnyRef)
       .invoke(tableInfo)
   }
 
-  private def indexFrom(tableIdentifier: Any)
-                       (implicit classLoader: ClassLoader) = {
+  private def indicesStringFrom(tableIdentifier: Any)
+                               (implicit classLoader: ClassLoader) = {
     ReflecUtils
       .getMethodOf(tableIdentifierClass, Modifier.PUBLIC, "index", 0)
       .invoke(tableIdentifier)
@@ -108,17 +122,20 @@ final class Command(val underlyingObject: Any)
   extends Statement {
 
   lazy val indices: Set[String] = {
-    getIndex.orElse(getIndexPattern).map(Set(_)).getOrElse(Set.empty)
+    getIndicesString
+      .orElse(getIndexPatternsString)
+      .toSet
+      .flatMap(splitToIndicesPatterns)
   }
 
-  private def getIndex = Option {
+  private def getIndicesString = Option {
     ReflecUtils
       .getMethodOf(underlyingObject.getClass, Modifier.PUBLIC, "index", 0)
       .invoke(underlyingObject)
       .asInstanceOf[String]
   }
 
-  private def getIndexPattern = {
+  private def getIndexPatternsString = {
     for {
       pattern <- Option(ReflecUtils
         .getMethodOf(underlyingObject.getClass, Modifier.PUBLIC, "pattern", 0)

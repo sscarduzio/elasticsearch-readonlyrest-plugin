@@ -26,6 +26,7 @@ import scala.collection.SortedSet
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.language.{higherKinds, implicitConversions, postfixOps}
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 object ScalaOps {
@@ -45,6 +46,16 @@ object ScalaOps {
         .groupBy(provideComparatorOf)
         .collect { case (_, List(fst, _, _*)) => fst }
         .toList
+  }
+
+  implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
+    def asSafeSet: Set[T] = {
+      Option(array).getOrElse(Array.empty[T]).toSet
+    }
+  }
+
+  implicit class SetOps[T](val value: T) extends AnyVal {
+    def asSafeSet: Set[T] = Option(value).toSet
   }
 
   implicit class ListOfListOps[T](val lists: List[List[T]]) extends AnyVal {
