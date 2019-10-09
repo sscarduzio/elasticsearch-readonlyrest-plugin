@@ -142,6 +142,41 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
         uriPath = UriPath("/.custom_kibana/doc/telemetry%3Atelemetry?refresh=wait_for")
       )
     }
+    "non strict operations (6)" in {
+      testNonStrictOperations(
+        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        action = Action("indices:data/write/update"),
+        uriPath = UriPath("/.custom_kibana/doc/url1234/_update?")
+      )
+    }
+    "non strict operations (7)" in {
+      testNonStrictOperations(
+        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        action = Action("indices:data/write/index"),
+        uriPath = UriPath("/.custom_kibana/url/1234/")
+      )
+    }
+    "non strict operations (8)" in {
+      testNonStrictOperations(
+        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        action = Action("indices:data/write/index"),
+        uriPath = UriPath("/.custom_kibana/config/1234/_create/something")
+      )
+    }
+    "non strict operations (9)" in {
+      testNonStrictOperations(
+        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        action = Action("indices:data/write/update"),
+        uriPath = UriPath("/.custom_kibana/_update/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b")
+      )
+    }
+    "non strict operations (10)" in {
+      testNonStrictOperations(
+        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        action = Action("indices:data/write/update"),
+        uriPath = UriPath("/.custom_kibana/_update/url1234")
+      )
+    }
     "RW can change cluster settings" in {
       assertNotMatchRule(settingsOf(RO, IndexName(".kibana".nonempty)), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings")))
       assertMatchRule(settingsOf(RW, IndexName(".kibana".nonempty)), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings"))) {
