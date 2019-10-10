@@ -14,22 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.rradmin
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'tests-utils'
-include 'integration-tests'
-include 'integration-tests-scala'
-include 'es51x'
-include 'es52x'
-include 'es53x'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es63x'
-include 'es66x'
-include 'es70x'
-include 'es73x'
-include 'es74x'
+import org.elasticsearch.action.ActionType
+
+class RRAdminAction extends ActionType[RRAdminResponse](RRAdminAction.name, ???)
+object RRAdminAction {
+  val name = "cluster:admin/rradmin/refreshsettings"
+  val instance = new RRAdminAction()
+}
