@@ -18,6 +18,16 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
     ./gradlew --stacktrace test ror
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es74x" ]]; then
+    echo ">>> es74x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es74x' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es74x_scala" ]]; then
+    echo ">>> es74x => Running testcontainers.."
+    ./gradlew integration-tests-scala:test '-PesModule=es74x' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es73x" ]]; then
     echo ">>> es73x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es73x' || ( find . |grep hs_err |xargs cat && exit 1 )
