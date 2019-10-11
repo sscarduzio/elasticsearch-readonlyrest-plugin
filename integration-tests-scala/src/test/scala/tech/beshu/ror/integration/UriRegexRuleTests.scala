@@ -21,7 +21,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManagerJ
+import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 class UriRegexRuleTests extends WordSpec with ForAllTestContainer {
 
@@ -57,12 +57,12 @@ class UriRegexRuleTests extends WordSpec with ForAllTestContainer {
     }
   }
 
-  private def assertRuleMatchForUser(name: String) = assertHealthCheckStatus(200, name)
+  private def assertRuleMatchForUser(name: String): Unit = assertHealthCheckStatus(200, name)
 
-  private def assertRuleDoesNotMatchForUser(name: String) = assertHealthCheckStatus(401, name)
+  private def assertRuleDoesNotMatchForUser(name: String): Unit = assertHealthCheckStatus(401, name)
 
-  private def assertHealthCheckStatus(status: Int, name: String) = {
-    val manager = new ClusterStateManagerJ(container.nodesContainers.head.client(name, "pass"))
+  private def assertHealthCheckStatus(status: Int, name: String): Unit = {
+    val manager = new ClusterStateManager(container.nodesContainers.head.client(name, "pass"))
     val result = manager.healthCheck()
     assertEquals(status, result.getResponseCode)
   }

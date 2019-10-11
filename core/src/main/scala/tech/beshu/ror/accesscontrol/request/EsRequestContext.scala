@@ -24,19 +24,15 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.shims.request.RequestInfoShim
-
-import scala.collection.JavaConverters._
 import scala.util.Try
 
-// fixme: maybe we don;'t need RequestInfoShim
 class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
 
   override val timestamp: Instant =
     Instant.now()
 
   override val taskId: Long =
-    rInfo.extractTaskId()
+    rInfo.extractTaskId
 
   override val id: RequestContext.Id =
   Option(rInfo.extractId)
@@ -50,7 +46,7 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
 
   override val headers: Set[Header] =
     rInfo
-      .extractRequestHeaders.asScala
+      .extractRequestHeaders
       .flatMap { case (name, value) =>
         (NonEmptyString.unapply(name), NonEmptyString.unapply(value)) match {
           case (Some(headerName), Some(headerValue)) => Some(Header(Name(headerName), headerValue))
@@ -60,11 +56,11 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
       .toSet
 
   override val remoteAddress: Option[Address] =
-    Try(rInfo.extractRemoteAddress()).toOption
+    Try(rInfo.extractRemoteAddress).toOption
       .flatMap(Address.from)
 
   override val localAddress: Address =
-    forceCreateAddressFrom(rInfo.extractLocalAddress())
+    forceCreateAddressFrom(rInfo.extractLocalAddress)
 
   override val method: Method =
     Option(rInfo.extractMethod)
@@ -77,7 +73,7 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
     .getOrElse(throw new IllegalArgumentException(s"Cannot create request URI path"))
 
   override val contentLength: Information =
-    Bytes(rInfo.extractContentLength().toLong)
+    Bytes(rInfo.extractContentLength.toLong)
 
   override val `type`: Type =
     Option(rInfo.extractType)
@@ -85,46 +81,46 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
       .getOrElse(throw new IllegalArgumentException(s"Cannot create request type"))
 
   override val content: String =
-    Option(rInfo.extractContent()).getOrElse("")
+    Option(rInfo.extractContent).getOrElse("")
 
   override val indices: Set[domain.IndexName] =
-    rInfo.extractIndices().asScala.flatMap(IndexName.fromString).toSet
+    rInfo.extractIndices.flatMap(IndexName.fromString)
 
   override val allIndicesAndAliases: Set[IndexWithAliases] =
     rInfo
-      .extractAllIndicesAndAliases().asScala
-      .flatMap { entry =>
+      .extractAllIndicesAndAliases
+      .flatMap { case (index, aliases) =>
         IndexName
-          .fromString(entry.getKey)
+          .fromString(index)
           .map { index =>
-            IndexWithAliases(index, entry.getValue.asScala.flatMap(IndexName.fromString).toSet)
+            IndexWithAliases(index, aliases.flatMap(IndexName.fromString))
           }
       }
       .toSet
 
   override val templateIndicesPatterns: Set[IndexName] =
-    rInfo.extractTemplateIndicesPatterns().asScala.flatMap(IndexName.fromString).toSet
+    rInfo.extractTemplateIndicesPatterns.flatMap(IndexName.fromString)
 
   override val repositories: Set[IndexName] =
-    rInfo.extractRepositories().asScala.flatMap(IndexName.fromString).toSet
+    rInfo.extractRepositories.flatMap(IndexName.fromString)
 
   override val snapshots: Set[IndexName] =
-    rInfo.extractSnapshots().asScala.flatMap(IndexName.fromString).toSet
+    rInfo.extractSnapshots.flatMap(IndexName.fromString)
 
   override val isReadOnlyRequest: Boolean =
-    rInfo.extractIsReadRequest()
+    rInfo.extractIsReadRequest
 
   override val involvesIndices: Boolean =
-    rInfo.involvesIndices()
+    rInfo.involvesIndices
 
   override val isCompositeRequest: Boolean =
-    rInfo.extractIsCompositeRequest()
+    rInfo.extractIsCompositeRequest
 
   override val isAllowedForDLS: Boolean =
-    rInfo.extractIsAllowedForDLS()
+    rInfo.extractIsAllowedForDLS
 
   override val hasRemoteClusters: Boolean =
-    rInfo.extractHasRemoteClusters()
+    rInfo.extractHasRemoteClusters
 
   private def forceCreateAddressFrom(value: String) = {
     Address.from(value).getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname from $value"))

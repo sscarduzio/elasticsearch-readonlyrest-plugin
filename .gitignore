@@ -28,12 +28,14 @@ eclipse-build
 !/.settings/org.eclipse.jdt.ui.prefs
 
 // Script generated files
+
 docker/*
 integration-tests/src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties
 integration-tests/src/main/resources/plugin-descriptor.properties
 integration-tests/src/test/eshome/logs/
 integration-tests/src/test/eshome/data/
 integration-tests/src/test/eshome/*.log
+integration-tests/src/test/eshome/modules/*
 target/
 
 
@@ -44,3 +46,5 @@ target/
 
 // OSX
 .DS_Store
+
+

@@ -13,14 +13,18 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "dev1 indices"
-      indices: ["test1_index"]
+    - name: "dev1 index without wildcard"
+      indices: ["@{user}_index"]
       auth_key: dev1:test
 
-    - name: "dev2 indices"
-      indices: ["test2_index"]
+    - name: "dev1 index with wildcard"
+      indices: ["custom_@{user}_index_*"]
+      auth_key: dev1:test
+
+    - name: "dev2 index without wildcard"
+      indices: ["@{user}_index"]
       auth_key: dev2:test
 
-    - name: "dev3 indices"
-      indices: ["*"]
-      auth_key: dev3:test
+    - name: "dev2 index with wildcard"
+      indices: ["custom_@{user}_index_*"]
+      auth_key: dev2:test
