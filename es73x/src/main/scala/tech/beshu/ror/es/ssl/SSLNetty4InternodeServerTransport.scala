@@ -53,7 +53,6 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       logger.info(">> internode SSL channel initializing")
-      logger.info(s"SSL!! $ssl")
       val sslCtxBuilder = SslContextBuilder.forClient()
       if (!ssl.certificateVerificationEnabled) {
         sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE)

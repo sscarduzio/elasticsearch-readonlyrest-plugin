@@ -28,8 +28,7 @@ import scala.collection.JavaConverters._
 class TemplatesTests extends WordSpec with ForAllTestContainer with BeforeAndAfterEach {
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/templates/readonlyrest.yml",
-    numberOfInstances = 1
+    rorConfigFileName = "/templates/readonlyrest.yml"
   )
 
   private lazy val adminTemplateManager = new TemplateManagerJ(container.nodesContainers.head.adminClient)

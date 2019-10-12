@@ -19,6 +19,7 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManagerJ
 
@@ -27,8 +28,10 @@ class ClusterStateWithInternodeSslTests extends WordSpec with ForAllTestContaine
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml",
-    numberOfInstances = 3,
-    internodeSslEnabled = true
+    clusterSettings = AdditionalClusterSettings(
+      numberOfInstances = 3,
+      internodeSslEnabled = true
+    )
   )
 
   private lazy val adminClusterStateManager = new ClusterStateManagerJ(container.nodesContainers.head.adminClient)
