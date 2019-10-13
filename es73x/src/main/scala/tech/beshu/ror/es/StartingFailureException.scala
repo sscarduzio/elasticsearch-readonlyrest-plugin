@@ -34,4 +34,7 @@ object StartingFailureException {
       case None => new StartingFailureException(failure.message)
     }
   }
+  def from(throwable: Throwable): StartingFailureException = {
+    new StartingFailureException("Cannot start ReadonlyREST", throwable)
+  }
 }

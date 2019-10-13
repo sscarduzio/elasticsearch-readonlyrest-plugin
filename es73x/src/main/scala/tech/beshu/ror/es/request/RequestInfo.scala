@@ -386,7 +386,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         } else {
           ar.names(templateNamesToReturn.toList: _*)
         }
-      case ar =>
+      case _ =>
         // ignore
     }
   }
