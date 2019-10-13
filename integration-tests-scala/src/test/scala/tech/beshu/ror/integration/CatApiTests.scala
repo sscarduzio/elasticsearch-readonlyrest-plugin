@@ -176,6 +176,12 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
         }
       }
       "be allowed to get specific template using /_cat/templates API" when {
+        "there is no template at all" in {
+          val templates = dev1ClusterStateManager.catTemplates()
+
+          templates.getResponseCode should be(200)
+          templates.results.size should be (0)
+        }
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
@@ -277,7 +283,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
                 val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = dev1ClusterStateManager.catTemplates()
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.results.size should be (0)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -285,7 +292,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
                 val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = dev1ClusterStateManager.catTemplates()
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.results.size should be (0)
               }
             }
             "template has index pattern with no wildcard" when {
@@ -295,7 +303,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
                 val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = dev1ClusterStateManager.catTemplates()
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.results.size should be (0)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -303,7 +312,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
                 val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = dev1ClusterStateManager.catTemplates()
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.results.size should be (0)
               }
             }
           }
@@ -315,7 +325,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
 
                 val templates = dev2ClusterStateManager.catTemplates()
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.results.size should be (0)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -323,7 +334,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
 
                 val templates = dev2ClusterStateManager.catTemplates()
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.results.size should be (0)
               }
             }
             "template has index pattern with no wildcard" when {
@@ -333,7 +345,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
 
                 val templates = dev2ClusterStateManager.catTemplates()
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.results.size should be (0)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -341,7 +354,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
 
                 val templates = dev2ClusterStateManager.catTemplates()
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.results.size should be (0)
               }
             }
           }
@@ -356,7 +370,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
               val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = dev1ClusterStateManager.catTemplates("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(200)
+              templates.results.size should be (0)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -364,7 +379,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
               val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = dev1ClusterStateManager.catTemplates("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(200)
+              templates.results.size should be (0)
             }
           }
           "template has index pattern with no wildcard" when {
@@ -374,7 +390,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
               val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = dev1ClusterStateManager.catTemplates("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(200)
+              templates.results.size should be (0)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -382,7 +399,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
               val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = dev1ClusterStateManager.catTemplates("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(200)
+              templates.results.size should be (0)
             }
           }
         }
@@ -395,7 +413,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
               val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = dev1ClusterStateManager.catTemplates("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(200)
+              templates.results.size should be (0)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -404,7 +423,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
               val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = dev1ClusterStateManager.catTemplates("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(200)
+              templates.results.size should be (0)
             }
           }
           "template has index pattern with no wildcard" when {
@@ -415,7 +435,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
               val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = dev1ClusterStateManager.catTemplates("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(200)
+              templates.results.size should be (0)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -424,7 +445,8 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
               val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = dev1ClusterStateManager.catTemplates("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(200)
+              templates.results.size should be (0)
             }
           }
         }

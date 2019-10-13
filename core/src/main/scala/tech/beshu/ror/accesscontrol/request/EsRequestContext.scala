@@ -68,7 +68,7 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
       .getOrElse(throw new IllegalArgumentException(s"Cannot create request method"))
 
   override val uriPath: UriPath =
-  Option(rInfo.extractURI)
+  Option(rInfo.extractPath)
     .map(UriPath.apply)
     .getOrElse(throw new IllegalArgumentException(s"Cannot create request URI path"))
 

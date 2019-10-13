@@ -226,6 +226,8 @@ object domain {
   final case class UriPath(value: String) {
     def isCurrentUserMetadataPath: Boolean = value.startsWith(UriPath.currentUserMetadataPath.value)
     def isCatTemplatePath: Boolean = value.startsWith("/_cat/templates")
+    def isTemplatePath: Boolean = value.startsWith("/_template")
+    def isCatIndicesPath: Boolean = value.startsWith("/_cat/indices")
   }
   object UriPath {
     val currentUserMetadataPath = UriPath(Constants.CURRENT_USER_METADATA_PATH)
@@ -234,6 +236,20 @@ object domain {
     object CatTemplatePath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
         if(uriPath.isCatTemplatePath) Some(uriPath)
+        else None
+      }
+    }
+
+    object CatIndicesPath {
+      def unapply(uriPath: UriPath): Option[UriPath] = {
+        if(uriPath.isCatIndicesPath) Some(uriPath)
+        else None
+      }
+    }
+
+    object TemplatePath {
+      def unapply(uriPath: UriPath): Option[UriPath] = {
+        if(uriPath.isTemplatePath) Some(uriPath)
         else None
       }
     }

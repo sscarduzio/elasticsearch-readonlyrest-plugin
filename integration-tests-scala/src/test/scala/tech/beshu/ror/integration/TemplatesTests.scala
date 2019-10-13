@@ -26,7 +26,7 @@ import scala.collection.JavaConverters._
 
 class TemplatesTests extends WordSpec with BaseTemplatesTests {
 
-  override val rorContainer: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val rorContainer: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/templates/readonlyrest.yml",
     numberOfInstances = 1
@@ -34,6 +34,15 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
 
   "A template API" when {
     "user is dev1" should {
+      "see empty list of templates" when {
+        "there is none" in {
+          val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val templates = devTemplateManager.getTemplates
+
+          templates.getResponseCode should be(200)
+          templates.getResponseJsonMap.size() should be (0)
+        }
+      }
       "be allowed to get all templates" when {
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
@@ -367,14 +376,6 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
           }
         }
       }
-      "not be allowed to get templates" when {
-        "there is none" in {
-          val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev1", "test"))
-          val templates = devTemplateManager.getTemplates
-
-          templates.getResponseCode should be(401)
-        }
-      }
     }
     "user is dev2" should {
       "not be able to get templates" when {
@@ -387,7 +388,8 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
                 val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.getResponseJsonMap.size() should be(0)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -395,7 +397,8 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
                 val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.getResponseJsonMap.size() should be(0)
               }
             }
             "template has index pattern with no wildcard" when {
@@ -405,7 +408,8 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
                 val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.getResponseJsonMap.size() should be(0)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -413,7 +417,8 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
                 val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.getResponseJsonMap.size() should be(0)
               }
             }
           }
@@ -426,7 +431,8 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
                 val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.getResponseJsonMap.size() should be(0)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -435,7 +441,8 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
                 val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.getResponseJsonMap.size() should be(0)
               }
             }
             "template has index pattern with no wildcard" when {
@@ -446,7 +453,8 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
                 val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.getResponseJsonMap.size() should be(0)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -455,7 +463,8 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
                 val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
-                templates.getResponseCode should be(401)
+                templates.getResponseCode should be(200)
+                templates.getResponseJsonMap.size() should be(0)
               }
             }
           }
@@ -470,7 +479,7 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
               val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(404)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -478,7 +487,7 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
               val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(404)
             }
           }
           "template has index pattern with no wildcard" when {
@@ -488,7 +497,7 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
               val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(404)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -496,7 +505,7 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
               val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(404)
             }
           }
         }
@@ -509,7 +518,7 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
               val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(404)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
@@ -518,7 +527,7 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
               val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(404)
             }
           }
           "template has index pattern with no wildcard" when {
@@ -529,7 +538,7 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
               val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(404)
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
@@ -538,7 +547,7 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
               val devTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.client("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
-              templates.getResponseCode should be(401)
+              templates.getResponseCode should be(404)
             }
           }
         }

@@ -77,7 +77,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override lazy val extractMethod: String = request.method().name()
 
-  override val extractURI: String = request.uri()
+  override val extractPath: String = request.uri()
 
   override val involvesIndices: Boolean = {
     actionRequest.isInstanceOf[IndicesRequest] || actionRequest.isInstanceOf[CompositeIndicesRequest] ||
@@ -109,7 +109,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           sr.indices().toSet ++ ir.indices().toSet
         } fold(
           ex => {
-            logger.errorEx(s"cannot extract indices from: $extractMethod $extractURI\n$extractContent", ex)
+            logger.errorEx(s"cannot extract indices from: $extractMethod $extractPath\n$extractContent", ex)
             Set.empty[String]
           },
           identity
@@ -150,7 +150,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         ar.indices().toSet
       case ar: DeleteIndexTemplateRequest =>
         getIndicesPatternsOfTemplate(clusterService, ar.name())
-      case _ if extractURI.startsWith("/_cat/templates") =>
+      case _ if extractPath.startsWith("/_cat/templates") =>
         getIndicesPatternsOfTemplates(clusterService)
       case _ =>
         Set.empty[String]
@@ -297,7 +297,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
     if (indices.isEmpty) return
 
     actionRequest match {
-      case ar: IndicesRequest.Replaceable if extractURI.startsWith("/_cat/templates") =>
+      case ar: IndicesRequest.Replaceable if extractPath.startsWith("/_cat/templates") =>
         // workaround for filtering templates of /_cat/templates action
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)

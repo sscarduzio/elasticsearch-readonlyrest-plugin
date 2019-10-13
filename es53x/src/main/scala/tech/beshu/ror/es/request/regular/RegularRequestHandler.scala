@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextJavaHelper}
+import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextRawDataHelper}
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
 import tech.beshu.ror.utils.LoggerOps._
@@ -89,11 +89,11 @@ class RegularRequestHandler[Request <: ActionRequest, Response <: ActionResponse
                       requestInfo: RequestInfo,
                       blockContext: BlockContext): Unit = {
     val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-    requestInfo.writeResponseHeaders(BlockContextJavaHelper.responseHeadersFrom(blockContext))
-    requestInfo.writeToThreadContextHeaders(BlockContextJavaHelper.contextHeadersFrom(blockContext))
-    requestInfo.writeIndices(BlockContextJavaHelper.indicesFrom(blockContext))
-    requestInfo.writeSnapshots(BlockContextJavaHelper.snapshotsFrom(blockContext))
-    requestInfo.writeRepositories(BlockContextJavaHelper.repositoriesFrom(blockContext))
+    requestInfo.writeResponseHeaders(BlockContextRawDataHelper.responseHeadersFrom(blockContext))
+    requestInfo.writeToThreadContextHeaders(BlockContextRawDataHelper.contextHeadersFrom(blockContext))
+    requestInfo.writeIndices(BlockContextRawDataHelper.indicesFrom(blockContext))
+    requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
+    requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
 
     proceed(searchListener)
   }

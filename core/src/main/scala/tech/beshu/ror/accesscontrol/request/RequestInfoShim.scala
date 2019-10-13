@@ -17,17 +17,13 @@ trait RequestInfoShim {
 
   def extractMethod: String
 
-  def extractURI: String
+  def extractPath: String
 
   def extractIndices: Set[String]
 
   def extractSnapshots: Set[String]
 
-  def writeSnapshots(newSnapshots: Set[String]): Unit
-
   def extractRepositories: Set[String]
-
-  def writeRepositories(newRepositories: Set[String]): Unit
 
   def extractAction: String
 
@@ -38,10 +34,6 @@ trait RequestInfoShim {
   def extractLocalAddress: String
 
   def extractId: String
-
-  def writeIndices(newIndices: Set[String])
-
-  def writeResponseHeaders(hMap: Map[String, String])
 
   def extractAllIndicesAndAliases: Map[String, Set[String]]
 
@@ -55,9 +47,19 @@ trait RequestInfoShim {
 
   def extractIsCompositeRequest: Boolean
 
+  def extractHasRemoteClusters: Boolean
+
+  def writeIndices(newIndices: Set[String])
+
+  def writeResponseHeaders(hMap: Map[String, String])
+
+  def writeSnapshots(newSnapshots: Set[String]): Unit
+
+  def writeRepositories(newRepositories: Set[String]): Unit
+
   def writeToThreadContextHeaders(hMap: Map[String, String])
 
-  def extractHasRemoteClusters: Boolean
+  def writeTemplatesOf(indices: Set[String])
 
   def getExpandedIndices(ixsSet: Set[String]): Set[String] = {
     if (!involvesIndices) throw new IllegalArgumentException("can'g expand indices of a request that does not involve indices: " + extractAction)

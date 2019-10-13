@@ -149,10 +149,10 @@ class IndicesRule(val settings: Settings)
     val indices = requestContext.indices
     indices.toList match {
       case index :: Nil =>
-        if (matcher.`match`(index)) stop(CanPass.Yes(Set.empty))
+        if (matcher.`match`(index)) stop(CanPass.Yes(Set(index)))
         else continue
       case _ if matcher.filter(indices) === indices =>
-        stop(CanPass.Yes(Set.empty))
+        stop(CanPass.Yes(indices))
       case _ =>
         continue
     }
@@ -215,7 +215,7 @@ class IndicesRule(val settings: Settings)
         if(rc.templateIndicesPatterns.nonEmpty) {
           val allowed = findTemplatesIndicesPatterns(rc.templateIndicesPatterns, allowedIndices)
           if (allowed.nonEmpty) stop(CanPass.Yes(allowed))
-          else stop(CanPass.No)
+          else stop(CanPass.Yes(allowedIndices))
         } else {
           stop(CanPass.Yes(allowedIndices))
         }
@@ -228,10 +228,22 @@ class IndicesRule(val settings: Settings)
                                   matcher: Matcher,
                                   resolvedAllowedIndices: Set[IndexName]): CanPass = {
     val result = for {
-      _ <- templateIndicesPatterns(requestContext, resolvedAllowedIndices)
+      _ <- writeTemplateIndicesPatterns(requestContext, resolvedAllowedIndices)
       _ <- generalWriteRequest(requestContext, matcher)
     } yield ()
     result.left.getOrElse(CanPass.No)
+  }
+
+  private def writeTemplateIndicesPatterns(requestContext: RequestContext, allowedIndices: Set[IndexName]): IndicesCheckContinuation = {
+    logger.debug("Checking - write template request...")
+    requestContext match {
+      case rc if rc.action.isTemplate || rc.uriPath.isCatTemplatePath =>
+        val allowed = findTemplatesIndicesPatterns(rc.templateIndicesPatterns, allowedIndices)
+        if (allowed.nonEmpty) stop(CanPass.Yes(allowed))
+        else stop(CanPass.No)
+      case _ =>
+        continue
+    }
   }
 
   private def generalWriteRequest(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {

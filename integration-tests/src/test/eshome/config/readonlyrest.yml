@@ -13,14 +13,10 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "dev1 indices"
-      indices: ["test1_index"]
+    - name: "dev1 indexes"
+      indices: ["custom_@{user}_index_*", "@{user}_index"]
       auth_key: dev1:test
 
-    - name: "dev2 indices"
-      indices: ["test2_index"]
+    - name: "dev2 indexes"
+      indices: ["@{user}_index", "custom_@{user}_index_*"]
       auth_key: dev2:test
-
-    - name: "dev3 indices"
-      indices: ["*"]
-      auth_key: dev3:test

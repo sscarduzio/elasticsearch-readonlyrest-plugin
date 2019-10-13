@@ -47,11 +47,13 @@ import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.reflections.ReflectionUtils
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.{extractStringArrayFromPrivateMethod, invokeMethodCached}
 import tech.beshu.ror.utils.{RCUtils, ReflecUtils}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 
 import scala.collection.JavaConverters._
 import scala.math.Ordering.comparatorToOrdering
@@ -78,7 +80,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override lazy val extractMethod: String = request.method().name()
 
-  override val extractURI: String = request.uri()
+  override val extractPath: String = request.path()
 
   override val involvesIndices: Boolean = {
     actionRequest.isInstanceOf[IndicesRequest] || actionRequest.isInstanceOf[CompositeIndicesRequest] ||
@@ -110,7 +112,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           sr.indices().toSet ++ ir.indices().toSet
         } fold(
           ex => {
-            logger.errorEx(s"cannot extract indices from: $extractMethod $extractURI\n$extractContent", ex)
+            logger.errorEx(s"cannot extract indices from: $extractMethod $extractPath\n$extractContent", ex)
             Set.empty[String]
           },
           identity
@@ -151,8 +153,11 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         ar.indices().toSet
       case ar: DeleteIndexTemplateRequest =>
         getIndicesPatternsOfTemplate(clusterService, ar.name())
-      case _ if extractURI.startsWith("/_cat/templates") =>
-        getIndicesPatternsOfTemplates(clusterService)
+      case _ if extractPath.startsWith("/_cat/templates") =>
+        Option(request.param("name")) match {
+          case Some(templateName) => getIndicesPatternsOfTemplate(clusterService, templateName)
+          case None => Set.empty[String]
+        }
       case _ =>
         Set.empty[String]
     }
@@ -297,7 +302,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
     if (indices.isEmpty) return
 
     actionRequest match {
-      case _: IndicesRequest.Replaceable if extractURI.startsWith("/_cat/templates") =>
+      case _: IndicesRequest.Replaceable if extractPath.startsWith("/_cat/templates") =>
         // workaround for filtering templates of /_cat/templates action
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
@@ -353,12 +358,27 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             act.indices(remaining.toList: _*)
           }
         }
+      case _ =>
+        // Optimistic reflection attempt
+        val okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), indices.toSet.asJava)
+        if (okSetResult) logger.debug(s"REFLECTION: success changing indices: $indices correctly set as $extractIndices")
+        else logger.error(s"REFLECTION: Failed to set indices for type ${actionRequest.getClass.getSimpleName} in req id: $extractId")
+    }
+  }
+
+  override def writeTemplatesOf(indices: Set[String]): Unit = {
+    actionRequest match {
       case ar: GetIndexTemplatesRequest =>
         val requestTemplateNames = ar.names().toSet
-        val allowedTemplateNames = findTemplatesOfIndices(clusterService, indices.toSet)
+        val allowedTemplateNames = findTemplatesOfIndices(clusterService, indices)
         val templateNamesToReturn =
-          if (requestTemplateNames.isEmpty) allowedTemplateNames
-          else requestTemplateNames.intersect(allowedTemplateNames)
+          if (requestTemplateNames.isEmpty) {
+            allowedTemplateNames
+          } else {
+            MatcherWithWildcardsScalaAdapter
+              .create(requestTemplateNames)
+              .filter(allowedTemplateNames)
+          }
         if (templateNamesToReturn.isEmpty) {
           // hack! there is no other way to return empty list of templates (at the moment should not be used, but
           // I leave it as a protection
@@ -366,11 +386,8 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         } else {
           ar.names(templateNamesToReturn.toList: _*)
         }
-      case _ =>
-        // Optimistic reflection attempt
-        val okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), indices.toSet.asJava)
-        if (okSetResult) logger.debug(s"REFLECTION: success changing indices: $indices correctly set as $extractIndices")
-        else logger.error(s"REFLECTION: Failed to set indices for type ${actionRequest.getClass.getSimpleName} in req id: $extractId")
+      case ar =>
+        // ignore
     }
   }
 }
