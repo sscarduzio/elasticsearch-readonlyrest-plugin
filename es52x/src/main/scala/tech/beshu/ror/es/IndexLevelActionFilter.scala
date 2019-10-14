@@ -17,6 +17,7 @@
 package tech.beshu.ror.es
 
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.atomic.Atomic
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
@@ -31,7 +32,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SecurityPermissionException
 import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
-import tech.beshu.ror.boot.{Engine, Ror}
+import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
 import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider}
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
@@ -39,7 +40,6 @@ import tech.beshu.ror.es.request.{RequestInfo, RorNotReadyResponse}
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class IndexLevelActionFilter(settings: Settings,
@@ -59,22 +59,26 @@ class IndexLevelActionFilter(settings: Settings,
     this(settings, clusterService, client, threadPool, env, ())
   }
 
-  private val rorInstance = doPrivileged {
-    val startingResult = Ror
-      .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
-      .runSyncUnsafe(1 minute)
-    startingResult match {
-      case Right(instance) =>
+  private val rorInstance: Atomic[Option[RorInstance]] = Atomic(Option.empty[RorInstance])
+
+  private val startingTaskCancellable = Ror
+    .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
+    .runAsync {
+      case Right(Right(instance)) =>
         RorInstanceSupplier.update(instance)
-        instance
+        rorInstance.set(Some(instance))
+      case Right(Left(failure)) =>
+        throw StartingFailureException.from(failure)
       case Left(ex) =>
         throw StartingFailureException.from(ex)
     }
-  }
 
   override def order(): Int = 0
 
-  def stop(): Unit = rorInstance.stop()
+  def stop(): Unit = {
+    startingTaskCancellable.cancel()
+    rorInstance.get().map(_.stop())
+  }
 
   override def apply[Request <: ActionRequest, Response <: ActionResponse](task: Task,
                                                                            action: String,
@@ -82,22 +86,31 @@ class IndexLevelActionFilter(settings: Settings,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      (rorInstance.engine, ThreadRepo.getRestChannel) match {
+      (rorInstance.get().flatMap(_.engine), ThreadRepo.getRestChannel) match {
         case (_, None) => chain.proceed(task, action, request, listener)
         case (_, _) if action.startsWith("internal:") => chain.proceed(task, action, request, listener)
         case (None, Some(channel)) => channel.sendResponse(RorNotReadyResponse.create(channel))
-        case (Some(engine), Some(channel)) => handleRequest(engine, task, action, request, listener, chain, channel)
+        case (Some(engine), Some(channel)) =>
+          handleRequest(
+            engine,
+            task,
+            action,
+            request,
+            listener.asInstanceOf[ActionListener[ActionResponse]],
+            chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
+            channel
+          )
       }
     }
   }
 
-  private def handleRequest[Request <: ActionRequest, Response <: ActionResponse](engine: Engine,
-                                                                                  task: Task,
-                                                                                  action: String,
-                                                                                  request: Request,
-                                                                                  listener: ActionListener[Response],
-                                                                                  chain: ActionFilterChain[Request, Response],
-                                                                                  channel: RestChannel): Unit = {
+  private def handleRequest(engine: Engine,
+                            task: Task,
+                            action: String,
+                            request: ActionRequest,
+                            listener: ActionListener[ActionResponse],
+                            chain: ActionFilterChain[ActionRequest, ActionResponse],
+                            channel: RestChannel): Unit = {
     val requestInfo = new RequestInfo(channel, task.getId, action, request, clusterService, threadPool)
     val requestContext = requestContextFrom(requestInfo)
     requestContext.uriPath match {

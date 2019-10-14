@@ -91,6 +91,10 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override lazy val extractIndices: Set[String] = {
     val indices = actionRequest match {
+      case ar: PutIndexTemplateRequest =>
+        indicesFromPatterns(clusterService, ar.indices.toSet)
+          .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
+          .toSet
       case ar: IndexRequest => // The most common case first
         ar.indices.toSet
       case ar: IndicesRequest =>
@@ -130,10 +134,6 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         Set.empty[String]
       case ar: RestoreSnapshotRequest => // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
         ar.indices().toSet
-      case ar: PutIndexTemplateRequest =>
-        indicesFromPatterns(clusterService, ar.indices.toSet)
-          .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
-          .toSet
       case ar =>
         val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
         if(indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet

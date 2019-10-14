@@ -14,25 +14,27 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es;
+package tech.beshu.ror.es
 
-import org.elasticsearch.ElasticsearchException;
-import tech.beshu.ror.boot.StartingFailure;
+import org.elasticsearch.ElasticsearchException
+import tech.beshu.ror.boot.StartingFailure
 
-public class StartingFailureException extends ElasticsearchException {
-  private StartingFailureException(String msg) {
-    super(msg);
+class StartingFailureException(message: String, throwable: Throwable)
+  extends ElasticsearchException(message, throwable) {
+
+  def this(message: String) {
+    this(message, null)
   }
+}
 
-  private StartingFailureException(String message, Throwable throwable) {
-    super(message, throwable);
-  }
-
-  public static StartingFailureException from(StartingFailure failure) {
-    if(failure.throwable().isDefined()) {
-      return new StartingFailureException(failure.message(), failure.throwable().get());
-    } else {
-      return new StartingFailureException(failure.message());
+object StartingFailureException {
+  def from(failure: StartingFailure): StartingFailureException = {
+    failure.throwable match {
+      case Some(throwable) => new StartingFailureException(failure.message, throwable)
+      case None => new StartingFailureException(failure.message)
     }
+  }
+  def from(throwable: Throwable): StartingFailureException = {
+    new StartingFailureException("Cannot start ReadonlyREST", throwable)
   }
 }
