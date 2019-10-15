@@ -30,7 +30,7 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport
 import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.configuration.SslConfiguration
+import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SSLCertParser
 
@@ -42,7 +42,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    threadPool: ThreadPool,
                                    xContentRegistry: NamedXContentRegistry,
                                    dispatcher: HttpServerTransport.Dispatcher,
-                                   ssl: SslConfiguration)
+                                   ssl: ExternalSslConfiguration)
   extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher)
     with Logging {
 

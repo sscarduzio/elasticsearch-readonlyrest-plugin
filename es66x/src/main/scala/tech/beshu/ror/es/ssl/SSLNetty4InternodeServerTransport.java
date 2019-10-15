@@ -42,6 +42,7 @@ import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 
 import javax.net.ssl.SSLEngine;
@@ -56,11 +57,15 @@ import java.util.stream.Collectors;
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
-  private final SslConfiguration ssl;
+  private final InternodeSslConfiguration ssl;
 
-  public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
-      CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService,
-      SslConfiguration ssl) {
+  public SSLNetty4InternodeServerTransport(Settings settings,
+                                           ThreadPool threadPool,
+                                           PageCacheRecycler pageCacheRecycler,
+                                           CircuitBreakerService circuitBreakerService,
+                                           NamedWriteableRegistry namedWriteableRegistry,
+                                           NetworkService networkService,
+                                           InternodeSslConfiguration ssl) {
     super(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService);
     this.ssl = ssl;
   }

@@ -38,6 +38,7 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 import tech.beshu.ror.utils.SSLCertParser$;
 
@@ -49,12 +50,15 @@ import java.nio.charset.StandardCharsets;
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
-  private final SslConfiguration ssl;
+  private final ExternalSslConfiguration ssl;
 
   private SslContext sslContext;
 
-  public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
-                                      ThreadPool threadPool, SslConfiguration ssl) {
+  public SSLNetty4HttpServerTransport(Settings settings,
+                                      NetworkService networkService,
+                                      BigArrays bigArrays,
+                                      ThreadPool threadPool,
+                                      ExternalSslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool);
     this.ssl = ssl;
     SSLCertParser$.MODULE$.run(new SSLContextCreatorImpl(ssl), ssl);
