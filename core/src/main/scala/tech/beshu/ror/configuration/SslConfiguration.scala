@@ -95,14 +95,6 @@ object SslConfiguration {
   final case class Cipher(value: String)
   final case class Protocol(value: String)
 
-  final case class CommonSslProperties(keystoreFile: JFile,
-                                       keystorePassword: Option[SslConfiguration.KeystorePassword],
-                                       keyPass: Option[SslConfiguration.KeyPass],
-                                       keyAlias: Option[SslConfiguration.KeyAlias],
-                                       allowedProtocols: Set[SslConfiguration.Protocol],
-                                       allowedCiphers: Set[SslConfiguration.Cipher],
-                                       clientAuthenticationEnabled: Boolean)
-
   final case class ExternalSslConfiguration(keystoreFile: JFile,
                                             keystorePassword: Option[SslConfiguration.KeystorePassword],
                                             keyPass: Option[SslConfiguration.KeyPass],
@@ -140,6 +132,14 @@ private object SslDecoders {
     val verification = "verification"
     val enable = "enable"
   }
+
+  final case class CommonSslProperties(keystoreFile: JFile,
+                                       keystorePassword: Option[SslConfiguration.KeystorePassword],
+                                       keyPass: Option[SslConfiguration.KeyPass],
+                                       keyAlias: Option[SslConfiguration.KeyAlias],
+                                       allowedProtocols: Set[SslConfiguration.Protocol],
+                                       allowedCiphers: Set[SslConfiguration.Cipher],
+                                       clientAuthenticationEnabled: Boolean)
 
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = Decoder.decodeString.map(KeystorePassword.apply)
   private implicit val keyPassDecoder: Decoder[KeyPass] = Decoder.decodeString.map(KeyPass.apply)
