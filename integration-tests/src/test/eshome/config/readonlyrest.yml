@@ -13,10 +13,15 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "dev1 indexes"
-      indices: ["custom_@{user}_index_*", "@{user}_index"]
-      auth_key: dev1:test
+    - name: "::KIBANA-SRV::"
+      auth_key: kibana:kibana
+      indices: ["empty_index", "perfmon_endpoint_requests","perfmon_logstash-apacheaccess*"]
+      verbosity: error
 
-    - name: "dev2 indexes"
-      indices: ["@{user}_index", "custom_@{user}_index_*"]
-      auth_key: dev2:test
+#    - name: "dev1 indexes"
+#      indices: ["custom_@{user}_index_*", "@{user}_index"]
+#      auth_key: dev1:test
+#
+#    - name: "dev2 indexes"
+#      indices: ["@{user}_index", "custom_@{user}_index_*"]
+#      auth_key: dev2:test

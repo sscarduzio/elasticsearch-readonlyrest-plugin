@@ -84,7 +84,6 @@ class Block(val name: Name,
       .andThen {
         case Success((Matched(_, blockContext), _)) =>
           val block: Block = this
-
           logger.debug(s"${ANSI_CYAN}matched ${block.show} { found: ${blockContext.show} }$ANSI_RESET")
         case Success((_: Mismatched, history)) =>
           implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector(history))

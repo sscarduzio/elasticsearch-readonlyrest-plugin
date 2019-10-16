@@ -148,10 +148,14 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking if all indices are matched ...")
     val indices = requestContext.indices
     indices.toList match {
-      case index :: Nil =>
-        if (matcher.`match`(index)) stop(CanPass.Yes(Set(index)))
-        else continue
-      case _ if matcher.filter(indices) === indices =>
+      case index :: Nil if !index.hasWildcard =>
+        if (matcher.`match`(index)) {
+           requestContext.allIndicesAndAliases
+          stop(CanPass.Yes(Set(index)))
+        } else {
+          continue
+        }
+      case _ if indices.forall(i => !i.hasWildcard) && matcher.filter(indices) === indices =>
         stop(CanPass.Yes(indices))
       case _ =>
         continue
