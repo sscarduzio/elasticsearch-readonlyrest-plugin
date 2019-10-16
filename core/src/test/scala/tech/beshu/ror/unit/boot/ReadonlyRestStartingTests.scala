@@ -32,8 +32,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext, DisabledAccessControlStaticContext$}
 import tech.beshu.ror.boot.ReadonlyRest
-import tech.beshu.ror.configuration.SslConfiguration.{KeyPass, KeystorePassword}
-import tech.beshu.ror.configuration.{RawRorConfig, RorSsl, SslConfiguration}
+import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeyPass, KeystorePassword}
+import tech.beshu.ror.configuration.{RawRorConfig, RorSsl}
 import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
@@ -378,24 +378,28 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
   "A ReadonlyREST ES API SSL settings" should {
     "be loaded from elasticsearch config file" in {
       val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
-      inside(ssl.externalSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
-        file.getName should be("keystore.jks")
-        keystorePassword should be(KeystorePassword("readonlyrest1"))
-        keyPass should be(KeyPass("readonlyrest2"))
-        allowedProtocols should be(Set.empty)
-        allowedCiphers should be(Set.empty)
+      inside(ssl.externalSsl) {
+        case Some(ExternalSslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
+          file.getName should be("keystore.jks")
+          keystorePassword should be(KeystorePassword("readonlyrest1"))
+          keyPass should be(KeyPass("readonlyrest2"))
+          allowedProtocols should be(Set.empty)
+          allowedCiphers should be(Set.empty)
+          clientAuthenticationEnabled should be(false)
       }
       ssl.interNodeSsl should be(None)
     }
     "be loaded from readonlyrest config file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
-        inside(ssl.externalSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
-          file.getName should be("keystore.jks")
-          keystorePassword should be(KeystorePassword("readonlyrest1"))
-          keyPass should be(KeyPass("readonlyrest2"))
-          allowedProtocols should be(Set.empty)
-          allowedCiphers should be(Set.empty)
+        inside(ssl.externalSsl) {
+          case Some(ExternalSslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
+            file.getName should be("keystore.jks")
+            keystorePassword should be(KeystorePassword("readonlyrest1"))
+            keyPass should be(KeyPass("readonlyrest2"))
+            allowedProtocols should be(Set.empty)
+            allowedCiphers should be(Set.empty)
+            clientAuthenticationEnabled should be(false)
         }
         ssl.interNodeSsl should be(None)
       }
@@ -430,24 +434,30 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
   "A ReadonlyREST internode SSL settings" should {
     "be loaded from elasticsearch config file" in {
       val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
-      inside(ssl.interNodeSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
-        file.getName should be("keystore.jks")
-        keystorePassword should be(KeystorePassword("readonlyrest1"))
-        keyPass should be(KeyPass("readonlyrest2"))
-        allowedProtocols should be(Set.empty)
-        allowedCiphers should be(Set.empty)
+      inside(ssl.interNodeSsl) {
+        case Some(InternodeSslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
+          file.getName should be("keystore.jks")
+          keystorePassword should be(KeystorePassword("readonlyrest1"))
+          keyPass should be(KeyPass("readonlyrest2"))
+          allowedProtocols should be(Set.empty)
+          allowedCiphers should be(Set.empty)
+          clientAuthenticationEnabled should be(true)
+          certificateVerificationEnabled should be(true)
       }
       ssl.externalSsl should be(None)
     }
     "be loaded from readonlyrest config file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
         val ssl = RorSsl.load(getResourcePath("/boot_tests/internode_ssl_settings_in_readonlyrest_config/")).runSyncUnsafe().right.get
-        inside(ssl.interNodeSsl) { case Some(SslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, false)) =>
-          file.getName should be("keystore.jks")
-          keystorePassword should be(KeystorePassword("readonlyrest1"))
-          keyPass should be(KeyPass("readonlyrest2"))
-          allowedProtocols should be(Set.empty)
-          allowedCiphers should be(Set.empty)
+        inside(ssl.interNodeSsl) {
+          case Some(InternodeSslConfiguration(file, Some(keystorePassword), Some(keyPass), None, allowedProtocols, allowedCiphers, clientAuthenticationEnabled, certificateVerificationEnabled)) =>
+            file.getName should be("keystore.jks")
+            keystorePassword should be(KeystorePassword("readonlyrest1"))
+            keyPass should be(KeyPass("readonlyrest2"))
+            allowedProtocols should be(Set.empty)
+            allowedCiphers should be(Set.empty)
+            clientAuthenticationEnabled should be(true)
+            certificateVerificationEnabled should be(true)
         }
         ssl.externalSsl should be(None)
       }

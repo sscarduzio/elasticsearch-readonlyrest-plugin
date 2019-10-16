@@ -34,7 +34,7 @@ import org.elasticsearch.common.util.PageCacheRecycler
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.Netty4Transport
-import tech.beshu.ror.configuration.SslConfiguration
+import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
 
 import scala.collection.JavaConverters._
@@ -45,7 +45,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                                         circuitBreakerService: CircuitBreakerService,
                                         namedWriteableRegistry: NamedWriteableRegistry,
                                         networkService: NetworkService,
-                                        ssl: SslConfiguration)
+                                        ssl: InternodeSslConfiguration)
   extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService)
     with Logging {
 
@@ -54,7 +54,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
       super.initChannel(ch)
       logger.info(">> internode SSL channel initializing")
       val sslCtxBuilder = SslContextBuilder.forClient()
-      if (ssl.verifyClientAuth) {
+      if (!ssl.certificateVerificationEnabled) {
         sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE)
       }
       val sslCtx = sslCtxBuilder.build()
@@ -105,8 +105,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
             new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
             null
           )
-          // Cert verification enable by default for internode
-          if (ssl.verifyClientAuth) sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+          if (ssl.clientAuthenticationEnabled) sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
           if (ssl.allowedCiphers.nonEmpty) sslCtxBuilder.ciphers(ssl.allowedCiphers.map(_.value).toList.asJava)

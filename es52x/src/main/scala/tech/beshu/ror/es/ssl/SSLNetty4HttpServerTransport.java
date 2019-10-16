@@ -34,10 +34,12 @@ import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 import tech.beshu.ror.utils.SSLCertParser$;
 
@@ -46,16 +48,20 @@ import javax.net.ssl.SSLHandshakeException;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 
-public class SSLTransportNetty4 extends Netty4HttpServerTransport {
+public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
-  private final SslConfiguration ssl;
+  private final ExternalSslConfiguration ssl;
 
   private SslContext sslContext;
 
-  public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, SslConfiguration ssl) {
-    super(settings, networkService, bigArrays, threadPool);
+  public SSLNetty4HttpServerTransport(Settings settings,
+                                      NetworkService networkService,
+                                      BigArrays bigArrays,
+                                      ThreadPool threadPool,
+                                      NamedXContentRegistry xContentRegistry,
+                                      ExternalSslConfiguration ssl) {
+    super(settings, networkService, bigArrays, threadPool, xContentRegistry);
     this.ssl = ssl;
     SSLCertParser$.MODULE$.run(new SSLContextCreatorImpl(ssl), ssl);
   }
@@ -77,13 +83,13 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
 
   @Override
   public ChannelHandler configureServerChannelHandler() {
-    return new SSLHandler(this);
+      return new SSLHandler(this);
   }
 
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
 
     SSLHandler(final Netty4HttpServerTransport transport) {
-      super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
+      super(transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, SSLNetty4HttpServerTransport.this.threadPool.getThreadContext());
     }
 
     protected void initChannel(final Channel ch) throws Exception {
@@ -100,7 +106,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
         );
       }
 
-      if (ssl.verifyClientAuth()) {
+      if (ssl.clientAuthenticationEnabled()) {
         eng.setNeedClientAuth(true);
       }
 

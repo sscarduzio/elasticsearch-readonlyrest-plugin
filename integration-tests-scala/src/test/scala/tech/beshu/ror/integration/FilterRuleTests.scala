@@ -22,6 +22,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -33,8 +34,10 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/filter_rules/readonlyrest.yml",
-    numberOfInstances = 2,
-    FilterRuleTests.nodeDataInitializer()
+    clusterSettings = AdditionalClusterSettings(
+      numberOfInstances = 2,
+      nodeDataInitializer = FilterRuleTests.nodeDataInitializer()
+    )
   )
 
   private lazy val searchManager = new SearchManagerJ(container.nodesContainers.head.client("user1", "pass"))
@@ -65,7 +68,7 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
 object FilterRuleTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       add3Docs(adminRestClient, "test1_index", "_doc")
     } else {
       add3Docs(adminRestClient, "test1_index", "doc")

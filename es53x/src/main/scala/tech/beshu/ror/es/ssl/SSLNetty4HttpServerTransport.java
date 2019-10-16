@@ -35,6 +35,7 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 import tech.beshu.ror.utils.SSLCertParser$;
 
@@ -43,15 +44,20 @@ import javax.net.ssl.SSLHandshakeException;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 
-public class SSLTransportNetty4 extends Netty4HttpServerTransport {
+public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
-  private final SslConfiguration ssl;
+  private final ExternalSslConfiguration ssl;
 
   private SslContext sslContext;
 
-  public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, SslConfiguration ssl) {
+  public SSLNetty4HttpServerTransport(Settings settings,
+                                      NetworkService networkService,
+                                      BigArrays bigArrays,
+                                      ThreadPool threadPool,
+                                      NamedXContentRegistry xContentRegistry,
+                                      Dispatcher dispatcher,
+                                      ExternalSslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.ssl = ssl;
     SSLCertParser$.MODULE$.run(new SSLContextCreatorImpl(ssl), ssl);
@@ -80,7 +86,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
   private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
 
     SSLHandler(final Netty4HttpServerTransport transport) {
-      super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
+      super(transport, SSLNetty4HttpServerTransport.this.detailedErrorsEnabled, SSLNetty4HttpServerTransport.this.threadPool.getThreadContext());
     }
 
     protected void initChannel(final Channel ch) throws Exception {
@@ -98,7 +104,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
         );
       }
 
-      if (ssl.verifyClientAuth()) {
+      if (ssl.clientAuthenticationEnabled()) {
         eng.setNeedClientAuth(true);
       }
 
@@ -113,7 +119,6 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
       }
 
       ch.pipeline().addFirst("ssl_netty4_handler", new SslHandler(eng));
-
     }
   }
 
@@ -140,7 +145,7 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
         SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
 
         logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
-        SSLCertParser.validateProtocolAndCiphers(eng, sslConfiguration);
+        SSLCertParser.validateProtocolAndCiphers(eng, ssl);
       } catch (Exception e) {
         logger.error("Failed to load SSL CertChain & private key from Keystore! "
             + e.getClass().getSimpleName() + ": " + e.getMessage(), e);

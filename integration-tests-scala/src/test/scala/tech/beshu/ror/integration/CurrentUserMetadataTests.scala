@@ -29,8 +29,7 @@ class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/current_user_metadata/readonlyrest.yml",
-    numberOfInstances = 1
+    rorConfigFileName = "/current_user_metadata/readonlyrest.yml"
   )
 
   "An ACL" when {

@@ -17,88 +17,113 @@
 
 package tech.beshu.ror.es.ssl;
 
-/**
- * Created by sscarduzio on 28/11/2016.
- */
-
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.ssl.ClientAuth;
-import io.netty.handler.ssl.NotSslRecordException;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.channel.*;
+import io.netty.handler.ssl.*;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.util.BigArrays;
-import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
+import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.netty4.Netty4Transport;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 
+import javax.net.ssl.SSLEngine;
 import java.io.ByteArrayInputStream;
+import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class SSLTransportNetty4 extends Netty4HttpServerTransport {
+public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
-  private final SslConfiguration ssl;
+  private final InternodeSslConfiguration ssl;
 
-  public SSLTransportNetty4(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, SslConfiguration ssl) {
-    super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
+  public SSLNetty4InternodeServerTransport(Settings settings,
+                                           ThreadPool threadPool,
+                                           NetworkService networkService,
+                                           BigArrays bigArrays,
+                                           NamedWriteableRegistry namedWriteableRegistry,
+                                           CircuitBreakerService circuitBreakerService,
+                                           InternodeSslConfiguration ssl) {
+    super(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService);
     this.ssl = ssl;
   }
 
   @Override
-  protected void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
-    if (!this.lifecycle.started()) {
-      return;
-    }
-    if (cause.getCause() instanceof NotSslRecordException) {
-      logger.warn(cause.getMessage());
-    }
-    else {
-      cause.printStackTrace();
-      super.exceptionCaught(ctx, cause);
-    }
-    ctx.channel().flush().close();
+  protected ChannelHandler getClientChannelInitializer() {
+    return new ClientChannelInitializer() {
+      @Override
+      protected void initChannel(Channel ch) throws Exception {
+        super.initChannel(ch);
+        logger.info(">> internode SSL channel initializing");
+
+        SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
+        if (!ssl.certificateVerificationEnabled()) {
+          sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
+        }
+        SslContext sslCtx = sslCtxBuilder.build();
+        ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter() {
+          @Override
+          public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
+            SSLEngine sslEngine = sslCtx.newEngine(ctx.alloc());
+            sslEngine.setUseClientMode(true);
+            sslEngine.setNeedClientAuth(true);
+
+            ctx.pipeline().replace(this, "internode_ssl_client", new SslHandler(sslEngine));
+            super.connect(ctx, remoteAddress, localAddress, promise);
+          }
+        });
+      }
+
+      @Override
+      public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        if (cause instanceof NotSslRecordException || (cause.getCause() != null && cause.getCause() instanceof NotSslRecordException)) {
+          logger.error("Receiving non-SSL connections from: (" + ctx.channel().remoteAddress() + "). Will disconnect");
+          ctx.channel().close();
+        }
+        else {
+          super.exceptionCaught(ctx, cause);
+        }
+      }
+    };
   }
 
   @Override
-  public ChannelHandler configureServerChannelHandler() {
-    return new SSLHandler(this);
+  public final ChannelHandler getServerChannelInitializer(String name) {
+    return new SslChannelInitializer(name);
   }
 
-  private class SSLHandler extends Netty4HttpServerTransport.HttpChannelHandler {
+  public class SslChannelInitializer extends ServerChannelInitializer {
     private Optional<SslContext> context = Optional.empty();
 
-    SSLHandler(final Netty4HttpServerTransport transport) {
-      super(transport, SSLTransportNetty4.this.detailedErrorsEnabled, SSLTransportNetty4.this.threadPool.getThreadContext());
+    public SslChannelInitializer(String name) {
+      super(name);
       AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
         SSLCertParser.run(new SSLContextCreatorImpl(), ssl);
         return null;
       });
     }
 
-    protected void initChannel(final Channel ch) throws Exception {
+    @Override
+    protected void initChannel(Channel ch) throws Exception {
       super.initChannel(ch);
       context.ifPresent(sslCtx -> {
-        ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()));
+        ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()));
       });
     }
 
     private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
-
       @Override
       public void mkSSLContext(String certChain, String privateKey) {
         try {
@@ -108,8 +133,11 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
               new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
               null
           );
+          if (ssl.clientAuthenticationEnabled()) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+          }
 
-          logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
+          logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
 
           if(ssl.allowedCiphers().size() > 0) {
@@ -120,10 +148,6 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
                     .map(SslConfiguration.Cipher::value)
                     .collect(Collectors.toList())
             );
-          }
-
-          if (ssl.verifyClientAuth()) {
-            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
           }
 
           if(ssl.allowedProtocols().size() > 0) {
@@ -146,4 +170,6 @@ public class SSLTransportNetty4 extends Netty4HttpServerTransport {
       }
     }
   }
+
 }
+
