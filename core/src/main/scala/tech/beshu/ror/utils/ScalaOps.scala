@@ -26,6 +26,7 @@ import scala.collection.SortedSet
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.language.{higherKinds, implicitConversions, postfixOps}
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 object ScalaOps {
@@ -33,6 +34,16 @@ object ScalaOps {
   implicit class TryOps[T](val `try`: Try[T]) extends AnyVal {
 
     def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
+  }
+
+  implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
+    def asSafeSet: Set[T] = {
+      Option(array).getOrElse(Array.empty[T]).toSet
+    }
+  }
+
+  implicit class SetOps[T](val value: T) extends AnyVal {
+    def asSafeSet: Set[T] = Option(value).map(Set(_)).getOrElse(Set.empty)
   }
 
   implicit class ListOps[T](val list: List[T]) extends AnyVal {
