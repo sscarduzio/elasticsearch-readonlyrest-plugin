@@ -28,8 +28,7 @@ class TemplatesTests extends WordSpec with BaseTemplatesTests {
 
   override lazy val rorContainer: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/templates/readonlyrest.yml",
-    numberOfInstances = 1
+    rorConfigFileName = "/templates/readonlyrest.yml"
   )
 
   "A template API" when {

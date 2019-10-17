@@ -18,16 +18,8 @@
 package tech.beshu.ror.es.ssl;
 
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelOutboundHandlerAdapter;
-import io.netty.channel.ChannelPromise;
-import io.netty.handler.ssl.ClientAuth;
-import io.netty.handler.ssl.NotSslRecordException;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslHandler;
+import io.netty.channel.*;
+import io.netty.handler.ssl.*;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -40,8 +32,10 @@ import org.elasticsearch.common.util.PageCacheRecycler;
 import org.elasticsearch.indices.breaker.CircuitBreakerService;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.transport.netty4.Netty4Transport;
-import tech.beshu.ror.utils.SSLCertParser;
+import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration;
+import tech.beshu.ror.utils.SSLCertParser;
 
 import javax.net.ssl.SSLEngine;
 import java.io.ByteArrayInputStream;
@@ -51,16 +45,19 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import scala.collection.JavaConverters$;
 
 public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
-  private final SslConfiguration ssl;
+  private final InternodeSslConfiguration ssl;
 
-  public SSLNetty4InternodeServerTransport(Settings settings, ThreadPool threadPool, PageCacheRecycler pageCacheRecycler,
-      CircuitBreakerService circuitBreakerService, NamedWriteableRegistry namedWriteableRegistry, NetworkService networkService,
-      SslConfiguration ssl) {
+  public SSLNetty4InternodeServerTransport(Settings settings,
+                                           ThreadPool threadPool,
+                                           PageCacheRecycler pageCacheRecycler,
+                                           CircuitBreakerService circuitBreakerService,
+                                           NamedWriteableRegistry namedWriteableRegistry,
+                                           NetworkService networkService,
+                                           InternodeSslConfiguration ssl) {
     super(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService);
     this.ssl = ssl;
   }
@@ -76,7 +73,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
         logger.info(">> internode SSL channel initializing");
 
         SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
-        if (ssl.verifyClientAuth()) {
+        if (!ssl.certificateVerificationEnabled()) {
           sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
         }
         SslContext sslCtx = sslCtxBuilder.build();
@@ -141,9 +138,7 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
               new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
               null
           );
-
-          // Cert verification enable by default for internode
-          if (ssl.verifyClientAuth()) {
+          if (ssl.clientAuthenticationEnabled()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
           }
 

@@ -28,7 +28,6 @@ import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.common.component.LifecycleComponent;
-import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
 import org.elasticsearch.common.network.NetworkService;
 import org.elasticsearch.common.settings.ClusterSettings;
@@ -53,6 +52,7 @@ import org.elasticsearch.plugins.ScriptPlugin;
 import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.Transport;
 import org.elasticsearch.transport.netty4.Netty4Utils;
 import scala.concurrent.duration.FiniteDuration;
 import tech.beshu.ror.Constants;
@@ -62,7 +62,8 @@ import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
-import tech.beshu.ror.es.ssl.SSLTransportNetty4;
+import tech.beshu.ror.es.ssl.SSLNetty4HttpServerTransport;
+import tech.beshu.ror.es.ssl.SSLNetty4InternodeServerTransport;
 import tech.beshu.ror.es.utils.ThreadRepo;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
@@ -111,6 +112,29 @@ public class ReadonlyRestPlugin extends Plugin
   }
 
   @Override
+  public Map<String, Supplier<Transport>> getTransports(Settings settings,
+                                                        ThreadPool threadPool,
+                                                        BigArrays bigArrays,
+                                                        CircuitBreakerService circuitBreakerService,
+                                                        NamedWriteableRegistry namedWriteableRegistry,
+                                                        NetworkService networkService) {
+    if(sslConfig.interNodeSsl().isDefined()) {
+      return Collections.singletonMap("ror_ssl_internode", () ->
+              new SSLNetty4InternodeServerTransport(
+                      settings,
+                      threadPool,
+                      networkService,
+                      bigArrays,
+                      namedWriteableRegistry,
+                      circuitBreakerService,
+                      sslConfig.interNodeSsl().get())
+      );
+    } else {
+      return Collections.EMPTY_MAP;
+    }
+  }
+
+  @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
       Settings settings,
       ThreadPool threadPool,
@@ -123,7 +147,7 @@ public class ReadonlyRestPlugin extends Plugin
     if(sslConfig.externalSsl().isDefined()) {
       return Collections.singletonMap(
           "ssl_netty4", () ->
-              new SSLTransportNetty4(
+              new SSLNetty4HttpServerTransport(
                   settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, sslConfig.externalSsl().get()
               ));
     } else {

@@ -27,8 +27,7 @@ class UriRegexRuleTests extends WordSpec with ForAllTestContainer {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/uri_regex_rules/readonlyrest.yml",
-    numberOfInstances = 1
+    rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
   )
 
   "A uri rule" should {

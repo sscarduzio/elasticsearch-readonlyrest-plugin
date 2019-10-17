@@ -21,6 +21,7 @@ import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.AdminApiTests.{insertInIndexConfig, removeConfigIndex}
+import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -31,15 +32,15 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
   private val rorWithIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/admin_api/readonlyrest.yml",
-    numberOfInstances = 1,
-    AdminApiTests.nodeDataInitializer()
+    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = AdminApiTests.nodeDataInitializer())
   )
+
   private val rorWithNoIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR2",
     rorConfigFileName = "/admin_api/readonlyrest.yml",
-    numberOfInstances = 1,
-    configHotReloadingEnabled = false
+    clusterSettings = AdditionalClusterSettings(configHotReloadingEnabled = false)
   )
+
   override val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
 
   private lazy val rorWithIndexConfigAdminActionManager = new ActionManagerJ(rorWithIndexConfig.nodesContainers.head.adminClient)

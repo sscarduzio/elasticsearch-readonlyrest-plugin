@@ -26,8 +26,7 @@ class ClusterStateTests  extends WordSpec with ForAllTestContainer {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/cluster_state/readonlyrest.yml",
-    numberOfInstances = 1
+    rorConfigFileName = "/cluster_state/readonlyrest.yml"
   )
 
   private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)

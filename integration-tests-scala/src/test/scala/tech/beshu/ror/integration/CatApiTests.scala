@@ -27,8 +27,7 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
 
   override lazy val rorContainer: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/indices_api/readonlyrest.yml",
-    numberOfInstances = 1
+    rorConfigFileName = "/indices_api/readonlyrest.yml"
   )
 
   private lazy val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
