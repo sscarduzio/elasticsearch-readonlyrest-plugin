@@ -61,17 +61,19 @@ class IndexLevelActionFilter(settings: Settings,
 
   private val rorInstance: Atomic[Option[RorInstance]] = Atomic(Option.empty[RorInstance])
 
-  private val startingTaskCancellable = Ror
-    .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
-    .runAsync {
-      case Right(Right(instance)) =>
-        RorInstanceSupplier.update(instance)
-        rorInstance.set(Some(instance))
-      case Right(Left(failure)) =>
-        throw StartingFailureException.from(failure)
-      case Left(ex) =>
-        throw StartingFailureException.from(ex)
-    }
+  private val startingTaskCancellable = doPrivileged {
+    Ror
+      .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
+      .runAsync {
+        case Right(Right(instance)) =>
+          RorInstanceSupplier.update(instance)
+          rorInstance.set(Some(instance))
+        case Right(Left(failure)) =>
+          throw StartingFailureException.from(failure)
+        case Left(ex) =>
+          throw StartingFailureException.from(ex)
+      }
+  }
 
   override def order(): Int = 0
 

@@ -80,7 +80,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
       |
       |  users:
       |   - username: user1
-      |     auth_key: user1:passwd
+      |     auth_key: $${USER1_PASS}
       |     groups: ["g1", "g2", "g3", "gs1"]
       |
       |   - username: user2
@@ -252,6 +252,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
     case EnvVarName(n) if n.value == "sys_group_1" => Some("s1")
     case EnvVarName(n) if n.value == "sys_group_2" => Some("s2")
     case EnvVarName(n) if n.value == "READONLYREST_ENABLE" => Some("true")
+    case EnvVarName(n) if n.value == "USER1_PASS" => Some("user1:passwd")
     case _ => None
   }
 }

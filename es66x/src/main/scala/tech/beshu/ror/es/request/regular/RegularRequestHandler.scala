@@ -19,12 +19,10 @@ package tech.beshu.ror.es.request.regular
 import cats.data.NonEmptyList
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse
+import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
-import org.elasticsearch.common.collect.ImmutableOpenMap
-import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
@@ -51,7 +49,8 @@ class RegularRequestHandler(engine: Engine,
                             baseListener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: RestChannel,
-                            threadPool: ThreadPool)
+                            threadPool: ThreadPool,
+                            emptyClusterStateResponse:  ClusterStateResponse)
                            (implicit scheduler: Scheduler)
   extends Logging {
 
@@ -96,10 +95,7 @@ class RegularRequestHandler(engine: Engine,
                       blockContext: BlockContext): Unit = {
     requestContext.uriPath match {
       case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
-        baseListener.onResponse(new GetSettingsResponse(
-          ImmutableOpenMap.of[String, Settings](),
-          ImmutableOpenMap.of[String, Settings]()
-        ))
+        baseListener.onResponse(emptyClusterStateResponse)
       case CatTemplatePath(_) | TemplatePath(_) =>
         val searchListener = createSearchListener(requestContext, blockContext, engine.context)
         applyIfExists(indicesFrom(blockContext)) {

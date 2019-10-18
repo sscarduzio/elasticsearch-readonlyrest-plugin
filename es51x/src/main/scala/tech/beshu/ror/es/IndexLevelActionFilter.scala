@@ -18,10 +18,12 @@ package tech.beshu.ror.es
 
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.Atomic
+import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
@@ -59,18 +61,24 @@ class IndexLevelActionFilter(settings: Settings,
   }
 
   private val rorInstance: Atomic[Option[RorInstance]] = Atomic(Option.empty[RorInstance])
+  private val emptyClusterState = new ClusterStateResponse(
+    ClusterName.CLUSTER_NAME_SETTING.get(settings),
+    ClusterState.PROTO
+  )
 
-  private val startingTaskCancellable = Ror
-    .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
-    .runAsync {
-      case Right(Right(instance)) =>
-        RorInstanceSupplier.update(instance)
-        rorInstance.set(Some(instance))
-      case Right(Left(failure)) =>
-        throw StartingFailureException.from(failure)
-      case Left(ex) =>
-        throw StartingFailureException.from(ex)
-    }
+  private val startingTaskCancellable = doPrivileged {
+    Ror
+      .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
+      .runAsync {
+        case Right(Right(instance)) =>
+          RorInstanceSupplier.update(instance)
+          rorInstance.set(Some(instance))
+        case Right(Left(failure)) =>
+          throw StartingFailureException.from(failure)
+        case Left(ex) =>
+          throw StartingFailureException.from(ex)
+      }
+  }
 
   override def order(): Int = 0
 
@@ -117,7 +125,7 @@ class IndexLevelActionFilter(settings: Settings,
         val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
         handler.handle(requestInfo, requestContext)
       case _ =>
-        val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
+        val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool, emptyClusterState)
         handler.handle(requestInfo, requestContext)
     }
   }
