@@ -13,22 +13,15 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: Nested field test1
-      auth_key: "user1:pass"
-      indices: ["*"]
-      fields: ["_source", "items.endDate", "secrets"]
+    - name: "::KIBANA-SRV::"
+      auth_key: kibana:kibana
+      indices: ["empty_index", "perfmon_endpoint_requests","perfmon_logstash-apacheaccess*"]
+      verbosity: error
 
-    - name: Nested field test2
-      auth_key: "user2:pass"
-      indices: ["*"]
-      fields: ["_source", "items.*Date", "secrets.*"]
-
-    - name: Nested field test3
-      auth_key: "user3:pass"
-      indices: ["*"]
-      fields: ["~items.endDate", "~secrets"]
-
-    - name: Nested field test4
-      auth_key: "user4:pass"
-      indices: ["*"]
-      fields: ["~items.*Date", "~secrets.*"]
+#    - name: "dev1 indexes"
+#      indices: ["custom_@{user}_index_*", "@{user}_index"]
+#      auth_key: dev1:test
+#
+#    - name: "dev2 indexes"
+#      indices: ["@{user}_index", "custom_@{user}_index_*"]
+#      auth_key: dev2:test

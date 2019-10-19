@@ -133,9 +133,12 @@ class IndicesRule(val settings: Settings)
   private def noneOrAllIndices(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
     logger.debug("Checking - none or all indices ...")
     val indices = requestContext.indices
-    if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
-      val allowedIdxs = matcher.filter(requestContext.allIndicesAndAliases.flatMap(_.all))
-      stop(if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs) else CanPass.No)
+    val allIndicesAndAliases = requestContext.allIndicesAndAliases.flatMap(_.all)
+    if(allIndicesAndAliases.isEmpty) {
+      stop(CanPass.Yes(indices))
+    } else if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
+      val allowedIdxs = matcher.filter(allIndicesAndAliases)
+      stop(if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs) else CanPass.Yes(Set.empty))
     } else {
       continue
     }
@@ -145,11 +148,14 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking if all indices are matched ...")
     val indices = requestContext.indices
     indices.toList match {
-      case index :: Nil =>
-        if (matcher.`match`(index)) stop(CanPass.Yes(Set.empty))
-        else continue
-      case _ if matcher.filter(indices) === indices =>
-        stop(CanPass.Yes(Set.empty))
+      case index :: Nil if !index.hasWildcard =>
+        if (matcher.`match`(index)) {
+          stop(CanPass.Yes(Set(index)))
+        } else {
+          continue
+        }
+      case _ if indices.forall(i => !i.hasWildcard) && matcher.filter(indices) === indices =>
+        stop(CanPass.Yes(indices))
       case _ =>
         continue
     }
@@ -209,9 +215,13 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking - template indices patterns...")
     requestContext match {
       case rc if rc.action.isTemplate || rc.uriPath.isCatTemplatePath =>
-        val allowed = findTemplatesIndicesPatterns(rc.templateIndicesPatterns, allowedIndices)
-        if (allowed.nonEmpty) stop(CanPass.Yes(allowed))
-        else stop(CanPass.No)
+        if(rc.templateIndicesPatterns.nonEmpty) {
+          val allowed = findTemplatesIndicesPatterns(rc.templateIndicesPatterns, allowedIndices)
+          if (allowed.nonEmpty) stop(CanPass.Yes(allowed))
+          else stop(CanPass.Yes(allowedIndices))
+        } else {
+          stop(CanPass.Yes(allowedIndices))
+        }
       case _ =>
         continue
     }
@@ -221,10 +231,22 @@ class IndicesRule(val settings: Settings)
                                   matcher: Matcher,
                                   resolvedAllowedIndices: Set[IndexName]): CanPass = {
     val result = for {
-      _ <- templateIndicesPatterns(requestContext, resolvedAllowedIndices)
+      _ <- writeTemplateIndicesPatterns(requestContext, resolvedAllowedIndices)
       _ <- generalWriteRequest(requestContext, matcher)
     } yield ()
     result.left.getOrElse(CanPass.No)
+  }
+
+  private def writeTemplateIndicesPatterns(requestContext: RequestContext, allowedIndices: Set[IndexName]): IndicesCheckContinuation = {
+    logger.debug("Checking - write template request...")
+    requestContext match {
+      case rc if rc.action.isTemplate || rc.uriPath.isCatTemplatePath =>
+        val allowed = findTemplatesIndicesPatterns(rc.templateIndicesPatterns, allowedIndices)
+        if (allowed.nonEmpty) stop(CanPass.Yes(allowed))
+        else stop(CanPass.No)
+      case _ =>
+        continue
+    }
   }
 
   private def generalWriteRequest(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {

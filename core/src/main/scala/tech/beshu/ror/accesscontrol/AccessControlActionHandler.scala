@@ -16,9 +16,11 @@
  */
 package tech.beshu.ror.accesscontrol
 
+import cats.implicits._
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.AccessControlActionHandler.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 
 trait AccessControlActionHandler {
   def onAllow(blockContext: BlockContext): Unit
@@ -34,7 +36,7 @@ object AccessControlActionHandler {
   case object ForbiddenBlockMatch extends ForbiddenCause {
     override def stringify: String = "FORBIDDEN_BY_BLOCK"
   }
-  case object OpetationNotAllowed extends ForbiddenCause {
+  case object OperationNotAllowed extends ForbiddenCause {
     override def stringify: String = "OPERATION_NOT_ALLOWED"
   }
   case object ImpersonationNotSupported extends ForbiddenCause {
@@ -46,14 +48,14 @@ object AccessControlActionHandler {
 
   def fromMismatchedCause(cause: Cause): ForbiddenCause = {
     cause match {
-      case Cause.OperationNotAllowed => OpetationNotAllowed
+      case Cause.OperationNotAllowed => OperationNotAllowed
       case Cause.ImpersonationNotSupported => ImpersonationNotSupported
       case Cause.ImpersonationNotAllowed => ImpersonationNotAllowed
     }
   }
 }
 
-object BlockContextJavaHelper {
+object BlockContextRawDataHelper {
 
   def responseHeadersFrom(blockContext: BlockContext): Map[String, String] = {
     blockContext
@@ -69,11 +71,8 @@ object BlockContextJavaHelper {
       .toMap
   }
 
-  def indicesFrom(blockContext: BlockContext): Set[String] = {
-    blockContext.indices match {
-      case BlockContext.Outcome.Exist(indices) => indices.map(_.value.value)
-      case BlockContext.Outcome.NotExist => Set.empty
-    }
+  def indicesFrom(blockContext: BlockContext): Outcome[Set[String]] = {
+    blockContext.indices.map(_.map(_.value.value))
   }
 
   def repositoriesFrom(blockContext: BlockContext): Set[String] = {

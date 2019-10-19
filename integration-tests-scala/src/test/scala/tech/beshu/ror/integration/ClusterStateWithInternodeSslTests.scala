@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManagerJ
+import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 class ClusterStateWithInternodeSslTests extends WordSpec with ForAllTestContainer {
 
@@ -34,7 +34,7 @@ class ClusterStateWithInternodeSslTests extends WordSpec with ForAllTestContaine
     )
   )
 
-  private lazy val adminClusterStateManager = new ClusterStateManagerJ(container.nodesContainers.head.adminClient)
+  private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
 
   "Health check" should {
     "be successful" when {

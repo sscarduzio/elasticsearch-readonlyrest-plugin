@@ -40,8 +40,8 @@ import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
-import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError}
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
+import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError}
 import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers._
@@ -150,21 +150,39 @@ trait ReadonlyRest extends Logging {
 
   private[ror] def loadRorConfigFromIndex(indexConfigManager: IndexConfigManager,
                                           noIndexFallback: => Task[Either[StartingFailure, RawRorConfig]]) = {
+    def attempt(attemptsLeft: Int,
+                startingFailure: Option[ConfigLoaderError[IndexConfigError]] = None): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
+      val executionDelay = startingFailure match {
+        case None => 1 second
+        case Some(_) => 5 seconds
+      }
+      startingFailure match {
+        case Some(failure) if attemptsLeft <= 0 =>
+          Task.now(Left(failure))
+        case None | Some(_) =>
+          indexConfigManager
+            .load()
+            .delayExecution(executionDelay)
+            .flatMap {
+              case Right(success) => Task.now(Right(success))
+              case Left(failure) => attempt(attemptsLeft - 1, Some(failure))
+            }
+      }
+    }
     logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ...")
-    indexConfigManager
-      .load()
+    attempt(5)
       .flatMap {
         case Right(config) =>
           Task.now(Right(config))
         case Left(error@ParsingError(_)) =>
           val failure = StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error))
-          logger.error(s"Loading ReadonlyREST config from index failed: ${failure.message}")
+          logger.error(s"Loading ReadonlyREST settings from index failed: ${failure.message}")
           lift(failure)
         case Left(SpecializedError(IndexConfigNotExist)) =>
-          logger.info(s"Loading ReadonlyREST config from index failed: cannot find index")
+          logger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
           noIndexFallback
         case Left(SpecializedError(IndexConfigUnknownStructure)) =>
-          logger.info(s"Loading ReadonlyREST config from index failed: index content malformed")
+          logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
           noIndexFallback
       }
   }
@@ -213,8 +231,8 @@ class RorInstance private(boot: ReadonlyRest,
                           (implicit propertiesProvider: PropertiesProvider)
   extends Logging {
 
-  import RorInstance._
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
+  import RorInstance._
 
   logger.info ("Readonly REST plugin core was loaded ...")
   mode match {

@@ -17,12 +17,15 @@
 package tech.beshu.ror.es.request.regular
 
 import eu.timepit.refined.types.string.NonEmptyString
+import org.elasticsearch.Version
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.cluster.ClusterState
 import org.elasticsearch.cluster.metadata.MetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
+import org.elasticsearch.discovery.zen.PublishClusterStateAction.serializeFullClusterState
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.domain.UriPath.CatTemplatePath
@@ -49,7 +52,10 @@ class RegularResponseActionListener(baseListener: ActionListener[ActionResponse]
   // templates are not filtered so we have to do this for our own
   private def filterTemplatesInClusterStateResponse(response: ClusterStateResponse): ClusterStateResponse = {
     val oldMetadata = response.getState.metaData()
-    val allowedIndices = blockContext.indices.getOrElse(Set(IndexName.fromUnsafeString("*")))
+    val allowedIndices = blockContext.indices match {
+      case Outcome.Exist(indices) if indices.nonEmpty => indices
+      case Outcome.Exist(_) | Outcome.NotExist => Set(IndexName.fromUnsafeString("*"))
+    }
     val filteredTemplates = oldMetadata
       .templates().valuesIt().asScala.toSet
       .filter { t =>
@@ -80,7 +86,7 @@ class RegularResponseActionListener(baseListener: ActionListener[ActionResponse]
     new ClusterStateResponse(
       response.getClusterName,
       modifiedClusterState,
-      response.getTotalCompressedSize.getBytes
+      serializeFullClusterState(modifiedClusterState, Version.CURRENT).length
     )
   }
 }

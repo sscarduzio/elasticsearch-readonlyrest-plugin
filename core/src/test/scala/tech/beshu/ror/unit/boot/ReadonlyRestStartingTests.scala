@@ -55,7 +55,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
         (mockedIndexJsonContentManager.sourceOf _)
           .expects(".readonlyrest", "settings", "1")
-          .once()
+          .repeated(5)
           .returns(Task.now(Left(CannotReachContentSource)))
 
         val coreFactory = mockCoreFactory(mock[CoreFactory], "/boot_tests/no_index_config_file_config_provided/readonlyrest.yml")
@@ -296,7 +296,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
         (mockedIndexJsonContentManager.sourceOf _)
           .expects(".readonlyrest", "settings", "1")
-          .once()
+          .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
         val result = readonlyRestBoot(mock[CoreFactory])
@@ -315,7 +315,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
         (mockedIndexJsonContentManager.sourceOf _)
           .expects(".readonlyrest", "settings", "1")
-          .once()
+          .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
         val coreFactory = mockFailedCoreFactory(mock[CoreFactory], "/boot_tests/index_config_not_exists_bad_file_config/readonlyrest.yml")
@@ -337,7 +337,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val indexConfigFile = "readonlyrest_index.yml"
 
         val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
-        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile, repeatedCount = 5)
 
         val result = readonlyRestBoot(mock[CoreFactory])
           .start(
@@ -501,10 +501,12 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     }
   }
 
-  private def mockIndexJsonContentManagerSourceOfCall(mockedManager: IndexJsonContentManager, resourceFileName: String) = {
+  private def mockIndexJsonContentManagerSourceOfCall(mockedManager: IndexJsonContentManager,
+                                                      resourceFileName: String,
+                                                      repeatedCount: Int = 1) = {
     (mockedManager.sourceOf _)
       .expects(".readonlyrest", "settings", "1")
-      .once()
+      .repeated(repeatedCount)
       .returns(Task.now(Right(
         Map("settings" -> getResourceContent(resourceFileName).asInstanceOf[Any]).asJava
       )))
