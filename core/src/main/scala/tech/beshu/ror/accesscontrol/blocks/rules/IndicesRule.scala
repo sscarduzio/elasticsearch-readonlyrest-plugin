@@ -150,7 +150,6 @@ class IndicesRule(val settings: Settings)
     indices.toList match {
       case index :: Nil if !index.hasWildcard =>
         if (matcher.`match`(index)) {
-           requestContext.allIndicesAndAliases
           stop(CanPass.Yes(Set(index)))
         } else {
           continue
