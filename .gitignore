@@ -36,8 +36,8 @@ integration-tests/src/test/eshome/logs/
 integration-tests/src/test/eshome/data/
 integration-tests/src/test/eshome/*.log
 integration-tests/src/test/eshome/modules/*
+integration-tests/src/test/eshome/config/elasticsearch.keystore
 target/
-
 
 // Crypto
 *.pem

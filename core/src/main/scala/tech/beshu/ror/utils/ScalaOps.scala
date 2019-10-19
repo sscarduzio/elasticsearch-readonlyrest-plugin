@@ -43,7 +43,7 @@ object ScalaOps {
   }
 
   implicit class SetOps[T](val value: T) extends AnyVal {
-    def asSafeSet: Set[T] = Option(value).map(Set(_)).getOrElse(Set.empty)
+    def asSafeSet: Set[T] = Option(value).toSet
   }
 
   implicit class ListOps[T](val list: List[T]) extends AnyVal {

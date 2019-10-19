@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.regular
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -30,7 +31,6 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
 import tech.beshu.ror.accesscontrol.BlockContextRawDataHelper.indicesFrom
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatIndicesPath, CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextRawDataHelper}
@@ -98,14 +98,14 @@ class RegularRequestHandler(engine: Engine,
         baseListener.onResponse(emptyClusterStateResponse)
       case CatTemplatePath(_) | TemplatePath(_) =>
         val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-        applyIfExists(indicesFrom(blockContext)) {
+        indicesFrom(blockContext).map {
           requestInfo.writeTemplatesOf
         }
         writeCommonParts(requestInfo, blockContext)
         proceed(searchListener)
       case _ =>
         val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-        applyIfExists(indicesFrom(blockContext)) {
+        indicesFrom(blockContext).map {
           requestInfo.writeIndices
         }
         requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
@@ -116,23 +116,13 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def applyIfExists[T](outcome: Outcome[T])(function: T => Unit): Unit = {
-    outcome match {
-      case Outcome.Exist(value) => function(value)
-      case Outcome.NotExist =>
-    }
-  }
-
   private def writeCommonParts(requestInfo: RequestInfo, blockContext: BlockContext): Unit = {
     requestInfo.writeResponseHeaders(BlockContextRawDataHelper.responseHeadersFrom(blockContext))
     requestInfo.writeToThreadContextHeaders(BlockContextRawDataHelper.contextHeadersFrom(blockContext))
   }
 
   private def emptySetOfFoundIndices(blockContext: BlockContext) = {
-    blockContext.indices match {
-      case Outcome.Exist(indices) if indices.isEmpty => true
-      case Outcome.Exist(_) | Outcome.NotExist => false
-    }
+    blockContext.indices.forall(_.isEmpty)
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
