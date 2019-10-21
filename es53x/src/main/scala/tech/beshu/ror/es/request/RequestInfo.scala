@@ -46,7 +46,8 @@ import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.RegularIndices
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.{extractStringArrayFromPrivateMethod, invokeMethodCached}
@@ -86,55 +87,42 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       actionRequest.isInstanceOf[GetIndexTemplatesRequest] || actionRequest.isInstanceOf[PutIndexTemplateRequest] || actionRequest.isInstanceOf[DeleteIndexTemplateRequest]
   }
 
-  override lazy val extractIndices: Set[String] = {
-    val indices = actionRequest match {
+  override lazy val extractIndices: ExtractedIndices = {
+    val extractedIndices = actionRequest match {
       case ar: IndexRequest => // The most common case first
-        ar.indices.toSet
+        RegularIndices(ar.indices.toSet)
       case ar: MultiGetRequest =>
-        ar.getItems.asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.getItems.asScala.flatMap(_.indices()).toSet)
       case ar: MultiSearchRequest =>
-        ar.requests().asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.requests().asScala.flatMap(_.indices()).toSet)
       case ar: MultiTermVectorsRequest =>
-        ar.getRequests.asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.getRequests.asScala.flatMap(_.indices()).toSet)
       case ar: BulkRequest =>
-        ar.requests().asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.requests().asScala.collect { case ir: IndicesRequest => ir}.flatMap(_.indices()).toSet)
       case ar: DeleteRequest =>
-        ar.indices().toSet
+        RegularIndices(ar.indices().toSet)
       case ar: IndicesAliasesRequest =>
-        ar.getAliasActions.asScala.flatMap(_.indices()).toSet
-      case ar if ar.getClass.getSimpleName.startsWith("ReindexRequest") =>
-        // Using reflection otherwise need to create another sub-project
-        Try {
-          val sr = invokeMethodCached(ar, ar.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
-          val ir = invokeMethodCached(ar, ar.getClass, "getDestination").asInstanceOf[IndexRequest]
-          sr.indices().toSet ++ ir.indices().toSet
-        } fold(
-          ex => {
-            logger.errorEx(s"cannot extract indices from: $extractMethod $extractURI\n$extractContent", ex)
-            Set.empty[String]
-          },
-          identity
-        )
-      case ar if ar.getClass.getSimpleName.startsWith("Sql") =>
-        // Do noting, we can't do anything about X-Pack SQL queries, as it does not contain indices.
-        // todo: The only way we can filter this kind of request is going Lucene level like "filter" rule.
-        Set.empty[String]
+        RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices()).toSet)
       case ar: CompositeIndicesRequest =>
         logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${ar.getClass.getSimpleName}")
-        Set.empty[String]
+        RegularIndices(Set.empty[String])
       case ar: RestoreSnapshotRequest => // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
-        ar.indices().toSet
+        RegularIndices(ar.indices().toSet)
       case ar: PutIndexTemplateRequest =>
-        indicesFromPatterns(clusterService, ar.indices.toSet)
-          .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
-          .toSet
+        RegularIndices {
+          indicesFromPatterns(clusterService, ar.indices.toSet)
+            .flatMap { case (pattern, relatedIndices) => if (relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
+            .toSet
+        }
       case ar =>
-        val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
-        if(indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
-        else indices
+        RegularIndices {
+          val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
+          if (indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
+          else indices
+        }
     }
-    logger.debug(s"Discovered indices: ${indices.mkString(",")}")
-    indices
+    logger.debug(s"Discovered indices: ${extractedIndices.indices.mkString(",")}")
+    extractedIndices
   }
 
   override lazy val extractTemplateIndicesPatterns: Set[String] = {

@@ -47,13 +47,15 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices._
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.{extractStringArrayFromPrivateMethod, invokeMethodCached}
 import tech.beshu.ror.utils.{RCUtils, ReflecUtils}
 
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 import scala.math.Ordering.comparatorToOrdering
 import scala.util.{Failure, Success, Try}
 
@@ -87,56 +89,64 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       actionRequest.isInstanceOf[GetIndexTemplatesRequest] || actionRequest.isInstanceOf[PutIndexTemplateRequest] || actionRequest.isInstanceOf[DeleteIndexTemplateRequest]
   }
 
-  override lazy val extractIndices: Set[String] = {
-    val indices = actionRequest match {
+  override lazy val extractIndices: ExtractedIndices = {
+    val extractedIndices: ExtractedIndices = actionRequest match {
       case ar: IndexRequest => // The most common case first
-        ar.indices.toSet
+        RegularIndices(ar.indices.toSet)
       case ar: MultiGetRequest =>
-        ar.getItems.asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.getItems.asScala.flatMap(_.indices()).toSet)
       case ar: MultiSearchRequest =>
-        ar.requests().asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.requests().asScala.flatMap(_.indices()).toSet)
       case ar: MultiTermVectorsRequest =>
-        ar.getRequests.asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.getRequests.asScala.flatMap(_.indices()).toSet)
       case ar: BulkRequest =>
-        ar.requests().asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.requests().asScala.flatMap(_.indices()).toSet)
       case ar: DeleteRequest =>
-        ar.indices().toSet
+        RegularIndices(ar.indices().toSet)
       case ar: IndicesAliasesRequest =>
-        ar.getAliasActions.asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices()).toSet)
       case ar: ReindexRequest => // Buggy cases here onwards
-        Try {
-          val sr = invokeMethodCached(ar, ar.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
-          val ir = invokeMethodCached(ar, ar.getClass, "getDestination").asInstanceOf[IndexRequest]
-          sr.indices().toSet ++ ir.indices().toSet
-        } fold(
-          ex => {
-            logger.errorEx(s"cannot extract indices from: $extractMethod $extractURI\n$extractContent", ex)
-            Set.empty[String]
-          },
-          identity
-        )
+        RegularIndices {
+          Try {
+            val sr = invokeMethodCached(ar, ar.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
+            val ir = invokeMethodCached(ar, ar.getClass, "getDestination").asInstanceOf[IndexRequest]
+            sr.indices().toSet ++ ir.indices().toSet
+          } fold(
+            ex => {
+              logger.errorEx(s"cannot extract indices from: $extractMethod $extractURI\n$extractContent", ex)
+              Set.empty[String]
+            },
+            identity
+          )
+        }
       case ar: CompositeIndicesRequest if extractURI.startsWith("/_sql")  =>
         SqlQueryUtils.indicesFrom(ar)
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
-        invokeMethodCached(ar, ar.getClass, "getRequest")
-          .asInstanceOf[SearchRequest]
-          .indices().toSet
+        RegularIndices{
+          invokeMethodCached(ar, ar.getClass, "getRequest")
+            .asInstanceOf[SearchRequest]
+            .indices().toSet
+        }
       case ar: CompositeIndicesRequest =>
         logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${ar.getClass.getSimpleName}")
-        Set.empty[String]
+        RegularIndices(Set.empty[String])
       case ar: RestoreSnapshotRequest => // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
-        ar.indices().toSet
+        RegularIndices(ar.indices().toSet)
       case ar: PutIndexTemplateRequest =>
-        indicesFromPatterns(clusterService, ar.indices.toSet)
-          .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
-          .toSet
+        RegularIndices {
+          indicesFromPatterns(clusterService, ar.indices.toSet)
+            .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
+            .toSet
+        }
       case ar =>
-        val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
-        if(indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
-        else indices
+        RegularIndices {
+          val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
+          if (indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
+          else indices
+        }
     }
-    logger.debug(s"Discovered indices: ${indices.mkString(",")}")
-    indices
+    logger.debug(s"Discovered indices: ${extractedIndices.indices.mkString(",")}")
+    extractedIndices
   }
 
   override lazy val extractTemplateIndicesPatterns: Set[String] = {
@@ -377,10 +387,15 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           WriteResult.Success(())
         }
       case ar: CompositeIndicesRequest if extractURI.startsWith("/_sql") =>
-        if(newIndices != extractIndices) {
-          SqlQueryUtils.modifyIndicesOf(ar, indices)
+        extractIndices match {
+          case sqlIndices: SqlIndices =>
+            if(newIndices != extractIndices.indices) {
+              SqlQueryUtils.modifyIndicesOf(ar, sqlIndices, indices.toSet)
+            }
+            WriteResult.Success(())
+          case RegularIndices(_) =>
+            throw new IllegalStateException("Regular indices in SQL request")
         }
-        WriteResult.Success(())
       case _ =>
         // Optimistic reflection attempt
         val okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), indices.toSet.asJava)

@@ -1,25 +1,33 @@
 package tech.beshu.ror.es.request
 
 import java.lang.reflect.Modifier
+import java.util.regex.Pattern
 
 import org.elasticsearch.action.CompositeIndicesRequest
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 object SqlQueryUtils {
 
-  def modifyIndicesOf(request: CompositeIndicesRequest, indices: List[String]): CompositeIndicesRequest = {
-    ReflecUtils
-      .getMethodOf(request.getClass, Modifier.PUBLIC, "query", 1)
-      .invoke(request, s"DESCRIBE LIKE '${indices.mkString(",")}'")
-    // todo: 
-    request
+  def modifyIndicesOf(request: CompositeIndicesRequest,
+                      extractedIndices: SqlIndices,
+                      finalIndices: Set[String]): CompositeIndicesRequest = {
+    extractedIndices match {
+      case s: SqlTableRelated =>
+        setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))
+      case SqlNotTableRelated =>
+        request
+    }
   }
 
-  def indicesFrom(request: CompositeIndicesRequest): Set[String] = {
-    val query = ReflecUtils.invokeMethodCached(request, request.getClass, "query").asInstanceOf[String]
+  def indicesFrom(request: CompositeIndicesRequest): SqlIndices = {
+    val query = getQuery(request)
     val params = ReflecUtils.invokeMethodCached(request, request.getClass, "params")
 
     implicit val classLoader: ClassLoader = request.getClass.getClassLoader
@@ -30,6 +38,28 @@ object SqlQueryUtils {
     }
   }
 
+  private def getQuery(request: CompositeIndicesRequest): String = {
+    ReflecUtils.invokeMethodCached(request, request.getClass, "query").asInstanceOf[String]
+  }
+
+  private def setQuery(request: CompositeIndicesRequest, newQuery: String): CompositeIndicesRequest = {
+    ReflecUtils
+      .getMethodOf(request.getClass, Modifier.PUBLIC, "query", 1)
+      .invoke(request, newQuery)
+    request
+  }
+
+  private def newQueryFrom(oldQuery: String, extractedIndices: SqlIndices.SqlTableRelated, finalIndices: Set[String]) = {
+    extractedIndices.tables match {
+      case Nil =>
+        s"""$oldQuery "${finalIndices.mkString(",")}""""
+      case tables =>
+        tables.foldLeft(oldQuery) {
+          case (currentQuery, table) =>
+            currentQuery.replaceAll(Pattern.quote(table.tableStringInQuery), finalIndices.mkString(","))
+        }
+    }
+  }
 }
 
 final class SqlParser(implicit classLoader: ClassLoader) {
@@ -57,15 +87,18 @@ final class SimpleStatement(val underlyingObject: AnyRef)
                            (implicit classLoader: ClassLoader)
   extends Statement {
 
-  lazy val indices: Set[String] = {
+  lazy val indices: SqlIndices = {
     val tableInfoList = tableInfosFrom {
       doPreAnalyze(newPreAnalyzer, underlyingObject)
     }
-    tableInfoList
-      .map(tableIdentifierFrom)
-      .map(indicesStringFrom)
-      .flatMap(splitToIndicesPatterns)
-      .toSet
+    SqlIndices.SqlTableRelated {
+      tableInfoList
+        .map(tableIdentifierFrom)
+        .map(indicesStringFrom)
+        .map { tableString =>
+          IndexSqlTable(tableString, splitToIndicesPatterns(tableString))
+        }
+    }
   }
 
   private def newPreAnalyzer(implicit classLoader: ClassLoader) = {
@@ -121,11 +154,17 @@ final class Command(val underlyingObject: Any)
                    (implicit classLoader: ClassLoader)
   extends Statement {
 
-  lazy val indices: Set[String] = {
-    getIndicesString
-      .orElse(getIndexPatternsString)
-      .toSet
-      .flatMap(splitToIndicesPatterns)
+  lazy val indices: SqlIndices = {
+    Try {
+      getIndicesString
+        .orElse(getIndexPatternsString)
+        .map { indicesString =>
+          SqlTableRelated(IndexSqlTable(indicesString, splitToIndicesPatterns(indicesString)) :: Nil)
+        }
+        .getOrElse(SqlTableRelated(Nil))
+    } getOrElse {
+      SqlNotTableRelated
+    }
   }
 
   private def getIndicesString = Option {
@@ -148,7 +187,10 @@ final class Command(val underlyingObject: Any)
 }
 object Command {
   def isClassOf(obj: Any)(implicit classLoader: ClassLoader): Boolean =
-    obj.getClass == showTablesClass || obj.getClass == showColumnsClass
+    commandClass.isAssignableFrom(obj.getClass)
+
+  private def commandClass(implicit classLoader: ClassLoader): Class[_] =
+    classLoader.loadClass("org.elasticsearch.xpack.sql.plan.logical.command.Command")
 
   private def showTablesClass(implicit classLoader: ClassLoader): Class[_] =
     classLoader.loadClass("org.elasticsearch.xpack.sql.plan.logical.command.ShowTables")

@@ -47,9 +47,10 @@ import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.RegularIndices
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
-import tech.beshu.ror.utils.ReflecUtils.extractStringArrayFromPrivateMethod
+import tech.beshu.ror.utils.ReflecUtils.{extractStringArrayFromPrivateMethod, invokeMethodCached}
 import tech.beshu.ror.utils.{RCUtils, ReflecUtils}
 
 import scala.collection.JavaConverters._
@@ -85,38 +86,42 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       actionRequest.isInstanceOf[GetIndexTemplatesRequest] || actionRequest.isInstanceOf[PutIndexTemplateRequest] || actionRequest.isInstanceOf[DeleteIndexTemplateRequest]
   }
 
-  override lazy val extractIndices: Set[String] = {
-    val indices = actionRequest match {
+  override lazy val extractIndices: ExtractedIndices = {
+    val extractedIndices = actionRequest match {
       case ar: IndexRequest => // The most common case first
-        ar.indices.toSet
+        RegularIndices(ar.indices.toSet)
       case ar: MultiGetRequest =>
-        ar.getItems.asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.getItems.asScala.flatMap(_.indices()).toSet)
       case ar: MultiSearchRequest =>
-        ar.requests().asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.requests().asScala.flatMap(_.indices()).toSet)
       case ar: MultiTermVectorsRequest =>
-        ar.getRequests.asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.getRequests.asScala.flatMap(_.indices()).toSet)
       case ar: BulkRequest =>
-        ar.requests().asScala.collect { case ir: IndicesRequest => ir}.flatMap(_.indices()).toSet
+        RegularIndices(ar.requests().asScala.collect { case ir: IndicesRequest => ir}.flatMap(_.indices()).toSet)
       case ar: DeleteRequest =>
-        ar.indices().toSet
+        RegularIndices(ar.indices().toSet)
       case ar: IndicesAliasesRequest =>
-        ar.getAliasActions.asScala.flatMap(_.indices()).toSet
+        RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices()).toSet)
       case ar: CompositeIndicesRequest =>
         logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${ar.getClass.getSimpleName}")
-        Set.empty[String]
+        RegularIndices(Set.empty[String])
       case ar: RestoreSnapshotRequest => // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
-        ar.indices().toSet
+        RegularIndices(ar.indices().toSet)
       case ar: PutIndexTemplateRequest =>
-        indicesFromPatterns(clusterService, ar.indices.toSet)
-          .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
-          .toSet
+        RegularIndices {
+          indicesFromPatterns(clusterService, ar.indices.toSet)
+            .flatMap { case (pattern, relatedIndices) => if (relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
+            .toSet
+        }
       case ar =>
-        val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
-        if(indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
-        else indices
+        RegularIndices {
+          val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
+          if (indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
+          else indices
+        }
     }
-    logger.debug(s"Discovered indices: ${indices.mkString(",")}")
-    indices
+    logger.debug(s"Discovered indices: ${extractedIndices.indices.mkString(",")}")
+    extractedIndices
   }
 
   override lazy val extractTemplateIndicesPatterns: Set[String] = {

@@ -3,7 +3,8 @@ package tech.beshu.ror.accesscontrol.request
 import cats.{Monad, StackSafeMonad}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.identityNT
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 
 trait RequestInfoShim {
   def extractType: String
@@ -31,7 +32,7 @@ trait RequestInfoShim {
 
   def extractURI: String
 
-  def extractIndices: Set[String]
+  def extractIndices: ExtractedIndices
 
   def extractSnapshots: Set[String]
 
@@ -73,6 +74,27 @@ trait RequestInfoShim {
 }
 
 object RequestInfoShim {
+
+  sealed trait ExtractedIndices {
+    def indices: Set[String]
+  }
+  object ExtractedIndices {
+    final case class RegularIndices(override val indices: Set[String]) extends ExtractedIndices
+    sealed trait SqlIndices extends ExtractedIndices {
+      def indices: Set[String]
+    }
+    object SqlIndices {
+      final case class SqlTableRelated(tables: List[IndexSqlTable]) extends SqlIndices {
+        override lazy val indices: Set[String] = tables.flatMap(_.indices).toSet
+      }
+      object SqlTableRelated {
+        final case class IndexSqlTable(tableStringInQuery: String, indices: Set[String])
+      }
+      case object SqlNotTableRelated extends SqlIndices {
+        override def indices: Set[String] = Set.empty
+      }
+    }
+  }
 
   sealed trait WriteResult[+T]
   object WriteResult {
