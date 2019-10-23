@@ -49,6 +49,42 @@ class ProxyAuthRuleSettingsTests
           }
         )
       }
+      "only one user is defined - concise style" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    proxy_auth: user1
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.userIds should be(NonEmptySet.one(User.Id("user1".nonempty)))
+            rule.settings.userHeaderName should be(headerNameFrom("X-Forwarded-User"))
+          }
+        )
+      }
+      "several users are defined - concise style" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    proxy_auth: ["user1", "user2"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.userIds should be(NonEmptySet.of(User.Id("user1".nonempty), User.Id("user2".nonempty)))
+            rule.settings.userHeaderName should be(headerNameFrom("X-Forwarded-User"))
+          }
+        )
+      }
       "only one user is defined with overwritten user header name" in {
         assertDecodingSuccess(
           yaml =
