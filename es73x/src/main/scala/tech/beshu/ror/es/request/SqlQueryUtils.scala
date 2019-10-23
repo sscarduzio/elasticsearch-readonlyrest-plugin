@@ -26,7 +26,7 @@ object SqlQueryUtils {
     }
   }
 
-  def indicesFrom(request: CompositeIndicesRequest): SqlIndices = {
+  def indicesFrom(request: CompositeIndicesRequest): Try[SqlIndices] = Try {
     val query = getQuery(request)
     val params = ReflecUtils.invokeMethodCached(request, request.getClass, "params")
 

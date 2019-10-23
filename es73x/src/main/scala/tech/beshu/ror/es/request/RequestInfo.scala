@@ -120,7 +120,9 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           )
         }
       case ar: CompositeIndicesRequest if extractURI.startsWith("/_sql")  =>
-        SqlQueryUtils.indicesFrom(ar)
+        SqlQueryUtils
+          .indicesFrom(ar)
+          .getOrElse(throw new IllegalArgumentException(s"Cannot process SQL request ${ar.getDescription}"))
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
         RegularIndices{
           invokeMethodCached(ar, ar.getClass, "getRequest")

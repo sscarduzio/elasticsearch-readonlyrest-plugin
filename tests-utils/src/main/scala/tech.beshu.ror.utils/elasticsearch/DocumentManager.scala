@@ -16,7 +16,7 @@ class DocumentManager(restClient: RestClient)
 
   def createDocAndAssert(docPath: String, content: JSON): Unit = {
     val createDocResult = createDoc(docPath, content)
-    if(createDocResult.responseJson("result").str != "created") {
+    if(!createDocResult.isSuccess || createDocResult.responseJson("result").str != "created") {
       throw new IllegalStateException(s"Cannot create document '$docPath'; returned: ${createDocResult.body}")
     }
   }

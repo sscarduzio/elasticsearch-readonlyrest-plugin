@@ -4,7 +4,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest._
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SqlApiManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SqlApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
 
@@ -24,64 +24,413 @@ class SqlApiTests extends WordSpec with ForAllTestContainer {
   "SQL query request" when {
     "SELECT command is used" should {
       "be allowed" when {
-        "user has access to any index" in {
-          val result = adminSqlManager.execute("SELECT * FROM bookstore ORDER BY author")
-          result.isSuccess should be(true)
-          result.queryResult.size should be(4)
-          result.queryResult("author") should be(Vector(Str("Dan Simmons"), Str("Frank Herbert"), Str("James S.A. Corey")))
-          result.queryResult("price") should be(Vector(Num(200), Num(50), Num(110)))
+        "user has no indices rule (has access to any index)" when {
+          "full index name is used" in {
+            val result = adminSqlManager.execute("""SELECT * FROM library""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(4)
+            result.columnNames should be ("author" :: "internal_id" :: "name" :: "release_date" :: Nil)
+            result.rows.size should be (2)
+            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Nil)
+            result.column("internal_id").toList should be (Num(1) :: Num(2) :: Nil)
+          }
+          "full indices names are used" in {
+            val result = adminSqlManager.execute("""SELECT * FROM \"bookstore,library\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(5)
+            result.column("author").toList should be {
+              Str("James S.A. Corey") :: Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil
+            }
+            result.column("internal_id").toList should be {
+              Null :: Num(1) :: Null :: Num(2) :: Null :: Nil
+            }
+          }
+          "wildcard is used" in {
+            val result = adminSqlManager.execute("""SELECT * FROM \"*\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(5)
+            result.column("author").toList should be {
+              Str("James S.A. Corey") :: Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil
+            }
+            result.column("internal_id").toList should be {
+              Null :: Num(1) :: Null :: Num(2) :: Null :: Nil
+            }
+          }
+          "alias is used" in {
+            val result = adminSqlManager.execute("""SELECT * FROM bookshop""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(4)
+            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.rows.size should be (3)
+            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
+            result.column("price").toList should be (Num(100) :: Num(200) :: Num(50) :: Nil)
+          }
         }
-        "user has access to given index" in {
-          val result = dev1SqlManager.execute("SELECT * FROM bookstore ORDER BY author")
-          result.isSuccess should be(true)
-          result.queryResult.size should be(4)
-          result.queryResult("author") should be(Vector(Str("Dan Simmons"), Str("Frank Herbert"), Str("James S.A. Corey")))
-          result.queryResult("price") should be(Vector(Null, Null, Null))
+        "user has access to given index" when {
+          "full index name is used" in {
+            val result = dev1SqlManager.execute("""SELECT * FROM bookstore""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(4)
+            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.rows.size should be (3)
+            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
+            result.column("price").toList should be (Null :: Null :: Null :: Nil)
+            }
+          "full indices names are used and one of them is not allowed" in {
+            val result = dev1SqlManager.execute("""SELECT * FROM \"bookstore,library\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(4)
+            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.rows.size should be (3)
+            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
+            result.column("price").toList should be (Null :: Null :: Null :: Nil)
+          }
+          "wildcard is used" in {
+            val result = dev1SqlManager.execute("""SELECT * FROM \"book*\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(4)
+            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.rows.size should be (3)
+            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
+            result.column("price").toList should be (Null :: Null :: Null :: Nil)
+          }
+          "alias is used" in {
+            val result = dev1SqlManager.execute("""SELECT * FROM \"bookshop\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(4)
+            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.rows.size should be (3)
+            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
+            result.column("price").toList should be (Null :: Null :: Null :: Nil)
+          }
         }
       }
       "be forbidden" when {
-        "user doesn't have access to given index" in {
-          val result = dev2SqlManager.execute("SELECT * FROM bookstore ORDER BY author")
-          result.responseCode should be(401)
+        "user doesn't have access to given index" when {
+          "full index name is used" in {
+            val result = dev2SqlManager.execute("""SELECT * FROM bookstore""")
+            result.isForbidden should be(true)
+          }
+          "wildcard is used" in {
+            val result = dev2SqlManager.execute("""SELECT * FROM \"book*\"""")
+            result.isForbidden should be(true)
+          }
+          "alias is used" in {
+            val result = dev2SqlManager.execute("""SELECT * FROM bookshop""")
+            result.isForbidden should be(true)
+          }
+          "not-existent index name is used" in {
+            val result = dev2SqlManager.execute("""SELECT * FROM flea_market""")
+            result.isForbidden should be(true)
+          }
+        }
+      }
+      "be malformed" when {
+        "user rule is not used" when {
+          "not-existent index name is used" in {
+            val result = adminSqlManager.execute("""SELECT * FROM unknown""")
+            result.isSuccess should be(false)
+            result.responseCode should be (400)
+          }
         }
       }
     }
     "DESCRIBE TABLE command is used" should {
       "be allowed" when {
-        "user has access to any index" in {
-          val result = adminSqlManager.execute("DESCRIBE TABLE library1")
-          result.isSuccess should be(true)
-          result.queryResult.size should be(4)
+        "user has no indices rule (has access to any index)" when {
+          "full index name is used" in {
+            val result = adminSqlManager.execute("""DESCRIBE library""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "release_date" :: Nil
+            }
+          }
+          "full indices names are used" in {
+            val result = adminSqlManager.execute("""DESCRIBE \"bookstore,library\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "wildcard is used" in {
+            val result = adminSqlManager.execute("""DESCRIBE \"*\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "alias is used" in {
+            val result = adminSqlManager.execute("""DESCRIBE bookshop""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "not-existent index name is used" in {
+            val result = adminSqlManager.execute("""DESCRIBE unknown""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
+          }
         }
-        "user has access to given index" in {
+        "user has access to given index" when {
+          "full index name is used" in {
+            val result = dev1SqlManager.execute("""DESCRIBE bookstore""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "full indices names are used and one of them is not allowed" in {
+            val result = dev1SqlManager.execute("""DESCRIBE \"bookstore,library\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "wildcard is used" in {
+            val result = dev1SqlManager.execute("""DESCRIBE \"*\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "alias is used" in {
+            val result = dev1SqlManager.execute("""DESCRIBE \"bookshop\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
         }
       }
       "be forbidden" when {
-        "user doesn't have access to given index" in {
+        "user doesn't have access to given index" when {
+          "full index name is used" in {
+            val result = dev2SqlManager.execute("""DESCRIBE bookstore""")
+            result.isForbidden should be(true)
+          }
+          "wildcard is used" in {
+            val result = dev2SqlManager.execute("""DESCRIBE \"book*\"""")
+            result.isForbidden should be(true)
+          }
+          "alias is used" in {
+            val result = dev2SqlManager.execute("""DESCRIBE bookshop""")
+            result.isForbidden should be(true)
+          }
+          "not-existent index name is used" in {
+            val result = dev2SqlManager.execute("""DESCRIBE flea_market""")
+            result.isForbidden should be(true)
+          }
         }
       }
     }
     "SHOW COLUMNS command is used" should {
       "be allowed" when {
-        "user has access to any index" in {
+        "user has no indices rule (has access to any index)" when {
+          "full index name is used" in {
+            val result = adminSqlManager.execute("""SHOW COLUMNS IN library""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "release_date" :: Nil
+            }
+          }
+          "full indices names are used" in {
+            val result = adminSqlManager.execute("""SHOW COLUMNS IN \"bookstore,library\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "wildcard is used" in {
+            val result = adminSqlManager.execute("""SHOW COLUMNS IN \"*\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "alias is used" in {
+            val result = adminSqlManager.execute("""SHOW COLUMNS IN bookshop""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "not-existent index name is used" in {
+            val result = adminSqlManager.execute("""SHOW COLUMNS IN unknown""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
+          }
         }
-        "user has access to given index" in {
+        "user has access to given index" when {
+          "full index name is used" in {
+            val result = dev1SqlManager.execute("""SHOW COLUMNS IN bookstore""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "full indices names are used and one of them is not allowed" in {
+            val result = dev1SqlManager.execute("""SHOW COLUMNS FROM \"bookstore,library\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "wildcard is used" in {
+            val result = dev1SqlManager.execute("""SHOW COLUMNS FROM \"*\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
+          "alias is used" in {
+            val result = dev1SqlManager.execute("""SHOW COLUMNS FROM \"bookshop\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.column("column").map(_.str) should be {
+              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
+            }
+          }
         }
       }
       "be forbidden" when {
-        "user doesn't have access to given index" in {
+        "user doesn't have access to given index" when {
+          "full index name is used" in {
+            val result = dev2SqlManager.execute("""SHOW COLUMNS FROM bookstore""")
+            result.isForbidden should be(true)
+          }
+          "wildcard is used" in {
+            val result = dev2SqlManager.execute("""SHOW COLUMNS FROM \"book*\"""")
+            result.isForbidden should be(true)
+          }
+          "alias is used" in {
+            val result = dev2SqlManager.execute("""SHOW COLUMNS FROM bookshop""")
+            result.isForbidden should be(true)
+          }
+          "not-existent index name is used" in {
+            val result = dev2SqlManager.execute("""SHOW COLUMNS FROM flea_market""")
+            result.isForbidden should be(true)
+          }
         }
       }
     }
     "SHOW TABLES command is used" should {
       "be allowed" when {
-        "user has access to any index" in {
+        "user has no indices rule (has access to any index)" when {
+          "full index name is used" in {
+            val result = adminSqlManager.execute("""SHOW TABLES library""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "library" :: Nil }
+          }
+          "full indices names are used" in {
+            val result = adminSqlManager.execute("""SHOW TABLES \"bookstore,library\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: "library" :: Nil }
+          }
+          "wildcard is used" in {
+            val result = adminSqlManager.execute("""SHOW TABLES \"*\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "bookshop" :: "bookstore" :: "library" :: Nil }
+          }
+          "all tables are requested" in {
+            val result = adminSqlManager.execute("""SHOW TABLES""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "bookshop" :: "bookstore" :: "library" :: Nil }
+          }
+          "alias is used" in {
+            val result = adminSqlManager.execute("""SHOW TABLES bookshop""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "bookshop" :: Nil }
+          }
+          "not-existent index name is used" in {
+            val result = adminSqlManager.execute("""SHOW TABLES unknown""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
+          }
         }
-        "user has access to given index" in {
+        "user has access to given index" when {
+          "full index name is used" in {
+            val result = dev1SqlManager.execute("""SHOW TABLES bookstore""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+          }
+          "full indices names are used and one of them is not allowed" in {
+            val result = dev1SqlManager.execute("""SHOW TABLES \"bookstore,library\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+          }
+          "wildcard is used" in {
+            val result = dev1SqlManager.execute("""SHOW TABLES \"*\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+          }
+          "all tables are requested" in {
+            val result = dev1SqlManager.execute("""SHOW TABLES""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+          }
+          "alias is used" in {
+            val result = dev1SqlManager.execute("""SHOW TABLES \"bookshop\"""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(3)
+            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+          }
         }
       }
       "be forbidden" when {
-        "user doesn't have access to given index" in {
+        "user doesn't have access to given index" when {
+          "full index name is used" in {
+            val result = dev2SqlManager.execute("""SHOW TABLES bookstore""")
+            result.isForbidden should be(true)
+          }
+          "wildcard is used" in {
+            val result = dev2SqlManager.execute("""SHOW TABLES \"book*\"""")
+            result.isForbidden should be(true)
+          }
+          "alias is used" in {
+            val result = dev2SqlManager.execute("""SHOW TABLES bookshop""")
+            result.isForbidden should be(true)
+          }
+          "not-existent index name is used" in {
+            val result = dev2SqlManager.execute("""SHOW TABLES flea_market""")
+            result.isForbidden should be(true)
+          }
+        }
+      }
+    }
+    "SHOW FUNCTIONS command is used" should {
+      "be allowed" when {
+        "user has no indices rule (has access to any index)" in {
+          val result = adminSqlManager.execute("""SHOW FUNCTIONS""")
+          result.isSuccess should be(true)
+        }
+        "user has one index" in {
+          val result = dev2SqlManager.execute("""SHOW FUNCTIONS""")
+          result.isSuccess should be(true)
         }
       }
     }
@@ -92,22 +441,24 @@ object SqlApiTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient)
-    insertLibrary1Docs(documentManager)
-    insertLibrary2Docs(documentManager)
+    val indexManager = new IndexManager(adminRestClient)
+    configureBookstore(documentManager, indexManager)
+    configureLibrary(documentManager)
   }
 
-  private def insertLibrary1Docs(documentManager: DocumentManager): Unit = {
-    documentManager.createDocAndAssert("/bookstore/book/1", ujson.read(
+  private def configureBookstore(documentManager: DocumentManager, indexManager: IndexManager): Unit = {
+    documentManager.createDocAndAssert("/bookstore/stock/1", ujson.read(
       s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "price": 100}"""
     ))
-    documentManager.createDocAndAssert("/bookstore/book/2", ujson.read(
+    documentManager.createDocAndAssert("/bookstore/stock/2", ujson.read(
       s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "price": 200}"""
     ))
-    documentManager.createDocAndAssert("/bookstore/book/3", ujson.read(
+    documentManager.createDocAndAssert("/bookstore/stock/3", ujson.read(
       s"""{"name": "Dune", "author": "Frank Herbert", "release_date": "1965-06-01", "price": 50}"""
     ))
+    indexManager.createAliasAndAssert("bookstore", "bookshop")
   }
-  private def insertLibrary2Docs(documentManager: DocumentManager): Unit = {
+  private def configureLibrary(documentManager: DocumentManager): Unit = {
     documentManager.createDocAndAssert("/library/book/1", ujson.read(
       s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "internal_id": 1}"""
     ))

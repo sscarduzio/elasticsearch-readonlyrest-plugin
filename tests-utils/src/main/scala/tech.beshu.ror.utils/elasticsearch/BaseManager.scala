@@ -49,7 +49,7 @@ object BaseManager {
   class SimpleResponse private[elasticsearch](response: HttpResponse) {
     val responseCode: Int = response.getStatusLine.getStatusCode
     val isSuccess: Boolean = responseCode / 100 == 2
-    val isForbidden: Boolean = responseCode == 403
+    val isForbidden: Boolean = responseCode == 401
   }
 
   class JsonResponse(response: HttpResponse) extends SimpleResponse(response) {
