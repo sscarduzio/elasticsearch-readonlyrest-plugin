@@ -65,7 +65,7 @@ object RuleOrdering {
     // Inspection rules next; these act based on properties of the request.
     classOf[KibanaAccessRule],
     classOf[LocalHostsRule],
-    classOf[UsersRule],
+    classOf[HostsRule],
     classOf[SnapshotsRule],
     classOf[RepositoriesRule],
     classOf[XForwardedForRule],
@@ -78,7 +78,7 @@ object RuleOrdering {
     classOf[HeadersOrRule],
     classOf[IndicesRule],
     classOf[ActionsRule],
-    classOf[HostsRule],
+    classOf[UsersRule],
     // At the end the sync rule chain are those that can mutate the client request.
     classOf[KibanaHideAppsRule],
     classOf[KibanaIndexRule],
