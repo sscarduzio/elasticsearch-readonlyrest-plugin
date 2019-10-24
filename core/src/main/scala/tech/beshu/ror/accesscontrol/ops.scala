@@ -26,6 +26,7 @@ import com.softwaremill.sttp.{Method, Uri}
 import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.{Decoder, Encoder}
 import shapeless.Nat
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
@@ -47,6 +48,7 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.FilterTransient
+import tech.beshu.ror.utils.uniquelist.UniqueList
 import upickle.default
 
 import scala.collection.SortedSet
@@ -54,6 +56,39 @@ import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 
+object codecs {
+  import io.circe.generic.semiauto._
+
+  implicit val encodeNonEmptyString: Encoder[NonEmptyString] = Encoder.encodeString.contramap(_.value)
+  implicit val decodeNonEmptyString: Decoder[NonEmptyString] = Decoder.decodeString.emap(NonEmptyString.from)
+
+  implicit val encodeUserId: Encoder[User.Id] = Encoder[NonEmptyString].contramap(_.value)
+  implicit val decodeUserId: Decoder[User.Id] = Decoder[NonEmptyString].map(User.Id(_))
+
+  implicit val encodeLoggedUser: Encoder[LoggedUser] = deriveEncoder
+  implicit val decodeLoggedUser: Decoder[LoggedUser] = deriveDecoder
+
+  implicit val encodeKibanaAccess: Encoder[KibanaAccess] = deriveEncoder
+  implicit val decodeKibanaAccess: Decoder[KibanaAccess] = deriveDecoder
+
+  implicit val encodeGroup: Encoder[Group] = Encoder[NonEmptyString].contramap(_.value)
+  implicit val decodeGroup: Decoder[Group] = Decoder[NonEmptyString].map(Group)
+
+  implicit val encodeIndexName: Encoder[IndexName] = Encoder[NonEmptyString].contramap(_.value)
+  implicit val decodeIndexName: Decoder[IndexName] = Decoder[NonEmptyString].map(IndexName(_))
+
+  implicit val encodeKibanaApp: Encoder[KibanaApp] = Encoder[NonEmptyString].contramap(_.value)
+  implicit val decodeKibanaApp: Decoder[KibanaApp] = Decoder[NonEmptyString].map(KibanaApp(_))
+
+  implicit val encodeUserOrigin: Encoder[UserOrigin] = Encoder[NonEmptyString].contramap(_.value)
+  implicit val decodeUserOrigin: Decoder[UserOrigin] = Decoder[NonEmptyString].map(UserOrigin)
+
+  implicit def encodeUniqueList[A:Encoder]: Encoder[UniqueList[A]] = Encoder.encodeVector[A].contramap(_.toVector)
+  implicit def decodeUniqueList[A:Decoder]: Decoder[UniqueList[A]] = Decoder.decodeVector[A].map(UniqueList.fromVector)
+
+  implicit val encodeUserMetadata: Encoder[UserMetadata] = deriveEncoder
+  implicit val decodeUserMetadata: Decoder[UserMetadata] = deriveDecoder
+}
 object header {
 
   class FlatHeader(val header: Header) extends AnyVal {
