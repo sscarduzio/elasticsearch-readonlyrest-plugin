@@ -7,3 +7,4 @@ readonlyrest:
     keystore_file: "keystore.jks"
     keystore_pass: readonlyrest1
     key_pass: readonlyrest2
+    verification: true

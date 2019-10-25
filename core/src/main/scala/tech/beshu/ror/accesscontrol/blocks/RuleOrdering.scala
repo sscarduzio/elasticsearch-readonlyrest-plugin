@@ -65,6 +65,7 @@ object RuleOrdering {
     // Inspection rules next; these act based on properties of the request.
     classOf[KibanaAccessRule],
     classOf[LocalHostsRule],
+    classOf[HostsRule],
     classOf[SnapshotsRule],
     classOf[RepositoriesRule],
     classOf[XForwardedForRule],

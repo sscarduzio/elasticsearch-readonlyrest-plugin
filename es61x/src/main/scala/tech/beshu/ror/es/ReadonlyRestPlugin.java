@@ -22,11 +22,15 @@ import com.google.common.collect.Sets;
 import monix.execution.Scheduler$;
 import monix.execution.schedulers.CanBlock$;
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.Version;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
+import org.elasticsearch.cluster.ClusterName;
+import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -58,6 +62,7 @@ import org.elasticsearch.rest.RestController;
 import org.elasticsearch.rest.RestHandler;
 import org.elasticsearch.script.ScriptService;
 import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.Transport;
 import org.elasticsearch.transport.netty4.Netty4Utils;
 import org.elasticsearch.watcher.ResourceWatcherService;
 import scala.concurrent.duration.FiniteDuration;
@@ -68,10 +73,12 @@ import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper;
 import tech.beshu.ror.es.rradmin.RRAdminAction;
 import tech.beshu.ror.es.rradmin.TransportRRAdminAction;
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction;
-import tech.beshu.ror.es.ssl.SSLTransportNetty4;
+import tech.beshu.ror.es.ssl.SSLNetty4InternodeServerTransport;
+import tech.beshu.ror.es.ssl.SSLNetty4HttpServerTransport;
 import tech.beshu.ror.es.utils.ThreadRepo;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -84,16 +91,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import static org.elasticsearch.discovery.zen.PublishClusterStateAction.serializeFullClusterState;
+
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final RorSsl sslConfig;
+  private final ClusterStateResponse emptyClusterState;
 
   private IndexLevelActionFilter ilaf;
   private Environment environment;
 
   @Inject
-  public ReadonlyRestPlugin(Settings s, Path p) {
+  public ReadonlyRestPlugin(Settings s, Path p) throws IOException {
     // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
     // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
     // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception
@@ -107,6 +117,11 @@ public class ReadonlyRestPlugin extends Plugin
     this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())
         .map(result -> ScalaJavaHelper$.MODULE$.getOrElse(result, error -> new ElasticsearchException(error.message())))
         .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
+    this.emptyClusterState = new ClusterStateResponse(
+        ClusterName.CLUSTER_NAME_SETTING.get(s),
+        ClusterState.EMPTY_STATE,
+        serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length()
+    );
   }
 
   @Override
@@ -118,8 +133,14 @@ public class ReadonlyRestPlugin extends Plugin
     // Wrap all ROR logic into privileged action
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
-      this.ilaf = new IndexLevelActionFilter(clusterService, (NodeClient) client, threadPool, environment,
-          TransportServiceInterceptor.remoteClusterServiceSupplier());
+      this.ilaf = new IndexLevelActionFilter(
+          clusterService,
+          (NodeClient) client,
+          threadPool,
+          environment,
+          TransportServiceInterceptor.remoteClusterServiceSupplier(),
+          emptyClusterState
+      );
       return null;
     });
 
@@ -154,6 +175,28 @@ public class ReadonlyRestPlugin extends Plugin
     );
   }
 
+  public Map<String, Supplier<Transport>> getTransports(Settings settings,
+                                                        ThreadPool threadPool,
+                                                        BigArrays bigArrays,
+                                                        CircuitBreakerService circuitBreakerService,
+                                                        NamedWriteableRegistry namedWriteableRegistry,
+                                                        NetworkService networkService) {
+    if(sslConfig.interNodeSsl().isDefined()) {
+      return Collections.singletonMap("ror_ssl_internode", () ->
+              new SSLNetty4InternodeServerTransport(
+                      settings,
+                      threadPool,
+                      networkService,
+                      bigArrays,
+                      namedWriteableRegistry,
+                      circuitBreakerService,
+                      sslConfig.interNodeSsl().get())
+      );
+    } else {
+      return Collections.EMPTY_MAP;
+    }
+  }
+
   @Override
   public Map<String, Supplier<HttpServerTransport>> getHttpTransports(
       Settings settings,
@@ -167,7 +210,7 @@ public class ReadonlyRestPlugin extends Plugin
     if(sslConfig.externalSsl().isDefined()) {
       return Collections.singletonMap(
           "ssl_netty4", () ->
-              new SSLTransportNetty4(
+              new SSLNetty4HttpServerTransport(
                   settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, sslConfig.externalSsl().get()
               ));
     } else {

@@ -20,6 +20,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -29,8 +30,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/field_level_security/readonlyrest.yml",
-    numberOfInstances = 1,
-    nodeDataInitializer = FieldLevelSecurityTests.nodeDataInitializer()
+    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = FieldLevelSecurityTests.nodeDataInitializer())
   )
 
   "A fields rule" should {

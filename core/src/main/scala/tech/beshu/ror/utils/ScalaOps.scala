@@ -36,6 +36,16 @@ object ScalaOps {
     def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
   }
 
+  implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
+    def asSafeSet: Set[T] = {
+      Option(array).getOrElse(Array.empty[T]).toSet
+    }
+  }
+
+  implicit class SetOps[T](val value: T) extends AnyVal {
+    def asSafeSet: Set[T] = Option(value).toSet
+  }
+
   implicit class ListOps[T](val list: List[T]) extends AnyVal {
 
     def findDuplicates: List[T] =
@@ -46,16 +56,6 @@ object ScalaOps {
         .groupBy(provideComparatorOf)
         .collect { case (_, List(fst, _, _*)) => fst }
         .toList
-  }
-
-  implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
-    def asSafeSet: Set[T] = {
-      Option(array).getOrElse(Array.empty[T]).toSet
-    }
-  }
-
-  implicit class SetOps[T](val value: T) extends AnyVal {
-    def asSafeSet: Set[T] = Option(value).toSet
   }
 
   implicit class ListOfListOps[T](val lists: List[List[T]]) extends AnyVal {

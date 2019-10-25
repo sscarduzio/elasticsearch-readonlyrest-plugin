@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, JwtTokenPayload, User}
+import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, IndexWithAliases, JwtTokenPayload, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -39,12 +39,15 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
 
-class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
+class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
+  with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
   private lazy val (pub, secret) = TestsUtils.generateRsaRandomKeys
   override protected def configYaml: String =
     s"""
       |readonlyrest:
+      |
+      |  enable: $${READONLYREST_ENABLE}
       |
       |  access_control_rules:
       |   - name: "CONTAINER ADMIN"
@@ -77,7 +80,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
       |
       |  users:
       |   - username: user1
-      |     auth_key: user1:passwd
+      |     auth_key: $${USER1_PASS}
       |     groups: ["g1", "g2", "g3", "gs1"]
       |
       |   - username: user2
@@ -202,7 +205,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             block.name should be(Block.Name("Group name from jwt variable (array)"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user3".nonempty))),
-              indices = Outcome.Exist(Set.empty),
+              indices = Outcome.Exist(Set(IndexName("gj1".nonempty))),
               jwt = Some(JwtTokenPayload(claims))
             ) {
               blockContext
@@ -223,7 +226,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
             indices = Set(IndexName("gj0".nonempty)),
-            involvesIndices = true
+            involvesIndices = true,
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName("gj0".nonempty), Set.empty))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -233,7 +237,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
             block.name should be(Block.Name("Group name from jwt variable"))
             assertBlockContext(
               loggedUser = Some(DirectlyLoggedUser(User.Id("user4".nonempty))),
-              indices = Outcome.Exist(Set.empty),
+              indices = Outcome.Exist(Set(IndexName("gj0".nonempty))),
               jwt = Some(JwtTokenPayload(claims))
             ) {
               blockContext
@@ -247,6 +251,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec with BaseYa
   override implicit protected def envVarsProvider: EnvVarsProvider = {
     case EnvVarName(n) if n.value == "sys_group_1" => Some("s1")
     case EnvVarName(n) if n.value == "sys_group_2" => Some("s2")
+    case EnvVarName(n) if n.value == "READONLYREST_ENABLE" => Some("true")
+    case EnvVarName(n) if n.value == "USER1_PASS" => Some("user1:passwd")
     case _ => None
   }
 }

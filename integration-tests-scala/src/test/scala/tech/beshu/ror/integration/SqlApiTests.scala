@@ -19,6 +19,7 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest._
+import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SqlApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -29,8 +30,7 @@ class SqlApiTests extends WordSpec with ForAllTestContainer {
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/sql_api/readonlyrest.yml",
-    numberOfInstances = 1,
-    nodeDataInitializer = SqlApiTests.nodeDataInitializer()
+    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = SqlApiTests.nodeDataInitializer())
   )
 
   private lazy val adminSqlManager = new SqlApiManager(container.nodesContainers.head.adminClient)

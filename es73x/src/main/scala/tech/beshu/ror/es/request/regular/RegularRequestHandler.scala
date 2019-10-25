@@ -16,22 +16,28 @@
  */
 package tech.beshu.ror.es.request.regular
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
+import org.elasticsearch.common.collect.ImmutableOpenMap
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed}
+import tech.beshu.ror.accesscontrol.BlockContextRawDataHelper.indicesFrom
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.domain.UriPath.{CatIndicesPath, CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
-import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextJavaHelper}
+import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextRawDataHelper}
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
 import tech.beshu.ror.utils.LoggerOps._
@@ -40,15 +46,15 @@ import tech.beshu.ror.utils.ScalaOps._
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
-class RegularRequestHandler[Request <: ActionRequest, Response <: ActionResponse](engine: Engine,
-                                                                                  task: Task,
-                                                                                  action: String,
-                                                                                  request: Request,
-                                                                                  baseListener: ActionListener[Response],
-                                                                                  chain: ActionFilterChain[Request, Response],
-                                                                                  channel: RestChannel,
-                                                                                  threadPool: ThreadPool)
-                                                                                 (implicit scheduler: Scheduler)
+class RegularRequestHandler(engine: Engine,
+                            task: Task,
+                            action: String,
+                            request: ActionRequest,
+                            baseListener: ActionListener[ActionResponse],
+                            chain: ActionFilterChain[ActionRequest, ActionResponse],
+                            channel: RestChannel,
+                            threadPool: ThreadPool)
+                           (implicit scheduler: Scheduler)
   extends Logging {
 
   def handle(requestInfo: RequestInfo, requestContext: RequestContext): Unit = {
@@ -90,32 +96,71 @@ class RegularRequestHandler[Request <: ActionRequest, Response <: ActionResponse
   private def onAllow(requestContext: RequestContext,
                       requestInfo: RequestInfo,
                       blockContext: BlockContext): Unit = {
-    val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-
-    val result = for {
-      _ <- requestInfo.writeResponseHeaders(BlockContextJavaHelper.responseHeadersFrom(blockContext))
-      _ <- requestInfo.writeToThreadContextHeaders(BlockContextJavaHelper.contextHeadersFrom(blockContext))
-      _ <- requestInfo.writeIndices(BlockContextJavaHelper.indicesFrom(blockContext))
-      _ <- requestInfo.writeSnapshots(BlockContextJavaHelper.snapshotsFrom(blockContext))
-      _ <- requestInfo.writeRepositories(BlockContextJavaHelper.repositoriesFrom(blockContext))
-    } yield ()
-
-    result match {
-      case WriteResult.Success(_) => proceed(searchListener)
-      case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
+    requestContext.uriPath match {
+      case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
+        baseListener.onResponse(new GetSettingsResponse(
+          ImmutableOpenMap.of[String, Settings](),
+          ImmutableOpenMap.of[String, Settings]()
+        ))
+      case CatTemplatePath(_) | TemplatePath(_) =>
+        proceedAfterSuccessfulWrite(requestContext, blockContext) {
+          for {
+            _ <- writeIndicesIfNeeded(blockContext, requestInfo)
+            _ <- writeCommonParts(requestInfo, blockContext)
+          } yield ()
+        }
+      case _ =>
+        proceedAfterSuccessfulWrite(requestContext, blockContext) {
+          for {
+            _ <- writeIndicesIfNeeded(blockContext, requestInfo)
+            _ <- requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
+            _ <- requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
+            _ <- writeCommonParts(requestInfo, blockContext)
+          } yield ()
+        }
     }
+  }
+
+  private def proceedAfterSuccessfulWrite(requestContext: RequestContext,
+                                          blockContext: BlockContext)
+                                         (result: WriteResult[Unit]): Unit = {
+    result match {
+      case WriteResult.Success(_) =>
+        val searchListener = createSearchListener(requestContext, blockContext, engine.context)
+        proceed(searchListener)
+      case WriteResult.Failure =>
+        onForbidden(NonEmptyList.one(OperationNotAllowed))
+    }
+  }
+
+  private def writeIndicesIfNeeded(blockContext: BlockContext, requestInfo: RequestInfo) = {
+    indicesFrom(blockContext) match {
+      case Outcome.Exist(indices) => requestInfo.writeIndices(indices)
+      case Outcome.NotExist => WriteResult.Success(())
+    }
+  }
+
+  private def writeCommonParts(requestInfo: RequestInfo, blockContext: BlockContext) = {
+    for {
+      _ <- requestInfo.writeResponseHeaders(BlockContextRawDataHelper.responseHeadersFrom(blockContext))
+      _ <- requestInfo.writeToThreadContextHeaders(BlockContextRawDataHelper.contextHeadersFrom(blockContext))
+    } yield ()
+  }
+
+  private def emptySetOfFoundIndices(blockContext: BlockContext) = {
+    blockContext.indices.forall(_.isEmpty)
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
     channel.sendResponse(ForbiddenResponse.create(channel, causes.toList, engine.context))
   }
 
-  private def proceed(responseActionListener: ActionListener[Response]): Unit =
+  private def proceed(responseActionListener: ActionListener[ActionResponse]): Unit =
     chain.proceed(task, action, request, responseActionListener)
 
   private def createSearchListener(requestContext: RequestContext,
                                    blockContext: BlockContext,
-                                   aclStaticContext: AccessControlStaticContext) = {
+                                   aclStaticContext: AccessControlStaticContext): ActionListener[ActionResponse] = {
     Try {
       // Cache disabling for those 2 kind of request is crucial for
       // document level security to work. Otherwise we'd get an answer from
@@ -131,7 +176,7 @@ class RegularRequestHandler[Request <: ActionRequest, Response <: ActionResponse
           case _ =>
         }
       }
-      new RegularResponseActionListener(baseListener.asInstanceOf[ActionListener[ActionResponse]], requestContext, blockContext).asInstanceOf[ActionListener[Response]]
+      new RegularResponseActionListener(baseListener.asInstanceOf[ActionListener[ActionResponse]], requestContext, blockContext)
     } fold(
       e => {
         logger.error("on allow exception", e)

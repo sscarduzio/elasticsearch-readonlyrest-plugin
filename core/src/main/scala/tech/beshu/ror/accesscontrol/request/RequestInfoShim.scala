@@ -33,6 +33,7 @@ trait RequestInfoShim {
       .flatMap { case (indexName, aliases) =>
         aliases + indexName
       }
+      .toSet
     MatcherWithWildcardsScalaAdapter.create(ixsSet).filter(all)
   }
 
@@ -40,13 +41,13 @@ trait RequestInfoShim {
 
   def extractTaskId: Long
 
-  def extractContentLength: Integer
+  def extractContentLength: Int
 
   def extractContent: String
 
   def extractMethod: String
 
-  def extractURI: String
+  def extractPath: String
 
   def extractIndices: ExtractedIndices
 
@@ -64,7 +65,7 @@ trait RequestInfoShim {
 
   def extractId: String
 
-  def extractAllIndicesAndAliases: Set[(String, Set[String])]
+  def extractAllIndicesAndAliases: Map[String, Set[String]]
 
   def extractTemplateIndicesPatterns: Set[String]
 
@@ -87,6 +88,8 @@ trait RequestInfoShim {
   def writeResponseHeaders(hMap: Map[String, String]): WriteResult[Unit]
 
   def writeToThreadContextHeaders(hMap: Map[String, String]): WriteResult[Unit]
+
+  def writeTemplatesOf(indices: Set[String]): WriteResult[Unit]
 }
 
 object RequestInfoShim {

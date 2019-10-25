@@ -62,8 +62,10 @@ object JsonConfigStaticVariableResolver {
   }
 
   private def resolvedStringToJson(resolvedStr: String) = {
+    def isJsonPrimitive(json: Json) = !(json.isObject || json.isArray)
     io.circe.parser.parse(resolvedStr) match {
-      case Right(newJsonValue) => newJsonValue
+      case Right(newJsonValue) if isJsonPrimitive(newJsonValue) => newJsonValue
+      case Right(_) => Json.fromString(resolvedStr)
       case Left(_) => Json.fromString(resolvedStr)
     }
   }

@@ -19,6 +19,7 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
+import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -28,8 +29,9 @@ class ActionsTests extends WordSpec with ForAllTestContainer {
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/actions/readonlyrest.yml",
-    numberOfInstances = 1,
-    ActionsTests.nodeDataInitializer()
+    clusterSettings = AdditionalClusterSettings(
+      nodeDataInitializer = ActionsTests.nodeDataInitializer()
+    )
   )
 
   private lazy val actionManager = new ActionManagerJ(container.nodesContainers.head.client("any", "whatever"))

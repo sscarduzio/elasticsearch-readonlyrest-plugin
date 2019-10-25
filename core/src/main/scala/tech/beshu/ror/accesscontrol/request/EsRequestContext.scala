@@ -24,6 +24,7 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
+
 import scala.util.Try
 
 class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
@@ -68,7 +69,7 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
       .getOrElse(throw new IllegalArgumentException(s"Cannot create request method"))
 
   override val uriPath: UriPath =
-  Option(rInfo.extractURI)
+  Option(rInfo.extractPath)
     .map(UriPath.apply)
     .getOrElse(throw new IllegalArgumentException(s"Cannot create request URI path"))
 
@@ -96,6 +97,7 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
             IndexWithAliases(index, aliases.flatMap(IndexName.fromString))
           }
       }
+      .toSet
 
   override val templateIndicesPatterns: Set[IndexName] =
     rInfo.extractTemplateIndicesPatterns.flatMap(IndexName.fromString)

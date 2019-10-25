@@ -69,7 +69,8 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       "one full name index passed, one full name index configured, no real indices" in {
         assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test")),
-          requestIndices = Set(IndexName("test".nonempty))
+          requestIndices = Set(IndexName("test".nonempty)),
+          found = Set(IndexName("test".nonempty))
         )
       }
       "one wildcard index passed, one full name index configured, no real indices" in {
@@ -85,13 +86,15 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       "one full name index passed, one wildcard index configured, no real indices" in {
         assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("t*")),
-          requestIndices = Set(IndexName("test".nonempty))
+          requestIndices = Set(IndexName("test".nonempty)),
+          found = Set(IndexName("test".nonempty))
         )
       }
       "two full name indexes passed, the same two full name indexes configured" in {
         assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test1"), indexNameValueFrom("test2")),
-          requestIndices = Set(IndexName("test2".nonempty), IndexName("test1".nonempty))
+          requestIndices = Set(IndexName("test2".nonempty), IndexName("test1".nonempty)),
+          found = Set(IndexName("test2".nonempty), IndexName("test1".nonempty))
         )
       }
       "two full name indexes passed, one the same, one different index configured" in {
@@ -111,7 +114,8 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       "two full name indexes passed, two matching wildcard indexes configured" in {
         assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("*1"), indexNameValueFrom("*2")),
-          requestIndices = Set(IndexName("test2".nonempty), IndexName("test1".nonempty))
+          requestIndices = Set(IndexName("test2".nonempty), IndexName("test1".nonempty)),
+          found = Set(IndexName("test2".nonempty), IndexName("test1".nonempty))
         )
       }
       "two full name indexes passed, one matching full name and one non-matching wildcard index configured" in {
@@ -173,26 +177,26 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           found = Set(IndexName("test-index1".nonempty), IndexName("test-index2".nonempty))
         )
       }
-    }
-    "not match" when {
       "no index passed, one is configured, no real indices" in {
-        assertNotMatchRule(
+        assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test")),
           requestIndices = Set.empty
         )
       }
       "'_all' passed, one is configured, no real indices" in {
-        assertNotMatchRule(
+        assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test")),
           requestIndices = Set(IndexName("_all".nonempty))
         )
       }
       "'*' passed, one is configured, no real indices" in {
-        assertNotMatchRule(
+        assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test")),
           requestIndices = Set(IndexName("*".nonempty))
         )
       }
+    }
+    "not match" when {
       "one full name index passed, different one full name index configured" in {
         assertNotMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test1")),
