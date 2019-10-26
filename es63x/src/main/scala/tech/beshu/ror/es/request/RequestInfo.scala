@@ -102,6 +102,8 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         }
       case ar: IndexRequest => // The most common case first
         RegularIndices(ar.indices.asSafeSet)
+      case ar: IndicesRequest =>
+        RegularIndices(ar.indices.asSafeSet)
       case ar: MultiGetRequest =>
         RegularIndices(ar.getItems.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: MultiSearchRequest =>
@@ -111,7 +113,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       case ar: BulkRequest =>
         RegularIndices(ar.requests().asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: IndicesAliasesRequest =>
-        RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices()).toSet)
+        RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: ReindexRequest => // Buggy cases here onwards
         RegularIndices {
           Try {
@@ -143,8 +145,8 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         RegularIndices(ar.indices.asSafeSet)
       case ar =>
         RegularIndices {
-          val indices = extractStringArrayFromPrivateMethod("indices", ar).toSet
-          if (indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).toSet
+          val indices = extractStringArrayFromPrivateMethod("indices", ar).asSafeSet
+          if (indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).asSafeSet
           else indices
         }
     }
