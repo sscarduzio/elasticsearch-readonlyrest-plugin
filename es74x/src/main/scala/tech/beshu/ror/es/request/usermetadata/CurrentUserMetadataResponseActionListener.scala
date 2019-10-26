@@ -20,6 +20,7 @@ import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits._
 import org.elasticsearch.action.{ActionListener, ActionResponse}
+import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.UserMetadata
@@ -44,6 +45,8 @@ private class RRMetadataResponse(userMetadata: UserMetadata)
     builder.map(toSourceMap(userMetadata).asJava)
     builder
   }
+
+  override def writeTo(out: StreamOutput): Unit = ()
 
   private[this] def toSourceMap(userMetadata: UserMetadata): Map[String, AnyRef] = {
     userMetadata.loggedUser.map(u => (Constants.HEADER_USER_ROR, u.id.value.value)).toMap ++

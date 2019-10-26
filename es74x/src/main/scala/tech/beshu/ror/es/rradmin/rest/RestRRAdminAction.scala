@@ -27,7 +27,7 @@ import tech.beshu.ror.es.rradmin.{RRAdminAction, RRAdminRequest, RRAdminResponse
 
 @Inject
 class RestRRAdminAction(controller: RestController)
-  extends BaseRestHandler(null) with RestHandler {
+  extends BaseRestHandler with RestHandler {
 
   register("POST", AdminRestApi.forceReloadRorPath.endpointString)
   register("GET", AdminRestApi.provideRorIndexConfigPath.endpointString)

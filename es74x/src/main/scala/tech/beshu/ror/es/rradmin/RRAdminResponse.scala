@@ -18,6 +18,7 @@ package tech.beshu.ror.es.rradmin
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.adminapi.AdminRestApi
 
@@ -32,6 +33,8 @@ class RRAdminResponse(response: AdminRestApi.AdminResponse)
     }
     builder
   }
+
+  override def writeTo(out: StreamOutput): Unit = ()
 
   private def addResponseJson(builder: XContentBuilder, status: String, message: String): Unit = {
     builder.startObject
