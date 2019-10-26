@@ -20,7 +20,6 @@ import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits._
 import org.elasticsearch.action.{ActionListener, ActionResponse}
-import org.elasticsearch.common.io.stream.{StreamInput, StreamOutput, Writeable}
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.UserMetadata
@@ -46,10 +45,6 @@ private class RRMetadataResponse(userMetadata: UserMetadata)
     builder
   }
 
-  override def writeTo(out: StreamOutput): Unit = {
-    RRMetadataResponse.writer.write(out, this.userMetadata)
-  }
-
   private[this] def toSourceMap(userMetadata: UserMetadata): Map[String, AnyRef] = {
     userMetadata.loggedUser.map(u => (Constants.HEADER_USER_ROR, u.id.value.value)).toMap ++
       userMetadata.currentGroup.map(g => (Constants.HEADER_GROUP_CURRENT, g.value.value)).toMap ++
@@ -71,15 +66,6 @@ private class RRMetadataResponse(userMetadata: UserMetadata)
     case KibanaAccess.ROStrict => "ro_strict"
     case KibanaAccess.RW => "rw"
     case KibanaAccess.Admin => "admin"
-  }
-}
-private object RRMetadataResponse {
-
-  import tech.beshu.ror.accesscontrol.codecs._
-  import io.circe.syntax._
-
-  val writer: Writeable.Writer[UserMetadata] = (out, response) => {
-    out.writeString(response.asJson.noSpaces)
   }
 }
 
