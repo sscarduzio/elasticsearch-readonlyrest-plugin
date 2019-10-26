@@ -18,11 +18,10 @@ package tech.beshu.ror.es.rradmin
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.common.io.stream.{StreamInput, StreamOutput, Writeable}
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.adminapi.AdminRestApi
 
-case class RRAdminResponse(private val response: AdminRestApi.AdminResponse)
+class RRAdminResponse(response: AdminRestApi.AdminResponse)
   extends ActionResponse with ToXContentObject with Logging {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
@@ -32,10 +31,6 @@ case class RRAdminResponse(private val response: AdminRestApi.AdminResponse)
       case AdminRestApi.Failure(message) => addResponseJson(builder, "ko", message)
     }
     builder
-  }
-
-  override def writeTo(out: StreamOutput): Unit = {
-    RRAdminResponse.writer.write(out, this)
   }
 
   private def addResponseJson(builder: XContentBuilder, status: String, message: String): Unit = {
@@ -57,13 +52,4 @@ object RRAdminResponse extends Logging {
     }
   }
 
-  import io.circe.generic.auto._
-  import io.circe.syntax._
-
-  val reader: Writeable.Reader[RRAdminResponse] = in => {
-    in.readString().asJson.as[RRAdminResponse].toTry.get
-  }
-  val writer: Writeable.Writer[RRAdminResponse] = (out, response) => {
-    out.writeString((response: RRAdminResponse).asJson.noSpaces)
-  }
 }

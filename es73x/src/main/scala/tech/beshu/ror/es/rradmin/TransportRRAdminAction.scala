@@ -18,7 +18,7 @@ package tech.beshu.ror.es.rradmin
 
 import monix.execution.Scheduler
 import org.elasticsearch.action.ActionListener
-import org.elasticsearch.action.support.{ActionFilters, HandledTransportAction}
+import org.elasticsearch.action.support.{ActionFilters, TransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
@@ -36,9 +36,8 @@ class TransportRRAdminAction(transportService: TransportService,
                              env: Environment,
                              indexContentProvider: EsIndexJsonContentProvider,
                              ignore: Unit) // hack!
-  extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
-    RRAdminAction.name, transportService, actionFilters, RRAdminRequest.reader
-  ) {
+  extends TransportAction[RRAdminRequest, RRAdminResponse](
+    RRAdminAction.name, actionFilters, transportService.getTaskManager) {
 
   @Inject
   def this(transportService: TransportService,
