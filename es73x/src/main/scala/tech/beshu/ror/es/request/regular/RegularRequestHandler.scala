@@ -105,7 +105,7 @@ class RegularRequestHandler(engine: Engine,
       case CatTemplatePath(_) | TemplatePath(_) =>
         proceedAfterSuccessfulWrite(requestContext, blockContext) {
           for {
-            _ <- writeIndicesIfNeeded(blockContext, requestInfo)
+            _ <- writeTemplatesIfNeeded(blockContext, requestInfo)
             _ <- writeCommonParts(requestInfo, blockContext)
           } yield ()
         }
@@ -129,13 +129,32 @@ class RegularRequestHandler(engine: Engine,
         val searchListener = createSearchListener(requestContext, blockContext, engine.context)
         proceed(searchListener)
       case WriteResult.Failure =>
+        logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
 
+  private def writeTemplatesIfNeeded(blockContext: BlockContext, requestInfo: RequestInfo) = {
+    writeIndicesBasedResultIfNeeded(
+      blockContext,
+      requestInfo,
+      requestInfo.writeTemplatesOf
+    )
+  }
+
   private def writeIndicesIfNeeded(blockContext: BlockContext, requestInfo: RequestInfo) = {
+    writeIndicesBasedResultIfNeeded(
+      blockContext,
+      requestInfo,
+      requestInfo.writeIndices
+    )
+  }
+
+  private def writeIndicesBasedResultIfNeeded(blockContext: BlockContext,
+                                              requestInfo: RequestInfo,
+                                              write: Set[String] => WriteResult[Unit]) = {
     indicesFrom(blockContext) match {
-      case Outcome.Exist(indices) => requestInfo.writeIndices(indices)
+      case Outcome.Exist(indices) => write(indices)
       case Outcome.NotExist => WriteResult.Success(())
     }
   }

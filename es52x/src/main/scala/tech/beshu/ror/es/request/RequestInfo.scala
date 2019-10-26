@@ -34,6 +34,7 @@ import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplat
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
+import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.MultiGetRequest
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
@@ -106,6 +107,8 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         RegularIndices(ar.getRequests.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: BulkRequest =>
         RegularIndices(ar.requests().asScala.collect { case ir: IndicesRequest => ir}.flatMap(_.indices.asSafeSet).toSet)
+      case ar: DeleteRequest =>
+        RegularIndices(ar.indices.asSafeSet)
       case ar: IndicesAliasesRequest =>
         RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: CompositeIndicesRequest =>

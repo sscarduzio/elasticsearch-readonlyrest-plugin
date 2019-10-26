@@ -34,6 +34,7 @@ import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplat
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
+import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.MultiGetRequest
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
@@ -48,15 +49,16 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices._
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
+import tech.beshu.ror.es.utils.SqlRequestHelper
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.{extractStringArrayFromPrivateMethod, invokeMethodCached}
-import tech.beshu.ror.utils.{RCUtils, ReflecUtils}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.{RCUtils, ReflecUtils}
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
@@ -111,6 +113,8 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         RegularIndices(ar.getRequests.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: BulkRequest =>
         RegularIndices(ar.requests().asScala.flatMap(_.indices.asSafeSet).toSet)
+      case ar: DeleteRequest =>
+        RegularIndices(ar.indices.asSafeSet)
       case ar: IndicesAliasesRequest =>
         RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: ReindexRequest => // Buggy cases here onwards
@@ -128,7 +132,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           )
         }
       case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql")  =>
-        SqlQueryUtils
+        SqlRequestHelper
           .indicesFrom(ar)
           .getOrElse(throw new IllegalArgumentException(s"Cannot process SQL request ${ar.getDescription}"))
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
@@ -402,12 +406,17 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         extractIndices match {
           case sqlIndices: SqlIndices =>
             if(newIndices != extractIndices.indices) {
-              SqlQueryUtils.modifyIndicesOf(ar, sqlIndices, indices.toSet)
+              SqlRequestHelper.modifyIndicesOf(ar, sqlIndices, indices.toSet)
             }
             WriteResult.Success(())
           case RegularIndices(_) =>
             throw new IllegalStateException("Regular indices in SQL request")
         }
+      case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
+        invokeMethodCached(ar, ar.getClass, "getRequest")
+          .asInstanceOf[SearchRequest]
+          .indices(indices: _*)
+        WriteResult.Success(())
       case _ =>
         // Optimistic reflection attempt
         val okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), indices.toSet.asJava)

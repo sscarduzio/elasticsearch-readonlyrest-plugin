@@ -14,22 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.request
+package tech.beshu.ror.es.utils
 
 import java.lang.reflect.Modifier
 import java.util.regex.Pattern
 
 import org.elasticsearch.action.CompositeIndicesRequest
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-object SqlQueryUtils {
+object SqlRequestHelper {
 
   def modifyIndicesOf(request: CompositeIndicesRequest,
                       extractedIndices: SqlIndices,
