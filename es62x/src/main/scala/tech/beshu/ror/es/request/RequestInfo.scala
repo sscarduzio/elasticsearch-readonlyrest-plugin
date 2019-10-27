@@ -101,6 +101,8 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             .flatMap { case (pattern, relatedIndices) => if (relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
             .toSet
         }
+      case ar: DeleteRequest =>
+        RegularIndices(ar.indices.asSafeSet)
       case ar: IndexRequest => // The most common case first
         RegularIndices(ar.indices.asSafeSet)
       case ar: IndicesRequest =>
@@ -113,8 +115,6 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         RegularIndices(ar.getRequests.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: BulkRequest =>
         RegularIndices(ar.requests().asScala.flatMap(_.indices.asSafeSet).toSet)
-      case ar: DeleteRequest =>
-        RegularIndices(ar.indices.asSafeSet)
       case ar: IndicesAliasesRequest =>
         RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: ReindexRequest => // Buggy cases here onwards
@@ -131,10 +131,6 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             identity
           )
         }
-      case ar if ar.getClass.getSimpleName.startsWith("Sql") =>
-        // Do noting, we can't do anything about X-Pack SQL queries, as it does not contain indices.
-        // todo: The only way we can filter this kind of request is going Lucene level like "filter" rule.
-        RegularIndices(Set.empty[String])
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
         RegularIndices {
           invokeMethodCached(ar, ar.getClass, "getRequest")

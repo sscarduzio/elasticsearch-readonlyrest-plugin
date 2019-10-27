@@ -37,9 +37,10 @@ object ScalaOps {
   }
 
   implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
-    def asSafeSet: Set[T] = {
-      Option(array).getOrElse(Array.empty[T]).toSet
-    }
+    def asSafeSet: Set[T] = safeArray.toSet
+    def asSafeList: List[T] = safeArray.toList
+
+    private def safeArray = Option(array).getOrElse(Array.empty[T])
   }
 
   implicit class SetOps[T](val value: T) extends AnyVal {

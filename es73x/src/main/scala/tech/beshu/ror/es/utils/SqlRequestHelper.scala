@@ -207,10 +207,4 @@ object Command {
 
   private def commandClass(implicit classLoader: ClassLoader): Class[_] =
     classLoader.loadClass("org.elasticsearch.xpack.sql.plan.logical.command.Command")
-
-  private def showTablesClass(implicit classLoader: ClassLoader): Class[_] =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.plan.logical.command.ShowTables")
-
-  private def showColumnsClass(implicit classLoader: ClassLoader): Class[_] =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.plan.logical.command.ShowColumns")
 }

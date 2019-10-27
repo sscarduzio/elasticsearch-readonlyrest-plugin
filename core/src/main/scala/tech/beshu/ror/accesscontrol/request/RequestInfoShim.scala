@@ -98,6 +98,9 @@ object RequestInfoShim {
     def indices: Set[String]
   }
   object ExtractedIndices {
+    case object NoIndices extends ExtractedIndices {
+      override def indices: Set[String] = Set.empty
+    }
     final case class RegularIndices(override val indices: Set[String]) extends ExtractedIndices
     sealed trait SqlIndices extends ExtractedIndices {
       def indices: Set[String]

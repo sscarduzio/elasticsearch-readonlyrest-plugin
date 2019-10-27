@@ -19,13 +19,14 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest._
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SqlApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
 
-class SqlApiTests extends WordSpec with ForAllTestContainer {
+class SqlApiTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
@@ -33,109 +34,105 @@ class SqlApiTests extends WordSpec with ForAllTestContainer {
     clusterSettings = AdditionalClusterSettings(nodeDataInitializer = SqlApiTests.nodeDataInitializer())
   )
 
-  private lazy val adminSqlManager = new SqlApiManager(container.nodesContainers.head.adminClient)
-  private lazy val dev1SqlManager = new SqlApiManager(container.nodesContainers.head.client("dev1", "test"))
-  private lazy val dev2SqlManager = new SqlApiManager(container.nodesContainers.head.client("dev2", "test"))
+  private lazy val adminSqlManager = new SqlApiManager(container.nodesContainers.head.adminClient, container.esVersion)
+  private lazy val dev1SqlManager = new SqlApiManager(container.nodesContainers.head.client("dev1", "test"), container.esVersion)
+  private lazy val dev2SqlManager = new SqlApiManager(container.nodesContainers.head.client("dev2", "test"), container.esVersion)
 
   "SQL query request" when {
     "SELECT query is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SELECT * FROM library""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
-            result.columnNames should be ("author" :: "internal_id" :: "name" :: "release_date" :: Nil)
+            result.columnNames should contain only ("author", "internal_id", "name", "release_date")
             result.rows.size should be (2)
-            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Nil)
-            result.column("internal_id").toList should be (Num(1) :: Num(2) :: Nil)
+            result.column("author").toList should contain only (Str("James S.A. Corey"), Str("Dan Simmons"))
+            result.column("internal_id").toList should contain only (Num(1), Num(2))
           }
-          "full indices names are used" in {
+          "full indices names are used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SELECT * FROM \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(5)
-            result.column("author").toList should be {
-              Str("James S.A. Corey") :: Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil
-            }
-            result.column("internal_id").toList should be {
-              Null :: Num(1) :: Null :: Num(2) :: Null :: Nil
-            }
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"), Str("Dan Simmons"),  Str("Frank Herbert")
+            )
+            result.column("internal_id").toList should contain only (Num(1), Num(2), Null)
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SELECT * FROM \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(5)
-            result.column("author").toList should be {
-              Str("James S.A. Corey") :: Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil
-            }
-            result.column("internal_id").toList should be {
-              Null :: Num(1) :: Null :: Num(2) :: Null :: Nil
-            }
+            result.column("author").toList should contain only (
+              Str("James S.A. Corey"), Str("Dan Simmons"),  Str("Frank Herbert")
+            )
+            result.column("internal_id").toList should contain only (Num(1), Num(2), Null)
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SELECT * FROM bookshop""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
-            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.columnNames should contain only ("author", "name", "price", "release_date")
             result.rows.size should be (3)
-            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
-            result.column("price").toList should be (Num(100) :: Num(200) :: Num(50) :: Nil)
+            result.column("author").toList should contain only (Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.column("price").toList should contain only (Num(100), Num(200), Num(50))
           }
         }
         "user has access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SELECT * FROM bookstore""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
-            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.columnNames should contain only ("author", "name", "price", "release_date")
             result.rows.size should be (3)
-            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
-            result.column("price").toList should be (Null :: Null :: Null :: Nil)
+            result.column("author").toList should contain only (Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.column("price").toList should contain only Null
             }
-          "full indices names are used and one of them is not allowed" in {
+          "full indices names are used and one of them is not allowed" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SELECT * FROM \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
-            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.columnNames should contain only ("author", "name", "price", "release_date")
             result.rows.size should be (3)
-            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
-            result.column("price").toList should be (Null :: Null :: Null :: Nil)
+            result.column("author").toList should contain only (Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.column("price").toList should contain only Null
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SELECT * FROM \"book*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
-            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.columnNames should contain only ("author", "name", "price", "release_date")
             result.rows.size should be (3)
-            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
-            result.column("price").toList should be (Null :: Null :: Null :: Nil)
+            result.column("author").toList should contain only (Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.column("price").toList should contain only Null
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SELECT * FROM \"bookshop\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(4)
-            result.columnNames should be ("author" :: "name" :: "price" :: "release_date" :: Nil)
+            result.columnNames should contain only ("author", "name", "price", "release_date")
             result.rows.size should be (3)
-            result.column("author").toList should be (Str("James S.A. Corey") :: Str("Dan Simmons") :: Str("Frank Herbert") :: Nil)
-            result.column("price").toList should be (Null :: Null :: Null :: Nil)
+            result.column("author").toList should contain only (Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
+            result.column("price").toList should contain only Null
           }
         }
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SELECT * FROM bookstore""")
             result.isForbidden should be(true)
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SELECT * FROM \"book*\"""")
             result.isForbidden should be(true)
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SELECT * FROM bookshop""")
             result.isForbidden should be(true)
           }
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SELECT * FROM flea_market""")
             result.isForbidden should be(true)
           }
@@ -143,7 +140,7 @@ class SqlApiTests extends WordSpec with ForAllTestContainer {
       }
       "be malformed" when {
         "user rule is not used" when {
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SELECT * FROM unknown""")
             result.isSuccess should be(false)
             result.responseCode should be (400)
@@ -154,94 +151,94 @@ class SqlApiTests extends WordSpec with ForAllTestContainer {
     "DESCRIBE TABLE command is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""DESCRIBE library""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "internal_id", "name", "name.keyword", "release_date"
+            )
           }
-          "full indices names are used" in {
+          "full indices names are used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""DESCRIBE \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""DESCRIBE \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""DESCRIBE bookshop""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""DESCRIBE unknown""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
         }
         "user has access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""DESCRIBE bookstore""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "full indices names are used and one of them is not allowed" in {
+          "full indices names are used and one of them is not allowed" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""DESCRIBE \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""DESCRIBE \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""DESCRIBE \"bookshop\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
         }
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""DESCRIBE bookstore""")
             result.isForbidden should be(true)
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""DESCRIBE \"book*\"""")
             result.isForbidden should be(true)
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""DESCRIBE bookshop""")
             result.isForbidden should be(true)
           }
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""DESCRIBE flea_market""")
             result.isForbidden should be(true)
           }
@@ -251,94 +248,94 @@ class SqlApiTests extends WordSpec with ForAllTestContainer {
     "SHOW COLUMNS command is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN library""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "internal_id", "name", "name.keyword", "release_date"
+            )
           }
-          "full indices names are used" in {
+          "full indices names are used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "internal_id" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "internal_id", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN bookshop""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW COLUMNS IN unknown""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
         }
         "user has access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SHOW COLUMNS IN bookstore""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "full indices names are used and one of them is not allowed" in {
+          "full indices names are used and one of them is not allowed" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SHOW COLUMNS FROM \"bookstore,library\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SHOW COLUMNS FROM \"*\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SHOW COLUMNS FROM \"bookshop\"""")
             result.isSuccess should be(true)
             result.queryResult.size should be(3)
-            result.column("column").map(_.str) should be {
-              "author":: "author.keyword" :: "name" :: "name.keyword" :: "price" :: "release_date" :: Nil
-            }
+            result.column("column").map(_.str) should contain only (
+              "author", "author.keyword", "name", "name.keyword", "price", "release_date"
+            )
           }
         }
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW COLUMNS FROM bookstore""")
             result.isForbidden should be(true)
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW COLUMNS FROM \"book*\"""")
             result.isForbidden should be(true)
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW COLUMNS FROM bookshop""")
             result.isForbidden should be(true)
           }
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW COLUMNS FROM flea_market""")
             result.isForbidden should be(true)
           }
@@ -348,90 +345,80 @@ class SqlApiTests extends WordSpec with ForAllTestContainer {
     "SHOW TABLES command is used" should {
       "be allowed" when {
         "user has no indices rule (has access to any index)" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW TABLES library""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "library" :: Nil }
+            result.column("name").map(_.str).headOption should be (Some("library"))
           }
-          "full indices names are used" in {
+          "full indices names are used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW TABLES \"bookstore,library\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: "library" :: Nil }
+            result.column("name").map(_.str) should contain only ( "bookstore", "library" )
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW TABLES \"*\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "bookshop" :: "bookstore" :: "library" :: Nil }
+            result.column("name").map(_.str) should contain only ( "bookshop", "bookstore", "library" )
           }
-          "all tables are requested" in {
+          "all tables are requested" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW TABLES""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "bookshop" :: "bookstore" :: "library" :: Nil }
+            result.column("name").map(_.str) should contain only ( "bookshop", "bookstore", "library" )
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW TABLES bookshop""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "bookshop" :: Nil }
+            result.column("name").map(_.str).headOption should be (Some("bookshop"))
           }
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = adminSqlManager.execute("""SHOW TABLES unknown""")
             result.isSuccess should be(true)
             result.queryResult.size should be(0)
           }
         }
         "user has access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SHOW TABLES bookstore""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+            result.column("name").map(_.str).headOption should be (Some("bookstore"))
           }
-          "full indices names are used and one of them is not allowed" in {
+          "full indices names are used and one of them is not allowed" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SHOW TABLES \"bookstore,library\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+            result.column("name").map(_.str).headOption should be (Some("bookstore"))
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SHOW TABLES \"*\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+            result.column("name").map(_.str).headOption should be (Some("bookstore"))
           }
-          "all tables are requested" in {
+          "all tables are requested" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SHOW TABLES""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+            result.column("name").map(_.str).headOption should be (Some("bookstore"))
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev1SqlManager.execute("""SHOW TABLES \"bookshop\"""")
             result.isSuccess should be(true)
-            result.queryResult.size should be(3)
-            result.queryResult("name").arr.map(_.str).toList should be { "bookstore" :: Nil }
+            result.column("name").map(_.str).headOption should be (Some("bookstore"))
           }
         }
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
-          "full index name is used" in {
+          "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW TABLES bookstore""")
             result.isForbidden should be(true)
           }
-          "wildcard is used" in {
+          "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW TABLES \"book*\"""")
             result.isForbidden should be(true)
           }
-          "alias is used" in {
+          "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW TABLES bookshop""")
             result.isForbidden should be(true)
           }
-          "not-existent index name is used" in {
+          "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW TABLES flea_market""")
             result.isForbidden should be(true)
           }
@@ -440,11 +427,11 @@ class SqlApiTests extends WordSpec with ForAllTestContainer {
     }
     "SHOW FUNCTIONS command is used" should {
       "be allowed" when {
-        "user has no indices rule (has access to any index)" in {
+        "user has no indices rule (has access to any index)" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
           val result = adminSqlManager.execute("""SHOW FUNCTIONS""")
           result.isSuccess should be(true)
         }
-        "user has one index" in {
+        "user has one index" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
           val result = dev2SqlManager.execute("""SHOW FUNCTIONS""")
           result.isSuccess should be(true)
         }

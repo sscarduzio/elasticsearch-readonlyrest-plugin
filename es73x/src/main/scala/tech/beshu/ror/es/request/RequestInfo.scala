@@ -18,6 +18,7 @@ package tech.beshu.ror.es.request
 
 import java.util.UUID
 
+import cats.data.NonEmptyList
 import com.google.common.collect.Sets
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
@@ -132,9 +133,11 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           )
         }
       case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql")  =>
-        SqlRequestHelper
-          .indicesFrom(ar)
-          .getOrElse(throw new IllegalArgumentException(s"Cannot process SQL request ${ar.getDescription}"))
+        SqlRequestHelper.indicesFrom(ar) match {
+          case Success(indices) => indices
+          case Failure(ex) =>
+            throw new IllegalArgumentException(s"Cannot process SQL request - ${ar.getDescription}", ex)
+        }
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
         RegularIndices{
           invokeMethodCached(ar, ar.getClass, "getRequest")
@@ -147,11 +150,11 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       case ar: RestoreSnapshotRequest => // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
         RegularIndices(ar.indices.asSafeSet)
       case ar =>
-        RegularIndices {
-          val indices = extractStringArrayFromPrivateMethod("indices", ar).asSafeSet
-          if (indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).asSafeSet
-          else indices
-        }
+        NonEmptyList
+          .fromList(extractStringArrayFromPrivateMethod("indices", ar).asSafeList)
+          .orElse(NonEmptyList.fromList(extractStringArrayFromPrivateMethod("index", ar).asSafeList))
+          .map(indices => RegularIndices(indices.toList.toSet))
+          .getOrElse(NoIndices)
     }
     logger.debug(s"Discovered indices: ${extractedIndices.indices.mkString(",")}")
     extractedIndices
@@ -409,7 +412,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
               SqlRequestHelper.modifyIndicesOf(ar, sqlIndices, indices.toSet)
             }
             WriteResult.Success(())
-          case RegularIndices(_) =>
+          case _ =>
             throw new IllegalStateException("Regular indices in SQL request")
         }
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>

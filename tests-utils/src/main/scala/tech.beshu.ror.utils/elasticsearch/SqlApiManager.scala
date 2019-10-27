@@ -21,11 +21,12 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.SqlApiManager.SqlResult
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
+import tech.beshu.ror.utils.misc.Version
 import ujson.Arr
 
 import scala.collection.JavaConverters._
 
-class SqlApiManager(restClient: RestClient)
+class SqlApiManager(restClient: RestClient, esVersion: String)
   extends BaseManager(restClient) {
 
   def execute(selectQuery: String): SqlResult = {
@@ -33,7 +34,11 @@ class SqlApiManager(restClient: RestClient)
   }
 
   private def createSqlQueryRequest(query: String) = {
-    val request = new HttpGetWithEntity(restClient.from("_sql", Map("format" -> "json").asJava))
+    val request = if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+      new HttpGetWithEntity(restClient.from("_sql", Map("format" -> "json").asJava))
+    } else {
+      new HttpGetWithEntity(restClient.from("_xpack/sql", Map("format" -> "json").asJava))
+    }
     request.setHeader("Content-Type", "application/json")
     request.setHeader("timeout", "50s")
     request.setEntity(new StringEntity(s"""{ "query": "$query" }"""))

@@ -129,10 +129,6 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             identity
           )
         }
-      case ar if ar.getClass.getSimpleName.startsWith("Sql") =>
-        // Do noting, we can't do anything about X-Pack SQL queries, as it does not contain indices.
-        // todo: The only way we can filter this kind of request is going Lucene level like "filter" rule.
-        RegularIndices(Set.empty[String])
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
         RegularIndices {
           invokeMethodCached(ar, ar.getClass, "getRequest")

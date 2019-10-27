@@ -51,7 +51,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
           .copy(rorConfigFileName, "/usr/share/elasticsearch/config/readonlyrest.yml")
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .run("echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .runWhen(Version.greaterOrEqualThan(esVersion, 6, 3, 0), "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")

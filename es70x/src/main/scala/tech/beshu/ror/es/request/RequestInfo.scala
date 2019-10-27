@@ -50,9 +50,10 @@ import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.RegularIndices
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.{RegularIndices, SqlIndices}
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
+import tech.beshu.ror.es.utils.SqlRequestHelper
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.{extractStringArrayFromPrivateMethod, invokeMethodCached}
 import tech.beshu.ror.utils.ScalaOps._
@@ -128,10 +129,12 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             identity
           )
         }
-      case ar if ar.getClass.getSimpleName.startsWith("Sql") =>
-        // Do noting, we can't do anything about X-Pack SQL queries, as it does not contain indices.
-        // todo: The only way we can filter this kind of request is going Lucene level like "filter" rule.
-        RegularIndices(Set.empty[String])
+      case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql")  =>
+        SqlRequestHelper.indicesFrom(ar) match {
+          case Success(indices) => indices
+          case Failure(ex) =>
+            throw new IllegalArgumentException(s"Cannot process SQL request - ${ar.getDescription}", ex)
+        }
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
         RegularIndices {
           invokeMethodCached(ar, ar.getClass, "getRequest")
@@ -399,6 +402,27 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         } else {
           ar.names(templateNamesToReturn.toList: _*)
         }
+        WriteResult.Success(())
+      case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql") =>
+        extractIndices match {
+          case sqlIndices: SqlIndices =>
+            if(newIndices != extractIndices.indices) {
+              SqlRequestHelper.modifyIndicesOf(ar, sqlIndices, indices.toSet) match {
+                case Success(_) => WriteResult.Success(())
+                case Failure(ex) =>
+                  logger.error("Cannot modify SQL indices of incoming request", ex)
+                  WriteResult.Failure
+              }
+            } else {
+              WriteResult.Success(())
+            }
+          case _ =>
+            throw new IllegalStateException("Regular indices in SQL request")
+        }
+      case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
+        invokeMethodCached(ar, ar.getClass, "getRequest")
+          .asInstanceOf[SearchRequest]
+          .indices(indices: _*)
         WriteResult.Success(())
       case _ =>
         // Optimistic reflection attempt

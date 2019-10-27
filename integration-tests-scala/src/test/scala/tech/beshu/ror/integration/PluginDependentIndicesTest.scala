@@ -35,7 +35,7 @@ class PluginDependentIndicesTest extends WordSpec with ForAllTestContainer with 
 
   "Search can be done" when {
     "user uses local auth rule" when {
-      "mustache template can be used" excludeES("es51x", "es52x", "es53x")  in {
+      "mustache template can be used" excludeES("es51x", "es52x", "es53x") in {
         val searchManager = new SearchManager(
           container.nodesContainers.head.client("dev1", "test")
         )

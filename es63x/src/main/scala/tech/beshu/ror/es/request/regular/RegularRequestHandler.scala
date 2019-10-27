@@ -21,18 +21,23 @@ import cats.data.NonEmptyList
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
+import org.elasticsearch.common.collect.ImmutableOpenMap
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
-import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause}
+import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed}
 import tech.beshu.ror.accesscontrol.BlockContextRawDataHelper.indicesFrom
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatIndicesPath, CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextRawDataHelper}
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
@@ -93,41 +98,75 @@ class RegularRequestHandler(engine: Engine,
   private def onAllow(requestContext: RequestContext,
                       requestInfo: RequestInfo,
                       blockContext: BlockContext): Unit = {
-    // todo:
-//    val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-//    requestInfo.writeResponseHeaders(BlockContextJavaHelper.responseHeadersFrom(blockContext))
-//    requestInfo.writeToThreadContextHeaders(BlockContextJavaHelper.contextHeadersFrom(blockContext))
-//    requestInfo.writeIndices(BlockContextJavaHelper.indicesFrom(blockContext))
-//    requestInfo.writeSnapshots(BlockContextJavaHelper.snapshotsFrom(blockContext))
-//    requestInfo.writeRepositories(BlockContextJavaHelper.repositoriesFrom(blockContext))
-//
-//    proceed(searchListener)
     requestContext.uriPath match {
       case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
         baseListener.onResponse(emptyClusterStateResponse)
       case CatTemplatePath(_) | TemplatePath(_) =>
-        val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-        indicesFrom(blockContext).map {
-          requestInfo.writeTemplatesOf
+        proceedAfterSuccessfulWrite(requestContext, blockContext) {
+          for {
+            _ <- writeTemplatesIfNeeded(blockContext, requestInfo)
+            _ <- writeCommonParts(requestInfo, blockContext)
+          } yield ()
         }
-        writeCommonParts(requestInfo, blockContext)
-        proceed(searchListener)
       case _ =>
-        val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-        indicesFrom(blockContext).map {
-          requestInfo.writeIndices
+        proceedAfterSuccessfulWrite(requestContext, blockContext) {
+          for {
+            _ <- writeIndicesIfNeeded(blockContext, requestInfo)
+            _ <- requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
+            _ <- requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
+            _ <- writeCommonParts(requestInfo, blockContext)
+          } yield ()
         }
-        requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
-        requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
-        writeCommonParts(requestInfo, blockContext)
-
-        proceed(searchListener)
     }
   }
 
-  private def writeCommonParts(requestInfo: RequestInfo, blockContext: BlockContext): Unit = {
-    requestInfo.writeResponseHeaders(BlockContextRawDataHelper.responseHeadersFrom(blockContext))
-    requestInfo.writeToThreadContextHeaders(BlockContextRawDataHelper.contextHeadersFrom(blockContext))
+  private def proceedAfterSuccessfulWrite(requestContext: RequestContext,
+                                          blockContext: BlockContext)
+                                         (result: WriteResult[Unit]): Unit = {
+    result match {
+      case WriteResult.Success(_) =>
+        val searchListener = createSearchListener(requestContext, blockContext, engine.context)
+        proceed(searchListener)
+      case WriteResult.Failure =>
+        logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
+        onForbidden(NonEmptyList.one(OperationNotAllowed))
+    }
+  }
+
+  private def writeTemplatesIfNeeded(blockContext: BlockContext, requestInfo: RequestInfo) = {
+    writeIndicesBasedResultIfNeeded(
+      blockContext,
+      requestInfo,
+      requestInfo.writeTemplatesOf
+    )
+  }
+
+  private def writeIndicesIfNeeded(blockContext: BlockContext, requestInfo: RequestInfo) = {
+    writeIndicesBasedResultIfNeeded(
+      blockContext,
+      requestInfo,
+      requestInfo.writeIndices
+    )
+  }
+
+  private def writeIndicesBasedResultIfNeeded(blockContext: BlockContext,
+                                              requestInfo: RequestInfo,
+                                              write: Set[String] => WriteResult[Unit]) = {
+    requestInfo.extractIndices match {
+      case ExtractedIndices.NoIndices => WriteResult.Success(())
+      case ExtractedIndices.RegularIndices(_) | _: ExtractedIndices.SqlIndices =>
+        indicesFrom(blockContext) match {
+          case Outcome.Exist(indices) => write(indices)
+          case Outcome.NotExist => WriteResult.Success(())
+        }
+    }
+  }
+
+  private def writeCommonParts(requestInfo: RequestInfo, blockContext: BlockContext) = {
+    for {
+      _ <- requestInfo.writeResponseHeaders(BlockContextRawDataHelper.responseHeadersFrom(blockContext))
+      _ <- requestInfo.writeToThreadContextHeaders(BlockContextRawDataHelper.contextHeadersFrom(blockContext))
+    } yield ()
   }
 
   private def emptySetOfFoundIndices(blockContext: BlockContext) = {
