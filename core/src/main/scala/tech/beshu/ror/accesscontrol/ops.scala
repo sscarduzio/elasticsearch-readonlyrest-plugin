@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import java.util.{Base64, Locale}
+import java.util.Base64
 import java.util.regex.Pattern
 
 import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
-import cats.{Eq, Order, Show}
+import cats.{Order, Show}
 import com.softwaremill.sttp.{Method, Uri}
 import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater

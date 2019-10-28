@@ -177,14 +177,16 @@ object AdminRestApi extends Logging {
     )
   }
 
-  private object encoders {
+  object encoders {
     import io.circe.generic.semiauto._
     implicit val apiCallResultEncoder: Encoder[ApiCallResult] = deriveEncoder
+    implicit val adminResponseEncoder: Encoder[AdminResponse] = deriveEncoder
   }
 
-  private object decoders {
+  object decoders {
     import io.circe.generic.semiauto._
     implicit val apiCallResultDecoder: Decoder[ApiCallResult] = deriveDecoder
+    implicit val adminResponseDecoder: Decoder[AdminResponse] = deriveDecoder
   }
 
   private object converters {

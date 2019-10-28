@@ -14,23 +14,27 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.rradmin
+package tech.beshu.ror.es
 
-import org.elasticsearch.action.ActionRequest
-import org.elasticsearch.rest.RestRequest
-import tech.beshu.ror.adminapi.AdminRestApi
+import org.elasticsearch.ElasticsearchException
+import tech.beshu.ror.boot.StartingFailure
 
-class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
+class StartingFailureException(message: String, throwable: Throwable)
+  extends ElasticsearchException(message, throwable) {
 
-  def this(request: RestRequest) = {
-    this(AdminRestApi.AdminRequest(request.method.name, request.path, request.content.utf8ToString))
+  def this(message: String) {
+    this(message, null)
   }
+}
 
-  def this() = {
-    this(null: AdminRestApi.AdminRequest)
+object StartingFailureException {
+  def from(failure: StartingFailure): StartingFailureException = {
+    failure.throwable match {
+      case Some(throwable) => new StartingFailureException(failure.message, throwable)
+      case None => new StartingFailureException(failure.message)
+    }
   }
-
-  val getAdminRequest: AdminRestApi.AdminRequest = request
-
-  override def validate() = null
+  def from(throwable: Throwable): StartingFailureException = {
+    new StartingFailureException("Cannot start ReadonlyREST", throwable)
+  }
 }
