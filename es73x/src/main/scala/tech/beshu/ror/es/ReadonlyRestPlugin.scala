@@ -178,7 +178,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
     List[RestHandler](
-      new RestRRAdminAction(restController)
+      new RestRRAdminAction(settings, restController)
     ).asJava
   }
 
