@@ -6,8 +6,11 @@ readonlyrest:
     key_pass: readonlyrest
 
   access_control_rules:
+    - name: "Require HTTP Basic Auth (kibana dfault)"
+      verbosity: error
+      type: allow
+      auth_key: kibana:changeme
 
-    # ES containter initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow
