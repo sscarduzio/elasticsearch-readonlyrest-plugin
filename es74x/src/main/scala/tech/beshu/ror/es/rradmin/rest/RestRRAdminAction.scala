@@ -23,7 +23,7 @@ import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest._
 import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi._
-import tech.beshu.ror.es.rradmin.{RRAdminAction, RRAdminRequest, RRAdminResponse}
+import tech.beshu.ror.es.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
 
 @Inject
 class RestRRAdminAction(controller: RestController)
@@ -38,7 +38,7 @@ class RestRRAdminAction(controller: RestController)
   override val getName: String = "ror-admin-handler"
 
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    client.execute(new RRAdminAction, new RRAdminRequest(request), new RestToXContentListener[RRAdminResponse](channel))
+    client.execute(new RRAdminActionType, new RRAdminRequest(request), new RestToXContentListener[RRAdminResponse](channel))
   }
   
   private def register(method: String, path: String): Unit = {

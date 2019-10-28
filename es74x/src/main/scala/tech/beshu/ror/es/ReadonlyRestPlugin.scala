@@ -54,7 +54,7 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
-import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
+import tech.beshu.ror.es.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
@@ -166,7 +166,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
-      new ActionHandler(RRAdminAction.instance, classOf[TransportRRAdminAction])
+      new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction])
     ).asJava
   }
 
