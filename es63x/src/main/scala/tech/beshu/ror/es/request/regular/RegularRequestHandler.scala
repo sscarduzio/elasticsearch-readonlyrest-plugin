@@ -152,13 +152,9 @@ class RegularRequestHandler(engine: Engine,
   private def writeIndicesBasedResultIfNeeded(blockContext: BlockContext,
                                               requestInfo: RequestInfo,
                                               write: Set[String] => WriteResult[Unit]) = {
-    requestInfo.extractIndices match {
-      case ExtractedIndices.NoIndices => WriteResult.Success(())
-      case ExtractedIndices.RegularIndices(_) | _: ExtractedIndices.SqlIndices =>
-        indicesFrom(blockContext) match {
-          case Outcome.Exist(indices) => write(indices)
-          case Outcome.NotExist => WriteResult.Success(())
-        }
+    indicesFrom(blockContext) match {
+      case Outcome.Exist(indices) => write(indices)
+      case Outcome.NotExist => WriteResult.Success(())
     }
   }
 

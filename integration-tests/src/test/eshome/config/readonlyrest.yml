@@ -5,11 +5,9 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-  enable: ${READONLYREST_ENABLE}
-
   access_control_rules:
 
-      # ES containter initializer need this rule to configure ES instance after startup
+    # ES containter initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow
@@ -18,3 +16,7 @@ readonlyrest:
     - name: "dev1 indexes"
       indices: ["custom_@{user}_index_*", "@{user}_index"]
       auth_key: dev1:test
+
+    - name: "dev2 indexes"
+      indices: ["@{user}_index", "custom_@{user}_index_*"]
+      auth_key: dev2:test

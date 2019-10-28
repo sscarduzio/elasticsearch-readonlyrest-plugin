@@ -33,7 +33,7 @@ object SqlRequestHelper {
 
   def modifyIndicesOf(request: CompositeIndicesRequest,
                       extractedIndices: SqlIndices,
-                      finalIndices: Set[String]): CompositeIndicesRequest = {
+                      finalIndices: Set[String]): Try[CompositeIndicesRequest] = Try {
     extractedIndices match {
       case s: SqlTableRelated =>
         setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))

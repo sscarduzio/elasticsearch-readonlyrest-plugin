@@ -30,7 +30,10 @@ class PluginDependentIndicesTest extends WordSpec with ForAllTestContainer with 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/plugin_indices/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = PluginDependentIndicesTest.nodeDataInitializer())
+    clusterSettings = AdditionalClusterSettings(
+      nodeDataInitializer = PluginDependentIndicesTest.nodeDataInitializer(),
+      xPackSupport = true
+    )
   )
 
   "Search can be done" when {

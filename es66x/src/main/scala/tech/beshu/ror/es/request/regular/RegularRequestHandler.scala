@@ -21,12 +21,9 @@ import cats.implicits._
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
-import org.elasticsearch.common.collect.ImmutableOpenMap
-import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
@@ -37,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatIndicesPath, CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
 import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextRawDataHelper}
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
@@ -100,10 +97,7 @@ class RegularRequestHandler(engine: Engine,
                       blockContext: BlockContext): Unit = {
     requestContext.uriPath match {
       case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
-        baseListener.onResponse(new GetSettingsResponse(
-          ImmutableOpenMap.of[String, Settings](),
-          ImmutableOpenMap.of[String, Settings]()
-        ))
+        baseListener.onResponse(emptyClusterStateResponse)
       case CatTemplatePath(_) | TemplatePath(_) =>
         proceedAfterSuccessfulWrite(requestContext, blockContext) {
           for {
@@ -155,13 +149,9 @@ class RegularRequestHandler(engine: Engine,
   private def writeIndicesBasedResultIfNeeded(blockContext: BlockContext,
                                               requestInfo: RequestInfo,
                                               write: Set[String] => WriteResult[Unit]) = {
-    requestInfo.extractIndices match {
-      case ExtractedIndices.NoIndices => WriteResult.Success(())
-      case ExtractedIndices.RegularIndices(_) | _: ExtractedIndices.SqlIndices =>
-        indicesFrom(blockContext) match {
-          case Outcome.Exist(indices) => write(indices)
-          case Outcome.NotExist => WriteResult.Success(())
-        }
+    indicesFrom(blockContext) match {
+      case Outcome.Exist(indices) => write(indices)
+      case Outcome.NotExist => WriteResult.Success(())
     }
   }
 

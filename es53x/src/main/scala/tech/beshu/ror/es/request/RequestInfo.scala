@@ -113,6 +113,21 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         RegularIndices(ar.indices.asSafeSet)
       case ar: IndicesAliasesRequest =>
         RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices()).toSet)
+      case ar if ar.getClass.getSimpleName.startsWith("ReindexRequest") =>
+        // Using reflection otherwise need to create another sub-project
+        RegularIndices {
+          Try {
+            val sr = invokeMethodCached(ar, ar.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
+            val ir = invokeMethodCached(ar, ar.getClass, "getDestination").asInstanceOf[IndexRequest]
+            sr.indices().toSet ++ ir.indices().toSet
+          } fold(
+            ex => {
+              logger.errorEx(s"cannot extract indices from: $extractMethod $extractPath\n$extractContent", ex)
+              Set.empty[String]
+            },
+            identity
+          )
+        }
       case ar: CompositeIndicesRequest =>
         logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${ar.getClass.getSimpleName}")
         RegularIndices(Set.empty[String])

@@ -394,6 +394,11 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           ar.names(templateNamesToReturn.toList: _*)
           WriteResult.Success(())
         }
+      case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
+        invokeMethodCached(ar, ar.getClass, "getRequest")
+          .asInstanceOf[SearchRequest]
+          .indices(indices: _*)
+        WriteResult.Success(())
       case _ =>
         // Optimistic reflection attempt
         val okSetResult = ReflecUtils.setIndices(actionRequest, Set("index", "indices").asJava, indices.toSet.asJava)

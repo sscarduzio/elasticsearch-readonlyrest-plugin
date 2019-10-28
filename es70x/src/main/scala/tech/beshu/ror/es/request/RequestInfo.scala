@@ -18,6 +18,8 @@ package tech.beshu.ror.es.request
 
 import java.util.UUID
 
+import cats.data.NonEmptyList
+import com.google.common.collect.Sets
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
 import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
@@ -50,7 +52,7 @@ import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.{RegularIndices, SqlIndices}
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.{NoIndices, RegularIndices, SqlIndices}
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
 import tech.beshu.ror.es.utils.SqlRequestHelper
@@ -147,11 +149,11 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       case ar: RestoreSnapshotRequest => // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
         RegularIndices(ar.indices.asSafeSet)
       case ar =>
-        RegularIndices {
-          val indices = extractStringArrayFromPrivateMethod("indices", ar).asSafeSet
-          if (indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).asSafeSet
-          else indices
-        }
+        NonEmptyList
+          .fromList(extractStringArrayFromPrivateMethod("indices", ar).asSafeList)
+          .orElse(NonEmptyList.fromList(extractStringArrayFromPrivateMethod("index", ar).asSafeList))
+          .map(indices => RegularIndices(indices.toList.toSet))
+          .getOrElse(NoIndices)
     }
     logger.debug(s"Discovered indices: ${extractedIndices.indices.mkString(",")}")
     extractedIndices
@@ -322,9 +324,6 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
     if (indices.isEmpty) return WriteResult.Success(())
 
     actionRequest match {
-      case _: IndicesRequest.Replaceable if extractPath.startsWith("/_cat/templates") =>
-        // workaround for filtering templates of /_cat/templates action
-        WriteResult.Success(())
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
         WriteResult.Success(())
@@ -384,25 +383,6 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           }
         }
         WriteResult.Success(())
-      case ar: GetIndexTemplatesRequest =>
-        val requestTemplateNames = ar.names.asSafeSet
-        val allowedTemplateNames = findTemplatesOfIndices(clusterService, indices.toSet)
-        val templateNamesToReturn =
-          if (requestTemplateNames.isEmpty) {
-            allowedTemplateNames
-          } else {
-            MatcherWithWildcardsScalaAdapter
-              .create(requestTemplateNames)
-              .filter(allowedTemplateNames)
-          }
-        if (templateNamesToReturn.isEmpty) {
-          // hack! there is no other way to return empty list of templates (at the moment should not be used, but
-          // I leave it as a protection
-          ar.names(UUID.randomUUID + "*")
-        } else {
-          ar.names(templateNamesToReturn.toList: _*)
-        }
-        WriteResult.Success(())
       case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql") =>
         extractIndices match {
           case sqlIndices: SqlIndices =>
@@ -426,10 +406,14 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         WriteResult.Success(())
       case _ =>
         // Optimistic reflection attempt
-        val okSetResult = ReflecUtils.setIndices(actionRequest, Set("index", "indices").asJava, indices.toSet.asJava)
-        if (okSetResult) logger.debug(s"REFLECTION: success changing indices: $indices correctly set as $extractIndices")
-        else logger.error(s"REFLECTION: Failed to set indices for type ${actionRequest.getClass.getSimpleName} in req id: $extractId")
-        WriteResult.Success(())
+        val okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), indices.toSet.asJava)
+        if (okSetResult) {
+          logger.debug(s"REFLECTION: success changing indices: $indices correctly set as $extractIndices")
+          WriteResult.Success(())
+        } else {
+          logger.error(s"REFLECTION: Failed to set indices for type ${actionRequest.getClass.getSimpleName} in req id: $extractId")
+          WriteResult.Failure
+        }
     }
   }
 

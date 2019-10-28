@@ -97,7 +97,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
   }
 
   override lazy val extractIndices: ExtractedIndices = {
-    val extractedIndices: ExtractedIndices = actionRequest match {
+    val extractedIndices = actionRequest match {
       case ar: PutIndexTemplateRequest =>
         RegularIndices {
           indicesFromPatterns(clusterService, ar.indices.asSafeSet)
@@ -139,7 +139,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             throw new IllegalArgumentException(s"Cannot process SQL request - ${ar.getDescription}", ex)
         }
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
-        RegularIndices{
+        RegularIndices {
           invokeMethodCached(ar, ar.getClass, "getRequest")
             .asInstanceOf[SearchRequest]
             .indices.asSafeSet
@@ -324,9 +324,6 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
     if (indices.isEmpty) return WriteResult.Success(())
 
     actionRequest match {
-      case _: IndicesRequest.Replaceable if extractPath.startsWith("/_cat/templates") =>
-        // workaround for filtering templates of /_cat/templates action
-        WriteResult.Success(())
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
         WriteResult.Success(())
@@ -386,32 +383,19 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           }
         }
         WriteResult.Success(())
-      case ar: GetIndexTemplatesRequest =>
-        val requestTemplateNames = ar.names.asSafeSet
-        val allowedTemplateNames = findTemplatesOfIndices(clusterService, indices.toSet)
-        val templateNamesToReturn =
-          if (requestTemplateNames.isEmpty) {
-            allowedTemplateNames
-          } else {
-            MatcherWithWildcardsScalaAdapter
-              .create(requestTemplateNames)
-              .filter(allowedTemplateNames)
-          }
-        if (templateNamesToReturn.isEmpty) {
-          // hack! there is no other way to return empty list of templates (at the moment should not be used, but
-          // I leave it as a protection)
-          WriteResult.Failure
-        } else {
-          ar.names(templateNamesToReturn.toList: _*)
-          WriteResult.Success(())
-        }
       case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql") =>
         extractIndices match {
           case sqlIndices: SqlIndices =>
             if(newIndices != extractIndices.indices) {
-              SqlRequestHelper.modifyIndicesOf(ar, sqlIndices, indices.toSet)
+              SqlRequestHelper.modifyIndicesOf(ar, sqlIndices, indices.toSet) match {
+                case Success(_) => WriteResult.Success(())
+                case Failure(ex) =>
+                  logger.error("Cannot modify SQL indices of incoming request", ex)
+                  WriteResult.Failure
+              }
+            } else {
+              WriteResult.Success(())
             }
-            WriteResult.Success(())
           case _ =>
             throw new IllegalStateException("Regular indices in SQL request")
         }

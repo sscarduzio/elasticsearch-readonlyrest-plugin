@@ -31,7 +31,10 @@ class SqlApiTests extends WordSpec with ForAllTestContainer with ESVersionSuppor
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/sql_api/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = SqlApiTests.nodeDataInitializer())
+    clusterSettings = AdditionalClusterSettings(
+      nodeDataInitializer = SqlApiTests.nodeDataInitializer(),
+      xPackSupport = true
+    )
   )
 
   private lazy val adminSqlManager = new SqlApiManager(container.nodesContainers.head.adminClient, container.esVersion)

@@ -56,7 +56,8 @@ object ReadonlyRestEsCluster {
           rorPluginFile = rorPluginFile,
           rorConfigFile = rorConfigFile,
           configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
-          internodeSslEnabled = clusterSettings.internodeSslEnabled)
+          internodeSslEnabled = clusterSettings.internodeSslEnabled,
+          xPackSupport = clusterSettings.xPackSupport)
         Task(ReadonlyRestEsContainer.create(containerConfig, clusterSettings.nodeDataInitializer))
       },
       clusterSettings.dependentServicesContainers,
@@ -80,6 +81,7 @@ object ReadonlyRestEsCluster {
                                              nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
                                              clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer,
                                              dependentServicesContainers: List[DependencyDef] = Nil,
+                                             xPackSupport: Boolean = false,
                                              configHotReloadingEnabled: Boolean = true,
                                              internodeSslEnabled: Boolean = false)
 }
