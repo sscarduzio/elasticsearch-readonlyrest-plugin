@@ -33,8 +33,8 @@ object ESWithReadonlyRestImage extends StrictLogging {
   def create(config: Config): ImageFromDockerfile = {
     import config._
     val baseDockerImage =
-      if(shouldUseNonOssEsImage(config)) "docker.elastic.co/elasticsearch/elasticsearch"
-      else "docker.elastic.co/elasticsearch/elasticsearch-oss"
+      if(shouldUseEsOssImage(config)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
+      else "docker.elastic.co/elasticsearch/elasticsearch"
 
     new ImageFromDockerfile()
       .withFileFromFile(rorPluginFile.getAbsolutePath, rorPluginFile)
@@ -98,7 +98,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
       })
   }
 
-  private def shouldUseNonOssEsImage(config: Config) = {
-    Version.greaterOrEqualThan(config.esVersion, 6, 3, 0) && config.xPackSupport
+  private def shouldUseEsOssImage(config: Config) = {
+    !config.xPackSupport && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
   }
 }
