@@ -19,7 +19,6 @@ package tech.beshu.ror.es.request
 import java.net.InetSocketAddress
 import java.util.UUID
 
-import com.google.common.collect.Sets
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
 import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
@@ -35,6 +34,7 @@ import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplat
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
+import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.MultiGetRequest
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
@@ -49,17 +49,19 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.RegularIndices
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.{extractStringArrayFromPrivateMethod, invokeMethodCached}
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.{RCUtils, ReflecUtils}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 
 import scala.collection.JavaConverters._
 import scala.math.Ordering.comparatorToOrdering
 import scala.util.{Failure, Success, Try}
-import tech.beshu.ror.utils.ScalaOps._
 
 class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequest: ActionRequest,
                   clusterService: ClusterService, threadPool: ThreadPool, remoteClusterService: RemoteClusterService)
@@ -76,9 +78,9 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override val extractTaskId: Long = taskId
 
-  override lazy val extractContentLength: Int = if(request.content == null) 0 else request.content().length()
+  override lazy val extractContentLength: Int = if (request.content == null) 0 else request.content().length()
 
-  override lazy val extractContent: String = if(request.content == null) "" else request.content().utf8ToString()
+  override lazy val extractContent: String = if (request.content == null) "" else request.content().utf8ToString()
 
   override lazy val extractMethod: String = request.method().name()
 
@@ -91,65 +93,69 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       actionRequest.isInstanceOf[GetIndexTemplatesRequest] || actionRequest.isInstanceOf[PutIndexTemplateRequest] || actionRequest.isInstanceOf[DeleteIndexTemplateRequest]
   }
 
-  override lazy val extractIndices: Set[String] = {
-    val indices = actionRequest match {
+  override lazy val extractIndices: ExtractedIndices = {
+    val extractedIndices = actionRequest match {
       case ar: PutIndexTemplateRequest =>
-        indicesFromPatterns(clusterService, ar.indices.asSafeSet)
-          .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
-          .toSet
+        RegularIndices {
+          indicesFromPatterns(clusterService, ar.indices.asSafeSet)
+            .flatMap { case (pattern, relatedIndices) => if (relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
+            .toSet
+        }
       case ar: IndexRequest => // The most common case first
-        ar.indices.asSafeSet
-      case ar: IndicesRequest =>
-        ar.indices.asSafeSet
+        RegularIndices(ar.indices.asSafeSet)
       case ar: MultiGetRequest =>
-        ar.getItems.asScala.flatMap(_.indices.asSafeSet).toSet
+        RegularIndices(ar.getItems.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: MultiSearchRequest =>
-        ar.requests().asScala.flatMap(_.indices.asSafeSet).toSet
+        RegularIndices(ar.requests().asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: MultiTermVectorsRequest =>
-        ar.getRequests.asScala.flatMap(_.indices.asSafeSet).toSet
+        RegularIndices(ar.getRequests.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: BulkRequest =>
-        ar.requests().asScala.flatMap(_.indices.asSafeSet).toSet
+        RegularIndices(ar.requests().asScala.flatMap(_.indices.asSafeSet).toSet)
+      case ar: DeleteRequest =>
+        RegularIndices(ar.indices.asSafeSet)
       case ar: IndicesAliasesRequest =>
-        ar.getAliasActions.asScala.flatMap(_.indices.asSafeSet).toSet
+        RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: ReindexRequest => // Buggy cases here onwards
-        Try {
-          val sr = invokeMethodCached(ar, ar.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
-          val ir = invokeMethodCached(ar, ar.getClass, "getDestination").asInstanceOf[IndexRequest]
-          sr.indices.asSafeSet ++ ir.indices.asSafeSet
-        } fold(
-          ex => {
-            logger.errorEx(s"cannot extract indices from: $extractMethod $extractPath\n$extractContent", ex)
-            Set.empty[String]
-          },
-          identity
-        )
-      case ar if ar.getClass.getSimpleName.startsWith("Sql") =>
-        // Do noting, we can't do anything about X-Pack SQL queries, as it does not contain indices.
-        // todo: The only way we can filter this kind of request is going Lucene level like "filter" rule.
-        Set.empty[String]
+        RegularIndices {
+          Try {
+            val sr = invokeMethodCached(ar, ar.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
+            val ir = invokeMethodCached(ar, ar.getClass, "getDestination").asInstanceOf[IndexRequest]
+            sr.indices.asSafeSet ++ ir.indices.asSafeSet
+          } fold(
+            ex => {
+              logger.errorEx(s"cannot extract indices from: $extractMethod $extractPath\n$extractContent", ex)
+              Set.empty[String]
+            },
+            identity
+          )
+        }
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
-        invokeMethodCached(ar, ar.getClass, "getRequest")
-          .asInstanceOf[SearchRequest]
-          .indices.asSafeSet
+        RegularIndices {
+          invokeMethodCached(ar, ar.getClass, "getRequest")
+            .asInstanceOf[SearchRequest]
+            .indices.asSafeSet
+        }
       case ar: CompositeIndicesRequest =>
         logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${ar.getClass.getSimpleName}")
-        Set.empty[String]
+        RegularIndices(Set.empty[String])
       case ar: RestoreSnapshotRequest => // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
-        ar.indices.asSafeSet
+        RegularIndices(ar.indices.asSafeSet)
       case ar =>
-        val indices = extractStringArrayFromPrivateMethod("indices", ar).asSafeSet
-        if(indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).asSafeSet
-        else indices
+        RegularIndices {
+          val indices = extractStringArrayFromPrivateMethod("indices", ar).asSafeSet
+          if (indices.isEmpty) extractStringArrayFromPrivateMethod("index", ar).asSafeSet
+          else indices
+        }
     }
-    logger.debug(s"Discovered indices: ${indices.mkString(",")}")
-    indices
+    logger.debug(s"Discovered indices: ${extractedIndices.indices.mkString(",")}")
+    extractedIndices
   }
 
   override lazy val extractTemplateIndicesPatterns: Set[String] = {
     val patterns = actionRequest match {
       case ar: GetIndexTemplatesRequest =>
         val templates = ar.names.asSafeSet
-        if(templates.isEmpty) getIndicesPatternsOfTemplates(clusterService)
+        if (templates.isEmpty) getIndicesPatternsOfTemplates(clusterService)
         else getIndicesPatternsOfTemplates(clusterService, templates)
       case ar: PutIndexTemplateRequest =>
         ar.indices.asSafeSet
@@ -257,8 +263,9 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override val extractHasRemoteClusters: Boolean = remoteClusterService.isCrossClusterSearchEnabled
 
-  override def writeSnapshots(newSnapshots: Set[String]): Unit = {
-    if (newSnapshots.isEmpty) return
+  override def writeSnapshots(newSnapshots: Set[String]): WriteResult[Unit] = {
+    if (newSnapshots.isEmpty) return WriteResult.Success(())
+
     // We limit this to read requests, as all the write requests are single-snapshot oriented.
     actionRequest match {
       case ar: GetSnapshotsRequest =>
@@ -267,10 +274,11 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         ar.snapshots(newSnapshots.toArray)
       case _ =>
     }
+    WriteResult.Success(())
   }
 
-  override def writeRepositories(newRepositories: Set[String]): Unit = {
-    if (newRepositories.isEmpty) return
+  override def writeRepositories(newRepositories: Set[String]): WriteResult[Unit] = {
+    if (newRepositories.isEmpty) return WriteResult.Success(())
 
     // We limit this to read requests, as all the write requests are single-snapshot oriented.
     val newRepositoriesA = newRepositories.toArray
@@ -281,31 +289,36 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       case ar: VerifyRepositoryRequest => ar.name(newRepositoriesA(0))
       case _ =>
     }
+    WriteResult.Success(())
   }
 
-  override def writeResponseHeaders(hMap: Map[String, String]): Unit = {
+  override def writeResponseHeaders(hMap: Map[String, String]): WriteResult[Unit] = {
     val threadContext = threadPool.getThreadContext
     hMap.foreach { case (key, value) =>
       threadContext.addResponseHeader(key, value)
     }
+    WriteResult.Success(())
   }
 
-  override def writeToThreadContextHeaders(hMap: Map[String, String]): Unit = {
+  override def writeToThreadContextHeaders(hMap: Map[String, String]): WriteResult[Unit] = {
     val threadContext = threadPool.getThreadContext
     hMap.foreach { case (key, value) =>
       threadContext.putHeader(key, value)
     }
+    WriteResult.Success(())
   }
 
-  override def writeIndices(newIndices: Set[String]): Unit = {
+  override def writeIndices(newIndices: Set[String]): WriteResult[Unit] = {
     val indices = newIndices.filter(i => i != "" && i != "<no-index>").toList
-    if (indices.isEmpty) return
+    if (indices.isEmpty) return WriteResult.Success(())
 
     actionRequest match {
       case _: IndicesRequest.Replaceable if extractPath.startsWith("/_cat/templates") =>
-      // workaround for filtering templates of /_cat/templates action
+        // workaround for filtering templates of /_cat/templates action
+        WriteResult.Success(())
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
+        WriteResult.Success(())
       case ar: BulkShardRequest => // This should not be necessary anymore because nowadays we either allow or forbid write requests.
         val singleIndex = indices.head
         val uuid = extractIndexMetadata(singleIndex).toList.head
@@ -318,6 +331,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
               case Success(_) =>
             }
           }
+        WriteResult.Success(())
       case ar: MultiSearchRequest =>
         ar.requests().asScala.foreach { sr =>
           if (sr.indices.asSafeSet.isEmpty || sr.indices.asSafeSet.contains("*")) {
@@ -337,6 +351,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             }
           }
         }
+        WriteResult.Success(())
       case ar: MultiGetRequest =>
         val it = ar.getItems.iterator
         while (it.hasNext) {
@@ -346,6 +361,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
           val remaining = expandedIndices.intersect(indices.toSet)
           if (remaining.isEmpty) it.remove()
         }
+        WriteResult.Success(())
       case ar: IndicesAliasesRequest =>
         val it = ar.getAliasActions.iterator
         while (it.hasNext) {
@@ -358,15 +374,45 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             act.indices(remaining.toList: _*)
           }
         }
+        WriteResult.Success(())
+      case ar: GetIndexTemplatesRequest =>
+        val requestTemplateNames = ar.names.asSafeSet
+        val allowedTemplateNames = findTemplatesOfIndices(clusterService, indices.toSet)
+        val templateNamesToReturn =
+          if (requestTemplateNames.isEmpty) {
+            allowedTemplateNames
+          } else {
+            MatcherWithWildcardsScalaAdapter
+              .create(requestTemplateNames)
+              .filter(allowedTemplateNames)
+          }
+        if (templateNamesToReturn.isEmpty) {
+          // hack! there is no other way to return empty list of templates (at the moment should not be used, but
+          // I leave it as a protection
+          WriteResult.Failure
+        } else {
+          ar.names(templateNamesToReturn.toList: _*)
+          WriteResult.Success(())
+        }
+      case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
+        invokeMethodCached(ar, ar.getClass, "getRequest")
+          .asInstanceOf[SearchRequest]
+          .indices(indices: _*)
+        WriteResult.Success(())
       case _ =>
         // Optimistic reflection attempt
-        val okSetResult = ReflecUtils.setIndices(actionRequest, Sets.newHashSet("index", "indices"), indices.toSet.asJava)
-        if (okSetResult) logger.debug(s"REFLECTION: success changing indices: $indices correctly set as $extractIndices")
-        else logger.error(s"REFLECTION: Failed to set indices for type ${actionRequest.getClass.getSimpleName} in req id: $extractId")
+        val okSetResult = ReflecUtils.setIndices(actionRequest, Set("index", "indices").asJava, indices.toSet.asJava)
+        if (okSetResult) {
+          logger.debug(s"REFLECTION: success changing indices: $indices correctly set as $extractIndices")
+          WriteResult.Success(())
+        } else {
+          logger.error(s"REFLECTION: Failed to set indices for type ${actionRequest.getClass.getSimpleName} in req id: $extractId")
+          WriteResult.Failure
+        }
     }
   }
 
-  override def writeTemplatesOf(indices: Set[String]): Unit = {
+  override def writeTemplatesOf(indices: Set[String]): WriteResult[Unit] = {
     actionRequest match {
       case ar: GetIndexTemplatesRequest =>
         val requestTemplateNames = ar.names.asSafeSet
@@ -389,5 +435,6 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       case _ =>
       // ignore
     }
+    WriteResult.Success(())
   }
 }

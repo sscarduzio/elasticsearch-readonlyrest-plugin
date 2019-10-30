@@ -40,7 +40,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/testfiltera/_search")
 
-        assertEquals(200, result.getResponseCode)
+        assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
@@ -51,7 +51,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/testfiltera/_search")
 
-        assertEquals(200, result.getResponseCode)
+        assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
@@ -62,7 +62,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/testfiltera/_search")
 
-        assertEquals(200, result.getResponseCode)
+        assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
@@ -73,7 +73,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/testfiltera/_search")
 
-        assertEquals(200, result.getResponseCode)
+        assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
@@ -86,7 +86,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/nestedtest/_search")
 
-        assertEquals(200, result.getResponseCode)
+        assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
@@ -108,7 +108,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/nestedtest/_search")
 
-        assertEquals(200, result.getResponseCode)
+        assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
@@ -133,7 +133,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/nestedtest/_search")
 
-        assertEquals(200, result.getResponseCode)
+        assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
@@ -154,7 +154,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
 
         val result = searchManager.search("/nestedtest/_search")
 
-        assertEquals(200, result.getResponseCode)
+        assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
