@@ -22,8 +22,8 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.component.AbstractComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
@@ -36,9 +36,10 @@ import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
 import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider}
+import tech.beshu.ror.es.request.RequestInfo
+import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
-import tech.beshu.ror.es.request.{RequestInfo, RorNotReadyResponse}
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
 
@@ -97,7 +98,7 @@ class IndexLevelActionFilter(settings: Settings,
       (rorInstance.get().flatMap(_.engine), ThreadRepo.getRestChannel) match {
         case (_, None) => chain.proceed(task, action, request, listener)
         case (_, _) if action.startsWith("internal:") => chain.proceed(task, action, request, listener)
-        case (None, Some(channel)) => channel.sendResponse(RorNotReadyResponse.create(channel))
+        case (None, Some(channel)) => channel.sendResponse(createRorNotReadyYetResponse(channel))
         case (Some(engine), Some(channel)) =>
           handleRequest(
             engine,

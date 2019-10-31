@@ -20,16 +20,23 @@ import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestStatus}
 import tech.beshu.ror.es.utils.ErrorContentBuilderHelper.createErrorResponse
 
-class RorNotReadyResponse private (status: RestStatus, builder: XContentBuilder)
+class RorNotAvailableResponse private(status: RestStatus, builder: XContentBuilder)
   extends BytesRestResponse(status, builder)
 
-object RorNotReadyResponse {
-  def create(channel: RestChannel): RorNotReadyResponse = new RorNotReadyResponse(
+object RorNotAvailableResponse {
+
+  def createRorNotReadyYetResponse(channel: RestChannel): RorNotAvailableResponse =
+    createResponse(channel, "Waiting for ReadonlyREST start")
+
+  def createRorNotEnabledResponse(channel: RestChannel): RorNotAvailableResponse =
+    createResponse(channel, "ReadonlyREST plugin was disabled in settings")
+
+  private def createResponse(channel: RestChannel, message: String) = new RorNotAvailableResponse(
     RestStatus.SERVICE_UNAVAILABLE,
-    createErrorResponse(channel, RestStatus.SERVICE_UNAVAILABLE, RorNotReadyResponse.addRootCause)
+    createErrorResponse(channel, RestStatus.SERVICE_UNAVAILABLE, addRootCause(message))
   )
 
-  private def addRootCause(builder: XContentBuilder): Unit = {
-    builder.field("reason", "Waiting for ReadonlyREST start")
+  private def addRootCause(message: String)(builder: XContentBuilder): Unit = {
+    builder.field("reason", message)
   }
 }
