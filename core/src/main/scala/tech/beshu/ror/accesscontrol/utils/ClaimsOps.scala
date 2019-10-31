@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.utils
 
+import cats.implicits._
+import cats.Show
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
@@ -49,13 +51,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
           }
         case _ => NotFound
       }
-      .fold(
-        ex => {
-          logger.debug("JsonPath reading exception", ex)
-          NotFound
-        },
-        identity
-      )
+      .fold(_ => NotFound, identity)
   }
 
   def groupsClaim(claimName: ClaimName): ClaimSearchResult[UniqueList[Group]] = {
@@ -78,13 +74,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
         case _ =>
           NotFound
       }
-      .fold(
-        ex => {
-          logger.debug("JsonPath reading exception", ex)
-          NotFound
-        },
-        identity
-      )
+      .fold(_ => NotFound, identity)
   }
 
   def customClaim(claimName: ClaimName): ClaimSearchResult[CustomClaimValue] = {
@@ -106,13 +96,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
         case _ =>
           NotFound
       }
-      .fold(
-        ex => {
-          logger.debug("JsonPath reading exception", ex)
-          NotFound
-        },
-        identity
-      )
+      .fold(_ => NotFound, identity)
   }
 
   private def toGroup(value: String) = {
@@ -127,6 +111,11 @@ object ClaimsOps {
   object ClaimSearchResult {
     final case class Found[+T](value: T) extends ClaimSearchResult[T]
     case object NotFound extends ClaimSearchResult[Nothing]
+
+    implicit def show[T : Show]: Show[ClaimSearchResult[T]] = Show.show {
+      case Found(value) => value.show
+      case NotFound => "<Not Found>"
+    }
   }
 
   sealed trait CustomClaimValue
