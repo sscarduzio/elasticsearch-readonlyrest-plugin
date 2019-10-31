@@ -17,7 +17,6 @@ readonlyrest:
       auth_key: kibana:kibana
       verbosity: error
 
-
     # GROUPS ####################
 
     - name: "::PERSONAL_GRP::"
