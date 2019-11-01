@@ -34,7 +34,6 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
-import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.util.Try
@@ -99,10 +98,7 @@ class RorKbnAuthRule(val settings: Settings)
     Try(parser.parseClaimsJws(token.value.value).getBody)
       .toEither
       .map(JwtTokenPayload.apply)
-      .left.map { ex =>
-      logger.errorEx(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName, ex)
-      ()
-    }
+      .left.map { ex => logger.debug(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
   }
 
   private def handleUserClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[User.Id]) = {

@@ -138,9 +138,9 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         }
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
         RegularIndices {
-          invokeMethodCached(ar, ar.getClass, "getRequest")
-            .asInstanceOf[SearchRequest]
-            .indices.asSafeSet
+          Option(invokeMethodCached(ar, ar.getClass, "getRequest"))
+            .map(_.asInstanceOf[SearchRequest].indices.asSafeSet)
+            .getOrElse(Set.empty)
         }
       case ar: CompositeIndicesRequest =>
         logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${ar.getClass.getSimpleName}")
@@ -418,9 +418,8 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
             throw new IllegalStateException("Regular indices in SQL request")
         }
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
-        invokeMethodCached(ar, ar.getClass, "getRequest")
-          .asInstanceOf[SearchRequest]
-          .indices(indices: _*)
+        Option(invokeMethodCached(ar, ar.getClass, "getRequest"))
+          .foreach(_.asInstanceOf[SearchRequest].indices(indices: _*))
         WriteResult.Success(())
       case _ =>
         // Optimistic reflection attempt
