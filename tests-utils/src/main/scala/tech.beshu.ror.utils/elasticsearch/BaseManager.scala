@@ -44,13 +44,16 @@ abstract class BaseManager(client: RestClient) {
 
 object BaseManager {
 
+  type JSON = Value
+
   class SimpleResponse private[elasticsearch](response: HttpResponse) {
-    val getResponseCode: Int = response.getStatusLine.getStatusCode
-    val isSuccess: Boolean = getResponseCode / 100 == 2
+    val responseCode: Int = response.getStatusLine.getStatusCode
+    val isSuccess: Boolean = responseCode / 100 == 2
+    val isForbidden: Boolean = responseCode == 401
   }
 
   class JsonResponse(response: HttpResponse) extends SimpleResponse(response) {
     val body: String = stringBodyFrom(response)
-    val responseJson: Value = ujson.read(body)
+    val responseJson: JSON = ujson.read(body)
   }
 }

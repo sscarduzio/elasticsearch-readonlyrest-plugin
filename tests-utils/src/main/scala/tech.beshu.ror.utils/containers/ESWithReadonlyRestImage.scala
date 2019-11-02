@@ -33,7 +33,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
   def create(config: Config): ImageFromDockerfile = {
     import config._
     val baseDockerImage =
-      if (Version.greaterOrEqualThan(esVersion, 6, 3, 0)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
+      if(shouldUseEsOssImage(config)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
       else "docker.elastic.co/elasticsearch/elasticsearch"
 
     new ImageFromDockerfile()
@@ -53,6 +53,10 @@ object ESWithReadonlyRestImage extends StrictLogging {
           .copy(rorConfigFileName, "/usr/share/elasticsearch/config/readonlyrest.yml")
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
+          .runWhen(
+            config.xPackSupport && Version.greaterOrEqualThan(esVersion, 6, 3, 0),
+            "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
+          )
           .run("echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -92,5 +96,9 @@ object ESWithReadonlyRestImage extends StrictLogging {
 
         logger.info("Dockerfile\n" + builder.build)
       })
+  }
+
+  private def shouldUseEsOssImage(config: Config) = {
+    !config.xPackSupport && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
   }
 }

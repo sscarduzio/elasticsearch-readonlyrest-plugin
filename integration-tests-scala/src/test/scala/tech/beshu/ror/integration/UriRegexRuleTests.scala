@@ -63,6 +63,6 @@ class UriRegexRuleTests extends WordSpec with ForAllTestContainer {
   private def assertHealthCheckStatus(status: Int, name: String): Unit = {
     val manager = new ClusterStateManager(container.nodesContainers.head.client(name, "pass"))
     val result = manager.healthCheck()
-    assertEquals(status, result.getResponseCode)
+    assertEquals(status, result.responseCode)
   }
 }

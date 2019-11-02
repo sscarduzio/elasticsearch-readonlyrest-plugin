@@ -34,6 +34,6 @@ class ClusterStateTests  extends WordSpec with ForAllTestContainer {
   "/_cat/state should work as expected" in {
     val response = adminClusterStateManager.healthCheck()
 
-    response.getResponseCode should be (200)
+    response.responseCode should be (200)
   }
 }

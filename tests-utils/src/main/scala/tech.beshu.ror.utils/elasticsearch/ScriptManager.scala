@@ -28,6 +28,7 @@ import scala.util.Try
 
 class ScriptManager(client: RestClient)
   extends BaseManager(client) {
+
   def store(endpoint: String, query: String): StoreResult =
     call(createStoreRequest(endpoint, query), new StoreResult(_))
 

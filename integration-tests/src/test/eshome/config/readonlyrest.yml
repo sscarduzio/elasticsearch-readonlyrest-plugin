@@ -1,30 +1,46 @@
 readonlyrest:
+  enable: false
   ssl:
     enable: true
     keystore_file: "keystore.jks"
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
+  prompt_for_basic_auth: false
+
+  audit_collector: true
+
   access_control_rules:
-    - name: "Require HTTP Basic Auth (kibana dfault)"
-      verbosity: error
-      type: allow
-      auth_key: kibana:changeme
 
-    - name: "CONTAINER ADMIN"
-      verbosity: error
-      type: allow
-      auth_key: admin:container
-
+    # MACHINES ##################
     - name: "::KIBANA-SRV::"
       auth_key: kibana:kibana
-      indices: ["empty_index", "perfmon_endpoint_requests","perfmon_logstash-apacheaccess*"]
       verbosity: error
 
-#    - name: "dev1 indexes"
-#      indices: ["custom_@{user}_index_*", "@{user}_index"]
-#      auth_key: dev1:test
-#
-#    - name: "dev2 indexes"
-#      indices: ["@{user}_index", "custom_@{user}_index_*"]
-#      auth_key: dev2:test
+    # GROUPS ####################
+
+    - name: "::PERSONAL_GRP::"
+      groups: ["Personal"]
+      kibana_access: rw
+      kibana_hide_apps: ["readonlyrest_kbn", "timelion"]
+      kibana_index: ".kibana_@{user}"
+
+    - name: "::ADMIN_GRP::"
+      groups: ["ROR (admin)"]
+      kibana_access: admin
+
+    - name: "::Infosec::"
+      groups: ["Infosec"]
+      kibana_access: rw
+      kibana_hide_apps: ["readonlyrest_kbn", "timelion"]
+      kibana_index: ".kibana_infosec"
+
+  # USERS TO GROUPS ############
+  users:
+    - username: admin
+      auth_key: admin:dev
+      groups: ["ROR (admin)", "Infosec"]
+
+    - username: simone
+      auth_key: simone:dev
+      groups: ["ROR (admin)", "Personal", "Infosec"]

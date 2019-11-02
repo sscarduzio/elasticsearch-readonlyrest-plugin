@@ -24,6 +24,7 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
+
 import scala.util.Try
 
 class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
@@ -84,14 +85,14 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
     Option(rInfo.extractContent).getOrElse("")
 
   override val indices: Set[domain.IndexName] =
-    rInfo.extractIndices.flatMap(IndexName.fromString)
+    rInfo.extractIndices.indices.flatMap(IndexName.fromString)
 
   override val allIndicesAndAliases: Set[IndexWithAliases] =
     rInfo
       .extractAllIndicesAndAliases
-      .flatMap { case (index, aliases) =>
+      .flatMap { case (indexName, aliases) =>
         IndexName
-          .fromString(index)
+          .fromString(indexName)
           .map { index =>
             IndexWithAliases(index, aliases.flatMap(IndexName.fromString))
           }

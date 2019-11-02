@@ -61,6 +61,7 @@ object ReadonlyRestEsContainer extends StrictLogging {
   final case class Config(nodeName: String,
                           nodes: NonEmptyList[String],
                           esVersion: String,
+                          xPackSupport: Boolean,
                           rorPluginFile: File,
                           rorConfigFile: File,
                           configHotReloadingEnabled: Boolean,

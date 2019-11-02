@@ -32,7 +32,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
-import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.SecureStringHasher
 import tech.beshu.ror.utils.SecureStringHasher.Algorithm
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
@@ -80,7 +79,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       case Left(_) =>
         Task.now(Rejected())
       case Right((tokenPayload, user, groups)) =>
-        logger.debug(s"JWT resolved user for claim ${settings.jwt.userClaim}: $user, and groups for claim ${settings.jwt.groupsClaim}: $groups")
+        if(logger.delegate.isDebugEnabled) { logClaimSearchResults(user, groups) }
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
           finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
@@ -101,13 +100,27 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
   }
 
+  private def logClaimSearchResults(user: Option[ClaimSearchResult[User.Id]],
+                                    groups: Option[ClaimSearchResult[UniqueList[Group]]]): Unit = {
+    (settings.jwt.userClaim, user) match {
+      case (Some(userClaim), Some(u)) =>
+        logger.debug(s"JWT resolved user for claim ${userClaim.name.getPath}: ${u.show}")
+      case _ =>
+    }
+    (settings.jwt.groupsClaim, groups) match {
+      case (Some(groupsClaim), Some(g)) =>
+        logger.debug(s"JWT resolved groups for claim ${groupsClaim.name.getPath}: ${g.show}")
+      case _ =>
+    }
+  }
+
   private def userAndGroupsFromJwtToken(token: JwtToken) = {
     claimsFrom(token).map { decodedJwtToken =>
       (decodedJwtToken, userIdFrom(decodedJwtToken), groupsFrom(decodedJwtToken))
     }
   }
 
-  private def badTokenLogger(ex: Throwable, token: JwtToken): Unit = {
+  private def logBadToken(ex: Throwable, token: JwtToken): Unit = {
     val tokenParts = token.show.split(".")
     val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length == 3) {
       // signed JWT, last block is the cryptographic digest, which should be treated as a secret.
@@ -116,7 +129,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     else {
       token.show
     }
-    logger.errorEx(s"JWT token '${printableToken}' parsing error: " + ex.getClass.getSimpleName + " " + ex.getMessage, ex)
+    logger.debug(s"JWT token '$printableToken' parsing error: " + ex.getClass.getSimpleName + " " + ex.getMessage)
   }
 
   private def claimsFrom(token: JwtToken) = {
@@ -127,9 +140,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
             Try(parser.parseClaimsJwt(s"$fst.$snd.").getBody)
               .toEither
               .map(JwtTokenPayload.apply)
-              .left.map { ex =>
-                badTokenLogger(ex, token)
-            }
+              .left.map { ex => logBadToken(ex, token)}
           case _ =>
             Left(())
         }
@@ -137,9 +148,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
         Try(parser.parseClaimsJws(token.value.value).getBody)
           .toEither
           .map(JwtTokenPayload.apply)
-          .left.map { ex =>
-            badTokenLogger(ex, token)
-        }
+          .left.map { ex => logBadToken(ex, token)}
     }
   }
 

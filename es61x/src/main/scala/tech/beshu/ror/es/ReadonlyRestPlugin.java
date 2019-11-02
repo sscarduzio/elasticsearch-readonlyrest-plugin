@@ -44,7 +44,6 @@ import org.elasticsearch.common.settings.Setting;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.settings.SettingsFilter;
 import org.elasticsearch.common.util.BigArrays;
-import org.elasticsearch.common.util.PageCacheRecycler;
 import org.elasticsearch.common.util.concurrent.EsExecutors;
 import org.elasticsearch.common.util.concurrent.ThreadContext;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
@@ -176,7 +175,6 @@ public class ReadonlyRestPlugin extends Plugin
     );
   }
 
-  @Override
   public Map<String, Supplier<Transport>> getTransports(Settings settings,
                                                         ThreadPool threadPool,
                                                         BigArrays bigArrays,
