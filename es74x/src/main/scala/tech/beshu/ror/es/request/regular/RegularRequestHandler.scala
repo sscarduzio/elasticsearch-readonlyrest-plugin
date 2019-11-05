@@ -167,7 +167,10 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def emptySetOfFoundIndices(blockContext: BlockContext) = {
-    blockContext.indices.forall(_.isEmpty)
+    blockContext.indices match {
+      case Outcome.Exist(foundIndices) => foundIndices.isEmpty
+      case Outcome.NotExist => false
+    }
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
