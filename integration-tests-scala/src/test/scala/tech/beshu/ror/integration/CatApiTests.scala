@@ -27,11 +27,12 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
 
   override lazy val rorContainer: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/indices_api/readonlyrest.yml"
+    rorConfigFileName = "/cat_api/readonlyrest.yml"
   )
 
   private lazy val dev1ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
   private lazy val dev2ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
+  private lazy val dev3ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev3", "test"))
 
   "A _cat/indices API" when {
     "return empty indices" when {
@@ -80,6 +81,19 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
         indices.responseCode should be(200)
         indices.results.size should be (1)
         indices.results(0)("index") should be (Str("dev1_index"))
+      }
+    }
+    "return all indices" when {
+      "user 3 is asking for them (his block doesn't contain `indices` rule)" in {
+        createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
+        createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
+
+        val indices = dev3ClusterStateManager.catIndices()
+
+        indices.responseCode should be(200)
+        indices.results.size should be (2)
+        indices.results(0)("index") should be (Str("dev1_index"))
+        indices.results(1)("index") should be (Str("dev2_index"))
       }
     }
     "return forbidden" when {

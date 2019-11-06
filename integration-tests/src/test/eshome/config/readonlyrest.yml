@@ -1,46 +1,25 @@
 readonlyrest:
-  enable: false
   ssl:
     enable: true
     keystore_file: "keystore.jks"
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-  prompt_for_basic_auth: false
-
-  audit_collector: true
-
   access_control_rules:
 
-    # MACHINES ##################
-    - name: "::KIBANA-SRV::"
-      auth_key: kibana:kibana
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
       verbosity: error
+      type: allow
+      auth_key: admin:container
 
-    # GROUPS ####################
+    - name: "dev1 indexes"
+      indices: ["custom_@{user}_index_*", "@{user}_index"]
+      auth_key: dev1:test
 
-    - name: "::PERSONAL_GRP::"
-      groups: ["Personal"]
-      kibana_access: rw
-      kibana_hide_apps: ["readonlyrest_kbn", "timelion"]
-      kibana_index: ".kibana_@{user}"
+    - name: "dev2 indexes"
+      indices: ["@{user}_index", "custom_@{user}_index_*"]
+      auth_key: dev2:test
 
-    - name: "::ADMIN_GRP::"
-      groups: ["ROR (admin)"]
-      kibana_access: admin
-
-    - name: "::Infosec::"
-      groups: ["Infosec"]
-      kibana_access: rw
-      kibana_hide_apps: ["readonlyrest_kbn", "timelion"]
-      kibana_index: ".kibana_infosec"
-
-  # USERS TO GROUPS ############
-  users:
-    - username: admin
-      auth_key: admin:dev
-      groups: ["ROR (admin)", "Infosec"]
-
-    - username: simone
-      auth_key: simone:dev
-      groups: ["ROR (admin)", "Personal", "Infosec"]
+    - name: "dev3 - no indices rule"
+      auth_key: dev3:test

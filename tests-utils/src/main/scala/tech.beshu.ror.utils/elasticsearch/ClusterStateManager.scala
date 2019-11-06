@@ -58,7 +58,7 @@ class ClusterStateManager(client: RestClient)
   private def createCatIndicesRequest(index: Option[String]) = {
     new HttpGet(client.from(
       s"/_cat/indices${index.map(i => s"/$i").getOrElse("")}",
-      Map("format" -> "json").asJava
+      Map("format" -> "json", "s" -> "index:asc").asJava
     ))
   }
 }
