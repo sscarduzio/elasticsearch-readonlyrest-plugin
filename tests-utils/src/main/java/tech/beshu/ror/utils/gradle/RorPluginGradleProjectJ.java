@@ -53,7 +53,7 @@ public class RorPluginGradleProjectJ {
   }
 
   public Optional<File> assemble() {
-    runTask(name + ":ror");
+    runTask(name + ":rorplugin");
     File plugin = new File(project, "build/distributions/" + pluginName());
     if (!plugin.exists()) return Optional.empty();
     return Optional.of(plugin);

@@ -50,7 +50,7 @@ class RorPluginGradleProject(val name: String) {
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
   def assemble: Option[File] = {
-    runTask(name + ":ror")
+    runTask(name + ":rorplugin")
     val plugin = new File(project, "build/distributions/" + pluginName)
     if (!plugin.exists) None
     else Some(plugin)
