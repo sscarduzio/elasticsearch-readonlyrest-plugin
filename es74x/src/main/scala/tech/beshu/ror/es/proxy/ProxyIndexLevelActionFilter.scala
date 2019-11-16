@@ -3,13 +3,12 @@ package tech.beshu.ror.es.proxy
 import java.nio.file.Path
 
 import cats.data.EitherT
-import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
+import monix.eval.{Task => MTask}
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
+import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.tasks.Task
 import tech.beshu.ror.boot.{Ror, RorInstance, StartingFailure}
-import monix.eval.{Task => MTask}
 import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
-import tech.beshu.ror.es.utils.ThreadRepo
 
 class ProxyIndexLevelActionFilter private(rorInstance: RorInstance) extends ActionFilter {
   override def order(): Int = 0
@@ -19,11 +18,11 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance) extends Acti
                                                                            request: Request,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
-    (rorInstance.engine, ThreadRepo.getRestChannel) match {
+    (rorInstance.engine, ProxyThreadRepo.getRestChannel) match {
       case (None, Some(channel)) =>
         channel.sendResponse(createRorNotReadyYetResponse(channel))
-      case _ => chain.proceed(task,
-        action, request, listener)
+      case _ =>
+        chain.proceed(task, action, request, listener)
     }
   }
 

@@ -70,10 +70,12 @@ dependencies {
     compile project(path: ':core')
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
+    compile 'org.elasticsearch.client:elasticsearch-rest-high-level-client:' + esVersion
+    compile 'org.elasticsearch.client:elasticsearch-rest-client:' + esVersion
 
-    pluginMode group: 'org.apache.logging.log4j',             name: 'log4j-core',           version: '2.11.0'
+    compile group: 'org.apache.logging.log4j',      name: 'log4j-core',                               version: '2.11.0'
 
-    proxyMode group: 'org.apache.logging.log4j',              name: 'log4j-core',           version: '2.11.0'
+    proxyMode group: 'org.apache.logging.log4j',       name: 'log4j-core',                               version: '2.11.0'
 }
 
 license {

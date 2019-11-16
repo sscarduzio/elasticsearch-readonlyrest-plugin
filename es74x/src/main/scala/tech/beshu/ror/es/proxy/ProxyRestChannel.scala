@@ -10,9 +10,9 @@ import scala.concurrent.Promise
 class ProxyRestChannel(restRequest: RestRequest) extends RestChannel {
 
   // todo: think if we are always be able to complete it
-  private val restResponsePromise = Promise[RestResponse]()
+  private val resultPromise = Promise[EsRestServiceSimulator.Result]()
 
-  def response: Task[RestResponse] = Task.fromFuture(restResponsePromise.future)
+  def result: Task[EsRestServiceSimulator.Result] = Task.fromFuture(resultPromise.future)
 
   override def newBuilder(): XContentBuilder =
     XContentBuilder.builder(XContentFactory.xContent(XContentType.JSON))
@@ -35,6 +35,10 @@ class ProxyRestChannel(restRequest: RestRequest) extends RestChannel {
   override def detailedErrorsEnabled(): Boolean = true
 
   override def sendResponse(response: RestResponse): Unit = {
-    restResponsePromise.trySuccess(response)
+    resultPromise.trySuccess(EsRestServiceSimulator.Result.Response(response))
+  }
+
+  def passThrough(): Unit = {
+    resultPromise.trySuccess(EsRestServiceSimulator.Result.PassThrough)
   }
 }
