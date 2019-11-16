@@ -10,7 +10,7 @@ object CreateEsHttpChannel {
   val dummyHttpChannel: HttpChannel = new HttpChannel {
     override def sendResponse(response: HttpResponse, listener: ActionListener[Void]): Unit = ()
     override def getLocalAddress: InetSocketAddress = new InetSocketAddress(5000) // todo:
-    override def getRemoteAddress: InetSocketAddress = null
+    override def getRemoteAddress: InetSocketAddress = new InetSocketAddress(5000) // todo:
     override def close(): Unit = ()
     override def addCloseListener(listener: ActionListener[Void]): Unit = ()
     override def isOpen: Boolean = false

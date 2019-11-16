@@ -10,14 +10,10 @@ import monix.eval.Task
 import org.elasticsearch.action._
 import org.elasticsearch.action.support.{ActionFilter, ActionFilters, TransportAction}
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.block.ClusterBlocks
 import org.elasticsearch.cluster.node.DiscoveryNodes
-import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings}
 import org.elasticsearch.common.util.set.Sets
 import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
-import org.elasticsearch.gateway.GatewayService
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.rest.{RestRequest, RestResponse}
@@ -33,10 +29,10 @@ import tech.beshu.ror.utils.TaskOps._
 import scala.collection.JavaConverters._
 
 class EsRestServiceSimulator(simulatorEsSettings: File,
-                             proxyFilter: ProxyIndexLevelActionFilter) {
+                             proxyFilter: ProxyIndexLevelActionFilter,
+                             threadPool: ThreadPool) {
 
-  private val threadPool: ThreadPool = new ThreadPool(Settings.EMPTY)
-  private val actionModule: ActionModule = configureSimulator
+  private val actionModule: ActionModule = configureSimulator()
 
   def processRequest(request: RestRequest): Task[Result] = {
     val restChannel = new ProxyRestChannel(request)
@@ -53,46 +49,40 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       }
   }
 
-  private def configureSimulator = {
-    val xc = XContentFactory
-      .xContent(XContentType.JSON)
-      .createParser(null, null, simulatorEsSettings.contentAsString)
+  def stop(): Task[Unit] = proxyFilter.stop()
 
-    val csettings = Settings.fromXContent(xc)
-    val nc = new NodeClient(csettings, threadPool)
+  private def configureSimulator() = {
 
-    val cbs = new NoneCircuitBreakerService()
-    val us = new UsageService()
-    val cs = new ClusterSettings(csettings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS, Sets.newHashSet())
+    val settings = Settings.fromXContent(
+      XContentFactory
+        .xContent(XContentType.JSON)
+        .createParser(null, null, simulatorEsSettings.contentAsString)
+    )
+    createActionModule(settings)
+  }
 
-    val clusterService = new ClusterService(csettings, cs, threadPool)
-    clusterService
-      .getClusterApplierService
-      .setInitialState(
-        ClusterState.builder(ClusterName.CLUSTER_NAME_SETTING.get(csettings))
-          .blocks(ClusterBlocks.builder().addGlobalBlock(GatewayService.STATE_NOT_RECOVERED_BLOCK))
-          .build()
-      )
-
+  private def createActionModule(settings: Settings) = {
+    val nodeClient = new NodeClient(settings, threadPool)
     val actionModule = new ActionModule(
       false,
-      csettings,
+      settings,
       null,
       IndexScopedSettings.DEFAULT_SCOPED_SETTINGS,
-      cs,
+      new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS, Sets.newHashSet()),
       null,
       threadPool,
       Collections.emptyList(),
-      nc,
-      cbs,
-      us
+      nodeClient,
+      new NoneCircuitBreakerService(),
+      new UsageService()
     )
 
-    val afs = new ActionFilters(Set[ActionFilter](proxyFilter).asJava)
-    val tm = new TaskManager(csettings, threadPool, Set.empty[String].asJava)
-
-    nc.initialize(
-      actions(actionModule, afs, tm),
+    nodeClient.initialize(
+      actions(
+        actionModule,
+        new ActionFilters(Set[ActionFilter](proxyFilter).asJava),
+        new TaskManager(settings, threadPool, Set.empty[String].asJava)
+      ),
       null,
       null
     )
@@ -120,10 +110,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     actionHandler.getAction
   }
 
-  private def transportAction[R <: ActionRequest, RR <: ActionResponse](str: String,
-                                                                        afs: ActionFilters,
-                                                                        tm: TaskManager): TransportAction[_ <: ActionRequest, _ <: ActionResponse] =
-    new TransportAction[R, RR](str, afs, tm) {
+  private def transportAction[R <: ActionRequest, RR <: ActionResponse](actionName: String,
+                                                                        actionFilters: ActionFilters,
+                                                                        taskManager: TaskManager): TransportAction[_ <: ActionRequest, _ <: ActionResponse] =
+    new TransportAction[R, RR](actionName, actionFilters, taskManager) {
       override def doExecute(task: tasks.Task, request: R, listener: ActionListener[RR]): Unit =
         ProxyThreadRepo.getRestChannel match {
           case Some(proxyRestChannel) =>
@@ -143,12 +133,12 @@ object EsRestServiceSimulator {
     case object PassThrough extends Result
   }
 
-  def create(): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
+  def create(threadPool: ThreadPool): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFile = File(getClass.getClassLoader.getResource("elasticsearch.yml"))
     val simulatorEsSettingsFolder = simulatorEsSettingsFile.parent.path
     val result = for {
-      filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder))
-    } yield new EsRestServiceSimulator(simulatorEsSettingsFile, filter)
+      filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, threadPool))
+    } yield new EsRestServiceSimulator(simulatorEsSettingsFile, filter, threadPool)
     result.value
   }
 }

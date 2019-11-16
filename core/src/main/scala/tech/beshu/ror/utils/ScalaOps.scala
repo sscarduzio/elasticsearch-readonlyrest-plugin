@@ -146,6 +146,11 @@ object ScalaOps {
     Task.fromFuture(f)
   }
 
+  implicit def twitterFutureToIo[T](f: twitter.Future[T])
+                                   (implicit contextShift: ContextShift[IO]): IO[T] = {
+    IO.fromFuture(IO(f))
+  }
+
   implicit def taskToIo[T](t: Task[T])
                           (implicit scheduler: Scheduler,
                            contextShift: ContextShift[IO]): IO[T] = {
