@@ -67,7 +67,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       context.foreach { sslCtx =>
-        ch.pipeline().addFirst("ror_internode_ssl_handler", sslCtx.newHandler(ch.alloc()))
+        ch.pipeline().addFirst("ssl_netty4_handler", sslCtx.newHandler(ch.alloc()))
       }
     }
 
