@@ -73,6 +73,9 @@ dependencies {
     compile 'org.elasticsearch.client:elasticsearch-rest-high-level-client:' + esVersion
     compile 'org.elasticsearch.client:elasticsearch-rest-client:' + esVersion
 
+    compile 'org.jooq:joor-java-8:0.9.12'
+    compile 'org.javassist:javassist:3.26.0-GA'
+
     compile group: 'org.apache.logging.log4j',      name: 'log4j-core',                               version: '2.11.0'
 
     proxyMode group: 'org.apache.logging.log4j',       name: 'log4j-core',                               version: '2.11.0'

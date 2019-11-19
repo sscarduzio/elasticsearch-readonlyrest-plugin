@@ -24,7 +24,9 @@ object ProxyThreadRepo {
   }
 
   def getRestChannel: Option[ProxyRestChannel] = {
-    Option(threadLocalChannel.get)
+    val result = Option(threadLocalChannel.get)
+    threadLocalChannel.remove()
+    result
   }
 
   // todo: prove, that this works as expected

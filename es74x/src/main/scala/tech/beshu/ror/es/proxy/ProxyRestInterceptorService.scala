@@ -14,7 +14,7 @@ import tech.beshu.ror.utils.ScalaOps._
 class ProxyRestInterceptorService(simulator: EsRestServiceSimulator)
   extends Service[Request, Response] {
 
-  private val client: Service[Request, Response] = Http.newService("localhost:9200") // todo: configuration
+  private val client: Service[Request, Response] = Http.newService("localhost:9201") // todo: configuration
 
   override def apply(request: Request): Future[Response] = {
     simulator

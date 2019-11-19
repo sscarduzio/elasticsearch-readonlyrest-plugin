@@ -1,5 +1,5 @@
 readonlyrest:
-  enable: false
+  enable: true
 
   ssl:
     enable: true

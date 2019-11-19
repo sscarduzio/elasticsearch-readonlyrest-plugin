@@ -7,15 +7,19 @@ import better.files.File
 import cats.data.EitherT
 import com.google.common.collect.Maps
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action._
+import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
 import org.elasticsearch.action.support.{ActionFilter, ActionFilters, TransportAction}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.node.DiscoveryNodes
+import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings}
 import org.elasticsearch.common.util.set.Sets
 import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
+import org.elasticsearch.rest.action.cat.RestIndicesAction
 import org.elasticsearch.rest.{RestRequest, RestResponse}
 import org.elasticsearch.tasks
 import org.elasticsearch.tasks.TaskManager
@@ -30,7 +34,8 @@ import scala.collection.JavaConverters._
 
 class EsRestServiceSimulator(simulatorEsSettings: File,
                              proxyFilter: ProxyIndexLevelActionFilter,
-                             threadPool: ThreadPool) {
+                             threadPool: ThreadPool)
+  extends Logging {
 
   private val actionModule: ActionModule = configureSimulator()
 
@@ -62,7 +67,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
   }
 
   private def createActionModule(settings: Settings) = {
-    val nodeClient = new NodeClient(settings, threadPool)
+    val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), settings, threadPool)
     val actionModule = new ActionModule(
       false,
       settings,
@@ -119,7 +124,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
           case Some(proxyRestChannel) =>
             proxyRestChannel.passThrough()
           case None =>
-            throw new Exception("!!") //todo:
+            EsRestServiceSimulator.this.logger.warn(s"Request $request won't be executed")
         }
     }
 

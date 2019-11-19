@@ -52,7 +52,7 @@ class RegularRequestHandler(engine: Engine,
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: RestChannel,
                             threadPool: ThreadPool,
-                            emptyClusterStateResponse:  ClusterStateResponse)
+                            emptyClusterStateResponse: ClusterStateResponse)
                            (implicit scheduler: Scheduler)
   extends Logging {
 
