@@ -96,7 +96,7 @@ public class RestClient {
       headers = tmp;
     }
 
-    int timeout = 5;
+    int timeout = 30;
     builder
       .setRetryHandler(new StandardHttpRequestRetryHandler(3, true))
       .setDefaultHeaders(Lists.newArrayList(headers))
