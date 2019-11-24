@@ -49,7 +49,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
                             assertion: T => Unit,
                             aFactory: RawRorConfigBasedCoreFactory = factory(),
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(aFactory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Right(CoreSettings(acl: AccessControlList, _, _)) =>
+    inside(aFactory.createCoreFrom(rorConfigFromUnsafe(yaml), httpClientsFactory).runSyncUnsafe()) { case Right(CoreSettings(acl: AccessControlList, _, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]
@@ -61,7 +61,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
                             assertion: NonEmptyList[AclCreationError] => Unit,
                             aFactory: RawRorConfigBasedCoreFactory = factory(),
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(aFactory.createCoreFrom(rorConfigFrom(yaml), httpClientsFactory).runSyncUnsafe()) { case Left(error) =>
+    inside(aFactory.createCoreFrom(rorConfigFromUnsafe(yaml), httpClientsFactory).runSyncUnsafe()) { case Left(error) =>
       assertion(error)
     }
   }
