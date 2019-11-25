@@ -1,8 +1,9 @@
 package tech.beshu.ror.es.providers
+
 import org.elasticsearch.cluster.metadata.MetaDataIndexTemplateService
 import org.elasticsearch.cluster.service.ClusterService
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.RorClusterService.{AliasName, IndexName, IndexOrAlias, IndexPatten, IndexUuid, TemplateName}
+import tech.beshu.ror.es.RorClusterService._
 
 import scala.collection.JavaConverters._
 

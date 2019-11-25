@@ -7,6 +7,7 @@ import tech.beshu.ror.es.RorClusterService.{AliasName, IndexName, IndexOrAlias, 
 
 import scala.collection.JavaConverters._
 
+// todo: neat exception handling when ES is not available
 class EsRestClientBasedRorClusterService(client: RestHighLevelClient)
   extends RorClusterService {
 

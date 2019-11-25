@@ -17,6 +17,7 @@
 
 buildscript {
     ext {
+        // todo: to remove?
         publishedPluginVersion = rootProject.properties['pluginVersion']
         pluginVersion = rootProject.properties['pluginVersion']
         esVersion = project.properties['esVersion']
@@ -50,13 +51,17 @@ compileScala {
     targetCompatibility = 1.8
 }
 
-dependencies {
-    compile project(path: ':core')
+configurations {
+    wagon // todo: to remove?
+}
 
-    compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,             version: esVersion
-    compileClasspath    group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',         version: esVersion
-    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
-    compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.0'
+dependencies {
+    compile project(path: ':es74x')
+
+    compile           group: 'org.elasticsearch.client',        name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    compile           group: 'org.javassist',                   name: 'javassist',                              version: '3.26.0-GA'
+    compile           group: 'org.jooq',                        name: 'joor-java-8',                            version: '0.9.12'
+    compile           group: 'org.apache.logging.log4j',        name: 'log4j-core',                             version: '2.11.0'
 }
 
 license {
@@ -79,31 +84,10 @@ tasks.withType(Zip) { task ->
     }
 }
 
-configurations {
-    wagon
-    distJars {
-        extendsFrom runtime
-        exclude group: 'org.elasticsearch'
-        exclude group: 'lucene-core'
-        exclude module: 'log4j-api'
-        exclude module: 'log4j-core'
-        exclude group: 'lucene-analyzers-common'
-        exclude group: 'org.apache.commons'
-        exclude group: 'org.yaml'
-        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
-    }
-}
-
 task cleanOldData {
     doLast {
         delete 'build/tmp/' + pluginFullName
     }
-}
-
-task jarHellCheck(type: JavaExec) {
-    outputs.upToDateWhen { false }
-    main = "org.elasticsearch.bootstrap.JarHell"
-    classpath = project.sourceSets.main.compileClasspath.filter { it.exists() }
 }
 
 task configureEsVersion() {
@@ -114,26 +98,13 @@ task configureEsVersion() {
     }
 }
 
-task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) {
-    outputs.upToDateWhen { false }
-    from '../plugin-metadata'
-    into 'build/tmp/' + pluginFullName
-    expand([
-            'descriptor': [
-                    'name'         : pluginName,
-                    'pluginVersion': project.properties['pluginVersion'],
-                    'esVersion'    : project.properties['esVersion']
-            ]
-    ])
-}
-
-task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, jar, resolvePluginDescriptorTemplate]) {
-    outputs.upToDateWhen { false }
-    archivesBaseName = pluginName
-    into('.')
-            {
-                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
-                from 'build/libs/' + pluginFullName + '.jar'
-                from 'build/tmp/' + pluginFullName
-            }
+task rorproxy(type: Jar, dependsOn: [cleanOldData]) {
+    manifest {
+        attributes  'Implementation-Title': 'ReadonlyREST ES Proxy',
+                    'Implementation-Version': project.properties['pluginVersion'],
+                    'Main-Class': 'tech.beshu.ror.es.proxy.Boot'
+    }
+    baseName = project.name + '-all'
+    from { configurations.proxyMode.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
 }

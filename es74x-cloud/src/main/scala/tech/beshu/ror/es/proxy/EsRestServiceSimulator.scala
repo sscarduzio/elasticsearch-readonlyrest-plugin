@@ -7,20 +7,20 @@ import better.files.File
 import cats.data.EitherT
 import com.google.common.collect.Maps
 import monix.eval.Task
+import org.apache.http.HttpHost
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action._
-import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
+import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.action.support.{ActionFilter, ActionFilters, TransportAction}
+import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.node.DiscoveryNodes
-import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings}
 import org.elasticsearch.common.util.set.Sets
-import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
+import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory, XContentType}
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
-import org.elasticsearch.rest.action.cat.RestIndicesAction
-import org.elasticsearch.rest.{RestRequest, RestResponse}
+import org.elasticsearch.rest.{BytesRestResponse, RestRequest, RestResponse}
 import org.elasticsearch.tasks
 import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
@@ -31,12 +31,14 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 class EsRestServiceSimulator(simulatorEsSettings: File,
                              proxyFilter: ProxyIndexLevelActionFilter,
                              threadPool: ThreadPool)
   extends Logging {
 
+  private val esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create("http://localhost:9201"))) // todo: configuration
   private val actionModule: ActionModule = configureSimulator()
 
   def processRequest(request: RestRequest): Task[Result] = {
@@ -88,7 +90,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
         new ActionFilters(Set[ActionFilter](proxyFilter).asJava),
         new TaskManager(settings, threadPool, Set.empty[String].asJava)
       ),
-      null,
+      () => "ROR_proxy",
       null
     )
 
@@ -119,13 +121,25 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                                                         actionFilters: ActionFilters,
                                                                         taskManager: TaskManager): TransportAction[_ <: ActionRequest, _ <: ActionResponse] =
     new TransportAction[R, RR](actionName, actionFilters, taskManager) {
-      override def doExecute(task: tasks.Task, request: R, listener: ActionListener[RR]): Unit =
+      override def doExecute(task: tasks.Task, request: R, listener: ActionListener[RR]): Unit = {
         ProxyThreadRepo.getRestChannel match {
           case Some(proxyRestChannel) =>
-            proxyRestChannel.passThrough()
+            request match {
+              case sr: SearchRequest =>
+                Try(esClient.search(sr, RequestOptions.DEFAULT))
+                  .foreach { resp =>
+                    proxyRestChannel.sendResponse(new BytesRestResponse(
+                      resp.status(),
+                      resp.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
+                    ))
+                  }
+              case _ =>
+                proxyRestChannel.passThrough()
+            }
           case None =>
             EsRestServiceSimulator.this.logger.warn(s"Request $request won't be executed")
         }
+      }
     }
 
 }
