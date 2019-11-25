@@ -139,6 +139,8 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
     
     #es74
     ./gradlew --stacktrace es74x:rorplugin '-PesVersion=7.4.0'
+    ./gradlew --stacktrace es74x:rorplugin '-PesVersion=7.4.1'
+    ./gradlew --stacktrace es74x:rorplugin '-PesVersion=7.4.2'
 
     #es73
     ./gradlew --stacktrace es73x:rorplugin '-PesVersion=7.3.0'
@@ -171,6 +173,7 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
     ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.6.2'
     ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.7.0'
     ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.7.1'
+    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.7.2'
     ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.8.0'
     ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.8.1'
     ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.8.2'
@@ -178,7 +181,6 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
     ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.8.4'
 
     # es65
-    #./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.5.4'
     ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.5.0'
     ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.5.1'
     ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.5.2'

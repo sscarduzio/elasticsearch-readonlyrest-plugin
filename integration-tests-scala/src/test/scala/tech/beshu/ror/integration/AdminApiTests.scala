@@ -23,7 +23,7 @@ import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.AdminApiTests.{insertInIndexConfig, removeConfigIndex}
 import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster}
-import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -32,7 +32,10 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
   private val rorWithIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/admin_api/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = AdminApiTests.nodeDataInitializer())
+    clusterSettings = AdditionalClusterSettings(
+      numberOfInstances = 2,
+      nodeDataInitializer = AdminApiTests.nodeDataInitializer()
+    )
   )
 
   private val rorWithNoIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
@@ -43,7 +46,7 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
 
   override val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
 
-  private lazy val rorWithIndexConfigAdminActionManager = new ActionManagerJ(rorWithIndexConfig.nodesContainers.head.adminClient)
+  private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(rorWithIndexConfig.nodesContainers.head.adminClient)
   private lazy val rorWithNoIndexConfigAdminActionManager = new ActionManagerJ(rorWithNoIndexConfig.nodesContainers.head.adminClient)
 
   "An admin REST API" should {
@@ -107,18 +110,64 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
     "provide a method for update in-index config" which {
       "is going to reload ROR core and store new in-index config" when {
         "configuration is new and correct" in {
-          val result = rorWithIndexConfigAdminActionManager.actionPost(
-            "_readonlyrest/admin/config",
-            s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_to_update.yml"))}"}"""
-          )
-          result.getResponseCode should be(200)
-          result.getResponseJsonMap.get("status") should be("ok")
-          result.getResponseJsonMap.get("message") should be("updated settings")
+          def forceReload(rorSettingsResource: String) = {
+            val result = ror1WithIndexConfigAdminActionManager.actionPost(
+              "_readonlyrest/admin/config",
+              s"""{"settings": "${escapeJava(getResourceContent(rorSettingsResource))}"}"""
+            )
+            result.getResponseCode should be(200)
+            result.getResponseJsonMap.get("status") should be("ok")
+            result.getResponseJsonMap.get("message") should be("updated settings")  
+          }
+          
+          val dev1Ror1stInstanceSearchManager = new SearchManager(rorWithIndexConfig.nodesContainers.head.client("dev1", "test"))
+          val dev2Ror1stInstanceSearchManager = new SearchManager(rorWithIndexConfig.nodesContainers.head.client("dev2", "test"))
+          val dev1Ror2ndInstanceSearchManager = new SearchManager(rorWithIndexConfig.nodesContainers.tail.head.client("dev1", "test"))
+          val dev2Ror2ndInstanceSearchManager = new SearchManager(rorWithIndexConfig.nodesContainers.tail.head.client("dev2", "test"))
+
+          // before first reload no user can access indices 
+          val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("/test1_index/_search")
+          dev1ror1Results.responseCode should be (401)
+          val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("/test2_index/_search")
+          dev2ror1Results.responseCode should be (401)
+          val dev1ror2Results = dev1Ror2ndInstanceSearchManager.search("/test1_index/_search")
+          dev1ror2Results.responseCode should be (401)
+          val dev2ror2Results = dev2Ror2ndInstanceSearchManager.search("/test2_index/_search")
+          dev2ror2Results.responseCode should be (401)
+          
+          // first reload
+          forceReload("/admin_api/readonlyrest_first_update.yml")
+
+          // after first reload only dev1 can access indices
+          Thread.sleep(7000) // have to wait for ROR1_2 instance config reload
+          val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("/test1_index/_search")
+          dev1ror1After1stReloadResults.responseCode should be (200)
+          val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("/test2_index/_search")
+          dev2ror1After1stReloadResults.responseCode should be (401)
+          val dev1ror2After1stReloadResults = dev1Ror2ndInstanceSearchManager.search("/test1_index/_search")
+          dev1ror2After1stReloadResults.responseCode should be (200)
+          val dev2ror2After1stReloadResults = dev2Ror2ndInstanceSearchManager.search("/test2_index/_search")
+          dev2ror2After1stReloadResults.responseCode should be (401)
+
+          // second reload
+          forceReload("/admin_api/readonlyrest_second_update.yml")
+
+          // after second reload dev1 & dev2 can access indices
+          Thread.sleep(7000) // have to wait for ROR1_2 instance config reload
+          val dev1ror1After2ndReloadResults = dev1Ror1stInstanceSearchManager.search("/test1_index/_search")
+          dev1ror1After2ndReloadResults.responseCode should be (200)
+          val dev2ror1After2ndReloadResults = dev2Ror1stInstanceSearchManager.search("/test2_index/_search")
+          dev2ror1After2ndReloadResults.responseCode should be (200)
+          val dev1ror2After2ndReloadResults = dev1Ror2ndInstanceSearchManager.search("/test1_index/_search")
+          dev1ror2After2ndReloadResults.responseCode should be (200)
+          val dev2ror2After2ndReloadResults = dev2Ror2ndInstanceSearchManager.search("/test2_index/_search")
+          dev2ror2After2ndReloadResults.responseCode should be (200)
+
         }
       }
       "return info that config is up to date" when {
         "in-index config is the same as provided one" in {
-          val result = rorWithIndexConfigAdminActionManager.actionPost(
+          val result = ror1WithIndexConfigAdminActionManager.actionPost(
             "_readonlyrest/admin/config",
             s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
           )
@@ -129,9 +178,9 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
       }
       "return info that config is malformed" when {
         "invalid JSON is provided" in {
-          val result = rorWithIndexConfigAdminActionManager.actionPost(
+          val result = ror1WithIndexConfigAdminActionManager.actionPost(
             "_readonlyrest/admin/config",
-            s"${escapeJava(getResourceContent("/admin_api/readonlyrest_to_update.yml"))}"
+            s"${escapeJava(getResourceContent("/admin_api/readonlyrest_first_update.yml"))}"
           )
           result.getResponseCode should be(200)
           result.getResponseJsonMap.get("status") should be("ko")
@@ -140,7 +189,7 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
       }
       "return info that cannot reload" when {
         "ROR core cannot be reloaded" in {
-          val result = rorWithIndexConfigAdminActionManager.actionPost(
+          val result = ror1WithIndexConfigAdminActionManager.actionPost(
             "_readonlyrest/admin/config",
             s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_with_ldap.yml"))}"}"""
           )
@@ -153,7 +202,7 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
     "provide a method for fetching current in-index config" which {
       "return current config" when {
         "there is one in index" in {
-          val getIndexConfigResult = rorWithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config")
+          val getIndexConfigResult = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config")
           getIndexConfigResult.getResponseCode should be(200)
           getIndexConfigResult.getResponseJsonMap.get("status") should be("ok")
           getIndexConfigResult.getResponseJsonMap.get("message").asInstanceOf[String] should be {
@@ -174,7 +223,7 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
     }
     "provide a method for fetching current file config" which {
       "return current config" in {
-        val result = rorWithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/file")
+        val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/file")
         result.getResponseCode should be(200)
         result.getResponseJsonMap.get("status") should be("ok")
         result.getResponseJsonMap.get("message").asInstanceOf[String] should be {
@@ -192,7 +241,7 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
     )
     removeConfigIndex(new IndexManagerJ(rorWithNoIndexConfig.nodesContainers.head.adminClient))
 
-    rorWithIndexConfigAdminActionManager.actionPost(
+    ror1WithIndexConfigAdminActionManager.actionPost(
       "_readonlyrest/admin/config",
       s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
     )

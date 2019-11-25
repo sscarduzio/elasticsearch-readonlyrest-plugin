@@ -292,6 +292,7 @@ class RorInstance private(boot: ReadonlyRest,
       tryEngineReload()
         .runAsync {
           case Right(Right(_)) =>
+            scheduleIndexConfigChecking(interval)
           case Right(Left(ReloadingInProgress)) =>
             logger.debug(s"[CLUSTERWIDE SETTINGS] Reloading in progress ... skipping")
             scheduleIndexConfigChecking(interval)
