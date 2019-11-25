@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy
+package tech.beshu.ror.es.proxy.es
 
 import java.util
 
@@ -6,9 +6,8 @@ import com.twitter.finagle.http.{Method, Request, Version}
 import io.netty.handler.codec.http.HttpHeaderNames
 import io.netty.handler.codec.http.cookie.{ServerCookieDecoder, ServerCookieEncoder}
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
-import org.elasticsearch.http.{HttpRequest => EsHttpRequest, HttpResponse => EsHttpResponse}
 import org.elasticsearch.rest.{RestRequest, RestStatus}
-
+import org.elasticsearch.http.{HttpRequest => EsHttpRequest, HttpResponse => EsHttpResponse}
 import scala.collection.JavaConverters._
 
 object CreateEsHttpRequest {

@@ -1,14 +1,17 @@
-package tech.beshu.ror.es.proxy
+package tech.beshu.ror.es.proxy.providers
 
+import monix.execution.Scheduler
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
-import org.elasticsearch.client.{RequestOptions, RestHighLevelClient}
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.RorClusterService.{AliasName, IndexName, IndexOrAlias, IndexPatten, IndexUuid, TemplateName}
+import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.proxy.es.RestHighLevelClientAdapter
 
 import scala.collection.JavaConverters._
 
-// todo: neat exception handling when ES is not available
-class EsRestClientBasedRorClusterService(client: RestHighLevelClient)
+// todo: implement
+// todo: we need to refactor ROR to be able to use here async API
+class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
+                                        (implicit scheduler: Scheduler)
   extends RorClusterService {
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = ???
@@ -17,12 +20,9 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClient)
 
   override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
     client
-      .indices()
-      .getAlias(new GetAliasesRequest(), RequestOptions.DEFAULT)
-      .getAliases
-      .asScala
-      .toMap
-      .mapValues(_.asScala.map(_.alias()).toSet)
+      .getAlias(new GetAliasesRequest())
+      .map(_.getAliases.asScala.toMap.mapValues(_.asScala.map(_.alias()).toSet))
+      .runSyncUnsafe()
   }
 
   override def findTemplatesOfIndices(indices: Set[IndexName]): Set[IndexName] = ???

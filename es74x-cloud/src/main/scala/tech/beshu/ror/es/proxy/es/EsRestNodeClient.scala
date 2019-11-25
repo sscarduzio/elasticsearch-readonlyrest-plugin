@@ -1,9 +1,11 @@
-package tech.beshu.ror.es.proxy
+package tech.beshu.ror.es.proxy.es
 
 import java.util
 import java.util.function.Supplier
 
+import monix.execution.Scheduler
 import org.apache.http.HttpHost
+import org.elasticsearch.action._
 import org.elasticsearch.action.admin.cluster.allocation.{ClusterAllocationExplainRequest, ClusterAllocationExplainRequestBuilder, ClusterAllocationExplainResponse}
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthRequestBuilder, ClusterHealthResponse}
 import org.elasticsearch.action.admin.cluster.node.hotthreads.{NodesHotThreadsRequest, NodesHotThreadsRequestBuilder, NodesHotThreadsResponse}
@@ -55,7 +57,7 @@ import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, 
 import org.elasticsearch.action.admin.indices.settings.put.{UpdateSettingsRequest, UpdateSettingsRequestBuilder}
 import org.elasticsearch.action.admin.indices.shards.{IndicesShardStoreRequestBuilder, IndicesShardStoresRequest, IndicesShardStoresResponse}
 import org.elasticsearch.action.admin.indices.shrink.{ResizeRequest, ResizeRequestBuilder, ResizeResponse}
-import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsRequestBuilder, IndicesStatsResponse, ShardStats}
+import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsRequestBuilder, IndicesStatsResponse}
 import org.elasticsearch.action.admin.indices.template.delete.{DeleteIndexTemplateRequest, DeleteIndexTemplateRequestBuilder}
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesRequestBuilder, GetIndexTemplatesResponse}
 import org.elasticsearch.action.admin.indices.template.put.{PutIndexTemplateRequest, PutIndexTemplateRequestBuilder}
@@ -63,12 +65,8 @@ import org.elasticsearch.action.admin.indices.upgrade.get.{UpgradeStatusRequest,
 import org.elasticsearch.action.admin.indices.upgrade.post.{UpgradeRequest, UpgradeRequestBuilder, UpgradeResponse}
 import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryRequest, ValidateQueryRequestBuilder, ValidateQueryResponse}
 import org.elasticsearch.action.ingest._
-import org.elasticsearch.action.support.{DefaultShardOperationFailedException, TransportAction}
+import org.elasticsearch.action.support.TransportAction
 import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.action._
-import org.elasticsearch.client.ccr.CcrStatsRequest
-import org.elasticsearch.client.core.CountRequest
-import org.elasticsearch.client.core.CountResponse.ShardStats
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.client.{SyncedFlushResponse => _, _}
 import org.elasticsearch.cluster.{ClusterName, ClusterState}
@@ -80,23 +78,21 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import org.joor.Reflect._
 
-import scala.util.Try
-
 class EsRestNodeClient(underlying: NodeClient,
+                       esClient: RestHighLevelClientAdapter,
                        settings: Settings,
                        threadPool: ThreadPool)
+                      (implicit scheduler: Scheduler)
   extends NodeClient(settings, threadPool) {
 
-  private val esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create("http://localhost:9201"))) // todo: configuration
-
-  private val customAdminClient2 = new AdminClient {
+  private val customAdminClient = new AdminClient {
     override def cluster(): ClusterAdminClient = new ClusterAdminClient {
       override def health(request: ClusterHealthRequest): ActionFuture[ClusterHealthResponse] = ???
 
       override def health(request: ClusterHealthRequest, listener: ActionListener[ClusterHealthResponse]): Unit = {
-        Try(esClient.cluster().health(request, RequestOptions.DEFAULT))
-          .map(listener.onResponse)
-          .recover { case ex: Exception => listener.onFailure(ex) }
+        esClient
+          .health(request)
+          .runAsync(handleResultUsing(listener))
       }
 
       override def prepareHealth(indices: String*): ClusterHealthRequestBuilder = ???
@@ -104,6 +100,7 @@ class EsRestNodeClient(underlying: NodeClient,
       override def state(request: ClusterStateRequest): ActionFuture[ClusterStateResponse] = ???
 
       override def state(request: ClusterStateRequest, listener: ActionListener[ClusterStateResponse]): Unit = {
+        // todo: implement properly
         listener.onResponse(new ClusterStateResponse(
           ClusterName.DEFAULT,
           ClusterState.EMPTY_STATE,
@@ -313,6 +310,7 @@ class EsRestNodeClient(underlying: NodeClient,
 
       override def threadPool(): ThreadPool = ???
     }
+
     override def indices(): IndicesAdminClient = new IndicesAdminClient {
       override def exists(request: IndicesExistsRequest): ActionFuture[IndicesExistsResponse] = ???
 
@@ -329,21 +327,9 @@ class EsRestNodeClient(underlying: NodeClient,
       override def stats(request: IndicesStatsRequest): ActionFuture[IndicesStatsResponse] = ???
 
       override def stats(request: IndicesStatsRequest, listener: ActionListener[IndicesStatsResponse]): Unit = {
-        Try(esClient.count(new CountRequest(), RequestOptions.DEFAULT))
-          .map { resp =>
-            // todo: better implementation needed
-            val response = onClass(classOf[IndicesStatsResponse])
-              .create(
-                new Array[org.elasticsearch.action.admin.indices.stats.ShardStats](0),
-                new Integer(resp.getTotalShards),
-                resp.getSuccessfulShards.asInstanceOf[Integer],
-                resp.getFailedShards.asInstanceOf[Integer],
-                new util.ArrayList[DefaultShardOperationFailedException]()
-              )
-              .get[IndicesStatsResponse]()
-            listener.onResponse(response)
-          }
-          .recover { case ex: Exception => listener.onFailure(ex) }
+        esClient
+          .stats(request)
+          .runAsync(handleResultUsing(listener))
       }
 
       override def prepareStats(indices: String*): IndicesStatsRequestBuilder = ???
@@ -515,9 +501,9 @@ class EsRestNodeClient(underlying: NodeClient,
       override def prepareValidateQuery(indices: String*): ValidateQueryRequestBuilder = ???
 
       override def getSettings(request: GetSettingsRequest, listener: ActionListener[GetSettingsResponse]): Unit = {
-        Try(esClient.indices().getSettings(request, RequestOptions.DEFAULT))
-          .map(listener.onResponse)
-          .recover { case ex: Exception => listener.onFailure(ex) }
+        esClient
+          .getSettings(request)
+          .runAsync(handleResultUsing(listener))
       }
 
       override def getSettings(request: GetSettingsRequest): ActionFuture[GetSettingsResponse] = ???
@@ -543,22 +529,7 @@ class EsRestNodeClient(underlying: NodeClient,
       override def threadPool(): ThreadPool = ???
     }
   }
-  on(this).set("rorAdmin", customAdminClient2)
-
-//  AccessControllerHelper.doPrivileged {
-//    on(this).set("admin", null)
-//  }
-//  AccessControllerHelper.doPrivileged {
-//    val field = ReflecUtils.getFieldOf(this.getClass, Modifier.PRIVATE & Modifier.PRIVATE, "admin")
-//    field.setAccessible(true)
-//    field.setAccessible(true)
-//
-//    val modifiersField = classOf[Field].getDeclaredField("modifiers")
-//    modifiersField.setAccessible(true)
-//    modifiersField.setInt(field, field.getModifiers & ~Modifier.FINAL)
-//
-//    field.set(this, null)
-//  }
+  on(this).set("rorAdmin", customAdminClient)
 
   override def initialize(actions: util.Map[ActionType[_ <: ActionResponse], TransportAction[_ <: ActionRequest, _ <: ActionResponse]],
                           localNodeId: Supplier[String],
@@ -594,6 +565,13 @@ class EsRestNodeClient(underlying: NodeClient,
 
   override def getRemoteClusterClient(clusterAlias: String): Client = {
     super.getRemoteClusterClient(clusterAlias)
+  }
+
+  private def handleResultUsing[T](listener: ActionListener[T])
+                                  (result: Either[Throwable, T]): Unit = result match {
+    case Right(response) => listener.onResponse(response)
+    case Left(ex: Exception) => listener.onFailure(ex)
+    case Left(ex: Throwable) => listener.onFailure(new RuntimeException(ex))
   }
 
 }

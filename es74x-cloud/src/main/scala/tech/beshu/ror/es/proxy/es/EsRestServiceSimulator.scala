@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy
+package tech.beshu.ror.es.proxy.es
 
 import java.util
 import java.util.Collections
@@ -7,17 +7,16 @@ import better.files.File
 import cats.data.EitherT
 import com.google.common.collect.Maps
 import monix.eval.Task
-import org.apache.http.HttpHost
+import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action._
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.action.support.{ActionFilter, ActionFilters, TransportAction}
-import org.elasticsearch.client.{RequestOptions, RestClient, RestHighLevelClient}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings}
 import org.elasticsearch.common.util.set.Sets
-import org.elasticsearch.common.xcontent.{ToXContent, XContentFactory, XContentType}
+import org.elasticsearch.common.xcontent.{StatusToXContentObject, ToXContent, XContentFactory, XContentType}
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.rest.{BytesRestResponse, RestRequest, RestResponse}
@@ -26,19 +25,19 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
-import tech.beshu.ror.es.proxy.EsRestServiceSimulator.Result
+import tech.beshu.ror.es.proxy.es.EsRestServiceSimulator.Result
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 class EsRestServiceSimulator(simulatorEsSettings: File,
                              proxyFilter: ProxyIndexLevelActionFilter,
+                             esClient: RestHighLevelClientAdapter,
                              threadPool: ThreadPool)
+                            (implicit scheduler: Scheduler)
   extends Logging {
 
-  private val esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create("http://localhost:9201"))) // todo: configuration
   private val actionModule: ActionModule = configureSimulator()
 
   def processRequest(request: RestRequest): Task[Result] = {
@@ -69,7 +68,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
   }
 
   private def createActionModule(settings: Settings) = {
-    val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), settings, threadPool)
+    val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), esClient, settings, threadPool)
     val actionModule = new ActionModule(
       false,
       settings,
@@ -126,13 +125,9 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
           case Some(proxyRestChannel) =>
             request match {
               case sr: SearchRequest =>
-                Try(esClient.search(sr, RequestOptions.DEFAULT))
-                  .foreach { resp =>
-                    proxyRestChannel.sendResponse(new BytesRestResponse(
-                      resp.status(),
-                      resp.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
-                    ))
-                  }
+                esClient
+                  .search(sr)
+                  .foreach(sendResponseThroughChannel(proxyRestChannel, _))
               case _ =>
                 proxyRestChannel.passThrough()
             }
@@ -142,6 +137,13 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       }
     }
 
+  private def sendResponseThroughChannel(proxyRestChannel: ProxyRestChannel,
+                                         response: StatusToXContentObject): Unit = {
+    proxyRestChannel.sendResponse(new BytesRestResponse(
+      response.status(),
+      response.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
+    ))
+  }
 }
 
 object EsRestServiceSimulator {
@@ -152,12 +154,14 @@ object EsRestServiceSimulator {
     case object PassThrough extends Result
   }
 
-  def create(threadPool: ThreadPool): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
+  def create(esClient: RestHighLevelClientAdapter,
+             threadPool: ThreadPool)
+            (implicit scheduler: Scheduler): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFile = File(getClass.getClassLoader.getResource("elasticsearch.yml"))
     val simulatorEsSettingsFolder = simulatorEsSettingsFile.parent.path
     val result = for {
-      filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, threadPool))
-    } yield new EsRestServiceSimulator(simulatorEsSettingsFile, filter, threadPool)
+      filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool))
+    } yield new EsRestServiceSimulator(simulatorEsSettingsFile, filter, esClient, threadPool)
     result.value
   }
 }

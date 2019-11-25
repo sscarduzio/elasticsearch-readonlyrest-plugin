@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy
+package tech.beshu.ror.es.proxy.providers
 
 import java.util
 

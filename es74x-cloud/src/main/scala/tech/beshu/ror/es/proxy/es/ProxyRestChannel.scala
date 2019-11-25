@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy
+package tech.beshu.ror.es.proxy.es
 
 import monix.eval.Task
 import org.elasticsearch.common.io.stream.BytesStreamOutput
@@ -9,7 +9,7 @@ import scala.concurrent.Promise
 
 class ProxyRestChannel(restRequest: RestRequest) extends RestChannel {
 
-  // todo: think if we are always be able to complete it
+  // todo: think if we are always be able to complete it (maybe timeout is needed here?)
   private val resultPromise = Promise[EsRestServiceSimulator.Result]()
 
   def result: Task[EsRestServiceSimulator.Result] = Task.fromFuture(resultPromise.future)

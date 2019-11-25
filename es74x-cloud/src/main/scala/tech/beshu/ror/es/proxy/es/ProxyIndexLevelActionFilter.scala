@@ -1,14 +1,12 @@
-package tech.beshu.ror.es.proxy
+package tech.beshu.ror.es.proxy.es
 
 import java.nio.file.Path
 
 import cats.data.EitherT
 import monix.eval.{Task => MTask}
-import monix.execution.Scheduler.Implicits.global
-import org.apache.http.HttpHost
+import monix.execution.Scheduler
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
-import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
@@ -16,7 +14,8 @@ import tech.beshu.ror.SecurityPermissionException
 import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, StartingFailure}
-import tech.beshu.ror.es.proxy.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
+import tech.beshu.ror.es.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
+import tech.beshu.ror.es.proxy.providers.{EsRestClientBasedRorClusterService, ProxyAuditSink, ProxyIndexJsonContentManager}
 import tech.beshu.ror.es.request.RequestInfo
 import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
@@ -25,10 +24,11 @@ import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
 import scala.util.{Failure, Success, Try}
 
 class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
+                                          esClient: RestHighLevelClientAdapter,
                                           threadPool: ThreadPool)
+                                         (implicit scheduler: Scheduler)
   extends ActionFilter {
 
-  private val esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create("http://localhost:9201"))) // todo: configuration
   private val rorClusterService = new EsRestClientBasedRorClusterService(esClient)
 
   override def order(): Int = 0
@@ -90,10 +90,12 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
 object ProxyIndexLevelActionFilter {
 
   def create(configFile: Path,
-             threadPool: ThreadPool): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
+             esClient: RestHighLevelClientAdapter,
+             threadPool: ThreadPool)
+            (implicit scheduler: Scheduler): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
     val result = for {
       instance <- EitherT(Ror.start(configFile, ProxyAuditSink, ProxyIndexJsonContentManager))
-    } yield new ProxyIndexLevelActionFilter(instance, threadPool)
+    } yield new ProxyIndexLevelActionFilter(instance, esClient, threadPool)
     result.value
   }
 

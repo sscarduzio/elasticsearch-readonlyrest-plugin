@@ -1,17 +1,19 @@
-package tech.beshu.ror.es.proxy
+package tech.beshu.ror.es.proxy.server
 
 import com.twitter.finagle.http.{Request, Response, Status, Version}
 import com.twitter.finagle.{Http, Service}
 import com.twitter.io.InputStreamReader
 import com.twitter.util.Future
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.rest.{RestRequest => EsRestRequest, RestResponse => EsRestResponse}
-import tech.beshu.ror.es.proxy.EsRestServiceSimulator.Result
+import tech.beshu.ror.es.proxy.es.{CreateEsHttpChannel, CreateEsHttpRequest, EsRestServiceSimulator}
+import tech.beshu.ror.es.proxy.es.EsRestServiceSimulator.Result
 import tech.beshu.ror.utils.ScalaOps._
 
 class ProxyRestInterceptorService(simulator: EsRestServiceSimulator)
+                                 (implicit scheduler: Scheduler)
   extends Service[Request, Response] {
 
   private val client: Service[Request, Response] = Http.newService("localhost:9201") // todo: configuration
