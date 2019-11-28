@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy.providers
+package tech.beshu.ror.proxy.es.providers
 
 import tech.beshu.ror.es.AuditSink
 

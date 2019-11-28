@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy.es
+package tech.beshu.ror.proxy.es
 
 import monix.eval.Task
 import org.elasticsearch.common.io.stream.BytesStreamOutput
@@ -10,9 +10,9 @@ import scala.concurrent.Promise
 class ProxyRestChannel(restRequest: RestRequest) extends RestChannel {
 
   // todo: think if we are always be able to complete it (maybe timeout is needed here?)
-  private val resultPromise = Promise[EsRestServiceSimulator.Result]()
+  private val resultPromise = Promise[EsRestServiceSimulator.ProcessingResult]()
 
-  def result: Task[EsRestServiceSimulator.Result] = Task.fromFuture(resultPromise.future)
+  def result: Task[EsRestServiceSimulator.ProcessingResult] = Task.fromFuture(resultPromise.future)
 
   override def newBuilder(): XContentBuilder =
     XContentBuilder.builder(XContentFactory.xContent(XContentType.JSON))
@@ -35,10 +35,10 @@ class ProxyRestChannel(restRequest: RestRequest) extends RestChannel {
   override def detailedErrorsEnabled(): Boolean = true
 
   override def sendResponse(response: RestResponse): Unit = {
-    resultPromise.trySuccess(EsRestServiceSimulator.Result.Response(response))
+    resultPromise.trySuccess(EsRestServiceSimulator.ProcessingResult.Response(response))
   }
 
   def passThrough(): Unit = {
-    resultPromise.trySuccess(EsRestServiceSimulator.Result.PassThrough)
+    resultPromise.trySuccess(EsRestServiceSimulator.ProcessingResult.PassThrough)
   }
 }

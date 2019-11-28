@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy.es
+package tech.beshu.ror.proxy.es
 
 object ProxyThreadRepo {
   private val threadLocalChannel = new ThreadLocal[ProxyRestChannel]
@@ -13,7 +13,7 @@ object ProxyThreadRepo {
     result
   }
 
-  // todo: prove, that this works as expected
+  // todo: prove, that this works as expected (many, concurrent requests check)
   def clearRestChannel(): Unit = {
     threadLocalChannel.remove()
   }

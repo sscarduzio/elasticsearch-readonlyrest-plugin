@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy.server
+package tech.beshu.ror.proxy.server
 
 import com.twitter.finagle.http.{Request, Response, Status, Version}
 import com.twitter.finagle.{Http, Service}
@@ -8,8 +8,8 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.rest.{RestRequest => EsRestRequest, RestResponse => EsRestResponse}
-import tech.beshu.ror.es.proxy.es.{CreateEsHttpChannel, CreateEsHttpRequest, EsRestServiceSimulator}
-import tech.beshu.ror.es.proxy.es.EsRestServiceSimulator.Result
+import tech.beshu.ror.proxy.es.{CreateEsHttpChannel, CreateEsHttpRequest, EsRestServiceSimulator}
+import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.utils.ScalaOps._
 
 class ProxyRestInterceptorService(simulator: EsRestServiceSimulator)
@@ -22,9 +22,9 @@ class ProxyRestInterceptorService(simulator: EsRestServiceSimulator)
     simulator
       .processRequest(toEsRequest(request))
       .flatMap {
-        case Result.Response(response) =>
+        case ProcessingResult.Response(response) =>
           Task.now(fromEsResponse(request.version, response))
-        case Result.PassThrough =>
+        case ProcessingResult.PassThrough =>
           client.apply(request)
       }
   }

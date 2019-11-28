@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy.es
+package tech.beshu.ror.proxy.es
 
 import java.util
 import java.util.Collections
@@ -10,7 +10,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action._
-import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.action.support.{ActionFilter, ActionFilters, TransportAction}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.node.DiscoveryNodes
@@ -25,7 +24,9 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
-import tech.beshu.ror.es.proxy.es.EsRestServiceSimulator.Result
+import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
+import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
+import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
@@ -34,13 +35,14 @@ import scala.collection.JavaConverters._
 class EsRestServiceSimulator(simulatorEsSettings: File,
                              proxyFilter: ProxyIndexLevelActionFilter,
                              esClient: RestHighLevelClientAdapter,
+                             esActionRequestHandler: EsActionRequestHandler,
                              threadPool: ThreadPool)
                             (implicit scheduler: Scheduler)
   extends Logging {
 
   private val actionModule: ActionModule = configureSimulator()
 
-  def processRequest(request: RestRequest): Task[Result] = {
+  def processRequest(request: RestRequest): Task[ProcessingResult] = {
     val restChannel = new ProxyRestChannel(request)
     val threadContext = threadPool.getThreadContext
     threadContext.stashContext.bracket { _ =>
@@ -123,14 +125,12 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       override def doExecute(task: tasks.Task, request: R, listener: ActionListener[RR]): Unit = {
         ProxyThreadRepo.getRestChannel match {
           case Some(proxyRestChannel) =>
-            request match {
-              case sr: SearchRequest =>
-                esClient
-                  .search(sr)
-                  .foreach(sendResponseThroughChannel(proxyRestChannel, _))
-              case _ =>
-                proxyRestChannel.passThrough()
-            }
+            esActionRequestHandler
+              .handle(request)
+              .foreach {
+                case HandlingResult.Handled(response) => sendResponseThroughChannel(proxyRestChannel, response)
+                case HandlingResult.PassItThrough => proxyRestChannel.passThrough()
+              }
           case None =>
             EsRestServiceSimulator.this.logger.warn(s"Request $request won't be executed")
         }
@@ -148,10 +148,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
 
 object EsRestServiceSimulator {
 
-  sealed trait Result
-  object Result {
-    final case class Response(restResponse: RestResponse) extends Result
-    case object PassThrough extends Result
+  sealed trait ProcessingResult
+  object ProcessingResult {
+    final case class Response(restResponse: RestResponse) extends ProcessingResult
+    case object PassThrough extends ProcessingResult
   }
 
   def create(esClient: RestHighLevelClientAdapter,
@@ -159,9 +159,10 @@ object EsRestServiceSimulator {
             (implicit scheduler: Scheduler): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFile = File(getClass.getClassLoader.getResource("elasticsearch.yml"))
     val simulatorEsSettingsFolder = simulatorEsSettingsFile.parent.path
+    val esActionRequestHandler = new EsActionRequestHandler(esClient)
     val result = for {
       filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool))
-    } yield new EsRestServiceSimulator(simulatorEsSettingsFile, filter, esClient, threadPool)
+    } yield new EsRestServiceSimulator(simulatorEsSettingsFile, filter, esClient, esActionRequestHandler, threadPool)
     result.value
   }
 }

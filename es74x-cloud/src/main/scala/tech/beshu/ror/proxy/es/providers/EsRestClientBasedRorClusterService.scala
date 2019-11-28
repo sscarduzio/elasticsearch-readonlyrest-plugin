@@ -1,10 +1,10 @@
-package tech.beshu.ror.es.proxy.providers
+package tech.beshu.ror.proxy.es.providers
 
 import monix.execution.Scheduler
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
-import tech.beshu.ror.es.proxy.es.RestHighLevelClientAdapter
+import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 
 import scala.collection.JavaConverters._
 

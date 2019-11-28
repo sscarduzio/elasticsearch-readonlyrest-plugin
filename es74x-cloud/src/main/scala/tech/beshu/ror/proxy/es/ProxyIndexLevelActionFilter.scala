@@ -1,4 +1,4 @@
-package tech.beshu.ror.es.proxy.es
+package tech.beshu.ror.proxy.es
 
 import java.nio.file.Path
 
@@ -14,12 +14,13 @@ import tech.beshu.ror.SecurityPermissionException
 import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, StartingFailure}
-import tech.beshu.ror.es.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
-import tech.beshu.ror.es.proxy.providers.{EsRestClientBasedRorClusterService, ProxyAuditSink, ProxyIndexJsonContentManager}
 import tech.beshu.ror.es.request.RequestInfo
 import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
+import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
+import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
+import tech.beshu.ror.proxy.es.providers.{EsRestClientBasedRorClusterService, ProxyAuditSink, ProxyIndexJsonContentManager}
 
 import scala.util.{Failure, Success, Try}
 
