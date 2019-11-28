@@ -89,11 +89,19 @@ object parser {
 
     def convertKeyNode(node: Node) = node match {
       case scalar: ScalarNode => Right(scalar.getValue)
-      case _ => Left(ParsingFailure("Only string keys can be represented in JSON", null))
+      case _ =>
+        val message = "Only string keys can be represented in JSON"
+        Left(ParsingFailure(message, YamlParserException(message)))
     }
 
     def checkDuplicates(jsonObject: JsonObject, key: String): Either[ParsingFailure, String] = {
-      Either.cond(!jsonObject.contains(key), key, ParsingFailure(s"Duplicated key: '$key'", null))
+      Either.cond(
+        test = !jsonObject.contains(key),
+        right = key,
+        left = {
+          val message = s"Duplicated key: '$key'"
+          ParsingFailure(message, YamlParserException(message))
+        })
     }
 
     if (node == null) {
@@ -123,4 +131,6 @@ object parser {
       }
     }
   }
+
+  final case class YamlParserException(message: String) extends Exception
 }
