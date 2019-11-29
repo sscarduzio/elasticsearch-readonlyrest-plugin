@@ -48,7 +48,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
   "A RorAclFactory" should {
     "return proxy auth configs error" when {
       "the section exists, but not contain any element" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -65,7 +65,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(Message("proxy_auth_configs declared, but no definition found")))))
       }
       "the section contains proxies with the same names" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -88,7 +88,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(DefinitionsLevelCreationError(Message("proxy_auth_configs definitions must have unique identifiers. Duplicates: proxy1")))))
       }
       "proxy definition has no name" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -112,7 +112,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         )))))
       }
       "proxy definition has no user id" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -133,7 +133,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
     }
     "return headers list" when {
       "the section is not defined" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -149,7 +149,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         obfuscatedHeaders shouldEqual Set(Header.Name.authorization)
       }
       "the section exists, and obfuscated header is not defined" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -166,7 +166,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         headers shouldBe 'empty
       }
       "the section exists, and obfuscated header is defined" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -187,7 +187,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
     }
     "return blocks level error" when {
       "there is no `access_control_rules` section" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -204,7 +204,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"No access_control_rules section found")))))
       }
       "there is `access_control_rules` section defined, but without any block" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -223,7 +223,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"access_control_rules defined, but no block found")))))
       }
       "two blocks has the same names" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -236,12 +236,19 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |    type: allow
             |    auth_key: admin:container
             |
+            |  - name: test_block2
+            |    auth_key: admin:container
+            |
+            |  - name: test_block2
+            |    type: allow
+            |    auth_key: admin:container
+            |
             |""".stripMargin)
         val acl = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
-        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: test_block")))))
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message(s"Blocks must have unique names. Duplicates: test_block,test_block2")))))
       }
       "block has no name" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -259,7 +266,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         )))))
       }
       "block has unknown type" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -274,7 +281,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown block policy type: unknown")))))
       }
       "block has unknown verbosity" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -289,7 +296,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("Unknown verbosity value: unknown")))))
       }
       "block has authorization rule, but no authentication rule" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -314,7 +321,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule.")))))
       }
       "block has kibana access rule together with actions rule" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -328,7 +335,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block.")))))
       }
       "block uses user variable without defining authentication rule beforehand" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -343,7 +350,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
     }
     "return rule level error" when {
       "no rules are defined in block" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -357,7 +364,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         acl should be(Left(NonEmptyList.one(RulesLevelCreationError(Message("No rules defined in block")))))
       }
       "block has unknown rules" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -373,7 +380,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
       }
     }
     "return ACL with blocks defined in config" in {
-      val config = rorConfigFrom(
+      val config = rorConfigFromUnsafe(
         """
           |readonlyrest:
           |
@@ -409,7 +416,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
 
     "return ACL with blocks defined in config" when {
       "each block meets requirements for variables" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
