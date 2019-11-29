@@ -1,3 +1,6 @@
+/*
+ *     Beshu Limited all rights reserved
+ */
 package tech.beshu.ror.proxy.server
 
 import com.twitter.finagle.http.{Request, Response, Status, Version}
@@ -16,7 +19,7 @@ class ProxyRestInterceptorService(simulator: EsRestServiceSimulator)
                                  (implicit scheduler: Scheduler)
   extends Service[Request, Response] {
 
-  private val client: Service[Request, Response] = Http.newService("localhost:9201") // todo: configuration
+  private val client: Service[Request, Response] = Http.newService("localhost:9200") // todo: configuration
 
   override def apply(request: Request): Future[Response] = {
     simulator

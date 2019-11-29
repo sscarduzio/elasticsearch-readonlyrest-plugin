@@ -65,7 +65,7 @@ dependencies {
 }
 
 license {
-    header rootProject.file('ReadonlyRESTLicenseHeader.txt')
+    header rootProject.file('BeshuLimitedLicenseHeader.txt')
     skipExistingHeaders true
     useDefaultMappings = false
     mapping {

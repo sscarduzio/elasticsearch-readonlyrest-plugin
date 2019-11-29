@@ -1,3 +1,6 @@
+/*
+ *     Beshu Limited all rights reserved
+ */
 package tech.beshu.ror.proxy
 
 import cats.data.EitherT
@@ -57,7 +60,7 @@ object Boot extends IOApp with Logging {
   }
 
   private def createEsHighLevelClient() = {
-    new RestHighLevelClient(RestClient.builder(HttpHost.create("http://localhost:9201"))) // todo: from config
+    new RestHighLevelClient(RestClient.builder(HttpHost.create("http://localhost:9200"))) // todo: from config
   }
 
   private type CloseHandler = () => IO[Unit]
