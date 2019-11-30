@@ -8,6 +8,7 @@ import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
+import tech.beshu.ror.proxy.es.exceptions.NotDefinedForRorProxy
 
 import scala.collection.JavaConverters._
 
@@ -17,9 +18,9 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
                                         (implicit scheduler: Scheduler)
   extends RorClusterService {
 
-  override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = ???
+  override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = throw NotDefinedForRorProxy
 
-  override def allIndices: Set[IndexName] = ???
+  override def allIndices: Set[IndexName] = throw NotDefinedForRorProxy
 
   override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
     client
@@ -28,7 +29,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .runSyncUnsafe()
   }
 
-  override def findTemplatesOfIndices(indices: Set[IndexName]): Set[IndexName] = ???
+  override def findTemplatesOfIndices(indices: Set[IndexName]): Set[IndexName] = throw NotDefinedForRorProxy
 
-  override def getTemplatesWithPatterns: Map[TemplateName, Set[IndexPatten]] = ???
+  override def getTemplatesWithPatterns: Map[TemplateName, Set[IndexPatten]] = throw NotDefinedForRorProxy
 }

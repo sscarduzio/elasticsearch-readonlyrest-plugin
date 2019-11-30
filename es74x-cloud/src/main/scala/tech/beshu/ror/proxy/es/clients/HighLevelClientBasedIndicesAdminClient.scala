@@ -39,24 +39,25 @@ import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.action._
 import org.elasticsearch.client.IndicesAdminClient
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.proxy.es.exceptions.NotDefinedForRorProxy
 
 class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapter)
                                             (implicit scheduler: Scheduler)
   extends IndicesAdminClient  {
 
-  override def exists(request: IndicesExistsRequest): ActionFuture[IndicesExistsResponse] = ???
+  override def exists(request: IndicesExistsRequest): ActionFuture[IndicesExistsResponse] = throw NotDefinedForRorProxy
 
-  override def exists(request: IndicesExistsRequest, listener: ActionListener[IndicesExistsResponse]): Unit = ???
+  override def exists(request: IndicesExistsRequest, listener: ActionListener[IndicesExistsResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareExists(indices: String*): IndicesExistsRequestBuilder = ???
+  override def prepareExists(indices: String*): IndicesExistsRequestBuilder = throw NotDefinedForRorProxy
 
-  override def typesExists(request: TypesExistsRequest): ActionFuture[TypesExistsResponse] = ???
+  override def typesExists(request: TypesExistsRequest): ActionFuture[TypesExistsResponse] = throw NotDefinedForRorProxy
 
-  override def typesExists(request: TypesExistsRequest, listener: ActionListener[TypesExistsResponse]): Unit = ???
+  override def typesExists(request: TypesExistsRequest, listener: ActionListener[TypesExistsResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareTypesExists(index: String*): TypesExistsRequestBuilder = ???
+  override def prepareTypesExists(index: String*): TypesExistsRequestBuilder = throw NotDefinedForRorProxy
 
-  override def stats(request: IndicesStatsRequest): ActionFuture[IndicesStatsResponse] = ???
+  override def stats(request: IndicesStatsRequest): ActionFuture[IndicesStatsResponse] = throw NotDefinedForRorProxy
 
   override def stats(request: IndicesStatsRequest, listener: ActionListener[IndicesStatsResponse]): Unit = {
     esClient
@@ -64,173 +65,173 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
       .runAsync(handleResultUsing(listener))
   }
 
-  override def prepareStats(indices: String*): IndicesStatsRequestBuilder = ???
+  override def prepareStats(indices: String*): IndicesStatsRequestBuilder = throw NotDefinedForRorProxy
 
-  override def recoveries(request: RecoveryRequest): ActionFuture[RecoveryResponse] = ???
+  override def recoveries(request: RecoveryRequest): ActionFuture[RecoveryResponse] = throw NotDefinedForRorProxy
 
-  override def recoveries(request: RecoveryRequest, listener: ActionListener[RecoveryResponse]): Unit = ???
+  override def recoveries(request: RecoveryRequest, listener: ActionListener[RecoveryResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareRecoveries(indices: String*): RecoveryRequestBuilder = ???
+  override def prepareRecoveries(indices: String*): RecoveryRequestBuilder = throw NotDefinedForRorProxy
 
-  override def segments(request: IndicesSegmentsRequest): ActionFuture[IndicesSegmentResponse] = ???
+  override def segments(request: IndicesSegmentsRequest): ActionFuture[IndicesSegmentResponse] = throw NotDefinedForRorProxy
 
-  override def segments(request: IndicesSegmentsRequest, listener: ActionListener[IndicesSegmentResponse]): Unit = ???
+  override def segments(request: IndicesSegmentsRequest, listener: ActionListener[IndicesSegmentResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareSegments(indices: String*): IndicesSegmentsRequestBuilder = ???
+  override def prepareSegments(indices: String*): IndicesSegmentsRequestBuilder = throw NotDefinedForRorProxy
 
-  override def shardStores(request: IndicesShardStoresRequest): ActionFuture[IndicesShardStoresResponse] = ???
+  override def shardStores(request: IndicesShardStoresRequest): ActionFuture[IndicesShardStoresResponse] = throw NotDefinedForRorProxy
 
-  override def shardStores(request: IndicesShardStoresRequest, listener: ActionListener[IndicesShardStoresResponse]): Unit = ???
+  override def shardStores(request: IndicesShardStoresRequest, listener: ActionListener[IndicesShardStoresResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareShardStores(indices: String*): IndicesShardStoreRequestBuilder = ???
+  override def prepareShardStores(indices: String*): IndicesShardStoreRequestBuilder = throw NotDefinedForRorProxy
 
-  override def create(request: CreateIndexRequest): ActionFuture[CreateIndexResponse] = ???
+  override def create(request: CreateIndexRequest): ActionFuture[CreateIndexResponse] = throw NotDefinedForRorProxy
 
-  override def create(request: CreateIndexRequest, listener: ActionListener[CreateIndexResponse]): Unit = ???
+  override def create(request: CreateIndexRequest, listener: ActionListener[CreateIndexResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareCreate(index: String): CreateIndexRequestBuilder = ???
+  override def prepareCreate(index: String): CreateIndexRequestBuilder = throw NotDefinedForRorProxy
 
-  override def delete(request: DeleteIndexRequest): ActionFuture[AcknowledgedResponse] = ???
+  override def delete(request: DeleteIndexRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def delete(request: DeleteIndexRequest, listener: ActionListener[AcknowledgedResponse]): Unit = ???
+  override def delete(request: DeleteIndexRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareDelete(indices: String*): DeleteIndexRequestBuilder = ???
+  override def prepareDelete(indices: String*): DeleteIndexRequestBuilder = throw NotDefinedForRorProxy
 
-  override def close(request: CloseIndexRequest): ActionFuture[CloseIndexResponse] = ???
+  override def close(request: CloseIndexRequest): ActionFuture[CloseIndexResponse] = throw NotDefinedForRorProxy
 
-  override def close(request: CloseIndexRequest, listener: ActionListener[CloseIndexResponse]): Unit = ???
+  override def close(request: CloseIndexRequest, listener: ActionListener[CloseIndexResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareClose(indices: String*): CloseIndexRequestBuilder = ???
+  override def prepareClose(indices: String*): CloseIndexRequestBuilder = throw NotDefinedForRorProxy
 
-  override def open(request: OpenIndexRequest): ActionFuture[OpenIndexResponse] = ???
+  override def open(request: OpenIndexRequest): ActionFuture[OpenIndexResponse] = throw NotDefinedForRorProxy
 
-  override def open(request: OpenIndexRequest, listener: ActionListener[OpenIndexResponse]): Unit = ???
+  override def open(request: OpenIndexRequest, listener: ActionListener[OpenIndexResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareOpen(indices: String*): OpenIndexRequestBuilder = ???
+  override def prepareOpen(indices: String*): OpenIndexRequestBuilder = throw NotDefinedForRorProxy
 
-  override def refresh(request: RefreshRequest): ActionFuture[RefreshResponse] = ???
+  override def refresh(request: RefreshRequest): ActionFuture[RefreshResponse] = throw NotDefinedForRorProxy
 
-  override def refresh(request: RefreshRequest, listener: ActionListener[RefreshResponse]): Unit = ???
+  override def refresh(request: RefreshRequest, listener: ActionListener[RefreshResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareRefresh(indices: String*): RefreshRequestBuilder = ???
+  override def prepareRefresh(indices: String*): RefreshRequestBuilder = throw NotDefinedForRorProxy
 
-  override def flush(request: FlushRequest): ActionFuture[FlushResponse] = ???
+  override def flush(request: FlushRequest): ActionFuture[FlushResponse] = throw NotDefinedForRorProxy
 
-  override def flush(request: FlushRequest, listener: ActionListener[FlushResponse]): Unit = ???
+  override def flush(request: FlushRequest, listener: ActionListener[FlushResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareFlush(indices: String*): FlushRequestBuilder = ???
+  override def prepareFlush(indices: String*): FlushRequestBuilder = throw NotDefinedForRorProxy
 
-  override def syncedFlush(request: SyncedFlushRequest): ActionFuture[SyncedFlushResponse] = ???
+  override def syncedFlush(request: SyncedFlushRequest): ActionFuture[SyncedFlushResponse] = throw NotDefinedForRorProxy
 
-  override def syncedFlush(request: SyncedFlushRequest, listener: ActionListener[SyncedFlushResponse]): Unit = ???
+  override def syncedFlush(request: SyncedFlushRequest, listener: ActionListener[SyncedFlushResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareSyncedFlush(indices: String*): SyncedFlushRequestBuilder = ???
+  override def prepareSyncedFlush(indices: String*): SyncedFlushRequestBuilder = throw NotDefinedForRorProxy
 
-  override def forceMerge(request: ForceMergeRequest): ActionFuture[ForceMergeResponse] = ???
+  override def forceMerge(request: ForceMergeRequest): ActionFuture[ForceMergeResponse] = throw NotDefinedForRorProxy
 
-  override def forceMerge(request: ForceMergeRequest, listener: ActionListener[ForceMergeResponse]): Unit = ???
+  override def forceMerge(request: ForceMergeRequest, listener: ActionListener[ForceMergeResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareForceMerge(indices: String*): ForceMergeRequestBuilder = ???
+  override def prepareForceMerge(indices: String*): ForceMergeRequestBuilder = throw NotDefinedForRorProxy
 
-  override def upgrade(request: UpgradeRequest): ActionFuture[UpgradeResponse] = ???
+  override def upgrade(request: UpgradeRequest): ActionFuture[UpgradeResponse] = throw NotDefinedForRorProxy
 
-  override def upgrade(request: UpgradeRequest, listener: ActionListener[UpgradeResponse]): Unit = ???
+  override def upgrade(request: UpgradeRequest, listener: ActionListener[UpgradeResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareUpgradeStatus(indices: String*): UpgradeStatusRequestBuilder = ???
+  override def prepareUpgradeStatus(indices: String*): UpgradeStatusRequestBuilder = throw NotDefinedForRorProxy
 
-  override def upgradeStatus(request: UpgradeStatusRequest): ActionFuture[UpgradeStatusResponse] = ???
+  override def upgradeStatus(request: UpgradeStatusRequest): ActionFuture[UpgradeStatusResponse] = throw NotDefinedForRorProxy
 
-  override def upgradeStatus(request: UpgradeStatusRequest, listener: ActionListener[UpgradeStatusResponse]): Unit = ???
+  override def upgradeStatus(request: UpgradeStatusRequest, listener: ActionListener[UpgradeStatusResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareUpgrade(indices: String*): UpgradeRequestBuilder = ???
+  override def prepareUpgrade(indices: String*): UpgradeRequestBuilder = throw NotDefinedForRorProxy
 
-  override def getMappings(request: GetMappingsRequest, listener: ActionListener[GetMappingsResponse]): Unit = ???
+  override def getMappings(request: GetMappingsRequest, listener: ActionListener[GetMappingsResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def getMappings(request: GetMappingsRequest): ActionFuture[GetMappingsResponse] = ???
+  override def getMappings(request: GetMappingsRequest): ActionFuture[GetMappingsResponse] = throw NotDefinedForRorProxy
 
-  override def prepareGetMappings(indices: String*): GetMappingsRequestBuilder = ???
+  override def prepareGetMappings(indices: String*): GetMappingsRequestBuilder = throw NotDefinedForRorProxy
 
-  override def getFieldMappings(request: GetFieldMappingsRequest, listener: ActionListener[GetFieldMappingsResponse]): Unit = ???
+  override def getFieldMappings(request: GetFieldMappingsRequest, listener: ActionListener[GetFieldMappingsResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareGetFieldMappings(indices: String*): GetFieldMappingsRequestBuilder = ???
+  override def prepareGetFieldMappings(indices: String*): GetFieldMappingsRequestBuilder = throw NotDefinedForRorProxy
 
-  override def getFieldMappings(request: GetFieldMappingsRequest): ActionFuture[GetFieldMappingsResponse] = ???
+  override def getFieldMappings(request: GetFieldMappingsRequest): ActionFuture[GetFieldMappingsResponse] = throw NotDefinedForRorProxy
 
-  override def putMapping(request: PutMappingRequest): ActionFuture[AcknowledgedResponse] = ???
+  override def putMapping(request: PutMappingRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def putMapping(request: PutMappingRequest, listener: ActionListener[AcknowledgedResponse]): Unit = ???
+  override def putMapping(request: PutMappingRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def preparePutMapping(indices: String*): PutMappingRequestBuilder = ???
+  override def preparePutMapping(indices: String*): PutMappingRequestBuilder = throw NotDefinedForRorProxy
 
-  override def aliases(request: IndicesAliasesRequest): ActionFuture[AcknowledgedResponse] = ???
+  override def aliases(request: IndicesAliasesRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def aliases(request: IndicesAliasesRequest, listener: ActionListener[AcknowledgedResponse]): Unit = ???
+  override def aliases(request: IndicesAliasesRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareAliases(): IndicesAliasesRequestBuilder = ???
+  override def prepareAliases(): IndicesAliasesRequestBuilder = throw NotDefinedForRorProxy
 
-  override def getAliases(request: GetAliasesRequest): ActionFuture[GetAliasesResponse] = ???
+  override def getAliases(request: GetAliasesRequest): ActionFuture[GetAliasesResponse] = throw NotDefinedForRorProxy
 
-  override def getAliases(request: GetAliasesRequest, listener: ActionListener[GetAliasesResponse]): Unit = ???
+  override def getAliases(request: GetAliasesRequest, listener: ActionListener[GetAliasesResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareGetAliases(aliases: String*): GetAliasesRequestBuilder = ???
+  override def prepareGetAliases(aliases: String*): GetAliasesRequestBuilder = throw NotDefinedForRorProxy
 
-  override def prepareAliasesExist(aliases: String*): AliasesExistRequestBuilder = ???
+  override def prepareAliasesExist(aliases: String*): AliasesExistRequestBuilder = throw NotDefinedForRorProxy
 
-  override def aliasesExist(request: GetAliasesRequest): ActionFuture[AliasesExistResponse] = ???
+  override def aliasesExist(request: GetAliasesRequest): ActionFuture[AliasesExistResponse] = throw NotDefinedForRorProxy
 
-  override def aliasesExist(request: GetAliasesRequest, listener: ActionListener[AliasesExistResponse]): Unit = ???
+  override def aliasesExist(request: GetAliasesRequest, listener: ActionListener[AliasesExistResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def getIndex(request: GetIndexRequest): ActionFuture[GetIndexResponse] = ???
+  override def getIndex(request: GetIndexRequest): ActionFuture[GetIndexResponse] = throw NotDefinedForRorProxy
 
-  override def getIndex(request: GetIndexRequest, listener: ActionListener[GetIndexResponse]): Unit = ???
+  override def getIndex(request: GetIndexRequest, listener: ActionListener[GetIndexResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareGetIndex(): GetIndexRequestBuilder = ???
+  override def prepareGetIndex(): GetIndexRequestBuilder = throw NotDefinedForRorProxy
 
-  override def clearCache(request: ClearIndicesCacheRequest): ActionFuture[ClearIndicesCacheResponse] = ???
+  override def clearCache(request: ClearIndicesCacheRequest): ActionFuture[ClearIndicesCacheResponse] = throw NotDefinedForRorProxy
 
-  override def clearCache(request: ClearIndicesCacheRequest, listener: ActionListener[ClearIndicesCacheResponse]): Unit = ???
+  override def clearCache(request: ClearIndicesCacheRequest, listener: ActionListener[ClearIndicesCacheResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareClearCache(indices: String*): ClearIndicesCacheRequestBuilder = ???
+  override def prepareClearCache(indices: String*): ClearIndicesCacheRequestBuilder = throw NotDefinedForRorProxy
 
-  override def updateSettings(request: UpdateSettingsRequest): ActionFuture[AcknowledgedResponse] = ???
+  override def updateSettings(request: UpdateSettingsRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def updateSettings(request: UpdateSettingsRequest, listener: ActionListener[AcknowledgedResponse]): Unit = ???
+  override def updateSettings(request: UpdateSettingsRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareUpdateSettings(indices: String*): UpdateSettingsRequestBuilder = ???
+  override def prepareUpdateSettings(indices: String*): UpdateSettingsRequestBuilder = throw NotDefinedForRorProxy
 
-  override def analyze(request: AnalyzeAction.Request): ActionFuture[AnalyzeAction.Response] = ???
+  override def analyze(request: AnalyzeAction.Request): ActionFuture[AnalyzeAction.Response] = throw NotDefinedForRorProxy
 
-  override def analyze(request: AnalyzeAction.Request, listener: ActionListener[AnalyzeAction.Response]): Unit = ???
+  override def analyze(request: AnalyzeAction.Request, listener: ActionListener[AnalyzeAction.Response]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareAnalyze(index: String, text: String): AnalyzeRequestBuilder = ???
+  override def prepareAnalyze(index: String, text: String): AnalyzeRequestBuilder = throw NotDefinedForRorProxy
 
-  override def prepareAnalyze(text: String): AnalyzeRequestBuilder = ???
+  override def prepareAnalyze(text: String): AnalyzeRequestBuilder = throw NotDefinedForRorProxy
 
-  override def prepareAnalyze(): AnalyzeRequestBuilder = ???
+  override def prepareAnalyze(): AnalyzeRequestBuilder = throw NotDefinedForRorProxy
 
-  override def putTemplate(request: PutIndexTemplateRequest): ActionFuture[AcknowledgedResponse] = ???
+  override def putTemplate(request: PutIndexTemplateRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def putTemplate(request: PutIndexTemplateRequest, listener: ActionListener[AcknowledgedResponse]): Unit = ???
+  override def putTemplate(request: PutIndexTemplateRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def preparePutTemplate(name: String): PutIndexTemplateRequestBuilder = ???
+  override def preparePutTemplate(name: String): PutIndexTemplateRequestBuilder = throw NotDefinedForRorProxy
 
-  override def deleteTemplate(request: DeleteIndexTemplateRequest): ActionFuture[AcknowledgedResponse] = ???
+  override def deleteTemplate(request: DeleteIndexTemplateRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def deleteTemplate(request: DeleteIndexTemplateRequest, listener: ActionListener[AcknowledgedResponse]): Unit = ???
+  override def deleteTemplate(request: DeleteIndexTemplateRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareDeleteTemplate(name: String): DeleteIndexTemplateRequestBuilder = ???
+  override def prepareDeleteTemplate(name: String): DeleteIndexTemplateRequestBuilder = throw NotDefinedForRorProxy
 
-  override def getTemplates(request: GetIndexTemplatesRequest): ActionFuture[GetIndexTemplatesResponse] = ???
+  override def getTemplates(request: GetIndexTemplatesRequest): ActionFuture[GetIndexTemplatesResponse] = throw NotDefinedForRorProxy
 
-  override def getTemplates(request: GetIndexTemplatesRequest, listener: ActionListener[GetIndexTemplatesResponse]): Unit = ???
+  override def getTemplates(request: GetIndexTemplatesRequest, listener: ActionListener[GetIndexTemplatesResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareGetTemplates(name: String*): GetIndexTemplatesRequestBuilder = ???
+  override def prepareGetTemplates(name: String*): GetIndexTemplatesRequestBuilder = throw NotDefinedForRorProxy
 
-  override def validateQuery(request: ValidateQueryRequest): ActionFuture[ValidateQueryResponse] = ???
+  override def validateQuery(request: ValidateQueryRequest): ActionFuture[ValidateQueryResponse] = throw NotDefinedForRorProxy
 
-  override def validateQuery(request: ValidateQueryRequest, listener: ActionListener[ValidateQueryResponse]): Unit = ???
+  override def validateQuery(request: ValidateQueryRequest, listener: ActionListener[ValidateQueryResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareValidateQuery(indices: String*): ValidateQueryRequestBuilder = ???
+  override def prepareValidateQuery(indices: String*): ValidateQueryRequestBuilder = throw NotDefinedForRorProxy
 
   override def getSettings(request: GetSettingsRequest, listener: ActionListener[GetSettingsResponse]): Unit = {
     esClient
@@ -238,27 +239,27 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
       .runAsync(handleResultUsing(listener))
   }
 
-  override def getSettings(request: GetSettingsRequest): ActionFuture[GetSettingsResponse] = ???
+  override def getSettings(request: GetSettingsRequest): ActionFuture[GetSettingsResponse] = throw NotDefinedForRorProxy
 
-  override def prepareGetSettings(indices: String*): GetSettingsRequestBuilder = ???
+  override def prepareGetSettings(indices: String*): GetSettingsRequestBuilder = throw NotDefinedForRorProxy
 
-  override def prepareResizeIndex(sourceIndex: String, targetIndex: String): ResizeRequestBuilder = ???
+  override def prepareResizeIndex(sourceIndex: String, targetIndex: String): ResizeRequestBuilder = throw NotDefinedForRorProxy
 
-  override def resizeIndex(request: ResizeRequest): ActionFuture[ResizeResponse] = ???
+  override def resizeIndex(request: ResizeRequest): ActionFuture[ResizeResponse] = throw NotDefinedForRorProxy
 
-  override def resizeIndex(request: ResizeRequest, listener: ActionListener[ResizeResponse]): Unit = ???
+  override def resizeIndex(request: ResizeRequest, listener: ActionListener[ResizeResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def prepareRolloverIndex(sourceAlias: String): RolloverRequestBuilder = ???
+  override def prepareRolloverIndex(sourceAlias: String): RolloverRequestBuilder = throw NotDefinedForRorProxy
 
-  override def rolloversIndex(request: RolloverRequest): ActionFuture[RolloverResponse] = ???
+  override def rolloversIndex(request: RolloverRequest): ActionFuture[RolloverResponse] = throw NotDefinedForRorProxy
 
-  override def rolloverIndex(request: RolloverRequest, listener: ActionListener[RolloverResponse]): Unit = ???
+  override def rolloverIndex(request: RolloverRequest, listener: ActionListener[RolloverResponse]): Unit = throw NotDefinedForRorProxy
 
-  override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response], request: Request): ActionFuture[Response] = ???
+  override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response], request: Request): ActionFuture[Response] = throw NotDefinedForRorProxy
 
-  override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response], request: Request, listener: ActionListener[Response]): Unit = ???
+  override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response], request: Request, listener: ActionListener[Response]): Unit = throw NotDefinedForRorProxy
 
-  override def threadPool(): ThreadPool = ???
+  override def threadPool(): ThreadPool = throw NotDefinedForRorProxy
 
 
   private def handleResultUsing[T](listener: ActionListener[T])
