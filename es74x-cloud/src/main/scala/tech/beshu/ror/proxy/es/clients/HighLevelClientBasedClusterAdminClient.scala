@@ -55,7 +55,7 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
       .runAsync(handleResultUsing(listener))
   }
 
-  override def prepareHealth(indices: String*): ClusterHealthRequestBuilder = 
+  override def prepareHealth(indices: String*): ClusterHealthRequestBuilder = throw NotDefinedForRorProxy
 
   override def state(request: ClusterStateRequest): ActionFuture[ClusterStateResponse] = throw NotDefinedForRorProxy
 
