@@ -51,11 +51,9 @@ compileScala {
 
 dependencies {
     compile project(path: ':core')
-
-    compile 'org.apache.logging.log4j:log4j-core:2.11.0'
-
-    compile 'org.elasticsearch:elasticsearch:' + esVersion
-    compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
+    compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,             version: esVersion
+    compileClasspath    group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',         version: esVersion
+    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
 }
 
 license {
