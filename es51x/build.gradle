@@ -51,9 +51,9 @@ compileScala {
 
 dependencies {
     compile project(path: ':core')
-    compile             group: 'org.elasticsearch',                 name: 'elasticsearch' ,             version: esVersion
-    compileClasspath    group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',         version: esVersion
-    compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
+    
+    compile 'org.elasticsearch:elasticsearch:' + esVersion
+    compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
 }
 
 license {
