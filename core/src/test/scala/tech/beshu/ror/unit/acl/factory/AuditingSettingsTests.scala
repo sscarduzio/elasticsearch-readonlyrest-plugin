@@ -43,7 +43,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
   "Auditing settings" should {
     "be optional" when {
       "audit collector is not configured at all (by default - disabled)" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |
@@ -58,7 +58,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         inside(core) { case Right(CoreSettings(_, _, None)) => }
       }
       "audit collector is disabled" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |  audit_collector: false
@@ -76,7 +76,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
     }
     "be able to be loaded from config" when {
       "audit collector is enabled" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -96,7 +96,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         }
       }
       "custom audit index name is set" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -117,7 +117,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         }
       }
       "custom serializer in set" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -138,7 +138,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         }
       }
       "deprecated custom serializer is set" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -161,7 +161,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
     }
     "not be able to be loaded from config" when {
       "not supported custom serializer is set" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |  audit_collector: true
@@ -183,7 +183,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         }
       }
       "custom audit index name pattern is invalid" in {
-        val config = rorConfigFrom(
+        val config = rorConfigFromUnsafe(
           """
             |readonlyrest:
             |  audit_collector: true

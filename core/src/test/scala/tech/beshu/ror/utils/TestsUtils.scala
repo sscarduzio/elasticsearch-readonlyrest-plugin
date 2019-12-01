@@ -24,6 +24,7 @@ import java.util.Base64
 import better.files.File
 import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.ParsingFailure
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.Header.Name
@@ -142,12 +143,16 @@ object TestsUtils {
     (pair.getPublic, pair.getPrivate)
   }
 
-  def rorConfigFrom(yamlContent: String): RawRorConfig = {
+  def rorConfigFromUnsafe(yamlContent: String): RawRorConfig = {
     RawRorConfig(yaml.parser.parse(yamlContent).right.get, yamlContent)
   }
 
+  def rorConfigFrom(yamlContent: String): Either[ParsingFailure, RawRorConfig] = {
+    yaml.parser.parse(yamlContent).map(json => RawRorConfig(json, yamlContent))
+  }
+
   def rorConfigFromResource(resource: String): RawRorConfig = {
-    rorConfigFrom {
+    rorConfigFromUnsafe {
       getResourceContent(resource)
     }
   }

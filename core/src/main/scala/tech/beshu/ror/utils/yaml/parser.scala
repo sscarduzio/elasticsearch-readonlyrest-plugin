@@ -15,12 +15,14 @@
  */
 package tech.beshu.ror.utils.yaml
 
+import java.io.{Reader, StringReader}
+
 import cats.syntax.either._
 import io.circe._
-import java.io.{Reader, StringReader}
 import org.yaml.snakeyaml.Yaml
 import org.yaml.snakeyaml.constructor.SafeConstructor
 import org.yaml.snakeyaml.nodes._
+
 import scala.collection.JavaConverters._
 
 object parser {
@@ -31,12 +33,13 @@ object parser {
     */
   def parse(yaml: Reader): Either[ParsingFailure, Json] = for {
     parsed <- parseSingle(yaml)
-    json   <- yamlToJson(parsed)
+    json <- yamlToJson(parsed)
   } yield json
 
   def parse(yaml: String): Either[ParsingFailure, Json] = parse(new StringReader(yaml))
 
   def parseDocuments(yaml: Reader): Stream[Either[ParsingFailure, Json]] = parseStream(yaml).map(yamlToJson)
+
   def parseDocuments(yaml: String): Stream[Either[ParsingFailure, Json]] = parseDocuments(new StringReader(yaml))
 
   private[this] def parseSingle(reader: Reader) =
@@ -86,7 +89,19 @@ object parser {
 
     def convertKeyNode(node: Node) = node match {
       case scalar: ScalarNode => Right(scalar.getValue)
-      case _ => Left(ParsingFailure("Only string keys can be represented in JSON", null))
+      case _ =>
+        val message = "Only string keys can be represented in JSON"
+        Left(ParsingFailure(message, YamlParserException(message)))
+    }
+
+    def checkDuplicates(jsonObject: JsonObject, key: String): Either[ParsingFailure, String] = {
+      Either.cond(
+        test = !jsonObject.contains(key),
+        right = key,
+        left = {
+          val message = s"Duplicated key: '$key'"
+          ParsingFailure(message, YamlParserException(message))
+        })
     }
 
     if (node == null) {
@@ -97,11 +112,13 @@ object parser {
           flattener.flatten(mapping).getValue.asScala.foldLeft(
             Either.right[ParsingFailure, JsonObject](JsonObject.empty)
           ) {
-            (objEither, tup) => for {
-              obj <- objEither
-              key <- convertKeyNode(tup.getKeyNode)
-              value <- yamlToJson(tup.getValueNode)
-            } yield obj.add(key, value)
+            (objEither, tup) =>
+              for {
+                obj <- objEither
+                key <- convertKeyNode(tup.getKeyNode)
+                value <- yamlToJson(tup.getValueNode)
+                uniqueKey <- checkDuplicates(obj, key)
+              } yield obj.add(uniqueKey, value)
           }.map(Json.fromJsonObject)
         case sequence: SequenceNode =>
           sequence.getValue.asScala.foldLeft(Either.right[ParsingFailure, List[Json]](List.empty[Json])) {
@@ -114,4 +131,6 @@ object parser {
       }
     }
   }
+
+  final case class YamlParserException(message: String) extends Exception
 }
