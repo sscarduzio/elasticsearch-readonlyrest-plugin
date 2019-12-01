@@ -35,6 +35,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
 
 class EsRestServiceSimulator(simulatorEsSettings: File,
                              proxyFilter: ProxyIndexLevelActionFilter,
@@ -49,16 +50,23 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
   def processRequest(request: RestRequest): Task[ProcessingResult] = {
     val restChannel = new ProxyRestChannel(request)
     val threadContext = threadPool.getThreadContext
-    threadContext.stashContext.bracket { _ =>
-      ProxyThreadRepo.setRestChannel(restChannel)
-      actionModule.getRestController
-        .dispatchRequest(request, restChannel, threadContext)
-    }
-    restChannel
-      .result
-      .andThen { case _ =>
-        ProxyThreadRepo.clearRestChannel()
+    val dispatchResult = Try {
+      threadContext.stashContext.bracket { _ =>
+        ProxyThreadRepo.setRestChannel(restChannel)
+        actionModule.getRestController
+          .dispatchRequest(request, restChannel, threadContext)
       }
+    }
+    dispatchResult match {
+      case Success(_) =>
+        restChannel
+          .result
+          .andThen { case _ =>
+            ProxyThreadRepo.clearRestChannel()
+          }
+      case Failure(exception) =>
+        Task.now(ProcessingResult.Response(restChannel.failureResponseFrom(exception)))
+    }
   }
 
   def stop(): Task[Unit] = proxyFilter.stop()

@@ -8,10 +8,8 @@ import java.nio.file.Path
 import cats.data.EitherT
 import monix.eval.{Task => MTask}
 import monix.execution.Scheduler
-import org.elasticsearch.ElasticsearchSecurityException
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
-import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SecurityPermissionException
@@ -77,7 +75,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                             request: ActionRequest,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
-                            channel: RestChannel): Unit = {
+                            channel: ProxyRestChannel): Unit = {
     val requestInfo = new RequestInfo(channel, task.getId, action, request, rorClusterService, threadPool, false)
     EsRequestContext.from(requestInfo) match {
       case Success(requestContext) =>
@@ -89,10 +87,8 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
             val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
             handler.handle(requestInfo, requestContext)
         }
-      case Failure(ex: Exception) =>
-        listener.onFailure(ex)
       case Failure(ex) =>
-        listener.onFailure(new ElasticsearchSecurityException("Cannot create request context object", ex))
+        channel.sendFailureResponse(ex)
     }
   }
 
