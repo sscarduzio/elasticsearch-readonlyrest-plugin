@@ -25,6 +25,9 @@ class RorNotAvailableResponse private(status: RestStatus, builder: XContentBuild
 
 object RorNotAvailableResponse {
 
+  def createRorStartingFailureResponse(channel: RestChannel): RorNotAvailableResponse =
+    createResponse(channel, s"ReadonlyREST failed to start")
+
   def createRorNotReadyYetResponse(channel: RestChannel): RorNotAvailableResponse =
     createResponse(channel, "Waiting for ReadonlyREST start")
 
