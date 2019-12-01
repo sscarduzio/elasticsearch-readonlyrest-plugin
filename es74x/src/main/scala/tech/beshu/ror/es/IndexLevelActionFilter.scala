@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
 import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider}
 import tech.beshu.ror.es.request.RequestInfo
-import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
+import tech.beshu.ror.es.request.RorNotAvailableResponse._
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.utils.AccessControllerHelper._
@@ -51,25 +51,34 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]])
   extends ActionFilter with Logging {
 
-  private val rorInstance: Atomic[Option[RorInstance]] = Atomic(Option.empty[RorInstance])
+  private val rorInstanceState: Atomic[RorInstanceStartingState] =
+    Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
   private val startingTaskCancellable = Ror
     .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
     .runAsync {
       case Right(Right(instance)) =>
         RorInstanceSupplier.update(instance)
-        rorInstance.set(Some(instance))
+        rorInstanceState.set(RorInstanceStartingState.Started(instance))
       case Right(Left(failure)) =>
-        throw StartingFailureException.from(failure)
+        val startingFailureException = StartingFailureException.from(failure)
+        logger.error("ROR starting failure:", startingFailureException)
+        rorInstanceState.set(RorInstanceStartingState.NotStarted(startingFailureException))
       case Left(ex) =>
-        throw StartingFailureException.from(ex)
+        val startingFailureException = StartingFailureException.from(ex)
+        logger.error("ROR starting failure:", startingFailureException)
+        rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
     }
 
   override def order(): Int = 0
 
   def stop(): Unit = {
     startingTaskCancellable.cancel()
-    rorInstance.get().map(_.stop())
+    rorInstanceState.get() match {
+      case RorInstanceStartingState.Starting =>
+      case RorInstanceStartingState.Started(instance) => instance.stop().runSyncUnsafe()
+      case RorInstanceStartingState.NotStarted(_) =>
+    }
   }
 
   override def apply[Request <: ActionRequest, Response <: ActionResponse](task: Task,
@@ -78,20 +87,33 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      (rorInstance.get().flatMap(_.engine), ThreadRepo.getRestChannel) match {
-        case (_, None) => chain.proceed(task, action, request, listener)
-        case (_, _) if action.startsWith("internal:") => chain.proceed(task, action, request, listener)
-        case (None, Some(channel)) => channel.sendResponse(createRorNotReadyYetResponse(channel))
-        case (Some(engine), Some(channel)) =>
-          handleRequest(
-            engine,
-            task,
-            action,
-            request,
-            listener.asInstanceOf[ActionListener[ActionResponse]],
-            chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
-            channel
-          )
+      ThreadRepo.getRestChannel match {
+        case Some(channel) =>
+          rorInstanceState.get() match {
+            case RorInstanceStartingState.Starting =>
+              channel.sendResponse(createRorNotReadyYetResponse(channel))
+            case RorInstanceStartingState.Started(instance) =>
+              instance.engine match {
+                case Some(engine) =>
+                  handleRequest(
+                    engine,
+                    task,
+                    action,
+                    request,
+                    listener.asInstanceOf[ActionListener[ActionResponse]],
+                    chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
+                    channel
+                  )
+                case None =>
+                  channel.sendResponse(createRorNotReadyYetResponse(channel))
+              }
+            case RorInstanceStartingState.NotStarted(_) =>
+              channel.sendResponse(createRorStartingFailureResponse(channel))
+          }
+        case Some(_) if action.startsWith("internal:") =>
+          chain.proceed(task, action, request, listener)
+        case None =>
+          chain.proceed(task, action, request, listener)
       }
     }
   }
@@ -127,4 +149,11 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         ex => throw new SecurityPermissionException("Cannot create request context object", ex),
         identity
       )
+}
+
+private sealed trait RorInstanceStartingState
+private object RorInstanceStartingState {
+  case object Starting extends RorInstanceStartingState
+  final case class Started(instance: RorInstance) extends RorInstanceStartingState
+  final case class NotStarted(cause: StartingFailureException) extends RorInstanceStartingState
 }
