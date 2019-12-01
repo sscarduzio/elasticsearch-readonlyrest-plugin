@@ -4,35 +4,35 @@
 package tech.beshu.ror.proxy.es.clients
 
 import monix.execution.Scheduler
-import org.elasticsearch.action.{ActionFuture, ActionListener, ActionRequest, ActionResponse, ActionType}
-import org.elasticsearch.action.admin.cluster.allocation.{ClusterAllocationExplainRequest, ClusterAllocationExplainRequestBuilder, ClusterAllocationExplainResponse}
-import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthRequestBuilder, ClusterHealthResponse}
-import org.elasticsearch.action.admin.cluster.node.hotthreads.{NodesHotThreadsRequest, NodesHotThreadsRequestBuilder, NodesHotThreadsResponse}
-import org.elasticsearch.action.admin.cluster.node.info.{NodesInfoRequest, NodesInfoRequestBuilder, NodesInfoResponse}
+import org.elasticsearch.action._
+import org.elasticsearch.action.admin.cluster.allocation._
+import org.elasticsearch.action.admin.cluster.health._
+import org.elasticsearch.action.admin.cluster.node.hotthreads._
+import org.elasticsearch.action.admin.cluster.node.info._
 import org.elasticsearch.action.admin.cluster.node.reload.NodesReloadSecureSettingsRequestBuilder
-import org.elasticsearch.action.admin.cluster.node.stats.{NodesStatsRequest, NodesStatsRequestBuilder, NodesStatsResponse}
-import org.elasticsearch.action.admin.cluster.node.tasks.cancel.{CancelTasksRequest, CancelTasksRequestBuilder, CancelTasksResponse}
-import org.elasticsearch.action.admin.cluster.node.tasks.get.{GetTaskRequest, GetTaskRequestBuilder, GetTaskResponse}
-import org.elasticsearch.action.admin.cluster.node.tasks.list.{ListTasksRequest, ListTasksRequestBuilder, ListTasksResponse}
-import org.elasticsearch.action.admin.cluster.node.usage.{NodesUsageRequest, NodesUsageRequestBuilder, NodesUsageResponse}
-import org.elasticsearch.action.admin.cluster.repositories.cleanup.{CleanupRepositoryRequest, CleanupRepositoryRequestBuilder, CleanupRepositoryResponse}
-import org.elasticsearch.action.admin.cluster.repositories.delete.{DeleteRepositoryRequest, DeleteRepositoryRequestBuilder}
-import org.elasticsearch.action.admin.cluster.repositories.get.{GetRepositoriesRequest, GetRepositoriesRequestBuilder, GetRepositoriesResponse}
-import org.elasticsearch.action.admin.cluster.repositories.put.{PutRepositoryRequest, PutRepositoryRequestBuilder}
-import org.elasticsearch.action.admin.cluster.repositories.verify.{VerifyRepositoryRequest, VerifyRepositoryRequestBuilder, VerifyRepositoryResponse}
-import org.elasticsearch.action.admin.cluster.reroute.{ClusterRerouteRequest, ClusterRerouteRequestBuilder, ClusterRerouteResponse}
-import org.elasticsearch.action.admin.cluster.settings.{ClusterUpdateSettingsRequest, ClusterUpdateSettingsRequestBuilder, ClusterUpdateSettingsResponse}
-import org.elasticsearch.action.admin.cluster.shards.{ClusterSearchShardsRequest, ClusterSearchShardsRequestBuilder, ClusterSearchShardsResponse}
-import org.elasticsearch.action.admin.cluster.snapshots.create.{CreateSnapshotRequest, CreateSnapshotRequestBuilder, CreateSnapshotResponse}
-import org.elasticsearch.action.admin.cluster.snapshots.delete.{DeleteSnapshotRequest, DeleteSnapshotRequestBuilder}
-import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsRequestBuilder, GetSnapshotsResponse}
-import org.elasticsearch.action.admin.cluster.snapshots.restore.{RestoreSnapshotRequest, RestoreSnapshotRequestBuilder, RestoreSnapshotResponse}
-import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusRequestBuilder, SnapshotsStatusResponse}
-import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateRequestBuilder, ClusterStateResponse}
-import org.elasticsearch.action.admin.cluster.stats.{ClusterStatsRequest, ClusterStatsRequestBuilder, ClusterStatsResponse}
-import org.elasticsearch.action.admin.cluster.storedscripts.{DeleteStoredScriptRequest, DeleteStoredScriptRequestBuilder, GetStoredScriptRequest, GetStoredScriptRequestBuilder, GetStoredScriptResponse, PutStoredScriptRequest, PutStoredScriptRequestBuilder}
-import org.elasticsearch.action.admin.cluster.tasks.{PendingClusterTasksRequest, PendingClusterTasksRequestBuilder, PendingClusterTasksResponse}
-import org.elasticsearch.action.ingest.{DeletePipelineRequest, DeletePipelineRequestBuilder, GetPipelineRequest, GetPipelineRequestBuilder, GetPipelineResponse, PutPipelineRequest, PutPipelineRequestBuilder, SimulatePipelineRequest, SimulatePipelineRequestBuilder, SimulatePipelineResponse}
+import org.elasticsearch.action.admin.cluster.node.stats._
+import org.elasticsearch.action.admin.cluster.node.tasks.cancel._
+import org.elasticsearch.action.admin.cluster.node.tasks.get._
+import org.elasticsearch.action.admin.cluster.node.tasks.list._
+import org.elasticsearch.action.admin.cluster.node.usage._
+import org.elasticsearch.action.admin.cluster.repositories.cleanup._
+import org.elasticsearch.action.admin.cluster.repositories.delete._
+import org.elasticsearch.action.admin.cluster.repositories.get._
+import org.elasticsearch.action.admin.cluster.repositories.put._
+import org.elasticsearch.action.admin.cluster.repositories.verify._
+import org.elasticsearch.action.admin.cluster.reroute._
+import org.elasticsearch.action.admin.cluster.settings._
+import org.elasticsearch.action.admin.cluster.shards._
+import org.elasticsearch.action.admin.cluster.snapshots.create._
+import org.elasticsearch.action.admin.cluster.snapshots.delete._
+import org.elasticsearch.action.admin.cluster.snapshots.get._
+import org.elasticsearch.action.admin.cluster.snapshots.restore._
+import org.elasticsearch.action.admin.cluster.snapshots.status._
+import org.elasticsearch.action.admin.cluster.state._
+import org.elasticsearch.action.admin.cluster.stats._
+import org.elasticsearch.action.admin.cluster.storedscripts._
+import org.elasticsearch.action.admin.cluster.tasks._
+import org.elasticsearch.action.ingest._
 import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.ClusterAdminClient
 import org.elasticsearch.cluster.{ClusterName, ClusterState}

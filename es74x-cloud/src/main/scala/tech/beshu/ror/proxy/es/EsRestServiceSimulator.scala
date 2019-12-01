@@ -15,10 +15,11 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action._
 import org.elasticsearch.action.support.{ActionFilter, ActionFilters, TransportAction}
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
-import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings}
+import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings, SettingsFilter}
 import org.elasticsearch.common.util.set.Sets
-import org.elasticsearch.common.xcontent.{StatusToXContentObject, ToXContent, XContentFactory, XContentType}
+import org.elasticsearch.common.xcontent.{DeprecationHandler, NamedXContentRegistry, StatusToXContentObject, ToXContent, XContentFactory, XContentType}
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.rest.{BytesRestResponse, RestRequest, RestResponse}
@@ -63,11 +64,14 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
   def stop(): Task[Unit] = proxyFilter.stop()
 
   private def configureSimulator() = {
-
     val settings = Settings.fromXContent(
       XContentFactory
         .xContent(XContentType.JSON)
-        .createParser(null, null, simulatorEsSettings.contentAsString)
+        .createParser(
+          NamedXContentRegistry.EMPTY,
+          DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
+          simulatorEsSettings.contentAsString
+        )
     )
     createActionModule(settings)
   }
@@ -77,10 +81,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     val actionModule = new ActionModule(
       false,
       settings,
-      null,
+      new IndexNameExpressionResolver(),
       IndexScopedSettings.DEFAULT_SCOPED_SETTINGS,
       new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS, Sets.newHashSet()),
-      null,
+      new SettingsFilter(List.empty.asJava),
       threadPool,
       Collections.emptyList(),
       nodeClient,
