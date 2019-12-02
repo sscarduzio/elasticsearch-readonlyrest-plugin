@@ -1,28 +1,19 @@
 sudo: required
 dist: trusty
 group: deprecated-2017Q4
-
 cache:
   directories:
-  - .autoconf
-  - $HOME/.m2
-
+  - ".autoconf"
+  - "$HOME/.m2"
 language: java
-
-sudo: required
-
 services:
-  - docker
-
+- docker
 jdk:
 - oraclejdk8
-
 branches:
   except:
-    - /^v[0-9].*es/
-
+  - "/^v[0-9].*es/"
 script: bin/build.sh
-
 deploy:
   provider: script
   script: ci/ci-deploy.sh
@@ -30,8 +21,13 @@ deploy:
   on:
     all_branches: true
     tags: false
-
 env:
+  global:
+  - secure: FJWhBc9lDRFY6F6nnNQyZtLDiCfF1Pveg3MN3z6VtUiK5YytKu/4BoolJj5mk+Qa4GOfR+Xg7490FH53q51Os4GVUPSOsn99lpXcZp17cCaBRtVgNwEF9WAJ8fbOvrbWdkvAYrT9jlTntznb8vQCc2ZNfGwbVsPHs6s7pnRQB4w=
+  - secure: AhN/2Vk0BZ6TrvKiFr+QTC+Bwbl9XeWSXC/UhWyzGU49zstNd69UhQBEhQtCQR6eKMCZsXbv0yS3auuS00Rlh4/aD6R6hyqSuITAw/9vybsT/R5tnVgS3dNXhdnBeVkRkntWv+bRlxIk2l1fk/QSum0+CNkD2F2+achC0IdO3PE=
+  - secure: l3wUBiJ9K4y/NRFfNE9Qu/OmKCyceDi5Mv6yQtQHzVW20bAEIkqCgtvmG2KUIWa4/mKQFbg2NsuOv7+UHTjIvLmZuognj2qg7TB/ewOT11M8La8ySZMYbWM5V1LqOmrc7YcVeejT8gdacw3HVxLsakSiIZAkxjrzKqh/sOtt1EY=
+  - secure: PQPTaC6kKik8Ng6t76CMW2FIRh0ZV+K8eyYCrlbWQ6Kzze9tIN8Kd7NM+b61zEMYklCy1mAu0PUmhkzTEVWFWwF4awfssQWM71/wHD9BodBeGsjJU4sVLXmHiJBgiwIcbVu5jef2Bck2VP3ywgYEOFImsnKr2cDo8ciEhVvq8E8=
+  matrix:
   - ROR_TASK="license"
   - ROR_TASK="unit"
   - ROR_TASK="integration_es74x"
@@ -61,30 +57,31 @@ env:
   - ROR_TASK="package_es7xx"
   - ROR_TASK="package_es6xx"
   - ROR_TASK="package_es5xx"
-
 before_script:
-  - sudo sysctl -w vm.max_map_count=262144
-  
+- sudo sysctl -w vm.max_map_count=262144
 after_success:
-- |
+- |2
 
-       declare -r SSH_FILE="$HOME/.ssh/gh_identity)"
+  declare -r SSH_FILE="$HOME/.ssh/gh_identity)"
 
-       # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-       # Decrypt the file containing the private key
+  # Decrypt the file containing the private key
 
-       openssl aes-256-cbc \
-         -K $encrypted_bf4db9d5783b_key -iv $encrypted_bf4db9d5783b_iv \
-         -in ".travis/github_deploy_key.enc" \
-         -out "$SSH_FILE" -d
+  openssl aes-256-cbc \
+    -K $encrypted_bf4db9d5783b_key -iv $encrypted_bf4db9d5783b_iv \
+    -in ".travis/github_deploy_key.enc" \
+    -out "$SSH_FILE" -d
 
-       # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-       # Enable SSH authentication
+  # Enable SSH authentication
 
-       chmod 600 "$SSH_FILE" \
-         && printf "%s\n" \
-              "Host github.com" \
-              "  IdentityFile $SSH_FILE" \
-              "  LogLevel ERROR" >> ~/.ssh/config
+  chmod 600 "$SSH_FILE" \
+    && printf "%s\n" \
+         "Host github.com" \
+         "  IdentityFile $SSH_FILE" \
+         "  LogLevel ERROR" >> ~/.ssh/config
+before_install:
+- openssl aes-256-cbc -K $encrypted_c41ad8265b54_key -iv $encrypted_c41ad8265b54_iv
+  -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
