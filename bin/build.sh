@@ -7,16 +7,15 @@ echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION"
 # Log file friendly Gradle output
 export TERM=dumb
 
-CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
-PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
-echo "CURRENT_PLUGIN_VER="$CURRENT_PLUGIN_VER
-echo "PUBLISHED_PLUGIN_VER="$PUBLISHED_PLUGIN_VER
-./gradlew audit:publish
-
-if [[ $CURRENT_PLUGIN_VER != $PUBLISHED_PLUGIN_VER ]]; then
+#if [[ $CURRENT_PLUGIN_VER != $PUBLISHED_PLUGIN_VER ]]; then
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "publishing" ]]; then
     echo ">>> Publising audit module artifacts to maven repo"
 
-    exit 0
+    CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
+    PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
+    echo "CURRENT_PLUGIN_VER="$CURRENT_PLUGIN_VER
+    echo "PUBLISHED_PLUGIN_VER="$PUBLISHED_PLUGIN_VER
+    ./gradlew audit:publish
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "license" ]]; then

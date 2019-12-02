@@ -28,6 +28,7 @@ env:
   - secure: l3wUBiJ9K4y/NRFfNE9Qu/OmKCyceDi5Mv6yQtQHzVW20bAEIkqCgtvmG2KUIWa4/mKQFbg2NsuOv7+UHTjIvLmZuognj2qg7TB/ewOT11M8La8ySZMYbWM5V1LqOmrc7YcVeejT8gdacw3HVxLsakSiIZAkxjrzKqh/sOtt1EY=
   - secure: PQPTaC6kKik8Ng6t76CMW2FIRh0ZV+K8eyYCrlbWQ6Kzze9tIN8Kd7NM+b61zEMYklCy1mAu0PUmhkzTEVWFWwF4awfssQWM71/wHD9BodBeGsjJU4sVLXmHiJBgiwIcbVu5jef2Bck2VP3ywgYEOFImsnKr2cDo8ciEhVvq8E8=
   matrix:
+  - ROR_TASK="publishing"
   - ROR_TASK="license"
   - ROR_TASK="unit"
   - ROR_TASK="integration_es74x"
