@@ -9,10 +9,13 @@ export TERM=dumb
 
 CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
 PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
+echo "CURRENT_PLUGIN_VER="$CURRENT_PLUGIN_VER
+echo "PUBLISHED_PLUGIN_VER="$PUBLISHED_PLUGIN_VER
+./gradlew audit:publish
 
 if [[ $CURRENT_PLUGIN_VER != $PUBLISHED_PLUGIN_VER ]]; then
     echo ">>> Publising audit module artifacts to maven repo"
-    ./gradlew audit:publish
+
     exit 0
 fi
 
