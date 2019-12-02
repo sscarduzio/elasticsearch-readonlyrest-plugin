@@ -146,22 +146,22 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
     
     #es74
-    ./gradlew --stacktrace es74x:rorplugin '-PesVersion=7.4.0'
-    ./gradlew --stacktrace es74x:rorplugin '-PesVersion=7.4.1'
-    ./gradlew --stacktrace es74x:rorplugin '-PesVersion=7.4.2'
+    ./gradlew --stacktrace es74x:ror '-PesVersion=7.4.0'
+    ./gradlew --stacktrace es74x:ror '-PesVersion=7.4.1'
+    ./gradlew --stacktrace es74x:ror '-PesVersion=7.4.2'
 
     #es73
-    ./gradlew --stacktrace es73x:rorplugin '-PesVersion=7.3.0'
-    ./gradlew --stacktrace es73x:rorplugin '-PesVersion=7.3.1'
-    ./gradlew --stacktrace es73x:rorplugin '-PesVersion=7.3.2'
+    ./gradlew --stacktrace es73x:ror '-PesVersion=7.3.0'
+    ./gradlew --stacktrace es73x:ror '-PesVersion=7.3.1'
+    ./gradlew --stacktrace es73x:ror '-PesVersion=7.3.2'
 
     #es70
-    ./gradlew --stacktrace es70x:rorplugin '-PesVersion=7.0.0'
-    ./gradlew --stacktrace es70x:rorplugin '-PesVersion=7.0.1'
-    ./gradlew --stacktrace es70x:rorplugin '-PesVersion=7.1.0'
-    ./gradlew --stacktrace es70x:rorplugin '-PesVersion=7.1.1'
-    ./gradlew --stacktrace es70x:rorplugin '-PesVersion=7.2.0'
-    ./gradlew --stacktrace es70x:rorplugin '-PesVersion=7.2.1'
+    ./gradlew --stacktrace es70x:ror '-PesVersion=7.0.0'
+    ./gradlew --stacktrace es70x:ror '-PesVersion=7.0.1'
+    ./gradlew --stacktrace es70x:ror '-PesVersion=7.1.0'
+    ./gradlew --stacktrace es70x:ror '-PesVersion=7.1.1'
+    ./gradlew --stacktrace es70x:ror '-PesVersion=7.2.0'
+    ./gradlew --stacktrace es70x:ror '-PesVersion=7.2.1'
 
 fi
 
@@ -176,53 +176,53 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     # es66
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.6.0'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.6.1'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.6.2'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.7.0'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.7.1'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.7.2'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.8.0'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.8.1'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.8.2'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.8.3'
-    ./gradlew --stacktrace es66x:rorplugin '-PesVersion=6.8.4'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.6.0'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.6.1'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.6.2'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.7.0'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.7.1'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.7.2'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.0'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.1'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.2'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.3'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.4'
 
     # es65
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.5.0'
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.5.1'
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.5.2'
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.5.3'
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.5.4'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.0'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.1'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.2'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.3'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.4'
 
     # es64
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.4.0'
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.4.1'
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.4.2'
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.4.3'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.4.0'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.4.1'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.4.2'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.4.3'
 
     # es63
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.3.0'
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.3.1'
-    ./gradlew --stacktrace es63x:rorplugin '-PesVersion=6.3.2'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.3.0'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.3.1'
+    ./gradlew --stacktrace es63x:ror '-PesVersion=6.3.2'
 
    # es62
-    ./gradlew --stacktrace es62:rorplugin '-PesVersion=6.2.0'
-    ./gradlew --stacktrace es62:rorplugin '-PesVersion=6.2.1'
-    ./gradlew --stacktrace es62:rorplugin '-PesVersion=6.2.2'
-    ./gradlew --stacktrace es62:rorplugin '-PesVersion=6.2.3'
-    ./gradlew --stacktrace es62:rorplugin '-PesVersion=6.2.4'
+    ./gradlew --stacktrace es62:ror '-PesVersion=6.2.0'
+    ./gradlew --stacktrace es62:ror '-PesVersion=6.2.1'
+    ./gradlew --stacktrace es62:ror '-PesVersion=6.2.2'
+    ./gradlew --stacktrace es62:ror '-PesVersion=6.2.3'
+    ./gradlew --stacktrace es62:ror '-PesVersion=6.2.4'
 
    # es61
-    ./gradlew --stacktrace es61x:rorplugin '-PesVersion=6.1.0'
-    ./gradlew --stacktrace es61x:rorplugin '-PesVersion=6.1.1'
-    ./gradlew --stacktrace es61x:rorplugin '-PesVersion=6.1.2'
-    ./gradlew --stacktrace es61x:rorplugin '-PesVersion=6.1.3'
-    ./gradlew --stacktrace es61x:rorplugin '-PesVersion=6.1.4'
+    ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.0'
+    ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.1'
+    ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.2'
+    ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.3'
+    ./gradlew --stacktrace es61x:ror '-PesVersion=6.1.4'
 
     # es60
-    ./gradlew --stacktrace es60x:rorplugin '-PesVersion=6.0.0'
-    #./gradlew --stacktrace es60x:rorplugin '-PesVersion=6.0.1'
+    ./gradlew --stacktrace es60x:ror '-PesVersion=6.0.0'
+    #./gradlew --stacktrace es60x:ror '-PesVersion=6.0.1'
 
 fi
 
@@ -231,47 +231,47 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
     # es55
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.0'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.1'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.2'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.3'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.4'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.5'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.6'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.7'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.8'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.9'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.10'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.11'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.12'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.13'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.14'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.15'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.6.16'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.0'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.1'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.2'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.3'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.4'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.5'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.6'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.7'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.8'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.9'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.10'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.11'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.12'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.13'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.14'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.15'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.6.16'
 
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.5.0'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.5.1'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.5.2'
-    ./gradlew --stacktrace es55x:rorplugin '-PesVersion=5.5.3'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.0'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.1'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.2'
+    ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.3'
 
     # es53
-    ./gradlew --stacktrace es53x:rorplugin '-PesVersion=5.4.0'
-    ./gradlew --stacktrace es53x:rorplugin '-PesVersion=5.4.1'
-    ./gradlew --stacktrace es53x:rorplugin '-PesVersion=5.4.2'
-    ./gradlew --stacktrace es53x:rorplugin '-PesVersion=5.4.3'
+    ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.0'
+    ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.1'
+    ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.2'
+    ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.3'
 
-    ./gradlew --stacktrace es53x:rorplugin '-PesVersion=5.3.0'
-    ./gradlew --stacktrace es53x:rorplugin '-PesVersion=5.3.1'
-    ./gradlew --stacktrace es53x:rorplugin '-PesVersion=5.3.2'
-    ./gradlew --stacktrace es53x:rorplugin '-PesVersion=5.3.3'
+    ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.0'
+    ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.1'
+    ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.2'
+    ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.3'
 
     # es52
-    ./gradlew --stacktrace es52x:rorplugin '-PesVersion=5.2.0'
-    ./gradlew --stacktrace es52x:rorplugin '-PesVersion=5.2.1'
-    #./gradlew --stacktrace es52x:rorplugin '-PesVersion=5.2.2'
+    ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.0'
+    ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.1'
+    #./gradlew --stacktrace es52x:ror '-PesVersion=5.2.2'
 
     # es51
-    ./gradlew --stacktrace es51x:rorplugin '-PesVersion=5.1.1'
-    #./gradlew --stacktrace es51x:rorplugin '-PesVersion=5.1.2'
+    ./gradlew --stacktrace es51x:ror '-PesVersion=5.1.1'
+    #./gradlew --stacktrace es51x:ror '-PesVersion=5.1.2'
 
 fi
