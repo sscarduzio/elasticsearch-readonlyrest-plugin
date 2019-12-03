@@ -48,4 +48,4 @@ target/
 // OSX
 .DS_Store
 
-
+.travis/secret.pgp

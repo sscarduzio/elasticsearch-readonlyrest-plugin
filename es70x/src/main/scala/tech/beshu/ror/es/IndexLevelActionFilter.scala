@@ -88,6 +88,10 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
       ThreadRepo.getRestChannel match {
+        case None =>
+          chain.proceed(task, action, request, listener)
+        case Some(_) if action.startsWith("internal:") =>
+          chain.proceed(task, action, request, listener)
         case Some(channel) =>
           rorInstanceState.get() match {
             case RorInstanceStartingState.Starting =>
@@ -110,10 +114,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
             case RorInstanceStartingState.NotStarted(_) =>
               channel.sendResponse(createRorStartingFailureResponse(channel))
           }
-        case Some(_) if action.startsWith("internal:") =>
-          chain.proceed(task, action, request, listener)
-        case None =>
-          chain.proceed(task, action, request, listener)
       }
     }
   }
