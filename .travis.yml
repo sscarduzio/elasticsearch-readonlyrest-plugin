@@ -60,6 +60,7 @@ env:
   - ROR_TASK="package_es5xx"
 before_script:
 - sudo sysctl -w vm.max_map_count=262144
+before_install:
 - openssl aes-256-cbc -K $encrypted_c41ad8265b54_key -iv $encrypted_c41ad8265b54_iv -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
 after_success:
 - |2
