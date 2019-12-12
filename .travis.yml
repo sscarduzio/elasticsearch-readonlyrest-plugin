@@ -87,4 +87,4 @@ after_success:
          "  LogLevel ERROR" >> ~/.ssh/config
 before_install:
   - openssl aes-256-cbc -K $encrypted_cff3c7a60633_key -iv $encrypted_cff3c7a60633_iv
-    -in .travis/secret.pgp.enc -out ~\/Desktop/secret.gpg -d
+    -in .travis/secret.gpg.enc -out .travis/secret.gpg -d
