@@ -23,6 +23,8 @@ deploy:
     tags: false
 env:
   global:
+  - secure: KCJiEKuvu5p6cEhC+AqiFYHROWaB3niaoRbpiOlJ7QY0MDCHEDTPKca/yO5oRZ0H/TQCBK5t20XNKJHlSE9DLxJ12VXayg86mHJa7l6FiTATuvR5CBOwo+M1EyA0PGD8lzDD2mm0pfRx8V0I0f1b/hihE+yuGeFHRJAtOJRTK9o=
+  - secure: NEnf7IJzkoC+TyhMzDtNTrmmWujmedqHJxG9sRuJTmeRoF3Acv1o00hzfT8/5YsqA0oaVVq4cARSrIm2kZoR+fFSfodQuNgxErP2fyMDb0SD+nuAbL/a14/IodQv8Eb8GcYSxcSECSw80FCdS90vdiIj7l9eq+1wEttM93MUO9s=
   - secure: FJWhBc9lDRFY6F6nnNQyZtLDiCfF1Pveg3MN3z6VtUiK5YytKu/4BoolJj5mk+Qa4GOfR+Xg7490FH53q51Os4GVUPSOsn99lpXcZp17cCaBRtVgNwEF9WAJ8fbOvrbWdkvAYrT9jlTntznb8vQCc2ZNfGwbVsPHs6s7pnRQB4w=
   - secure: AhN/2Vk0BZ6TrvKiFr+QTC+Bwbl9XeWSXC/UhWyzGU49zstNd69UhQBEhQtCQR6eKMCZsXbv0yS3auuS00Rlh4/aD6R6hyqSuITAw/9vybsT/R5tnVgS3dNXhdnBeVkRkntWv+bRlxIk2l1fk/QSum0+CNkD2F2+achC0IdO3PE=
   - secure: l3wUBiJ9K4y/NRFfNE9Qu/OmKCyceDi5Mv6yQtQHzVW20bAEIkqCgtvmG2KUIWa4/mKQFbg2NsuOv7+UHTjIvLmZuognj2qg7TB/ewOT11M8La8ySZMYbWM5V1LqOmrc7YcVeejT8gdacw3HVxLsakSiIZAkxjrzKqh/sOtt1EY=
@@ -84,5 +86,5 @@ after_success:
          "  IdentityFile $SSH_FILE" \
          "  LogLevel ERROR" >> ~/.ssh/config
 before_install:
-- openssl aes-256-cbc -K $encrypted_da5cf56c4a63_key -iv $encrypted_da5cf56c4a63_iv
-  -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
+  - openssl aes-256-cbc -K $encrypted_cff3c7a60633_key -iv $encrypted_cff3c7a60633_iv
+    -in .travis/secret.pgp.enc -out ~\/Desktop/secret.gpg -d
