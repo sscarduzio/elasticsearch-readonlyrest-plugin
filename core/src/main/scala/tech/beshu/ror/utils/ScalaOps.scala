@@ -18,9 +18,11 @@ package tech.beshu.ror.utils
 
 import cats.Functor
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
+import cats.effect.{ContextShift, IO}
 import com.twitter.{util => twitter}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import monix.execution.Scheduler
 
 import scala.collection.SortedSet
 import scala.concurrent.duration._
@@ -128,6 +130,31 @@ object ScalaOps {
     val promise = Promise[T]()
     f.respond(promise complete _)
     promise.future
+  }
+
+  implicit def taskToTwitterFuture[T](t: Task[T])
+                                     (implicit scheduler: Scheduler): twitter.Future[T] = {
+    val promise = twitter.Promise[T]()
+    t.runAsync {
+      case Right(value) => promise.setValue(value)
+      case Left(ex) => promise.setException(ex)
+    }
+    promise
+  }
+
+  implicit def twitterFutureToTask[T](f: twitter.Future[T]): Task[T] = {
+    Task.fromFuture(f)
+  }
+
+  implicit def twitterFutureToIo[T](f: twitter.Future[T])
+                                   (implicit contextShift: ContextShift[IO]): IO[T] = {
+    IO.fromFuture(IO(f))
+  }
+
+  implicit def taskToIo[T](t: Task[T])
+                          (implicit scheduler: Scheduler,
+                           contextShift: ContextShift[IO]): IO[T] = {
+    IO.fromFuture(IO(t.runToFuture))
   }
 
   implicit class AutoCloseableOps[A <: AutoCloseable](val value: A) extends AnyVal {
