@@ -190,6 +190,7 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.2'
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.3'
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.4'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.5'
 
     # es65
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.0'

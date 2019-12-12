@@ -34,7 +34,7 @@ import tech.beshu.ror.SecurityPermissionException
 import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
-import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider}
+import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.request.RequestInfo
 import tech.beshu.ror.es.request.RorNotAvailableResponse._
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
@@ -53,6 +53,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
+  private val rorEsClusterService = new EsServerBasedRorClusterService(clusterService)
 
   private val startingTaskCancellable = Ror
     .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
@@ -127,7 +128,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             channel: RestChannel): Unit = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        val requestInfo = new RequestInfo(channel, task.getId, action, request, clusterService, threadPool, remoteClusterService)
+        val requestInfo = new RequestInfo(channel, task.getId, action, request, rorEsClusterService, threadPool, remoteClusterService.isCrossClusterSearchEnabled)
         val requestContext = requestContextFrom(requestInfo)
         requestContext.uriPath match {
           case CurrentUserMetadataPath(_) =>

@@ -41,19 +41,18 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
 import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest, IndicesRequest}
-import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.Index
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
-import org.elasticsearch.transport.RemoteClusterService
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices._
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.{NoIndices, RegularIndices, SqlIndices}
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
+import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
 import tech.beshu.ror.es.utils.SqlRequestHelper
 import tech.beshu.ror.utils.LoggerOps._
@@ -62,22 +61,23 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.{RCUtils, ReflecUtils}
 
 import scala.collection.JavaConverters._
-import scala.language.postfixOps
 import scala.math.Ordering.comparatorToOrdering
 import scala.util.{Failure, Success, Try}
 
-class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequest: ActionRequest,
-                  clusterService: ClusterService, threadPool: ThreadPool, remoteClusterService: RemoteClusterService)
+class RequestInfo(channel: RestChannel,
+                  taskId: Long,
+                  action: String,
+                  actionRequest: ActionRequest,
+                  clusterService: RorClusterService,
+                  threadPool: ThreadPool,
+                  crossClusterSearchEnabled: Boolean)
   extends RequestInfoShim with Logging {
 
   private val request = channel.request()
 
   override val extractType: String = actionRequest.getClass.getSimpleName
 
-  override def extractIndexMetadata(index: String): Set[String] = {
-    val lookup = clusterService.state.metaData.getAliasAndIndexLookup
-    lookup.get(index).getIndices.asScala.map(_.getIndexUUID).toSet
-  }
+  override def extractIndexMetadata(index: String): Set[String] = clusterService.indexOrAliasUuids(index)
 
   override val extractTaskId: Long = taskId
 
@@ -101,7 +101,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       case ar: PutIndexTemplateRequest =>
         RegularIndices {
           indicesFromPatterns(clusterService, ar.indices.asSafeSet)
-            .flatMap { case (pattern, relatedIndices) => if(relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
+            .flatMap { case (pattern, relatedIndices) => if (relatedIndices.nonEmpty) relatedIndices else Set(pattern) }
             .toSet
         }
       case ar: IndexRequest => // The most common case first
@@ -246,18 +246,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
     s"$tmpID#$taskId"
   }
 
-  override lazy val extractAllIndicesAndAliases: Map[String, Set[String]] = {
-    val indices = clusterService.state.metaData.getIndices
-    indices
-      .keysIt().asScala
-      .map { index =>
-        val indexMetaData = indices.get(index)
-        val indexName = indexMetaData.getIndex.getName
-        val aliases: Set[String] = indexMetaData.getAliases.keysIt.asScala.toSet
-        (indexName, aliases)
-      }
-      .toMap
-  }
+  override lazy val extractAllIndicesAndAliases: Map[String, Set[String]] = clusterService.allIndicesAndAliases
 
   override val extractIsReadRequest: Boolean = RCUtils.isReadRequest(action)
 
@@ -272,7 +261,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override val extractIsCompositeRequest: Boolean = actionRequest.isInstanceOf[CompositeIndicesRequest]
 
-  override val extractHasRemoteClusters: Boolean = remoteClusterService.isCrossClusterSearchEnabled
+  override val extractHasRemoteClusters: Boolean = crossClusterSearchEnabled
 
   override def writeSnapshots(newSnapshots: Set[String]): WriteResult[Unit] = {
     if (newSnapshots.isEmpty) return WriteResult.Success(())
@@ -300,6 +289,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
       case ar: VerifyRepositoryRequest => ar.name(newRepositoriesA(0))
       case _ =>
     }
+
     WriteResult.Success(())
   }
 
@@ -420,7 +410,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
     actionRequest match {
       case ar: GetIndexTemplatesRequest =>
         val requestTemplateNames = ar.names.asSafeSet
-        val allowedTemplateNames = findTemplatesOfIndices(clusterService, indices)
+        val allowedTemplateNames = clusterService.findTemplatesOfIndices(indices)
         val templateNamesToReturn =
           if (requestTemplateNames.isEmpty) {
             allowedTemplateNames
