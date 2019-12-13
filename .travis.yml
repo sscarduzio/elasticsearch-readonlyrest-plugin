@@ -79,3 +79,5 @@ after_success:
 before_install:
 - openssl aes-256-cbc -K $encrypted_31be120daa3b_key -iv $encrypted_31be120daa3b_iv
   -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
+- openssl aes-256-cbc -K $encrypted_bf4db9d5783b_key -iv $encrypted_bf4db9d5783b_iv 
+  -in ".travis/github_deploy_key.enc" -out .travis/test -d
