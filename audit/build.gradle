@@ -25,8 +25,9 @@ buildscript {
     }
 
     dependencies {
-        classpath group: 'com.github.prokod', name: 'gradle-crossbuild-scala', version: '0.9.0'
-        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins', name: 'license-gradle-plugin', version: '0.15.0'
+        classpath group: 'com.github.prokod',                           name: 'gradle-crossbuild-scala',        version: '0.9.0'
+        classpath group: 'io.codearte.gradle.nexus',                    name: 'gradle-nexus-staging-plugin',    version: '0.21.1'
+        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins', name: 'license-gradle-plugin',          version: '0.15.0'
     }
 }
 
@@ -36,6 +37,7 @@ repositories {
 
 apply plugin: "com.github.hierynomus.license"
 apply plugin: 'com.github.prokod.gradle-crossbuild'
+apply plugin: 'io.codearte.nexus-staging'
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'maven-publish'
@@ -93,6 +95,13 @@ def ror_pom = { ->
         connection.set("scm:git:git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git")
         url.set("https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/")
     }
+    developers {
+        developer {
+            id.set('scarduzio')
+            name.set('Simone Scarduzio')
+            email.set('simone@readonlyrest.com')
+        }
+    }
 }
 
 crossBuild {
@@ -112,24 +121,42 @@ gradle.taskGraph.whenReady { taskGraph ->
     }
 }
 
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    classifier = 'sources'
+}
+
+task javadocJar(type: Jar) {
+    from javadoc
+    classifier = 'javadoc'
+}
+
 group = 'tech.beshu.ror'
 archivesBaseName = 'audit'
 publishing {
     publications {
         crossBuildV211(MavenPublication) {
             artifact crossBuildV211Jar
+            artifact sourcesJar
+            artifact javadocJar
             pom ror_pom
         }
         crossBuildV212(MavenPublication) {
             artifact crossBuildV212Jar
+            artifact sourcesJar
+            artifact javadocJar
             pom ror_pom
         }
         crossBuildV213(MavenPublication) {
             artifact crossBuildV213Jar
+            artifact sourcesJar
+            artifact javadocJar
             pom ror_pom
         }
         mavenJava(MavenPublication) {
             artifact jar
+            artifact sourcesJar
+            artifact javadocJar
             pom ror_pom
         }
     }
@@ -149,4 +176,9 @@ signing {
     sign publishing.publications
 }
 
-// todo: https://github.com/Codearte/gradle-nexus-staging-plugin/
+nexusStaging {
+    packageGroup = "tech.beshu"
+    stagingProfileId = System.getenv('MAVEN_STAGING_PROFILE_ID')
+    username = System.getenv('MAVEN_REPO_USER')
+    password = System.getenv('MAVEN_REPO_PASSWORD')
+}

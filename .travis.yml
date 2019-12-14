@@ -14,17 +14,17 @@ branches:
   except:
   - "/^v[0-9].*es/"
 script: bin/build.sh
-#deploy:
-#  provider: script
-#  script: ci/ci-deploy.sh
-#  skip_cleanup: true
-#  on:
-#    all_branches: true
-#    tags: false
+deploy:
+  provider: script
+  script: ci/ci-deploy.sh
+  skip_cleanup: true
+  on:
+    all_branches: true
+    tags: false
 env:
   matrix:
-  - ROR_TASK="publishing"
-#  - ROR_TASK="license"
+  - ROR_TASK="license"
+# todo: uncomment
 #  - ROR_TASK="unit"
 #  - ROR_TASK="integration_es74x"
 #  - ROR_TASK="integration_es74x_scala"
@@ -58,6 +58,7 @@ env:
   - secure: SSnz+vBLSN6kh5yjn7r/tkFeecA7teYaFnUetFTLuxBS0POJteen7tSCCN7I0I19K4YEM6hzgxcWvhv8Rq+vZRoj9rg+zFFFANJGXdWEiCVT26P0Oemjo1lKyFD4S4E9a/78OvZ4PduyujoeuKigGHuLeTlGQrHHXAbsqJhOSaA=
   - secure: CxxuPB/0OI9IQhBPnU0W1V+5xjAwSfh9GHolJt7/hPCNeLVQJLM/TnCCyZB4UEb2g7/0G3dHVML50YpBF7S6ClAXvnJheXYoR2Pcu7dK4Peeo2oGwz99OJIVwjl6+WVl2SajeNl2QjIObFsVJ7E6LDAGSb1wxYGGEsKRptwMO3g=
   - secure: SDEweVTOcDxLd0Bj4z/jXUsbjII/RN6sk8J0x+cAwCyLH83Uz9M6VROVzMaFR3l8QaM3Mz8PwWgwsMleSbd7lE6VeGvSprAWsRrNLCIkplmixVq8wbVM9bBwRoom96PdwyuDmZ4ugVItYebg3m/sOW5hDTQbS8bEBH0e+tWr/4o=
+  - secure: UTtFh81H66IiW1d8Iwt+4gS4BnQACMs80uuco2yiau6+2yq6cn9Zrv75B3KmQlmANAQXpedYHhhSGkDM03WmjyvPY3UZaA79Tkm1aGNMAVUNOEPpX8vwSk6mOa1+tXgzya6tHbdt0IRHW1dZvvEV0F7aOKHamGNp67Ja/02Vkg4=
 before_script:
 - sudo sysctl -w vm.max_map_count=262144
 after_success:

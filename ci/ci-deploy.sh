@@ -45,11 +45,29 @@ function processBuild {
     upload  $PLUGIN_FILE.sha1   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE.sha1
 }
 
+function publishArtifacts {
+    openssl aes-256-cbc -K $encrypted_31be120daa3b_key -iv $encrypted_31be120daa3b_iv -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
 
-for zipFile in `ls -1 es*x/build/distributions/*zip`; do
-    echo "Processing $zipFile ..."
-    processBuild $zipFile
-done
+    CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
+    PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
+
+    if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
+        echo ">>> Publishing audit module artifacts to maven repo"
+        ./gradlew audit:publish
+        ./gradlew audit:closeRepository # todo: remove
+        #./gradlew audit:closeAndReleaseRepository # todo: uncomment
+    else
+        echo ">>> Skipping publishing audit module artifacts"
+    fi
+}
+
+# todo: uncomment
+#for zipFile in `ls -1 es*x/build/distributions/*zip`; do
+#    echo "Processing $zipFile ..."
+#    processBuild $zipFile
+#done
+
+publishArtifacts
 
 exit 0
 
