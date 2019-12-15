@@ -52,20 +52,18 @@ function publishArtifacts {
     PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
 
     if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
-        echo ">>> Publishing audit module artifacts to maven repo"
+        echo ">>> Publishing audit module artifacts to sonatype repo"
         ./gradlew audit:publishToSonatype
-        ./gradlew audit:closeRepository # todo: remove
-        #./gradlew audit:closeAndReleaseRepository # todo: uncomment
+        ./gradlew audit:closeAndReleaseRepository
     else
         echo ">>> Skipping publishing audit module artifacts"
     fi
 }
 
-# todo: uncomment
-#for zipFile in `ls -1 es*x/build/distributions/*zip`; do
-#    echo "Processing $zipFile ..."
-#    processBuild $zipFile
-#done
+for zipFile in `ls -1 es*x/build/distributions/*zip`; do
+    echo "Processing $zipFile ..."
+    processBuild $zipFile
+done
 
 publishArtifacts
 
