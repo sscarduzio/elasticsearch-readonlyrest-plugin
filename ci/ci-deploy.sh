@@ -53,7 +53,7 @@ function publishArtifacts {
 
     if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
         echo ">>> Publishing audit module artifacts to maven repo"
-        ./gradlew audit:publish
+        ./gradlew audit:publishToSonatype
         ./gradlew audit:closeRepository # todo: remove
         #./gradlew audit:closeAndReleaseRepository # todo: uncomment
     else
