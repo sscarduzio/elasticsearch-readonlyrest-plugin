@@ -89,7 +89,9 @@ import java.util.function.UnaryOperator;
 
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
-
+  static {
+    LogBuildInfoMessage.apply();
+  }
   private final RorSsl sslConfig;
 
   private IndexLevelActionFilter ilaf;

@@ -96,7 +96,9 @@ import static org.elasticsearch.discovery.zen.PublishClusterStateAction.serializ
 
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
-
+  static {
+    LogBuildInfoMessage.apply();
+  }
   private final RorSsl sslConfig;
   private final ClusterStateResponse emptyClusterState;
 
