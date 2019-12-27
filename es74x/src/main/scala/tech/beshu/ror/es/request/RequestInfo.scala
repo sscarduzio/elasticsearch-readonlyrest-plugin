@@ -49,6 +49,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.{NoIndices, RegularIndices, SqlIndices}
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
@@ -310,9 +311,10 @@ class RequestInfo(channel: RestChannel,
   }
 
   override def writeIndices(newIndices: Set[String]): WriteResult[Unit] = {
-    val indices = newIndices.filter(i => i != "" && i != "<no-index>").toList
-    if (indices.isEmpty) return WriteResult.Success(())
-
+    val indices = NonEmptyList
+      .fromList(newIndices.filter(i => i != "" && i != "<no-index>").toList)
+      .getOrElse(NonEmptyList.one(randomNonexistentIndex().value.value))
+      .toList
     actionRequest match {
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)
@@ -430,5 +432,12 @@ class RequestInfo(channel: RestChannel,
       // ignore
     }
     WriteResult.Success(())
+  }
+
+  private def randomNonexistentIndex(): IndexName = {
+    extractIndices.indices.headOption match {
+      case Some(indexName) => IndexName.randomNonexistentIndex(indexName)
+      case None => IndexName.randomNonexistentIndex()
+    }
   }
 }

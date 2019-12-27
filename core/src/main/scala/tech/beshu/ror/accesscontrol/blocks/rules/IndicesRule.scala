@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.{Matcher, MatcherWithWild
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.Action.{mSearchAction, searchAction}
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -50,9 +51,19 @@ class IndicesRule(val settings: Settings)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
-    if (!requestContext.involvesIndices) Fulfilled(blockContext)
-    else if (matchAll) Fulfilled(blockContext)
-    else process(requestContext, blockContext)
+    val result =
+      if (!requestContext.involvesIndices) Fulfilled(blockContext)
+      else if (matchAll) Fulfilled(blockContext)
+      else process(requestContext, blockContext)
+    result match {
+      case Fulfilled(blockContext) =>
+        logger.debug(
+          s"Requested indices: [${requestContext.indices.map(_.show).mkString(",")}]; " +
+          s"Found indices: [${blockContext.indices.getOrElse(Set.empty).map(_.show).mkString(",")}]"
+        )
+      case _ =>
+    }
+    result
   }
 
   private def process(requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
@@ -124,10 +135,10 @@ class IndicesRule(val settings: Settings)
       _ <- noneOrAllIndices(requestContext, matcher)
       _ <- allIndicesMatchedByWildcard(requestContext, matcher)
       _ <- atLeastOneNonWildcardIndexNotExist(requestContext, matcher)
-      _ <- expandedIndices(requestContext, matcher)
       _ <- indicesAliases(requestContext, matcher)
+      _ <- expandedIndices(requestContext, matcher)
     } yield ()
-    result.left.getOrElse(CanPass.No)
+    result.left.getOrElse(CanPass.Yes(Set.empty))
   }
 
   private def noneOrAllIndices(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
@@ -170,9 +181,9 @@ class IndicesRule(val settings: Settings)
       case (acc, _) => acc
     }
     if (nonExistent.nonEmpty && !requestContext.isCompositeRequest) {
-      stop(CanPass.No)
+      stop(CanPass.Yes(Set.empty))
     } else if (nonExistent.nonEmpty && (indices -- nonExistent).isEmpty) {
-      stop(CanPass.No)
+      stop(CanPass.Yes(Set.empty))
     } else {
       continue
     }
@@ -182,7 +193,7 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking - expanding wildcard indices ...")
     val expansion = expandedIndices(requestContext)
     if (expansion.isEmpty) {
-      stop(CanPass.No)
+      stop(CanPass.Yes(Set.empty))
     } else {
       val allowedExpansion = matcher.filter(expansion)
       if (allowedExpansion.nonEmpty) {

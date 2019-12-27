@@ -25,14 +25,9 @@ readonlyrest:
     indices: ["public*"]
     auth_key: "restricted:dev"
 
-  - name: "::PERFMON - RESTRICTED TO ALIAS::"
+  - name: "::PERFMON - RESTRICTED::"
     methods: [GET]
-    indices: ["perfmon*"]
-    auth_key: "perfmon:dev"
-
-  - name: "::PERFMON - RESTRICTED TO INDEX::"
-    methods: [GET]
-    indices: ["bla*"]
+    indices: ["perfmon*", "bla*"]
     auth_key: "perfmon:dev"
 
   - name: myanmar_vietnam
