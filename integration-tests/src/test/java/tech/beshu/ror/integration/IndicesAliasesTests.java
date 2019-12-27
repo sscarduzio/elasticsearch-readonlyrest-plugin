@@ -97,7 +97,7 @@ public class IndicesAliasesTests {
   public void testRestrictedPureIndex() {
     assertNAttempts(3, () -> {
       SearchResult result = restrictedDevSearchManager.search("/my_data/_search");
-      assertEquals(401, result.getResponseCode());
+      assertEquals(404, result.getResponseCode());
       return null;
     });
   }
@@ -211,7 +211,8 @@ public class IndicesAliasesTests {
   public void testVietMianUserShouldNotBeAbleToAccessCongoIndex() {
     assertNAttempts(3, () -> {
       SearchResult result = vietMyanSearchManager.search("/vuln-ass-all-congo/_search");
-      assertEquals(401, result.getResponseCode());
+      assertEquals(404, result.getResponseCode());
+      assertEquals(0, result.getSearchHits().size());
       return null;
     });
   }

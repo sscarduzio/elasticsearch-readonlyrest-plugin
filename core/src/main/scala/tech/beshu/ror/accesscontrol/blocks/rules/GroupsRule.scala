@@ -132,5 +132,4 @@ object GroupsRule {
 
   final case class Settings(groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]],
                             usersDefinitions: NonEmptySet[UserDef])
-
 }
