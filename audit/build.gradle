@@ -25,7 +25,10 @@ buildscript {
     }
 
     dependencies {
-        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
+        classpath group: 'com.github.prokod',                           name: 'gradle-crossbuild-scala',        version: '0.9.0'
+        classpath group: 'io.codearte.gradle.nexus',                    name: 'gradle-nexus-staging-plugin',    version: '0.21.1'
+        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins', name: 'license-gradle-plugin',          version: '0.15.0'
+        classpath group: 'de.marcphilipp.gradle',                       name: 'nexus-publish-plugin',           version: '0.4.0'
     }
 }
 
@@ -34,9 +37,14 @@ repositories {
 }
 
 apply plugin: "com.github.hierynomus.license"
+apply plugin: 'com.github.prokod.gradle-crossbuild'
+apply plugin: 'de.marcphilipp.nexus-publish'
+apply plugin: 'io.codearte.nexus-staging'
 apply plugin: 'java'
 apply plugin: 'maven'
+apply plugin: 'maven-publish'
 apply plugin: 'scala'
+apply plugin: 'signing'
 
 compileJava {
     sourceCompatibility = 1.8
@@ -49,8 +57,8 @@ compileScala {
 }
 
 dependencies {
-    compile group: 'org.scala-lang',            name: 'scala-library',              version: '2.12.6'
-    compile group: 'org.json',                  name: 'json',                       version: '20180813'
+    compile group: 'org.scala-lang', name: 'scala-library', version: '2.12.6'
+    compile group: 'org.json', name: 'json', version: '20180813'
 }
 
 test {
@@ -73,4 +81,117 @@ license {
 
 compileScala {
     options.compilerArgs << "-Ywarn-macros:after"
+}
+
+def ror_pom = { ->
+    name.set("ReadonlyREST audit library")
+    description.set("A library to writing custom audit log serializer for Elasticsearch ReadonlyREST plugin")
+    url.set("http://www.example.com/library")
+    licenses {
+        license {
+            name.set("GNU GENERAL PUBLIC LICENSE, Version 3")
+            url.set("https://www.gnu.org/licenses/gpl-3.0.txt")
+        }
+    }
+    scm {
+        connection.set("scm:git:git@github.com:sscarduzio/elasticsearch-readonlyrest-plugin.git")
+        url.set("https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin/")
+    }
+    developers {
+        developer {
+            id.set('scarduzio')
+            name.set('Simone Scarduzio')
+            email.set('simone@readonlyrest.com')
+        }
+    }
+}
+
+crossBuild {
+    builds {
+        v211
+        v212
+        v213
+    }
+}
+
+import org.gradle.plugins.signing.Sign
+gradle.taskGraph.whenReady { taskGraph ->
+    if (taskGraph.allTasks.any { it instanceof Sign }) {
+        allprojects { ext."signing.keyId" = System.getenv('GPG_KEY_ID') }
+        allprojects { ext."signing.secretKeyRingFile" = rootProject.file('.travis/secret.pgp') }
+        allprojects { ext."signing.password" = System.getenv('GPG_PASSPHRASE') }
+    }
+}
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    classifier = 'sources'
+}
+
+task javadocJar(type: Jar) {
+    from javadoc
+    classifier = 'javadoc'
+}
+
+group = 'tech.beshu.ror'
+archivesBaseName = 'audit'
+publishing {
+    publications {
+        crossBuildV211(MavenPublication) {
+            artifact crossBuildV211Jar
+            artifact sourcesJar
+            artifact javadocJar
+            pom ror_pom
+        }
+        crossBuildV212(MavenPublication) {
+            artifact crossBuildV212Jar
+            artifact sourcesJar
+            artifact javadocJar
+            pom ror_pom
+        }
+        crossBuildV213(MavenPublication) {
+            artifact crossBuildV213Jar
+            artifact sourcesJar
+            artifact javadocJar
+            pom ror_pom
+        }
+        mavenJava(MavenPublication) {
+            artifact jar
+            artifact sourcesJar
+            artifact javadocJar
+            pom ror_pom
+        }
+    }
+    repositories {
+        maven {
+            name 'deploy'
+            url 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
+            credentials {
+                username = System.getenv('MAVEN_REPO_USER')
+                password = System.getenv('MAVEN_REPO_PASSWORD')
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            packageGroup = 'tech.beshu'
+            stagingProfileId = System.getenv('MAVEN_STAGING_PROFILE_ID')
+            username = System.getenv('MAVEN_REPO_USER')
+            password = System.getenv('MAVEN_REPO_PASSWORD')
+        }
+    }
+}
+
+nexusStaging {
+    packageGroup = 'tech.beshu'
+    stagingProfileId = System.getenv('MAVEN_STAGING_PROFILE_ID')
+    username = System.getenv('MAVEN_REPO_USER')
+    password = System.getenv('MAVEN_REPO_PASSWORD')
 }

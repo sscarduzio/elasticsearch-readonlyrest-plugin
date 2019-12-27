@@ -22,35 +22,42 @@ deploy:
     all_branches: true
     tags: false
 env:
-- ROR_TASK="license"
-- ROR_TASK="unit"
-- ROR_TASK="integration_es74x"
-- ROR_TASK="integration_es74x_scala"
-- ROR_TASK="integration_es73x"
-- ROR_TASK="integration_es73x_scala"
-- ROR_TASK="integration_es70x"
-- ROR_TASK="integration_es70x_scala"
-- ROR_TASK="integration_es66x"
-- ROR_TASK="integration_es66x_scala"
-- ROR_TASK="integration_es63x"
-- ROR_TASK="integration_es63x_scala"
-- ROR_TASK="integration_es62x"
-- ROR_TASK="integration_es62x_scala"
-- ROR_TASK="integration_es61x"
-- ROR_TASK="integration_es61x_scala"
-- ROR_TASK="integration_es60x"
-- ROR_TASK="integration_es60x_scala"
-- ROR_TASK="integration_es55x"
-- ROR_TASK="integration_es55x_scala"
-- ROR_TASK="integration_es53x"
-- ROR_TASK="integration_es53x_scala"
-- ROR_TASK="integration_es52x"
-- ROR_TASK="integration_es52x_scala"
-- ROR_TASK="integration_es51x"
-- ROR_TASK="integration_es51x_scala"
-- ROR_TASK="package_es7xx"
-- ROR_TASK="package_es6xx"
-- ROR_TASK="package_es5xx"
+  matrix:
+  - ROR_TASK="license"
+  - ROR_TASK="unit"
+  - ROR_TASK="integration_es74x"
+  - ROR_TASK="integration_es74x_scala"
+  - ROR_TASK="integration_es73x"
+  - ROR_TASK="integration_es73x_scala"
+  - ROR_TASK="integration_es70x"
+  - ROR_TASK="integration_es70x_scala"
+  - ROR_TASK="integration_es66x"
+  - ROR_TASK="integration_es66x_scala"
+  - ROR_TASK="integration_es63x"
+  - ROR_TASK="integration_es63x_scala"
+  - ROR_TASK="integration_es62x"
+  - ROR_TASK="integration_es62x_scala"
+  - ROR_TASK="integration_es61x"
+  - ROR_TASK="integration_es61x_scala"
+  - ROR_TASK="integration_es60x"
+  - ROR_TASK="integration_es60x_scala"
+  - ROR_TASK="integration_es55x"
+  - ROR_TASK="integration_es55x_scala"
+  - ROR_TASK="integration_es53x"
+  - ROR_TASK="integration_es53x_scala"
+  - ROR_TASK="integration_es52x"
+  - ROR_TASK="integration_es52x_scala"
+  - ROR_TASK="integration_es51x"
+  - ROR_TASK="integration_es51x_scala"
+  - ROR_TASK="package_es7xx"
+  - ROR_TASK="package_es6xx"
+  - ROR_TASK="package_es5xx"
+  global:
+  - secure: Qxg4kvPzU9DD4P9nRJyaS7N+YptEPjFqMToTmePUKCasm/tS7P6uIjy6w2iAbJwOtNK1gSqwSNKCE3GkOpZm/y6hCdgBQkeWHTjhMhpydeeqW9L7cmQGllY3Qm4aWokBVFSym/ypl8G8xdy0kt2Xcf1oDSJDM1frlZE52AAKb1o=
+  - secure: SSnz+vBLSN6kh5yjn7r/tkFeecA7teYaFnUetFTLuxBS0POJteen7tSCCN7I0I19K4YEM6hzgxcWvhv8Rq+vZRoj9rg+zFFFANJGXdWEiCVT26P0Oemjo1lKyFD4S4E9a/78OvZ4PduyujoeuKigGHuLeTlGQrHHXAbsqJhOSaA=
+  - secure: CxxuPB/0OI9IQhBPnU0W1V+5xjAwSfh9GHolJt7/hPCNeLVQJLM/TnCCyZB4UEb2g7/0G3dHVML50YpBF7S6ClAXvnJheXYoR2Pcu7dK4Peeo2oGwz99OJIVwjl6+WVl2SajeNl2QjIObFsVJ7E6LDAGSb1wxYGGEsKRptwMO3g=
+  - secure: SDEweVTOcDxLd0Bj4z/jXUsbjII/RN6sk8J0x+cAwCyLH83Uz9M6VROVzMaFR3l8QaM3Mz8PwWgwsMleSbd7lE6VeGvSprAWsRrNLCIkplmixVq8wbVM9bBwRoom96PdwyuDmZ4ugVItYebg3m/sOW5hDTQbS8bEBH0e+tWr/4o=
+  - secure: UTtFh81H66IiW1d8Iwt+4gS4BnQACMs80uuco2yiau6+2yq6cn9Zrv75B3KmQlmANAQXpedYHhhSGkDM03WmjyvPY3UZaA79Tkm1aGNMAVUNOEPpX8vwSk6mOa1+tXgzya6tHbdt0IRHW1dZvvEV0F7aOKHamGNp67Ja/02Vkg4=
 before_script:
 - sudo sysctl -w vm.max_map_count=262144
 after_success:
@@ -76,6 +83,3 @@ after_success:
          "Host github.com" \
          "  IdentityFile $SSH_FILE" \
          "  LogLevel ERROR" >> ~/.ssh/config
-before_install:
-- openssl aes-256-cbc -K $encrypted_31be120daa3b_key -iv $encrypted_31be120daa3b_iv
-  -in .travis/secret.pgp.enc -out .travis/secret.pgp -d

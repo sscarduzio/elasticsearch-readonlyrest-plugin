@@ -17,6 +17,7 @@ import org.elasticsearch.action.support.{ActionFilter, ActionFilters, TransportA
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
+import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings, SettingsFilter}
 import org.elasticsearch.common.util.set.Sets
 import org.elasticsearch.common.xcontent.{DeprecationHandler, NamedXContentRegistry, StatusToXContentObject, ToXContent, XContentFactory, XContentType}
@@ -86,18 +87,20 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
 
   private def createActionModule(settings: Settings) = {
     val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), esClient, settings, threadPool)
+    val clusterSettings = new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS, Sets.newHashSet())
     val actionModule = new ActionModule(
       false,
       settings,
       new IndexNameExpressionResolver(),
       IndexScopedSettings.DEFAULT_SCOPED_SETTINGS,
-      new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS, Sets.newHashSet()),
+      clusterSettings,
       new SettingsFilter(List.empty.asJava),
       threadPool,
       Collections.emptyList(),
       nodeClient,
       new NoneCircuitBreakerService(),
-      new UsageService()
+      new UsageService(),
+      new ClusterService(settings, clusterSettings, threadPool)
     )
 
     nodeClient.initialize(
