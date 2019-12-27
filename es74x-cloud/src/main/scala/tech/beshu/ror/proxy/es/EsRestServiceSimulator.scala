@@ -17,7 +17,6 @@ import org.elasticsearch.action.support.{ActionFilter, ActionFilters, TransportA
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
-import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings, SettingsFilter}
 import org.elasticsearch.common.util.set.Sets
 import org.elasticsearch.common.xcontent.{DeprecationHandler, NamedXContentRegistry, StatusToXContentObject, ToXContent, XContentFactory, XContentType}
@@ -99,8 +98,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       Collections.emptyList(),
       nodeClient,
       new NoneCircuitBreakerService(),
-      new UsageService(),
-      new ClusterService(settings, clusterSettings, threadPool)
+      new UsageService()
     )
 
     nodeClient.initialize(
