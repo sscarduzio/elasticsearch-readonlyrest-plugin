@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.{Base64, Locale, UUID}
+import java.util.{Base64, Locale}
 
 import cats.Eq
 import cats.data.NonEmptyList
@@ -179,13 +179,7 @@ object domain {
 
     def fromString(value: String): Option[IndexName] = NonEmptyString.from(value).map(IndexName.apply).toOption
 
-    def fromUnsafeString(value: String): IndexName = IndexName(NonEmptyString.unsafeFrom(value))
-
-    def randomNonexistentIndex(prefix: String = ""): IndexName = IndexName {
-      NonEmptyString.unsafeFrom {
-        s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${UUID.randomUUID().toString}"
-      }
-    }
+    def fromUnsafeString(value: String) = IndexName(NonEmptyString.unsafeFrom(value))
   }
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
@@ -202,7 +196,7 @@ object domain {
     implicit val eqAuthKey: Eq[PlainTextSecret] = Eq.fromUniversalEquals
   }
 
-  final case class KibanaApp(value: NonEmptyString) 
+  final case class KibanaApp(value: NonEmptyString)
   object KibanaApp {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }
