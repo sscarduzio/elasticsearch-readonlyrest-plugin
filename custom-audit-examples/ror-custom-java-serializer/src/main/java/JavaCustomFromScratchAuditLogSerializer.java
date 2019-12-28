@@ -1,11 +1,9 @@
-package tech.beshu.ror.audit.instances;
-
 import org.json.JSONObject;
 import scala.Option;
 import tech.beshu.ror.audit.AuditLogSerializer;
 import tech.beshu.ror.audit.AuditResponseContext;
 
-public class JavaCustomAuditLogSerializer implements AuditLogSerializer {
+public class JavaCustomFromScratchAuditLogSerializer implements AuditLogSerializer {
 
   public Option<JSONObject> onResponse(AuditResponseContext responseContext) {
     return Option.apply(
