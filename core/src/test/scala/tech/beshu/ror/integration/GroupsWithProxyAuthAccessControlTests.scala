@@ -42,7 +42,6 @@ class GroupsWithProxyAuthAccessControlTests extends WordSpec with BaseYamlLoaded
       |
       |  - name: "proxy1"
       |    user_id_header: "X-Auth-Token"
-      |
     """.stripMargin
 
   "An ACL" when {

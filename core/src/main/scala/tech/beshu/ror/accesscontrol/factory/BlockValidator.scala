@@ -21,7 +21,7 @@ import cats.data.{NonEmptyList, Validated, _}
 import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, KibanaAccessRule, Rule}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{RequirementVerifier, VariableUsage}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.RuleDoesNotMeetRequirement
@@ -38,9 +38,16 @@ object BlockValidator {
 
   private def validateAuthorizationWithAuthenticationPrinciple(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     rules.find(_.rule.isInstanceOf[AuthorizationRule]) match {
-      case None => Validated.Valid(())
-      case Some(_) if rules.exists(_.rule.isInstanceOf[AuthenticationRule]) => Validated.Valid(())
-      case Some(_) => Validated.Invalid(NonEmptyList.one(BlockValidationError.AuthorizationWithoutAuthentication))
+      case None =>
+        Validated.Valid(())
+      case Some(_) =>
+        rules.map(_.rule).collect { case a: AuthenticationRule => a} match {
+          case Nil => Validated.Invalid(NonEmptyList.one(BlockValidationError.AuthorizationWithoutAuthentication))
+          case one :: Nil => Validated.Valid(())
+          case many => Validated.Invalid(NonEmptyList.one(
+            BlockValidationError.OnlyOneAuthenticationRuleAllowed(NonEmptyList.fromListUnsafe(many))
+          ))
+        }
     }
   }
 
@@ -78,6 +85,7 @@ object BlockValidator {
   sealed trait BlockValidationError
   object BlockValidationError {
     case object AuthorizationWithoutAuthentication extends BlockValidationError
+    final case class OnlyOneAuthenticationRuleAllowed(authRules: NonEmptyList[AuthenticationRule]) extends BlockValidationError
     case object KibanaAccessRuleTogetherWithActionsRule extends BlockValidationError
     final case class RuleDoesNotMeetRequirement(nonCompliant: ComplianceResult.NonCompliantWith) extends BlockValidationError
   }

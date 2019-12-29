@@ -320,6 +320,35 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
         val acl = factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule.")))))
       }
+      "block has many authentication rules" in {
+        val config = rorConfigFromUnsafe(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    groups: [group1, group2]
+            |    auth_key: "user2:pass"
+            |    indices: ["g12_index"]
+            |
+            |  users:
+            |
+            |  - username: user1-proxy-id
+            |    groups: ["group1"]
+            |    proxy_auth:
+            |      proxy_auth_config: "proxy1"
+            |      users: ["user1-proxy-id"]
+            |
+            |  proxy_auth_configs:
+            |
+            |  - name: "proxy1"
+            |    user_id_header: "X-Auth-Token"
+            |
+    """.stripMargin)
+        val acl = factory.createCoreFrom(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient])).runSyncUnsafe()
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block should contain only one authentication rule, but contains: [auth_key,groups]")))))
+      }
       "block has kibana access rule together with actions rule" in {
         val config = rorConfigFromUnsafe(
           """
