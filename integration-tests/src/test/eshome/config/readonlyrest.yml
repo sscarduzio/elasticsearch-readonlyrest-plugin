@@ -1,6 +1,4 @@
 readonlyrest:
-  enable: true
-
   ssl:
     enable: true
     keystore_file: "keystore.jks"
@@ -9,19 +7,29 @@ readonlyrest:
 
   access_control_rules:
 
-    # ES containter initializer need this rule to configure ES instance after startup
-    - name: "CONTAINER ADMIN"
-      verbosity: error
-      type: allow
+    - name: "::INITIALIZER::"
+      methods: [GET]
       auth_key: admin:container
 
-    - name: "dev1 indexes"
-      indices: ["custom_@{user}_index_*", "@{user}_index"]
-      auth_key: dev1:test
+    - name: "::GETTER::"
+      methods: [GET]
+      auth_key: "unrestricted:dev"
 
-    - name: "dev2 indexes"
-      indices: ["@{user}_index", "custom_@{user}_index_*"]
-      auth_key: dev2:test
+    - name: "::RESTRICTED TO ALIAS::"
+      methods: [GET]
+      indices: ["public*"]
+      auth_key: "restricted:dev"
 
-    - name: "dev3 - no indices rule"
-      auth_key: dev3:test
+    - name: "::PERFMON - RESTRICTED TO ALIAS AND INDEX::"
+      methods: [GET]
+      indices: ["perfmon*", "bla*"]
+      auth_key: "perfmon:dev"
+
+    - name: myanmar_vietnam
+      kibana_access: ro
+      auth_key: "VIET_MYAN:dev"
+      indices: ["*myanmar*", "*vietnam*"]
+
+    - name: "CONTAINER ADMIN"
+      actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*", "indices:admin/aliases"]
+      #auth_key: admin:container
