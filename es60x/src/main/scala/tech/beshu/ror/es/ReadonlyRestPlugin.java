@@ -88,14 +88,13 @@ import java.util.function.UnaryOperator;
 
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
-  static {
-    LogBuildInfoMessage.apply();
-  }
+
   private final RorSsl sslConfig;
   private Environment environment;
 
   @Inject
   public ReadonlyRestPlugin(Settings s, Path p) {
+    LogBuildInfoMessage.apply();
     // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
     // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
     // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception

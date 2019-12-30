@@ -76,12 +76,11 @@ import java.util.function.UnaryOperator;
 
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
-  static {
-    LogBuildInfoMessage.apply();
-  }
+
   private final RorSsl sslConfig;
 
   public ReadonlyRestPlugin(Settings s) {
+    LogBuildInfoMessage.apply();
     Environment environment = new Environment(s);
     Constants.FIELDS_ALWAYS_ALLOW.addAll(Sets.newHashSet(MapperService.getAllMetaFields()));
     FiniteDuration timeout = FiniteDuration.apply(10, TimeUnit.SECONDS);

@@ -16,9 +16,15 @@
  */
 package tech.beshu.ror.es
 
-object LogBuildInfoMessage extends org.apache.logging.log4j.scala.Logging{
-  def apply(): Unit = {
-    val buildInfo = BuildInfoReader.create()
-    logger.info(s"Starting ReadonlyRest plugin v${buildInfo.pluginVersion} on ES v${buildInfo.esVersion}")
+trait LogBuildInfoMessage extends org.apache.logging.log4j.scala.Logging {
+  def logBuildInfoMessage(): Unit = {
+    val buildInfo = BuildInfoReader.create().get
+    logger.info(createLogMessage(buildInfo))
   }
+  def createLogMessage(buildInfo: BuildInfo): String =
+    s"Starting ReadonlyREST plugin v${buildInfo.pluginVersion} on ES v${buildInfo.esVersion}"
+
+}
+object LogBuildInfoMessage extends LogBuildInfoMessage {
+  def apply(): Unit = logBuildInfoMessage()
 }

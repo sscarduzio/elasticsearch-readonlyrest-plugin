@@ -16,32 +16,53 @@
  */
 package tech.beshu.ror.es
 
+import java.io.InputStream
 import java.util.{Objects, Properties}
+
+import cats.effect.{IO, Resource}
+
+import scala.util.Try
 
 final case class BuildInfo(esVersion: String, pluginVersion: String)
 object BuildInfoReader {
-  private val filename = "git.properties"
+  private val filename = "/git.properties"
 
-  def create(filename: String = filename): BuildInfo = {
-    val props = loadProperties(filename)
-    val esVersion: String = getProperty(props, "es_version")
-    val pluginVersion: String = getProperty(props, "plugin_version")
-    BuildInfo(esVersion, pluginVersion)
+  def create(filename: String = filename): Try[BuildInfo] = {
+    for {
+      props <- loadProperties(filename)
+      esVersion <- getProperty(props, "es_version")
+      pluginVersion <- getProperty(props, "plugin_version")
+    } yield BuildInfo(esVersion, pluginVersion)
   }
 
-  private def loadProperties(filename: String) = {
-    val stream = Objects.requireNonNull(this.getClass.getResourceAsStream(s"/$filename"), s"file '$filename' is expected to be present in plugin jar, but it wasn't found.")
-    val props = new Properties()
-    try {
-      props.load(stream)
-    } finally {
-      stream.close()
+  private def loadProperties(filename: String): Try[Properties] = {
+    createResource(filename).flatMap {
+      tryWithResources(_, loadProperties)
     }
+  }
+
+  private def tryWithResources[A <: AutoCloseable, B](closeable: A, use: A => B): Try[B] = {
+    Try {
+      Resource.fromAutoCloseable(IO.pure(closeable))
+        .use(c => IO.pure(use(c)))
+        .unsafeRunSync()
+    }
+  }
+
+  private def createResource(filename: String) =
+    requireNonNull(this.getClass.getResourceAsStream(filename), s"file '$filename' is expected to be present in plugin jar, but it wasn't found.")
+
+  private def loadProperties(inputStream: InputStream) = {
+    val props = new Properties()
+    props.load(inputStream)
     props
   }
 
   private def getProperty(props: Properties, propertyName: String) =
-    Objects.requireNonNull(props.getProperty(propertyName), s"Property value '$propertyName' have to be defined")
+    requireNonNull(props.getProperty(propertyName), s"Property value '$propertyName' have to be defined")
 
+  private def requireNonNull[A](a: A, message: String): Try[A] = Try {
+    Objects.requireNonNull(a, message)
+  }
 }
 
