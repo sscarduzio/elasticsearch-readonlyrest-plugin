@@ -99,6 +99,8 @@ object SslConfiguration {
                                             keystorePassword: Option[SslConfiguration.KeystorePassword],
                                             keyPass: Option[SslConfiguration.KeyPass],
                                             keyAlias: Option[SslConfiguration.KeyAlias],
+                                            truststoreFile: Option[JFile],
+                                            truststorePassword: Option[SslConfiguration.KeystorePassword],
                                             allowedProtocols: Set[SslConfiguration.Protocol],
                                             allowedCiphers: Set[SslConfiguration.Cipher],
                                             clientAuthenticationEnabled: Boolean) extends SslConfiguration
@@ -107,6 +109,8 @@ object SslConfiguration {
                                              keystorePassword: Option[SslConfiguration.KeystorePassword],
                                              keyPass: Option[SslConfiguration.KeyPass],
                                              keyAlias: Option[SslConfiguration.KeyAlias],
+                                             truststoreFile: Option[JFile],
+                                             truststorePassword: Option[SslConfiguration.KeystorePassword],
                                              allowedProtocols: Set[SslConfiguration.Protocol],
                                              allowedCiphers: Set[SslConfiguration.Cipher],
                                              clientAuthenticationEnabled: Boolean,
@@ -123,6 +127,8 @@ private object SslDecoders {
     val internodeSsl = "ssl_internode"
     val keystoreFile = "keystore_file"
     val keystorePass = "keystore_pass"
+    val truststoreFile = "truststore_file"
+    val truststorePass = "truststore_pass"
     val keyPass = "key_pass"
     val keyAlias = "key_alias"
     val allowedCiphers = "allowed_ciphers"
@@ -137,6 +143,8 @@ private object SslDecoders {
                                        keystorePassword: Option[SslConfiguration.KeystorePassword],
                                        keyPass: Option[SslConfiguration.KeyPass],
                                        keyAlias: Option[SslConfiguration.KeyAlias],
+                                       truststoreFile: Option[JFile],
+                                       truststorePassword: Option[SslConfiguration.KeystorePassword],
                                        allowedProtocols: Set[SslConfiguration.Protocol],
                                        allowedCiphers: Set[SslConfiguration.Cipher],
                                        clientAuthenticationEnabled: Boolean)
@@ -168,6 +176,8 @@ private object SslDecoders {
           keystorePassword = sslCommonProperties.keystorePassword,
           keyPass = sslCommonProperties.keyPass,
           keyAlias = sslCommonProperties.keyAlias,
+          truststoreFile = sslCommonProperties.truststoreFile,
+          truststorePassword = sslCommonProperties.truststorePassword,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
           clientAuthenticationEnabled = sslCommonProperties.clientAuthenticationEnabled,
@@ -184,6 +194,8 @@ private object SslDecoders {
             keystorePassword = sslCommonProperties.keystorePassword,
             keyPass = sslCommonProperties.keyPass,
             keyAlias = sslCommonProperties.keyAlias,
+            truststoreFile = sslCommonProperties.truststoreFile,
+            truststorePassword = sslCommonProperties.truststorePassword,
             allowedProtocols = sslCommonProperties.allowedProtocols,
             allowedCiphers = sslCommonProperties.allowedCiphers,
             clientAuthenticationEnabled = sslCommonProperties.clientAuthenticationEnabled,
@@ -197,6 +209,8 @@ private object SslDecoders {
       for {
         keystoreFile <- c.downField(consts.keystoreFile).as[JFile]
         keystorePassword <- c.downField(consts.keystorePass).as[Option[KeystorePassword]]
+        truststoreFile <- c.downField(consts.truststoreFile).as[Option[JFile]]
+        truststorePassword <- c.downField(consts.truststorePass).as[Option[KeystorePassword]]
         keyPass <- c.downField(consts.keyPass).as[Option[KeyPass]]
         keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
         ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
@@ -209,6 +223,8 @@ private object SslDecoders {
           keystorePassword = keystorePassword,
           keyPass = keyPass,
           keyAlias = keyAlias,
+          truststoreFile = truststoreFile,
+          truststorePassword = truststorePassword,
           allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
           allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
           clientAuthenticationEnabled = clientAuthentication.orElse(verification).getOrElse(false))
