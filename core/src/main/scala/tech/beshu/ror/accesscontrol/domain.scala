@@ -204,7 +204,7 @@ object domain {
     implicit val eqAuthKey: Eq[PlainTextSecret] = Eq.fromUniversalEquals
   }
 
-  final case class KibanaApp(value: NonEmptyString) 
+  final case class KibanaApp(value: NonEmptyString)
   object KibanaApp {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }

@@ -1,4 +1,6 @@
 readonlyrest:
+  enable: true
+
   ssl:
     enable: true
     keystore_file: "keystore.jks"

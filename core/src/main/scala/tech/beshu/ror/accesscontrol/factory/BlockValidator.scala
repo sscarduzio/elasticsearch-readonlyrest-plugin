@@ -20,8 +20,8 @@ import cats.data.Validated._
 import cats.data.{NonEmptyList, Validated, _}
 import cats.syntax.all._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, RuleWithVariableUsageDefinition}
-import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, KibanaAccessRule, Rule}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.{RequirementVerifier, VariableUsage}
+import tech.beshu.ror.accesscontrol.blocks.rules.{ActionsRule, GroupsRule, KibanaAccessRule, Rule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.RequirementVerifier
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.ComplianceResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.{NotUsingVariable, UsingVariable}
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError.RuleDoesNotMeetRequirement
@@ -31,6 +31,7 @@ object BlockValidator {
   def validate(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]): ValidatedNel[BlockValidationError, Unit] = {
     (
       validateAuthorizationWithAuthenticationPrinciple(rules),
+      validateOnlyOneAuthenticationRulePrinciple(rules),
       validateKibanaAccessRuleAndActionsRuleSeparationPrinciple(rules),
       validateRequirementsForRulesUsingVariables(rules)
     ).mapN { case _ => () }
@@ -41,6 +42,23 @@ object BlockValidator {
       case None => Validated.Valid(())
       case Some(_) if rules.exists(_.rule.isInstanceOf[AuthenticationRule]) => Validated.Valid(())
       case Some(_) => Validated.Invalid(NonEmptyList.one(BlockValidationError.AuthorizationWithoutAuthentication))
+    }
+  }
+
+  private def validateOnlyOneAuthenticationRulePrinciple(rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]]) = {
+    rules
+      .map(_.rule)
+      .collect { case a: AuthenticationRule => a}
+      .filter {
+        case gr: GroupsRule => false
+        case other => true
+      } match {
+      case Nil | _ :: Nil =>
+        Validated.Valid(())
+      case moreThanOne =>
+        Validated.Invalid(NonEmptyList.one(
+          BlockValidationError.OnlyOneAuthenticationRuleAllowed(NonEmptyList.fromListUnsafe(moreThanOne))
+        ))
     }
   }
 
@@ -63,7 +81,7 @@ object BlockValidator {
     }
   }
 
-  private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])(ruleDefinition: RuleWithVariableUsageDefinition[Rule]) = {
+  private def validateRequirementsForSingleRule(allRules: NonEmptyList[Rule])(ruleDefinition: RuleWithVariableUsageDefinition[Rule]): Validated[NonEmptyList[RuleDoesNotMeetRequirement], Unit] = {
     ruleDefinition match {
       case RuleWithVariableUsageDefinition(_, NotUsingVariable) => Validated.Valid(())
       case RuleWithVariableUsageDefinition(rule, usingVariable: UsingVariable[Rule]) =>
@@ -78,6 +96,7 @@ object BlockValidator {
   sealed trait BlockValidationError
   object BlockValidationError {
     case object AuthorizationWithoutAuthentication extends BlockValidationError
+    final case class OnlyOneAuthenticationRuleAllowed(authRules: NonEmptyList[AuthenticationRule]) extends BlockValidationError
     case object KibanaAccessRuleTogetherWithActionsRule extends BlockValidationError
     final case class RuleDoesNotMeetRequirement(nonCompliant: ComplianceResult.NonCompliantWith) extends BlockValidationError
   }
