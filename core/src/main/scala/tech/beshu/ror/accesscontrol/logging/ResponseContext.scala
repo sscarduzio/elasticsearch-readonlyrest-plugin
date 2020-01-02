@@ -46,6 +46,10 @@ object ResponseContext {
                              history: Vector[Block.History])
     extends ResponseContext
 
+  final case class RequestedIndexNotExist(requestContext: RequestContext,
+                                          history: Vector[Block.History])
+    extends ResponseContext
+
   final case class Errored(requestContext: RequestContext,
                            cause: Throwable)
     extends ResponseContext

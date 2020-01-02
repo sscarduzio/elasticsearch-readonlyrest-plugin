@@ -311,10 +311,9 @@ class RequestInfo(channel: RestChannel,
   }
 
   override def writeIndices(newIndices: Set[String]): WriteResult[Unit] = {
-    val indices = NonEmptyList
-      .fromList(newIndices.filter(i => i != "" && i != "<no-index>").toList)
-      .getOrElse(NonEmptyList.one(randomNonexistentIndex().value.value))
-      .toList
+    val indices = newIndices.filter(i => i != "" && i != "<no-index>").toList
+    if (indices.isEmpty) return WriteResult.Success(())
+
     actionRequest match {
       case ar: IndicesRequest.Replaceable => // Best case, this request is designed to have indices replaced.
         ar.indices(indices: _*)

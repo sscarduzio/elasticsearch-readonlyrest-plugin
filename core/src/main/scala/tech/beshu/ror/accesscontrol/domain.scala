@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 import scala.util.Try
+import scala.util.matching.Regex
 
 object domain {
 
@@ -235,7 +236,13 @@ object domain {
     def isCurrentUserMetadataPath: Boolean = value.startsWith(UriPath.currentUserMetadataPath.value)
     def isCatTemplatePath: Boolean = value.startsWith("/_cat/templates")
     def isTemplatePath: Boolean = value.startsWith("/_template")
+    def isAliasesPath: Boolean =
+      value.startsWith("/_cat/aliases") ||
+        value.startsWith("/_alias") ||
+        "^/(\\w|\\*)*/_alias(|/)$".r.findFirstMatchIn(value).isDefined ||
+        "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value).isDefined
     def isCatIndicesPath: Boolean = value.startsWith("/_cat/indices")
+
   }
   object UriPath {
     val currentUserMetadataPath = UriPath(Constants.CURRENT_USER_METADATA_PATH)
@@ -258,6 +265,13 @@ object domain {
     object TemplatePath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
         if(uriPath.isTemplatePath) Some(uriPath)
+        else None
+      }
+    }
+
+    object AliasesPath {
+      def unapply(uriPath: UriPath): Option[UriPath] = {
+        if(uriPath.isAliasesPath) Some(uriPath)
         else None
       }
     }

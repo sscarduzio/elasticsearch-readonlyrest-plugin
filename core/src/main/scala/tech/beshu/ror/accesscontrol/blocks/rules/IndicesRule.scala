@@ -18,11 +18,13 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule.{CanPass, Settings}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
@@ -32,7 +34,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.{Matcher, MatcherWithWild
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.Action.{mSearchAction, searchAction}
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -44,6 +45,7 @@ class IndicesRule(val settings: Settings)
   extends RegularRule with Logging {
 
   import IndicesCheckContinuation._
+  import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule.CanPass.No.Reason
 
   override val name: Rule.Name = IndicesRule.name
 
@@ -51,19 +53,9 @@ class IndicesRule(val settings: Settings)
 
   override def check(requestContext: RequestContext,
                      blockContext: BlockContext): Task[RuleResult] = Task {
-    val result =
-      if (!requestContext.involvesIndices) Fulfilled(blockContext)
-      else if (matchAll) Fulfilled(blockContext)
-      else process(requestContext, blockContext)
-    result match {
-      case Fulfilled(blockContext) =>
-        logger.debug(
-          s"Requested indices: [${requestContext.indices.map(_.show).mkString(",")}]; " +
-          s"Found indices: [${blockContext.indices.getOrElse(Set.empty).map(_.show).mkString(",")}]"
-        )
-      case _ =>
-    }
-    result
+    if (!requestContext.involvesIndices) Fulfilled(blockContext)
+    else if (matchAll) Fulfilled(blockContext)
+    else process(requestContext, blockContext)
   }
 
   private def process(requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
@@ -94,7 +86,9 @@ class IndicesRule(val settings: Settings)
             localIndices
           } else {
             canPass(requestContext, matcher, resolvedAllowedIndices) match {
-              case CanPass.No =>
+              case CanPass.No(Some(Reason.IndexNotExist)) =>
+                return Rejected(Cause.IndexNotFound)
+              case CanPass.No(_) =>
                 return Rejected()
               case CanPass.Yes(indices) =>
                 indices
@@ -114,7 +108,9 @@ class IndicesRule(val settings: Settings)
     canPass(requestContext, matcher, resolvedAllowedIndices) match {
       case CanPass.Yes(indices) =>
         Fulfilled(blockContext.withIndices(indices))
-      case CanPass.No =>
+      case CanPass.No(Some(Reason.IndexNotExist)) =>
+        Rejected(Cause.IndexNotFound)
+      case CanPass.No(_) =>
         Rejected()
     }
   }
@@ -135,10 +131,10 @@ class IndicesRule(val settings: Settings)
       _ <- noneOrAllIndices(requestContext, matcher)
       _ <- allIndicesMatchedByWildcard(requestContext, matcher)
       _ <- atLeastOneNonWildcardIndexNotExist(requestContext, matcher)
-      _ <- indicesAliases(requestContext, matcher)
       _ <- expandedIndices(requestContext, matcher)
+      _ <- indicesAliases(requestContext, matcher)
     } yield ()
-    result.left.getOrElse(CanPass.Yes(Set.empty))
+    result.left.getOrElse(CanPass.No())
   }
 
   private def noneOrAllIndices(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
@@ -149,7 +145,10 @@ class IndicesRule(val settings: Settings)
       stop(CanPass.Yes(indices))
     } else if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
       val allowedIdxs = matcher.filter(allIndicesAndAliases)
-      stop(if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs) else CanPass.Yes(Set.empty))
+      stop(
+        if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs)
+        else CanPass.No(Reason.IndexNotExist)
+      )
     } else {
       continue
     }
@@ -181,9 +180,9 @@ class IndicesRule(val settings: Settings)
       case (acc, _) => acc
     }
     if (nonExistent.nonEmpty && !requestContext.isCompositeRequest) {
-      stop(CanPass.Yes(Set.empty))
+      stop(CanPass.No(Reason.IndexNotExist))
     } else if (nonExistent.nonEmpty && (indices -- nonExistent).isEmpty) {
-      stop(CanPass.Yes(Set.empty))
+      stop(CanPass.No(Reason.IndexNotExist))
     } else {
       continue
     }
@@ -193,13 +192,13 @@ class IndicesRule(val settings: Settings)
     logger.debug("Checking - expanding wildcard indices ...")
     val expansion = expandedIndices(requestContext)
     if (expansion.isEmpty) {
-      stop(CanPass.Yes(Set.empty))
+      stop(CanPass.No(Reason.IndexNotExist))
     } else {
       val allowedExpansion = matcher.filter(expansion)
       if (allowedExpansion.nonEmpty) {
         stop(CanPass.Yes(allowedExpansion))
       } else {
-        continue
+        stop(CanPass.No(Reason.IndexNotExist))
       }
     }
   }
@@ -245,7 +244,7 @@ class IndicesRule(val settings: Settings)
       _ <- writeTemplateIndicesPatterns(requestContext, resolvedAllowedIndices)
       _ <- generalWriteRequest(requestContext, matcher)
     } yield ()
-    result.left.getOrElse(CanPass.No)
+    result.left.getOrElse(CanPass.No())
   }
 
   private def writeTemplateIndicesPatterns(requestContext: RequestContext, allowedIndices: Set[IndexName]): IndicesCheckContinuation = {
@@ -254,7 +253,7 @@ class IndicesRule(val settings: Settings)
       case rc if rc.action.isTemplate || rc.uriPath.isCatTemplatePath =>
         val allowed = findTemplatesIndicesPatterns(rc.templateIndicesPatterns, allowedIndices)
         if (allowed.nonEmpty) stop(CanPass.Yes(allowed))
-        else stop(CanPass.No)
+        else stop(CanPass.No())
       case _ =>
         continue
     }
@@ -274,8 +273,8 @@ class IndicesRule(val settings: Settings)
       val result = indices.foldLeft(CanPass.Yes(Set.empty): CanPass) {
         case (CanPass.Yes(_), index) =>
           if (matcher.`match`(index)) CanPass.Yes(Set.empty)
-          else CanPass.No
-        case (CanPass.No, _) => CanPass.No
+          else CanPass.No()
+        case (CanPass.No(_), _) => CanPass.No()
       }
       stop(result)
     }
@@ -324,6 +323,14 @@ object IndicesRule {
   private sealed trait CanPass
   private object CanPass {
     final case class Yes(indices: Set[IndexName]) extends CanPass
-    case object No extends CanPass
+    final case class No(reason: Option[No.Reason] = None) extends CanPass
+    object No {
+      def apply(reason: Reason): No = new No(Some(reason))
+
+      sealed trait Reason
+      object Reason {
+        case object IndexNotExist extends Reason
+      }
+    }
   }
 }

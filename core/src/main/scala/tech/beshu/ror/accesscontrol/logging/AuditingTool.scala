@@ -72,6 +72,8 @@ class AuditingTool(settings: Settings,
         )
       case ResponseContext.Forbidden(requestContext, history) =>
         AuditResponseContext.Forbidden(toAuditRequestContext(requestContext, None, history))
+      case ResponseContext.RequestedIndexNotExist(requestContext, history) =>
+        AuditResponseContext.RequestedIndexNotExist(toAuditRequestContext(requestContext, None, history))
       case ResponseContext.Errored(requestContext, cause) =>
         AuditResponseContext.Errored(toAuditRequestContext(requestContext, None, Vector.empty), cause)
     }

@@ -42,6 +42,8 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       Some(createEntry(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None))
     case Forbidden(requestContext) =>
       Some(createEntry(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None))
+    case RequestedIndexNotExist(requestContext) =>
+      Some(createEntry(matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, None))
     case Errored(requestContext, cause) =>
       Some(createEntry(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause)))
   }

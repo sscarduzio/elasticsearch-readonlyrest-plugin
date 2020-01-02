@@ -45,6 +45,9 @@ object AuditResponseContext {
   final case class Forbidden(requestContext: AuditRequestContext)
     extends AuditResponseContext
 
+  final case class RequestedIndexNotExist(requestContext: AuditRequestContext)
+    extends AuditResponseContext
+
   final case class Errored(requestContext: AuditRequestContext,
                            cause: Throwable)
     extends AuditResponseContext

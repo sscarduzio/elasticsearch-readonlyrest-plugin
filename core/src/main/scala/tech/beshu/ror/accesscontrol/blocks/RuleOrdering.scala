@@ -76,9 +76,10 @@ object RuleOrdering {
     classOf[MethodsRule],
     classOf[HeadersAndRule],
     classOf[HeadersOrRule],
-    classOf[IndicesRule],
     classOf[ActionsRule],
     classOf[UsersRule],
+    // Indices rule should be checked as late as possible due to "index not found" case
+    classOf[IndicesRule],
     // At the end the sync rule chain are those that can mutate the client request.
     classOf[KibanaHideAppsRule],
     classOf[KibanaIndexRule],
