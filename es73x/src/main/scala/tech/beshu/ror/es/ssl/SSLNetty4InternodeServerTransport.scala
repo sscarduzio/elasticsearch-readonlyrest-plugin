@@ -16,14 +16,16 @@
  */
 package tech.beshu.ror.es.ssl
 
-import java.io.ByteArrayInputStream
+import java.io.{ByteArrayInputStream, FileInputStream}
 import java.net.SocketAddress
 import java.nio.charset.StandardCharsets
+import java.security.KeyStore
 
 import io.netty.buffer.ByteBufAllocator
 import io.netty.channel._
 import io.netty.handler.ssl._
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
+import javax.net.ssl.TrustManagerFactory
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.Version
 import org.elasticsearch.cluster.node.DiscoveryNode
@@ -56,6 +58,26 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
       val sslCtxBuilder = SslContextBuilder.forClient()
       if (!ssl.certificateVerificationEnabled) {
         sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE)
+        logger.info(s"ROR Internode for client. Using insecure trust manager.")
+      } else {
+        ssl.truststoreFile match {
+          case Some(truststoreFile) =>
+            logger.info(s"ROR Internode for client. Using custom truststore: '${truststoreFile.getName}'")
+            val truststore = KeyStore.getInstance(KeyStore.getDefaultType)
+            truststore.load(
+              new FileInputStream(truststoreFile),
+              ssl.truststorePassword.map(_.value.toCharArray).orNull
+            )
+
+            val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+            trustManagerFactory.init(truststore)
+//            val certificate = truststore.getCertificate("ror").asInstanceOf[X509Certificate]
+//            sslCtxBuilder.trustManager(certificate)
+            sslCtxBuilder.trustManager(trustManagerFactory)
+
+          case None =>
+            logger.info(s"ROR Internode for client. No truststore file defined, using default provided by jre.")
+        }
       }
       val sslCtx = sslCtxBuilder.build()
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
