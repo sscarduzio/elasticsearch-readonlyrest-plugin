@@ -36,6 +36,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.Netty4Transport
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.SSLCertParser
 
 import scala.collection.JavaConverters._
 
@@ -53,11 +54,13 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       logger.info(">> internode SSL channel initializing")
-      val sslCtxBuilder = SslContextBuilder.forClient()
-      if (!ssl.certificateVerificationEnabled) {
-        sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE)
-      }
-      val sslCtx = sslCtxBuilder.build()
+      val usedTrustManager =
+        if (ssl.certificateVerificationEnabled) SSLCertParser.customTrustManagerFrom(ssl).orNull
+        else InsecureTrustManagerFactory.INSTANCE
+
+      val sslCtx = SslContextBuilder.forClient()
+        .trustManager(usedTrustManager)
+        .build()
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
         override def connect(ctx: ChannelHandlerContext, remoteAddress: SocketAddress, localAddress: SocketAddress, promise: ChannelPromise): Unit = {
           val sslEngine = sslCtx.newEngine(ctx.alloc())
@@ -84,8 +87,6 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
   private class SslChannelInitializer(name: String) extends ServerChannelInitializer(name) {
     private var context = Option.empty[SslContext]
 
-    import tech.beshu.ror.utils.SSLCertParser
-
     doPrivileged {
       SSLCertParser.run(new SSLContextCreatorImpl, ssl)
     }
@@ -105,7 +106,10 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
             new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
             null
           )
-          if (ssl.clientAuthenticationEnabled) sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+          if (ssl.clientAuthenticationEnabled) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+            sslCtxBuilder.trustManager(SSLCertParser.customTrustManagerFrom(ssl).orNull)
+          }
           sslCtxBuilder.trustManager()
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)

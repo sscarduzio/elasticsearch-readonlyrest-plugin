@@ -36,11 +36,13 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.http.HttpChannel;
 import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
+import scala.Option;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.utils.SSLCertParser;
 import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 
+import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
@@ -126,6 +128,8 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
           if (ssl.clientAuthenticationEnabled()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+            TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
+            sslCtxBuilder.trustManager(usedTrustManager);
           }
 
           if(ssl.allowedProtocols().size() > 0) {

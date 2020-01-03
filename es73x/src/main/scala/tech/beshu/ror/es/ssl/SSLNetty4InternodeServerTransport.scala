@@ -54,7 +54,9 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       logger.info(">> internode SSL channel initializing")
-      val usedTrustManager = if (ssl.certificateVerificationEnabled) SSLCertParser.customTrustManagerFrom(ssl).orNull else InsecureTrustManagerFactory.INSTANCE
+      val usedTrustManager =
+        if (ssl.certificateVerificationEnabled) SSLCertParser.customTrustManagerFrom(ssl).orNull
+        else InsecureTrustManagerFactory.INSTANCE
 
       val sslCtx = SslContextBuilder.forClient()
         .trustManager(usedTrustManager)
@@ -105,7 +107,10 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
             new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
             null
           )
-          if (ssl.clientAuthenticationEnabled) sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+          if (ssl.clientAuthenticationEnabled) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+            sslCtxBuilder.trustManager(SSLCertParser.customTrustManagerFrom(ssl).orNull)
+          }
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
           if (ssl.allowedCiphers.nonEmpty) sslCtxBuilder.ciphers(ssl.allowedCiphers.map(_.value).toList.asJava)

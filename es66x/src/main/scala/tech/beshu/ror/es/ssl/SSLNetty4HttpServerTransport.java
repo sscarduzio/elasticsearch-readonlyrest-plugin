@@ -42,6 +42,7 @@ import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 
+import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
@@ -127,6 +128,8 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
           if (ssl.clientAuthenticationEnabled()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+            TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
+            sslCtxBuilder.trustManager(usedTrustManager);
           }
 
           if(ssl.allowedProtocols().size() > 0) {

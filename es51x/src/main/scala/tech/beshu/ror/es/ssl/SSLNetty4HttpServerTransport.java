@@ -25,10 +25,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.ssl.NotSslRecordException;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.network.NetworkService;
@@ -44,6 +41,7 @@ import tech.beshu.ror.utils.SSLCertParser$;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -104,10 +102,6 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
         );
       }
 
-      if (ssl.clientAuthenticationEnabled()) {
-        eng.setNeedClientAuth(true);
-      }
-
       if(ssl.allowedProtocols().size() > 0) {
         eng.setEnabledProtocols(
             JavaConverters$.MODULE$
@@ -140,6 +134,12 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
             new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
             null
         );
+
+        if (ssl.clientAuthenticationEnabled()) {
+          sslcb.clientAuth(ClientAuth.REQUIRE);
+          TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
+          sslcb.trustManager(usedTrustManager);
+        }
 
         // Creating one SSL engine just for protocol/cipher validation and logging
         sslContext = sslcb.build();
