@@ -17,10 +17,11 @@
 package tech.beshu.ror.utils
 
 import java.io.FileInputStream
+import java.security.KeyStore
 import java.security.cert.Certificate
 import java.util.Base64
 
-import javax.net.ssl.SSLEngine
+import javax.net.ssl.{SSLEngine, TrustManagerFactory}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.SslConfiguration
 
@@ -50,6 +51,24 @@ object SSLCertParser extends Logging {
         },
         _ => true
       )
+
+  def customTrustManagerFrom(config: SslConfiguration): Option[TrustManagerFactory] = {
+    config.truststoreFile match {
+      case Some(truststoreFile) =>
+        logger.info(s"Using custom truststore: '${truststoreFile.getName}'")
+        val truststore = KeyStore.getInstance(KeyStore.getDefaultType)
+        truststore.load(
+          new FileInputStream(truststoreFile),
+          config.truststorePassword.map(_.value.toCharArray).orNull
+        )
+        val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+        trustManagerFactory.init(truststore)
+        Some(trustManagerFactory)
+      case None =>
+        logger.info(s"No truststore file defined, using default provided by jre")
+        None
+    }
+  }
 
   private def tryRun(sslContextCreator: SSLContextCreator,
                      config: SslConfiguration) = Try {

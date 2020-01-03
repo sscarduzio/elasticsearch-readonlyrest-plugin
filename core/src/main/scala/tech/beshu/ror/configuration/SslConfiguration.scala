@@ -83,6 +83,8 @@ sealed trait SslConfiguration {
   def keystorePassword: Option[SslConfiguration.KeystorePassword]
   def keyPass: Option[SslConfiguration.KeyPass]
   def keyAlias: Option[SslConfiguration.KeyAlias]
+  def truststoreFile: Option[JFile]
+  def truststorePassword: Option[SslConfiguration.KeystorePassword]
   def allowedProtocols: Set[SslConfiguration.Protocol]
   def allowedCiphers: Set[SslConfiguration.Cipher]
 }

@@ -16,16 +16,14 @@
  */
 package tech.beshu.ror.es.ssl
 
-import java.io.{ByteArrayInputStream, FileInputStream}
+import java.io.ByteArrayInputStream
 import java.net.SocketAddress
 import java.nio.charset.StandardCharsets
-import java.security.KeyStore
 
 import io.netty.buffer.ByteBufAllocator
 import io.netty.channel._
 import io.netty.handler.ssl._
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
-import javax.net.ssl.TrustManagerFactory
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.Version
 import org.elasticsearch.cluster.node.DiscoveryNode
@@ -38,6 +36,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.Netty4Transport
 import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.SSLCertParser
 
 import scala.collection.JavaConverters._
 
@@ -55,31 +54,12 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       logger.info(">> internode SSL channel initializing")
-      val sslCtxBuilder = SslContextBuilder.forClient()
-      if (!ssl.certificateVerificationEnabled) {
-        sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE)
-        logger.info(s"ROR Internode for client. Using insecure trust manager.")
-      } else {
-        ssl.truststoreFile match {
-          case Some(truststoreFile) =>
-            logger.info(s"ROR Internode for client. Using custom truststore: '${truststoreFile.getName}'")
-            val truststore = KeyStore.getInstance(KeyStore.getDefaultType)
-            truststore.load(
-              new FileInputStream(truststoreFile),
-              ssl.truststorePassword.map(_.value.toCharArray).orNull
-            )
+      val usedTrustManager = if (ssl.certificateVerificationEnabled) SSLCertParser.customTrustManagerFrom(ssl).orNull else InsecureTrustManagerFactory.INSTANCE
 
-            val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
-            trustManagerFactory.init(truststore)
-//            val certificate = truststore.getCertificate("ror").asInstanceOf[X509Certificate]
-//            sslCtxBuilder.trustManager(certificate)
-            sslCtxBuilder.trustManager(trustManagerFactory)
+      val sslCtx = SslContextBuilder.forClient()
+        .trustManager(usedTrustManager)
+        .build()
 
-          case None =>
-            logger.info(s"ROR Internode for client. No truststore file defined, using default provided by jre.")
-        }
-      }
-      val sslCtx = sslCtxBuilder.build()
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
         override def connect(ctx: ChannelHandlerContext, remoteAddress: SocketAddress, localAddress: SocketAddress, promise: ChannelPromise): Unit = {
           val sslEngine = sslCtx.newEngine(ctx.alloc())
@@ -105,8 +85,6 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
 
   private class SslChannelInitializer(name: String) extends ServerChannelInitializer(name) {
     private var context = Option.empty[SslContext]
-
-    import tech.beshu.ror.utils.SSLCertParser
 
     doPrivileged {
       SSLCertParser.run(new SSLContextCreatorImpl, ssl)
