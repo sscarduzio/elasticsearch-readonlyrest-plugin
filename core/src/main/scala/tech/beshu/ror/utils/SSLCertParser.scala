@@ -53,21 +53,18 @@ object SSLCertParser extends Logging {
       )
 
   def customTrustManagerFrom(config: SslConfiguration): Option[TrustManagerFactory] = {
-    config.truststoreFile match {
-      case Some(truststoreFile) =>
-        logger.info(s"Using custom truststore: '${truststoreFile.getName}'")
+    config.truststoreFile
+      .map { file =>
+        logger.info(s"Using custom truststore: '${file.getName}'")
         val truststore = KeyStore.getInstance(KeyStore.getDefaultType)
         truststore.load(
-          new FileInputStream(truststoreFile),
+          new FileInputStream(file),
           config.truststorePassword.map(_.value.toCharArray).orNull
         )
         val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
         trustManagerFactory.init(truststore)
-        Some(trustManagerFactory)
-      case None =>
-        logger.info(s"No truststore file defined, using default provided by jre")
-        None
-    }
+        trustManagerFactory
+      }
   }
 
   private def tryRun(sslContextCreator: SSLContextCreator,

@@ -84,7 +84,7 @@ sealed trait SslConfiguration {
   def keyPass: Option[SslConfiguration.KeyPass]
   def keyAlias: Option[SslConfiguration.KeyAlias]
   def truststoreFile: Option[JFile]
-  def truststorePassword: Option[SslConfiguration.KeystorePassword]
+  def truststorePassword: Option[SslConfiguration.TruststorePassword]
   def allowedProtocols: Set[SslConfiguration.Protocol]
   def allowedCiphers: Set[SslConfiguration.Cipher]
 }
@@ -92,6 +92,7 @@ sealed trait SslConfiguration {
 object SslConfiguration {
 
   final case class KeystorePassword(value: String)
+  final case class TruststorePassword(value: String)
   final case class KeyPass(value: String)
   final case class KeyAlias(value: String)
   final case class Cipher(value: String)
@@ -102,7 +103,7 @@ object SslConfiguration {
                                             keyPass: Option[SslConfiguration.KeyPass],
                                             keyAlias: Option[SslConfiguration.KeyAlias],
                                             truststoreFile: Option[JFile],
-                                            truststorePassword: Option[SslConfiguration.KeystorePassword],
+                                            truststorePassword: Option[SslConfiguration.TruststorePassword],
                                             allowedProtocols: Set[SslConfiguration.Protocol],
                                             allowedCiphers: Set[SslConfiguration.Cipher],
                                             clientAuthenticationEnabled: Boolean) extends SslConfiguration
@@ -112,7 +113,7 @@ object SslConfiguration {
                                              keyPass: Option[SslConfiguration.KeyPass],
                                              keyAlias: Option[SslConfiguration.KeyAlias],
                                              truststoreFile: Option[JFile],
-                                             truststorePassword: Option[SslConfiguration.KeystorePassword],
+                                             truststorePassword: Option[SslConfiguration.TruststorePassword],
                                              allowedProtocols: Set[SslConfiguration.Protocol],
                                              allowedCiphers: Set[SslConfiguration.Cipher],
                                              clientAuthenticationEnabled: Boolean,
@@ -146,12 +147,13 @@ private object SslDecoders {
                                        keyPass: Option[SslConfiguration.KeyPass],
                                        keyAlias: Option[SslConfiguration.KeyAlias],
                                        truststoreFile: Option[JFile],
-                                       truststorePassword: Option[SslConfiguration.KeystorePassword],
+                                       truststorePassword: Option[SslConfiguration.TruststorePassword],
                                        allowedProtocols: Set[SslConfiguration.Protocol],
                                        allowedCiphers: Set[SslConfiguration.Cipher],
                                        clientAuthenticationEnabled: Boolean)
 
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = Decoder.decodeString.map(KeystorePassword.apply)
+  private implicit val truststorePasswordDecoder: Decoder[TruststorePassword] = Decoder.decodeString.map(TruststorePassword.apply)
   private implicit val keyPassDecoder: Decoder[KeyPass] = Decoder.decodeString.map(KeyPass.apply)
   private implicit val keyAliasDecoder: Decoder[KeyAlias] = Decoder.decodeString.map(KeyAlias.apply)
   private implicit val cipherDecoder: Decoder[Cipher] = Decoder.decodeString.map(Cipher.apply)
@@ -212,7 +214,7 @@ private object SslDecoders {
         keystoreFile <- c.downField(consts.keystoreFile).as[JFile]
         keystorePassword <- c.downField(consts.keystorePass).as[Option[KeystorePassword]]
         truststoreFile <- c.downField(consts.truststoreFile).as[Option[JFile]]
-        truststorePassword <- c.downField(consts.truststorePass).as[Option[KeystorePassword]]
+        truststorePassword <- c.downField(consts.truststorePass).as[Option[TruststorePassword]]
         keyPass <- c.downField(consts.keyPass).as[Option[KeyPass]]
         keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
         ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
