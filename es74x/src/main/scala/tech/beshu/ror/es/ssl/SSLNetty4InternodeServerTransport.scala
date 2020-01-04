@@ -110,7 +110,6 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
             sslCtxBuilder.trustManager(SSLCertParser.customTrustManagerFrom(ssl).orNull)
           }
-          sslCtxBuilder.trustManager()
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
           if (ssl.allowedCiphers.nonEmpty) sslCtxBuilder.ciphers(ssl.allowedCiphers.map(_.value).toList.asJava)

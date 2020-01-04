@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.{CoreFactory, CoreSettings}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext, DisabledAccessControlStaticContext$}
 import tech.beshu.ror.boot.ReadonlyRest
-import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeyPass, KeystorePassword}
+import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeyPass, KeystorePassword, TruststorePassword}
 import tech.beshu.ror.configuration.{RawRorConfig, RorSsl}
 import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
@@ -384,7 +384,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           keystorePassword should be(KeystorePassword("readonlyrest1"))
           keyPass should be(KeyPass("readonlyrest2"))
           truststoreFile.getName should be("truststore.jks")
-          truststorePassword should be(KeystorePassword("readonlyrest3"))
+          truststorePassword should be(TruststorePassword("readonlyrest3"))
           allowedProtocols should be(Set.empty)
           allowedCiphers should be(Set.empty)
           clientAuthenticationEnabled should be(false)
@@ -400,7 +400,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
             truststoreFile.getName should be("truststore.jks")
-            truststorePassword should be(KeystorePassword("readonlyrest3"))
+            truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
             clientAuthenticationEnabled should be(false)
@@ -461,7 +461,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
             keystorePassword should be(KeystorePassword("readonlyrest1"))
             keyPass should be(KeyPass("readonlyrest2"))
             truststoreFile.getName should be("truststore.jks")
-            truststorePassword should be(KeystorePassword("readonlyrest3"))
+            truststorePassword should be(TruststorePassword("readonlyrest3"))
             allowedProtocols should be(Set.empty)
             allowedCiphers should be(Set.empty)
             clientAuthenticationEnabled should be(true)
