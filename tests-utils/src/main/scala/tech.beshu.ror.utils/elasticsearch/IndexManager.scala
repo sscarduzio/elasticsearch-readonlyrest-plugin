@@ -16,13 +16,21 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import org.apache.http.client.methods.HttpPost
+import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class IndexManager(client: RestClient)
   extends BaseManager(client) {
+
+  def getIndex(index: String): JsonResponse = {
+    call(getIndexRequest(Set(index)), new JsonResponse(_))
+  }
+
+  def getIndices(indices: Set[String]): JsonResponse = {
+    call(getIndexRequest(indices), new JsonResponse(_))
+  }
 
   def createAliasOf(index: String, alias: String): JsonResponse = {
     call(createAliasRequest(index, alias), new JsonResponse(_))
@@ -33,6 +41,10 @@ class IndexManager(client: RestClient)
     if(!result.isSuccess) {
       throw new IllegalStateException(s"Cannot create alias '$alias'; returned: ${result.body}")
     }
+  }
+
+  private def getIndexRequest(indices: Set[String]) = {
+    new HttpGet(client.from(indices.mkString(",")))
   }
 
   private def createAliasRequest(index: String, alias: String) = {

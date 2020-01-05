@@ -1,0 +1,128 @@
+package tech.beshu.ror.integration
+
+import com.dimafeng.testcontainers.ForAllTestContainer
+import org.scalatest.Matchers._
+import org.scalatest.WordSpec
+import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
+import tech.beshu.ror.utils.httpclient.RestClient
+
+class IndexApiTests extends WordSpec with ForAllTestContainer {
+
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+    name = "ROR1",
+    rorConfigFileName = "/index_api/readonlyrest.yml",
+    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = IndexApiTests.nodeDataInitializer())
+  )
+
+  private lazy val dev1IndexManager = new IndexManager(container.nodesContainers.head.client("dev1", "test"))
+  private lazy val dev2IndexManager = new IndexManager(container.nodesContainers.head.client("dev2", "test"))
+
+  "ROR" when {
+    "Get index API is used" should {
+      "allow user to get index data" when {
+        "he has access to it" when {
+          "the index is called explicitly" in {
+            val indexResponse = dev1IndexManager.getIndex("index1")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be (1)
+            indexResponse.responseJson("index1")
+          }
+          "its alias is called" in {
+            val indexResponse = dev1IndexManager.getIndex("index1_alias")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be (1)
+            indexResponse.responseJson("index1")
+          }
+          "the index name with wildcard is used" when {
+            "there is a matching index" in {
+              val indexResponse = dev1IndexManager.getIndex("index*")
+
+              indexResponse.responseCode should be(200)
+              indexResponse.responseJson.obj.size should be (1)
+              indexResponse.responseJson("index1")
+            }
+          }
+          "the alias name with wildcard is used" when {
+            "there is a matching alias" in {
+              val indexResponse = dev1IndexManager.getIndex("index1_a*")
+
+              indexResponse.responseCode should be(200)
+              indexResponse.responseJson.obj.size should be (1)
+              indexResponse.responseJson("index1")
+            }
+          }
+        }
+        "he has access to its alias" when {
+          "the index is called explicitly" in {
+            val indexResponse = dev2IndexManager.getIndex("index2")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be (1)
+            indexResponse.responseJson("index2")
+          }
+          "the alias is called" in {
+            val indexResponse = dev2IndexManager.getIndex("index2_alias")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be (1)
+            indexResponse.responseJson("index2")
+          }
+        }
+      }
+      "return empty response" when {
+        "the index name with wildcard is used" when {
+          "there is no matching index" in {
+            val indexResponse = dev1IndexManager.getIndex("my_index*")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be (0)
+          }
+        }
+        "the alias name with wildcard is used" when {
+          "there is no matching alias" in {
+            val indexResponse = dev1IndexManager.getIndex("my_index1_a*")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be (0)
+          }
+        }
+      }
+      "pretend that index doesn't exist" when {
+        "called index really doesn't exist" in {
+          val indexResponse = dev1IndexManager.getIndex("index3")
+
+          indexResponse.responseCode should be(404)
+        }
+        "called index exists, but the user has no access to it" in {
+          val indexResponse = dev1IndexManager.getIndex("index2")
+
+          indexResponse.responseCode should be(404)
+        }
+        "one of called indices doesn't exist" in {
+          val indexResponse = dev1IndexManager.getIndices(Set("index1", "index3"))
+
+          indexResponse.responseCode should be(404)
+        }
+      }
+    }
+  }
+
+}
+
+object IndexApiTests {
+
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient)
+    val indexManager = new IndexManager(adminRestClient)
+
+    documentManager.createDoc("/index1/test/1", ujson.read("""{"hello":"world"}"""))
+    indexManager.createAliasOf("index1", "index1_alias")
+
+    documentManager.createDoc("/index2/test/1", ujson.read("""{"hello":"world"}"""))
+    indexManager.createAliasOf("index2", "index2_alias")
+  }
+}

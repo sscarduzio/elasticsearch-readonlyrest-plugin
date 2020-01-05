@@ -34,7 +34,7 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
   private lazy val dev2ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
   private lazy val dev3ClusterStateManager = new ClusterStateManager(rorContainer.nodesContainers.head.client("dev3", "test"))
 
-  "A _cat/indices API" when {
+  "A _cat/indices API" should {
     "return empty indices" when {
       "there is no index in ES" in {
         val indices = dev1ClusterStateManager.catIndices()
