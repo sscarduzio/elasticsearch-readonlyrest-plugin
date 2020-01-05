@@ -129,20 +129,20 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     public void mkSSLContext(String certChain, String privateKey) {
       try {
         // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-        SslContextBuilder sslcb = SslContextBuilder.forServer(
+        SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
             new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
             new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
             null
         );
 
         if (ssl.clientAuthenticationEnabled()) {
-          sslcb.clientAuth(ClientAuth.REQUIRE);
+          sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
           TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
-          sslcb.trustManager(usedTrustManager);
+          sslCtxBuilder.trustManager(usedTrustManager);
         }
 
         // Creating one SSL engine just for protocol/cipher validation and logging
-        sslContext = sslcb.build();
+        sslContext = sslCtxBuilder.build();
         SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
 
         logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
