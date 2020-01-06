@@ -50,6 +50,14 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
         indices.responseCode should be(200)
         indices.results.size should be (0)
       }
+      "user asked for index with no access to it" in {
+        createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
+
+        val indices = dev1ClusterStateManager.catIndices("dev2_index")
+
+        indices.responseCode should be(200)
+        indices.results.size should be (0)
+      }
     }
     "return only dev1 indices" when {
       "request is related to all indices" in {
@@ -96,14 +104,7 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
         indices.results(1)("index") should be (Str("dev2_index"))
       }
     }
-    "return forbidden" when {
-      "user has no access to given index" in {
-        createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
-
-        val indices = dev1ClusterStateManager.catIndices("dev2_index")
-
-        indices.responseCode should be(401)
-      }
+    "return 404" when {
       "user is trying to access non-existent index" in {
         val indices = dev1ClusterStateManager.catIndices("non-existent")
 

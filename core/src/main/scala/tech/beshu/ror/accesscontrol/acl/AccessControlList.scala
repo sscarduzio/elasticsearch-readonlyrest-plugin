@@ -181,11 +181,25 @@ class AccessControlList(val blocks: NonEmptyList[Block])
   }
 
   private def wasRejectedDueToIndexNotFound(history: Vector[History]) = {
-    rejectionsFrom(history).exists {
+    val rejections = rejectionsFrom(history)
+    !impersonationRejectionExists(rejections) && indexNotFoundRejectionExists(rejections)
+  }
+
+  private def indexNotFoundRejectionExists(rejections: Vector[Rejected]) = {
+    rejections.exists {
       case Rejected(Some(Rejected.Cause.IndexNotFound)) => true
       case Rejected(None) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
+    }
+  }
+
+  private def impersonationRejectionExists(rejections: Vector[Rejected]) = {
+    rejections.exists {
+      case Rejected(Some(Rejected.Cause.IndexNotFound)) => false
+      case Rejected(None) => false
+      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => true
+      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => true
     }
   }
 

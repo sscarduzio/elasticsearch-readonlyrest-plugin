@@ -12,29 +12,34 @@ readonlyrest:
 
   access_control_rules:
 
-    - name: "::INITIALIZER::"
-      methods: [GET]
-      auth_key: admin:container
-
-    - name: "::GETTER::"
-      methods: [GET]
-      auth_key: "unrestricted:dev"
-
-    - name: "::RESTRICTED TO ALIAS::"
-      methods: [GET]
-      indices: ["public*"]
-      auth_key: "restricted:dev"
-
-  - name: "::PERFMON - RESTRICTED::"
+  - name: "::INITIALIZER::"
     methods: [GET]
-    indices: ["perfmon*", "bla*"]
+    auth_key: admin:container
+
+  - name: "::GETTER::"
+    methods: [GET]
+    auth_key: "unrestricted:dev"
+
+  - name: "::RESTRICTED TO ALIAS::"
+    methods: [GET]
+    indices: ["public*"]
+    auth_key: "restricted:dev"
+
+  - name: "::PERFMON - RESTRICTED TO ALIAS::"
+    methods: [GET]
+    indices: ["perfmon*"]
     auth_key: "perfmon:dev"
 
-    - name: myanmar_vietnam
-      kibana_access: ro
-      auth_key: "VIET_MYAN:dev"
-      indices: ["*myanmar*", "*vietnam*"]
+  - name: "::PERFMON - RESTRICTED TO INDEX::"
+    methods: [GET]
+    indices: ["bla*"]
+    auth_key: "perfmon:dev"
 
-    - name: "CONTAINER ADMIN"
-      actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*", "indices:admin/aliases"]
-      #auth_key: admin:container
+  - name: myanmar_vietnam
+    kibana_access: ro
+    auth_key: "VIET_MYAN:dev"
+    indices: ["*myanmar*", "*vietnam*"]
+
+  - name: "CONTAINER ADMIN"
+    actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*", "indices:admin/aliases"]
+    #auth_key: admin:container

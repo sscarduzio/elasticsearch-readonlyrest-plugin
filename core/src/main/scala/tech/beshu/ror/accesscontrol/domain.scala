@@ -27,6 +27,8 @@ import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import monix.eval.Task
+import org.apache.commons.lang.RandomStringUtils
+import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
@@ -184,7 +186,7 @@ object domain {
 
     def randomNonexistentIndex(prefix: String = ""): IndexName = IndexName {
       NonEmptyString.unsafeFrom {
-        val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${UUID.randomUUID().toString}"
+        val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${randomAlphanumeric(10)}"
         if(prefix.contains("*")) s"$nonexistentIndex*"
         else nonexistentIndex
       }

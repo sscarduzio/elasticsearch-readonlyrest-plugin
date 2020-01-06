@@ -125,19 +125,23 @@ class SqlApiTests extends WordSpec with ForAllTestContainer with ESVersionSuppor
         "user doesn't have access to given index" when {
           "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SELECT * FROM bookstore""")
-            result.isForbidden should be(true)
+            result.isBadRequest should be(true)
+            result.responseJson("error").obj("reason").str should include ("Unknown index")
           }
           "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SELECT * FROM \"book*\"""")
-            result.isForbidden should be(true)
+            result.isBadRequest should be(true)
+            result.responseJson("error").obj("reason").str should include ("Unknown index")
           }
           "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SELECT * FROM bookshop""")
-            result.isForbidden should be(true)
+            result.isBadRequest should be(true)
+            result.responseJson("error").obj("reason").str should include ("Unknown index")
           }
           "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SELECT * FROM flea_market""")
-            result.isForbidden should be(true)
+            result.isBadRequest should be(true)
+            result.responseJson("error").obj("reason").str should include ("Unknown index")
           }
         }
       }
@@ -231,19 +235,23 @@ class SqlApiTests extends WordSpec with ForAllTestContainer with ESVersionSuppor
         "user doesn't have access to given index" when {
           "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""DESCRIBE bookstore""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
           "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""DESCRIBE \"book*\"""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
           "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""DESCRIBE bookshop""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
           "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""DESCRIBE flea_market""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
         }
       }
@@ -328,19 +336,23 @@ class SqlApiTests extends WordSpec with ForAllTestContainer with ESVersionSuppor
         "user doesn't have access to given index" when {
           "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW COLUMNS FROM bookstore""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
           "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW COLUMNS FROM \"book*\"""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
           "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW COLUMNS FROM bookshop""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
           "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW COLUMNS FROM flea_market""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
         }
       }
@@ -411,19 +423,23 @@ class SqlApiTests extends WordSpec with ForAllTestContainer with ESVersionSuppor
         "user doesn't have access to given index" when {
           "full index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW TABLES bookstore""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
           "wildcard is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW TABLES \"book*\"""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
           "alias is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW TABLES bookshop""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
           "not-existent index name is used" excludeES("es51x", "es52x", "es53x", "es55x", "es60x", "es61x", "es62x") in {
             val result = dev2SqlManager.execute("""SHOW TABLES flea_market""")
-            result.isForbidden should be(true)
+            result.isSuccess should be(true)
+            result.queryResult.size should be(0)
           }
         }
       }
