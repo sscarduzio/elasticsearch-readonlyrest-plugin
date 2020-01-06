@@ -43,14 +43,14 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
             val indexResponse = dev1IndexManager.getIndex("index1")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be (1)
+            indexResponse.responseJson.obj.size should be(1)
             indexResponse.responseJson("index1")
           }
           "its alias is called" in {
             val indexResponse = dev1IndexManager.getIndex("index1_alias")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be (1)
+            indexResponse.responseJson.obj.size should be(1)
             indexResponse.responseJson("index1")
           }
           "the index name with wildcard is used" when {
@@ -58,7 +58,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
               val indexResponse = dev1IndexManager.getIndex("index*")
 
               indexResponse.responseCode should be(200)
-              indexResponse.responseJson.obj.size should be (1)
+              indexResponse.responseJson.obj.size should be(1)
               indexResponse.responseJson("index1")
             }
           }
@@ -67,7 +67,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
               val indexResponse = dev1IndexManager.getIndex("index1_a*")
 
               indexResponse.responseCode should be(200)
-              indexResponse.responseJson.obj.size should be (1)
+              indexResponse.responseJson.obj.size should be(1)
               indexResponse.responseJson("index1")
             }
           }
@@ -77,14 +77,14 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
             val indexResponse = dev2IndexManager.getIndex("index2")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be (1)
+            indexResponse.responseJson.obj.size should be(1)
             indexResponse.responseJson("index2")
           }
           "the alias is called" in {
             val indexResponse = dev2IndexManager.getIndex("index2_alias")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be (1)
+            indexResponse.responseJson.obj.size should be(1)
             indexResponse.responseJson("index2")
           }
         }
@@ -95,7 +95,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
             val indexResponse = dev1IndexManager.getIndex("my_index*")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be (0)
+            indexResponse.responseJson.obj.size should be(0)
           }
         }
         "the alias name with wildcard is used" when {
@@ -103,7 +103,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
             val indexResponse = dev1IndexManager.getIndex("my_index1_a*")
 
             indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be (0)
+            indexResponse.responseJson.obj.size should be(0)
           }
         }
       }
@@ -122,6 +122,56 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
           val indexResponse = dev1IndexManager.getIndices(Set("index1", "index3"))
 
           indexResponse.responseCode should be(404)
+        }
+      }
+    }
+    "Get index alias API is used" should {
+      "allow user to get aliases" when {
+        "/_alias API is used" in {
+
+        }
+        "/[index]/_alias API is used" when {
+          "index full name is passed" in {
+
+          }
+          "index name has wildcard" in {
+
+          }
+          "one of passed indices doesn't exist" in {
+
+          }
+        }
+        "/[index]/_alias/[alias] API is used" when {
+          "alias full name is passed" in {
+
+          }
+          "alias name has wildcard" in {
+
+          }
+        }
+      }
+      "return empty response" when {
+        "the index name with wildcard is used" when {
+          "there is no matching index" in {
+          }
+        }
+        "the alias name with wildcard is used" when {
+          "there is no matching alias" in {
+
+          }
+        }
+      }
+      "pretend that index doesn't exist" when {
+        "called index really doesn't exist" in {
+
+        }
+        "called index exists, but the user has no access to it" in {
+
+        }
+      }
+      "return alias not found" when {
+        "full alias name is used and the alias doesn't exist" in {
+          
         }
       }
     }

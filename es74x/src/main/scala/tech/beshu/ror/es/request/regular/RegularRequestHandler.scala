@@ -184,8 +184,8 @@ class RegularRequestHandler(engine: Engine,
     requestContext.uriPath match {
       case CatIndicesPath(_) =>
         respondWithEmtpyCatIndicesResponse()
-      case AliasesPath(_) =>
-        respondWithEmptyGetAliasesResponse()
+//      case AliasesPath(_) =>
+//        respondWithEmptyGetAliasesResponse()
       case _ =>
         requestInfo.writeIndices(Set(randomNonexistentIndex(requestInfo).value.value)) match {
           case WriteResult.Success(_) => proceed(baseListener)
