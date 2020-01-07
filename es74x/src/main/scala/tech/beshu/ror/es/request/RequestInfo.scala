@@ -333,7 +333,22 @@ class RequestInfo(channel: RestChannel,
         WriteResult.Success(())
       case ar: MultiSearchRequest =>
         ar.requests().asScala.foreach { sr =>
-          sr.indices(indices: _*)
+          if (sr.indices.asSafeSet.isEmpty || sr.indices.asSafeSet.contains("*")) {
+            sr.indices(indices: _*)
+          } else {
+            // This transforms wildcards and aliases in concrete indices
+            val expandedSrIndices = getExpandedIndices(sr.indices.asSafeSet)
+            val remaining = expandedSrIndices.intersect(indices.toSet)
+
+            if (remaining.isEmpty) { // contained just forbidden indices, should return zero results
+              sr.source(new SearchSourceBuilder().size(0))
+            } else if (remaining.size == expandedSrIndices.size) { // contained all allowed indices
+              // nothing to do
+            } else {
+              // some allowed indices were there, restrict query to those
+              sr.indices(remaining.toList: _*)
+            }
+          }
         }
         WriteResult.Success(())
       case ar: MultiGetRequest =>

@@ -32,6 +32,22 @@ class IndexManager(client: RestClient)
     call(getIndexRequest(indices), new JsonResponse(_))
   }
 
+  def getAliases: JsonResponse = {
+    call(getAliasRequest(), new JsonResponse(_))
+  }
+
+  def getAlias(index: String): JsonResponse = {
+    call(getAliasRequest(indexOpt = Some(index)), new JsonResponse(_))
+  }
+
+  def getAlias(indices: Set[String]): JsonResponse = {
+    call(getAliasRequest(indexOpt = Some(indices.mkString(","))), new JsonResponse(_))
+  }
+
+  def getAlias(index: String, alias: String): JsonResponse = {
+    call(getAliasRequest(Some(index), Some(alias)), new JsonResponse(_))
+  }
+
   def createAliasOf(index: String, alias: String): JsonResponse = {
     call(createAliasRequest(index, alias), new JsonResponse(_))
   }
@@ -41,6 +57,23 @@ class IndexManager(client: RestClient)
     if(!result.isSuccess) {
       throw new IllegalStateException(s"Cannot create alias '$alias'; returned: ${result.body}")
     }
+  }
+
+  private def getAliasRequest(indexOpt: Option[String] = None,
+                              aliasOpt: Option[String] = None) = {
+    val path = indexOpt match {
+      case Some(index) =>
+        aliasOpt match {
+          case Some(alias) => s"$index/_alias/$alias"
+          case None => s"$index/_alias"
+        }
+      case None =>
+        aliasOpt match {
+          case Some(alias) => s"_alias/$alias"
+          case None => "_alias"
+        }
+    }
+    new HttpGet(client.from(path))
   }
 
   private def getIndexRequest(indices: Set[String]) = {

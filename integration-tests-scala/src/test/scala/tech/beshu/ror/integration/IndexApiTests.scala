@@ -128,50 +128,95 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
     "Get index alias API is used" should {
       "allow user to get aliases" when {
         "/_alias API is used" in {
+          val aliasResponse = dev1IndexManager.getAliases
 
+          aliasResponse.responseCode should be (200)
+          aliasResponse.responseJson.obj.size should be (1)
+          val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
+          aliasesJson.size should be (1)
+          aliasesJson.contains("index1_alias") should be (true)
         }
         "/[index]/_alias API is used" when {
           "index full name is passed" in {
+            val aliasResponse = dev1IndexManager.getAlias("index1")
 
+            aliasResponse.responseCode should be (200)
+            aliasResponse.responseJson.obj.size should be (1)
+            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
+            aliasesJson.size should be (1)
+            aliasesJson.contains("index1_alias") should be (true)
           }
           "index name has wildcard" in {
+            val aliasResponse = dev1IndexManager.getAlias("index*")
 
+            aliasResponse.responseCode should be (200)
+            aliasResponse.responseJson.obj.size should be (1)
+            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
+            aliasesJson.size should be (1)
+            aliasesJson.contains("index1_alias") should be (true)
           }
           "one of passed indices doesn't exist" in {
+            val aliasResponse = dev1IndexManager.getAlias(Set("index1", "nonexistent"))
 
+            aliasResponse.responseCode should be (404)
           }
         }
         "/[index]/_alias/[alias] API is used" when {
           "alias full name is passed" in {
+            val aliasResponse = dev1IndexManager.getAlias("index1", "index1_alias")
 
+            aliasResponse.responseCode should be (200)
+            aliasResponse.responseJson.obj.size should be (1)
+            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
+            aliasesJson.size should be (1)
+            aliasesJson.contains("index1_alias") should be (true)
           }
           "alias name has wildcard" in {
+            val aliasResponse = dev1IndexManager.getAlias("index1", "index1*")
 
+            aliasResponse.responseCode should be (200)
+            aliasResponse.responseJson.obj.size should be (1)
+            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
+            aliasesJson.size should be (1)
+            aliasesJson.contains("index1_alias") should be (true)
           }
         }
       }
       "return empty response" when {
         "the index name with wildcard is used" when {
           "there is no matching index" in {
+            val aliasResponse = dev1IndexManager.getAlias("nonexistent*")
+
+            aliasResponse.responseCode should be (200)
+            aliasResponse.responseJson.obj.size should be (0)
           }
         }
         "the alias name with wildcard is used" when {
           "there is no matching alias" in {
+            val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent*")
 
+            aliasResponse.responseCode should be (200)
+            aliasResponse.responseJson.obj.size should be (0)
           }
         }
       }
       "pretend that index doesn't exist" when {
         "called index really doesn't exist" in {
+          val aliasResponse = dev1IndexManager.getAlias("nonexistent")
 
+          aliasResponse.responseCode should be (404)
         }
         "called index exists, but the user has no access to it" in {
+          val aliasResponse = dev1IndexManager.getAlias("index2")
 
+          aliasResponse.responseCode should be (404)
         }
       }
       "return alias not found" when {
         "full alias name is used and the alias doesn't exist" in {
-          
+          val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent")
+
+          aliasResponse.responseCode should be (404)
         }
       }
     }

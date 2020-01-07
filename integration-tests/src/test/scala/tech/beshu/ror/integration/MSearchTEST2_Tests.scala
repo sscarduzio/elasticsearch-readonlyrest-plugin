@@ -162,7 +162,7 @@ object MSearchTEST2_Tests {
           .body("""{"id": "asd123"}""")
           .asString().getBody)
 
-        println("ES DOCUMENT WRITTEN IN perfmon_logstash-apacheaccess1 (2/2)! " + Unirest.put(url + "perfmon_logstash-apacheaccess1/documents/doc1")
+        println("ES DOCUMENT WRITTEN IN perfmon_logstash-apacheaccess1 (2/2)! " + Unirest.put(url + "perfmon_logstash-apacheaccess1/documents/doc2")
           .header("refresh", "wait_for")
           .header("Content-Type", "application/json")
           .header("timeout", "50s")
