@@ -28,6 +28,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.utils.TestsUtils._
@@ -177,26 +178,26 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           found = Set(IndexName("test-index1".nonempty), IndexName("test-index2".nonempty))
         )
       }
+    }
+    "not match" when {
       "no index passed, one is configured, no real indices" in {
-        assertMatchRule(
+        assertNotMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test")),
           requestIndices = Set.empty
         )
       }
       "'_all' passed, one is configured, no real indices" in {
-        assertMatchRule(
+        assertNotMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test")),
           requestIndices = Set(IndexName("_all".nonempty))
         )
       }
       "'*' passed, one is configured, no real indices" in {
-        assertMatchRule(
+        assertNotMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test")),
           requestIndices = Set(IndexName("*".nonempty))
         )
       }
-    }
-    "not match" when {
       "one full name index passed, different one full name index configured" in {
         assertNotMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test1")),
@@ -302,7 +303,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(returnedBlock)
-      else Rejected()
+      else Rejected(Some(Cause.IndexNotFound))
     }
   }
 
