@@ -116,7 +116,6 @@ object SslConfiguration {
                                              truststorePassword: Option[SslConfiguration.TruststorePassword],
                                              allowedProtocols: Set[SslConfiguration.Protocol],
                                              allowedCiphers: Set[SslConfiguration.Cipher],
-                                             clientAuthenticationEnabled: Boolean,
                                              certificateVerificationEnabled: Boolean) extends SslConfiguration
 }
 
@@ -150,7 +149,7 @@ private object SslDecoders {
                                        truststorePassword: Option[SslConfiguration.TruststorePassword],
                                        allowedProtocols: Set[SslConfiguration.Protocol],
                                        allowedCiphers: Set[SslConfiguration.Cipher],
-                                       clientAuthenticationEnabled: Boolean)
+                                       verification: Option[Boolean])
 
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = Decoder.decodeString.map(KeystorePassword.apply)
   private implicit val truststorePasswordDecoder: Decoder[TruststorePassword] = Decoder.decodeString.map(TruststorePassword.apply)
@@ -171,7 +170,6 @@ private object SslDecoders {
   private def sslInternodeConfigurationDecoder(basePath: Path): Decoder[Option[InternodeSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
-        verification <- c.downField(consts.verification).as[Option[Boolean]]
         certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
@@ -184,27 +182,27 @@ private object SslDecoders {
           truststorePassword = sslCommonProperties.truststorePassword,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          clientAuthenticationEnabled = sslCommonProperties.clientAuthenticationEnabled,
-          certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false))
+          certificateVerificationEnabled = certificateVerification.orElse(sslCommonProperties.verification).getOrElse(false))
     }
   }
 
   private def sslExternalConfigurationDecoder(basePath: Path): Decoder[Option[ExternalSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
-      sslCommonPropertiesDecoder(basePath, c)
-        .map { sslCommonProperties =>
-          ExternalSslConfiguration(
-            keystoreFile = sslCommonProperties.keystoreFile,
-            keystorePassword = sslCommonProperties.keystorePassword,
-            keyPass = sslCommonProperties.keyPass,
-            keyAlias = sslCommonProperties.keyAlias,
-            truststoreFile = sslCommonProperties.truststoreFile,
-            truststorePassword = sslCommonProperties.truststorePassword,
-            allowedProtocols = sslCommonProperties.allowedProtocols,
-            allowedCiphers = sslCommonProperties.allowedCiphers,
-            clientAuthenticationEnabled = sslCommonProperties.clientAuthenticationEnabled,
-          )
-        }
+      for {
+        clientAuthentication <- c.downField(consts.clientAuthentication).as[Option[Boolean]]
+        sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
+      } yield
+        ExternalSslConfiguration(
+          keystoreFile = sslCommonProperties.keystoreFile,
+          keystorePassword = sslCommonProperties.keystorePassword,
+          keyPass = sslCommonProperties.keyPass,
+          keyAlias = sslCommonProperties.keyAlias,
+          truststoreFile = sslCommonProperties.truststoreFile,
+          truststorePassword = sslCommonProperties.truststorePassword,
+          allowedProtocols = sslCommonProperties.allowedProtocols,
+          allowedCiphers = sslCommonProperties.allowedCiphers,
+          clientAuthenticationEnabled = clientAuthentication.orElse(sslCommonProperties.verification).getOrElse(false),
+        )
     }
   }
 
@@ -219,7 +217,6 @@ private object SslDecoders {
         keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
         ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
         protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
-        clientAuthentication <- c.downField(consts.clientAuthentication).as[Option[Boolean]]
         verification <- c.downField(consts.verification).as[Option[Boolean]]
       } yield
         CommonSslProperties(
@@ -231,7 +228,7 @@ private object SslDecoders {
           truststorePassword = truststorePassword,
           allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
           allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
-          clientAuthenticationEnabled = clientAuthentication.orElse(verification).getOrElse(false))
+          verification = verification)
     }
 
   private def whenEnabled[T <: SslConfiguration](cursor: HCursor)(decoding: => Either[DecodingFailure, T]) = {

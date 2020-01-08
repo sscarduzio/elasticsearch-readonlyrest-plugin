@@ -141,11 +141,6 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
               new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
               null
           );
-          if (ssl.clientAuthenticationEnabled()) {
-            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
-            TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
-            sslCtxBuilder.trustManager(usedTrustManager);
-          }
 
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);

@@ -82,10 +82,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
           if (ssl.allowedCiphers.nonEmpty) sslCtxBuilder.ciphers(ssl.allowedCiphers.map(_.value).toList.asJava)
-          if (ssl.clientAuthenticationEnabled) {
-            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
-            sslCtxBuilder.trustManager(SSLCertParser.customTrustManagerFrom(ssl).orNull)
-          }
+
           if (ssl.allowedProtocols.nonEmpty) sslCtxBuilder.protocols(ssl.allowedProtocols.map(_.value).toList: _*)
           context = Some(sslCtxBuilder.build)
         } catch {

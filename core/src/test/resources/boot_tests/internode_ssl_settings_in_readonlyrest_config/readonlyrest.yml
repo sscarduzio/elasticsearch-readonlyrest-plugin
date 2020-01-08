@@ -7,7 +7,6 @@ readonlyrest:
     key_pass: readonlyrest2
     truststore_file: "truststore.jks"
     truststore_pass: readonlyrest3
-    client_authentication: true
     certificate_verification: true
 
   access_control_rules:
