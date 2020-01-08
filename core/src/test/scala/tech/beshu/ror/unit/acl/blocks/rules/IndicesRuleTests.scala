@@ -178,6 +178,21 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           found = Set(IndexName("test-index1".nonempty), IndexName("test-index2".nonempty))
         )
       }
+      "full name index passed, index alias configured" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test12-alias")),
+          requestIndices = Set(IndexName("test-index1".nonempty)),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(
+              IndexWithAliases(IndexName("test-index1".nonempty), Set(IndexName("test12-alias".nonempty))),
+              IndexWithAliases(IndexName("test-index2".nonempty), Set(IndexName("test12-alias".nonempty))),
+              IndexWithAliases(IndexName("test-index3".nonempty), Set(IndexName("test34-alias".nonempty))),
+              IndexWithAliases(IndexName("test-index4".nonempty), Set(IndexName("test34-alias".nonempty)))
+            )
+          ),
+          found = Set(IndexName("test-index1".nonempty))
+        )
+      }
     }
     "not match" when {
       "no index passed, one is configured, no real indices" in {

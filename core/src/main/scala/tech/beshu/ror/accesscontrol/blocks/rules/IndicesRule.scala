@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.Monoid
 import cats.data.NonEmptySet
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
@@ -131,8 +131,8 @@ class IndicesRule(val settings: Settings)
       _ <- noneOrAllIndices(requestContext, matcher)
       _ <- allIndicesMatchedByWildcard(requestContext, matcher)
       _ <- atLeastOneNonWildcardIndexNotExist(requestContext, matcher)
-      _ <- indicesAliases(requestContext, matcher)
-      _ <- expandedIndices(requestContext, matcher)
+      _ <- indicesAliases2(requestContext, matcher)
+      //_ <- expandedIndices(requestContext, matcher) // todo: remove?
     } yield ()
     result.left.getOrElse(CanPass.No())
   }
@@ -203,6 +203,83 @@ class IndicesRule(val settings: Settings)
     }
   }
 
+  private def indicesAliases2(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
+    logger.debug("Checking - indices aliases ...")
+    val allowedRealIndices =
+      filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(requestContext, matcher) ++
+      filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured(requestContext, matcher) ++
+      filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(requestContext, matcher) ++
+      filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(requestContext, matcher)
+    if(allowedRealIndices.nonEmpty) {
+      stop(CanPass.Yes(allowedRealIndices))
+    } else {
+      stop(CanPass.No(Reason.IndexNotExist))
+    }
+  }
+
+  private def filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(requestContext: RequestContext,
+                                                                           matcher: Matcher) = {
+    val allIndices = requestContext.allIndicesAndAliases.map(_.index)
+    val requestedIndicesNames = requestContext.indices
+    val requestedIndices = MatcherWithWildcardsScalaAdapter.create(requestedIndicesNames).filter(allIndices)
+
+    matcher.filter(requestedIndices)
+  }
+
+  private def filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured(requestContext: RequestContext,
+                                                                           matcher: Matcher) = {
+    val aliasesOfIndicesMap = requestContext.allIndicesAndAliases.map(ia => (ia.index, ia.aliases)).toMap
+    val allIndices = aliasesOfIndicesMap.keys.toSet
+
+    val requestedIndicesNames = requestContext.indices
+    val requestedIndices = MatcherWithWildcardsScalaAdapter.create(requestedIndicesNames).filter(allIndices)
+    val aliasesOfRequestedIndices = requestedIndices.flatMap(aliasesOfIndicesMap.getOrElse(_, Set.empty))
+
+    val filteredAliases = matcher.filter(aliasesOfRequestedIndices)
+    val indicesRelatedToAliasMap =
+      requestContext
+        .allIndicesAndAliases
+        .foldLeft(Map.empty[IndexName, Set[IndexName]]) {
+          case (map, indexWithAlias) =>
+            val aliasToIndexMap = indexWithAlias.aliases.map(a => (a, Set(indexWithAlias.index))).toMap
+            implicitly[Monoid[Map[IndexName, Set[IndexName]]]].combine(map, aliasToIndexMap)
+        }
+    val indicesOfFilteredAliases = filteredAliases.flatMap(indicesRelatedToAliasMap.getOrElse(_, Set.empty))
+    indicesOfFilteredAliases.intersect(requestedIndices)
+  }
+
+  private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(requestContext: RequestContext,
+                                                                           matcher: Matcher) = {
+    val allAliases = requestContext.allIndicesAndAliases.flatMap(_.aliases)
+    val requestedAliasesNames = requestContext.indices
+    val requestedAliases = MatcherWithWildcardsScalaAdapter.create(requestedAliasesNames).filter(allAliases)
+
+    val filteredAliases = matcher.filter(requestedAliases)
+    val indexByAliasMap = requestContext.allIndicesAndAliases.flatMap(ia => ia.aliases.map(a => (a, ia.index)).toMap).toMap
+    val indicesOfFilteredAliases = filteredAliases.flatMap(indexByAliasMap.get(_).toSet)
+    indicesOfFilteredAliases
+  }
+
+  private def filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(requestContext: RequestContext,
+                                                                           matcher: Matcher) = {
+    val indicesRelatedToAliasMap =
+      requestContext
+        .allIndicesAndAliases
+        .foldLeft(Map.empty[IndexName, Set[IndexName]]) {
+          case (map, indexWithAlias) =>
+            val aliasToIndexMap = indexWithAlias.aliases.map(a => (a, Set(indexWithAlias.index))).toMap
+            implicitly[Monoid[Map[IndexName, Set[IndexName]]]].combine(map, aliasToIndexMap)
+        }
+    val allAliases = indicesRelatedToAliasMap.keys.toSet
+
+    val requestedAliasesNames = requestContext.indices
+    val requestedAliases = MatcherWithWildcardsScalaAdapter.create(requestedAliasesNames).filter(allAliases)
+    val indicesOfRequestedAliases = requestedAliases.flatMap(indicesRelatedToAliasMap.getOrElse(_, Set.empty))
+
+    matcher.filter(indicesOfRequestedAliases)
+  }
+
+  // todo: to remove
   private def indicesAliases(requestContext: RequestContext, matcher: Matcher): IndicesCheckContinuation = {
     logger.debug("Checking - indices aliases ...")
     val indices = requestContext.indices
