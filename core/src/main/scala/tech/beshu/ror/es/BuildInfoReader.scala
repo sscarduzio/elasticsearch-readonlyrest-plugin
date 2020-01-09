@@ -22,11 +22,18 @@ import java.util.{Objects, Properties}
 import cats.effect.Resource
 import monix.eval.Task
 
+import scala.util.Try
+
 final case class BuildInfo(esVersion: String, pluginVersion: String)
 object BuildInfoReader {
   private val filename = "/ror-build-info.properties"
 
-  def create(filename: String = filename): Task[BuildInfo] = {
+  def create(filename: String = filename): Try[BuildInfo] = Try{
+    import monix.execution.Scheduler.Implicits.global
+    createBuildInfoTask(filename).runSyncUnsafe()
+  }
+
+  private def createBuildInfoTask(filename: String) = {
     for {
       props <- loadProperties(filename)
       esVersion <- getProperty(props, "es_version")

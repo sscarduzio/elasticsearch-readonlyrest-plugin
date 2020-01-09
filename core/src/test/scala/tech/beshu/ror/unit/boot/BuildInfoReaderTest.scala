@@ -10,11 +10,11 @@ class BuildInfoReaderTest extends WordSpec {
 
   "BuildInfoReader" should {
     "fail create from nonexistent file" in {
-      val error = BuildInfoReader.create("/dontexist.properties").failed.runSyncUnsafe()
+      val error = BuildInfoReader.create("/dontexist.properties").failed.get
       error.getMessage shouldEqual "file '/dontexist.properties' is expected to be present in plugin jar, but it wasn't found."
     }
     "create build info for default file" in {
-      val buildInfo = BuildInfoReader.create("/stub-ror-build-info.properties").runSyncUnsafe()
+      val buildInfo = BuildInfoReader.create("/stub-ror-build-info.properties").get
       buildInfo.esVersion shouldBe "es stub version"
       buildInfo.pluginVersion shouldBe "plugin stub version"
     }
