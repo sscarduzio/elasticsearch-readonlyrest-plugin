@@ -61,7 +61,8 @@ dependencies {
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
 }
 
-gitProperties { //git.properties
+gitProperties { 
+    gitPropertiesName "ror-build-info.properties"
     customProperty 'es_version', esVersion
     customProperty 'plugin_version', pluginVersion
 }

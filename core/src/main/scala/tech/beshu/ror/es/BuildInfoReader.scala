@@ -19,15 +19,14 @@ package tech.beshu.ror.es
 import java.io.InputStream
 import java.util.{Objects, Properties}
 
-import cats.effect.{IO, Resource}
-
-import scala.util.Try
+import cats.effect.Resource
+import monix.eval.Task
 
 final case class BuildInfo(esVersion: String, pluginVersion: String)
 object BuildInfoReader {
-  private val filename = "/git.properties"
+  private val filename = "/ror-build-info.properties"
 
-  def create(filename: String = filename): Try[BuildInfo] = {
+  def create(filename: String = filename): Task[BuildInfo] = {
     for {
       props <- loadProperties(filename)
       esVersion <- getProperty(props, "es_version")
@@ -35,18 +34,15 @@ object BuildInfoReader {
     } yield BuildInfo(esVersion, pluginVersion)
   }
 
-  private def loadProperties(filename: String): Try[Properties] = {
+  private def loadProperties(filename: String): Task[Properties] = {
     createResource(filename).flatMap {
       tryWithResources(_, loadProperties)
     }
   }
 
-  private def tryWithResources[A <: AutoCloseable, B](closeable: A, use: A => B): Try[B] = {
-    Try {
-      Resource.fromAutoCloseable(IO.pure(closeable))
-        .use(c => IO.pure(use(c)))
-        .unsafeRunSync()
-    }
+  private def tryWithResources[A <: AutoCloseable, B](closeable: A, use: A => B): Task[B] = {
+      Resource.fromAutoCloseable(Task.pure(closeable))
+        .use(c => Task.pure(use(c)))
   }
 
   private def createResource(filename: String) =
@@ -61,7 +57,7 @@ object BuildInfoReader {
   private def getProperty(props: Properties, propertyName: String) =
     requireNonNull(props.getProperty(propertyName), s"Property value '$propertyName' have to be defined")
 
-  private def requireNonNull[A](a: A, message: String): Try[A] = Try {
+  private def requireNonNull[A](a: A, message: String): Task[A] = Task {
     Objects.requireNonNull(a, message)
   }
 }

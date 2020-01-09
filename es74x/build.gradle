@@ -61,7 +61,8 @@ dependencies {
     compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.0'
 }
 
-gitProperties { //git.properties
+gitProperties { 
+    gitPropertiesName "ror-build-info.properties"
     customProperty 'es_version', esVersion
     customProperty 'plugin_version', pluginVersion
 }

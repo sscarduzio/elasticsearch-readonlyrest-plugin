@@ -16,9 +16,11 @@
  */
 package tech.beshu.ror.es
 
+import monix.execution.Scheduler.Implicits.global
+
 trait LogBuildInfoMessage extends org.apache.logging.log4j.scala.Logging {
   def logBuildInfoMessage(): Unit = {
-    val buildInfo = BuildInfoReader.create().get
+    val buildInfo = BuildInfoReader.create().runSyncUnsafe()
     logger.info(createLogMessage(buildInfo))
   }
   def createLogMessage(buildInfo: BuildInfo): String =
