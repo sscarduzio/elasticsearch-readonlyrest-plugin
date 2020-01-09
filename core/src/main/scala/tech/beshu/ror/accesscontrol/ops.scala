@@ -228,6 +228,8 @@ object show {
     def blockValidationErrorShow(block: Block.Name): Show[BlockValidationError] = Show.show {
       case BlockValidationError.AuthorizationWithoutAuthentication =>
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
+      case BlockValidationError.OnlyOneAuthenticationRuleAllowed(authRules) =>
+        s"The '${block.show}' block should contain only one authentication rule, but contains: [${authRules.map(_.name.show).mkString_(",")}]"
       case BlockValidationError.KibanaAccessRuleTogetherWithActionsRule =>
         s"The '${block.show}' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block."
       case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
