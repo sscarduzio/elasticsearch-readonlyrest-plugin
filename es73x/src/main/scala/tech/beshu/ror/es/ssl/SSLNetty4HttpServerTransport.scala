@@ -16,8 +16,7 @@
  */
 package tech.beshu.ror.es.ssl
 
-import java.io.ByteArrayInputStream
-import java.nio.charset.StandardCharsets
+import java.io.InputStream
 
 import io.netty.buffer.ByteBufAllocator
 import io.netty.channel.Channel
@@ -72,13 +71,10 @@ class SSLNetty4HttpServerTransport(settings: Settings,
     }
 
     private class SSLContextCreatorImpl extends SSLCertParser.SSLContextCreator {
-      override def mkSSLContext(certChain: String, privateKey: String): Unit = {
+      override def mkSSLContext(certChain: InputStream, privateKey: InputStream): Unit = {
         try { // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          val sslCtxBuilder = SslContextBuilder.forServer(
-            new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-            new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-            null
-          )
+           val sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null)
+
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
           if (ssl.allowedCiphers.nonEmpty) sslCtxBuilder.ciphers(ssl.allowedCiphers.map(_.value).toList.asJava)

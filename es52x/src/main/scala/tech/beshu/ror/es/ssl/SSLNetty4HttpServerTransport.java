@@ -43,8 +43,7 @@ import tech.beshu.ror.utils.SSLCertParser$;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLHandshakeException;
 import javax.net.ssl.TrustManagerFactory;
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
@@ -128,14 +127,10 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     }
 
     @Override
-    public void mkSSLContext(String certChain, String privateKey) {
+    public void mkSSLContext(InputStream certChain, InputStream privateKey) {
       try {
         // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-        SslContextBuilder sslcb = SslContextBuilder.forServer(
-            new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-            new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-            null
-        );
+        SslContextBuilder sslcb = SslContextBuilder.forServer(certChain, privateKey, null);
 
         if (ssl.clientAuthenticationEnabled()) {
           sslcb.clientAuth(ClientAuth.REQUIRE);
