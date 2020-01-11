@@ -121,6 +121,23 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
+  private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
+    channel.sendResponse(ForbiddenResponse.create(channel, causes.toList, engine.context))
+  }
+
+  private def onIndexNotFound(requestContext: RequestContext, requestInfo: RequestInfo): Unit = {
+    requestContext.uriPath match {
+      case CatIndicesPath(_) =>
+        respondWithEmptyCatIndicesResponse()
+      case _ =>
+        val nonExistentIndex = randomNonexistentIndex(requestInfo)
+        requestInfo.writeIndices(Set(nonExistentIndex.value.value)) match {
+          case WriteResult.Success(_) => proceed(baseListener)
+          case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
+        }
+    }
+  }
+
   private def proceedAfterSuccessfulWrite(requestContext: RequestContext,
                                           blockContext: BlockContext)
                                          (result: WriteResult[Unit]): Unit = {
@@ -170,23 +187,6 @@ class RegularRequestHandler(engine: Engine,
     blockContext.indices match {
       case Outcome.Exist(foundIndices) => foundIndices.isEmpty
       case Outcome.NotExist => false
-    }
-  }
-
-  private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
-    channel.sendResponse(ForbiddenResponse.create(channel, causes.toList, engine.context))
-  }
-
-  private def onIndexNotFound(requestContext: RequestContext, requestInfo: RequestInfo): Unit = {
-    requestContext.uriPath match {
-      case CatIndicesPath(_) =>
-        respondWithEmptyCatIndicesResponse()
-      case _ =>
-        val nonExistentIndex = randomNonexistentIndex(requestInfo)
-        requestInfo.writeIndices(Set(nonExistentIndex.value.value)) match {
-          case WriteResult.Success(_) => proceed(baseListener)
-          case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
-        }
     }
   }
 
