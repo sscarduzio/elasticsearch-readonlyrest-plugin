@@ -73,13 +73,6 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
           }
         }
         "he has access to its alias" when {
-          "the index is called explicitly" in {
-            val indexResponse = dev2IndexManager.getIndex("index2")
-
-            indexResponse.responseCode should be(200)
-            indexResponse.responseJson.obj.size should be(1)
-            indexResponse.responseJson("index2")
-          }
           "the alias is called" in {
             val indexResponse = dev2IndexManager.getIndex("index2_alias")
 
@@ -120,6 +113,11 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
         }
         "one of called indices doesn't exist" in {
           val indexResponse = dev1IndexManager.getIndices(Set("index1", "index3"))
+
+          indexResponse.responseCode should be(404)
+        }
+        "the index is called explicitly when user has configured alias in indices rule" in {
+          val indexResponse = dev2IndexManager.getIndex("index2")
 
           indexResponse.responseCode should be(404)
         }

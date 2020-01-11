@@ -16,17 +16,14 @@
  */
 package tech.beshu.ror.es.request.regular
 
-import java.util
 import cats.data.NonEmptyList
 import cats.implicits._
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
-import org.elasticsearch.cluster.metadata.AliasMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.RestChannel
@@ -38,7 +35,7 @@ import tech.beshu.ror.accesscontrol.BlockContextRawDataHelper.indicesFrom
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.domain.UriPath.{AliasesPath, CatIndicesPath, CatTemplatePath, TemplatePath}
+import tech.beshu.ror.accesscontrol.domain.UriPath.{CatIndicesPath, CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
 import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextRawDataHelper}
@@ -104,7 +101,7 @@ class RegularRequestHandler(engine: Engine,
                       blockContext: BlockContext): Unit = {
     requestContext.uriPath match {
       case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
-        respondWithEmtpyCatIndicesResponse()
+        respondWithEmptyCatIndicesResponse()
       case CatTemplatePath(_) | TemplatePath(_) =>
         proceedAfterSuccessfulWrite(requestContext, blockContext) {
           for {
@@ -183,11 +180,10 @@ class RegularRequestHandler(engine: Engine,
   private def onIndexNotFound(requestContext: RequestContext, requestInfo: RequestInfo): Unit = {
     requestContext.uriPath match {
       case CatIndicesPath(_) =>
-        respondWithEmtpyCatIndicesResponse()
-//      case AliasesPath(_) =>
-//        respondWithEmptyGetAliasesResponse()
+        respondWithEmptyCatIndicesResponse()
       case _ =>
-        requestInfo.writeIndices(Set(randomNonexistentIndex(requestInfo).value.value)) match {
+        val nonExistentIndex = randomNonexistentIndex(requestInfo)
+        requestInfo.writeIndices(Set(nonExistentIndex.value.value)) match {
           case WriteResult.Success(_) => proceed(baseListener)
           case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
         }
@@ -232,14 +228,10 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def respondWithEmtpyCatIndicesResponse(): Unit = {
+  private def respondWithEmptyCatIndicesResponse(): Unit = {
     baseListener.onResponse(new GetSettingsResponse(
       ImmutableOpenMap.of[String, Settings](),
       ImmutableOpenMap.of[String, Settings]()
     ))
-  }
-
-  private def respondWithEmptyGetAliasesResponse(): Unit = {
-    baseListener.onResponse(new GetAliasesResponse(ImmutableOpenMap.of[String, util.List[AliasMetaData]]()))
   }
 }

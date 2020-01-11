@@ -432,11 +432,4 @@ class RequestInfo(channel: RestChannel,
     }
     WriteResult.Success(())
   }
-
-  private def randomNonexistentIndex(): IndexName = {
-    extractIndices.indices.headOption match {
-      case Some(indexName) => IndexName.randomNonexistentIndex(indexName)
-      case None => IndexName.randomNonexistentIndex()
-    }
-  }
 }

@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.request
 
 import java.time.Instant
 
-import cats.Show
+import cats.{Monoid, Show}
 import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
@@ -117,6 +117,8 @@ object RequestContext extends Logging {
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 
+  type AliasName = IndexName
+
   def impersonateAs: Option[User.Id] = {
     findHeader(Header.Name.impersonateAs)
       .map { header => User.Id(header.value) }
@@ -172,6 +174,17 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
         } else {
           None
         }
+      }
+  }
+
+  def indicesPerAliasMap: Map[AliasName,  Set[IndexName]] = {
+    val mapMonoid = Monoid[Map[AliasName,  Set[IndexName]]]
+    requestContext
+      .allIndicesAndAliases
+      .foldLeft(Map.empty[AliasName,  Set[IndexName]]) {
+        case (acc, indexWithAliases) =>
+          val localIndicesPerAliasMap = indexWithAliases.aliases.map((_, Set(indexWithAliases.index))).toMap
+          mapMonoid.combine(acc, localIndicesPerAliasMap)
       }
   }
 
