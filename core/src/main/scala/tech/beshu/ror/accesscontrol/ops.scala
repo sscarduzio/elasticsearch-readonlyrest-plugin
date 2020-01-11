@@ -180,8 +180,11 @@ object show {
         }
       }"
     }
-    implicit def historyShow(implicit headerShow:Show[Header]): Show[History] = Show.show { h =>
-      s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}], RESOLVED:[${h.blockContext.show}]]"""
+    implicit def historyShow(implicit headerShow: Show[Header]): Show[History] = Show.show { h =>
+      val resolvedPart = h.blockContext.show.some
+        .filter(!_.isEmpty)
+        .map(context => s", RESOLVED:[$context]").getOrElse("")
+      s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}]$resolvedPart]"""
     }
     implicit val policyShow: Show[Policy] = Show.show {
       case Allow => "ALLOW"
