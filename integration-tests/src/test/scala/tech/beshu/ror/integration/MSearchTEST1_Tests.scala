@@ -142,7 +142,7 @@ object MSearchTEST1_Tests {
     val result = jsonPath.read("$.responses[*].hits.total.value").toString
     val total = if(result == "[]") jsonPath.read("$.responses[*].hits.total").toString
     else result
-    assertEquals(result, "[0]")
+    assertEquals(total, "[0]")
   }
 
   var url: String = null

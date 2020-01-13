@@ -14,25 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.utils
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es51x'
-include 'es52x'
-include 'es53x'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es66x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es74x-cloud'
-include 'tests-utils'
-include 'integration-tests'
-include 'integration-tests-scala'
+import java.security.{AccessController, PrivilegedAction}
+
+object AccessControllerHelper {
+
+  def doPrivileged[T](action: => T): T = {
+    AccessController.doPrivileged(new PrivilegedAction[T] {
+      override def run(): T = action
+    })
+  }
+}

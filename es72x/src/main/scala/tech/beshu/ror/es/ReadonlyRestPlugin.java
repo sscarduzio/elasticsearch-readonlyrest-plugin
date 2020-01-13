@@ -24,12 +24,9 @@ import monix.execution.schedulers.CanBlock$;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.ActionRequest;
 import org.elasticsearch.action.ActionResponse;
-import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse;
 import org.elasticsearch.action.support.ActionFilter;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.node.NodeClient;
-import org.elasticsearch.cluster.ClusterName;
-import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
 import org.elasticsearch.cluster.node.DiscoveryNodes;
 import org.elasticsearch.cluster.service.ClusterService;
@@ -90,13 +87,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-import static org.elasticsearch.discovery.zen.PublishClusterStateAction.serializeFullClusterState;
-
 public class ReadonlyRestPlugin extends Plugin
     implements ScriptPlugin, ActionPlugin, IngestPlugin, NetworkPlugin {
 
   private final RorSsl sslConfig;
-  private final ClusterStateResponse emptyClusterState;
 
   private IndexLevelActionFilter ilaf;
   private Environment environment;
@@ -116,11 +110,6 @@ public class ReadonlyRestPlugin extends Plugin
     this.sslConfig = RorSsl$.MODULE$.load(environment.configFile())
         .map(result -> ScalaJavaHelper$.MODULE$.getOrElse(result, error -> new ElasticsearchException(error.message())))
         .runSyncUnsafe(timeout, Scheduler$.MODULE$.global(), CanBlock$.MODULE$.permit());
-    this.emptyClusterState = new ClusterStateResponse(
-        ClusterName.CLUSTER_NAME_SETTING.get(s),
-        ClusterState.EMPTY_STATE,
-        false
-    );
   }
 
   @Override
@@ -134,7 +123,7 @@ public class ReadonlyRestPlugin extends Plugin
     AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
       this.environment = environment;
       this.ilaf = new IndexLevelActionFilter(clusterService, (NodeClient) client, threadPool, environment,
-          TransportServiceInterceptor.remoteClusterServiceSupplier(), emptyClusterState);
+          TransportServiceInterceptor.remoteClusterServiceSupplier());
       return null;
     });
 

@@ -19,11 +19,12 @@ package tech.beshu.ror.integration
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.base.BaseTemplatesTests
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 import ujson.Str
 
-class CatApiTests extends WordSpec with BaseTemplatesTests {
+class CatApiTests extends WordSpec with BaseTemplatesTests with ESVersionSupport {
 
   override lazy val rorContainer: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
@@ -50,10 +51,18 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
         indices.responseCode should be(200)
         indices.results.size should be (0)
       }
-      "user asked for index with no access to it" in {
+      "user asked for index with no access to it" excludeES(allEs5x, allEs6x, "^es70x$".r) in {
         createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
 
         val indices = dev1ClusterStateManager.catIndices("dev2_index")
+
+        indices.responseCode should be(200)
+        indices.results.size should be (0)
+      }
+      "user asked for index with wildcard but there is no matching index which belongs to the user" in {
+        createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
+
+        val indices = dev1ClusterStateManager.catIndices("dev2_*")
 
         indices.responseCode should be(200)
         indices.results.size should be (0)
@@ -107,6 +116,13 @@ class CatApiTests extends WordSpec with BaseTemplatesTests {
     "return 404" when {
       "user is trying to access non-existent index" in {
         val indices = dev1ClusterStateManager.catIndices("non-existent")
+
+        indices.responseCode should be(404)
+      }
+      "user asked for index with no access to it" excludeES(allEs7xExceptEs70x) in {
+        createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
+
+        val indices = dev1ClusterStateManager.catIndices("dev2_index")
 
         indices.responseCode should be(404)
       }

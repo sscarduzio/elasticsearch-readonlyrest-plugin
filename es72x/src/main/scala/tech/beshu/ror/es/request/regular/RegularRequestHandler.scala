@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
@@ -55,8 +54,7 @@ class RegularRequestHandler(engine: Engine,
                             baseListener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: RestChannel,
-                            threadPool: ThreadPool,
-                            emptyClusterStateResponse: ClusterStateResponse)
+                            threadPool: ThreadPool)
                            (implicit scheduler: Scheduler)
   extends Logging {
 
@@ -231,6 +229,9 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def respondWithEmptyCatIndicesResponse(): Unit = {
-    baseListener.onResponse(emptyClusterStateResponse)
+    baseListener.onResponse(new GetSettingsResponse(
+      ImmutableOpenMap.of[String, Settings](),
+      ImmutableOpenMap.of[String, Settings]()
+    ))
   }
 }

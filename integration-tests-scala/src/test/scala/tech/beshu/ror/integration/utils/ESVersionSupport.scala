@@ -16,17 +16,41 @@
  */
 package tech.beshu.ror.integration.utils
 
+import cats.data.NonEmptyList
 import org.scalatest.{Tag, WordSpecLike}
+import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 import scala.language.implicitConversions
+import scala.util.matching.Regex
 
 trait ESVersionSupport extends WordSpecLike {
+
+  val allEs5x = "^es5\\dx$".r
+  val allEs6x = "^es6\\dx$".r
+  val allEs7x = "^es7\\dx$".r
+  val allEs7xExceptEs70x = "^es7(?!(?:0x)$)\\dx$".r
 
   implicit final class ESVersionSupportOps(string: String) {
     def excludeES(esVersion: String, esVersions: String*): ResultOfTaggedAsInvocationOnString = {
       string.taggedAs(new ExcludeESModule(esVersion), esVersions.map(new ExcludeESModule(_)).toList: _*)
     }
+
+    def excludeES(regex: Regex, regexArgs: Regex*): ResultOfTaggedAsInvocationOnString = {
+      val excludedModuleNames = RorPluginGradleProject
+        .availableEsModules
+        .filter { name =>
+          (regex :: regexArgs.toList).exists(_.findFirstIn(name).isDefined)
+        }
+      NonEmptyList.fromList(excludedModuleNames) match {
+        case Some(names) =>
+          val excludedEsModules = names.map(new ExcludeESModule(_))
+          string.taggedAs(excludedEsModules.head, excludedEsModules.tail: _*)
+        case None =>
+          throw new IllegalStateException("None of ES module was excluded")
+      }
+    }
   }
 
   private final class ExcludeESModule(value: String) extends Tag(s"tech.beshu.tags.ExcludeESModule.$value")
+
 }
