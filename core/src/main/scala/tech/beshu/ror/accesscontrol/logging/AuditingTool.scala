@@ -110,7 +110,7 @@ class AuditingTool(settings: Settings,
         case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
       }
       override val involvesIndices: Boolean = requestContext.involvesIndices
-      override val attemptedUser: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
+      override val attemptedUserName: Option[String] = requestContext.attemptedUserName.map(_.value)
     }
   }
 
