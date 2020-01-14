@@ -65,7 +65,8 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 @Inject
-class ReadonlyRestPlugin(s: Settings, p: Path)
+class ReadonlyRestPlugin(s: Settings,
+                         p: Path)
   extends Plugin
     with ScriptPlugin
     with ActionPlugin
@@ -111,7 +112,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def getActionFilters: util.List[Class[_ <: ActionFilter]] = {
-    List(classOf[IndexLevelActionFilter].asInstanceOf).asJava
+    List[Class[_ <: ActionFilter]](classOf[IndexLevelActionFilter]).asJava
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {

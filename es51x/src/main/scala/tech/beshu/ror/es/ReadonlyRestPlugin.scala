@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import java.nio.file.Path
 import java.util
 import java.util.Collections
 import java.util.function.Supplier
@@ -52,13 +51,18 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-@Inject
-class ReadonlyRestPlugin(s: Settings)
+class ReadonlyRestPlugin(s: Settings,
+                         ignore: Unit) // hack!!!
   extends Plugin
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
     with NetworkPlugin {
+
+  @Inject
+  def this(s: Settings) = {
+    this(s, ())
+  }
 
   LogBuildInfoMessage()
 
@@ -72,7 +76,7 @@ class ReadonlyRestPlugin(s: Settings)
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
 
   override def getActionFilters: util.List[Class[_ <: ActionFilter]] = {
-    List(classOf[IndexLevelActionFilter].asInstanceOf).asJava
+    List[Class[_ <: ActionFilter]](classOf[IndexLevelActionFilter]).asJava
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {

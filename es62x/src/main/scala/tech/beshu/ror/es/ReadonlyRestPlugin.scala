@@ -68,7 +68,8 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 @Inject
-class ReadonlyRestPlugin(s: Settings, p: Path)
+class ReadonlyRestPlugin(s: Settings,
+                         p: Path)
   extends Plugin
     with ScriptPlugin
     with ActionPlugin
