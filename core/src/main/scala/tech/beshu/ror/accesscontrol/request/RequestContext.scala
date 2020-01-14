@@ -75,11 +75,11 @@ object RequestContext extends Logging {
            history: Vector[Block.History])
           (implicit headerShow: Show[Header]): Show[RequestContext] =
     Show.show { r =>
-      def stringifyLoggedUser = {
+      def stringifyUser = {
         loggedUser match {
           case Some(DirectlyLoggedUser(user)) => s"${user.show}"
           case Some(ImpersonatedUser(user, impersonatedBy)) => s"${impersonatedBy.show} (as ${user.show})"
-          case None => "[user not logged]"
+          case None => r.basicAuth.map(_.credentials.user.value).map(name => s"${name.value} (attempted)").getOrElse("[no info about user]")
         }
       }
 
@@ -98,7 +98,7 @@ object RequestContext extends Logging {
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
          | CGR:${r.currentGroup.show},
-         | USR:$stringifyLoggedUser,
+         | USR:$stringifyUser,
          | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
          | KDX:${kibanaIndex.map(_.show).getOrElse("null")},
          | ACT:${r.action.show},
@@ -155,6 +155,8 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       .find(_.isDefined)
       .flatten
   }
+
+  def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
 
   def bearerToken: Option[AuthorizationToken] = authorizationToken {
     AuthorizationTokenDef(Header.Name.authorization, "Bearer ")

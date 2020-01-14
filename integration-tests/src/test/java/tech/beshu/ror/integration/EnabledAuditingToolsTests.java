@@ -52,27 +52,39 @@ public class EnabledAuditingToolsTests {
   }
 
   @Test
-  public void rule1MatchingRequestShouldBeAudited() throws Exception {
-    assertions(container).assertUserHasAccessToIndex("user", "dev", "twitter");
+  public void rule1MatchingRequestShouldBeAuditedWithLoggedUser() throws Exception {
+    assertions(container).assertUserHasAccessToIndex("username", "dev", "twitter");
     List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
 
     assertEquals(1, auditEntries.size());
     assertEquals("ALLOWED", auditEntries.get(0).get("final_state"));
     assertThat((String) auditEntries.get(0).get("block"), containsString("name: 'Rule 1'"));
+    assertEquals(auditEntries.get(0).get("user"), "username");
   }
 
   @Test
-  public void noRuleMatchingRequestShouldBeAudited() throws Exception {
-    assertions(container).assertUserAccessToIndexForbidden("user", "wrong", "twitter");
+  public void noRuleMatchingRequestShouldBeAuditedWithUsernameFromAuthHeader() throws Exception {
+    assertions(container).assertUserAccessToIndexForbidden("username", "wrong", "twitter");
     List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
 
     assertEquals(1, auditEntries.size());
     assertEquals("FORBIDDEN", auditEntries.get(0).get("final_state"));
+    assertEquals(auditEntries.get(0).get("user"), "username");
+  }
+
+  @Test
+  public void noRuleMatchingRequestShouldBeAuditedWithRawAuthHeaderAsUser() throws Exception {
+    assertions(container).assertUserAccessToIndexForbidden("usernameWithEmptyPass", "", "twitter");
+    List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
+
+    assertEquals(1, auditEntries.size());
+    assertEquals("FORBIDDEN", auditEntries.get(0).get("final_state"));
+    assertEquals(auditEntries.get(0).get("user"), "Basic dXNlcm5hbWVXaXRoRW1wdHlQYXNzOg==");
   }
 
   @Test
   public void rule2MatchingRequestShouldNotBeAudited() throws Exception {
-    assertions(container).assertUserHasAccessToIndex("user", "dev", "facebook");
+    assertions(container).assertUserHasAccessToIndex("username", "dev", "facebook");
     List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
 
     assertEquals(0, auditEntries.size());
