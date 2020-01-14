@@ -21,6 +21,7 @@ import java.util.function.Supplier
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
@@ -48,7 +49,8 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
-                             remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]])
+                             remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
+                             emptyClusterStateResponse:  ClusterStateResponse)
   extends ActionFilter with Logging {
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
@@ -134,7 +136,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
             val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
             handler.handle(requestInfo, requestContext)
           case _ =>
-            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
+            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool, emptyClusterStateResponse)
             handler.handle(requestInfo, requestContext)
         }
       case None =>

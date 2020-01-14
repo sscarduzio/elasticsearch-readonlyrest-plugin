@@ -19,12 +19,13 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class IndexApiTests extends WordSpec with ForAllTestContainer {
+class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
   override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
@@ -190,7 +191,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
           }
         }
         "the alias name with wildcard is used" when {
-          "there is no matching alias" in {
+          "there is no matching alias" excludeES(allEs5x, allEs6xExceptEs66x) in {
             val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent*")
 
             aliasResponse.responseCode should be (200)
@@ -208,6 +209,13 @@ class IndexApiTests extends WordSpec with ForAllTestContainer {
           val aliasResponse = dev1IndexManager.getAlias("index2")
 
           aliasResponse.responseCode should be (404)
+        }
+        "the alias name with wildcard is used" when {
+          "there is no matching alias" excludeES(allEs7x, "^es66x$".r) in {
+            val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent*")
+
+            aliasResponse.responseCode should be (404)
+          }
         }
       }
       "return alias not found" when {
