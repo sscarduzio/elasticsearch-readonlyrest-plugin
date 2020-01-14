@@ -38,5 +38,5 @@ trait AuditRequestContext {
   def impersonatedByUserName: Option[String]
   def involvesIndices: Boolean
   def attemptedUserName: Option[String]
-
+  def rawAuthHeader: Option[String]
 }

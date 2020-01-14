@@ -79,7 +79,7 @@ object RequestContext extends Logging {
         loggedUser match {
           case Some(DirectlyLoggedUser(user)) => s"${user.show}"
           case Some(ImpersonatedUser(user, impersonatedBy)) => s"${impersonatedBy.show} (as ${user.show})"
-          case None => r.attemptedUserName.map(name => s"attempted as '${name.value}'").getOrElse("[no info about user]")
+          case None => r.basicAuth.map(_.credentials.user.value).map(name => s"${name.value} (attempted)").getOrElse("[no info about user]")
         }
       }
 
@@ -156,11 +156,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       .flatten
   }
 
-  def attemptedUserName: Option[NonEmptyString] = {
-    basicAuth
-      .map(_.credentials.user.value)
-      .orElse(findHeader(Header.Name.authorization).map(_.value))
-  }
+  def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
 
   def bearerToken: Option[AuthorizationToken] = authorizationToken {
     AuthorizationTokenDef(Header.Name.authorization, "Bearer ")
