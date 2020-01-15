@@ -59,6 +59,8 @@ class AccessControlList(val blocks: NonEmptyList[Block])
               case Policy.Allow => RegularRequestResult.Allow(blockContext, block)
               case Policy.Forbid => RegularRequestResult.ForbiddenBy(blockContext, block)
             }
+          case Mismatched(_) if wasRejectedDueToIndexNotFound(history) =>
+            RegularRequestResult.IndexNotFound
           case Mismatched(_) =>
             RegularRequestResult.ForbiddenByMismatched(
               nonEmptySetOfMismatchedCausesFromHistory(history)
@@ -167,9 +169,8 @@ class AccessControlList(val blocks: NonEmptyList[Block])
   }
 
   private def nonEmptySetOfMismatchedCausesFromHistory(history: Vector[History]): NonEmptySet[ForbiddenByMismatched.Cause] = {
-    val rejections = history.flatMap(_.items.map(_.result).collect { case r: Rejected => r })
-    val causes = rejections.map {
-      case Rejected(None) => ForbiddenByMismatched.Cause.OperationNotAllowed
+    val causes = rejectionsFrom(history).map {
+      case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound)) => ForbiddenByMismatched.Cause.OperationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => ForbiddenByMismatched.Cause.ImpersonationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => ForbiddenByMismatched.Cause.ImpersonationNotSupported
     }
@@ -177,5 +178,32 @@ class AccessControlList(val blocks: NonEmptyList[Block])
       .fromList(causes.toList)
       .getOrElse(NonEmptyList.one(ForbiddenByMismatched.Cause.OperationNotAllowed))
       .toNes
+  }
+
+  private def wasRejectedDueToIndexNotFound(history: Vector[History]) = {
+    val rejections = rejectionsFrom(history)
+    !impersonationRejectionExists(rejections) && indexNotFoundRejectionExists(rejections)
+  }
+
+  private def indexNotFoundRejectionExists(rejections: Vector[Rejected]) = {
+    rejections.exists {
+      case Rejected(Some(Rejected.Cause.IndexNotFound)) => true
+      case Rejected(None) => false
+      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
+      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
+    }
+  }
+
+  private def impersonationRejectionExists(rejections: Vector[Rejected]) = {
+    rejections.exists {
+      case Rejected(Some(Rejected.Cause.IndexNotFound)) => false
+      case Rejected(None) => false
+      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => true
+      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => true
+    }
+  }
+
+  private def rejectionsFrom(history: Vector[History]) = {
+    history.flatMap(_.items.map(_.result).collect { case r: Rejected => r })
   }
 }

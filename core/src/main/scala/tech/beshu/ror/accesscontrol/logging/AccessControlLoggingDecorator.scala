@@ -53,6 +53,8 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
               log(ForbiddenBy(requestContext, block, blockContext, resultWithHistory.history))
             case RegularRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, resultWithHistory.history))
+            case RegularRequestResult.IndexNotFound =>
+              log(RequestedIndexNotExist(requestContext, resultWithHistory.history))
             case RegularRequestResult.Failed(ex) =>
               log(Errored(requestContext, ex))
             case RegularRequestResult.PassedThrough =>
@@ -110,7 +112,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
     context match {
       case AllowedBy(_, block, _, _) => shouldBeLogged(block)
       case Allow(_, _, _, _) => true
-      case _: ForbiddenBy | _: Forbidden | _: Errored => true
+      case _: ForbiddenBy | _: Forbidden | _: Errored | _: RequestedIndexNotExist => true
     }
   }
 
@@ -132,6 +134,9 @@ object AccessControlLoggingDecorator {
       case Forbidden(requestContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by default req=${requestContext.show}${Constants.ANSI_RESET}"""
+      case RequestedIndexNotExist(requestContext, history) =>
+        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, history)
+        s"""${Constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestContext.show}${Constants.ANSI_RESET}"""
       case Errored(requestContext, _) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector.empty)
         s"""${Constants.ANSI_YELLOW}ERRORED by error req=${requestContext.show}${Constants.ANSI_RESET}"""

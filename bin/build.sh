@@ -37,6 +37,16 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es73x_scala" ]]; the
     ./gradlew integration-tests-scala:test '-PesModule=es73x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es72x" ]]; then
+    echo ">>> es72x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es72x' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es72x_scala" ]]; then
+    echo ">>> es72x => Running testcontainers.."
+    ./gradlew integration-tests-scala:test '-PesModule=es72x' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es70x" ]]; then
     echo ">>> es70x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es70x' || ( find . |grep hs_err |xargs cat && exit 1 )
@@ -148,13 +158,15 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
     ./gradlew --stacktrace es73x:ror '-PesVersion=7.3.1'
     ./gradlew --stacktrace es73x:ror '-PesVersion=7.3.2'
 
+    #es72
+    ./gradlew --stacktrace es70x:ror '-PesVersion=7.2.0'
+    ./gradlew --stacktrace es70x:ror '-PesVersion=7.2.1'
+
     #es70
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.0.0'
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.0.1'
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.1.0'
     ./gradlew --stacktrace es70x:ror '-PesVersion=7.1.1'
-    ./gradlew --stacktrace es70x:ror '-PesVersion=7.2.0'
-    ./gradlew --stacktrace es70x:ror '-PesVersion=7.2.1'
 
 fi
 

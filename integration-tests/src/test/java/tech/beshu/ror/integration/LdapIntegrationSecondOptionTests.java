@@ -51,13 +51,15 @@ public class LdapIntegrationSecondOptionTests {
 
   @Test
   public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions.assertions(multiContainerDependent.getContainer())
-        .assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+    ReadonlyRestedESAssertions
+        .assertions(multiContainerDependent.getContainer())
+        .assertIndexNotFound("morgan", "user1", "twitter");
   }
 
   @Test
   public void unauthenticatedUserCannotSeeTweets() throws Exception {
-    ReadonlyRestedESAssertions.assertions(multiContainerDependent.getContainer())
+    ReadonlyRestedESAssertions
+        .assertions(multiContainerDependent.getContainer())
         .assertUserAccessToIndexForbidden("cartman", "wrong_password", "twitter");
   }
 

@@ -68,6 +68,13 @@ public class ReadonlyRestedESAssertions {
     );
   }
 
+  public void assertIndexNotFound(String name, String password, String index)
+      throws IOException, URISyntaxException {
+    assertGetIndexResponseCode(
+        rorContainer.getBasicAuthClient(name, password), index, 404
+    );
+  }
+
   public void assertReverseProxyAccessToIndexForbidden(String headerName, String userId, String index)
       throws IOException, URISyntaxException {
     assertGetIndexResponseCode(

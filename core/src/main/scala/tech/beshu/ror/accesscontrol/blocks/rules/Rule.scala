@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.UsingVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, NoOpBlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User
@@ -63,6 +62,7 @@ object Rule {
       object Cause {
         case object ImpersonationNotSupported extends Cause
         case object ImpersonationNotAllowed extends Cause
+        case object IndexNotFound extends Cause
       }
     }
 

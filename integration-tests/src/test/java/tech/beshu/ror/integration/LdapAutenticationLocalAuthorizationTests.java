@@ -64,13 +64,13 @@ public class LdapAutenticationLocalAuthorizationTests {
   @Test
   public void checkMorganCannotSeeTwitter() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
-    assertions.assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+    assertions.assertIndexNotFound("morgan", "user1", "twitter");
   }
 
   @Test
   public void checkCartmanCannotSeeFacebook() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
-    assertions.assertUserAccessToIndexForbidden("cartman", "user2", "facebook");
+    assertions.assertIndexNotFound("cartman", "user2", "facebook");
   }
 
 }

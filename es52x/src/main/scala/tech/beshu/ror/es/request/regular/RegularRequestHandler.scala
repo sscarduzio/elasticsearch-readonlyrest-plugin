@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.request.regular
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
@@ -32,9 +32,10 @@ import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMa
 import tech.beshu.ror.accesscontrol.BlockContextRawDataHelper.indicesFrom
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatIndicesPath, CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
 import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextRawDataHelper}
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
@@ -80,6 +81,8 @@ class RegularRequestHandler(engine: Engine,
           onForbidden(NonEmptyList.one(ForbiddenBlockMatch))
         case RegularRequestResult.ForbiddenByMismatched(causes) =>
           onForbidden(causes.toNonEmptyList.map(AccessControlActionHandler.fromMismatchedCause))
+        case RegularRequestResult.IndexNotFound =>
+          onIndexNotFound(requestContext, requestInfo)
         case RegularRequestResult.Failed(ex) =>
           baseListener.onFailure(ex.asInstanceOf[Exception])
         case RegularRequestResult.PassedThrough =>
@@ -97,7 +100,7 @@ class RegularRequestHandler(engine: Engine,
                       blockContext: BlockContext): Unit = {
     requestContext.uriPath match {
       case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
-        baseListener.onResponse(emptyClusterStateResponse)
+        respondWithEmptyCatIndicesResponse()
       case CatTemplatePath(_) | TemplatePath(_) =>
         proceedAfterSuccessfulWrite(requestContext, blockContext) {
           for {
@@ -113,6 +116,23 @@ class RegularRequestHandler(engine: Engine,
             _ <- requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
             _ <- writeCommonParts(requestInfo, blockContext)
           } yield ()
+        }
+    }
+  }
+
+  private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
+    channel.sendResponse(ForbiddenResponse.create(channel, causes.toList, engine.context))
+  }
+
+  private def onIndexNotFound(requestContext: RequestContext, requestInfo: RequestInfo): Unit = {
+    requestContext.uriPath match {
+      case CatIndicesPath(_) =>
+        respondWithEmptyCatIndicesResponse()
+      case _ =>
+        val nonExistentIndex = randomNonexistentIndex(requestInfo)
+        requestInfo.writeIndices(Set(nonExistentIndex.value.value)) match {
+          case WriteResult.Success(_) => proceed(baseListener)
+          case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
         }
     }
   }
@@ -169,10 +189,6 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
-    channel.sendResponse(ForbiddenResponse.create(channel, causes.toList, engine.context))
-  }
-
   private def proceed(responseActionListener: ActionListener[ActionResponse]): Unit =
     chain.proceed(task, action, request, responseActionListener)
 
@@ -202,6 +218,17 @@ class RegularRequestHandler(engine: Engine,
       },
       identity
     )
+  }
+
+  private def randomNonexistentIndex(requestInfo: RequestInfo): IndexName = {
+    requestInfo.extractIndices.indices.headOption match {
+      case Some(indexName) => IndexName.randomNonexistentIndex(indexName)
+      case None => IndexName.randomNonexistentIndex()
+    }
+  }
+
+  private def respondWithEmptyCatIndicesResponse(): Unit = {
+    baseListener.onResponse(emptyClusterStateResponse)
   }
 
 }
