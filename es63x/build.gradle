@@ -26,9 +26,11 @@ buildscript {
         mavenLocal()
         mavenCentral()
         jcenter()
+        maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath group: 'nl.javadude.gradle.plugins',  name: 'license-gradle-plugin', version: '0.10.0'
+        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
+        classpath "gradle.plugin.com.gorylenko.gradle-git-properties:gradle-git-properties:2.2.0"
     }
 }
 
@@ -42,7 +44,8 @@ def pluginFullName = pluginName + '-' + version
 
 apply plugin: 'scala'
 apply plugin: 'maven'
-apply plugin: 'license'
+apply plugin: "com.github.hierynomus.license"
+apply plugin: "com.gorylenko.gradle-git-properties"
 
 compileScala {
     sourceCompatibility = 1.8
@@ -55,6 +58,12 @@ dependencies {
     compileClasspath    group: 'org.codelibs.elasticsearch.lib',    name: 'plugin-classloader',         version: esVersion
     compile             group: 'org.elasticsearch.plugin',          name: 'transport-netty4-client',    version: esVersion
     compile             group: 'org.apache.logging.log4j',          name: 'log4j-core',                 version: '2.11.1'
+}
+
+gitProperties { 
+    gitPropertiesName "ror-build-info.properties"
+    customProperty 'es_version', esVersion
+    customProperty 'plugin_version', pluginVersion
 }
 
 license {
@@ -121,7 +130,7 @@ task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) 
     ])
 }
 
-task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, jar, resolvePluginDescriptorTemplate]) {
+task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, generateGitProperties, jar, resolvePluginDescriptorTemplate]) {
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
     into('.')

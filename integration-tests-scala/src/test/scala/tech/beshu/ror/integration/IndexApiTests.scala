@@ -227,7 +227,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
         }
       }
       "return alias not found" when {
-        "full alias name is used and the alias doesn't exist" in {
+        "full alias name is used and the alias doesn't exist" excludeES(allEs5xExceptEs55x) in {
           val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent")
 
           aliasResponse.responseCode should be (404)
