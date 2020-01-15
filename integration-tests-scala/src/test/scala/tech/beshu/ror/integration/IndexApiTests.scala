@@ -191,8 +191,16 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
           }
         }
         "the alias name with wildcard is used" when {
-          "there is no matching alias" excludeES(allEs5x, allEs6xExceptEs66x) in {
+          "there is no matching alias" excludeES("^es55x$".r, allEs6xExceptEs66x) in {
             val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent*")
+
+            aliasResponse.responseCode should be (200)
+            aliasResponse.responseJson.obj.size should be (0)
+          }
+        }
+        "the full name alias is used" when {
+          "there is no matching alias" excludeES("^es55x$".r, allEs6x, allEs7x) in {
+            val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent")
 
             aliasResponse.responseCode should be (200)
             aliasResponse.responseJson.obj.size should be (0)
@@ -211,7 +219,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
           aliasResponse.responseCode should be (404)
         }
         "the alias name with wildcard is used" when {
-          "there is no matching alias" excludeES(allEs7x, "^es66x$".r) in {
+          "there is no matching alias" excludeES(allEs7x, "^es66x$".r, allEs5xExceptEs55x) in {
             val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent*")
 
             aliasResponse.responseCode should be (404)
