@@ -119,7 +119,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+    indexModule.setSearcherWrapper(new RoleIndexSearcherWrapper(_))
   }
 
   override def getSettings: util.List[Setting[_]] = {

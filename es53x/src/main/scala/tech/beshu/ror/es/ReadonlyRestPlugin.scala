@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import java.nio.file.Path
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
 
@@ -35,10 +34,10 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings._
-import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
-import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
+import org.elasticsearch.common.util.BigArrays
+import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
-import org.elasticsearch.env.{Environment, NodeEnvironment}
+import org.elasticsearch.env.Environment
 import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.index.IndexModule
 import org.elasticsearch.index.mapper.MapperService
@@ -49,13 +48,12 @@ import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestReq
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
-import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.configuration.RorSsl
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
-import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -64,25 +62,24 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-@Inject
-class ReadonlyRestPlugin(s: Settings, p: Path)
+class ReadonlyRestPlugin(s: Settings,
+                         ignore: Unit) // hack!!!
   extends Plugin
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
     with NetworkPlugin {
 
+  @Inject
+  def this(s: Settings) = {
+    this(s, ())
+  }
+
   LogBuildInfoMessage()
 
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
-  // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
-  // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
-  // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception
-  doPrivileged {
-    Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
-  }
 
-  private val environment = new Environment(s, p)
+  private val environment = new Environment(s)
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl
     .load(environment.configFile)
@@ -96,12 +93,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 threadPool: ThreadPool,
                                 resourceWatcherService: ResourceWatcherService,
                                 scriptService: ScriptService,
-                                xContentRegistry: NamedXContentRegistry,
-                                environment: Environment,
-                                nodeEnvironment: NodeEnvironment,
-                                namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
+                                xContentRegistry: NamedXContentRegistry): util.Collection[AnyRef] = {
     doPrivileged {
-      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier)
+      ilaf = new IndexLevelActionFilter(s, clusterService, client.asInstanceOf[NodeClient], threadPool, environment)
     }
     List.empty[AnyRef].asJava
   }
@@ -110,16 +104,12 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[Class[_ <: LifecycleComponent]](classOf[TransportServiceInterceptor]).asJava
   }
 
-  override def getActionFilters: util.List[ActionFilter] = {
-    List[ActionFilter](ilaf).asJava
-  }
-
-  override def getTaskHeaders: util.Collection[String] = {
-    List(Constants.FILTER_TRANSIENT, Constants.FIELDS_TRANSIENT).asJava
+  override def getActionFilters: util.List[Class[_ <: ActionFilter]] = {
+    List[Class[_ <: ActionFilter]](classOf[IndexLevelActionFilter]).asJava
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+    indexModule.setSearcherWrapper(new RoleIndexSearcherWrapper(_))
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -129,8 +119,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getHttpTransports(settings: Settings,
                                  threadPool: ThreadPool,
                                  bigArrays: BigArrays,
-                                 pageCacheRecycler: PageCacheRecycler,
                                  circuitBreakerService: CircuitBreakerService,
+                                 namedWriteableRegistry: NamedWriteableRegistry,
                                  xContentRegistry: NamedXContentRegistry,
                                  networkService: NetworkService,
                                  dispatcher: HttpServerTransport.Dispatcher): util.Map[String, Supplier[HttpServerTransport]] = {
@@ -147,7 +137,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def getTransports(settings: Settings,
                              threadPool: ThreadPool,
-                             pageCacheRecycler: PageCacheRecycler,
+                             bigArrays: BigArrays,
                              circuitBreakerService: CircuitBreakerService,
                              namedWriteableRegistry: NamedWriteableRegistry,
                              networkService: NetworkService): util.Map[String, Supplier[Transport]] = {
@@ -155,7 +145,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, pageCacheRecycler, circuitBreakerService, namedWriteableRegistry, networkService, ssl)
+          override def get(): Transport = new SSLNetty4InternodeServerTransport(
+            settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl
+          )
         }
       )
       .toMap

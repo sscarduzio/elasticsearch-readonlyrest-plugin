@@ -22,11 +22,13 @@ import java.util.function.{Supplier, UnaryOperator}
 
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
-import org.elasticsearch.ElasticsearchException
+import org.elasticsearch.{ElasticsearchException, Version}
+import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.cluster.service.ClusterService
@@ -38,6 +40,7 @@ import org.elasticsearch.common.settings._
 import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
+import org.elasticsearch.discovery.zen.PublishClusterStateAction.serializeFullClusterState
 import org.elasticsearch.env.{Environment, NodeEnvironment}
 import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.index.IndexModule
@@ -101,10 +104,16 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 nodeEnvironment: NodeEnvironment,
                                 namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
     doPrivileged {
-      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier)
+      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier,emptyClusterState)
     }
     List.empty[AnyRef].asJava
   }
+  private def emptyClusterState=
+    new ClusterStateResponse(
+      ClusterName.CLUSTER_NAME_SETTING.get(s),
+      ClusterState.EMPTY_STATE,
+      serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length,
+      false)
 
   override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
     List[Class[_ <: LifecycleComponent]](classOf[TransportServiceInterceptor]).asJava
@@ -119,7 +128,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
-    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+    indexModule.setSearcherWrapper(new RoleIndexSearcherWrapper(_))
   }
 
   override def getSettings: util.List[Setting[_]] = {
@@ -129,8 +138,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getHttpTransports(settings: Settings,
                                  threadPool: ThreadPool,
                                  bigArrays: BigArrays,
-                                 pageCacheRecycler: PageCacheRecycler,
                                  circuitBreakerService: CircuitBreakerService,
+                                 namedWriteableRegistry: NamedWriteableRegistry,
                                  xContentRegistry: NamedXContentRegistry,
                                  networkService: NetworkService,
                                  dispatcher: HttpServerTransport.Dispatcher): util.Map[String, Supplier[HttpServerTransport]] = {
