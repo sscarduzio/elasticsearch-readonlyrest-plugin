@@ -17,7 +17,6 @@
 package tech.beshu.ror.es
 
 import java.util
-import java.util.Collections
 import java.util.function.Supplier
 
 import monix.execution.Scheduler
@@ -25,7 +24,6 @@ import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
-import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings._
@@ -51,18 +49,12 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class ReadonlyRestPlugin(s: Settings,
-                         ignore: Unit) // hack!!!
+class ReadonlyRestPlugin(s: Settings)
   extends Plugin
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
     with NetworkPlugin {
-
-  @Inject
-  def this(s: Settings) = {
-    this(s, ())
-  }
 
   LogBuildInfoMessage()
 
@@ -130,7 +122,7 @@ class ReadonlyRestPlugin(s: Settings,
   }
 
   override def getRestHandlers: util.List[Class[_ <: RestHandler]] = {
-    Collections.singletonList(classOf[RestRRAdminAction])
+    List[Class[_ <: RestHandler]](classOf[ReadonlyRestAction], classOf[RestRRAdminAction]).asJava
   }
 
 }
