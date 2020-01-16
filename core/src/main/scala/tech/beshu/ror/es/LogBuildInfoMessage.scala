@@ -16,10 +16,14 @@
  */
 package tech.beshu.ror.es
 
+import scala.util.{Failure, Success}
+
 trait LogBuildInfoMessage extends org.apache.logging.log4j.scala.Logging {
   def logBuildInfoMessage(): Unit = {
-    val buildInfo = BuildInfoReader.create().get
-    logger.info(createLogMessage(buildInfo))
+    BuildInfoReader.create() match {
+      case Success(buildInfo) => logger.info(createLogMessage(buildInfo))
+      case Failure(_) => logger.error("Cannot find build info file. No info about ReadonlyREST version.")
+    }
   }
   def createLogMessage(buildInfo: BuildInfo): String =
     s"Starting ReadonlyREST plugin v${buildInfo.pluginVersion} on ES v${buildInfo.esVersion}"
