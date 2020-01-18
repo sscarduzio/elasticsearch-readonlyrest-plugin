@@ -155,12 +155,6 @@ publishing {
             artifact javadocJar
             pom ror_pom
         }
-        mavenJava(MavenPublication) {
-            artifact jar
-            artifact sourcesJar
-            artifact javadocJar
-            pom ror_pom
-        }
     }
     repositories {
         maven {
