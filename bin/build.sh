@@ -283,3 +283,19 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
     #./gradlew --stacktrace es51x:ror '-PesVersion=5.1.2'
 
 fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "publish_artifacts" && $TRAVIS_BRANCH == "master" ]]; then
+
+    openssl aes-256-cbc -K $encrypted_31be120daa3b_key -iv $encrypted_31be120daa3b_iv -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
+
+    CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
+    PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
+
+    if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
+        echo ">>> Publishing audit module artifacts to sonatype repo"
+        ./gradlew audit:publishToSonatype
+        ./gradlew audit:closeAndReleaseRepository
+    else
+        echo ">>> Skipping publishing audit module artifacts"
+    fi
+fi
