@@ -21,10 +21,10 @@ import net.jodah.failsafe.RetryPolicy;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
+import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.elasticsearch.SearchManagerJ;
 import tech.beshu.ror.utils.elasticsearch.SearchManagerJ.MSearchResult;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
-import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 
 import java.time.Duration;
 import java.util.Optional;

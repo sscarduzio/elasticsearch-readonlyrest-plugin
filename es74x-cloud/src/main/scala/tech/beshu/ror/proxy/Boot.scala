@@ -4,7 +4,7 @@
 package tech.beshu.ror.proxy
 
 import cats.data.EitherT
-import cats.effect.{ExitCode, IO, IOApp, Resource}
+import cats.effect.{ContextShift, ExitCode, IO, IOApp, Resource}
 import cats.implicits._
 import com.twitter.finagle.Http
 import monix.eval.Task
@@ -20,13 +20,11 @@ import tech.beshu.ror.proxy.es.{EsCode, EsRestServiceSimulator}
 import tech.beshu.ror.proxy.server.ProxyRestInterceptorService
 import tech.beshu.ror.utils.ScalaOps._
 
-object Boot extends IOApp with Logging {
+object Boot extends IOApp with RorProxy with Logging {
 
   override def run(args: List[String]): IO[ExitCode] = {
-    for {
-      _ <- IO(EsCode.improve())
-      startingResult <- runServer
-      exitCode <- startingResult match {
+    start
+      .flatMap {
         case Right(closeHandler) =>
           val proxyApp = Resource.make(IO(closeHandler))(handler =>
             IO.suspend(handler())
@@ -40,7 +38,18 @@ object Boot extends IOApp with Logging {
           }
           IO.pure(ExitCode.Error)
       }
-    } yield exitCode
+  }
+}
+
+trait RorProxy {
+
+  implicit protected def contextShift: ContextShift[IO]
+
+  def start: IO[Either[StartingFailure, CloseHandler]] = {
+    for {
+      _ <- IO(EsCode.improve())
+      startingResult <- runServer
+    } yield startingResult
   }
 
   private def runServer: IO[Either[StartingFailure, CloseHandler]] = {
@@ -55,7 +64,7 @@ object Boot extends IOApp with Logging {
         _ <- simulator.stop()
         _ <- Task(esClient.close())
         _ <- Task(threadPool.shutdownNow())
-      } yield ()
+      } yield println("Wyczyszczone!!!!!!!!")
     result.value
   }
 
@@ -64,5 +73,4 @@ object Boot extends IOApp with Logging {
   }
 
   private type CloseHandler = () => IO[Unit]
-
 }

@@ -20,31 +20,34 @@ package tech.beshu.ror.integration;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
-import tech.beshu.ror.utils.containers.JavaLdapContainer;
-import tech.beshu.ror.utils.containers.MultiContainer;
-import tech.beshu.ror.utils.containers.MultiContainerDependent;
+import tech.beshu.ror.utils.containers.*;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import static tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions.assertions;
 
-public class LdapIntegrationWithLocalGroupsTests {
+public class LdapIntegrationGroupsTests {
 
   @ClassRule
   public static MultiContainerDependent<ESWithReadonlyRestContainer> multiContainerDependent =
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProjectJ.fromSystemProperty(),
           new MultiContainer.Builder()
-              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_separate_authc_authz_mixed_local/ldap.ldif"))
+              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_integration_group_headers/ldap.ldif"))
               .build(),
-          "/ldap_separate_authc_authz_mixed_local/elasticsearch.yml",
+          "/ldap_integration_group_headers/elasticsearch.yml",
           new ElasticsearchTweetsInitializer()
       );
 
+
   @Test
-  public void checkCartman() throws Exception {
+  public void checkCartmanWithoutCurrGroupHeader() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
+    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter");
+  }
+
+  @Test
+  public void checkCartmanWithGroup1AsCurrentGroup() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> null,
         httpRequest -> {
@@ -54,7 +57,7 @@ public class LdapIntegrationWithLocalGroupsTests {
   }
 
   @Test
-  public void checkCartmanWithCurrentGroupReqHeader() throws Exception {
+  public void checkCartmanWithGroup3AsCurrentGroup() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> null,
         httpRequest -> {

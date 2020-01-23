@@ -19,14 +19,10 @@ package tech.beshu.ror.integration;
 
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
-import tech.beshu.ror.utils.containers.JavaLdapContainer;
-import tech.beshu.ror.utils.containers.MultiContainer;
-import tech.beshu.ror.utils.containers.MultiContainerDependent;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
-import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
+import tech.beshu.ror.utils.containers.*;
+import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import static tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions.assertions;
 

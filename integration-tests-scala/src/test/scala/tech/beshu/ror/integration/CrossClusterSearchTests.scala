@@ -27,10 +27,10 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 class CrossClusterSearchTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
-  override val container: ReadonlyRestEsRemoteClustersContainer = ReadonlyRestEsCluster.createRemoteClustersContainer(
+  override val container = RorPluginProvider.createRemoteClustersContainer(
     NonEmptyList.of(
-      LocalClusterDef("ROR1", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTests.nodeDataInitializer()),
-      LocalClusterDef("ROR2", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTests.nodeDataInitializer())
+      ReadonlyRestEsClusterContainerGeneric.LocalClusterDef("ROR1", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTests.nodeDataInitializer()),
+      ReadonlyRestEsClusterContainerGeneric.LocalClusterDef("ROR2", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchTests.nodeDataInitializer())
     ),
     CrossClusterSearchTests.remoteClustersInitializer()
   )
@@ -65,8 +65,8 @@ object CrossClusterSearchTests {
     documentManager.insertDoc("/test2_index/test/2", "{\"hello\":\"ROR\"}")
   }
 
-  private def remoteClustersInitializer(): RemoteClustersInitializer =
-    (localClusterRepresentatives: NonEmptyList[ReadonlyRestEsContainer]) => {
+  private def remoteClustersInitializer(): RemoteClustersInitializerGeneric =
+    (localClusterRepresentatives: NonEmptyList[RorContainer]) => {
       Map("odd" -> localClusterRepresentatives)
     }
 

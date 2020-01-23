@@ -88,11 +88,3 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
     }
   }
 }
-
-trait ElasticsearchNodeDataInitializer {
-  def initialize(esVersion: String, adminRestClient: RestClient): Unit
-}
-
-object NoOpElasticsearchNodeDataInitializer extends ElasticsearchNodeDataInitializer {
-  override def initialize(esVersion: String, adminRestClient: RestClient): Unit = {}
-}
