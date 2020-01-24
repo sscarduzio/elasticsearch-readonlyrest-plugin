@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.{Base64, Locale}
+import java.util.{Base64, Locale, UUID}
 
 import cats.Eq
 import cats.data.NonEmptyList
@@ -27,12 +27,15 @@ import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import monix.eval.Task
+import org.apache.commons.lang.RandomStringUtils
+import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 import scala.util.Try
+import scala.util.matching.Regex
 
 object domain {
 
@@ -179,7 +182,15 @@ object domain {
 
     def fromString(value: String): Option[IndexName] = NonEmptyString.from(value).map(IndexName.apply).toOption
 
-    def fromUnsafeString(value: String) = IndexName(NonEmptyString.unsafeFrom(value))
+    def fromUnsafeString(value: String): IndexName = IndexName(NonEmptyString.unsafeFrom(value))
+
+    def randomNonexistentIndex(prefix: String = ""): IndexName = IndexName {
+      NonEmptyString.unsafeFrom {
+        val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${randomAlphanumeric(10)}"
+        if(prefix.contains("*")) s"$nonexistentIndex*"
+        else nonexistentIndex
+      }
+    }
   }
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
@@ -227,7 +238,13 @@ object domain {
     def isCurrentUserMetadataPath: Boolean = value.startsWith(UriPath.currentUserMetadataPath.value)
     def isCatTemplatePath: Boolean = value.startsWith("/_cat/templates")
     def isTemplatePath: Boolean = value.startsWith("/_template")
+    def isAliasesPath: Boolean =
+      value.startsWith("/_cat/aliases") ||
+        value.startsWith("/_alias") ||
+        "^/(\\w|\\*)*/_alias(|/)$".r.findFirstMatchIn(value).isDefined ||
+        "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value).isDefined
     def isCatIndicesPath: Boolean = value.startsWith("/_cat/indices")
+
   }
   object UriPath {
     val currentUserMetadataPath = UriPath(Constants.CURRENT_USER_METADATA_PATH)
@@ -250,6 +267,13 @@ object domain {
     object TemplatePath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
         if(uriPath.isTemplatePath) Some(uriPath)
+        else None
+      }
+    }
+
+    object AliasesPath {
+      def unapply(uriPath: UriPath): Option[UriPath] = {
+        if(uriPath.isAliasesPath) Some(uriPath)
         else None
       }
     }

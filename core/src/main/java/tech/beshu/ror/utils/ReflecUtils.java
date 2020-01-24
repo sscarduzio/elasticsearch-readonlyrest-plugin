@@ -19,7 +19,6 @@ package tech.beshu.ror.utils;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.reflections.ReflectionUtils;
 import tech.beshu.ror.Constants;
 import tech.beshu.ror.SecurityPermissionException;
 
@@ -27,7 +26,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.reflections.ReflectionUtils.getAllFields;
@@ -100,7 +101,12 @@ public class ReflecUtils {
           Method m = exploreClassMethods(clazz, methodName, String[].class);
           if (m != null) {
             Object result = m.invoke(o);
-            return result != null ? (String[]) result : new String[0];
+            return result != null
+                ? Arrays
+                .stream((String[]) result)
+                .filter(Objects::nonNull)
+                .toArray(String[]::new)
+                : new String[0];
           }
 
           m = exploreClassMethods(clazz, methodName, String.class);

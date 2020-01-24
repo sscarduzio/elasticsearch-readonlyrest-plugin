@@ -49,6 +49,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.{NoIndices, RegularIndices, SqlIndices}
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}

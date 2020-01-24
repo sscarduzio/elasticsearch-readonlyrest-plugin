@@ -7,29 +7,37 @@ readonlyrest:
 
   access_control_rules:
 
-    - name: "::INITIALIZER::"
-      methods: [GET]
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
       auth_key: admin:container
 
-    - name: "::GETTER::"
-      methods: [GET]
-      auth_key: "unrestricted:dev"
+    - name: "dev1 indexes"
+      indices: ["index1"]
+      ldap_auth:
+        name: "ldap1"
+        groups: ["group1"]
 
-    - name: "::RESTRICTED TO ALIAS::"
-      methods: [GET]
-      indices: ["public*"]
-      auth_key: "restricted:dev"
+    - name: "dev2 aliases"
+      indices: ["index2"]
+      ldap_auth:
+        name: "ldap1"
+        groups: ["group2"]
 
-    - name: "::PERFMON - RESTRICTED TO ALIAS AND INDEX::"
-      methods: [GET]
-      indices: ["perfmon*", "bla*"]
-      auth_key: "perfmon:dev"
-
-    - name: myanmar_vietnam
-      kibana_access: ro
-      auth_key: "VIET_MYAN:dev"
-      indices: ["*myanmar*", "*vietnam*"]
-
-    - name: "CONTAINER ADMIN"
-      actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*", "indices:admin/aliases"]
-      #auth_key: admin:container
+  ldaps:
+    - name: ldap1
+      host: "localhost"
+      port: 32803                                               # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout_in_sec: 10                             # default 1
+      request_timeout_in_sec: 10                                # default 1
+      cache_ttl_in_sec: 60                                      # default 0 - cache disabled

@@ -17,8 +17,9 @@ package tech.beshu.ror.utils.gradle
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-import java.io.File
 import java.nio.file.Paths
+import better.files._
+import java.io.{File => JFile}
 
 import org.gradle.tooling.GradleConnector
 
@@ -31,11 +32,20 @@ object RorPluginGradleProject {
       .map(new RorPluginGradleProject(_))
       .getOrElse(throw new IllegalStateException("No 'esModule' system property set"))
 
-  def getRootProject: File = {
+  def getRootProject: JFile = {
     Option(System.getProperty("project.dir"))
       .map(projectDir => Paths.get(projectDir).toFile)
-      .getOrElse(new File("."))
+      .getOrElse(new JFile("."))
   }
+
+  def availableEsModules: List[String] =
+    RorPluginGradleProject
+      .getRootProject.toScala
+      .children
+      .filter { f => f.isDirectory }
+      .map(_.name)
+      .filter(_.matches("^es\\d\\dx$"))
+      .toList
 }
 
 class RorPluginGradleProject(val name: String) {
@@ -49,16 +59,16 @@ class RorPluginGradleProject(val name: String) {
       .create(RorPluginGradleProject.getRootProject).asScala
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
-  def assemble: Option[File] = {
+  def assemble: Option[JFile] = {
     runTask(name + ":ror")
-    val plugin = new File(project, "build/distributions/" + pluginName)
+    val plugin = new JFile(project, "build/distributions/" + pluginName)
     if (!plugin.exists) None
     else Some(plugin)
   }
 
   def getESVersion: String = esProjectProperties.getProperty("esVersion")
 
-  private def esProject(esProjectName: String) = new File(RorPluginGradleProject.getRootProject, esProjectName)
+  private def esProject(esProjectName: String) = new JFile(RorPluginGradleProject.getRootProject, esProjectName)
 
   private def pluginName =
     s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getESVersion.zip"

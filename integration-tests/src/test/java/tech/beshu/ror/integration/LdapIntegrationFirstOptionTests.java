@@ -52,7 +52,7 @@ public class LdapIntegrationFirstOptionTests {
 
   @Test
   public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
-    assertions(multiContainerDependent.getContainer()).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+    assertions(multiContainerDependent.getContainer()).assertIndexNotFound("morgan", "user1", "twitter");
   }
 
   @Test

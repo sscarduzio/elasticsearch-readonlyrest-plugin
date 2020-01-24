@@ -50,6 +50,8 @@ object BaseManager {
     val responseCode: Int = response.getStatusLine.getStatusCode
     val isSuccess: Boolean = responseCode / 100 == 2
     val isForbidden: Boolean = responseCode == 401
+    val isNotFound: Boolean = responseCode == 404
+    val isBadRequest: Boolean = responseCode == 400
   }
 
   class JsonResponse(response: HttpResponse) extends SimpleResponse(response) {

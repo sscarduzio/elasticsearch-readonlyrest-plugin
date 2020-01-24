@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.AuditSink
@@ -72,6 +73,8 @@ class AuditingTool(settings: Settings,
         )
       case ResponseContext.Forbidden(requestContext, history) =>
         AuditResponseContext.Forbidden(toAuditRequestContext(requestContext, None, history))
+      case ResponseContext.RequestedIndexNotExist(requestContext, history) =>
+        AuditResponseContext.RequestedIndexNotExist(toAuditRequestContext(requestContext, None, history))
       case ResponseContext.Errored(requestContext, cause) =>
         AuditResponseContext.Errored(toAuditRequestContext(requestContext, None, Vector.empty), cause)
     }
@@ -109,6 +112,8 @@ class AuditingTool(settings: Settings,
         case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
       }
       override val involvesIndices: Boolean = requestContext.involvesIndices
+      override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
+      override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
     }
   }
 

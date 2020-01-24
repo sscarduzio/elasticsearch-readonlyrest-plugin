@@ -72,6 +72,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with IngestPlugin
     with NetworkPlugin {
 
+  LogBuildInfoMessage()
+
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
   // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will

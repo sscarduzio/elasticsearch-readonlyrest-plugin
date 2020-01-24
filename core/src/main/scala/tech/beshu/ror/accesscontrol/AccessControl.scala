@@ -49,6 +49,7 @@ object AccessControl {
         case object ImpersonationNotAllowed extends Cause
       }
     }
+    case object IndexNotFound extends RegularRequestResult
     final case class Failed(ex: Throwable) extends RegularRequestResult
     case object PassedThrough extends RegularRequestResult
   }

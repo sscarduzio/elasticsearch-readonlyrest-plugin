@@ -42,6 +42,8 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       Some(createEntry(matched = true, "FORBIDDEN", reason, responseContext.duration, requestContext, None))
     case Forbidden(requestContext) =>
       Some(createEntry(matched = false, "FORBIDDEN", "default", responseContext.duration, requestContext, None))
+    case RequestedIndexNotExist(requestContext) =>
+      Some(createEntry(matched = false, "INDEX NOT EXIST", "Requested index doesn't exist", responseContext.duration, requestContext, None))
     case Errored(requestContext, cause) =>
       Some(createEntry(matched = false, "ERRORED", "error", responseContext.duration, requestContext, Some(cause)))
   }
@@ -71,7 +73,7 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       .put("req_method", requestContext.httpMethod)
       .put("headers", requestContext.headers.keys.toList.asJava)
       .put("path", requestContext.uriPath)
-      .put("user", requestContext.loggedInUserName.orNull)
+      .put("user", requestContext.loggedInUserName.orElse(requestContext.attemptedUserName).orElse(requestContext.rawAuthHeader).orNull)
       .put("impersonated_by", requestContext.impersonatedByUserName.orNull)
       .put("action", requestContext.action)
       .put("indices", if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava)
