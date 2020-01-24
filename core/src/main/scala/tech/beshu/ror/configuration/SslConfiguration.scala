@@ -23,7 +23,7 @@ import better.files._
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration}
+import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
 import tech.beshu.ror.utils.yaml
 
 import scala.language.implicitConversions
@@ -79,10 +79,12 @@ object RorSsl extends Logging {
 }
 
 sealed trait SslConfiguration {
-  def keystoreFile: JFile
+  def keystoreFile: KeystoreFile
   def keystorePassword: Option[SslConfiguration.KeystorePassword]
   def keyPass: Option[SslConfiguration.KeyPass]
   def keyAlias: Option[SslConfiguration.KeyAlias]
+  def truststoreFile: Option[TruststoreFile]
+  def truststorePassword: Option[SslConfiguration.TruststorePassword]
   def allowedProtocols: Set[SslConfiguration.Protocol]
   def allowedCiphers: Set[SslConfiguration.Cipher]
 }
@@ -90,26 +92,32 @@ sealed trait SslConfiguration {
 object SslConfiguration {
 
   final case class KeystorePassword(value: String)
+  final case class KeystoreFile(value: JFile)
+  final case class TruststorePassword(value: String)
+  final case class TruststoreFile(value: JFile)
   final case class KeyPass(value: String)
   final case class KeyAlias(value: String)
   final case class Cipher(value: String)
   final case class Protocol(value: String)
 
-  final case class ExternalSslConfiguration(keystoreFile: JFile,
+  final case class ExternalSslConfiguration(keystoreFile: KeystoreFile,
                                             keystorePassword: Option[SslConfiguration.KeystorePassword],
                                             keyPass: Option[SslConfiguration.KeyPass],
                                             keyAlias: Option[SslConfiguration.KeyAlias],
+                                            truststoreFile: Option[TruststoreFile],
+                                            truststorePassword: Option[SslConfiguration.TruststorePassword],
                                             allowedProtocols: Set[SslConfiguration.Protocol],
                                             allowedCiphers: Set[SslConfiguration.Cipher],
                                             clientAuthenticationEnabled: Boolean) extends SslConfiguration
 
-  final case class InternodeSslConfiguration(keystoreFile: JFile,
+  final case class InternodeSslConfiguration(keystoreFile: KeystoreFile,
                                              keystorePassword: Option[SslConfiguration.KeystorePassword],
                                              keyPass: Option[SslConfiguration.KeyPass],
                                              keyAlias: Option[SslConfiguration.KeyAlias],
+                                             truststoreFile: Option[TruststoreFile],
+                                             truststorePassword: Option[SslConfiguration.TruststorePassword],
                                              allowedProtocols: Set[SslConfiguration.Protocol],
                                              allowedCiphers: Set[SslConfiguration.Cipher],
-                                             clientAuthenticationEnabled: Boolean,
                                              certificateVerificationEnabled: Boolean) extends SslConfiguration
 }
 
@@ -123,6 +131,8 @@ private object SslDecoders {
     val internodeSsl = "ssl_internode"
     val keystoreFile = "keystore_file"
     val keystorePass = "keystore_pass"
+    val truststoreFile = "truststore_file"
+    val truststorePass = "truststore_pass"
     val keyPass = "key_pass"
     val keyAlias = "key_alias"
     val allowedCiphers = "allowed_ciphers"
@@ -133,15 +143,18 @@ private object SslDecoders {
     val enable = "enable"
   }
 
-  final case class CommonSslProperties(keystoreFile: JFile,
+  final case class CommonSslProperties(keystoreFile: KeystoreFile,
                                        keystorePassword: Option[SslConfiguration.KeystorePassword],
                                        keyPass: Option[SslConfiguration.KeyPass],
                                        keyAlias: Option[SslConfiguration.KeyAlias],
+                                       truststoreFile: Option[TruststoreFile],
+                                       truststorePassword: Option[SslConfiguration.TruststorePassword],
                                        allowedProtocols: Set[SslConfiguration.Protocol],
                                        allowedCiphers: Set[SslConfiguration.Cipher],
-                                       clientAuthenticationEnabled: Boolean)
+                                       verification: Option[Boolean])
 
   private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = Decoder.decodeString.map(KeystorePassword.apply)
+  private implicit val truststorePasswordDecoder: Decoder[TruststorePassword] = Decoder.decodeString.map(TruststorePassword.apply)
   private implicit val keyPassDecoder: Decoder[KeyPass] = Decoder.decodeString.map(KeyPass.apply)
   private implicit val keyAliasDecoder: Decoder[KeyAlias] = Decoder.decodeString.map(KeyAlias.apply)
   private implicit val cipherDecoder: Decoder[Cipher] = Decoder.decodeString.map(Cipher.apply)
@@ -159,7 +172,6 @@ private object SslDecoders {
   private def sslInternodeConfigurationDecoder(basePath: Path): Decoder[Option[InternodeSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
       for {
-        verification <- c.downField(consts.verification).as[Option[Boolean]]
         certificateVerification <- c.downField(consts.certificateVerification).as[Option[Boolean]]
         sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
       } yield
@@ -168,40 +180,47 @@ private object SslDecoders {
           keystorePassword = sslCommonProperties.keystorePassword,
           keyPass = sslCommonProperties.keyPass,
           keyAlias = sslCommonProperties.keyAlias,
+          truststoreFile = sslCommonProperties.truststoreFile,
+          truststorePassword = sslCommonProperties.truststorePassword,
           allowedProtocols = sslCommonProperties.allowedProtocols,
           allowedCiphers = sslCommonProperties.allowedCiphers,
-          clientAuthenticationEnabled = sslCommonProperties.clientAuthenticationEnabled,
-          certificateVerificationEnabled = certificateVerification.orElse(verification).getOrElse(false))
+          certificateVerificationEnabled = certificateVerification.orElse(sslCommonProperties.verification).getOrElse(false))
     }
   }
 
   private def sslExternalConfigurationDecoder(basePath: Path): Decoder[Option[ExternalSslConfiguration]] = Decoder.instance { c =>
     whenEnabled(c) {
-      sslCommonPropertiesDecoder(basePath, c)
-        .map { sslCommonProperties =>
-          ExternalSslConfiguration(
-            keystoreFile = sslCommonProperties.keystoreFile,
-            keystorePassword = sslCommonProperties.keystorePassword,
-            keyPass = sslCommonProperties.keyPass,
-            keyAlias = sslCommonProperties.keyAlias,
-            allowedProtocols = sslCommonProperties.allowedProtocols,
-            allowedCiphers = sslCommonProperties.allowedCiphers,
-            clientAuthenticationEnabled = sslCommonProperties.clientAuthenticationEnabled,
-          )
-        }
+      for {
+        clientAuthentication <- c.downField(consts.clientAuthentication).as[Option[Boolean]]
+        sslCommonProperties <- sslCommonPropertiesDecoder(basePath, c)
+      } yield
+        ExternalSslConfiguration(
+          keystoreFile = sslCommonProperties.keystoreFile,
+          keystorePassword = sslCommonProperties.keystorePassword,
+          keyPass = sslCommonProperties.keyPass,
+          keyAlias = sslCommonProperties.keyAlias,
+          truststoreFile = sslCommonProperties.truststoreFile,
+          truststorePassword = sslCommonProperties.truststorePassword,
+          allowedProtocols = sslCommonProperties.allowedProtocols,
+          allowedCiphers = sslCommonProperties.allowedCiphers,
+          clientAuthenticationEnabled = clientAuthentication.orElse(sslCommonProperties.verification).getOrElse(false),
+        )
     }
   }
 
   private def sslCommonPropertiesDecoder(basePath: Path, c: HCursor) = {
-    implicit val jFileDecoder: Decoder[JFile] = keystoreFileDecoder(basePath)
+    val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
+    implicit val keystoreFileDecoder = jFileDecoder.map(KeystoreFile)
+    implicit val truststoreFileDecoder = jFileDecoder.map(TruststoreFile)
       for {
-        keystoreFile <- c.downField(consts.keystoreFile).as[JFile]
+        keystoreFile <- c.downField(consts.keystoreFile).as[KeystoreFile]
         keystorePassword <- c.downField(consts.keystorePass).as[Option[KeystorePassword]]
+        truststoreFile <- c.downField(consts.truststoreFile).as[Option[TruststoreFile]]
+        truststorePassword <- c.downField(consts.truststorePass).as[Option[TruststorePassword]]
         keyPass <- c.downField(consts.keyPass).as[Option[KeyPass]]
         keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
         ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
         protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
-        clientAuthentication <- c.downField(consts.clientAuthentication).as[Option[Boolean]]
         verification <- c.downField(consts.verification).as[Option[Boolean]]
       } yield
         CommonSslProperties(
@@ -209,9 +228,11 @@ private object SslDecoders {
           keystorePassword = keystorePassword,
           keyPass = keyPass,
           keyAlias = keyAlias,
+          truststoreFile = truststoreFile,
+          truststorePassword = truststorePassword,
           allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
           allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
-          clientAuthenticationEnabled = clientAuthentication.orElse(verification).getOrElse(false))
+          verification = verification)
     }
 
   private def whenEnabled[T <: SslConfiguration](cursor: HCursor)(decoding: => Either[DecodingFailure, T]) = {
@@ -221,7 +242,7 @@ private object SslDecoders {
     } yield result
   }
 
-  private def keystoreFileDecoder(basePath: Path): Decoder[JFile] =
+  private def fileDecoder(basePath: Path): Decoder[JFile] =
     Decoder
       .decodeString
       .map { str => basePath.resolve(Paths.get(str)).toFile }

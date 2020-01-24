@@ -29,6 +29,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
   private val log4j2FileName = "log4j2.properties"
   private val javaOptionsFileName = "jvm.options"
   private val keystoreFileName = "keystore.jks"
+  private val truststoreFileName = "truststore.jks"
 
   def create(config: Config): ImageFromDockerfile = {
     import config._
@@ -41,6 +42,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
       .withFileFromFile(rorConfigFileName, rorConfigFile)
       .withFileFromFile(log4j2FileName, ContainerUtils.getResourceFile("/" + log4j2FileName))
       .withFileFromFile(keystoreFileName, ContainerUtils.getResourceFile("/" + keystoreFileName))
+      .withFileFromFile(truststoreFileName, ContainerUtils.getResourceFile("/" + truststoreFileName))
       .withFileFromFile(javaOptionsFileName, ContainerUtils.getResourceFile("/" + javaOptionsFileName))
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         builder
@@ -49,6 +51,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
           .copy(rorPluginFile.getAbsolutePath, "/tmp/")
           .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
           .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
+          .copy(truststoreFileName, "/usr/share/elasticsearch/config/")
           .copy(javaOptionsFileName, "/usr/share/elasticsearch/config/")
           .copy(rorConfigFileName, "/usr/share/elasticsearch/config/readonlyrest.yml")
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
