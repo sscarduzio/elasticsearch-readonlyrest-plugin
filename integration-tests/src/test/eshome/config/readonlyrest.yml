@@ -13,14 +13,13 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "dev1 indexes"
-      indices: ["index1"]
-      auth_key: dev1:test
-
-    - name: "dev2 aliases"
-      indices: ["index2_alias"]
-      auth_key: dev2:test
-
-    - name: "dev3 aliases"
-      indices: ["index3"]
-      auth_key: dev3:test
+    - name: es-ipv6 writer
+      type: allow
+      indices: [readonlyrest*]
+      actions:
+        - cluster:admin/script/*
+        - cluster:admin/settings/*
+        - cluster:admin/tasks/*
+        - cluster:monitor/*
+        - indices:*
+        - internal:indices/*
