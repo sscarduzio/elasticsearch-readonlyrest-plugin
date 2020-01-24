@@ -59,8 +59,8 @@ object SSLCertParser extends Logging {
   def customTrustManagerFrom(config: SslConfiguration): Option[TrustManagerFactory] = {
     config.truststoreFile
       .flatMap { file =>
-        logger.info(s"Using custom truststore: '${file.getName}'")
-        Try(Resource.fromAutoCloseable(IO(new FileInputStream(file)))
+        logger.info(s"Using custom truststore: '${file.value.getName}'")
+        Try(Resource.fromAutoCloseable(IO(new FileInputStream(file.value)))
           .use(loadTrustedCerts(config))
           .unsafeRunSync()) match {
           case Success(trustmanager) => Some(trustmanager)
@@ -81,7 +81,7 @@ object SSLCertParser extends Logging {
   }
 
   private def loadKeystore(config: SslConfiguration) =
-    Resource.fromAutoCloseable(IO(new FileInputStream(config.keystoreFile))).map { keystoreInputStream =>
+    Resource.fromAutoCloseable(IO(new FileInputStream(config.keystoreFile.value))).map { keystoreInputStream =>
       logger.info("ROR SSL: attempting with JKS keystore..")
       val keystore = java.security.KeyStore.getInstance("JKS")
       keystore.load(
