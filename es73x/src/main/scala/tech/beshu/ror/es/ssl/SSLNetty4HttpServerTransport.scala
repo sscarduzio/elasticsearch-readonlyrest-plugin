@@ -73,7 +73,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
     private class SSLContextCreatorImpl extends SSLCertParser.SSLContextCreator {
       override def mkSSLContext(certChain: InputStream, privateKey: InputStream): Unit = {
         try { // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-           val sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null)
+          val sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null)
 
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)

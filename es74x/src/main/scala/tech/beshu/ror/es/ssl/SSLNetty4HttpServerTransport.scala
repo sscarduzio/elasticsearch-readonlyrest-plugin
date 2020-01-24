@@ -20,7 +20,7 @@ import java.io.InputStream
 
 import io.netty.buffer.ByteBufAllocator
 import io.netty.channel.Channel
-import io.netty.handler.ssl.{NotSslRecordException, SslContext, SslContextBuilder}
+import io.netty.handler.ssl.{ClientAuth, NotSslRecordException, SslContext, SslContextBuilder}
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings.Settings
@@ -78,7 +78,10 @@ class SSLNetty4HttpServerTransport(settings: Settings,
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
           if (ssl.allowedCiphers.nonEmpty) sslCtxBuilder.ciphers(ssl.allowedCiphers.map(_.value).toList.asJava)
-
+          if (ssl.clientAuthenticationEnabled) {
+            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+            sslCtxBuilder.trustManager(SSLCertParser.customTrustManagerFrom(ssl).orNull)
+          }
           if (ssl.allowedProtocols.nonEmpty) sslCtxBuilder.protocols(ssl.allowedProtocols.map(_.value).toList: _*)
           context = Some(sslCtxBuilder.build)
         } catch {
