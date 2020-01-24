@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers
+package tech.beshu.ror.utils.containers.generic
 
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -30,15 +30,15 @@ import tech.beshu.ror.utils.misc.ScalaUtils._
 import scala.language.existentials
 import scala.util.Try
 
-class ReadonlyRestEsClusterContainerGeneric private[containers](rorClusterContainers: NonEmptyList[Task[RorContainer]],
-                                                                dependencies: List[ReadonlyRestEsClusterContainerGeneric.DependencyDef],
-                                                                clusterInitializer: ReadonlyRestEsClusterGenericInitializer) extends Container {
+class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: NonEmptyList[Task[RorContainer]],
+                                                         dependencies: List[DependencyDef],
+                                                         clusterInitializer: ReadonlyRestEsClusterInitializer) extends Container {
 
   val nodesContainers: NonEmptyList[RorContainer] = {
     NonEmptyList.fromListUnsafe(Task.gather(rorClusterContainers.toList).runSyncUnsafe())
   }
 
-  val depsContainers: List[(ReadonlyRestEsClusterContainerGeneric.DependencyDef, GenericContainer)] =
+  val depsContainers: List[(DependencyDef, GenericContainer)] =
     dependencies.map(d => (d, d.containerCreator.apply()))
 
   val esVersion: String = nodesContainers.head.esVersion
@@ -61,8 +61,8 @@ class ReadonlyRestEsClusterContainerGeneric private[containers](rorClusterContai
 
 }
 
-class ReadonlyRestEsRemoteClustersContainerGeneric private[containers](val localClusters: NonEmptyList[ReadonlyRestEsClusterContainerGeneric],
-                                                                       remoteClustersInitializer: RemoteClustersInitializerGeneric)
+class ReadonlyRestEsRemoteClustersContainer private[containers](val localClusters: NonEmptyList[ReadonlyRestEsClusterContainer],
+                                                                remoteClustersInitializer: RemoteClustersInitializer)
   extends Container {
 
   override def starting()(implicit description: Description): Unit = {
@@ -118,30 +118,26 @@ class ReadonlyRestEsRemoteClustersContainerGeneric private[containers](val local
 
 }
 
-trait ReadonlyRestEsClusterGenericInitializer {
-  def initialize(adminClient: RestClient, container: ReadonlyRestEsClusterContainerGeneric): Unit
+trait ReadonlyRestEsClusterInitializer {
+  def initialize(adminClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit
 }
 
-object NoOpReadonlyRestEsClusterGenericInitializer extends ReadonlyRestEsClusterGenericInitializer {
-  override def initialize(adminClient: RestClient, container: ReadonlyRestEsClusterContainerGeneric): Unit = ()
+object NoOpReadonlyRestEsClusterInitializer$ extends ReadonlyRestEsClusterInitializer {
+  override def initialize(adminClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit = ()
 }
 
-trait RemoteClustersInitializerGeneric {
+trait RemoteClustersInitializer {
   def remoteClustersConfiguration(localClusterRepresentatives: NonEmptyList[RorContainer]): Map[String, NonEmptyList[RorContainer]]
 }
 
-object ReadonlyRestEsClusterContainerGeneric {
+final case class AdditionalClusterSettings(numberOfInstances: Int = 1,
+                                           nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+                                           clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer$,
+                                           dependentServicesContainers: List[DependencyDef] = Nil,
+                                           xPackSupport: Boolean = false,
+                                           configHotReloadingEnabled: Boolean = true,
+                                           internodeSslEnabled: Boolean = false)
 
-  final case class AdditionalClusterSettings(numberOfInstances: Int = 1,
-                                             nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                             clusterInitializer: ReadonlyRestEsClusterGenericInitializer = NoOpReadonlyRestEsClusterGenericInitializer,
-                                             dependentServicesContainers: List[DependencyDef] = Nil,
-                                             xPackSupport: Boolean = false,
-                                             configHotReloadingEnabled: Boolean = true,
-                                             internodeSslEnabled: Boolean = false)
+final case class LocalClusterDef(name: String, rorConfigFileName: String, nodeDataInitializer: ElasticsearchNodeDataInitializer)
 
-  final case class LocalClusterDef(name: String, rorConfigFileName: String, nodeDataInitializer: ElasticsearchNodeDataInitializer)
-
-  final case class DependencyDef(name: String, containerCreator: Coeval[GenericContainer])
-
-}
+final case class DependencyDef(name: String, containerCreator: Coeval[GenericContainer])

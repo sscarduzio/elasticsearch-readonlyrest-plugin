@@ -14,15 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.suites
 
-import tech.beshu.ror.integration.suites.ClusterStateSuite
-import tech.beshu.ror.utils.containers.generic.RorProxyProvider
+import com.dimafeng.testcontainers.ForAllTestContainer
+import org.scalatest.Matchers._
+import org.scalatest.WordSpec
+import tech.beshu.ror.utils.containers.generic.ReadonlyRestEsClusterContainer
+import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
-class ClusterStateTestsProxy extends ClusterStateSuite with BaseProxyTest {
+trait ClusterStateSuite extends WordSpec with ForAllTestContainer {
 
-  override val container = RorProxyProvider.createLocalClusterContainer(
-    name = "ROR1",
-    esVersion = "7.5.1"
-  )
+  val container: ReadonlyRestEsClusterContainer
+
+  private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
+
+  "/_cat/state should work as expected" in {
+    val response = adminClusterStateManager.healthCheck()
+
+    response.responseCode should be (200)
+  }
 }

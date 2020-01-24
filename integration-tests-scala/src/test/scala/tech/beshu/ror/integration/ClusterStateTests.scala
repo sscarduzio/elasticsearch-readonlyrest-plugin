@@ -16,24 +16,13 @@
  */
 package tech.beshu.ror.integration
 
-import com.dimafeng.testcontainers.ForAllTestContainer
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.RorPluginProvider
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
+import tech.beshu.ror.integration.suites.ClusterStateSuite
+import tech.beshu.ror.utils.containers.generic.RorPluginProvider
 
-class ClusterStateTests  extends WordSpec with ForAllTestContainer {
+class ClusterStateTests extends ClusterStateSuite {
 
   override val container = RorPluginProvider.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/cluster_state/readonlyrest.yml"
   )
-
-  private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
-
-  "/_cat/state should work as expected" in {
-    val response = adminClusterStateManager.healthCheck()
-
-    response.responseCode should be (200)
-  }
 }

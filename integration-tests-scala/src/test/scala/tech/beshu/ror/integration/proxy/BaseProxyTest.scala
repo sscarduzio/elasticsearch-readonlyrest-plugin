@@ -9,13 +9,16 @@ import scala.concurrent.ExecutionContext
 trait BaseProxyTest extends BeforeAndAfterAll {
   this: Suite =>
 
-  private val app = new RorProxy {
-    override implicit protected def contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.Implicits.global)
-  }
-
-  val proxyCloseHandler = app.start.unsafeRunSync().getOrElse(throw new Exception("Could not start proxy"))
+  private val proxyCloseHandler = createApp()
+    .start
+    .unsafeRunSync()
+    .getOrElse(throw new Exception("Could not start test proxy instance"))
 
   override protected def afterAll(): Unit = {
     proxyCloseHandler().unsafeRunSync()
+  }
+
+  def createApp() = new RorProxy {
+    override implicit protected def contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.Implicits.global)
   }
 }

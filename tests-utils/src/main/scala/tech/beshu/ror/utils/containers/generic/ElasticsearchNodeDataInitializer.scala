@@ -1,4 +1,4 @@
-package tech.beshu.ror.utils.containers
+package tech.beshu.ror.utils.containers.generic
 
 import tech.beshu.ror.utils.httpclient.RestClient
 

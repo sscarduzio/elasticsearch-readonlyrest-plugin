@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers
+package tech.beshu.ror.utils.containers.generic
 
 import java.io.File
 
@@ -24,7 +24,7 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 
 import scala.language.postfixOps
 
-class ReadonlyRestEsContainerGeneric private(name: String, esVersion: String, image: ImageFromDockerfile)
+class ReadonlyRestEsContainer private(name: String, esVersion: String, image: ImageFromDockerfile)
   extends RorContainer(name, esVersion, image)
   with StrictLogging {
   logger.info(s"[$name] Creating ES with ROR plugin installed container ...")
@@ -32,7 +32,7 @@ class ReadonlyRestEsContainerGeneric private(name: String, esVersion: String, im
   override val sslEnabled: Boolean = true
 }
 
-object ReadonlyRestEsContainerGeneric {
+object ReadonlyRestEsContainer {
 
   final case class Config(nodeName: String,
                           nodes: NonEmptyList[String],
@@ -43,11 +43,11 @@ object ReadonlyRestEsContainerGeneric {
                           configHotReloadingEnabled: Boolean,
                           internodeSslEnabled: Boolean) extends RorContainer.Config
 
-  def create(config: ReadonlyRestEsContainerGeneric.Config, initializer: ElasticsearchNodeDataInitializer) = {
-    val rorContainer = new ReadonlyRestEsContainerGeneric(
+  def create(config: ReadonlyRestEsContainer.Config, initializer: ElasticsearchNodeDataInitializer) = {
+    val rorContainer = new ReadonlyRestEsContainer(
       config.nodeName,
       config.esVersion,
-      ESWithReadonlyRestImageGeneric.create(config)
+      ESWithReadonlyRestImage.create(config)
     )
     RorContainer.init(rorContainer, config, initializer)
   }

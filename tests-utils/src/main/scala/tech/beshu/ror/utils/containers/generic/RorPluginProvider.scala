@@ -1,10 +1,10 @@
-package tech.beshu.ror.utils.containers
+package tech.beshu.ror.utils.containers.generic
 
 import java.io.File
 
 import cats.data.NonEmptyList
 import monix.eval.Task
-import tech.beshu.ror.utils.containers.ReadonlyRestEsClusterContainerGeneric.AdditionalClusterSettings
+import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
@@ -21,9 +21,9 @@ object RorPluginProvider {
     val rorConfigFile = ContainerUtils.getResourceFile(rorConfigFileName)
     val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, clusterSettings.numberOfInstances)(_ + 1).toList.map(idx => s"${name}_$idx"))
 
-    new ReadonlyRestEsClusterContainerGeneric(
+    new ReadonlyRestEsClusterContainer(
       nodeNames.map { name =>
-        val containerConfig = ReadonlyRestEsContainerGeneric.Config(
+        val containerConfig = ReadonlyRestEsContainer.Config(
           nodeName = name,
           nodes = nodeNames,
           esVersion = esVersion,
@@ -32,14 +32,14 @@ object RorPluginProvider {
           configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
           internodeSslEnabled = clusterSettings.internodeSslEnabled,
           xPackSupport = clusterSettings.xPackSupport)
-        Task(ReadonlyRestEsContainerGeneric.create(containerConfig, clusterSettings.nodeDataInitializer))
+        Task(ReadonlyRestEsContainer.create(containerConfig, clusterSettings.nodeDataInitializer))
       },
       clusterSettings.dependentServicesContainers,
       clusterSettings.clusterInitializer)
   }
 
-  def createRemoteClustersContainer(localClusters: NonEmptyList[ReadonlyRestEsClusterContainerGeneric.LocalClusterDef],
-                                    remoteClustersInitializer: RemoteClustersInitializerGeneric) = {
+  def createRemoteClustersContainer(localClusters: NonEmptyList[LocalClusterDef],
+                                    remoteClustersInitializer: RemoteClustersInitializer) = {
     val startedClusters = localClusters
       .map { cluster =>
         createLocalClusterContainer(
@@ -47,6 +47,6 @@ object RorPluginProvider {
           cluster.rorConfigFileName,
           AdditionalClusterSettings(nodeDataInitializer = cluster.nodeDataInitializer))
       }
-    new ReadonlyRestEsRemoteClustersContainerGeneric(startedClusters, remoteClustersInitializer)
+    new ReadonlyRestEsRemoteClustersContainer(startedClusters, remoteClustersInitializer)
   }
 }

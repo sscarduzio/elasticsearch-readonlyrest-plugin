@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers
+package tech.beshu.ror.utils.containers.generic
 
 import java.util.Optional
 import java.util.function.Consumer
@@ -26,7 +26,7 @@ import monix.eval.Coeval
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
-import tech.beshu.ror.utils.containers.RorContainer.adminCredentials
+import tech.beshu.ror.utils.containers.generic.RorContainer.adminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
 import tech.beshu.ror.utils.misc.Tuple
