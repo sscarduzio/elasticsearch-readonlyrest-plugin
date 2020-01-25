@@ -19,7 +19,10 @@ package tech.beshu.ror.es.ssl;
 
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
-import io.netty.handler.ssl.*;
+import io.netty.handler.ssl.NotSslRecordException;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,9 +39,9 @@ import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 
 import javax.net.ssl.SSLEngine;
-import java.io.ByteArrayInputStream;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.InputStream;
 import java.net.SocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
@@ -68,11 +71,12 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
         super.initChannel(ch);
         logger.info(">> internode SSL channel initializing");
 
-        SslContextBuilder sslCtxBuilder = SslContextBuilder.forClient();
-        if (!ssl.certificateVerificationEnabled()) {
-          sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE);
-        }
-        SslContext sslCtx = sslCtxBuilder.build();
+        TrustManagerFactory usedTrustManager = ssl.certificateVerificationEnabled() ?
+                SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null) : InsecureTrustManagerFactory.INSTANCE;
+
+        SslContext sslCtx = SslContextBuilder.forClient()
+                .trustManager(usedTrustManager)
+                .build();
         ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter() {
           @Override
           public void connect(ChannelHandlerContext ctx, SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) throws Exception {
@@ -125,17 +129,10 @@ public class SSLNetty4InternodeServerTransport extends Netty4Transport {
 
     private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
       @Override
-      public void mkSSLContext(String certChain, String privateKey) {
+      public void mkSSLContext(InputStream certChain, InputStream privateKey) {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
-              new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-              new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-              null
-          );
-          if (ssl.clientAuthenticationEnabled()) {
-            sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
-          }
+          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
 
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider().name());
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);

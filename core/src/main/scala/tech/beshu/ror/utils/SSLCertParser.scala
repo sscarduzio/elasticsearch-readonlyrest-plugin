@@ -16,11 +16,14 @@
  */
 package tech.beshu.ror.utils
 
-import java.io.FileInputStream
+import java.io.{ByteArrayInputStream, FileInputStream, InputStream}
+import java.nio.charset.StandardCharsets
+import java.security.KeyStore
 import java.security.cert.Certificate
 import java.util.Base64
 
-import javax.net.ssl.SSLEngine
+import cats.effect.{IO, Resource}
+import javax.net.ssl.{SSLEngine, TrustManagerFactory}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.SslConfiguration
 
@@ -34,7 +37,9 @@ object SSLCertParser extends Logging {
 
   def run(sslContextCreator: SSLContextCreator,
           config: SslConfiguration): Unit = {
-    tryRun(sslContextCreator, config) match {
+    Try(loadKeyAndCertificate(config)
+      .use { case (cert, key) => IO(sslContextCreator.mkSSLContext(cert, key))}
+      .unsafeRunSync()) match {
       case Success(_) =>
       case Failure(ex) =>
         logger.error("ROR SSL: Failed to load SSL certs and keys from JKS Keystore! " + ex.getClass.getSimpleName + ": " + ex.getMessage, ex)
@@ -51,16 +56,43 @@ object SSLCertParser extends Logging {
         _ => true
       )
 
-  private def tryRun(sslContextCreator: SSLContextCreator,
-                     config: SslConfiguration) = Try {
-    logger.info("ROR SSL: attempting with JKS keystore..")
-    val keystore = java.security.KeyStore.getInstance("JKS")
-    keystore.load(
-      new FileInputStream(config.keystoreFile),
-      config.keystorePassword.map(_.value.toCharArray).orNull
-    )
+  def customTrustManagerFrom(config: SslConfiguration): Option[TrustManagerFactory] = {
+    config.truststoreFile
+      .flatMap { file =>
+        logger.info(s"Using custom truststore: '${file.value.getName}'")
+        Try(Resource.fromAutoCloseable(IO(new FileInputStream(file.value)))
+          .use(loadTrustedCerts(config))
+          .unsafeRunSync()) match {
+          case Success(trustmanager) => Some(trustmanager)
+          case Failure(ex) =>
+            logger.error("ROR SSL: Failed to load trusted SSL certs from provided JKS Keystore! " + ex.getClass.getSimpleName + ": " + ex.getMessage, ex)
+            None
+        }
+      }
+  }
 
-    val sslKeyAlias = config.keyAlias match {
+  private def loadKeyAndCertificate(config: SslConfiguration) = {
+    for {
+      keystore <- loadKeystore(config)
+      alias <- prepareAlias(keystore, config)
+      privateKey <- extractPrivateKey(keystore, alias, config)
+      certChain <- extractCertChain(keystore, alias)
+    } yield (certChain, privateKey)
+  }
+
+  private def loadKeystore(config: SslConfiguration) =
+    Resource.fromAutoCloseable(IO(new FileInputStream(config.keystoreFile.value))).map { keystoreInputStream =>
+      logger.info("ROR SSL: attempting with JKS keystore..")
+      val keystore = java.security.KeyStore.getInstance("JKS")
+      keystore.load(
+        keystoreInputStream,
+        config.keystorePassword.map(_.value.toCharArray).orNull
+      )
+      keystore
+    }
+
+  private def prepareAlias(keystore: KeyStore, config: SslConfiguration) = Resource.pure[IO, String] {
+    config.keyAlias match {
       case None if keystore.aliases().hasMoreElements =>
         val firstAlias = keystore.aliases().nextElement()
         logger.info(s"ROR SSL: ssl.key_alias not configured, took first alias in keystore: $firstAlias")
@@ -70,13 +102,15 @@ object SSLCertParser extends Logging {
       case Some(keyAlias) =>
         keyAlias.value
     }
+  }
 
+  private def extractPrivateKey(keystore: KeyStore, alias: String, config: SslConfiguration) = {
     val key = Option(keystore.getKey(
-      sslKeyAlias,
+      alias,
       config.keyPass.map(_.value.toCharArray).orNull
     )) match {
       case Some(value) => value
-      case None => throw MalformedSslSettings("Private key not found in keystore for alias: " + sslKeyAlias)
+      case None => throw MalformedSslSettings("Private key not found in keystore for alias: " + alias)
     }
 
     // Create a PEM of the private key
@@ -87,18 +121,31 @@ object SSLCertParser extends Logging {
          |---END PRIVATE KEY---
        """.stripMargin
     logger.info("ROR SSL: Discovered key from JKS")
+    Resource.fromAutoCloseable(IO(new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8))))
+  }
 
+  private def extractCertChain(keystore: KeyStore, alias: String) = {
     // Create a PEM of the certificate chain
-    def certString(c: Certificate) =
+    val certString = (c: Certificate) =>
       s"""
          |-----BEGIN CERTIFICATE-----
          |${Base64.getEncoder.encodeToString(c.getEncoded)}
          |-----END CERTIFICATE-----
        """.stripMargin
-    val certChain = keystore.getCertificateChain(sslKeyAlias).map(certString).mkString("\n")
+    val certChain = keystore.getCertificateChain(alias).map(certString).mkString("\n")
     logger.info("ROR SSL: Discovered cert chain from JKS")
+    Resource.fromAutoCloseable(IO(new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8))))
+  }
 
-    sslContextCreator.mkSSLContext(certChain, privateKey)
+  private def loadTrustedCerts(config: SslConfiguration)(truststoreInputStream: InputStream) = IO {
+    val truststore = KeyStore.getInstance(KeyStore.getDefaultType)
+    truststore.load(
+      truststoreInputStream,
+      config.truststorePassword.map(_.value.toCharArray).orNull
+    )
+    val trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
+    trustManagerFactory.init(truststore)
+    trustManagerFactory
   }
 
   private def trySetProtocolsAndCiphers(eng: SSLEngine, config: SslConfiguration) = Try {
@@ -115,7 +162,7 @@ object SSLCertParser extends Logging {
   }
 
   trait SSLContextCreator {
-    def mkSSLContext(certChain: String, privateKey: String): Unit
+    def mkSSLContext(certChain: InputStream, privateKey: InputStream): Unit
   }
 }
 

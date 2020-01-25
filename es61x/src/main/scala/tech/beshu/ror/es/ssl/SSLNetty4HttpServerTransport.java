@@ -42,8 +42,8 @@ import tech.beshu.ror.configuration.SslConfiguration;
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.InputStream;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
@@ -106,14 +106,10 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
 
       @Override
-      public void mkSSLContext(String certChain, String privateKey) {
+      public void mkSSLContext(InputStream certChain, InputStream privateKey) {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
-              new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-              new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-              null
-          );
+          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
 
           logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
@@ -130,6 +126,8 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
           if (ssl.clientAuthenticationEnabled()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+            TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
+            sslCtxBuilder.trustManager(usedTrustManager);
           }
 
           if(ssl.allowedProtocols().size() > 0) {
