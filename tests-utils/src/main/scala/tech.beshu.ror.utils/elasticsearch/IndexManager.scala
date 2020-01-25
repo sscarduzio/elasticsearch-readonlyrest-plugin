@@ -24,27 +24,23 @@ import tech.beshu.ror.utils.httpclient.RestClient
 class IndexManager(client: RestClient)
   extends BaseManager(client) {
 
-  def getIndex(index: String): JsonResponse = {
-    call(getIndexRequest(Set(index)), new JsonResponse(_))
-  }
-
-  def getIndices(indices: Set[String]): JsonResponse = {
-    call(getIndexRequest(indices), new JsonResponse(_))
+  def getIndex(indices: String*): JsonResponse = {
+    call(getIndexRequest(indices.toSet), new JsonResponse(_))
   }
 
   def getAliases: JsonResponse = {
     call(getAliasRequest(), new JsonResponse(_))
   }
 
-  def getAlias(index: String): JsonResponse = {
-    call(getAliasRequest(indexOpt = Some(index)), new JsonResponse(_))
+  def getAlias(indices: String*): JsonResponse = {
+    val indexOpt = indices.mkString(",") match {
+      case "" => None
+      case str => Some(str)
+    }
+    call(getAliasRequest(indexOpt), new JsonResponse(_))
   }
 
-  def getAlias(indices: Set[String]): JsonResponse = {
-    call(getAliasRequest(indexOpt = Some(indices.mkString(","))), new JsonResponse(_))
-  }
-
-  def getAlias(index: String, alias: String): JsonResponse = {
+  def getAliasByName(index: String, alias: String): JsonResponse = {
     call(getAliasRequest(Some(index), Some(alias)), new JsonResponse(_))
   }
 
@@ -57,6 +53,14 @@ class IndexManager(client: RestClient)
     if(!result.isSuccess) {
       throw new IllegalStateException(s"Cannot create alias '$alias'; returned: ${result.body}")
     }
+  }
+
+  def getSettings(index: String*): JsonResponse = {
+    call(createGetSettingsRequest(index.toSet), new JsonResponse(_))
+  }
+
+  def getAllSettings: JsonResponse = {
+    call(createGetSettingsRequest(Set("_all")), new JsonResponse(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -87,4 +91,9 @@ class IndexManager(client: RestClient)
       s"""{"actions":[{"add":{"index":"$index","alias":"$alias"}}]}""".stripMargin))
     request
   }
+
+  private def createGetSettingsRequest(indices: Set[String]) = {
+    new HttpGet(client.from(s"${indices.mkString(",")}/_settings"))
+  }
+
 }

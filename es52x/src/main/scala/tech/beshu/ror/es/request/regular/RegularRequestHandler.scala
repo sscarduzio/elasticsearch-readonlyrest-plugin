@@ -129,7 +129,7 @@ class RegularRequestHandler(engine: Engine,
       case CatIndicesPath(_) =>
         respondWithEmptyCatIndicesResponse()
       case _ =>
-        val nonExistentIndex = randomNonexistentIndex(requestInfo)
+        val nonExistentIndex = randomNonexistentIndex(requestContext)
         requestInfo.writeIndices(Set(nonExistentIndex.value.value)) match {
           case WriteResult.Success(_) => proceed(baseListener)
           case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
@@ -220,9 +220,9 @@ class RegularRequestHandler(engine: Engine,
     )
   }
 
-  private def randomNonexistentIndex(requestInfo: RequestInfo): IndexName = {
-    requestInfo.extractIndices.indices.headOption match {
-      case Some(indexName) => IndexName.randomNonexistentIndex(indexName)
+  private def randomNonexistentIndex(requestContext: RequestContext): IndexName = {
+    requestContext.indices.headOption match {
+      case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
       case None => IndexName.randomNonexistentIndex()
     }
   }
