@@ -21,10 +21,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.ssl.NotSslRecordException;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.network.NetworkService;
@@ -41,8 +38,8 @@ import tech.beshu.ror.utils.SSLCertParser$;
 
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLHandshakeException;
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.InputStream;
 
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
@@ -104,10 +101,6 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
         );
       }
 
-      if (ssl.clientAuthenticationEnabled()) {
-        eng.setNeedClientAuth(true);
-      }
-
       if(ssl.allowedProtocols().size() > 0) {
         eng.setEnabledProtocols(
             JavaConverters$.MODULE$
@@ -132,17 +125,19 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
     }
 
     @Override
-    public void mkSSLContext(String certChain, String privateKey) {
+    public void mkSSLContext(InputStream certChain, InputStream privateKey) {
       try {
         // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-        SslContextBuilder sslcb = SslContextBuilder.forServer(
-            new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-            new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-            null
-        );
+        SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
+
+        if (ssl.clientAuthenticationEnabled()) {
+          sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+          TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
+          sslCtxBuilder.trustManager(usedTrustManager);
+        }
 
         // Creating one SSL engine just for protocol/cipher validation and logging
-        sslContext = sslcb.build();
+        sslContext = sslCtxBuilder.build();
         SSLEngine eng = sslContext.newEngine(ByteBufAllocator.DEFAULT);
 
         logger.info("ROR SSL: Using SSL provider: " + SslContext.defaultServerProvider().name());

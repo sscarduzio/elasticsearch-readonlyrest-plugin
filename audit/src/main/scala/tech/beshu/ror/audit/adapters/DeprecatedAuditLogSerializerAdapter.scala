@@ -63,6 +63,15 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
           reason,
           true
         )
+      case AuditResponseContext.RequestedIndexNotExist(requestContext) =>
+        new tech.beshu.ror.commons.ResponseContext(
+          FinalState.NOT_FOUND,
+          toDeprecatedRequestContext(requestContext),
+          null,
+          null,
+          "index not found",
+          false
+        )
       case AuditResponseContext.ForbiddenBy(requestContext, verbosity, reason) =>
         new tech.beshu.ror.commons.ResponseContext(
           FinalState.FORBIDDEN,

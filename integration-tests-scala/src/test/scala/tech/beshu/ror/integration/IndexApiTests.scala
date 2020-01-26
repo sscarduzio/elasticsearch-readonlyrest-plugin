@@ -35,6 +35,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
 
   private lazy val dev1IndexManager = new IndexManager(container.nodesContainers.head.client("dev1", "test"))
   private lazy val dev2IndexManager = new IndexManager(container.nodesContainers.head.client("dev2", "test"))
+  private lazy val dev3IndexManager = new IndexManager(container.nodesContainers.head.client("dev3", "test"))
 
   "ROR" when {
     "Get index API is used" should {
@@ -113,7 +114,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
           indexResponse.responseCode should be(404)
         }
         "one of called indices doesn't exist" in {
-          val indexResponse = dev1IndexManager.getIndices(Set("index1", "index3"))
+          val indexResponse = dev1IndexManager.getIndex("index1", "index3")
 
           indexResponse.responseCode should be(404)
         }
@@ -155,14 +156,14 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
             aliasesJson.contains("index1_alias") should be (true)
           }
           "one of passed indices doesn't exist" in {
-            val aliasResponse = dev1IndexManager.getAlias(Set("index1", "nonexistent"))
+            val aliasResponse = dev1IndexManager.getAlias(indices = "index1", "nonexistent")
 
             aliasResponse.responseCode should be (404)
           }
         }
         "/[index]/_alias/[alias] API is used" when {
           "alias full name is passed" in {
-            val aliasResponse = dev1IndexManager.getAlias("index1", "index1_alias")
+            val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1_alias")
 
             aliasResponse.responseCode should be (200)
             aliasResponse.responseJson.obj.size should be (1)
@@ -171,7 +172,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
             aliasesJson.contains("index1_alias") should be (true)
           }
           "alias name has wildcard" in {
-            val aliasResponse = dev1IndexManager.getAlias("index1", "index1*")
+            val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1*")
 
             aliasResponse.responseCode should be (200)
             aliasResponse.responseJson.obj.size should be (1)
@@ -192,7 +193,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
         }
         "the alias name with wildcard is used" when {
           "there is no matching alias" excludeES("^es55x$".r, allEs6xExceptEs66x) in {
-            val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent*")
+            val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
             aliasResponse.responseCode should be (200)
             aliasResponse.responseJson.obj.size should be (0)
@@ -200,7 +201,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
         }
         "the full name alias is used" when {
           "there is no matching alias" excludeES("^es55x$".r, allEs6x, allEs7x) in {
-            val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent")
+            val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent")
 
             aliasResponse.responseCode should be (200)
             aliasResponse.responseJson.obj.size should be (0)
@@ -220,7 +221,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
         }
         "the alias name with wildcard is used" when {
           "there is no matching alias" excludeES(allEs7x, "^es66x$".r, allEs5xExceptEs55x) in {
-            val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent*")
+            val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
             aliasResponse.responseCode should be (404)
           }
@@ -228,9 +229,109 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
       }
       "return alias not found" when {
         "full alias name is used and the alias doesn't exist" excludeES(allEs5xExceptEs55x) in {
-          val aliasResponse = dev1IndexManager.getAlias("index1", "nonexistent")
+          val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent")
 
           aliasResponse.responseCode should be (404)
+        }
+      }
+    }
+    "Get settings API is used" should {
+      "allow user to get index settings" when {
+        "he has access to the index" when {
+          "the index is called explicitly" in {
+            val indexResponse = dev1IndexManager.getSettings("index1")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be(1)
+            indexResponse.responseJson("index1")
+          }
+          "_all is used" in {
+            val indexResponse = dev1IndexManager.getAllSettings
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be(1)
+            indexResponse.responseJson("index1")
+          }
+          "its alias is called" in {
+            val indexResponse = dev1IndexManager.getSettings("index1_alias")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be(1)
+            indexResponse.responseJson("index1")
+          }
+          "the index name with wildcard is used" when {
+            "there is a matching index" in {
+              val indexResponse = dev1IndexManager.getSettings("index*")
+
+              indexResponse.responseCode should be(200)
+              indexResponse.responseJson.obj.size should be(1)
+              indexResponse.responseJson("index1")
+            }
+          }
+          "the alias name with wildcard is used" when {
+            "there is a matching alias" in {
+              val indexResponse = dev1IndexManager.getSettings("index1_a*")
+
+              indexResponse.responseCode should be(200)
+              indexResponse.responseJson.obj.size should be(1)
+              indexResponse.responseJson("index1")
+            }
+          }
+        }
+        "he has access to the index's alias" when {
+          "the alias is called" in {
+            val indexResponse = dev2IndexManager.getSettings("index2_alias")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be(1)
+            indexResponse.responseJson("index2")
+          }
+        }
+      }
+      "return empty response" when {
+        "the index name with wildcard is used" when {
+          "there is no matching index" in {
+            val indexResponse = dev1IndexManager.getSettings("my_index*")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be(0)
+          }
+        }
+        "the alias name with wildcard is used" when {
+          "there is no matching alias" in {
+            val indexResponse = dev1IndexManager.getSettings("my_index1_a*")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be(0)
+          }
+        }
+        "_all settings is used and user doesn't have indices" in {
+          val indexResponse = dev3IndexManager.getAllSettings
+
+          indexResponse.responseCode should be(200)
+          indexResponse.responseJson.obj.size should be(0)
+        }
+      }
+      "pretend that index doesn't exist" when {
+        "called index really doesn't exist" in {
+          val indexResponse = dev1IndexManager.getSettings("index3")
+
+          indexResponse.responseCode should be(404)
+        }
+        "called index exists, but the user has no access to it" in {
+          val indexResponse = dev1IndexManager.getSettings("index2")
+
+          indexResponse.responseCode should be(404)
+        }
+        "one of called indices doesn't exist" in {
+          val indexResponse = dev1IndexManager.getSettings("index1", "index3")
+
+          indexResponse.responseCode should be(404)
+        }
+        "the index is called explicitly when user has configured alias in indices rule" in {
+          val indexResponse = dev2IndexManager.getSettings("index2")
+
+          indexResponse.responseCode should be(404)
         }
       }
     }

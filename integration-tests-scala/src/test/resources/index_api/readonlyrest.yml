@@ -21,5 +21,9 @@ readonlyrest:
       indices: ["index2_alias"]
       auth_key: dev2:test
 
-    - name: "dev3 - no indices rule"
+    - name: "dev3 - there is no index of this user"
+      indices: ["index3"]
       auth_key: dev3:test
+
+    - name: "dev4 - no indices rule"
+      auth_key: dev4:test
