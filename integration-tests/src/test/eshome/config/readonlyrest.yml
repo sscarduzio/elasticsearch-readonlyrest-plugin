@@ -28,7 +28,7 @@ readonlyrest:
   ldaps:
     - name: ldap1
       host: "localhost"
-      port: 32803                                               # default 389
+      port: 32770                                               # default 389
       ssl_enabled: false                                        # default true
       ssl_trust_all_certs: true                                 # default false
       bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind

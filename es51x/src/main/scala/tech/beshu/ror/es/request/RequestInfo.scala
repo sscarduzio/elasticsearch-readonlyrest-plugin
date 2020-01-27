@@ -32,6 +32,9 @@ import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotR
 import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
+import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
+import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
@@ -115,6 +118,11 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
         RegularIndices(ar.getAliasActions.asScala.flatMap(_.indices.asSafeSet).toSet)
       case ar: GetSettingsRequest =>
         RegularIndices(ar.indices.asSafeSet)
+      case ar: IndicesStatsRequest =>
+        RegularIndices(ar.indices.asSafeSet)
+      case ar: IndicesShardStoresRequest =>
+        val indices = ar.indices.asSafeSet
+        RegularIndices(if(indices.isEmpty) Set("*") else indices)
       case ar: CompositeIndicesRequest =>
         logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${ar.getClass.getSimpleName}")
         RegularIndices(Set.empty[String])

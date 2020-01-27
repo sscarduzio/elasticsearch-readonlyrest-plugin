@@ -77,6 +77,16 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x_scala" ]]; the
     ./gradlew integration-tests-scala:test '-PesModule=es63x' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es62x" ]]; then
+    echo ">>> es62x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es63x' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es62x_scala" ]]; then
+    echo ">>> es62x => Running testcontainers.."
+    ./gradlew integration-tests-scala:test '-PesModule=es63x' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
     echo ">>> es61x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es61x' || ( find . |grep hs_err |xargs cat && exit 1 )
