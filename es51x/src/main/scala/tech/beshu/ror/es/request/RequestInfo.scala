@@ -33,6 +33,8 @@ import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRe
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
+import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
