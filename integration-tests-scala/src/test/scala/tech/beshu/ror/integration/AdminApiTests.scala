@@ -139,7 +139,7 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
           forceReload("/admin_api/readonlyrest_first_update.yml")
 
           // after first reload only dev1 can access indices
-          Thread.sleep(7000) // have to wait for ROR1_2 instance config reload
+          Thread.sleep(14000) // have to wait for ROR1_2 instance config reload
           val dev1ror1After1stReloadResults = dev1Ror1stInstanceSearchManager.search("/test1_index/_search")
           dev1ror1After1stReloadResults.responseCode should be (200)
           val dev2ror1After1stReloadResults = dev2Ror1stInstanceSearchManager.search("/test2_index/_search")
