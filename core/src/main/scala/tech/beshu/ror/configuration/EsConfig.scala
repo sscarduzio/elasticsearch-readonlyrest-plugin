@@ -61,9 +61,9 @@ object EsConfig {
     implicit val rorEsLevelSettingsDecoder: Decoder[RorEsLevelSettings] = {
       Decoder.instance { c =>
         import cats.implicits._
-        val oneLine = c.downField("readonlyrest.force_load_from_file").as[Option[Boolean]]
         val twoLines =  c.downField("readonlyrest").downField("force_load_from_file").as[Option[Boolean]]
-        oneLine.orElse(twoLines)
+        val oneLine = c.downField("readonlyrest.force_load_from_file").as[Option[Boolean]]
+        twoLines.orElse(oneLine)
           .map(_.getOrElse(false))
           .map(RorEsLevelSettings.apply)
       }
