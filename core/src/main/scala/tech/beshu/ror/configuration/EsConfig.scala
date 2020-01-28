@@ -60,12 +60,14 @@ object EsConfig {
   private object decoders {
     implicit val rorEsLevelSettingsDecoder: Decoder[RorEsLevelSettings] = {
       Decoder.instance { c =>
-        import cats.implicits._
-        val twoLines =  c.downField("readonlyrest").downField("force_load_from_file").as[Option[Boolean]]
         val oneLine = c.downField("readonlyrest.force_load_from_file").as[Option[Boolean]]
-        twoLines.orElse(oneLine)
-          .map(_.getOrElse(false))
-          .map(RorEsLevelSettings.apply)
+        val twoLines =  c.downField("readonlyrest").downField("force_load_from_file").as[Option[Boolean]]
+        val forceLoadFromFile = (oneLine.toOption.flatten, twoLines.toOption.flatten) match {
+          case (Some(result), _) => result
+          case (_, Some(result)) => result
+          case (_, _) => false
+        }
+        Right(RorEsLevelSettings(forceLoadFromFile))
       }
     }
   }
