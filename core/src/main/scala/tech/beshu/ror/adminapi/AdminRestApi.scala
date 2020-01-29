@@ -63,7 +63,7 @@ class AdminRestApi(rorInstance: RorInstance,
   private val updateIndexConfigurationEndpoint = post(updateIndexConfigurationPath.endpointPath :: stringBody) { body: String =>
     val result = for {
       config <- rorConfigFrom(body)
-      _ <- forceRealoadAndSaveNewConfig(config)
+      _ <- forceReloadAndSaveNewConfig(config)
     } yield ()
     result.value.map {
       case Right(_) => Ok[ApiCallResult](Success("updated settings"))
@@ -132,7 +132,7 @@ class AdminRestApi(rorInstance: RorInstance,
     }
   }
 
-  private def forceRealoadAndSaveNewConfig(config: RawRorConfig) = {
+  private def forceReloadAndSaveNewConfig(config: RawRorConfig) = {
     EitherT(rorInstance.forceReloadAndSave(config))
       .leftMap {
         case IndexConfigSavingError(error) =>

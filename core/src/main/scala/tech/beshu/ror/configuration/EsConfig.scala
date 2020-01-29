@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.configuration
 
+
 import java.nio.file.Path
 
 import better.files.File
@@ -57,12 +58,17 @@ object EsConfig {
   }
 
   private object decoders {
-    implicit val rorEsLevelSettingsDecoder: Decoder[RorEsLevelSettings] = Decoder.instance { c =>
-      for {
-        forceLoadFromFile <- c.downField("readonlyrest").downField("force_load_from_file").as[Option[Boolean]]
-      } yield RorEsLevelSettings(
-        forceLoadFromFile.getOrElse(false)
-      )
+    implicit val rorEsLevelSettingsDecoder: Decoder[RorEsLevelSettings] = {
+      Decoder.instance { c =>
+        val oneLine = c.downField("readonlyrest.force_load_from_file").as[Option[Boolean]]
+        val twoLines =  c.downField("readonlyrest").downField("force_load_from_file").as[Option[Boolean]]
+        val forceLoadFromFile = (oneLine.toOption.flatten, twoLines.toOption.flatten) match {
+          case (Some(result), _) => result
+          case (_, Some(result)) => result
+          case (_, _) => false
+        }
+        Right(RorEsLevelSettings(forceLoadFromFile))
+      }
     }
   }
 
