@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.boot
 
-import monix.execution.Scheduler.Implicits.global
 import org.scalatest.WordSpec
 import tech.beshu.ror.es.BuildInfoReader
 
