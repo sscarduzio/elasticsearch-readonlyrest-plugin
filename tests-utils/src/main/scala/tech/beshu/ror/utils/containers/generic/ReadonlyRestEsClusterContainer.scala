@@ -47,7 +47,7 @@ class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: N
     Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
 
     Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
-    clusterInitializer.initialize(nodesContainers.head.adminClient, this)
+    clusterInitializer.initialize(nodesContainers.head.esDirectClient, this)
   }
 
   override def finished()(implicit description: Description): Unit =
@@ -84,14 +84,14 @@ class ReadonlyRestEsRemoteClustersContainer private[containers](val localCluster
 
   private def remoteClustersInitializer(container: RorContainer,
                                         remoteClustersConfig: Map[String, NonEmptyList[RorContainer]]): Unit = {
-    def createRemoteClusterSettingsRequest(adminClient: RestClient) = {
+    def createRemoteClusterSettingsRequest(esClient: RestClient) = {
       val remoteClustersConfigString = remoteClustersConfig
         .map { case (name, remoteClusterContainers) =>
           s""""$name": { "seeds": [ ${remoteClusterContainers.toList.map(c => s""""${c.name}:9300"""").mkString(",")} ] }"""
         }
         .mkString(",\n")
 
-      val request = new HttpPut(adminClient.from("_cluster/settings"))
+      val request = new HttpPut(esClient.from("_cluster/settings"))
       request.setHeader("Content-Type", "application/json")
       request.setEntity(new StringEntity(
         s"""
@@ -106,8 +106,8 @@ class ReadonlyRestEsRemoteClustersContainer private[containers](val localCluster
       request
     }
 
-    val adminClient = container.adminClient
-    Try(adminClient.execute(createRemoteClusterSettingsRequest(adminClient))).bracket { response =>
+    val esClient = container.esDirectClient
+    Try(esClient.execute(createRemoteClusterSettingsRequest(esClient))).bracket { response =>
       response.getStatusLine.getStatusCode match {
         case 200 =>
         case _ =>
@@ -119,11 +119,11 @@ class ReadonlyRestEsRemoteClustersContainer private[containers](val localCluster
 }
 
 trait ReadonlyRestEsClusterInitializer {
-  def initialize(adminClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit
+  def initialize(esClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit
 }
 
 object NoOpReadonlyRestEsClusterInitializer$ extends ReadonlyRestEsClusterInitializer {
-  override def initialize(adminClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit = ()
+  override def initialize(esClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit = ()
 }
 
 trait RemoteClustersInitializer {

@@ -7,6 +7,7 @@ object RorProxyProvider {
 
   def createLocalClusterContainer(name: String,
                                   esVersion: String,
+                                  proxyPort: Integer,
                                   clusterSettings: AdditionalClusterSettings = AdditionalClusterSettings()) = {
     if (clusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("ES Cluster should have at least one instance")
 
@@ -18,6 +19,7 @@ object RorProxyProvider {
           nodeName = name,
           nodes = nodeNames,
           esVersion = esVersion,
+          proxyPort = proxyPort,
           xPackSupport = clusterSettings.xPackSupport)
         Task(EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer))
       },
@@ -31,9 +33,13 @@ object RorProxyProvider {
       .map { cluster =>
         createLocalClusterContainer(
           cluster.name,
-          cluster.rorConfigFileName,
+          cluster.esVersion,
+          cluster.proxyPort,
           AdditionalClusterSettings(nodeDataInitializer = cluster.nodeDataInitializer))
       }
     new ReadonlyRestEsRemoteClustersContainer(startedClusters, remoteClustersInitializer)
   }
+
+  final case class LocalClusterDef(name: String, esVersion: String, proxyPort: Integer, nodeDataInitializer: ElasticsearchNodeDataInitializer)
+
 }

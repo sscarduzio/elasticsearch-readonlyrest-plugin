@@ -21,8 +21,10 @@ import tech.beshu.ror.utils.containers.generic.RorProxyProvider
 
 class ClusterStateTestsProxy extends ClusterStateSuite with BaseProxyTest {
 
-  override val container = RorProxyProvider.createLocalClusterContainer(
-    name = "ROR1",
-    esVersion = "7.5.1"
-  )
+  override lazy val container =
+    RorProxyProvider.createLocalClusterContainer(
+      name = "ROR1",
+      esVersion = "7.5.1",
+      proxyPort
+    )
 }

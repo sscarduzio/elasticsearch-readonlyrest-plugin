@@ -45,11 +45,15 @@ abstract class RorContainer (val name: String, val esVersion: String, image: Ima
 
   def host: String = container.getContainerIpAddress
 
-  def port: Integer = container.getMappedPort(9200)
+  def esMappedPort: Integer = container.getMappedPort(9200)
 
-  def adminClient: RestClient = new RestClient(sslEnabled, host, port, Optional.of(Tuple.from(adminCredentials._1, adminCredentials._2)))
+  def clientPort: Integer = esMappedPort
 
-  def client(user: String, password: String): RestClient = new RestClient(sslEnabled, host, port, Optional.of(Tuple.from(user, password)))
+  def esDirectClient: RestClient = new RestClient(sslEnabled, host, esMappedPort, Optional.of(Tuple.from(adminCredentials._1, adminCredentials._2)))
+
+  def client(user: String, password: String): RestClient = new RestClient(sslEnabled, host, clientPort, Optional.of(Tuple.from(user, password)))
+
+  def adminClient: RestClient = client(adminCredentials._1, adminCredentials._2)
 }
 
 object RorContainer extends StrictLogging {
@@ -70,7 +74,7 @@ object RorContainer extends StrictLogging {
     rorContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     rorContainer.container.addExposedPort(9200)
     rorContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(config.esVersion, rorContainer.name, Coeval(rorContainer.adminClient), initializer)
+      new ElasticsearchNodeWaitingStrategy(config.esVersion, rorContainer.name, Coeval(rorContainer.esDirectClient), initializer)
         .withStartupTimeout(3 minutes)
     )
     rorContainer.container.setNetwork(Network.SHARED)

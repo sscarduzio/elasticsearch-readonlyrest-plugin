@@ -3,6 +3,8 @@
  */
 package tech.beshu.ror.proxy
 
+import java.io.File
+
 import cats.data.EitherT
 import cats.effect.{ContextShift, ExitCode, IO, IOApp, Resource}
 import cats.implicits._
@@ -15,12 +17,19 @@ import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.proxy.RorProxy.CloseHandler
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import tech.beshu.ror.proxy.es.{EsCode, EsRestServiceSimulator}
 import tech.beshu.ror.proxy.server.ProxyRestInterceptorService
 import tech.beshu.ror.utils.ScalaOps._
 
 object Boot extends IOApp with RorProxy with Logging {
+
+  override val config: RorProxy.Config = RorProxy.Config(
+    targetEsNode = "http://localhost:9200",
+    proxyPort = "5000",
+    rorConfigFile = null
+  )
 
   override def run(args: List[String]): IO[ExitCode] = {
     start
@@ -45,6 +54,8 @@ trait RorProxy {
 
   implicit protected def contextShift: ContextShift[IO]
 
+  def config: RorProxy.Config
+
   def start: IO[Either[StartingFailure, CloseHandler]] = {
     for {
       _ <- IO(EsCode.improve())
@@ -57,7 +68,7 @@ trait RorProxy {
     val esClient = createEsHighLevelClient()
     val result = for {
       simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), threadPool))
-      server = Http.server.serve(":5000", new ProxyRestInterceptorService(simulator)) // todo: from config
+      server = Http.server.serve(s":${config.proxyPort}", new ProxyRestInterceptorService(simulator))
     } yield () =>
       for {
         _ <- twitterFutureToIo(server.close())
@@ -69,8 +80,17 @@ trait RorProxy {
   }
 
   private def createEsHighLevelClient() = {
-    new RestHighLevelClient(RestClient.builder(HttpHost.create("http://localhost:9200"))) // todo: from config
+    new RestHighLevelClient(RestClient.builder(HttpHost.create(config.targetEsNode)))
   }
 
-  private type CloseHandler = () => IO[Unit]
+}
+
+object RorProxy {
+
+  type CloseHandler = () => IO[Unit]
+
+  final case class Config(targetEsNode: String,
+                          proxyPort: String,
+                          rorConfigFile: File)
+
 }
