@@ -126,7 +126,6 @@ private object SslDecoders {
 
   object consts {
     val rorSection = "readonlyrest"
-    val forceLoadFromFile = "force_load_from_file"
     val externalSsl = "ssl"
     val internodeSsl = "ssl_internode"
     val keystoreFile = "keystore_file"

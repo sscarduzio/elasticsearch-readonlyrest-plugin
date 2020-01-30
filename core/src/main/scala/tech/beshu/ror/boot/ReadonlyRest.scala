@@ -251,6 +251,7 @@ class RorInstance private(boot: ReadonlyRest,
   private val currentEngine = Atomic(Option(initialEngine))
 
   def engine: Option[Engine] = currentEngine.get().map(_._1)
+  def config: Option[RawRorConfig] = currentEngine.get().map(_._2)
 
   def forceReloadAndSave(config: RawRorConfig): Task[Either[IndexConfigReloadWithUpdateError, Unit]] = {
     logger.debug("Reloading of provided settings was forced")

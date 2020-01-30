@@ -14,15 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks
+package tech.beshu.ror.accesscontrol.blocks.metadata
 
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, KibanaAccess, KibanaApp, LoggedUser, UserOrigin}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 final case class UserMetadata(loggedUser: Option[LoggedUser],
                               currentGroup: Option[Group],
                               availableGroups: UniqueList[Group],
                               foundKibanaIndex: Option[IndexName],
+                              foundKibanaTemplateIndex: Option[IndexName],
                               hiddenKibanaApps: Set[KibanaApp],
                               kibanaAccess: Option[KibanaAccess],
                               userOrigin: Option[UserOrigin])

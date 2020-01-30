@@ -44,6 +44,7 @@ readonlyrest:
       users: ["user4"]
       actions: ["cluster:admin/rradmin/refreshsettings"]
       kibana_index: "user4_group6_kibana_index"
+      kibana_template_index: "user4_group6_kibana_template_index"
       groups: [group6]
 
   users:

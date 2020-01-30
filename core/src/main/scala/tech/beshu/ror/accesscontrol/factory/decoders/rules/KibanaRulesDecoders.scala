@@ -22,7 +22,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
@@ -49,6 +49,14 @@ class KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     .kibanaIndexDecoder
     .map { index =>
       RuleWithVariableUsageDefinition.create(new KibanaIndexRule(KibanaIndexRule.Settings(index)))
+    }
+)
+
+class KibanaTemplateIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+  KibanaRulesDecoderHelper
+    .kibanaIndexDecoder
+    .map { index =>
+      RuleWithVariableUsageDefinition.create(new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(index)))
     }
 )
 
@@ -93,5 +101,6 @@ private object KibanaRulesDecoderHelper {
         case Left(error) => Left(RulesLevelCreationError(Message(error.show)))
       }
       .decoder
+
 }
 

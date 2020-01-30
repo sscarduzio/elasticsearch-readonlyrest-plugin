@@ -63,6 +63,9 @@ trait BlockContext {
   def kibanaIndex: Option[IndexName]
   def withKibanaIndex(index: IndexName): BlockContext
 
+  def kibanaTemplateIndex: Option[IndexName]
+  def withKibanaTemplateIndex(index: IndexName): BlockContext
+
 }
 
 object BlockContext {
@@ -126,6 +129,9 @@ object NoOpBlockContext extends BlockContext {
   override val kibanaIndex: Option[IndexName] = None
   override def withKibanaIndex(index: IndexName): BlockContext = this
 
+  override val kibanaTemplateIndex: Option[IndexName] = None
+  override def withKibanaTemplateIndex(index: IndexName): BlockContext = this
+
   override val userOrigin: Option[UserOrigin] = None
   override def withUserOrigin(origin: UserOrigin): BlockContext = this
 
@@ -187,6 +193,11 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withKibanaIndex(index: IndexName): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(kibanaIndex = Some(index)))
 
+  override val kibanaTemplateIndex: Option[IndexName] = data.kibanaTemplateIndex
+
+  override def withKibanaTemplateIndex(index: IndexName): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(kibanaTemplateIndex = Some(index)))
+
   override def indices: Outcome[Set[IndexName]] = data.indices
 
   override def withIndices(indices: Set[IndexName]): BlockContext =
@@ -217,6 +228,7 @@ object RequestContextInitiatedBlockContext {
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
                                     kibanaIndex: Option[IndexName],
+                                    kibanaTemplateIndex: Option[IndexName],
                                     kibanaAccess: Option[KibanaAccess],
                                     userOrigin: Option[UserOrigin],
                                     indices: Outcome[Set[IndexName]],
@@ -234,6 +246,7 @@ object RequestContextInitiatedBlockContext {
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,
         kibanaIndex = None,
+        kibanaTemplateIndex = None,
         kibanaAccess = None,
         userOrigin = None,
         indices = Outcome.NotExist,
