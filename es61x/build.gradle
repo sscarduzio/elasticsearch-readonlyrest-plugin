@@ -30,7 +30,6 @@ buildscript {
     }
     dependencies {
         classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
-        classpath "gradle.plugin.com.gorylenko.gradle-git-properties:gradle-git-properties:2.2.0"
     }
 }
 
@@ -45,7 +44,6 @@ def pluginFullName = pluginName + '-' + version
 apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: "com.github.hierynomus.license"
-apply plugin: "com.gorylenko.gradle-git-properties"
 
 compileScala {
     sourceCompatibility = 1.8
@@ -61,12 +59,6 @@ dependencies {
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion
 }
 
-gitProperties { 
-    gitPropertiesName "ror-build-info.properties"
-    customProperty 'es_version', esVersion
-    customProperty 'plugin_version', pluginVersion
-}
-
 license {
     header rootProject.file('ReadonlyRESTLicenseHeader.txt')
     skipExistingHeaders true
@@ -75,6 +67,10 @@ license {
         java = 'SLASHSTAR_STYLE'
         scala = 'SLASHSTAR_STYLE'
     }
+}
+
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
 }
 
 tasks.withType(Zip) { task ->
@@ -118,6 +114,17 @@ task configureEsVersion() {
     }
 }
 
+task generateVersionsFile() {
+    outputs.upToDateWhen { false }
+    doFirst {
+        def resourcesDir = sourceSets.main.output.resourcesDir
+        println(resourcesDir)
+        resourcesDir.mkdirs()
+        def contents = "es_version=$esVersion\nplugin_version=$pluginVersion"
+        new File(resourcesDir, "ror-build-info.properties").text = contents
+    }
+}
+
 task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) {
     outputs.upToDateWhen { false }
     from '../plugin-metadata'
@@ -131,12 +138,17 @@ task resolvePluginDescriptorTemplate(type: Copy, dependsOn: configureEsVersion) 
     ])
 }
 
-task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, generateGitProperties, jar, resolvePluginDescriptorTemplate]) {
+task toJar(type: Jar, dependsOn: generateVersionsFile) {
+    from sourceSets.main.getOutput()
+}
+
+task ror(type: Zip, dependsOn: [cleanOldData, jarHellCheck, toJar, resolvePluginDescriptorTemplate]) {
     outputs.upToDateWhen { false }
     archivesBaseName = pluginName
-    into('elasticsearch') {
-        from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
-        from 'build/libs/' + pluginFullName + '.jar'
-        from 'build/tmp/' + pluginFullName
-    }
+    into('elasticsearch')
+            {
+                from configurations.distJars.filter { x -> !x.name.contains('spatial4j') && ! x.name.contains('jts')}
+                from 'build/libs/' + pluginFullName + '.jar'
+                from 'build/tmp/' + pluginFullName
+            }
 }
