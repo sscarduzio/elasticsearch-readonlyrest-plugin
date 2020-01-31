@@ -26,8 +26,14 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.rules.utils.IndexNameRuntimeResolvableVariable
+import tech.beshu.ror.utils.TestsUtils._
 
-class KibanaTemplateIndexRuleTests extends WordSpec with MockFactory {
+class KibanaTemplateIndexRuleTests
+  extends WordSpec
+    with MockFactory {
+
+  import org.scalatest.Matchers._
+
   "set kibana template index if can be resolved" in {
     val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index")))
     val requestContext = MockRequestContext.default

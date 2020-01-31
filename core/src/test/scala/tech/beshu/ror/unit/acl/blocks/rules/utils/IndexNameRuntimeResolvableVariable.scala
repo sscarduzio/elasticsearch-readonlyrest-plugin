@@ -20,6 +20,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.utils.TestsUtils._
 
 object IndexNameRuntimeResolvableVariable{
   def create(value: String): RuntimeSingleResolvableVariable[IndexName] = {

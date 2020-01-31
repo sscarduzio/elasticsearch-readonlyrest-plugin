@@ -38,7 +38,7 @@ private class RRMetadataResponse(userMetadata: UserMetadata)
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     val sourceMap: Map[String, _] =
       MetadataValue.read(userMetadata).mapValues(MetadataValue.toAny)
-    builder.map(sourceMap.asJava)
+    sourceMap.foreach { case (key, value) => builder.field(key, value) }
     builder
   }
 }

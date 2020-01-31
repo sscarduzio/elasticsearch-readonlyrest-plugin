@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.request.usermetadata
 
 import org.elasticsearch.action.{ActionListener, ActionResponse}
-import org.elasticsearch.common.xcontent.{ToXContent, XContentBuilder}
+import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
 
 import scala.collection.JavaConverters._
@@ -33,7 +33,7 @@ class CurrentUserMetadataResponseActionListener(baseListener: ActionListener[Act
 }
 
 private class RRMetadataResponse(userMetadata: UserMetadata)
-  extends ActionResponse with ToXContent {
+  extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
     val sourceMap: Map[String, _] =
