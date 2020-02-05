@@ -12,6 +12,7 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
+  prompt_for_basic_auth: false
   enable: true
 
   # HTTP response body in case of forbidden request.

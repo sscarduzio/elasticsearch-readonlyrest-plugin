@@ -1,8 +1,6 @@
 http.bind_host: _eth0:ipv4_
 network.host: _eth0:ipv4_
-
 http.type: ssl_netty4
-
 
 readonlyrest:
   ssl:
@@ -11,6 +9,7 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
+  prompt_for_basic_auth: false
   access_control_rules:
 
   - name: "::POLLER::"

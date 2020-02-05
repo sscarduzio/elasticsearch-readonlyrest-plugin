@@ -1,6 +1,5 @@
 http.bind_host: _eth0:ipv4_
 network.host: _eth0:ipv4_
-#transport.type: local
 http.type: ssl_netty4
 
 readonlyrest:
@@ -10,6 +9,7 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
+  prompt_for_basic_auth: false
   access_control_rules:
 
   - name: "CONTAINER ADMIN"
