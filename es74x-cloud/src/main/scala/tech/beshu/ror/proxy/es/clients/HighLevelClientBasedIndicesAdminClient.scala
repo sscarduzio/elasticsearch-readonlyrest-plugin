@@ -3,9 +3,13 @@
  */
 package tech.beshu.ror.proxy.es.clients
 
+import java.util.concurrent.atomic.AtomicLong
+
 import monix.execution.Scheduler
+import org.elasticsearch.ElasticsearchStatusException
+import org.elasticsearch.action._
 import org.elasticsearch.action.admin.indices.alias.exists.{AliasesExistRequestBuilder, AliasesExistResponse}
-import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesRequest, GetAliasesRequestBuilder, GetAliasesResponse}
+import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesAction, GetAliasesRequest, GetAliasesRequestBuilder, GetAliasesResponse}
 import org.elasticsearch.action.admin.indices.alias.{IndicesAliasesRequest, IndicesAliasesRequestBuilder}
 import org.elasticsearch.action.admin.indices.analyze.{AnalyzeAction, AnalyzeRequestBuilder}
 import org.elasticsearch.action.admin.indices.cache.clear.{ClearIndicesCacheRequest, ClearIndicesCacheRequestBuilder, ClearIndicesCacheResponse}
@@ -36,14 +40,22 @@ import org.elasticsearch.action.admin.indices.upgrade.get.{UpgradeStatusRequest,
 import org.elasticsearch.action.admin.indices.upgrade.post.{UpgradeRequest, UpgradeRequestBuilder, UpgradeResponse}
 import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryRequest, ValidateQueryRequestBuilder, ValidateQueryResponse}
 import org.elasticsearch.action.support.master.AcknowledgedResponse
-import org.elasticsearch.action._
 import org.elasticsearch.client.IndicesAdminClient
+import org.elasticsearch.cluster.metadata.AliasMetaData
+import org.elasticsearch.common.collect.ImmutableOpenMap
+import org.elasticsearch.tasks.{Task, TaskManager}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.proxy.es.exceptions.NotDefinedForRorProxy
+import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter
+import tech.beshu.ror.proxy.es.exceptions.{NotDefinedForRorProxy, RorProxyException}
 
-class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapter)
+import scala.collection.JavaConverters._
+
+class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapter,
+                                             proxyFilter: ProxyIndexLevelActionFilter)
                                             (implicit scheduler: Scheduler)
-  extends IndicesAdminClient  {
+  extends IndicesAdminClient {
+
+  private val taskIdGenerator = new AtomicLong(0)
 
   override def exists(request: IndicesExistsRequest): ActionFuture[IndicesExistsResponse] = throw NotDefinedForRorProxy
 
@@ -171,7 +183,24 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def getAliases(request: GetAliasesRequest): ActionFuture[GetAliasesResponse] = throw NotDefinedForRorProxy
 
-  override def getAliases(request: GetAliasesRequest, listener: ActionListener[GetAliasesResponse]): Unit = throw NotDefinedForRorProxy
+  override def getAliases(request: GetAliasesRequest, listener: ActionListener[GetAliasesResponse]): Unit = {
+    execute(GetAliasesAction.INSTANCE.name(), request, listener) {
+      esClient
+        .getAlias(request)
+        .map { resp =>
+          Option(resp.getException) match {
+            case Some(ex) => throw ex
+            case None =>
+              val aliases = ImmutableOpenMap
+                .builder[String, java.util.List[AliasMetaData]]()
+                .putAll(resp.getAliases.asScala.mapValues(_.asScala.toList.asJava).asJava)
+                .build()
+              new GetAliasesResponse(aliases)
+          }
+        }
+        .runAsync(handleResultUsing(listener))
+    }
+  }
 
   override def prepareGetAliases(aliases: String*): GetAliasesRequestBuilder = throw NotDefinedForRorProxy
 
@@ -183,7 +212,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def getIndex(request: GetIndexRequest): ActionFuture[GetIndexResponse] = throw NotDefinedForRorProxy
 
-  override def getIndex(request: GetIndexRequest, listener: ActionListener[GetIndexResponse]): Unit = throw NotDefinedForRorProxy
+  override def getIndex(request: GetIndexRequest, listener: ActionListener[GetIndexResponse]): Unit = {
+    esClient
+      .getIndex(request)
+      .runAsync(handleResultUsing(listener))
+  }
 
   override def prepareGetIndex(): GetIndexRequestBuilder = throw NotDefinedForRorProxy
 
@@ -261,11 +294,29 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def threadPool(): ThreadPool = throw NotDefinedForRorProxy
 
-
   private def handleResultUsing[T](listener: ActionListener[T])
                                   (result: Either[Throwable, T]): Unit = result match {
     case Right(response) => listener.onResponse(response)
+    case Left(RorProxyException(_, ex: ElasticsearchStatusException)) => listener.onFailure(ex)
     case Left(ex: Exception) => listener.onFailure(ex)
     case Left(ex: Throwable) => listener.onFailure(new RuntimeException(ex))
+  }
+
+  private def execute[REQ <: ActionRequest, RESP <: ActionResponse](action: String,
+                                                                    request: REQ,
+                                                                    listener: ActionListener[RESP])
+                                                                   (handler: => Unit): Unit = {
+    val task = createNewTask(request, action)
+    proxyFilter.apply(
+      task,
+      action,
+      request,
+      listener,
+      (_: Task, _: String, request: REQ, listener: ActionListener[RESP]) => handler
+    )
+  }
+
+  private def createNewTask(request: ActionRequest, action: String) = {
+    request.createTask(taskIdGenerator.incrementAndGet(), null, action, null, Map.empty[String, String].asJava)
   }
 }

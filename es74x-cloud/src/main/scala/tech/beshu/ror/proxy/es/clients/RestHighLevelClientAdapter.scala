@@ -8,6 +8,7 @@ import java.util
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthResponse}
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
+import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsResponse}
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
@@ -37,6 +38,10 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.indices().getAlias(request, RequestOptions.DEFAULT))
   }
 
+  def getIndex(request: GetIndexRequest): Task[GetIndexResponse] = {
+    executeAsync(client.indices().get(request, RequestOptions.DEFAULT))
+  }
+
   def stats(request: IndicesStatsRequest): Task[IndicesStatsResponse] = {
     executeAsync(client.count(new CountRequest(), RequestOptions.DEFAULT))
       .map { resp =>
@@ -54,7 +59,10 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   private def executeAsync[T](action: => T): Task[T] = {
-    Task(action).onErrorRecoverWith { case ex => Task.raiseError(RorProxyException.wrap(ex)) }
+    Task(action)
+      .onErrorRecoverWith { case ex =>
+        Task.raiseError(RorProxyException.wrap(ex))
+      }
   }
 }
 

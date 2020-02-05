@@ -4,7 +4,7 @@
 package tech.beshu.ror.proxy.es
 
 import java.util
-import java.util.Collections
+import java.util.function.{Supplier, UnaryOperator}
 
 import better.files.File
 import cats.data.EitherT
@@ -19,16 +19,19 @@ import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings, SettingsFilter}
+import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.common.util.set.Sets
 import org.elasticsearch.common.xcontent.{DeprecationHandler, NamedXContentRegistry, StatusToXContentObject, ToXContent, XContentFactory, XContentType}
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
+import org.elasticsearch.plugins.ActionPlugin
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
-import org.elasticsearch.rest.{BytesRestResponse, RestRequest, RestResponse}
+import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestController, RestHandler, RestRequest, RestResponse}
 import org.elasticsearch.tasks
 import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
@@ -86,7 +89,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
   }
 
   private def createActionModule(settings: Settings) = {
-    val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), esClient, settings, threadPool)
+    val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), proxyFilter, esClient, settings, threadPool)
     val clusterSettings = new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS, Sets.newHashSet())
     val actionModule = new ActionModule(
       false,
@@ -96,7 +99,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       clusterSettings,
       new SettingsFilter(List.empty.asJava),
       threadPool,
-      Collections.emptyList(),
+      List[ActionPlugin](new RORActionPlugin()).asJava,
       nodeClient,
       new NoneCircuitBreakerService(),
       new UsageService(),
@@ -145,9 +148,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
           case Some(proxyRestChannel) =>
             esActionRequestHandler
               .handle(request)
-              .foreach {
-                case HandlingResult.Handled(response) => sendResponseThroughChannel(proxyRestChannel, response)
-                case HandlingResult.PassItThrough => proxyRestChannel.passThrough()
+              .runAsyncF {
+                case Right(HandlingResult.Handled(response)) => sendResponseThroughChannel(proxyRestChannel, response)
+                case Right(HandlingResult.PassItThrough) => proxyRestChannel.passThrough()
+                case Left(ex) => proxyRestChannel.sendFailureResponse(ex)
               }
           case None =>
             EsRestServiceSimulator.this.logger.warn(s"Request $request won't be executed")
@@ -161,6 +165,27 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       response.status(),
       response.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
     ))
+  }
+
+  private class RORActionPlugin extends ActionPlugin {
+
+    override def getRestHandlers(settings: Settings,
+                                 restController: RestController,
+                                 clusterSettings: ClusterSettings,
+                                 indexScopedSettings: IndexScopedSettings,
+                                 settingsFilter: SettingsFilter,
+                                 indexNameExpressionResolver: IndexNameExpressionResolver,
+                                 nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
+      super.getRestHandlers(settings, restController, clusterSettings, indexScopedSettings, settingsFilter, indexNameExpressionResolver, nodesInCluster)
+    }
+
+    override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
+      restHandler: RestHandler =>
+        (request: RestRequest, channel: RestChannel, client: NodeClient) => {
+          ThreadRepo.setRestChannel(channel)
+          restHandler.handleRequest(request, channel, client)
+        }
+    }
   }
 }
 
