@@ -129,12 +129,22 @@ class RegularRequestHandler(engine: Engine,
     requestContext.uriPath match {
       case CatIndicesPath(_) =>
         respondWithEmptyCatIndicesResponse()
-      case _ =>
+      case _ if engine.context.doesRequirePassword => // this is required by free kibana users who want to see basic auth prompt
         val nonExistentIndex = randomNonexistentIndex(requestContext)
-        requestInfo.writeIndices(Set(nonExistentIndex.value.value)) match {
-          case WriteResult.Success(_) => proceed(baseListener)
-          case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
+        if(nonExistentIndex.hasWildcard) {
+          proceedWithModifiedIndexIfPossible(requestInfo, nonExistentIndex)
+        } else {
+          onForbidden(NonEmptyList.one(OperationNotAllowed))
         }
+      case _ =>
+        proceedWithModifiedIndexIfPossible(requestInfo, randomNonexistentIndex(requestContext))
+    }
+  }
+
+  private def proceedWithModifiedIndexIfPossible(requestInfo: RequestInfo, index: IndexName): Unit = {
+    requestInfo.writeIndices(Set(index.value.value)) match {
+      case WriteResult.Success(_) => proceed(baseListener)
+      case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
 
