@@ -16,6 +16,7 @@ trait CrossClusterSearchSuite
     with ClientProvider
     with TargetEsContainer
     with ESVersionSupport {
+  this: SingleContainerCreator =>
 
   val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
   override val container = createRemoteClustersContainer(

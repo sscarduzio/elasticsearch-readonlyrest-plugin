@@ -5,7 +5,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.proxy.RorProxy
 import tech.beshu.ror.utils.containers.ContainerUtils
-import tech.beshu.ror.utils.containers.generic.{CallingProxy, EsClusterProvider, TargetEsContainer}
+import tech.beshu.ror.utils.containers.generic.{CallingProxy, EsContainerCreator, TargetEsContainer}
 
 import scala.concurrent.ExecutionContext
 
@@ -13,17 +13,17 @@ trait ProxyTestSupport
   extends BeforeAndAfterAll
     with ForAllTestContainer
     with CallingProxy
-    with EsClusterProvider {
+    with EsContainerCreator {
   this: Suite with TargetEsContainer =>
 
-  protected def rorConfigFileName: String
+  def rorConfigFileName: String
 
-  private var handler: Option[RorProxy.CloseHandler] = None
+  private var closeHandler: Option[RorProxy.CloseHandler] = None
   override val proxyPort = 5000
 
   override def afterStart(): Unit = {
     super.afterStart()
-    handler = createApp()
+    closeHandler = createApp()
       .start
       .unsafeRunSync()
       .toOption
@@ -31,7 +31,7 @@ trait ProxyTestSupport
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    handler.getOrElse(throw new Exception("Could not start test proxy instance"))().unsafeRunSync()
+    closeHandler.getOrElse(throw new Exception("Could not start test proxy instance"))().unsafeRunSync()
   }
 
   private def createApp() = new RorProxy {

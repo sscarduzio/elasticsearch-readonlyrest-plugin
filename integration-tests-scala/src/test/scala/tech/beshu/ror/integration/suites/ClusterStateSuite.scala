@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.generic.{ClientProvider, ClusterProvider, ClusterSettings, TargetEsContainer}
+import tech.beshu.ror.utils.containers.generic.{ClientProvider, ClusterProvider, ClusterSettings, SingleContainerCreator, TargetEsContainer}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait ClusterStateSuite
@@ -28,6 +28,7 @@ trait ClusterStateSuite
     with ClusterProvider
     with TargetEsContainer
     with ForAllTestContainer {
+  this: SingleContainerCreator =>
 
   val rorConfigFileName = "/cluster_state/readonlyrest.yml"
   override lazy val container = createLocalClusterContainer(
