@@ -3,8 +3,7 @@
  */
 package tech.beshu.ror.proxy
 
-import java.io.File
-
+import better.files.File
 import cats.data.EitherT
 import cats.effect.{ContextShift, ExitCode, IO, IOApp, Resource}
 import cats.implicits._
@@ -28,7 +27,7 @@ object Boot extends IOApp with RorProxy with Logging {
   override val config: RorProxy.Config = RorProxy.Config(
     targetEsNode = "http://localhost:9200",
     proxyPort = "5000",
-    rorConfigFile = null
+    esConfigFile = None
   )
 
   override def run(args: List[String]): IO[ExitCode] = {
@@ -66,8 +65,9 @@ trait RorProxy {
   private def runServer: IO[Either[StartingFailure, CloseHandler]] = {
     val threadPool: ThreadPool = new ThreadPool(Settings.EMPTY)
     val esClient = createEsHighLevelClient()
+    val esConfig = config.esConfigFile.getOrElse(File(getClass.getClassLoader.getResource("elasticsearch.yml")))
     val result = for {
-      simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), threadPool))
+      simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), esConfig, threadPool))
       server = Http.server.serve(s":${config.proxyPort}", new ProxyRestInterceptorService(simulator))
     } yield () =>
       for {
@@ -91,6 +91,6 @@ object RorProxy {
 
   final case class Config(targetEsNode: String,
                           proxyPort: String,
-                          rorConfigFile: File)
+                          esConfigFile: Option[File])
 
 }

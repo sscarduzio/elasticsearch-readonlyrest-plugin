@@ -37,6 +37,7 @@ import scala.language.postfixOps
 
 abstract class RorContainer (val name: String, val esVersion: String, image: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
+    with ClientProvider
     with StrictLogging {
 
   override implicit val container = new org.testcontainers.containers.GenericContainer(image)
@@ -45,15 +46,9 @@ abstract class RorContainer (val name: String, val esVersion: String, image: Ima
 
   def host: String = container.getContainerIpAddress
 
-  def esMappedPort: Integer = container.getMappedPort(9200)
+  def port: Integer = container.getMappedPort(9200)
 
-  def clientPort: Integer = esMappedPort
-
-  def esDirectClient: RestClient = new RestClient(sslEnabled, host, esMappedPort, Optional.of(Tuple.from(adminCredentials._1, adminCredentials._2)))
-
-  def client(user: String, password: String): RestClient = new RestClient(sslEnabled, host, clientPort, Optional.of(Tuple.from(user, password)))
-
-  def adminClient: RestClient = client(adminCredentials._1, adminCredentials._2)
+  override def client(user: String, password: String): RestClient = new RestClient(sslEnabled, host, port, Optional.of(Tuple.from(user, password)))
 }
 
 object RorContainer extends StrictLogging {
@@ -74,7 +69,7 @@ object RorContainer extends StrictLogging {
     rorContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     rorContainer.container.addExposedPort(9200)
     rorContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(config.esVersion, rorContainer.name, Coeval(rorContainer.esDirectClient), initializer)
+      new ElasticsearchNodeWaitingStrategy(config.esVersion, rorContainer.name, Coeval(rorContainer.adminClient), initializer)
         .withStartupTimeout(3 minutes)
     )
     rorContainer.container.setNetwork(Network.SHARED)

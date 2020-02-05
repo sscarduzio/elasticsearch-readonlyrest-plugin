@@ -8,18 +8,17 @@ import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
-object RorPluginProvider {
+trait EsClusterWithRorPluginProvider extends ClusterProvider {
 
-  def createLocalClusterContainer(name: String,
-                                  rorConfigFileName: String,
-                                  clusterSettings: AdditionalClusterSettings = AdditionalClusterSettings()) = {
-    if (clusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("ES Cluster should have at least one instance")
+  override def createLocalClusterContainer(clusterSettings: ClusterSettings) = {
+    if (clusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("Cluster should have at least one instance")
 
     val project = RorPluginGradleProject.fromSystemProperty
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val esVersion = project.getESVersion
-    val rorConfigFile = ContainerUtils.getResourceFile(rorConfigFileName)
-    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, clusterSettings.numberOfInstances)(_ + 1).toList.map(idx => s"${name}_$idx"))
+    val rorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
+    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, clusterSettings.numberOfInstances)(_ + 1).toList
+      .map(idx => s"${clusterSettings.name}_$idx"))
 
     new ReadonlyRestEsClusterContainer(
       nodeNames.map { name =>
@@ -38,15 +37,9 @@ object RorPluginProvider {
       clusterSettings.clusterInitializer)
   }
 
-  def createRemoteClustersContainer(localClusters: NonEmptyList[LocalClusterDef],
-                                    remoteClustersInitializer: RemoteClustersInitializer) = {
-    val startedClusters = localClusters
-      .map { cluster =>
-        createLocalClusterContainer(
-          cluster.name,
-          cluster.rorConfigFileName,
-          AdditionalClusterSettings(nodeDataInitializer = cluster.nodeDataInitializer))
-      }
+  override def createRemoteClustersContainer(localClustersSettings: NonEmptyList[ClusterSettings],
+                                             remoteClustersInitializer: RemoteClustersInitializer) = {
+    val startedClusters = localClustersSettings.map(createLocalClusterContainer)
     new ReadonlyRestEsRemoteClustersContainer(startedClusters, remoteClustersInitializer)
   }
 }

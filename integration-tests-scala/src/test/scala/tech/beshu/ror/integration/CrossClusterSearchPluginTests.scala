@@ -16,18 +16,6 @@
  */
 package tech.beshu.ror.integration
 
-import cats.data.NonEmptyList
 import tech.beshu.ror.integration.suites.CrossClusterSearchSuite
-import tech.beshu.ror.utils.containers.generic
-import tech.beshu.ror.utils.containers.generic.RorPluginProvider
 
-class CrossClusterSearchTests extends CrossClusterSearchSuite {
-
-  override val container = RorPluginProvider.createRemoteClustersContainer(
-    NonEmptyList.of(
-      generic.LocalClusterDef("ROR1", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchSuite.nodeDataInitializer()),
-      generic.LocalClusterDef("ROR2", rorConfigFileName = "/cross_cluster_search/readonlyrest.yml", CrossClusterSearchSuite.nodeDataInitializer())
-    ),
-    CrossClusterSearchSuite.remoteClustersInitializer()
-  )
-}
+class CrossClusterSearchPluginTests extends CrossClusterSearchSuite with PluginTestSupport

@@ -17,12 +17,5 @@
 package tech.beshu.ror.integration
 
 import tech.beshu.ror.integration.suites.ClusterStateSuite
-import tech.beshu.ror.utils.containers.generic.RorPluginProvider
 
-class ClusterStateTests extends ClusterStateSuite {
-
-  override val container = RorPluginProvider.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/cluster_state/readonlyrest.yml"
-  )
-}
+class ClusterStatePluginTests extends ClusterStateSuite with PluginTestSupport

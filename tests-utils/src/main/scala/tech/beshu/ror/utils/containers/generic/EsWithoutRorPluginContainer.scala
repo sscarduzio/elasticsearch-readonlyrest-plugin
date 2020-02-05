@@ -24,14 +24,11 @@ import scala.language.postfixOps
 
 class EsWithoutRorPluginContainer(name: String,
                                   esVersion: String,
-                                  proxyPort: Integer,
                                   image: ImageFromDockerfile)
   extends RorContainer(name, esVersion, image)
   with StrictLogging {
 
   logger.info(s"[$name] Creating plain ES without ROR plugin container ...")
-
-  override def clientPort: Integer = proxyPort
 
   override val sslEnabled: Boolean = false
 }
@@ -41,7 +38,6 @@ object EsWithoutRorPluginContainer {
   final case class Config(nodeName: String,
                           nodes: NonEmptyList[String],
                           esVersion: String,
-                          proxyPort: Integer,
                           xPackSupport: Boolean) extends RorContainer.Config
 
   def create(config: EsWithoutRorPluginContainer.Config,
@@ -49,7 +45,6 @@ object EsWithoutRorPluginContainer {
     val esContainer = new EsWithoutRorPluginContainer(
       config.nodeName,
       config.esVersion,
-      config.proxyPort,
       ESWithoutReadonlyRestImage.create(config)
     )
     RorContainer.init(esContainer, config, initializer)

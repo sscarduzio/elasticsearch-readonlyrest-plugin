@@ -47,7 +47,7 @@ class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: N
     Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
 
     Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
-    clusterInitializer.initialize(nodesContainers.head.esDirectClient, this)
+    clusterInitializer.initialize(nodesContainers.head.adminClient, this)
   }
 
   override def finished()(implicit description: Description): Unit =
@@ -106,7 +106,7 @@ class ReadonlyRestEsRemoteClustersContainer private[containers](val localCluster
       request
     }
 
-    val esClient = container.esDirectClient
+    val esClient = container.adminClient
     Try(esClient.execute(createRemoteClusterSettingsRequest(esClient))).bracket { response =>
       response.getStatusLine.getStatusCode match {
         case 200 =>
@@ -130,14 +130,14 @@ trait RemoteClustersInitializer {
   def remoteClustersConfiguration(localClusterRepresentatives: NonEmptyList[RorContainer]): Map[String, NonEmptyList[RorContainer]]
 }
 
-final case class AdditionalClusterSettings(numberOfInstances: Int = 1,
-                                           nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                           clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer$,
-                                           dependentServicesContainers: List[DependencyDef] = Nil,
-                                           xPackSupport: Boolean = false,
-                                           configHotReloadingEnabled: Boolean = true,
-                                           internodeSslEnabled: Boolean = false)
-
-final case class LocalClusterDef(name: String, rorConfigFileName: String, nodeDataInitializer: ElasticsearchNodeDataInitializer)
+final case class ClusterSettings(name: String,
+                                 rorConfigFileName: String,
+                                 numberOfInstances: Int = 1,
+                                 nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+                                 clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer$,
+                                 dependentServicesContainers: List[DependencyDef] = Nil,
+                                 xPackSupport: Boolean = false,
+                                 configHotReloadingEnabled: Boolean = true,
+                                 internodeSslEnabled: Boolean = false)
 
 final case class DependencyDef(name: String, containerCreator: Coeval[GenericContainer])

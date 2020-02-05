@@ -5,16 +5,30 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.generic.{ElasticsearchNodeDataInitializer, ReadonlyRestEsRemoteClustersContainer, RemoteClustersInitializer, RorContainer}
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait CrossClusterSearchSuite extends WordSpec with ForAllTestContainer with ESVersionSupport {
+trait CrossClusterSearchSuite
+  extends WordSpec
+    with ForAllTestContainer
+    with ClusterProvider
+    with ClientProvider
+    with TargetEsContainer
+    with ESVersionSupport {
 
-  val container: ReadonlyRestEsRemoteClustersContainer
+  val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
+  override val container = createRemoteClustersContainer(
+    NonEmptyList.of(
+      ClusterSettings(name = "ROR1", rorConfigFileName = rorConfigFileName, nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
+      ClusterSettings(name = "ROR2", rorConfigFileName = rorConfigFileName, nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
+    ),
+    CrossClusterSearchSuite.remoteClustersInitializer()
+  )
+  override val targetEsContainer = container.localClusters.head.nodesContainers.head
 
-  private lazy val user1SearchManager = new SearchManagerJ(container.localClusters.head.nodesContainers.head.client("dev1", "test"))
-  private lazy val user2SearchManager = new SearchManagerJ(container.localClusters.head.nodesContainers.head.client("dev2", "test"))
+  private lazy val user1SearchManager = new SearchManagerJ(client("dev1", "test"))
+  private lazy val user2SearchManager = new SearchManagerJ(client("dev2", "test"))
 
   "A cluster search for given index" should {
     "return 200 and allow user to its content" when {
