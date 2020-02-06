@@ -52,11 +52,12 @@ class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
           val result = user1MetadataManager.fetchMetadata("group6")
 
           assertEquals(200, result.responseCode)
-          result.responseJson.obj.size should be (4)
+          result.responseJson.obj.size should be (5)
           result.responseJson("x-ror-username").str should be("user4")
           result.responseJson("x-ror-current-group").str should be("group6")
           result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group5"), Str("group6")))
           result.responseJson("x-ror-kibana_index").str should be("user4_group6_kibana_index")
+          result.responseJson("x-ror-kibana_template_index").str should be("user4_group6_kibana_template_index")
         }
         "at least one block is matched" in {
           val user2MetadataManager = new RorApiManager(container.nodesContainers.head.client("user2", "pass"))

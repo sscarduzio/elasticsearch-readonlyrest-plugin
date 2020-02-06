@@ -44,6 +44,7 @@ public class Constants {
   public static final String HEADER_KIBANA_HIDDEN_APPS = "x-ror-kibana-hidden-apps";
   public static final String HEADER_KIBANA_ACCESS = "x-ror-kibana_access";
   public static final String HEADER_KIBANA_INDEX = "x-ror-kibana_index";
+  public static final String HEADER_KIBANA_TEMPLATE_INDEX = "x-ror-kibana_template_index";
   public static final String HEADER_USER_ORIGIN = "x-ror-origin";
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(

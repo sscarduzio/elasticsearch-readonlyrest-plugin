@@ -73,7 +73,6 @@ object domain {
       val userAgent = Name(NonEmptyString.unsafeFrom("User-Agent"))
       val authorization = Name(NonEmptyString.unsafeFrom("Authorization"))
       val rorUser = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ROR))
-      val kibanaIndex = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_INDEX))
       val kibanaAccess = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_ACCESS))
       val transientFilter = Name(NonEmptyString.unsafeFrom(Constants.FILTER_TRANSIENT))
       val impersonateAs = Name(NonEmptyString.unsafeFrom("impersonate_as"))

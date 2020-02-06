@@ -49,6 +49,7 @@ object ruleDecoders {
       case KibanaAccessRule.name => Some(new KibanaAccessRuleDecoder)
       case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
       case KibanaIndexRule.name => Some(new KibanaIndexRuleDecoder)
+      case KibanaTemplateIndexRule.name => Some(new KibanaTemplateIndexRuleDecoder)
       case LdapAuthorizationRule.name => Some(new LdapAuthorizationRuleDecoder(definitions.ldaps))
       case LocalHostsRule.name => Some(new LocalHostsRuleDecoder)
       case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
