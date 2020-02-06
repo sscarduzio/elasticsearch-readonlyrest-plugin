@@ -234,7 +234,7 @@ trait BaseIndexApiTests extends WordSpec with ForAllTestContainer with ESVersion
         "full alias name is used and the alias doesn't exist" excludeES(allEs5xExceptEs55x) in {
           val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent")
 
-          aliasResponse.responseCode should be (notFoundIndexStatusReturned)
+          aliasResponse.responseCode should be (404)
         }
       }
     }
