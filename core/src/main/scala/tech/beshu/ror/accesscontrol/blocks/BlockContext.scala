@@ -193,7 +193,7 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withKibanaIndex(index: IndexName): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(kibanaIndex = Some(index)))
 
-  override val kibanaTemplateIndex: Option[IndexName] = data.kibanaTemplateIndex
+  override def kibanaTemplateIndex: Option[IndexName] = data.kibanaTemplateIndex
 
   override def withKibanaTemplateIndex(index: IndexName): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(kibanaTemplateIndex = Some(index)))

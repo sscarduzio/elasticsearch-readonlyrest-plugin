@@ -34,13 +34,24 @@ class KibanaTemplateIndexRuleTests
 
   import org.scalatest.Matchers._
 
-  "set kibana template index if can be resolved" in {
-    val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index")))
-    val requestContext = MockRequestContext.default
-    val blockContext = mock[BlockContext]
-    val newBlockContext = mock[BlockContext]
-    (blockContext.withKibanaTemplateIndex _).expects(IndexName("kibana_template_index".nonempty)).returning(newBlockContext)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
+  "A KibanaTemplateIndexRule" should {
+    "always match" should {
+      "set kibana template index if can be resolved" in {
+        val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index")))
+        val requestContext = MockRequestContext.default
+        val blockContext = mock[BlockContext]
+        val newBlockContext = mock[BlockContext]
+        (blockContext.withKibanaTemplateIndex _).expects(IndexName("kibana_template_index".nonempty)).returning(newBlockContext)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
+      }
+      "not set kibana index if cannot be resolved" in {
+        val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index_of_@{user}")))
+        val requestContext = MockRequestContext.default
+        val blockContext = mock[BlockContext]
+        (blockContext.loggedUser _).expects().returning(None)
+        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
+      }
+    }
   }
 
   private def indexNameValueFrom(value: String): RuntimeSingleResolvableVariable[IndexName] =
