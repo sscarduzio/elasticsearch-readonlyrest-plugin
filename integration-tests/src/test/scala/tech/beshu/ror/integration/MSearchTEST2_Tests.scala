@@ -92,7 +92,6 @@ object MSearchTEST2_Tests {
         |    keystore_pass: readonlyrest
         |    key_pass: readonlyrest
         |
-        |  prompt_for_basic_auth: false
         |  access_control_rules:
         |
         |  - name: "CONTAINER ADMIN"
