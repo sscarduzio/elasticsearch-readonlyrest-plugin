@@ -226,7 +226,7 @@ trait BaseIndexApiTests extends WordSpec with ForAllTestContainer with ESVersion
           "there is no matching alias" excludeES(allEs7x, "^es66x$".r, allEs5xExceptEs55x) in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
-            aliasResponse.responseCode should be (notFoundIndexStatusReturned)
+            aliasResponse.responseCode should be (404)
           }
         }
       }
@@ -339,7 +339,6 @@ trait BaseIndexApiTests extends WordSpec with ForAllTestContainer with ESVersion
       }
     }
   }
-
 }
 
 object BaseIndexApiTests {
