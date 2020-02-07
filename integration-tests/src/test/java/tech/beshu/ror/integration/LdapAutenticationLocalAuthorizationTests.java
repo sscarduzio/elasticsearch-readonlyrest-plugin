@@ -37,7 +37,7 @@ public class LdapAutenticationLocalAuthorizationTests {
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProjectJ.fromSystemProperty(),
           new MultiContainer.Builder()
-              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_separate_authc_authz_mixed_local/ldap.ldif"))
+              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_authc_local_authz/ldap.ldif"))
               .build(),
           "/ldap_authc_local_authz/elasticsearch.yml",
           new ElasticsearchTweetsInitializer()

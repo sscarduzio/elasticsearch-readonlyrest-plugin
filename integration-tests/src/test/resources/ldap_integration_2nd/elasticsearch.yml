@@ -1,6 +1,7 @@
 
 http.host: 0.0.0.0
 
+
 http.type: ssl_netty4
 #transport.type: local
 
@@ -12,6 +13,8 @@ readonlyrest:
     key_pass: readonlyrest
 
   enable: true
+
+  prompt_for_basic_auth: false
 
   # HTTP response body in case of forbidden request.
   # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
@@ -26,22 +29,24 @@ readonlyrest:
     auth_key: admin:container
 
   - name: "::Tweets::"
+    type: allow
     methods: GET
-   # indices: ["twitter"]
-    kibana_index: ".kibana_group1"
-    ldap_authentication: "ldap1"
+    ldap_authentication:
+      name: "ldap1"
     ldap_authorization:
       name: "ldap1"
       groups: ["group1"]
+    indices: ["twitter"]
 
   - name: "::Facebook posts::"
+    type: allow
     methods: GET
-  #  indices: ["facebook"]
-    kibana_index: ".kibana_group3"
-    ldap_authentication: "ldap1"
+    ldap_authentication:
+      name: "ldap2"
     ldap_authorization:
-      name: "ldap1"
+      name: "ldap2"
       groups: ["group3"]
+    indices: ["facebook"]
 
   ######### LDAP1 SERVER CONFIGURATION ########################
   # group1: cartman, bong
@@ -65,3 +70,16 @@ readonlyrest:
     request_timeout_in_sec: 10                                # default 1
     cache_ttl_in_sec: 60                                      # default 0 - cache disabled
 
+  - name: ldap2
+    host: "{LDAP2}"
+    port: 389                                                 # default 389
+    ssl_enabled: false                                        # default true
+    ssl_trust_all_certs: true                                 # default false
+    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+    bind_password: "password"                                 # skip for anonymous bind
+    search_user_base_DN: "ou=People,dc=example,dc=com"
+    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+    connection_pool_size: 10                                  # default 30
+    connection_timeout_in_sec: 10                             # default 1
+    request_timeout_in_sec: 10                                # default 1
+    cache_ttl_in_sec: 60                                      # default 0 - cache disabled

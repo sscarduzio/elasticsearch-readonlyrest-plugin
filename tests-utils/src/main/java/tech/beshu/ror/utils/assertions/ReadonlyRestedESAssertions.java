@@ -64,7 +64,7 @@ public class ReadonlyRestedESAssertions {
   public void assertUserAccessToIndexForbidden(String name, String password, String index)
       throws IOException, URISyntaxException {
     assertGetIndexResponseCode(
-        rorContainer.getBasicAuthClient(name, password), index, 401
+        rorContainer.getBasicAuthClient(name, password), index, 403
     );
   }
 
@@ -78,7 +78,7 @@ public class ReadonlyRestedESAssertions {
   public void assertReverseProxyAccessToIndexForbidden(String headerName, String userId, String index)
       throws IOException, URISyntaxException {
     assertGetIndexResponseCode(
-        rorContainer.getClient(new BasicHeader(headerName, userId)), index, 401
+        rorContainer.getClient(new BasicHeader(headerName, userId)), index, 403
     );
   }
 
