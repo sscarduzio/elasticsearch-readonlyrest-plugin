@@ -20,8 +20,8 @@ import java.io.File
 
 import cats.implicits._
 import cats.data.NonEmptyList
-import com.dimafeng.testcontainers.Container
-import monix.eval.Task
+import com.dimafeng.testcontainers.{Container, GenericContainer}
+import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
@@ -38,50 +38,74 @@ object ReadonlyRestEsCluster {
 
   def createLocalClusterContainer(name: String,
                                   rorConfigFileName: String,
-                                  numberOfInstances: Int = 2,
-                                  nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                  clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer): ReadonlyRestEsClusterContainer =
-    createLocalClusterContainer(name, ContainerUtils.getResourceFile(rorConfigFileName), numberOfInstances, nodeDataInitializer, clusterInitializer)
+                                  clusterSettings: AdditionalClusterSettings = AdditionalClusterSettings()): ReadonlyRestEsClusterContainer = {
+    if (clusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("ES Cluster should have at least one instance")
 
-  def createLocalClusterContainer(name: String,
-                                  rorConfigFile: File,
-                                  numberOfInstances: Int,
-                                  nodeDataInitializer: ElasticsearchNodeDataInitializer,
-                                  clusterInitializer: ReadonlyRestEsClusterInitializer): ReadonlyRestEsClusterContainer = {
-    if (numberOfInstances < 1) throw new IllegalArgumentException("ES Cluster should have at least one instance")
     val project = RorPluginGradleProject.fromSystemProperty
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val esVersion = project.getESVersion
+    val rorConfigFile = ContainerUtils.getResourceFile(rorConfigFileName)
+    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, clusterSettings.numberOfInstances)(_ + 1).toList.map(idx => s"${name}_$idx"))
 
-    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, numberOfInstances)(_ + 1).toList.map(idx => s"${name}_$idx"))
     new ReadonlyRestEsClusterContainer(
       nodeNames.map { name =>
-        Task(ReadonlyRestEsContainer.create(name, nodeNames, esVersion, rorPluginFile, rorConfigFile, nodeDataInitializer))
+        val containerConfig = ReadonlyRestEsContainer.Config(
+          nodeName = name,
+          nodes = nodeNames,
+          esVersion = esVersion,
+          rorPluginFile = rorPluginFile,
+          rorConfigFile = rorConfigFile,
+          configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
+          internodeSslEnabled = clusterSettings.internodeSslEnabled,
+          xPackSupport = clusterSettings.xPackSupport)
+        Task(ReadonlyRestEsContainer.create(containerConfig, clusterSettings.nodeDataInitializer))
       },
-      clusterInitializer
+      clusterSettings.dependentServicesContainers,
+      clusterSettings.clusterInitializer
     )
   }
 
   def createRemoteClustersContainer(localClusters: NonEmptyList[LocalClusterDef],
                                     remoteClustersInitializer: RemoteClustersInitializer): ReadonlyRestEsRemoteClustersContainer = {
-    val startedClusters = localClusters.map(l => createLocalClusterContainer(l.name, l.rorConfigFileName, numberOfInstances = 1, l.nodeDataInitializer))
+    val startedClusters = localClusters
+      .map { cluster =>
+        createLocalClusterContainer(
+          cluster.name,
+          cluster.rorConfigFileName,
+          AdditionalClusterSettings(nodeDataInitializer = cluster.nodeDataInitializer))
+      }
     new ReadonlyRestEsRemoteClustersContainer(startedClusters, remoteClustersInitializer)
   }
+
+  final case class AdditionalClusterSettings(numberOfInstances: Int = 1,
+                                             nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
+                                             clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer,
+                                             dependentServicesContainers: List[DependencyDef] = Nil,
+                                             xPackSupport: Boolean = false,
+                                             configHotReloadingEnabled: Boolean = true,
+                                             internodeSslEnabled: Boolean = false)
 }
 
 final case class LocalClusterDef(name: String, rorConfigFileName: String, nodeDataInitializer: ElasticsearchNodeDataInitializer)
+final case class DependencyDef(name: String, containerCreator: Coeval[GenericContainer])
 
-class ReadonlyRestEsClusterContainer private[containers](containers: NonEmptyList[Task[ReadonlyRestEsContainer]],
+class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: NonEmptyList[Task[ReadonlyRestEsContainer]],
+                                                         dependencies: List[DependencyDef],
                                                          clusterInitializer: ReadonlyRestEsClusterInitializer)
   extends Container {
 
   val nodesContainers: NonEmptyList[ReadonlyRestEsContainer] = {
-    NonEmptyList.fromListUnsafe(Task.gather(containers.toList).runSyncUnsafe())
+    NonEmptyList.fromListUnsafe(Task.gather(rorClusterContainers.toList).runSyncUnsafe())
   }
+
+  val depsContainers: List[(DependencyDef, GenericContainer)] =
+    dependencies.map(d => (d, d.containerCreator.apply()))
 
   val esVersion: String = nodesContainers.head.esVersion
 
   override def starting()(implicit description: Description): Unit = {
+    Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
+
     Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
     clusterInitializer.initialize(nodesContainers.head.adminClient, this)
   }

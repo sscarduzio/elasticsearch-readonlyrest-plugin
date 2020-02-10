@@ -59,6 +59,7 @@ class LocalHostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[LocalHosts
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    hosts_local: "@{user}.com"
               |
               |""".stripMargin,

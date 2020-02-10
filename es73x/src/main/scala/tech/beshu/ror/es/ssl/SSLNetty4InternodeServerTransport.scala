@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.ssl
 
-import java.io.ByteArrayInputStream
+import java.io.{ByteArrayInputStream, InputStream}
 import java.net.SocketAddress
 import java.nio.charset.StandardCharsets
 
@@ -34,8 +34,9 @@ import org.elasticsearch.common.util.PageCacheRecycler
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.netty4.Netty4Transport
-import tech.beshu.ror.configuration.SslConfiguration
+import tech.beshu.ror.configuration.SslConfiguration.InternodeSslConfiguration
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.SSLCertParser
 
 import scala.collection.JavaConverters._
 
@@ -45,7 +46,7 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
                                         circuitBreakerService: CircuitBreakerService,
                                         namedWriteableRegistry: NamedWriteableRegistry,
                                         networkService: NetworkService,
-                                        ssl: SslConfiguration)
+                                        ssl: InternodeSslConfiguration)
   extends Netty4Transport(settings, Version.CURRENT, threadPool, networkService, pageCacheRecycler, namedWriteableRegistry, circuitBreakerService)
     with Logging {
 
@@ -53,11 +54,14 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     override def initChannel(ch: Channel): Unit = {
       super.initChannel(ch)
       logger.info(">> internode SSL channel initializing")
-      val sslCtxBuilder = SslContextBuilder.forClient()
-      if (ssl.verifyClientAuth) {
-        sslCtxBuilder.trustManager(InsecureTrustManagerFactory.INSTANCE)
-      }
-      val sslCtx = sslCtxBuilder.build()
+      val usedTrustManager =
+        if (ssl.certificateVerificationEnabled) SSLCertParser.customTrustManagerFrom(ssl).orNull
+        else InsecureTrustManagerFactory.INSTANCE
+
+      val sslCtx = SslContextBuilder.forClient()
+        .trustManager(usedTrustManager)
+        .build()
+
       ch.pipeline().addFirst(new ChannelOutboundHandlerAdapter {
         override def connect(ctx: ChannelHandlerContext, remoteAddress: SocketAddress, localAddress: SocketAddress, promise: ChannelPromise): Unit = {
           val sslEngine = sslCtx.newEngine(ctx.alloc())
@@ -84,8 +88,6 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
   private class SslChannelInitializer(name: String) extends ServerChannelInitializer(name) {
     private var context = Option.empty[SslContext]
 
-    import tech.beshu.ror.utils.SSLCertParser
-
     doPrivileged {
       SSLCertParser.run(new SSLContextCreatorImpl, ssl)
     }
@@ -98,15 +100,10 @@ class SSLNetty4InternodeServerTransport(settings: Settings,
     }
 
     private class SSLContextCreatorImpl extends SSLCertParser.SSLContextCreator {
-      override def mkSSLContext(certChain: String, privateKey: String): Unit = {
+      override def mkSSLContext(certChain: InputStream, privateKey: InputStream): Unit = {
         try { // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          val sslCtxBuilder = SslContextBuilder.forServer(
-            new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-            new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-            null
-          )
-          // Cert verification enable by default for internode
-          if (ssl.verifyClientAuth) sslCtxBuilder.clientAuth(ClientAuth.REQUIRE)
+          val sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null)
+
           logger.info("ROR Internode using SSL provider: " + SslContext.defaultServerProvider.name)
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build.newEngine(ByteBufAllocator.DEFAULT), ssl)
           if (ssl.allowedCiphers.nonEmpty) sslCtxBuilder.ciphers(ssl.allowedCiphers.map(_.value).toList.asJava)

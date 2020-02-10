@@ -17,10 +17,13 @@
 package tech.beshu.ror.es
 
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.atomic.Atomic
+import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
@@ -30,15 +33,15 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SecurityPermissionException
 import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.accesscontrol.request.EsRequestContext
-import tech.beshu.ror.boot.{Engine, Ror}
+import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
 import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider}
+import tech.beshu.ror.es.request.RequestInfo
+import tech.beshu.ror.es.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
-import tech.beshu.ror.es.request.{RequestInfo, RorNotReadyResponse}
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.{IndexLevelActionFilterJavaHelper, ThreadRepo}
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class IndexLevelActionFilter(settings: Settings,
@@ -58,22 +61,42 @@ class IndexLevelActionFilter(settings: Settings,
     this(settings, clusterService, client, threadPool, env, ())
   }
 
-  private val rorInstance = doPrivileged {
-    val startingResult = Ror
+  private val emptyClusterState = new ClusterStateResponse(
+    ClusterName.CLUSTER_NAME_SETTING.get(settings),
+    ClusterState.PROTO
+  )
+
+  private val rorInstanceState: Atomic[RorInstanceStartingState] =
+    Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
+
+  private val startingTaskCancellable = doPrivileged {
+    Ror
       .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
-      .runSyncUnsafe(1 minute)
-    startingResult match {
-      case Right(instance) =>
-        RorInstanceSupplier.update(instance)
-        instance
-      case Left(ex) =>
-        throw StartingFailureException.from(ex)
-    }
+      .runAsync {
+        case Right(Right(instance)) =>
+          RorInstanceSupplier.update(instance)
+          rorInstanceState.set(RorInstanceStartingState.Started(instance))
+        case Right(Left(failure)) =>
+          val startingFailureException = StartingFailureException.from(failure)
+          logger.error("ROR starting failure:", startingFailureException)
+          rorInstanceState.set(RorInstanceStartingState.NotStarted(startingFailureException))
+        case Left(ex) =>
+          val startingFailureException = StartingFailureException.from(ex)
+          logger.error("ROR starting failure:", startingFailureException)
+          rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
+      }
   }
 
   override def order(): Int = 0
 
-  def stop(): Unit = rorInstance.stop()
+  def stop(): Unit = {
+    startingTaskCancellable.cancel()
+    rorInstanceState.get() match {
+      case RorInstanceStartingState.Starting =>
+      case RorInstanceStartingState.Started(instance) => instance.stop().runSyncUnsafe()
+      case RorInstanceStartingState.NotStarted(_) =>
+    }
+  }
 
   override def apply[Request <: ActionRequest, Response <: ActionResponse](task: Task,
                                                                            action: String,
@@ -81,22 +104,44 @@ class IndexLevelActionFilter(settings: Settings,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      (rorInstance.engine, ThreadRepo.getRestChannel) match {
-        case (_, None) => chain.proceed(task, action, request, listener)
-        case (_, _) if action.startsWith("internal:") => chain.proceed(task, action, request, listener)
-        case (None, Some(channel)) => channel.sendResponse(RorNotReadyResponse.create(channel))
-        case (Some(engine), Some(channel)) => handleRequest(engine, task, action, request, listener, chain, channel)
+      ThreadRepo.getRestChannel match {
+        case None =>
+          chain.proceed(task, action, request, listener)
+        case Some(_) if action.startsWith("internal:") =>
+          chain.proceed(task, action, request, listener)
+        case Some(channel) =>
+          rorInstanceState.get() match {
+            case RorInstanceStartingState.Starting =>
+              channel.sendResponse(createRorNotReadyYetResponse(channel))
+            case RorInstanceStartingState.Started(instance) =>
+              instance.engine match {
+                case Some(engine) =>
+                  handleRequest(
+                    engine,
+                    task,
+                    action,
+                    request,
+                    listener.asInstanceOf[ActionListener[ActionResponse]],
+                    chain.asInstanceOf[ActionFilterChain[ActionRequest, ActionResponse]],
+                    channel
+                  )
+                case None =>
+                  channel.sendResponse(createRorNotReadyYetResponse(channel))
+              }
+            case RorInstanceStartingState.NotStarted(_) =>
+              channel.sendResponse(createRorStartingFailureResponse(channel))
+          }
       }
     }
   }
 
-  private def handleRequest[Request <: ActionRequest, Response <: ActionResponse](engine: Engine,
-                                                                                  task: Task,
-                                                                                  action: String,
-                                                                                  request: Request,
-                                                                                  listener: ActionListener[Response],
-                                                                                  chain: ActionFilterChain[Request, Response],
-                                                                                  channel: RestChannel): Unit = {
+  private def handleRequest(engine: Engine,
+                            task: Task,
+                            action: String,
+                            request: ActionRequest,
+                            listener: ActionListener[ActionResponse],
+                            chain: ActionFilterChain[ActionRequest, ActionResponse],
+                            channel: RestChannel): Unit = {
     val requestInfo = new RequestInfo(channel, task.getId, action, request, clusterService, threadPool)
     val requestContext = requestContextFrom(requestInfo)
     requestContext.uriPath match {
@@ -104,7 +149,7 @@ class IndexLevelActionFilter(settings: Settings,
         val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
         handler.handle(requestInfo, requestContext)
       case _ =>
-        val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
+        val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool, emptyClusterState)
         handler.handle(requestInfo, requestContext)
     }
   }
@@ -116,4 +161,11 @@ class IndexLevelActionFilter(settings: Settings,
         ex => throw new SecurityPermissionException("Cannot create request context object", ex),
         identity
       )
+}
+
+private sealed trait RorInstanceStartingState
+private object RorInstanceStartingState {
+  case object Starting extends RorInstanceStartingState
+  final case class Started(instance: RorInstance) extends RorInstanceStartingState
+  final case class NotStarted(cause: StartingFailureException) extends RorInstanceStartingState
 }

@@ -21,91 +21,91 @@ import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.CurrentUserMetadataManager
+import tech.beshu.ror.utils.elasticsearch.RorApiManager
+import ujson.Str
 
-import scala.collection.JavaConverters._
 
 class CurrentUserMetadataTests extends WordSpec with ForAllTestContainer {
 
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/current_user_metadata/readonlyrest.yml",
-    numberOfInstances = 1
+    rorConfigFileName = "/current_user_metadata/readonlyrest.yml"
   )
 
   "An ACL" when {
     "handling current user metadata kibana plugin request" should {
       "allow to proceed" when {
         "several blocks are matched" in {
-          val user1MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user1", "pass"))
+          val user1MetadataManager = new RorApiManager(container.nodesContainers.head.client("user1", "pass"))
 
           val result = user1MetadataManager.fetchMetadata()
 
-          assertEquals(200, result.getResponseCode)
-          result.getResponseJson.size() should be (3)
-          result.getResponseJson.get("x-ror-username") should be("user1")
-          result.getResponseJson.get("x-ror-current-group") should be("group3")
-          result.getResponseJson.get("x-ror-available-groups") should be(List("group3", "group1").asJava)
+          assertEquals(200, result.responseCode)
+          result.responseJson.obj.size should be (3)
+          result.responseJson("x-ror-username").str should be("user1")
+          result.responseJson("x-ror-current-group").str should be("group3")
+          result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group3"), Str("group1")))
         }
         "several blocks are matched and current group is set" in {
-          val user1MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user4", "pass"))
+          val user1MetadataManager = new RorApiManager(container.nodesContainers.head.client("user4", "pass"))
 
           val result = user1MetadataManager.fetchMetadata("group6")
 
-          assertEquals(200, result.getResponseCode)
-          result.getResponseJson.size() should be (4)
-          result.getResponseJson.get("x-ror-username") should be("user4")
-          result.getResponseJson.get("x-ror-current-group") should be("group6")
-          result.getResponseJson.get("x-ror-available-groups") should be(List("group5", "group6").asJava)
-          result.getResponseJson.get("x-ror-kibana_index") should be("user4_group6_kibana_index")
+          assertEquals(200, result.responseCode)
+          result.responseJson.obj.size should be (5)
+          result.responseJson("x-ror-username").str should be("user4")
+          result.responseJson("x-ror-current-group").str should be("group6")
+          result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group5"), Str("group6")))
+          result.responseJson("x-ror-kibana_index").str should be("user4_group6_kibana_index")
+          result.responseJson("x-ror-kibana_template_index").str should be("user4_group6_kibana_template_index")
         }
         "at least one block is matched" in {
-          val user2MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user2", "pass"))
+          val user2MetadataManager = new RorApiManager(container.nodesContainers.head.client("user2", "pass"))
 
           val result = user2MetadataManager.fetchMetadata()
 
-          assertEquals(200, result.getResponseCode)
-          result.getResponseJson.size() should be (6)
-          result.getResponseJson.get("x-ror-username") should be("user2")
-          result.getResponseJson.get("x-ror-current-group") should be("group2")
-          result.getResponseJson.get("x-ror-available-groups") should be(List("group2").asJava)
-          result.getResponseJson.get("x-ror-kibana_index") should be("user2_kibana_index")
-          result.getResponseJson.get("x-ror-kibana-hidden-apps") should be(List("user2_app1","user2_app2").asJava)
-          result.getResponseJson.get("x-ror-kibana_access") should be("ro")
+          assertEquals(200, result.responseCode)
+          result.responseJson.obj.size should be (6)
+          result.responseJson("x-ror-username").str should be("user2")
+          result.responseJson("x-ror-current-group").str should be("group2")
+          result.responseJson("x-ror-available-groups").arr.toList  should be(List(Str("group2")))
+          result.responseJson("x-ror-kibana_index").str should be("user2_kibana_index")
+          result.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("user2_app1"), Str("user2_app2")))
+          result.responseJson("x-ror-kibana_access").str should be("ro")
         }
         "block with no available groups collected is matched" in {
-          val user3MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user3", "pass"))
+          val user3MetadataManager = new RorApiManager(container.nodesContainers.head.client("user3", "pass"))
 
           val result = user3MetadataManager.fetchMetadata()
 
-          assertEquals(200, result.getResponseCode)
-          result.getResponseJson.size() should be (3)
-          result.getResponseJson.get("x-ror-username") should be("user3")
-          result.getResponseJson.get("x-ror-kibana_index") should be("user3_kibana_index")
-          result.getResponseJson.get("x-ror-kibana-hidden-apps") should be(List("user3_app1","user3_app2").asJava)
+          assertEquals(200, result.responseCode)
+          result.responseJson.obj.size should be (3)
+          result.responseJson("x-ror-username").str should be("user3")
+          result.responseJson("x-ror-kibana_index").str should be("user3_kibana_index")
+          result.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("user3_app1"), Str("user3_app2")))
         }
       }
       "return forbidden" when {
         "no block is matched" in {
-          val unknownUserMetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("userXXX", "pass"))
+          val unknownUserMetadataManager = new RorApiManager(container.nodesContainers.head.client("userXXX", "pass"))
 
           val result = unknownUserMetadataManager.fetchMetadata()
 
-          assertEquals(401, result.getResponseCode)
+          assertEquals(401, result.responseCode)
         }
         "current group is set but it doesn't exist on available groups list" in {
-          val user4MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user4", "pass"))
+          val user4MetadataManager = new RorApiManager(container.nodesContainers.head.client("user4", "pass"))
 
           val result = user4MetadataManager.fetchMetadata("group7")
 
-          assertEquals(401, result.getResponseCode)
+          assertEquals(401, result.responseCode)
         }
         "block with no available groups collected is matched and current group is set" in {
-          val user3MetadataManager = new CurrentUserMetadataManager(container.nodesContainers.head.client("user3", "pass"))
+          val user3MetadataManager = new RorApiManager(container.nodesContainers.head.client("user3", "pass"))
 
           val result = user3MetadataManager.fetchMetadata("group7")
 
-          assertEquals(401, result.getResponseCode)
+          assertEquals(401, result.responseCode)
         }
       }
     }

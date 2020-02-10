@@ -20,8 +20,8 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.elasticsearch.AuditIndexManager;
-import tech.beshu.ror.utils.elasticsearch.AuditIndexManager.AuditIndexResponse;
+import tech.beshu.ror.utils.elasticsearch.AuditIndexManagerJ;
+import tech.beshu.ror.utils.elasticsearch.AuditIndexManagerJ.AuditIndexResponse;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
@@ -38,7 +38,7 @@ public class DisabledAuditingToolsTests {
       Optional.of(new ElasticsearchTweetsInitializer())
   );
 
-  private final AuditIndexManager auditIndexManager = new AuditIndexManager(
+  private final AuditIndexManagerJ auditIndexManager = new AuditIndexManagerJ(
       container.getBasicAuthClient("admin", "container"),
       "audit_index"
   );

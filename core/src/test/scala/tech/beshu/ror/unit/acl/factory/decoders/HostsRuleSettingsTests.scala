@@ -81,6 +81,7 @@ class HostsRuleSettingsTests extends BaseRuleSettingsDecoderTest[HostsRule] {
               |  access_control_rules:
               |
               |  - name: test_block1
+              |    auth_key: user:pass
               |    hosts: "@{user}.com"
               |
               |""".stripMargin,

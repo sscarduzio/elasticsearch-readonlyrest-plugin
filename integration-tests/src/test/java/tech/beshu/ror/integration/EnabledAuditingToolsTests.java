@@ -19,7 +19,7 @@ package tech.beshu.ror.integration;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.utils.elasticsearch.AuditIndexManager;
+import tech.beshu.ror.utils.elasticsearch.AuditIndexManagerJ;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
@@ -41,7 +41,7 @@ public class EnabledAuditingToolsTests {
       Optional.of(new ElasticsearchTweetsInitializer())
   );
 
-  private final AuditIndexManager auditIndexManager = new AuditIndexManager(
+  private final AuditIndexManagerJ auditIndexManager = new AuditIndexManagerJ(
       container.getBasicAuthClient("admin", "container"),
       "audit_index"
   );
@@ -52,27 +52,39 @@ public class EnabledAuditingToolsTests {
   }
 
   @Test
-  public void rule1MatchingRequestShouldBeAudited() throws Exception {
-    assertions(container).assertUserHasAccessToIndex("user", "dev", "twitter");
+  public void rule1MatchingRequestShouldBeAuditedWithLoggedUser() throws Exception {
+    assertions(container).assertUserHasAccessToIndex("username", "dev", "twitter");
     List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
 
     assertEquals(1, auditEntries.size());
     assertEquals("ALLOWED", auditEntries.get(0).get("final_state"));
     assertThat((String) auditEntries.get(0).get("block"), containsString("name: 'Rule 1'"));
+    assertEquals(auditEntries.get(0).get("user"), "username");
   }
 
   @Test
-  public void noRuleMatchingRequestShouldBeAudited() throws Exception {
-    assertions(container).assertUserAccessToIndexForbidden("user", "wrong", "twitter");
+  public void noRuleMatchingRequestShouldBeAuditedWithUsernameFromAuthHeader() throws Exception {
+    assertions(container).assertUserAccessToIndexForbidden("username", "wrong", "twitter");
     List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
 
     assertEquals(1, auditEntries.size());
     assertEquals("FORBIDDEN", auditEntries.get(0).get("final_state"));
+    assertEquals(auditEntries.get(0).get("user"), "username");
+  }
+
+  @Test
+  public void noRuleMatchingRequestShouldBeAuditedWithRawAuthHeaderAsUser() throws Exception {
+    assertions(container).assertUserAccessToIndexForbidden("usernameWithEmptyPass", "", "twitter");
+    List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
+
+    assertEquals(1, auditEntries.size());
+    assertEquals("FORBIDDEN", auditEntries.get(0).get("final_state"));
+    assertEquals(auditEntries.get(0).get("user"), "Basic dXNlcm5hbWVXaXRoRW1wdHlQYXNzOg==");
   }
 
   @Test
   public void rule2MatchingRequestShouldNotBeAudited() throws Exception {
-    assertions(container).assertUserHasAccessToIndex("user", "dev", "facebook");
+    assertions(container).assertUserHasAccessToIndex("username", "dev", "facebook");
     List<Map<String, Object>> auditEntries = auditIndexManager.auditIndexSearch().getEntries();
 
     assertEquals(0, auditEntries.size());

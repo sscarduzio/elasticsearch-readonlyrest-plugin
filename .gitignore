@@ -28,14 +28,17 @@ eclipse-build
 !/.settings/org.eclipse.jdt.ui.prefs
 
 // Script generated files
+
 docker/*
 integration-tests/src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties
 integration-tests/src/main/resources/plugin-descriptor.properties
 integration-tests/src/test/eshome/logs/
 integration-tests/src/test/eshome/data/
+integration-tests/src/test/eshome/modules/
 integration-tests/src/test/eshome/*.log
+integration-tests/src/test/eshome/modules/*
+integration-tests/src/test/eshome/config/elasticsearch.keystore
 target/
-
 
 // Crypto
 *.pem
@@ -44,3 +47,5 @@ target/
 
 // OSX
 .DS_Store
+
+.travis/secret.pgp

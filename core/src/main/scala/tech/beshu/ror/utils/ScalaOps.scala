@@ -17,14 +17,18 @@
 package tech.beshu.ror.utils
 
 import cats.Functor
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.{EitherT, NonEmptyList, NonEmptySet}
+import cats.effect.{ContextShift, IO}
 import com.twitter.{util => twitter}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
+import monix.execution.Scheduler
 
+import scala.collection.SortedSet
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.language.{higherKinds, implicitConversions, postfixOps}
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 object ScalaOps {
@@ -32,6 +36,17 @@ object ScalaOps {
   implicit class TryOps[T](val `try`: Try[T]) extends AnyVal {
 
     def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
+  }
+
+  implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
+    def asSafeSet: Set[T] = safeArray.toSet
+    def asSafeList: List[T] = safeArray.toList
+
+    private def safeArray = Option(array).getOrElse(Array.empty[T])
+  }
+
+  implicit class SetOps[T](val value: T) extends AnyVal {
+    def asSafeSet: Set[T] = Option(value).toSet
   }
 
   implicit class ListOps[T](val list: List[T]) extends AnyVal {
@@ -117,6 +132,31 @@ object ScalaOps {
     promise.future
   }
 
+  implicit def taskToTwitterFuture[T](t: Task[T])
+                                     (implicit scheduler: Scheduler): twitter.Future[T] = {
+    val promise = twitter.Promise[T]()
+    t.runAsync {
+      case Right(value) => promise.setValue(value)
+      case Left(ex) => promise.setException(ex)
+    }
+    promise
+  }
+
+  implicit def twitterFutureToTask[T](f: twitter.Future[T]): Task[T] = {
+    Task.fromFuture(f)
+  }
+
+  implicit def twitterFutureToIo[T](f: twitter.Future[T])
+                                   (implicit contextShift: ContextShift[IO]): IO[T] = {
+    IO.fromFuture(IO(f))
+  }
+
+  implicit def taskToIo[T](t: Task[T])
+                          (implicit scheduler: Scheduler,
+                           contextShift: ContextShift[IO]): IO[T] = {
+    IO.fromFuture(IO(t.runToFuture))
+  }
+
   implicit class AutoCloseableOps[A <: AutoCloseable](val value: A) extends AnyVal {
     def bracket[B](convert: A => B): B = {
       try {
@@ -134,4 +174,8 @@ object ScalaOps {
     }
   }
 
+  implicit class NonEmptySetOps[T](val value: NonEmptySet[T]) extends AnyVal {
+    import cats.implicits._
+    def widen[S >: T : Ordering]: NonEmptySet[S] = NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
+  }
 }

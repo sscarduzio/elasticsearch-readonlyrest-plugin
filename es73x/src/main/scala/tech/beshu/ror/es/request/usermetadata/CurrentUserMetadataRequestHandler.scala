@@ -24,24 +24,24 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult
-import tech.beshu.ror.accesscontrol.blocks.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
+import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo, RorNotAvailableResponse}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.{Failure, Success, Try}
 
-class CurrentUserMetadataRequestHandler[Request <: ActionRequest, Response <: ActionResponse](engine: Engine,
-                                                                                              task: Task,
-                                                                                              action: String,
-                                                                                              request: Request,
-                                                                                              baseListener: ActionListener[Response],
-                                                                                              chain: ActionFilterChain[Request, Response],
-                                                                                              channel: RestChannel,
-                                                                                              threadPool: ThreadPool)
-                                                                                             (implicit scheduler: Scheduler)
+class CurrentUserMetadataRequestHandler(engine: Engine,
+                                        task: Task,
+                                        action: String,
+                                        request: ActionRequest,
+                                        baseListener: ActionListener[ActionResponse],
+                                        chain: ActionFilterChain[ActionRequest, ActionResponse],
+                                        channel: RestChannel,
+                                        threadPool: ThreadPool)
+                                       (implicit scheduler: Scheduler)
   extends Logging {
 
   def handle(requestInfo: RequestInfo, requestContext: RequestContext): Unit = {
@@ -62,12 +62,12 @@ class CurrentUserMetadataRequestHandler[Request <: ActionRequest, Response <: Ac
                            requestInfo: RequestInfo): Unit = {
     Try {
       result match {
-        case UserMetadataRequestResult.Allow(userMetadata) =>
+        case UserMetadataRequestResult.Allow(userMetadata, _) =>
           onAllow(requestContext, requestInfo, userMetadata)
         case UserMetadataRequestResult.Forbidden =>
           onForbidden()
         case UserMetadataRequestResult.PassedThrough =>
-          proceed(baseListener)
+          onPassThrough()
       }
     } match {
       case Success(_) =>
@@ -79,19 +79,15 @@ class CurrentUserMetadataRequestHandler[Request <: ActionRequest, Response <: Ac
   private def onAllow(requestContext: RequestContext,
                       requestInfo: RequestInfo,
                       userMetadata: UserMetadata): Unit = {
-    proceed {
-      new CurrentUserMetadataResponseActionListener(
-        baseListener.asInstanceOf[ActionListener[ActionResponse]],
-        userMetadata
-      ).asInstanceOf[ActionListener[Response]]
-    }
+    val responseActionListener = new CurrentUserMetadataResponseActionListener(baseListener, userMetadata)
+    chain.proceed(task, action, request, responseActionListener)
   }
 
   private def onForbidden(): Unit = {
     channel.sendResponse(ForbiddenResponse.create(channel, Nil, engine.context))
   }
 
-  private def proceed(responseActionListener: ActionListener[Response]): Unit =
-    chain.proceed(task, action, request, responseActionListener)
+  private def onPassThrough(): Unit =
+    channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(channel))
 
 }

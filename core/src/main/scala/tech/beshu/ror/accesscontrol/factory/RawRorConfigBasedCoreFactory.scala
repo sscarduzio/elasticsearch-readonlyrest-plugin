@@ -18,39 +18,40 @@ package tech.beshu.ror.accesscontrol.factory
 
 import java.time.Clock
 
-import cats.Show
-import cats.data.{NonEmptyList, State, Validated}
+import cats.data.{NonEmptyList, State}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.acl.Acl
+import tech.beshu.ror.accesscontrol._
+import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
 import tech.beshu.ror.accesscontrol.factory.decoders.AuditingSettingsDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
-import tech.beshu.ror.accesscontrol.logging.AuditingTool
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.logging.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
-import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext, DisabledAccessControl, DisabledAccessControlStaticContext$, EnabledAccessControlStaticContext}
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.YamlOps
+import tech.beshu.ror.utils.yaml.YamlOps
 
 import scala.language.implicitConversions
 
-final case class CoreSettings(aclEngine: AccessControl, aclStaticContext: AccessControlStaticContext, auditingSettings: Option[AuditingTool.Settings])
+final case class CoreSettings(aclEngine: AccessControl,
+                              aclStaticContext: AccessControlStaticContext,
+                              auditingSettings: Option[AuditingTool.Settings])
 
 trait CoreFactory {
   def createCoreFrom(config: RawRorConfig,
@@ -94,13 +95,13 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         AsyncDecoderCreator
           .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
       } else {
-        aclDecoder(httpClientFactory)
-          .flatMap { case (acl, context) =>
-            AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
-              .map { auditingTools =>
-                CoreSettings(acl, context, auditingTools)
-              }
-          }
+        for {
+          aclAndContext <- aclDecoder(httpClientFactory)
+          (acl, context) = aclAndContext
+          auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
+        } yield CoreSettings(aclEngine = acl,
+          aclStaticContext = context,
+          auditingSettings = auditingTools)
       }
     } yield core
 
@@ -115,8 +116,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     }
   }
 
-  private implicit def rulesNelDecoder(definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = Decoder.instance { c =>
-    val init = State.pure[ACursor, Option[Decoder.Result[List[Rule]]]](None)
+  private implicit def rulesNelDecoder(definitions: DefinitionsPack): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
+    val init = State.pure[ACursor, Option[Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](None)
     val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
@@ -144,7 +145,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     }
   }
 
-  private def decodeRuleInCursorContext(name: String, definitions: DefinitionsPack): State[ACursor, Option[Decoder.Result[Rule]]] =
+  private def decodeRuleInCursorContext(name: String, definitions: DefinitionsPack): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] =
     State(cursor => {
       if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
@@ -172,21 +173,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       }
     })
 
-  private def rulesDecoder(blockName: Block.Name, definitions: DefinitionsPack): Decoder[NonEmptyList[Rule]] = {
-    rulesNelDecoder(definitions)
-      .toSyncDecoder
-      .emapE { rules =>
-        RulesValidator.validate(rules) match {
-          case Validated.Valid(_) => Right(rules)
-          case Validated.Invalid(errors) =>
-            implicit val validationErrorShow: Show[ValidationError] = blockValidationErrorShow(blockName)
-            Left(BlocksLevelCreationError(Message(errors.map(_.show).mkString_("\n"))))
-        }
-      }
-      .decoder
-  }
-
-  private implicit def blockDecoder(definitions: DefinitionsPack): Decoder[Block] = {
+  private def blockDecoder(definitions: DefinitionsPack)
+                          (implicit loggingContext: LoggingContext): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
       Decoder
@@ -214,24 +202,23 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          rules <- rulesDecoder(name, definitions)
+          rules <- rulesNelDecoder(definitions)
+            .toSyncDecoder
+            .decoder
             .tryDecode(c.withFocus(
               _.mapObject(_
                 .remove(Attributes.Block.name)
                 .remove(Attributes.Block.policy)
                 .remove(Attributes.Block.verbosity))
             ))
-        } yield new Block(
-          name,
-          policy.getOrElse(Block.Policy.Allow),
-          verbosity.getOrElse(Block.Verbosity.Info),
-          rules.sorted
-        )
+          block <- Block.createFrom(name, policy, verbosity, rules).left.map(DecodingFailureOps.fromError(_))
+        } yield block
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }
   }
 
-  private def aclStaticContextDecoder(blocks: NonEmptyList[Block]): Decoder[EnabledAccessControlStaticContext] = {
+  private def aclStaticContextDecoder(blocks: NonEmptyList[Block],
+                                      obfuscatedHeaders:Set[Header.Name]): Decoder[EnabledAccessControlStaticContext] = {
     Decoder.instance { c =>
       for {
         basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
@@ -240,11 +227,18 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         blocks,
         basicAuthPrompt.getOrElse(true),
         forbiddenMessage.getOrElse("forbidden"),
+        obfuscatedHeaders,
       )
     }
   }
 
-  private implicit def aclDecoder(httpClientFactory: HttpClientsFactory): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
+  private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
+    import tech.beshu.ror.accesscontrol.factory.decoders.common.headerName
+    Decoder.instance(_.downField("obfuscated_headers").as[Option[Set[Header.Name]]])
+      .map(_.getOrElse(Set(Header.Name.authorization)))
+  }
+
+  private def aclDecoder(httpClientFactory: HttpClientsFactory): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
@@ -255,9 +249,19 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
         impersonationDefs <- AsyncDecoderCreator.from(ImpersonationDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, impersonationDefs))
+        obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocks <- {
+          implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
-            blockDecoder(DefinitionsPack(authProxies, userDefs, authenticationServices, authorizationServices, jwtDefs, rorKbnDefs, ldapServices, impersonationDefs))
+            blockDecoder(DefinitionsPack(
+              proxies = authProxies,
+              users = userDefs,
+              authenticationServices = authenticationServices,
+              authorizationServices = authorizationServices,
+              jwts = jwtDefs,
+              rorKbns = rorKbnDefs,
+              ldaps = ldapServices,
+              impersonators = impersonationDefs))
           }
           DecoderHelpers
             .decodeFieldList[Block, Task](Attributes.acl, RulesLevelCreationError.apply)
@@ -275,11 +279,12 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
                 }
             }
         }
-        staticContext <- AsyncDecoderCreator.from(aclStaticContextDecoder(blocks))
+        staticContext <- AsyncDecoderCreator.from(aclStaticContextDecoder(blocks, obfuscatedHeaders))
         acl = {
+          implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
           val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)
           upgradedBlocks.toList.foreach { block => logger.info("ADDING BLOCK:\t" + block.show) }
-          new Acl(upgradedBlocks): AccessControl
+          new AccessControlList(upgradedBlocks): AccessControl
         }
       } yield (acl, staticContext)
       decoder.apply(c)

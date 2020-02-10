@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 sealed trait ResponseContext {
@@ -32,6 +33,7 @@ object ResponseContext {
 
   final case class Allow(requestContext: RequestContext,
                          userMetadata: UserMetadata,
+                         block: Block,
                          history: Vector[Block.History])
     extends ResponseContext
 
@@ -43,6 +45,10 @@ object ResponseContext {
 
   final case class Forbidden(requestContext: RequestContext,
                              history: Vector[Block.History])
+    extends ResponseContext
+
+  final case class RequestedIndexNotExist(requestContext: RequestContext,
+                                          history: Vector[Block.History])
     extends ResponseContext
 
   final case class Errored(requestContext: RequestContext,

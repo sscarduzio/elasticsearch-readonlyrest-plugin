@@ -17,7 +17,7 @@ package tech.beshu.ror.utils.ldap;
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-import tech.beshu.ror.utils.containers.LdapContainer;
+import tech.beshu.ror.utils.containers.JavaLdapContainer;
 
 /**
  * This is really useful when you want to stand up a LDAP server for manual tests
@@ -26,7 +26,7 @@ public class LDAPServer {
   public static void main(String[] args) throws InterruptedException {
     String ldifFile = System.getProperty("config", "/ldap.ldif");
     System.out.println(LDAPServer.class.getSimpleName() + " using config file: " + ldifFile);
-    LdapContainer lc = LdapContainer.create(ldifFile);
+    JavaLdapContainer lc = JavaLdapContainer.create(ldifFile);
     lc.start();
     System.out.println(lc.getLdapHost() + " " + lc.getLdapPort());
     while(true){

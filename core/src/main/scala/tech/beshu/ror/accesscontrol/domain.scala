@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.Base64
+import java.util.{Base64, Locale}
 
 import cats.{Eq, Functor}
 import cats.data.NonEmptyList
@@ -27,6 +27,7 @@ import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import monix.eval.Task
+import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
@@ -72,12 +73,11 @@ object domain {
       val userAgent = Name(NonEmptyString.unsafeFrom("User-Agent"))
       val authorization = Name(NonEmptyString.unsafeFrom("Authorization"))
       val rorUser = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ROR))
-      val kibanaIndex = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_INDEX))
       val kibanaAccess = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_ACCESS))
       val transientFilter = Name(NonEmptyString.unsafeFrom(Constants.FILTER_TRANSIENT))
       val impersonateAs = Name(NonEmptyString.unsafeFrom("impersonate_as"))
 
-      implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase)
+      implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
     }
 
     def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)
@@ -198,9 +198,24 @@ object domain {
 
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
 
-    def fromString(value: String): Option[IndexName] = NonEmptyString.from(value).map(IndexName.apply).toOption
+    def fromString(value: String): Option[IndexName] = NonEmptyString.from(value).map(from).toOption
 
-    def fromUnsafeString(value: String) = IndexName(NonEmptyString.unsafeFrom(value))
+    def fromUnsafeString(value: String): IndexName = from(NonEmptyString.unsafeFrom(value))
+
+    def randomNonexistentIndex(prefix: String = ""): IndexName = from {
+      NonEmptyString.unsafeFrom {
+        val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${randomAlphanumeric(10)}"
+        if(prefix.contains("*")) s"$nonexistentIndex*"
+        else nonexistentIndex
+      }
+    }
+
+    private def from(name: NonEmptyString) = {
+      IndexName(name) match {
+        case index if index == all => wildcard
+        case index => index
+      }
+    }
   }
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
@@ -217,20 +232,17 @@ object domain {
     implicit val eqAuthKey: Eq[PlainTextSecret] = Eq.fromUniversalEquals
   }
 
-  final case class KibanaApp(value: NonEmptyString) 
+  final case class KibanaApp(value: NonEmptyString)
   object KibanaApp {
     implicit val eqKibanaApps: Eq[KibanaApp] = Eq.fromUniversalEquals
   }
 
   final case class UserOrigin(value: NonEmptyString)
 
-  sealed abstract class DocumentField(val value: String)
+  sealed abstract class DocumentField(val value: NonEmptyString)
   object DocumentField {
-    final case class ADocumentField(override val value: String) extends DocumentField(value)
-    final case class NegatedDocumentField(override val value: String) extends DocumentField(value)
-
-    val all = ADocumentField("_all")
-    val notAll = NegatedDocumentField("_all")
+    final case class ADocumentField(override val value: NonEmptyString) extends DocumentField(value)
+    final case class NegatedDocumentField(override val value: NonEmptyString) extends DocumentField(value)
   }
 
   final case class Type(value: String) extends AnyVal
@@ -250,6 +262,14 @@ object domain {
   final case class UriPath(value: String) {
     def isCurrentUserMetadataPath: Boolean = value.startsWith(UriPath.currentUserMetadataPath.value)
     def isCatTemplatePath: Boolean = value.startsWith("/_cat/templates")
+    def isTemplatePath: Boolean = value.startsWith("/_template")
+    def isAliasesPath: Boolean =
+      value.startsWith("/_cat/aliases") ||
+        value.startsWith("/_alias") ||
+        "^/(\\w|\\*)*/_alias(|/)$".r.findFirstMatchIn(value).isDefined ||
+        "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value).isDefined
+    def isCatIndicesPath: Boolean = value.startsWith("/_cat/indices")
+
   }
   object UriPath {
     val currentUserMetadataPath = UriPath(Constants.CURRENT_USER_METADATA_PATH)
@@ -258,6 +278,27 @@ object domain {
     object CatTemplatePath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
         if(uriPath.isCatTemplatePath) Some(uriPath)
+        else None
+      }
+    }
+
+    object CatIndicesPath {
+      def unapply(uriPath: UriPath): Option[UriPath] = {
+        if(uriPath.isCatIndicesPath) Some(uriPath)
+        else None
+      }
+    }
+
+    object TemplatePath {
+      def unapply(uriPath: UriPath): Option[UriPath] = {
+        if(uriPath.isTemplatePath) Some(uriPath)
+        else None
+      }
+    }
+
+    object AliasesPath {
+      def unapply(uriPath: UriPath): Option[UriPath] = {
+        if(uriPath.isAliasesPath) Some(uriPath)
         else None
       }
     }

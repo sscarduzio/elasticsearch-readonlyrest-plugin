@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -25,6 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleD
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.FieldsRuleDecoderHelper._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.orders._
@@ -34,7 +36,7 @@ import scala.collection.SortedSet
 
 object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet(toDocumentField)
+    .decodeStringLikeOrNonEmptySetE(toDocumentField)
     .toSyncDecoder
     .emapE { fields =>
       val (negatedFields, nonNegatedFields) = fields.toList.partitionEither {
@@ -46,30 +48,38 @@ object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
       } else if (containsAlwaysAllowedFields(fields)) {
         Left(RulesLevelCreationError(Message(s"The fields rule cannot contain always-allowed fields: ${Constants.FIELDS_ALWAYS_ALLOW.asScala.mkString(",")}")))
       } else {
-        val notAllField = if (fields.exists(_ == DocumentField.all)) None else Some(DocumentField.notAll)
         val settings = NonEmptySet.fromSet(SortedSet.empty[ADocumentField] ++ nonNegatedFields.toSet) match {
           case Some(f) =>
-            FieldsRule.Settings.ofFields(f, notAllField)
+            FieldsRule.Settings.ofFields(f)
           case None =>
             val negatedFieldsNes = NonEmptySet
               .fromSet(SortedSet.empty[NegatedDocumentField] ++ negatedFields.toSet)
                 .getOrElse(throw new IllegalStateException("Should contain all negated fields"))
-            FieldsRule.Settings.ofNegatedFields(negatedFieldsNes, notAllField)
+            FieldsRule.Settings.ofNegatedFields(negatedFieldsNes)
         }
         Right(settings)
       }
     }
-    .map(new FieldsRule(_))
+    .map(settings => RuleWithVariableUsageDefinition.create(new FieldsRule(settings)))
     .decoder
 )
 
 private object FieldsRuleDecoderHelper {
-  def toDocumentField(value: String): DocumentField = {
-    if (value.startsWith("~")) NegatedDocumentField(value.substring(1))
-    else ADocumentField(value)
+  def toDocumentField(value: String): Either[String, DocumentField] = {
+    if (value.startsWith("~")) {
+      NonEmptyString.from(value.substring(1)) match {
+        case Right(nes) => Right(NegatedDocumentField(nes))
+        case Left(_) => Left("There was no name passed for blacklist field (~ only is forbidden)")
+      }
+    } else {
+      NonEmptyString.from(value) match {
+        case Right(nes) => Right(ADocumentField(nes))
+        case Left(_) => Left("Field cannot be empty string")
+      }
+    }
   }
 
   def containsAlwaysAllowedFields(fields: NonEmptySet[DocumentField]): Boolean = {
-    fields.toSortedSet.map(_.value).intersect(Constants.FIELDS_ALWAYS_ALLOW.asScala).nonEmpty
+    fields.toSortedSet.map(_.value).intersect(Constants.FIELDS_ALWAYS_ALLOW.asScala.map(NonEmptyString.unsafeFrom)).nonEmpty
   }
 }

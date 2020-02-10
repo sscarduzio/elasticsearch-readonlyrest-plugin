@@ -36,6 +36,7 @@ import java.util.Optional;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 
 public class LocalGroupsTest {
@@ -92,8 +93,8 @@ public class LocalGroupsTest {
     assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
     assertEquals("a_testgroup", bodyMap.get("x-ror-current-group"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("a_testgroup"));
-    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("group_extra"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("foogroup"));
+    assertFalse(bodyMap.get("x-ror-available-groups").toString().contains("group_extra"));
   }
 
   @Test
@@ -113,8 +114,8 @@ public class LocalGroupsTest {
     assertEquals("admin", bodyMap.get("x-ror-kibana_access").toString().toLowerCase());
     assertEquals("foogroup", bodyMap.get("x-ror-current-group"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("a_testgroup"));
-    assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("group_extra"));
     assertTrue(bodyMap.get("x-ror-available-groups").toString().contains("foogroup"));
+    assertFalse(bodyMap.get("x-ror-available-groups").toString().contains("group_extra"));
   }
 
   private HttpResponse mkRequest(String user, String pass, String endpoint) throws Exception {

@@ -21,7 +21,8 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.rules.{KibanaAccessRule, KibanaHideAppsRule, KibanaIndexRule, KibanaTemplateIndexRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createSingleResolvableVariableFrom
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
@@ -40,14 +41,22 @@ import tech.beshu.ror.providers.PropertiesProvider
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeNonEmptyStringLikeOrNonEmptySet(KibanaApp.apply)
-    .map(apps => new KibanaHideAppsRule(Settings(apps)))
+    .map(apps => RuleWithVariableUsageDefinition.create(new KibanaHideAppsRule(Settings(apps))))
 )
 
 class KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   KibanaRulesDecoderHelper
     .kibanaIndexDecoder
     .map { index =>
-      new KibanaIndexRule(KibanaIndexRule.Settings(index))
+      RuleWithVariableUsageDefinition.create(new KibanaIndexRule(KibanaIndexRule.Settings(index)))
+    }
+)
+
+class KibanaTemplateIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
+  KibanaRulesDecoderHelper
+    .kibanaIndexDecoder
+    .map { index =>
+      RuleWithVariableUsageDefinition.create(new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(index)))
     }
 )
 
@@ -66,7 +75,7 @@ class KibanaAccessRuleDecoder(implicit propertiesProvider: PropertiesProvider)
       case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
       .map(KibanaAccessRule.Settings(_, kibanaIndexName))
-      .map(s => new KibanaAccessRule(s))
+      .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
       .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),
   associatedFieldsDecoder =
@@ -92,5 +101,6 @@ private object KibanaRulesDecoderHelper {
         case Left(error) => Left(RulesLevelCreationError(Message(error.show)))
       }
       .decoder
+
 }
 

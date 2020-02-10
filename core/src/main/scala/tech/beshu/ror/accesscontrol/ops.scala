@@ -16,7 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import cats.data.NonEmptyList
+import java.util.Base64
+import java.util.regex.Pattern
+
+import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import cats.{Order, Show}
 import com.softwaremill.sttp.{Method, Uri}
@@ -29,22 +32,28 @@ import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, HistoryItem, Name, Policy}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.{ComplianceResult, OneOfRuleBeforeMustBeAuthenticationRule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.factory.RulesValidator.ValidationError
-import tech.beshu.ror.accesscontrol.header.ToHeaderValue
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
+import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
 import tech.beshu.ror.utils.FilterTransient
+import upickle.default
 
+import scala.collection.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
+import scala.util.Try
 
 object header {
 
@@ -67,6 +76,10 @@ object header {
   }
   object ToHeaderValue {
     def apply[T](func: T => NonEmptyString): ToHeaderValue[T] = (t: T) => func(t)
+  }
+
+  trait FromHeaderValue[T] {
+    def fromRawValue(value: NonEmptyString): Try[T]
   }
 }
 
@@ -91,6 +104,8 @@ object orders {
   implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
+  implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleWithVariableUsageDefinition[Rule]] = Order.by(_.rule)
+  implicit val patternOrder: Order[Pattern] = Order.by(_.pattern)
   implicit val forbiddenByMismatchedCauseOrder: Order[ForbiddenByMismatched.Cause] = Order.by {
     case ForbiddenByMismatched.Cause.OperationNotAllowed => 1
     case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2
@@ -99,7 +114,6 @@ object orders {
 }
 
 object show {
-
   object logs {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
     implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
@@ -114,13 +128,9 @@ object show {
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
-    implicit val headerShow: Show[Header] = Show.show {
-      case Header(name, _) if name === Header.Name.authorization => s"${name.show}=<OMITTED>"
-      case Header(name, value) => s"${name.show}=${value.value.show}"
-    }
     implicit val documentFieldShow: Show[DocumentField] = Show.show {
-      case f: ADocumentField => f.value
-      case f: NegatedDocumentField => s"~${f.value}"
+      case f: ADocumentField => f.value.value
+      case f: NegatedDocumentField => s"~${f.value.value}"
     }
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
@@ -133,7 +143,7 @@ object show {
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
-    implicit val blockContextShow: Show[BlockContext] = Show.show { bc =>
+    implicit def blockContextShow(implicit showHeader:Show[Header]): Show[BlockContext] = Show.show { bc =>
       (showOption("user", bc.loggedUser) ::
         showOption("group", bc.currentGroup) ::
         showTraversable("av_groups", bc.availableGroups) ::
@@ -171,8 +181,11 @@ object show {
         }
       }"
     }
-    implicit val historyShow: Show[History] = Show.show { h =>
-      s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}], RESOLVED:[${h.blockContext.show}]]"""
+    implicit def historyShow(implicit headerShow: Show[Header]): Show[History] = Show.show { h =>
+      val resolvedPart = h.blockContext.show.some
+        .filter(!_.isEmpty)
+        .map(context => s", RESOLVED:[$context]").getOrElse("")
+      s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}]$resolvedPart]"""
     }
     implicit val policyShow: Show[Policy] = Show.show {
       case Allow => "ALLOW"
@@ -199,11 +212,32 @@ object show {
       case StartupResolvableVariableCreator.CreationError.InvalidVariableDefinition(cause) =>
         s"Variable malformed, cause: $cause"
     }
-    def blockValidationErrorShow(block: Block.Name): Show[ValidationError] = Show.show {
-      case ValidationError.AuthorizationWithoutAuthentication =>
+    implicit val variableTypeShow: Show[VariableContext.VariableType] = Show.show {
+      case _: VariableType.User => "user"
+      case _: VariableType.CurrentGroup => "current group"
+      case _: VariableType.Header => "header"
+      case _: VariableType.Jwt => "JWT"
+    }
+
+    implicit val complianceResultShow: Show[ComplianceResult.NonCompliantWith] = Show.show {
+      case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
+        s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
+    }
+    def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
+      Show.show[Header] {
+        case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
+        case Header(name, value) => s"${name.show}=${value.value.show}"
+      }
+    }
+    def blockValidationErrorShow(block: Block.Name): Show[BlockValidationError] = Show.show {
+      case BlockValidationError.AuthorizationWithoutAuthentication =>
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
-      case ValidationError.KibanaAccessRuleTogetherWithActionsRule =>
+      case BlockValidationError.OnlyOneAuthenticationRuleAllowed(authRules) =>
+        s"The '${block.show}' block should contain only one authentication rule, but contains: [${authRules.map(_.name.show).mkString_(",")}]"
+      case BlockValidationError.KibanaAccessRuleTogetherWithActionsRule =>
         s"The '${block.show}' block contains Kibana Access Rule and Actions Rule. These two cannot be used together in one block."
+      case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
+        s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
     }
     private def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {
       if(traversable.isEmpty) None
@@ -233,6 +267,33 @@ object headerValues {
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
   implicit val transientFilterHeaderValue: ToHeaderValue[Filter] = ToHeaderValue { filter =>
     NonEmptyString.unsafeFrom(FilterTransient.createFromFilter(filter.value.value).serialize())
+  }
+  implicit val transientFieldsToHeaderValue: ToHeaderValue[NonEmptySet[DocumentField]] = ToHeaderValue { filters =>
+    implicit val nesW: default.Writer[NonEmptyString] = default.StringWriter.comap(_.value)
+    implicit val documentFieldW: default.Writer[DocumentField] = default.Writer.merge(
+      upickle.default.macroW[DocumentField.ADocumentField],
+      upickle.default.macroW[DocumentField.NegatedDocumentField]
+    )
+    implicit val setR: default.Writer[NonEmptySet[DocumentField]] =
+      default.SeqLikeWriter[Set, DocumentField].comap(_.toSortedSet)
+    val filtersJsonString = upickle.default.write(filters)
+    NonEmptyString.unsafeFrom(
+      Base64.getEncoder.encodeToString(filtersJsonString.getBytes("UTF-8"))
+    )
+  }
+  implicit val transientFieldsFromHeaderValue: FromHeaderValue[NonEmptySet[DocumentField]] = (value: NonEmptyString) => {
+    implicit val nesR: default.Reader[NonEmptyString] = default.StringReader.map(NonEmptyString.unsafeFrom)
+    implicit val documentFieldR: default.Reader[DocumentField] = default.Reader.merge(
+      upickle.default.macroR[DocumentField.ADocumentField],
+      upickle.default.macroR[DocumentField.NegatedDocumentField]
+    )
+    import tech.beshu.ror.accesscontrol.orders._
+    implicit val setR: default.Reader[NonEmptySet[DocumentField]] =
+      default.SeqLikeReader[Set, DocumentField]
+        .map(set => NonEmptySet.fromSetUnsafe(SortedSet.empty[DocumentField] ++ set))
+    Try(upickle.default.read[NonEmptySet[DocumentField]](
+      new String(Base64.getDecoder.decode(value.value), "UTF-8")
+    ))
   }
   implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
 }

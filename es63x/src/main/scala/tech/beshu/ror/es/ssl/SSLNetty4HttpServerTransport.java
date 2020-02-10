@@ -36,10 +36,11 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport;
 import org.elasticsearch.threadpool.ThreadPool;
 import scala.collection.JavaConverters$;
 import tech.beshu.ror.configuration.SslConfiguration;
+import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration;
 import tech.beshu.ror.utils.SSLCertParser;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.InputStream;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Optional;
@@ -48,10 +49,15 @@ import java.util.stream.Collectors;
 public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
   private final Logger logger = LogManager.getLogger(this.getClass());
-  private final SslConfiguration ssl;
+  private final ExternalSslConfiguration ssl;
 
-  public SSLNetty4HttpServerTransport(Settings settings, NetworkService networkService, BigArrays bigArrays,
-      ThreadPool threadPool, NamedXContentRegistry xContentRegistry, Dispatcher dispatcher, Environment environment, SslConfiguration ssl) {
+  public SSLNetty4HttpServerTransport(Settings settings,
+                                      NetworkService networkService,
+                                      BigArrays bigArrays, ThreadPool threadPool,
+                                      NamedXContentRegistry xContentRegistry,
+                                      Dispatcher dispatcher,
+                                      Environment environment,
+                                      ExternalSslConfiguration ssl) {
     super(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher);
     this.ssl = ssl;
   }
@@ -94,14 +100,10 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
 
     private class SSLContextCreatorImpl implements SSLCertParser.SSLContextCreator {
       @Override
-      public void mkSSLContext(String certChain, String privateKey) {
+      public void mkSSLContext(InputStream certChain, InputStream privateKey) {
         try {
           // #TODO expose configuration of sslPrivKeyPem password? Letsencrypt never sets one..
-          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(
-              new ByteArrayInputStream(certChain.getBytes(StandardCharsets.UTF_8)),
-              new ByteArrayInputStream(privateKey.getBytes(StandardCharsets.UTF_8)),
-              null
-          );
+          SslContextBuilder sslCtxBuilder = SslContextBuilder.forServer(certChain, privateKey, null);
 
           logger.info("ROR SSL HTTP: Using SSL provider: " + SslContext.defaultServerProvider().name());
           SSLCertParser.validateProtocolAndCiphers(sslCtxBuilder.build().newEngine(ByteBufAllocator.DEFAULT), ssl);
@@ -116,8 +118,10 @@ public class SSLNetty4HttpServerTransport extends Netty4HttpServerTransport {
             );
           }
 
-          if (ssl.verifyClientAuth()) {
+          if (ssl.clientAuthenticationEnabled()) {
             sslCtxBuilder.clientAuth(ClientAuth.REQUIRE);
+            TrustManagerFactory usedTrustManager = SSLCertParser.customTrustManagerFrom(ssl).getOrElse(null);
+            sslCtxBuilder.trustManager(usedTrustManager);
           }
 
           if(ssl.allowedProtocols().size() > 0) {

@@ -156,13 +156,13 @@ object MSearchTEST2_Tests {
 
         // Create "perfmon_logstash-apacheaccess1" index with 2 doc in it
         println("ES DOCUMENT WRITTEN IN perfmon_logstash-apacheaccess1 (1/2)! " + Unirest.put(url + "perfmon_logstash-apacheaccess1/documents/doc1")
-          .header("refresh", "wait_for")            .header("Content-Type", "application/json")
-
+          .header("refresh", "wait_for")
+          .header("Content-Type", "application/json")
           .header("timeout", "50s")
           .body("""{"id": "asd123"}""")
           .asString().getBody)
 
-        println("ES DOCUMENT WRITTEN IN perfmon_logstash-apacheaccess1 (2/2)! " + Unirest.put(url + "perfmon_logstash-apacheaccess1/documents/doc1")
+        println("ES DOCUMENT WRITTEN IN perfmon_logstash-apacheaccess1 (2/2)! " + Unirest.put(url + "perfmon_logstash-apacheaccess1/documents/doc2")
           .header("refresh", "wait_for")
           .header("Content-Type", "application/json")
           .header("timeout", "50s")

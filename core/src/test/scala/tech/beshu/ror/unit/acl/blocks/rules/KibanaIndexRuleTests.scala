@@ -20,14 +20,13 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.unit.acl.blocks.rules.utils.IndexNameRuntimeResolvableVariable
 import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaIndexRuleTests extends WordSpec with MockFactory {
@@ -52,11 +51,6 @@ class KibanaIndexRuleTests extends WordSpec with MockFactory {
     }
   }
 
-  private def indexNameValueFrom(value: String): RuntimeSingleResolvableVariable[IndexName] = {
-    implicit val provider: EnvVarsProvider = OsEnvVarsProvider
-    RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom[IndexName](value.nonempty)(AlwaysRightConvertible.from(IndexName.apply))
-      .right
-      .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
-  }
+  private def indexNameValueFrom(value: String): RuntimeSingleResolvableVariable[IndexName] =
+    IndexNameRuntimeResolvableVariable.create(value)
 }

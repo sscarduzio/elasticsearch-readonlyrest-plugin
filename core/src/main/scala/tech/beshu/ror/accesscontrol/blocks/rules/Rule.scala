@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, NoOpBlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User
@@ -45,6 +46,12 @@ sealed trait Rule {
 
 object Rule {
 
+  final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, variableUsage: VariableUsage[T])
+
+  object RuleWithVariableUsageDefinition {
+    def create[T <: Rule: VariableUsage](rule: T) = new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]])
+  }
+
   sealed trait RuleResult
   object RuleResult {
     final case class Fulfilled(blockContext: BlockContext) extends RuleResult
@@ -55,6 +62,7 @@ object Rule {
       object Cause {
         case object ImpersonationNotSupported extends Cause
         case object ImpersonationNotAllowed extends Cause
+        case object IndexNotFound extends Cause
       }
     }
 
@@ -82,9 +90,9 @@ object Rule {
 
   trait RegularRule extends Rule
 
-  trait AuthorizationRule extends UserMetadataRelatedRule
+  trait AuthorizationRule extends Rule
 
-  trait AuthenticationRule extends UserMetadataRelatedRule {
+  trait AuthenticationRule extends Rule {
 
     private lazy val enhancedImpersonatorDefs =
       impersonators
@@ -170,8 +178,6 @@ object Rule {
       case object CannotCheck extends UserExistence
     }
   }
-
-  trait UserMetadataRelatedRule extends Rule
 
   trait NoImpersonationSupport {
     this: AuthenticationRule =>

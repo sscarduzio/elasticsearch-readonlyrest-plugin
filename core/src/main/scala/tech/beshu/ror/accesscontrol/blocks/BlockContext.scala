@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
+import cats.{Eval, Foldable, Functor}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.accesscontrol.domain._
@@ -62,6 +63,9 @@ trait BlockContext {
   def kibanaIndex: Option[IndexName]
   def withKibanaIndex(index: IndexName): BlockContext
 
+  def kibanaTemplateIndex: Option[IndexName]
+  def withKibanaTemplateIndex(index: IndexName): BlockContext
+
 }
 
 object BlockContext {
@@ -74,6 +78,28 @@ object BlockContext {
   object Outcome {
     final case class Exist[T](value: T) extends Outcome[T]
     case object NotExist extends Outcome[Nothing]
+
+    implicit val functor: Functor[Outcome] = new Functor[Outcome] {
+      override def map[A, B](fa: Outcome[A])(f: A => B): Outcome[B] = fa match {
+        case Exist(value) => Exist(f(value))
+        case ne@NotExist => ne
+      }
+    }
+    implicit val foldable: Foldable[Outcome] = new Foldable[Outcome] {
+      override def foldLeft[A, B](fa: Outcome[A], b: B)(f: (B, A) => B): B = {
+        fa match {
+          case Exist(a) => f(b, a)
+          case NotExist => b
+        }
+      }
+
+      override def foldRight[A, B](fa: Outcome[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] = {
+        fa match {
+          case Exist(a) => f(a, lb)
+          case NotExist => lb
+        }
+      }
+    }
   }
 }
 
@@ -102,6 +128,9 @@ object NoOpBlockContext extends BlockContext {
 
   override val kibanaIndex: Option[IndexName] = None
   override def withKibanaIndex(index: IndexName): BlockContext = this
+
+  override val kibanaTemplateIndex: Option[IndexName] = None
+  override def withKibanaTemplateIndex(index: IndexName): BlockContext = this
 
   override val userOrigin: Option[UserOrigin] = None
   override def withUserOrigin(origin: UserOrigin): BlockContext = this
@@ -164,6 +193,11 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
   override def withKibanaIndex(index: IndexName): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(kibanaIndex = Some(index)))
 
+  override def kibanaTemplateIndex: Option[IndexName] = data.kibanaTemplateIndex
+
+  override def withKibanaTemplateIndex(index: IndexName): BlockContext =
+    new RequestContextInitiatedBlockContext(data.copy(kibanaTemplateIndex = Some(index)))
+
   override def indices: Outcome[Set[IndexName]] = data.indices
 
   override def withIndices(indices: Set[IndexName]): BlockContext =
@@ -194,6 +228,7 @@ object RequestContextInitiatedBlockContext {
                                     responseHeaders: Vector[Header],
                                     contextHeaders: Vector[Header],
                                     kibanaIndex: Option[IndexName],
+                                    kibanaTemplateIndex: Option[IndexName],
                                     kibanaAccess: Option[KibanaAccess],
                                     userOrigin: Option[UserOrigin],
                                     indices: Outcome[Set[IndexName]],
@@ -211,6 +246,7 @@ object RequestContextInitiatedBlockContext {
         responseHeaders = Vector.empty,
         contextHeaders = Vector.empty,
         kibanaIndex = None,
+        kibanaTemplateIndex = None,
         kibanaAccess = None,
         userOrigin = None,
         indices = Outcome.NotExist,

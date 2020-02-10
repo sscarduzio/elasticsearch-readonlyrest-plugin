@@ -19,21 +19,24 @@ package tech.beshu.ror.accesscontrol.logging
 import java.time.{Clock, Instant}
 import java.time.format.DateTimeFormatter
 
+import cats.Show
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.Address
+import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.AuditSink
 
 class AuditingTool(settings: Settings,
                    auditSink: AuditSink)
-                  (implicit clock: Clock) {
+                  (implicit clock: Clock,
+                   loggingContext: LoggingContext) {
 
   def audit(response: ResponseContext): Task[Unit] = {
     safeRunSerializer(response)
@@ -56,11 +59,11 @@ class AuditingTool(settings: Settings,
           toAuditVerbosity(block.verbosity),
           block.show
         )
-      case ResponseContext.Allow(requestContext, metadata, history) =>
+      case ResponseContext.Allow(requestContext, _, block, history) =>
         AuditResponseContext.Allowed(
           toAuditRequestContext(requestContext, None, history),
           toAuditVerbosity(Block.Verbosity.Info),
-          metadata.show
+          block.show
         )
       case ResponseContext.ForbiddenBy(requestContext, block, blockContext, history) =>
         AuditResponseContext.ForbiddenBy(
@@ -70,6 +73,8 @@ class AuditingTool(settings: Settings,
         )
       case ResponseContext.Forbidden(requestContext, history) =>
         AuditResponseContext.Forbidden(toAuditRequestContext(requestContext, None, history))
+      case ResponseContext.RequestedIndexNotExist(requestContext, history) =>
+        AuditResponseContext.RequestedIndexNotExist(toAuditRequestContext(requestContext, None, history))
       case ResponseContext.Errored(requestContext, cause) =>
         AuditResponseContext.Errored(toAuditRequestContext(requestContext, None, Vector.empty), cause)
     }
@@ -79,6 +84,7 @@ class AuditingTool(settings: Settings,
                                     blockContext: Option[BlockContext],
                                     historyEntries: Vector[History]): AuditRequestContext = {
     new AuditRequestContext {
+      implicit val showHeader:Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       override val timestamp: Instant = requestContext.timestamp
       override val id: String = requestContext.id.value
       override val indices: Set[String] = requestContext.indices.map(_.value.value)
@@ -106,6 +112,8 @@ class AuditingTool(settings: Settings,
         case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
       }
       override val involvesIndices: Boolean = requestContext.involvesIndices
+      override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
+      override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
     }
   }
 

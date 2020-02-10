@@ -28,6 +28,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.utils.TestsUtils._
@@ -69,7 +70,8 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       "one full name index passed, one full name index configured, no real indices" in {
         assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test")),
-          requestIndices = Set(IndexName("test".nonempty))
+          requestIndices = Set(IndexName("test".nonempty)),
+          found = Set(IndexName("test".nonempty))
         )
       }
       "one wildcard index passed, one full name index configured, no real indices" in {
@@ -85,13 +87,15 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       "one full name index passed, one wildcard index configured, no real indices" in {
         assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("t*")),
-          requestIndices = Set(IndexName("test".nonempty))
+          requestIndices = Set(IndexName("test".nonempty)),
+          found = Set(IndexName("test".nonempty))
         )
       }
       "two full name indexes passed, the same two full name indexes configured" in {
         assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("test1"), indexNameValueFrom("test2")),
-          requestIndices = Set(IndexName("test2".nonempty), IndexName("test1".nonempty))
+          requestIndices = Set(IndexName("test2".nonempty), IndexName("test1".nonempty)),
+          found = Set(IndexName("test2".nonempty), IndexName("test1".nonempty))
         )
       }
       "two full name indexes passed, one the same, one different index configured" in {
@@ -111,7 +115,8 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       "two full name indexes passed, two matching wildcard indexes configured" in {
         assertMatchRule(
           configured = NonEmptySet.of(indexNameValueFrom("*1"), indexNameValueFrom("*2")),
-          requestIndices = Set(IndexName("test2".nonempty), IndexName("test1".nonempty))
+          requestIndices = Set(IndexName("test2".nonempty), IndexName("test1".nonempty)),
+          found = Set(IndexName("test2".nonempty), IndexName("test1".nonempty))
         )
       }
       "two full name indexes passed, one matching full name and one non-matching wildcard index configured" in {
@@ -253,6 +258,20 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           )
         )
       }
+      "full name index passed, index alias configured" in {
+        assertNotMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("test12-alias")),
+          requestIndices = Set(IndexName("test-index1".nonempty)),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(
+              IndexWithAliases(IndexName("test-index1".nonempty), Set(IndexName("test12-alias".nonempty))),
+              IndexWithAliases(IndexName("test-index2".nonempty), Set(IndexName("test12-alias".nonempty))),
+              IndexWithAliases(IndexName("test-index3".nonempty), Set(IndexName("test34-alias".nonempty))),
+              IndexWithAliases(IndexName("test-index4".nonempty), Set(IndexName("test34-alias".nonempty)))
+            )
+          )
+        )
+      }
     }
   }
 
@@ -298,7 +317,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     }
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(returnedBlock)
-      else Rejected()
+      else Rejected(Some(Cause.IndexNotFound))
     }
   }
 

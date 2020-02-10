@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.request
 
 import java.time.Instant
 
-import cats.Show
+import cats.{Monoid, Show}
 import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
@@ -72,13 +72,14 @@ object RequestContext extends Logging {
 
   def show(loggedUser: Option[LoggedUser],
            kibanaIndex: Option[IndexName],
-           history: Vector[Block.History]): Show[RequestContext] =
+           history: Vector[Block.History])
+          (implicit headerShow: Show[Header]): Show[RequestContext] =
     Show.show { r =>
-      def stringifyLoggedUser = {
+      def stringifyUser = {
         loggedUser match {
           case Some(DirectlyLoggedUser(user)) => s"${user.show}"
           case Some(ImpersonatedUser(user, impersonatedBy)) => s"${impersonatedBy.show} (as ${user.show})"
-          case None => "[user not logged]"
+          case None => r.basicAuth.map(_.credentials.user.value).map(name => s"${name.value} (attempted)").getOrElse("[no info about user]")
         }
       }
 
@@ -93,12 +94,11 @@ object RequestContext extends Logging {
         if (idx.isEmpty) "<N/A>"
         else idx.mkString(",")
       }
-
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
          | CGR:${r.currentGroup.show},
-         | USR:$stringifyLoggedUser,
+         | USR:$stringifyUser,
          | BRS:${r.headers.exists(_.name === Header.Name.userAgent)},
          | KDX:${kibanaIndex.map(_.show).getOrElse("null")},
          | ACT:${r.action.show},
@@ -116,6 +116,8 @@ object RequestContext extends Logging {
 }
 
 class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
+
+  type AliasName = IndexName
 
   def impersonateAs: Option[User.Id] = {
     findHeader(Header.Name.impersonateAs)
@@ -141,8 +143,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   def isCurrentGroupEligible(groups: UniqueNonEmptyList[Group]): Boolean = {
     requestContext.currentGroup match {
       case RequestGroup.AGroup(preferredGroup) =>
-        if(requestContext.uriPath.isCurrentUserMetadataPath) true
-        else groups.contains(preferredGroup)
+        requestContext.uriPath.isCurrentUserMetadataPath || groups.contains(preferredGroup)
       case RequestGroup.`N/A` =>
         true
     }
@@ -156,6 +157,8 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       .find(_.isDefined)
       .flatten
   }
+
+  def rawAuthHeader: Option[Header] = findHeader(Header.Name.authorization)
 
   def bearerToken: Option[AuthorizationToken] = authorizationToken {
     AuthorizationTokenDef(Header.Name.authorization, "Bearer ")
@@ -173,6 +176,17 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
         } else {
           None
         }
+      }
+  }
+
+  def indicesPerAliasMap: Map[AliasName,  Set[IndexName]] = {
+    val mapMonoid = Monoid[Map[AliasName,  Set[IndexName]]]
+    requestContext
+      .allIndicesAndAliases
+      .foldLeft(Map.empty[AliasName,  Set[IndexName]]) {
+        case (acc, indexWithAliases) =>
+          val localIndicesPerAliasMap = indexWithAliases.aliases.map((_, Set(indexWithAliases.index))).toMap
+          mapMonoid.combine(acc, localIndicesPerAliasMap)
       }
   }
 

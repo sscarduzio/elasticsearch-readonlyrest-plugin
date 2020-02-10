@@ -5,6 +5,9 @@ readonlyrest:
     keystore_file: "keystore.jks"
     keystore_pass: readonlyrest1
     key_pass: readonlyrest2
+    truststore_file: "truststore.jks"
+    truststore_pass: readonlyrest3
+    certificate_verification: true
 
   access_control_rules:
 

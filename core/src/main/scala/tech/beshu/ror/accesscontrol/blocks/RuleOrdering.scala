@@ -59,9 +59,13 @@ object RuleOrdering {
     classOf[LdapAuthenticationRule],
     classOf[ExternalAuthenticationRule],
     classOf[GroupsRule],
+    // all authorization rules should be placed after any authentication rule
+    classOf[LdapAuthorizationRule],
+    classOf[ExternalAuthorizationRule],
     // Inspection rules next; these act based on properties of the request.
     classOf[KibanaAccessRule],
     classOf[LocalHostsRule],
+    classOf[HostsRule],
     classOf[SnapshotsRule],
     classOf[RepositoriesRule],
     classOf[XForwardedForRule],
@@ -72,15 +76,14 @@ object RuleOrdering {
     classOf[MethodsRule],
     classOf[HeadersAndRule],
     classOf[HeadersOrRule],
-    classOf[IndicesRule],
     classOf[ActionsRule],
     classOf[UsersRule],
-    // all authorization rules should be placed before any authentication rule
-    classOf[LdapAuthorizationRule],
-    classOf[ExternalAuthorizationRule],
+    // Indices rule should be checked as late as possible due to "index not found" case
+    classOf[IndicesRule],
     // At the end the sync rule chain are those that can mutate the client request.
     classOf[KibanaHideAppsRule],
     classOf[KibanaIndexRule],
+    classOf[KibanaTemplateIndexRule],
     // Stuff to do later, at search time
     classOf[FieldsRule],
     classOf[FilterRule]

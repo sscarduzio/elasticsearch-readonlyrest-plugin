@@ -18,7 +18,7 @@ package tech.beshu.ror.integration;
 
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
-import tech.beshu.ror.utils.containers.LdapContainer;
+import tech.beshu.ror.utils.containers.JavaLdapContainer;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
@@ -36,8 +36,8 @@ public class LdapIntegrationFirstOptionTests {
     ESWithReadonlyRestContainerUtils.create(
       RorPluginGradleProjectJ.fromSystemProperty(),
       new MultiContainer.Builder()
-        .add("LDAP1", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-        .add("LDAP2", () -> LdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+        .add("LDAP1", () -> JavaLdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+        .add("LDAP2", () -> JavaLdapContainer.create("/ldap_integration_1st/ldap.ldif"))
         .build(),
       "/ldap_integration_1st/elasticsearch.yml",
       new ElasticsearchTweetsInitializer()
@@ -52,7 +52,7 @@ public class LdapIntegrationFirstOptionTests {
 
   @Test
   public void usersFromOutsideOfGroup1CannotSeeTweets() throws Exception {
-    assertions(multiContainerDependent.getContainer()).assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+    assertions(multiContainerDependent.getContainer()).assertIndexNotFound("morgan", "user1", "twitter");
   }
 
   @Test

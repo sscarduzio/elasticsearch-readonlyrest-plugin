@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.data.{NonEmptyList, WriterT}
+import cats.data.{NonEmptyList, Validated, WriterT}
 import cats.implicits._
 import cats.{Eq, Show}
 import monix.eval.Task
@@ -25,7 +25,14 @@ import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult, UserMetadataRelatedRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
+import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.factory.BlockValidator
+import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.BlocksLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.logging.LoggingContext
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.TaskOps._
@@ -36,20 +43,13 @@ class Block(val name: Name,
             val policy: Policy,
             val verbosity: Verbosity,
             val rules: NonEmptyList[Rule])
+           (implicit loggingContext: LoggingContext)
   extends Logging {
 
   def execute(requestContext: RequestContext): BlockResultWithHistory = {
-    processRules(rules.toList, requestContext)
-  }
-
-  def executeUserMetadataRuleOnly(requestContext: RequestContext): BlockResultWithHistory = {
-    processRules(rules.collect { case r: UserMetadataRelatedRule => r }, requestContext)
-  }
-
-  private def processRules(selectedRules: List[Rule],
-                           requestContext: RequestContext): BlockResultWithHistory = {
+    implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
     val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
-    selectedRules
+    rules
       .foldLeft(matched(initBlockContext)) {
         case (currentResult, rule) =>
           for {
@@ -105,6 +105,32 @@ class Block(val name: Name,
 object Block {
 
   type BlockResultWithHistory = Task[(Block.ExecutionResult, History)]
+
+  def createFrom(name: Name,
+                 policy: Option[Policy],
+                 verbosity: Option[Verbosity],
+                 rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
+    val sortedRules = rules.sorted
+    BlockValidator.validate(sortedRules) match {
+      case Validated.Valid(_) => Right(createBlockInstance(name, policy, verbosity, sortedRules))
+      case Validated.Invalid(errors) =>
+        implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
+        Left(BlocksLevelCreationError(Message(errors.map(_.show).mkString_("\n"))))
+    }
+  }
+
+  private def createBlockInstance(name: Name,
+                                  policy: Option[Policy],
+                                  verbosity: Option[Verbosity],
+                                  rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                                 (implicit loggingContext: LoggingContext) =
+    new Block(
+      name,
+      policy.getOrElse(Block.Policy.Allow),
+      verbosity.getOrElse(Block.Verbosity.Info),
+      rules.map(_.rule)
+    )
 
   final case class Name(value: String) extends AnyVal
   final case class History(block: Block.Name, items: Vector[HistoryItem], blockContext: BlockContext)

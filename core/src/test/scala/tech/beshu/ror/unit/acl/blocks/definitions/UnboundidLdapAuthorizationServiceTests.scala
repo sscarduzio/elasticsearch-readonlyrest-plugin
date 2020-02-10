@@ -20,6 +20,8 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.api.Refined
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
+import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
@@ -27,14 +29,17 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Ldap
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
-import tech.beshu.ror.utils.LdapContainer
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestContainer with Inside {
+class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestContainer with Inside with Eventually {
+
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
   override val container: LdapContainer = new LdapContainer("LDAP1", "/test_example.ldif")
 
@@ -42,17 +47,23 @@ class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestCon
     "has method to provide user groups" which {
       "returns non empty set of groups" when {
         "user has groups" in {
-          authorizationService.groupsOf(User.Id("morgan".nonempty)).runSyncUnsafe() should be {
-            UniqueList.of(Group("groupAll".nonempty), Group("group3".nonempty), Group("group2".nonempty))
+          eventually {
+            authorizationService.groupsOf(User.Id("morgan".nonempty)).runSyncUnsafe() should be {
+              UniqueList.of(Group("groupAll".nonempty), Group("group3".nonempty), Group("group2".nonempty))
+            }
           }
         }
       }
       "returns empty set of groups" when {
         "user has no groups" in {
-          authorizationService.groupsOf(User.Id("devito".nonempty)).runSyncUnsafe() should be (UniqueList.empty[Group])
+          eventually {
+            authorizationService.groupsOf(User.Id("devito".nonempty)).runSyncUnsafe() should be(UniqueList.empty[Group])
+          }
         }
         "there is no user with given name" in {
-          authorizationService.groupsOf(User.Id("unknown".nonempty)).runSyncUnsafe() should be (UniqueList.empty[Group])
+          eventually {
+            authorizationService.groupsOf(User.Id("unknown".nonempty)).runSyncUnsafe() should be(UniqueList.empty[Group])
+          }
         }
       }
     }

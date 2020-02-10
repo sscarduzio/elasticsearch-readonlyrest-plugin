@@ -21,7 +21,8 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 trait AccessControl {
@@ -49,13 +50,14 @@ object AccessControl {
         case object ImpersonationNotAllowed extends Cause
       }
     }
+    case object IndexNotFound extends RegularRequestResult
     final case class Failed(ex: Throwable) extends RegularRequestResult
     case object PassedThrough extends RegularRequestResult
   }
 
   sealed trait UserMetadataRequestResult
   object UserMetadataRequestResult {
-    final case class Allow(userMetadata: UserMetadata) extends UserMetadataRequestResult
+    final case class Allow(userMetadata: UserMetadata, block: Block) extends UserMetadataRequestResult
     case object Forbidden extends UserMetadataRequestResult
     case object PassedThrough extends UserMetadataRequestResult
   }

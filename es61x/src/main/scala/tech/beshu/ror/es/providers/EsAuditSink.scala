@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.providers
 
+import io.circe.ParsingFailure
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest

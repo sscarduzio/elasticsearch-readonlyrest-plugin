@@ -17,20 +17,19 @@
 package tech.beshu.ror.integration
 
 import com.dimafeng.testcontainers.ForAllTestContainer
-import org.scalatest.Matchers.be
+import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.LdapContainer
-import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.utils.TestsUtils.StringOps
+import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
+import tech.beshu.ror.utils.containers.LdapContainer
 
-class LdapConnectivityCheckYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with ForAllTestContainer with Inside {
+class LdapConnectivityCheckYamlLoadedAccessControlTests
+  extends WordSpec with BaseYamlLoadedAccessControlTest with ForAllTestContainer with Inside {
 
   override val container: LdapContainer = new LdapContainer("LDAP1", "/test_example.ldif")
 

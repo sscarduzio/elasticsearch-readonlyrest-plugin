@@ -20,6 +20,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -40,7 +41,7 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef])
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>
       NonEmptySet.fromSet(SortedSet.empty[UserDef] ++ usersDefinitions.items) match {
-        case Some(userDefs) => Right(new GroupsRule(GroupsRule.Settings(groups, userDefs)))
+        case Some(userDefs) => Right(RuleWithVariableUsageDefinition.create(new GroupsRule(GroupsRule.Settings(groups, userDefs))))
         case None => Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.name.show}` requires them.")))
       }
     }

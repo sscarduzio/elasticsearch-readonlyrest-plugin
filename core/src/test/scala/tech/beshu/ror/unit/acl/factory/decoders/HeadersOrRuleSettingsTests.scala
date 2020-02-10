@@ -54,7 +54,7 @@ class HeadersOrRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersOrRu
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    headers_or: [X-Some-Header1:one, X-Some-Header2:two]
+              |    headers_or: ["X-Some-Header1:one", "X-Some-Header2:two"]
               |
               |""".stripMargin,
           assertion = rule => {

@@ -35,7 +35,7 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings._
-import org.elasticsearch.common.util.concurrent.ThreadContext
+import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.env.{Environment, NodeEnvironment}
@@ -49,6 +49,7 @@ import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestReq
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
+import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.configuration.RorSsl
@@ -71,7 +72,15 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with IngestPlugin
     with NetworkPlugin {
 
+  LogBuildInfoMessage()
+
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
+  // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor
+  // flag check, which is also done by Netty. So, we need to set it manually before ES and Finch, otherwise we will
+  // experience 'java.lang.IllegalStateException: availableProcessors is already set to [x], rejecting [x]' exception
+  doPrivileged {
+    Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
+  }
 
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds

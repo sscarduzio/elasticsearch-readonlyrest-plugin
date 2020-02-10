@@ -23,7 +23,6 @@ repositories {
 
 dependencies {
     compile group: 'com.github.pathikrit',           name: 'better-files_2.12',             version: '3.8.0'
-    compile group: 'io.circe',                       name: 'circe-yaml_2.12',               version: '0.10.0'
     compile group: 'com.github.cb372',               name: 'cats-retry-core_2.12',          version: '0.2.5'
     compile group: 'commons-io',                     name: 'commons-io',                    version: '2.6'
     compile group: 'org.apache.commons',             name: 'commons-lang3',                 version: '3.9'
@@ -36,13 +35,14 @@ dependencies {
     compile group: 'org.apache.logging.log4j',       name: 'log4j-1.2-api',                 version: '2.5'
     compile group: 'org.apache.logging.log4j',       name: 'log4j-core',                    version: '2.11.1'
     compile group: 'com.jayway.jsonpath',            name: 'json-path',                     version: '2.2.0'
-    compile group: 'io.monix',                       name: 'monix_2.12',                    version: '3.0.0-RC2'
+    compile group: 'io.monix',                       name: 'monix_2.12',                    version: '3.0.0-RC3'
     compile group: 'org.scala-lang',                 name: 'scala-library',                 version: '2.12.4'
     compile group: 'org.scala-lang.modules',         name: 'scala-java8-compat_2.12',       version: '0.9.0'
     compile group: 'com.typesafe.scala-logging',     name: 'scala-logging_2.12',            version: '3.9.2'
     compile group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.25.0'
-    compile group: 'com.unboundid',                  name: 'unboundid-ldapsdk',             version: '3.2.0'
+    compile group: 'com.unboundid',                  name: 'unboundid-ldapsdk',             version: '4.0.9'
     compile group: 'com.mashape.unirest',            name: 'unirest-java',                  version: '1.4.9'
+    compile group: 'com.lihaoyi',                    name: 'upickle_2.12',                  version: '0.7.1'
 }
 
 license {

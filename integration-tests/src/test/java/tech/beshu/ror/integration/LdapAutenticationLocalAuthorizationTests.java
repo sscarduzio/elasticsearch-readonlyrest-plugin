@@ -21,7 +21,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
-import tech.beshu.ror.utils.containers.LdapContainer;
+import tech.beshu.ror.utils.containers.JavaLdapContainer;
 import tech.beshu.ror.utils.containers.MultiContainer;
 import tech.beshu.ror.utils.containers.MultiContainerDependent;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
@@ -37,7 +37,7 @@ public class LdapAutenticationLocalAuthorizationTests {
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProjectJ.fromSystemProperty(),
           new MultiContainer.Builder()
-              .add("LDAP1", () -> LdapContainer.create("/ldap_separate_authc_authz_mixed_local/ldap.ldif"))
+              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_authc_local_authz/ldap.ldif"))
               .build(),
           "/ldap_authc_local_authz/elasticsearch.yml",
           new ElasticsearchTweetsInitializer()
@@ -64,13 +64,13 @@ public class LdapAutenticationLocalAuthorizationTests {
   @Test
   public void checkMorganCannotSeeTwitter() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
-    assertions.assertUserAccessToIndexForbidden("morgan", "user1", "twitter");
+    assertions.assertIndexNotFound("morgan", "user1", "twitter");
   }
 
   @Test
   public void checkCartmanCannotSeeFacebook() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
-    assertions.assertUserAccessToIndexForbidden("cartman", "user2", "facebook");
+    assertions.assertIndexNotFound("cartman", "user2", "facebook");
   }
 
 }

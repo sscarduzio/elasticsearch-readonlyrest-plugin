@@ -23,9 +23,10 @@ import monix.execution.Scheduler.Implicits.global
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControl
-import tech.beshu.ror.accesscontrol.AccessControl.{UserMetadataRequestResult, RegularRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
+import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -36,6 +37,7 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool: Option[AuditingTool])
+                                   (implicit loggingContext: LoggingContext)
   extends AccessControl with Logging {
 
   override def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]] = {
@@ -51,6 +53,8 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
               log(ForbiddenBy(requestContext, block, blockContext, resultWithHistory.history))
             case RegularRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, resultWithHistory.history))
+            case RegularRequestResult.IndexNotFound =>
+              log(RequestedIndexNotExist(requestContext, resultWithHistory.history))
             case RegularRequestResult.Failed(ex) =>
               log(Errored(requestContext, ex))
             case RegularRequestResult.PassedThrough =>
@@ -68,8 +72,8 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       .andThen {
         case Success(resultWithHistory) =>
           resultWithHistory.result match {
-            case UserMetadataRequestResult.Allow(userMetadata) =>
-              log(Allow(requestContext, userMetadata, resultWithHistory.history))
+            case UserMetadataRequestResult.Allow(userMetadata, block) =>
+              log(Allow(requestContext, userMetadata, block, resultWithHistory.history))
             case UserMetadataRequestResult.Forbidden =>
               log(Forbidden(requestContext, resultWithHistory.history))
             case UserMetadataRequestResult.PassedThrough =>
@@ -82,6 +86,7 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
 
   private def log(responseContext: ResponseContext): Unit = {
     if (isLoggableEntry(responseContext)) {
+      implicit val showHeader:Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator.responseContextShow
       logger.info(responseContext.show)
     }
@@ -106,8 +111,8 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
     }
     context match {
       case AllowedBy(_, block, _, _) => shouldBeLogged(block)
-      case Allow(_, _, _) => true
-      case _: ForbiddenBy | _: Forbidden | _: Errored => true
+      case Allow(_, _, _, _) => true
+      case _: ForbiddenBy | _: Forbidden | _: Errored | _: RequestedIndexNotExist => true
     }
   }
 
@@ -115,20 +120,23 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
 
 object AccessControlLoggingDecorator {
 
-  private implicit val responseContextShow: Show[ResponseContext] = {
+  private implicit def responseContextShow(implicit headerShow:Show[Header]): Show[ResponseContext] = {
     Show.show {
       case AllowedBy(requestContext, block, blockContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)
         s"""${Constants.ANSI_CYAN}ALLOWED by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
-      case Allow(requestContext, metadata, history) =>
+      case Allow(requestContext, metadata, block, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(metadata.loggedUser, metadata.foundKibanaIndex, history)
-        s"""${Constants.ANSI_CYAN}ALLOWED req=${requestContext.show}${Constants.ANSI_RESET}"""
+        s"""${Constants.ANSI_CYAN}ALLOWED by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
       case ForbiddenBy(requestContext, block, blockContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
       case Forbidden(requestContext, history) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, history)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by default req=${requestContext.show}${Constants.ANSI_RESET}"""
+      case RequestedIndexNotExist(requestContext, history) =>
+        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, history)
+        s"""${Constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestContext.show}${Constants.ANSI_RESET}"""
       case Errored(requestContext, _) =>
         implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector.empty)
         s"""${Constants.ANSI_YELLOW}ERRORED by error req=${requestContext.show}${Constants.ANSI_RESET}"""

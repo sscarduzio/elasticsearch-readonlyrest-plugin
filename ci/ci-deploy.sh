@@ -27,7 +27,6 @@ fi
 
 echo "Entering release uploader.."
 
-
 function processBuild {
     PLUGIN_FILE="$1"
     echo "PLUGIN_FILE: $PLUGIN_FILE"
@@ -44,7 +43,6 @@ function processBuild {
     upload  $PLUGIN_FILE        build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE &&
     upload  $PLUGIN_FILE.sha1   build/$PLUGIN_VERSION/$PLUGIN_FILE_BASE.sha1
 }
-
 
 for zipFile in `ls -1 es*x/build/distributions/*zip`; do
     echo "Processing $zipFile ..."

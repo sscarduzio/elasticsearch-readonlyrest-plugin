@@ -22,8 +22,9 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
 import tech.beshu.ror.utils.misc.Version
@@ -33,11 +34,13 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
   override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/filter_rules/readonlyrest.yml",
-    numberOfInstances = 2,
-    FilterRuleTests.nodeDataInitializer()
+    clusterSettings = AdditionalClusterSettings(
+      numberOfInstances = 2,
+      nodeDataInitializer = FilterRuleTests.nodeDataInitializer()
+    )
   )
 
-  private lazy val searchManager = new SearchManager(container.nodesContainers.head.client("user1", "pass"))
+  private lazy val searchManager = new SearchManagerJ(container.nodesContainers.head.client("user1", "pass"))
 
   "A filter rule" should {
     "show only doc according to defined filter" when {
@@ -65,7 +68,7 @@ class FilterRuleTests extends WordSpec with ForAllTestContainer {
 object FilterRuleTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       add3Docs(adminRestClient, "test1_index", "_doc")
     } else {
       add3Docs(adminRestClient, "test1_index", "doc")
@@ -73,7 +76,7 @@ object FilterRuleTests {
   }
 
   private def add3Docs(adminRestClient: RestClient, index: String, `type`: String): Unit = {
-    val documentManager = new DocumentManager(adminRestClient)
+    val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/1", s"""{"db_name":"db_user1"}""")
     documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/2", s"""{"db_name":"db_user2"}""")
     documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/3", s"""{"db_name":"db_user3"}""")
