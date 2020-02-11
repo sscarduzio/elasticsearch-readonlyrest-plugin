@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 sealed trait ResponseContext {

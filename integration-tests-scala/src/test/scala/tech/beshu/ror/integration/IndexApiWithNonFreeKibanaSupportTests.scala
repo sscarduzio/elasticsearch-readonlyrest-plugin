@@ -14,15 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks
+package tech.beshu.ror.integration
 
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, KibanaAccess, KibanaApp, LoggedUser, UserOrigin}
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.integration.base.BaseIndexApiTests
 
-final case class UserMetadata(loggedUser: Option[LoggedUser],
-                              currentGroup: Option[Group],
-                              availableGroups: UniqueList[Group],
-                              foundKibanaIndex: Option[IndexName],
-                              hiddenKibanaApps: Set[KibanaApp],
-                              kibanaAccess: Option[KibanaAccess],
-                              userOrigin: Option[UserOrigin])
+class IndexApiWithNonFreeKibanaSupportTests extends BaseIndexApiTests {
+  override protected val rorConfigFileName: String =  "/index_api/nonfree_readonlyrest.yml"
+  override protected val notFoundIndexStatusReturned: Int = 404
+}

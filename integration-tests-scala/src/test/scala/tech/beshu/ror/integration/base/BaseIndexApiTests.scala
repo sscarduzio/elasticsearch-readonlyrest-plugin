@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration
+package tech.beshu.ror.integration.base
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
@@ -25,12 +25,15 @@ import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, Readon
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
+trait BaseIndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
+  protected def rorConfigFileName: String
+  protected def notFoundIndexStatusReturned: Int
+  
   override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/index_api/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = IndexApiTests.nodeDataInitializer())
+    rorConfigFileName = rorConfigFileName,
+    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = BaseIndexApiTests.nodeDataInitializer())
   )
 
   private lazy val dev1IndexManager = new IndexManager(container.nodesContainers.head.client("dev1", "test"))
@@ -106,22 +109,22 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
         "called index really doesn't exist" in {
           val indexResponse = dev1IndexManager.getIndex("index3")
 
-          indexResponse.responseCode should be(404)
+          indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "called index exists, but the user has no access to it" in {
           val indexResponse = dev1IndexManager.getIndex("index2")
 
-          indexResponse.responseCode should be(404)
+          indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "one of called indices doesn't exist" in {
           val indexResponse = dev1IndexManager.getIndex("index1", "index3")
 
-          indexResponse.responseCode should be(404)
+          indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "the index is called explicitly when user has configured alias in indices rule" in {
           val indexResponse = dev2IndexManager.getIndex("index2")
 
-          indexResponse.responseCode should be(404)
+          indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
       }
     }
@@ -158,7 +161,7 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
           "one of passed indices doesn't exist" in {
             val aliasResponse = dev1IndexManager.getAlias(indices = "index1", "nonexistent")
 
-            aliasResponse.responseCode should be (404)
+            aliasResponse.responseCode should be (notFoundIndexStatusReturned)
           }
         }
         "/[index]/_alias/[alias] API is used" when {
@@ -212,12 +215,12 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
         "called index really doesn't exist" in {
           val aliasResponse = dev1IndexManager.getAlias("nonexistent")
 
-          aliasResponse.responseCode should be (404)
+          aliasResponse.responseCode should be (notFoundIndexStatusReturned)
         }
         "called index exists, but the user has no access to it" in {
           val aliasResponse = dev1IndexManager.getAlias("index2")
 
-          aliasResponse.responseCode should be (404)
+          aliasResponse.responseCode should be (notFoundIndexStatusReturned)
         }
         "the alias name with wildcard is used" when {
           "there is no matching alias" excludeES(allEs7x, "^es66x$".r, allEs5xExceptEs55x) in {
@@ -316,30 +319,29 @@ class IndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupp
         "called index really doesn't exist" in {
           val indexResponse = dev1IndexManager.getSettings("index3")
 
-          indexResponse.responseCode should be(404)
+          indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "called index exists, but the user has no access to it" in {
           val indexResponse = dev1IndexManager.getSettings("index2")
 
-          indexResponse.responseCode should be(404)
+          indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "one of called indices doesn't exist" in {
           val indexResponse = dev1IndexManager.getSettings("index1", "index3")
 
-          indexResponse.responseCode should be(404)
+          indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "the index is called explicitly when user has configured alias in indices rule" in {
           val indexResponse = dev2IndexManager.getSettings("index2")
 
-          indexResponse.responseCode should be(404)
+          indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
       }
     }
   }
-
 }
 
-object IndexApiTests {
+object BaseIndexApiTests {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient)

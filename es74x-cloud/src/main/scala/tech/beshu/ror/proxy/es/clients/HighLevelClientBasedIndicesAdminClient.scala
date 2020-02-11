@@ -43,7 +43,7 @@ import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.IndicesAdminClient
 import org.elasticsearch.cluster.metadata.AliasMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
-import org.elasticsearch.tasks.{Task, TaskManager}
+import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter
 import tech.beshu.ror.proxy.es.exceptions.{NotDefinedForRorProxy, RorProxyException}

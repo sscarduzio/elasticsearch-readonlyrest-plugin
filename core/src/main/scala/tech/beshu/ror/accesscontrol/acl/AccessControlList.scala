@@ -24,8 +24,9 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Forbidden
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Policy}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, UserMetadata}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
@@ -129,13 +130,14 @@ class AccessControlList(val blocks: NonEmptyList[Block])
 
   private def createUserMetadata(blockContext: BlockContext, currentGroup: Option[Group], availableGroups: UniqueList[Group]) = {
     UserMetadata(
-      blockContext.loggedUser,
-      currentGroup,
-      availableGroups,
-      blockContext.kibanaIndex,
-      blockContext.hiddenKibanaApps,
-      blockContext.kibanaAccess,
-      blockContext.userOrigin
+      loggedUser = blockContext.loggedUser,
+      currentGroup = currentGroup,
+      availableGroups = availableGroups,
+      foundKibanaTemplateIndex = blockContext.kibanaTemplateIndex,
+      foundKibanaIndex = blockContext.kibanaIndex,
+      hiddenKibanaApps = blockContext.hiddenKibanaApps,
+      kibanaAccess = blockContext.kibanaAccess,
+      userOrigin = blockContext.userOrigin
     )
   }
 
