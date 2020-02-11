@@ -103,12 +103,14 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       new ClusterService(settings, clusterSettings, threadPool)
     )
 
+    val taskManager = new TaskManager(settings, threadPool, Set.empty[String].asJava)
     nodeClient.initialize(
       actions(
         actionModule,
         new ActionFilters(Set[ActionFilter](proxyFilter).asJava),
-        new TaskManager(settings, threadPool, Set.empty[String].asJava)
+        taskManager
       ),
+      taskManager,
       () => "ROR_proxy",
       null
     )
