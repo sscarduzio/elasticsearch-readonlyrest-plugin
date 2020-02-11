@@ -75,5 +75,9 @@ object CreateEsHttpRequest {
         override def addHeader(name: String, value: String): Unit = ()
         override def containsHeader(name: String): Boolean = false
       }
+
+    override def release(): Unit = ()
+
+    override def releaseAndCopy(): EsHttpRequest = from(request, headers)
   }
 }
