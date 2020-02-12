@@ -12,6 +12,7 @@ object Boot
     with RorProxyApp
     with Logging {
 
+  //TODO: load from real config
   override val config: RorProxy.Config = RorProxy.Config(
     targetEsNode = "http://localhost:9200",
     proxyPort = "5000",

@@ -50,10 +50,12 @@ trait ProxyTestSupport
     closeHandler.getOrElse(throw new Exception("Could not start test proxy instance"))().unsafeRunSync()
   }
 
+  //TODO: Create proxy instance dynamically based on 'esModule' property. Now it's fixed on es74-cloud
   private def createApp(): RorProxy = new RorProxyApp {
 
     System.setProperty("com.readonlyrest.settings.file.path", ContainerUtils.getResourceFile(rorConfigFileName).getAbsolutePath)
 
+    //TODO: Pass ES config file.
     override def config: RorProxy.Config = RorProxy.Config(
       targetEsNode = s"http://${targetEsContainer.host}:${targetEsContainer.port}",
       proxyPort = proxyPort.toString,
