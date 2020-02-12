@@ -14,24 +14,11 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.boot
+package tech.beshu.ror.integration
 
-import org.scalatest.WordSpec
-import tech.beshu.ror.es.BuildInfoReader
+import tech.beshu.ror.integration.base.BaseIndexApiTests
 
-class BuildInfoReaderTest extends WordSpec {
-
-  import org.scalatest.Matchers._
-
-  "BuildInfoReader" should {
-    "fail create from nonexistent file" in {
-      val error = BuildInfoReader.create("/dontexist.properties").failed.get
-      error.getMessage shouldEqual "file '/dontexist.properties' is expected to be present in plugin jar, but it wasn't found."
-    }
-    "create build info for default file" in {
-      val buildInfo = BuildInfoReader.create("/stub-ror-build-info.properties").get
-      buildInfo.esVersion shouldBe "es stub version"
-      buildInfo.pluginVersion shouldBe "plugin stub version"
-    }
-  }
+class IndexApiWithFreeKibanaSupportTests extends BaseIndexApiTests {
+  override protected val rorConfigFileName: String =  "/index_api/free_readonlyrest.yml"
+  override protected val notFoundIndexStatusReturned: Int = 401
 }

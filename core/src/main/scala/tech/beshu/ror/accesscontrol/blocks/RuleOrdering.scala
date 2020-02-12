@@ -83,6 +83,7 @@ object RuleOrdering {
     // At the end the sync rule chain are those that can mutate the client request.
     classOf[KibanaHideAppsRule],
     classOf[KibanaIndexRule],
+    classOf[KibanaTemplateIndexRule],
     // Stuff to do later, at search time
     classOf[FieldsRule],
     classOf[FilterRule]

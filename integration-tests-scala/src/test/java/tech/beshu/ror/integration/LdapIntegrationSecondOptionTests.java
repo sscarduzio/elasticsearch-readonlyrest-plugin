@@ -31,10 +31,10 @@ public class LdapIntegrationSecondOptionTests {
       ESWithReadonlyRestContainerUtils.create(
           RorPluginGradleProjectJ.fromSystemProperty(),
           new MultiContainer.Builder()
-              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_integration_1st/ldap.ldif"))
-              .add("LDAP2", () -> JavaLdapContainer.create("/ldap_integration_1st/ldap.ldif"))
+              .add("LDAP1", () -> JavaLdapContainer.create("/ldap_integration_2nd/ldap.ldif"))
+              .add("LDAP2", () -> JavaLdapContainer.create("/ldap_integration_2nd/ldap.ldif"))
               .build(),
-          "/ldap_integration_2nd/ldap_second_option_test_elasticsearch.yml",
+          "/ldap_integration_2nd/elasticsearch.yml",
           new ElasticsearchTweetsInitializer()
       );
 

@@ -18,10 +18,9 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule
+import tech.beshu.ror.accesscontrol.blocks.rules.KibanaTemplateIndexRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.IndexName
@@ -29,20 +28,24 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.rules.utils.IndexNameRuntimeResolvableVariable
 import tech.beshu.ror.utils.TestsUtils._
 
-class KibanaIndexRuleTests extends WordSpec with MockFactory {
+class KibanaTemplateIndexRuleTests
+  extends WordSpec
+    with MockFactory {
 
-  "A KibanaIndexRule" should {
+  import org.scalatest.Matchers._
+
+  "A KibanaTemplateIndexRule" should {
     "always match" should {
-      "set kibana index if can be resolved" in {
-        val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index")))
+      "set kibana template index if can be resolved" in {
+        val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index")))
         val requestContext = MockRequestContext.default
         val blockContext = mock[BlockContext]
         val newBlockContext = mock[BlockContext]
-        (blockContext.withKibanaIndex _).expects(IndexName("kibana_index".nonempty)).returning(newBlockContext)
+        (blockContext.withKibanaTemplateIndex _).expects(IndexName("kibana_template_index".nonempty)).returning(newBlockContext)
         rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
       }
       "not set kibana index if cannot be resolved" in {
-        val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index_of_@{user}")))
+        val rule = new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(indexNameValueFrom("kibana_template_index_of_@{user}")))
         val requestContext = MockRequestContext.default
         val blockContext = mock[BlockContext]
         (blockContext.loggedUser _).expects().returning(None)

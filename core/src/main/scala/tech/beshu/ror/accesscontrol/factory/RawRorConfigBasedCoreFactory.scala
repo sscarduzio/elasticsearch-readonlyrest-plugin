@@ -51,8 +51,7 @@ import scala.language.implicitConversions
 
 final case class CoreSettings(aclEngine: AccessControl,
                               aclStaticContext: AccessControlStaticContext,
-                              auditingSettings: Option[AuditingTool.Settings],
-                             )
+                              auditingSettings: Option[AuditingTool.Settings])
 
 trait CoreFactory {
   def createCoreFrom(config: RawRorConfig,

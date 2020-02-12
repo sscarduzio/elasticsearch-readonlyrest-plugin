@@ -50,6 +50,7 @@ object VariableContext {
     implicit val indicesRule: VariableUsage[IndicesRule] = UsingVariable[IndicesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
     implicit val kibanaAccessRule: VariableUsage[KibanaAccessRule] = UsingVariable[KibanaAccessRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
     implicit val kibanaIndexRule: VariableUsage[KibanaIndexRule] = UsingVariable[KibanaIndexRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
+    implicit val kibanaTemplateIndexRule: VariableUsage[KibanaTemplateIndexRule] = UsingVariable[KibanaTemplateIndexRule](rule => NonEmptyList.one(rule.settings.kibanaTemplateIndex))
     implicit val localHostsRule: VariableUsage[LocalHostsRule] = UsingVariable[LocalHostsRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
     implicit val repositoriesRule: VariableUsage[RepositoriesRule] = UsingVariable[RepositoriesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
     implicit val snapshotsRule: VariableUsage[SnapshotsRule] = UsingVariable[SnapshotsRule](rule => rule.settings.allowedIndices.toNonEmptyList)

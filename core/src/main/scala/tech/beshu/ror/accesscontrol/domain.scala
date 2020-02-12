@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.{Base64, Locale}
 
-import cats.Eq
+import cats.{Eq, Functor}
 import cats.data.NonEmptyList
 import cats.implicits._
 import com.comcast.ip4s.interop.cats.HostnameResolver
@@ -73,7 +73,6 @@ object domain {
       val userAgent = Name(NonEmptyString.unsafeFrom("User-Agent"))
       val authorization = Name(NonEmptyString.unsafeFrom("Authorization"))
       val rorUser = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ROR))
-      val kibanaIndex = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_INDEX))
       val kibanaAccess = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_ACCESS))
       val transientFilter = Name(NonEmptyString.unsafeFrom(Constants.FILTER_TRANSIENT))
       val impersonateAs = Name(NonEmptyString.unsafeFrom("impersonate_as"))
@@ -139,14 +138,35 @@ object domain {
     final case class Name(value: Hostname) extends Address
 
     def from(value: String): Option[Address] = {
-      Cidr.fromString(value).map(Ip.apply) orElse
-        IpAddress(value).map(ip => Ip(Cidr(ip, 32))) orElse
-        Hostname(value).map(Name.apply)
+      parseCidr(value) orElse
+        parseIpAddress(value) orElse
+        parseHostname(value)
     }
 
     // fixme: (improvements) blocking resolving (shift to another EC)
     def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
       HostnameResolver.resolveAll[Task](hostname.value).map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
+    }
+  }
+
+  private def parseCidr(value: String) =
+    Cidr.fromString(value).map(Address.Ip.apply)
+
+  private def parseHostname(value: String) =
+    Hostname(value).map(Address.Name.apply)
+
+  private def parseIpAddress(value: String) =
+    (cutOffZoneIndex _ andThen IpAddress.apply andThen (_.map(createAddressIp))) (value)
+
+  private def createAddressIp(ip: IpAddress) =
+    Address.Ip(Cidr(ip, 32))
+
+  private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
+
+  private def cutOffZoneIndex(value: String): String = { //https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
+    value match {
+      case ipv6WithLiteralScope(ipv6) => ipv6
+      case noLiteralIp => noLiteralIp
     }
   }
 
