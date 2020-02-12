@@ -24,15 +24,15 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 
 import scala.language.postfixOps
 
-class ReadonlyRestEsContainer private(name: String, esVersion: String, image: ImageFromDockerfile)
+class EsWithRorPluginContainer private(name: String, esVersion: String, image: ImageFromDockerfile)
   extends RorContainer(name, esVersion, image)
-  with StrictLogging {
+    with StrictLogging {
   logger.info(s"[$name] Creating ES with ROR plugin installed container ...")
 
   override val sslEnabled: Boolean = true
 }
 
-object ReadonlyRestEsContainer {
+object EsWithRorPluginContainer {
 
   final case class Config(nodeName: String,
                           nodes: NonEmptyList[String],
@@ -43,11 +43,11 @@ object ReadonlyRestEsContainer {
                           configHotReloadingEnabled: Boolean,
                           internodeSslEnabled: Boolean) extends RorContainer.Config
 
-  def create(config: ReadonlyRestEsContainer.Config, initializer: ElasticsearchNodeDataInitializer) = {
-    val rorContainer = new ReadonlyRestEsContainer(
+  def create(config: EsWithRorPluginContainer.Config, initializer: ElasticsearchNodeDataInitializer) = {
+    val rorContainer = new EsWithRorPluginContainer(
       config.nodeName,
       config.esVersion,
-      ESWithReadonlyRestImage.create(config)
+      ESWithRorPluginImage.create(config)
     )
     RorContainer.init(rorContainer, config, initializer)
   }

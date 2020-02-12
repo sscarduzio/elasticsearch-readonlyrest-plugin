@@ -3,9 +3,9 @@ package tech.beshu.ror.integration.proxy
 import cats.effect.{ContextShift, IO}
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.{BeforeAndAfterAll, Suite}
-import tech.beshu.ror.proxy.RorProxy
+import tech.beshu.ror.proxy.{RorProxy, RorProxyApp}
 import tech.beshu.ror.utils.containers.ContainerUtils
-import tech.beshu.ror.utils.containers.generic.{CallingProxy, EsContainerCreator, TargetEsContainer}
+import tech.beshu.ror.utils.containers.generic.{CallingProxy, EsWithoutRorPluginContainerCreator, TargetEsContainer}
 
 import scala.concurrent.ExecutionContext
 
@@ -13,7 +13,7 @@ trait ProxyTestSupport
   extends BeforeAndAfterAll
     with ForAllTestContainer
     with CallingProxy
-    with EsContainerCreator {
+    with EsWithoutRorPluginContainerCreator {
   this: Suite with TargetEsContainer =>
 
   def rorConfigFileName: String
@@ -34,7 +34,7 @@ trait ProxyTestSupport
     closeHandler.getOrElse(throw new Exception("Could not start test proxy instance"))().unsafeRunSync()
   }
 
-  private def createApp() = new RorProxy {
+  private def createApp(): RorProxy = new RorProxyApp {
 
     System.setProperty("com.readonlyrest.settings.file.path", ContainerUtils.getResourceFile(rorConfigFileName).getAbsolutePath)
 

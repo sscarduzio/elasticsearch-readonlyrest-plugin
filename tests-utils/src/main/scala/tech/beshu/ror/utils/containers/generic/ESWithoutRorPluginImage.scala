@@ -23,7 +23,7 @@ import tech.beshu.ror.utils.containers.DockerfileBuilderOps._
 import tech.beshu.ror.utils.containers.generic.EsWithoutRorPluginContainer.Config
 import tech.beshu.ror.utils.misc.Version
 
-object ESWithoutReadonlyRestImage extends StrictLogging {
+object ESWithoutRorPluginImage extends StrictLogging {
 
   def create(config: Config): ImageFromDockerfile = {
     import config._

@@ -7,7 +7,7 @@ import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
-trait EsContainerWithRorPluginCreator extends SingleContainerCreator {
+trait EsWithRorPluginContainerCreator extends SingleContainerCreator {
 
   override def create(name: String,
                       nodeNames: NonEmptyList[String],
@@ -17,7 +17,7 @@ trait EsContainerWithRorPluginCreator extends SingleContainerCreator {
     val esVersion = project.getESVersion
     val rorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
 
-    val containerConfig = ReadonlyRestEsContainer.Config(
+    val containerConfig = EsWithRorPluginContainer.Config(
       nodeName = name,
       nodes = nodeNames,
       esVersion = esVersion,
@@ -26,6 +26,6 @@ trait EsContainerWithRorPluginCreator extends SingleContainerCreator {
       configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
       xPackSupport = clusterSettings.xPackSupport)
-    ReadonlyRestEsContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
+    EsWithRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
   }
 }

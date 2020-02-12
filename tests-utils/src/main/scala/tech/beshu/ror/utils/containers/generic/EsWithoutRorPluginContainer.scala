@@ -28,7 +28,7 @@ class EsWithoutRorPluginContainer(name: String,
   extends RorContainer(name, esVersion, image)
   with StrictLogging {
 
-  logger.info(s"[$name] Creating plain ES without ROR plugin container ...")
+  logger.info(s"[$name] Creating ES without ROR plugin installed container ...")
 
   override val sslEnabled: Boolean = false
 }
@@ -45,7 +45,7 @@ object EsWithoutRorPluginContainer {
     val esContainer = new EsWithoutRorPluginContainer(
       config.nodeName,
       config.esVersion,
-      ESWithoutReadonlyRestImage.create(config)
+      ESWithoutRorPluginImage.create(config)
     )
     RorContainer.init(esContainer, config, initializer)
   }

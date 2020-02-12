@@ -30,9 +30,9 @@ import tech.beshu.ror.utils.misc.ScalaUtils._
 import scala.language.existentials
 import scala.util.Try
 
-class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: NonEmptyList[Task[RorContainer]],
-                                                         dependencies: List[DependencyDef],
-                                                         clusterInitializer: ReadonlyRestEsClusterInitializer) extends Container {
+class ClusterContainer private[containers](rorClusterContainers: NonEmptyList[Task[RorContainer]],
+                                           dependencies: List[DependencyDef],
+                                           clusterInitializer: ReadonlyRestEsClusterInitializer) extends Container {
 
   val nodesContainers: NonEmptyList[RorContainer] = {
     NonEmptyList.fromListUnsafe(Task.gather(rorClusterContainers.toList).runSyncUnsafe())
@@ -61,7 +61,7 @@ class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: N
 
 }
 
-class ReadonlyRestEsRemoteClustersContainer private[containers](val localClusters: NonEmptyList[ReadonlyRestEsClusterContainer],
+class ReadonlyRestEsRemoteClustersContainer private[containers](val localClusters: NonEmptyList[ClusterContainer],
                                                                 remoteClustersInitializer: RemoteClustersInitializer)
   extends Container {
 
@@ -119,11 +119,11 @@ class ReadonlyRestEsRemoteClustersContainer private[containers](val localCluster
 }
 
 trait ReadonlyRestEsClusterInitializer {
-  def initialize(esClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit
+  def initialize(esClient: RestClient, container: ClusterContainer): Unit
 }
 
-object NoOpReadonlyRestEsClusterInitializer$ extends ReadonlyRestEsClusterInitializer {
-  override def initialize(esClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit = ()
+object NoOpReadonlyRestEsClusterInitializer extends ReadonlyRestEsClusterInitializer {
+  override def initialize(esClient: RestClient, container: ClusterContainer): Unit = ()
 }
 
 trait RemoteClustersInitializer {
@@ -134,7 +134,7 @@ final case class ClusterSettings(name: String,
                                  rorConfigFileName: String,
                                  numberOfInstances: Int = 1,
                                  nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                 clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer$,
+                                 clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer,
                                  dependentServicesContainers: List[DependencyDef] = Nil,
                                  xPackSupport: Boolean = false,
                                  configHotReloadingEnabled: Boolean = true,

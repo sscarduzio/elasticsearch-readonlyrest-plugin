@@ -6,12 +6,12 @@ import monix.eval.Task
 trait ClusterProvider {
   this: SingleContainerCreator =>
 
-  def createLocalClusterContainer(clusterSettings: ClusterSettings): ReadonlyRestEsClusterContainer = {
+  def createLocalClusterContainer(clusterSettings: ClusterSettings): ClusterContainer = {
     if (clusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("Cluster should have at least one instance")
     val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, clusterSettings.numberOfInstances)(_ + 1).toList
       .map(idx => s"${clusterSettings.name}_$idx"))
 
-    new ReadonlyRestEsClusterContainer(
+    new ClusterContainer(
       nodeNames.map(name => Task(create(name, nodeNames, clusterSettings))),
       clusterSettings.dependentServicesContainers,
       clusterSettings.clusterInitializer)

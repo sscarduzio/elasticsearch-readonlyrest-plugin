@@ -21,10 +21,10 @@ import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.DockerfileBuilderOps._
-import tech.beshu.ror.utils.containers.generic.ReadonlyRestEsContainer.Config
+import tech.beshu.ror.utils.containers.generic.EsWithRorPluginContainer.Config
 import tech.beshu.ror.utils.misc.Version
 
-object ESWithReadonlyRestImage extends StrictLogging {
+object ESWithRorPluginImage extends StrictLogging {
 
   private val rorConfigFileName = "readonlyrest.yml"
   private val log4j2FileName = "log4j2.properties"

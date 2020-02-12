@@ -26,7 +26,6 @@ import monix.eval.Coeval
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
-import tech.beshu.ror.utils.containers.generic.RorContainer.adminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
 import tech.beshu.ror.utils.misc.Tuple
@@ -52,8 +51,6 @@ abstract class RorContainer (val name: String, val esVersion: String, image: Ima
 }
 
 object RorContainer extends StrictLogging {
-  val adminCredentials: (String, String) = ("admin", "container")
-
   trait Config {
     def nodeName: String
     def nodes: NonEmptyList[String]
