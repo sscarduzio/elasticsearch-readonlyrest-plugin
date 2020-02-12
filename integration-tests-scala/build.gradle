@@ -49,7 +49,6 @@ dependencies {
     testCompile project(':tests-utils')
     testCompile project(':es74x-cloud')
 
-    testCompile group: 'io.jsonwebtoken',               name: 'jjwt',                       version: '0.9.1'
     testCompile group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
     testCompile group: 'ch.qos.logback',                name: 'logback-core',               version: '1.2.3'
     testRuntime group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
