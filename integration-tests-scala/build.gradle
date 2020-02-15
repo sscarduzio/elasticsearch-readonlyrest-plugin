@@ -25,13 +25,22 @@ repositories {
 
 test {
     systemProperty "project.dir", rootProject.projectDir
-    enabled = project.hasProperty('esModule')
+    enabled = project.hasProperty('esModule') && project.hasProperty('mode')
     if (enabled) {
         def module = project.properties['esModule']
         systemProperty "esModule", module
 
         tags {
             exclude 'tech.beshu.tags.ExcludeESModule.' + module
+            def mode = project.properties['mode']
+            if (mode == 'plugin') {
+                exclude 'tech.beshu.ror.integration.Proxy'
+            } else if (mode == 'proxy') {
+                include 'tech.beshu.ror.integration.Proxy'
+                enableAssertions(false)
+            } else {
+                throw new Exception("Invalid mode!")
+            }
         }
     }
     outputs.upToDateWhen { false }

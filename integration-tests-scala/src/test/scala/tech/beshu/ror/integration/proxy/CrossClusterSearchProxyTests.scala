@@ -16,9 +16,8 @@
  */
 package tech.beshu.ror.integration.proxy
 
-import org.scalatest.Ignore
+import tech.beshu.ror.integration.Proxy
 import tech.beshu.ror.integration.suites.CrossClusterSearchSuite
 
-//TODO: Enable when implemented for proxy mode
-@Ignore
+@Proxy
 class CrossClusterSearchProxyTests extends CrossClusterSearchSuite with ProxyTestSupport

@@ -17,9 +17,9 @@
 package tech.beshu.ror.proxy
 
 import better.files.File
-import cats.effect.{ContextShift, IO}
+import cats.effect.IO
 import tech.beshu.ror.boot.StartingFailure
-import RorProxy.CloseHandler
+import tech.beshu.ror.proxy.RorProxy.CloseHandler
 
 trait RorProxy {
 
@@ -34,6 +34,6 @@ object RorProxy {
 
   final case class Config(targetEsNode: String,
                           proxyPort: String,
-                          esConfigFile: Option[File])
+                          esConfigFile: File)
 
 }

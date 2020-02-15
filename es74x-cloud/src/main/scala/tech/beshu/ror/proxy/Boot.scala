@@ -3,6 +3,7 @@
  */
 package tech.beshu.ror.proxy
 
+import better.files.File
 import cats.effect.{ExitCode, IO, IOApp, Resource}
 import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
@@ -16,7 +17,7 @@ object Boot
   override val config: RorProxy.Config = RorProxy.Config(
     targetEsNode = "http://localhost:9200",
     proxyPort = "5000",
-    esConfigFile = None
+    esConfigFile = File(getClass.getClassLoader.getResource("elasticsearch.yml"))
   )
 
   override def run(args: List[String]): IO[ExitCode] = {

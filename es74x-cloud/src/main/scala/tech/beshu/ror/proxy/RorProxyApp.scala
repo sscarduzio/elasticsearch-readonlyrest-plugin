@@ -34,9 +34,8 @@ trait RorProxyApp extends RorProxy {
   private def runServer: IO[Either[StartingFailure, CloseHandler]] = {
     val threadPool: ThreadPool = new ThreadPool(Settings.EMPTY)
     val esClient = createEsHighLevelClient()
-    val esConfig = config.esConfigFile.getOrElse(File(getClass.getClassLoader.getResource("elasticsearch.yml")))
     val result = for {
-      simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), esConfig, threadPool))
+      simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), config.esConfigFile, threadPool))
       server = Http.server.serve(s":${config.proxyPort}", new ProxyRestInterceptorService(simulator))
     } yield () =>
       for {

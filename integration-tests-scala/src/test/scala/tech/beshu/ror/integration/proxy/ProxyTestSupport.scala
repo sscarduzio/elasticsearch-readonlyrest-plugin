@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.proxy
 
+import better.files._
 import cats.effect.{ContextShift, IO}
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.{BeforeAndAfterAll, Suite}
@@ -55,11 +56,10 @@ trait ProxyTestSupport
 
     System.setProperty("com.readonlyrest.settings.file.path", ContainerUtils.getResourceFile(rorConfigFileName).getAbsolutePath)
 
-    //TODO: Pass ES config file.
     override def config: RorProxy.Config = RorProxy.Config(
       targetEsNode = s"http://${targetEsContainer.host}:${targetEsContainer.port}",
       proxyPort = proxyPort.toString,
-      esConfigFile = None
+      esConfigFile = ContainerUtils.getResourceFile("/proxy/elasticsearch.yml").toScala
     )
 
     override implicit protected def contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.Implicits.global)
