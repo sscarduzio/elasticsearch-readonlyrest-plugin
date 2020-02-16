@@ -20,7 +20,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.{IndicesExistsReque
 import org.elasticsearch.action.admin.indices.exists.types.{TypesExistsRequest, TypesExistsRequestBuilder, TypesExistsResponse}
 import org.elasticsearch.action.admin.indices.flush._
 import org.elasticsearch.action.admin.indices.forcemerge.{ForceMergeRequest, ForceMergeRequestBuilder, ForceMergeResponse}
-import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexRequestBuilder, GetIndexResponse}
+import org.elasticsearch.action.admin.indices.get.{GetIndexAction, GetIndexRequest, GetIndexRequestBuilder, GetIndexResponse}
 import org.elasticsearch.action.admin.indices.mapping.get._
 import org.elasticsearch.action.admin.indices.mapping.put.{PutMappingRequest, PutMappingRequestBuilder}
 import org.elasticsearch.action.admin.indices.open.{OpenIndexRequest, OpenIndexRequestBuilder, OpenIndexResponse}
@@ -28,13 +28,13 @@ import org.elasticsearch.action.admin.indices.recovery.{RecoveryRequest, Recover
 import org.elasticsearch.action.admin.indices.refresh.{RefreshRequest, RefreshRequestBuilder, RefreshResponse}
 import org.elasticsearch.action.admin.indices.rollover.{RolloverRequest, RolloverRequestBuilder, RolloverResponse}
 import org.elasticsearch.action.admin.indices.segments.{IndicesSegmentResponse, IndicesSegmentsRequest, IndicesSegmentsRequestBuilder}
-import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsRequestBuilder, GetSettingsResponse}
+import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsAction, GetSettingsRequest, GetSettingsRequestBuilder, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.settings.put.{UpdateSettingsRequest, UpdateSettingsRequestBuilder}
 import org.elasticsearch.action.admin.indices.shards.{IndicesShardStoreRequestBuilder, IndicesShardStoresRequest, IndicesShardStoresResponse}
 import org.elasticsearch.action.admin.indices.shrink.{ResizeRequest, ResizeRequestBuilder, ResizeResponse}
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsRequestBuilder, IndicesStatsResponse}
 import org.elasticsearch.action.admin.indices.template.delete.{DeleteIndexTemplateRequest, DeleteIndexTemplateRequestBuilder}
-import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesRequestBuilder, GetIndexTemplatesResponse}
+import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesAction, GetIndexTemplatesRequest, GetIndexTemplatesRequestBuilder, GetIndexTemplatesResponse}
 import org.elasticsearch.action.admin.indices.template.put.{PutIndexTemplateRequest, PutIndexTemplateRequestBuilder}
 import org.elasticsearch.action.admin.indices.upgrade.get.{UpgradeStatusRequest, UpgradeStatusRequestBuilder, UpgradeStatusResponse}
 import org.elasticsearch.action.admin.indices.upgrade.post.{UpgradeRequest, UpgradeRequestBuilder, UpgradeResponse}
@@ -157,7 +157,13 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def prepareUpgrade(indices: String*): UpgradeRequestBuilder = throw NotDefinedForRorProxy
 
-  override def getMappings(request: GetMappingsRequest, listener: ActionListener[GetMappingsResponse]): Unit = throw NotDefinedForRorProxy
+  override def getMappings(request: GetMappingsRequest, listener: ActionListener[GetMappingsResponse]): Unit = {
+    execute(GetMappingsAction.INSTANCE.name(), request, listener) {
+      esClient
+        .getMappings(request)
+        .runAsync(handleResultUsing(listener))
+    }
+  }
 
   override def getMappings(request: GetMappingsRequest): ActionFuture[GetMappingsResponse] = throw NotDefinedForRorProxy
 
@@ -213,9 +219,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
   override def getIndex(request: GetIndexRequest): ActionFuture[GetIndexResponse] = throw NotDefinedForRorProxy
 
   override def getIndex(request: GetIndexRequest, listener: ActionListener[GetIndexResponse]): Unit = {
-    esClient
-      .getIndex(request)
-      .runAsync(handleResultUsing(listener))
+    execute(GetIndexAction.INSTANCE.name(), request, listener) {
+      esClient
+        .getIndex(request)
+        .runAsync(handleResultUsing(listener))
+    }
   }
 
   override def prepareGetIndex(): GetIndexRequestBuilder = throw NotDefinedForRorProxy
@@ -256,7 +264,14 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def getTemplates(request: GetIndexTemplatesRequest): ActionFuture[GetIndexTemplatesResponse] = throw NotDefinedForRorProxy
 
-  override def getTemplates(request: GetIndexTemplatesRequest, listener: ActionListener[GetIndexTemplatesResponse]): Unit = throw NotDefinedForRorProxy
+  override def getTemplates(request: GetIndexTemplatesRequest,
+                            listener: ActionListener[GetIndexTemplatesResponse]): Unit = {
+    execute(GetIndexTemplatesAction.INSTANCE.name(), request, listener) {
+      esClient
+        .getTemplate(request)
+        .runAsync(handleResultUsing(listener))
+    }
+  }
 
   override def prepareGetTemplates(name: String*): GetIndexTemplatesRequestBuilder = throw NotDefinedForRorProxy
 
@@ -267,9 +282,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
   override def prepareValidateQuery(indices: String*): ValidateQueryRequestBuilder = throw NotDefinedForRorProxy
 
   override def getSettings(request: GetSettingsRequest, listener: ActionListener[GetSettingsResponse]): Unit = {
-    esClient
-      .getSettings(request)
-      .runAsync(handleResultUsing(listener))
+    execute(GetSettingsAction.INSTANCE.name(), request, listener) {
+      esClient
+        .getSettings(request)
+        .runAsync(handleResultUsing(listener))
+    }
   }
 
   override def getSettings(request: GetSettingsRequest): ActionFuture[GetSettingsResponse] = throw NotDefinedForRorProxy
