@@ -6,26 +6,36 @@ package tech.beshu.ror.proxy.es.providers
 import monix.execution.Scheduler
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
-import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
-import org.elasticsearch.common.regex.Regex
+import org.elasticsearch.client.indices.GetIndexRequest
+import org.elasticsearch.cluster.metadata.IndexMetaData
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
-import tech.beshu.ror.proxy.es.exceptions.NotDefinedForRorProxy
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 
 import scala.collection.JavaConverters._
 
-// todo: implement
 // todo: we need to refactor ROR to be able to use here async API
 class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
                                         (implicit scheduler: Scheduler)
   extends RorClusterService {
 
-  override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = throw NotDefinedForRorProxy
+  override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
+    client
+      .getIndex(new GetIndexRequest(indexOrAlias))
+      .map { response =>
+        Option(response.getSetting(indexOrAlias, IndexMetaData.INDEX_UUID_NA_VALUE)).toSet
+      }
+      .runSyncUnsafe()
+  }
 
-  override def allIndices: Set[IndexName] = throw NotDefinedForRorProxy
+  override def allIndices: Set[IndexName] = {
+    client
+      .getIndex(new GetIndexRequest())
+      .map(_.getIndices.toSet)
+      .runSyncUnsafe()
+  }
 
   override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
     client
@@ -65,7 +75,4 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .map(_.getIndexTemplates.asScala.toList)
   }
 
-  private def matchesIndexName(template: IndexTemplateMetaData, indexName: IndexName) = {
-    template.patterns.stream.anyMatch((pattern: String) => Regex.simpleMatch(pattern, indexName))
-  }
 }

@@ -16,11 +16,11 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "dev1 indexes"
-      indices: ["custom_@{user}_index_*", "@{user}_index"]
+      indices: ["custom_@{user}_index_1", "@{user}_index"]
       auth_key: dev1:test
 
     - name: "dev2 indexes"
-      indices: ["@{user}_index", "custom_@{user}_index_*"]
+      indices: ["@{user}_index", "custom_@{user}_index_2"]
       auth_key: dev2:test
 
     - name: "dev3 - no indices rule"

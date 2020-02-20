@@ -21,11 +21,11 @@ import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings, SettingsFilter}
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.common.util.set.Sets
-import org.elasticsearch.common.xcontent.{DeprecationHandler, NamedXContentRegistry, StatusToXContentObject, ToXContent, XContentFactory, XContentType}
+import org.elasticsearch.common.xcontent.{DeprecationHandler, NamedXContentRegistry, StatusToXContentObject, ToXContent, ToXContentObject, XContentFactory, XContentType}
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
-import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestController, RestHandler, RestRequest, RestResponse}
+import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestController, RestHandler, RestRequest, RestResponse, RestStatus}
 import org.elasticsearch.tasks
 import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
@@ -149,7 +149,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
             esActionRequestHandler
               .handle(request)
               .runAsyncF {
-                case Right(HandlingResult.Handled(response)) => sendResponseThroughChannel(proxyRestChannel, response)
+                case Right(HandlingResult.Handled(response: StatusToXContentObject)) =>
+                  sendResponseThroughChannel(proxyRestChannel, response)
+                case Right(HandlingResult.Handled(response)) =>
+                  sendResponseThroughChannel(proxyRestChannel, response)
                 case Right(HandlingResult.PassItThrough) => proxyRestChannel.passThrough()
                 case Left(ex) => proxyRestChannel.sendFailureResponse(ex)
               }
@@ -158,6 +161,14 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
         }
       }
     }
+
+  private def sendResponseThroughChannel(proxyRestChannel: ProxyRestChannel,
+                                         response: ToXContentObject): Unit = {
+    proxyRestChannel.sendResponse(new BytesRestResponse(
+      RestStatus.OK,
+      response.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
+    ))
+  }
 
   private def sendResponseThroughChannel(proxyRestChannel: ProxyRestChannel,
                                          response: StatusToXContentObject): Unit = {

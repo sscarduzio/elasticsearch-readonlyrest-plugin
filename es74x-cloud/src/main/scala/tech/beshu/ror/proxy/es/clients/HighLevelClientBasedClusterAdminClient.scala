@@ -3,6 +3,7 @@
  */
 package tech.beshu.ror.proxy.es.clients
 
+import monix.eval.Task
 import monix.execution.Scheduler
 import org.elasticsearch.action._
 import org.elasticsearch.action.admin.cluster.allocation._
@@ -40,19 +41,21 @@ import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.xcontent.XContentType
 import org.elasticsearch.tasks.TaskId
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.proxy.es.{ProxyIndexLevelActionFilter, ProxyThreadRepo}
 import tech.beshu.ror.proxy.es.exceptions.NotDefinedForRorProxy
 
-class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapter)
-                                            (implicit scheduler: Scheduler)
-  extends ClusterAdminClient {
+class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapter,
+                                             override val proxyFilter: ProxyIndexLevelActionFilter)
+                                            (implicit override val scheduler: Scheduler)
+  extends ClusterAdminClient with ProxyFilterable {
 
   override def health(request: ClusterHealthRequest): ActionFuture[ClusterHealthResponse] =
     throw NotDefinedForRorProxy
 
   override def health(request: ClusterHealthRequest, listener: ActionListener[ClusterHealthResponse]): Unit = {
-    esClient
-      .health(request)
-      .runAsync(handleResultUsing(listener))
+    execute(ClusterHealthAction.INSTANCE.name(), request, listener) {
+      esClient.health(request)
+    }
   }
 
   override def prepareHealth(indices: String*): ClusterHealthRequestBuilder = throw NotDefinedForRorProxy
@@ -60,12 +63,14 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
   override def state(request: ClusterStateRequest): ActionFuture[ClusterStateResponse] = throw NotDefinedForRorProxy
 
   override def state(request: ClusterStateRequest, listener: ActionListener[ClusterStateResponse]): Unit = {
-    // todo: implement properly
-    listener.onResponse(new ClusterStateResponse(
-      ClusterName.DEFAULT,
-      ClusterState.EMPTY_STATE,
-      false
-    ))
+    execute(ClusterStateAction.INSTANCE.name(), request, listener) {
+      // todo: implement properly
+      Task.now(new ClusterStateResponse(
+        ClusterName.DEFAULT,
+        ClusterState.EMPTY_STATE,
+        false
+      ))
+    }
   }
 
   override def prepareState(): ClusterStateRequestBuilder = throw NotDefinedForRorProxy
@@ -86,7 +91,7 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def nodesInfo(request: NodesInfoRequest): ActionFuture[NodesInfoResponse] = throw NotDefinedForRorProxy
 
-  override def nodesInfo(request: NodesInfoRequest, listener: ActionListener[NodesInfoResponse]): Unit = throw NotDefinedForRorProxy
+  override def nodesInfo(request: NodesInfoRequest, listener: ActionListener[NodesInfoResponse]): Unit = passThrough()
 
   override def prepareNodesInfo(nodesIds: String*): NodesInfoRequestBuilder = throw NotDefinedForRorProxy
 
@@ -270,10 +275,4 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def threadPool(): ThreadPool = throw NotDefinedForRorProxy
 
-  private def handleResultUsing[T](listener: ActionListener[T])
-                                  (result: Either[Throwable, T]): Unit = result match {
-    case Right(response) => listener.onResponse(response)
-    case Left(ex: Exception) => listener.onFailure(ex)
-    case Left(ex: Throwable) => listener.onFailure(new RuntimeException(ex))
-  }
 }

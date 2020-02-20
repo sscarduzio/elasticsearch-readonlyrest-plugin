@@ -20,7 +20,7 @@ class EsRestNodeClient(underlying: NodeClient,
   extends NodeClient(settings, threadPool) {
 
   private val customAdminClient = new AdminClient {
-    override def cluster(): ClusterAdminClient = new HighLevelClientBasedClusterAdminClient(esClient)
+    override def cluster(): ClusterAdminClient = new HighLevelClientBasedClusterAdminClient(esClient, proxyFilter)
     override def indices(): IndicesAdminClient = new HighLevelClientBasedIndicesAdminClient(esClient, proxyFilter)
   }
 

@@ -8,15 +8,16 @@ import java.util
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthResponse}
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
-import org.elasticsearch.action.admin.indices.get.{GetIndexRequest, GetIndexResponse}
+import org.elasticsearch.action.admin.indices.get.{GetIndexRequest => AdminGetIndexRequest, GetIndexResponse => AdminGetIndexResponse}
 import org.elasticsearch.action.admin.indices.mapping.get.{GetMappingsRequest => AdminGetMappingsRequest, GetMappingsResponse => AdminGetMappingsResponse}
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsResponse}
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
+import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.support.DefaultShardOperationFailedException
 import org.elasticsearch.client.core.CountRequest
-import org.elasticsearch.client.indices.{GetIndexTemplatesRequest, GetMappingsRequest}
+import org.elasticsearch.client.indices.{GetIndexRequest, GetIndexResponse, GetIndexTemplatesRequest, GetMappingsRequest}
 import org.elasticsearch.client.{GetAliasesResponse, RequestOptions, RestHighLevelClient}
 import org.elasticsearch.cluster.metadata.{IndexTemplateMetaData, MappingMetaData}
 import org.elasticsearch.common.collect.ImmutableOpenMap
@@ -29,6 +30,7 @@ import scala.collection.JavaConverters._
 // todo: neat response handling when ES is not available (client throws connection error or times out)
 // todo: use client async api
 class RestHighLevelClientAdapter(client: RestHighLevelClient) {
+
   def getMappings(request: AdminGetMappingsRequest): Task[AdminGetMappingsResponse] = {
     executeAsync(client.indices().getMapping(new GetMappingsRequest(), RequestOptions.DEFAULT))
       .map { response =>
@@ -36,7 +38,7 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
         new AdminGetMappingsResponse(
           ImmutableOpenMap
             .builder()
-            .fPut("test", mappings) // todo: dummy key
+            .fPut("test", mappings) // todo: dummy key`
             .build()
         )
       }
@@ -56,6 +58,14 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def getAlias(request: GetAliasesRequest): Task[GetAliasesResponse] = {
     executeAsync(client.indices().getAlias(request, RequestOptions.DEFAULT))
+  }
+
+  def get(request: GetRequest): Task[GetResponse] = {
+    executeAsync(client.get(request, RequestOptions.DEFAULT))
+  }
+
+  def getIndex(request: AdminGetIndexRequest): Task[AdminGetIndexResponse] = {
+    executeAsync(client.indices().get(request, RequestOptions.DEFAULT))
   }
 
   def getIndex(request: GetIndexRequest): Task[GetIndexResponse] = {
