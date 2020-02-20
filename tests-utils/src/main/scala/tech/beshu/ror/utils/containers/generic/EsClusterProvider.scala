@@ -19,23 +19,23 @@ package tech.beshu.ror.utils.containers.generic
 import cats.data.NonEmptyList
 import monix.eval.Task
 
-trait ClusterProvider {
-  this: SingleContainerCreator =>
+trait EsClusterProvider {
+  this: EsContainerCreator =>
 
-  def createLocalClusterContainer(clusterSettings: ClusterSettings): ClusterContainer = {
-    if (clusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("Cluster should have at least one instance")
-    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, clusterSettings.numberOfInstances)(_ + 1).toList
-      .map(idx => s"${clusterSettings.name}_$idx"))
+  def createLocalClusterContainer(esClusterSettings: EsClusterSettings): EsClusterContainer = {
+    if (esClusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("Cluster should have at least one instance")
+    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, esClusterSettings.numberOfInstances)(_ + 1).toList
+      .map(idx => s"${esClusterSettings.name}_$idx"))
 
-    new ClusterContainer(
-      nodeNames.map(name => Task(create(name, nodeNames, clusterSettings))),
-      clusterSettings.dependentServicesContainers,
-      clusterSettings.clusterInitializer)
+    new EsClusterContainer(
+      nodeNames.map(name => Task(create(name, nodeNames, esClusterSettings))),
+      esClusterSettings.dependentServicesContainers,
+      esClusterSettings.clusterInitializer)
   }
 
-  def createRemoteClustersContainer(localClustersSettings: NonEmptyList[ClusterSettings],
+  def createRemoteClustersContainer(localClustersSettings: NonEmptyList[EsClusterSettings],
                                     remoteClustersInitializer: RemoteClustersInitializer) = {
     val startedClusters = localClustersSettings.map(createLocalClusterContainer)
-    new ReadonlyRestEsRemoteClustersContainer(startedClusters, remoteClustersInitializer)
+    new EsRemoteClustersContainer(startedClusters, remoteClustersInitializer)
   }
 }

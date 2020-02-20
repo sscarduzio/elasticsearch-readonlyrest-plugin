@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.integration.proxy
 
-import tech.beshu.ror.integration.Proxy
 import tech.beshu.ror.integration.suites.ClusterStateSuite
 
-@Proxy
 class ClusterStateProxyTests extends ClusterStateSuite with ProxyTestSupport

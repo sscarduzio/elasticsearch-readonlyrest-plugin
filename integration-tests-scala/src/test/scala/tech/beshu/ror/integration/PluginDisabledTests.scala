@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.elasticsearch.{ClusterStateManager, RorApiManager}
 
 class PluginDisabledTests extends WordSpec with ForAllTestContainer {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
   )

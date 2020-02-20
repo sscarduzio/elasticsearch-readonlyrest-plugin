@@ -35,7 +35,7 @@ trait ProxyTestSupport
 
   def rorConfigFileName: String
 
-  private var closeHandler: Option[RorProxy.CloseHandler] = None
+  private var closeHandler: RorProxy.CloseHandler = _
   override val proxyPort = 5000
 
   override def afterStart(): Unit = {
@@ -43,12 +43,12 @@ trait ProxyTestSupport
     closeHandler = createApp()
       .start
       .unsafeRunSync()
-      .toOption
+      .getOrElse(throw new IllegalStateException("Could not start test proxy instance"))
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    closeHandler.getOrElse(throw new Exception("Could not start test proxy instance"))().unsafeRunSync()
+    closeHandler().unsafeRunSync()
   }
 
   //TODO: Create proxy instance dynamically based on 'esModule' property. Now it's fixed on es74-cloud

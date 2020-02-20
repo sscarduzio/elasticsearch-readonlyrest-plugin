@@ -23,11 +23,11 @@ import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
-trait EsWithRorPluginContainerCreator extends SingleContainerCreator {
+trait EsWithRorPluginContainerCreator extends EsContainerCreator {
 
   override def create(name: String,
                       nodeNames: NonEmptyList[String],
-                      clusterSettings: ClusterSettings): RorContainer = {
+                      clusterSettings: EsClusterSettings): EsContainer = {
     val project = RorPluginGradleProject.fromSystemProperty
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val esVersion = project.getESVersion

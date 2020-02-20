@@ -28,7 +28,7 @@ import ujson.{Null, Num, Str}
 
 class SqlApiTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/sql_api/readonlyrest.yml",
     clusterSettings = AdditionalClusterSettings(

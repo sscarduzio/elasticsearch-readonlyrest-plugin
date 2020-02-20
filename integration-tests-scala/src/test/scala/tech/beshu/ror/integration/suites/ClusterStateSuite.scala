@@ -19,27 +19,27 @@ package tech.beshu.ror.integration.suites
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.generic.{ClientProvider, ClusterProvider, ClusterSettings, SingleContainerCreator, TargetEsContainer}
+import tech.beshu.ror.utils.containers.generic.{ClientProvider, EsClusterProvider, EsClusterSettings, EsContainerCreator, TargetEsContainer}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait ClusterStateSuite
   extends WordSpec
     with ClientProvider
-    with ClusterProvider
+    with EsClusterProvider
     with TargetEsContainer
     with ForAllTestContainer {
-  this: SingleContainerCreator =>
+  this: EsContainerCreator =>
 
   val rorConfigFileName = "/cluster_state/readonlyrest.yml"
   override lazy val container = createLocalClusterContainer(
-    ClusterSettings(
+    EsClusterSettings(
       name = "ROR1",
       rorConfigFileName = rorConfigFileName
     )
   )
   override lazy val targetEsContainer = container.nodesContainers.head
-  private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
 
+  private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
 
   "/_cat/state should work as expected" in {
     val response = adminClusterStateManager.healthCheck()

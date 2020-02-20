@@ -29,7 +29,7 @@ import scala.collection.JavaConverters._
 
 class ImpersonationTests extends WordSpec with ForAllTestContainer {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/impersonation/readonlyrest.yml",
     clusterSettings = AdditionalClusterSettings(nodeDataInitializer = ImpersonationTests.nodeDataInitializer())

@@ -28,7 +28,7 @@ trait BaseTemplatesTests extends ForAllTestContainer with BeforeAndAfterEach {
   this: Suite =>
 
   def rorContainer: ReadonlyRestEsClusterContainer
-  override val container: Container = rorContainer
+  override lazy val container: Container = rorContainer
 
   protected lazy val adminTemplateManager = new TemplateManagerJ(rorContainer.nodesContainers.head.adminClient)
   protected lazy val adminDocumentManager = new DocumentManagerJ(rorContainer.nodesContainers.head.adminClient)

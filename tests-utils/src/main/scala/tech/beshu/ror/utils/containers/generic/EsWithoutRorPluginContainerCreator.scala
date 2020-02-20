@@ -19,11 +19,11 @@ package tech.beshu.ror.utils.containers.generic
 import cats.data.NonEmptyList
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
-trait EsWithoutRorPluginContainerCreator extends SingleContainerCreator {
+trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
 
   override def create(name: String,
                       nodeNames: NonEmptyList[String],
-                      clusterSettings: ClusterSettings): RorContainer = {
+                      clusterSettings: EsClusterSettings): EsContainer = {
     val project = RorPluginGradleProject.fromSystemProperty
     val esVersion = project.getESVersion
 

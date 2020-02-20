@@ -25,7 +25,7 @@ import scala.language.postfixOps
 class EsWithoutRorPluginContainer(name: String,
                                   esVersion: String,
                                   image: ImageFromDockerfile)
-  extends RorContainer(name, esVersion, image)
+  extends EsContainer(name, esVersion, image)
   with StrictLogging {
 
   logger.info(s"[$name] Creating ES without ROR plugin installed container ...")
@@ -38,7 +38,7 @@ object EsWithoutRorPluginContainer {
   final case class Config(nodeName: String,
                           nodes: NonEmptyList[String],
                           esVersion: String,
-                          xPackSupport: Boolean) extends RorContainer.Config
+                          xPackSupport: Boolean) extends EsContainer.Config
 
   def create(config: EsWithoutRorPluginContainer.Config,
              initializer: ElasticsearchNodeDataInitializer) = {
@@ -47,7 +47,7 @@ object EsWithoutRorPluginContainer {
       config.esVersion,
       ESWithoutRorPluginImage.create(config)
     )
-    RorContainer.init(esContainer, config, initializer)
+    EsContainer.init(esContainer, config, initializer)
   }
 }
 

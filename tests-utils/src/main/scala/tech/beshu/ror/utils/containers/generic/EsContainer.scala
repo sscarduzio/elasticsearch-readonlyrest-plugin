@@ -34,7 +34,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-abstract class RorContainer (val name: String, val esVersion: String, image: ImageFromDockerfile)
+abstract class EsContainer(val name: String, val esVersion: String, image: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
     with ClientProvider
     with StrictLogging {
@@ -50,7 +50,7 @@ abstract class RorContainer (val name: String, val esVersion: String, image: Ima
   override def client(user: String, password: String): RestClient = new RestClient(sslEnabled, host, port, Optional.of(Tuple.from(user, password)))
 }
 
-object RorContainer extends StrictLogging {
+object EsContainer extends StrictLogging {
   trait Config {
     def nodeName: String
     def nodes: NonEmptyList[String]
@@ -58,20 +58,20 @@ object RorContainer extends StrictLogging {
     def xPackSupport: Boolean
   }
 
-  def init(rorContainer: RorContainer,
-           config: RorContainer.Config,
-           initializer: ElasticsearchNodeDataInitializer): RorContainer = {
+  def init(esContainer: EsContainer,
+           config: EsContainer.Config,
+           initializer: ElasticsearchNodeDataInitializer): EsContainer = {
 
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
-    rorContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
-    rorContainer.container.addExposedPort(9200)
-    rorContainer.container.setWaitStrategy(
-      new ElasticsearchNodeWaitingStrategy(config.esVersion, rorContainer.name, Coeval(rorContainer.adminClient), initializer)
+    esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
+    esContainer.container.addExposedPort(9200)
+    esContainer.container.setWaitStrategy(
+      new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, Coeval(esContainer.adminClient), initializer)
         .withStartupTimeout(3 minutes)
     )
-    rorContainer.container.setNetwork(Network.SHARED)
-    rorContainer.container.setNetworkAliases((config.nodeName :: Nil).asJava)
-    rorContainer
+    esContainer.container.setNetwork(Network.SHARED)
+    esContainer.container.setNetworkAliases((config.nodeName :: Nil).asJava)
+    esContainer
   }
 }
 

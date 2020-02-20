@@ -29,7 +29,7 @@ import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfterEach {
 
-  private val rorWithIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
+  private lazy val rorWithIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/admin_api/readonlyrest.yml",
     clusterSettings = AdditionalClusterSettings(
@@ -38,13 +38,13 @@ class AdminApiTests extends WordSpec with ForAllTestContainer with BeforeAndAfte
     )
   )
 
-  private val rorWithNoIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
+  private lazy val rorWithNoIndexConfig = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR2",
     rorConfigFileName = "/admin_api/readonlyrest.yml",
     clusterSettings = AdditionalClusterSettings(configHotReloadingEnabled = false)
   )
 
-  override val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
+  override lazy val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
 
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(rorWithIndexConfig.nodesContainers.head.adminClient)
   private lazy val rorWithNoIndexConfigAdminActionManager = new ActionManagerJ(rorWithNoIndexConfig.nodesContainers.head.adminClient)

@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/field_level_security/readonlyrest.yml",
     clusterSettings = AdditionalClusterSettings(nodeDataInitializer = FieldLevelSecurityTests.nodeDataInitializer())

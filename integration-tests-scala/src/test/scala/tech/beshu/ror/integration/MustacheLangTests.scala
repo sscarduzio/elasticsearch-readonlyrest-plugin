@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 class MustacheLangTests extends WordSpec with ForAllTestContainer with ESVersionSupport with Matchers {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/plugin_indices/readonlyrest.yml",
     clusterSettings = AdditionalClusterSettings(

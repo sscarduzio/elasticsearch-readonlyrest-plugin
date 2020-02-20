@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 class ReindexTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/reindex/readonlyrest.yml",
     clusterSettings = AdditionalClusterSettings(nodeDataInitializer = ReindexTests.nodeDataInitializer())

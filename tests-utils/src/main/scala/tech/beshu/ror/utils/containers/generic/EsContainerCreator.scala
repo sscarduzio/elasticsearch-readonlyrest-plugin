@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.containers.generic
 import cats.data.NonEmptyList
 import monix.eval.Task
 
-trait SingleContainerCreator {
+trait EsContainerCreator {
 
-  def create(name: String, nodeNames: NonEmptyList[String], clusterSettings: ClusterSettings): RorContainer
+  def create(name: String, nodeNames: NonEmptyList[String], clusterSettings: EsClusterSettings): EsContainer
 }

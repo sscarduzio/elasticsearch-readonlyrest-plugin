@@ -28,8 +28,12 @@ trait ClientProvider {
   def adminClient: RestClient = client(adminCredentials._1, adminCredentials._2)
 }
 
+object ClientProvider {
+  val adminCredentials: (String, String) = ("admin", "container")
+}
+
 trait TargetEsContainer {
-  def targetEsContainer: RorContainer
+  def targetEsContainer: EsContainer
 }
 
 trait CallingEsDirectly extends ClientProvider {
@@ -42,9 +46,5 @@ trait CallingProxy extends ClientProvider {
   def proxyPort: Int
 
   override def client(user: String, pass: String): RestClient = new RestClient(false, "localhost", proxyPort, Optional.of(Tuple.from(user, pass)))
-}
-
-object ClientProvider {
-  val adminCredentials: (String, String) = ("admin", "container")
 }
 

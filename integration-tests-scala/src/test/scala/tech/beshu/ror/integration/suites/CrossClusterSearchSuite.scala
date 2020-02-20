@@ -28,17 +28,17 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait CrossClusterSearchSuite
   extends WordSpec
     with ForAllTestContainer
-    with ClusterProvider
+    with EsClusterProvider
     with ClientProvider
     with TargetEsContainer
     with ESVersionSupport {
-  this: SingleContainerCreator =>
+  this: EsContainerCreator =>
 
   val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
-  override val container = createRemoteClustersContainer(
+  override lazy val container = createRemoteClustersContainer(
     NonEmptyList.of(
-      ClusterSettings(name = "ROR1", rorConfigFileName = rorConfigFileName, nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
-      ClusterSettings(name = "ROR2", rorConfigFileName = rorConfigFileName, nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
+      EsClusterSettings(name = "ROR1", rorConfigFileName = rorConfigFileName, nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
+      EsClusterSettings(name = "ROR2", rorConfigFileName = rorConfigFileName, nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
     ),
     CrossClusterSearchSuite.remoteClustersInitializer()
   )
@@ -75,7 +75,7 @@ object CrossClusterSearchSuite {
   }
 
   def remoteClustersInitializer(): RemoteClustersInitializer =
-    (localClusterRepresentatives: NonEmptyList[RorContainer]) => {
+    (localClusterRepresentatives: NonEmptyList[EsContainer]) => {
       Map("odd" -> localClusterRepresentatives)
     }
 

@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 class UriRegexRuleTests extends WordSpec with ForAllTestContainer {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
   )
