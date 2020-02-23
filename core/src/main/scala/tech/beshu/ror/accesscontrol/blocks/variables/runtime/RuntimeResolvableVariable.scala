@@ -150,6 +150,17 @@ object SingleExtractable {
       }
     }
   }
+
+  case object AvailableGroupsVar extends SingleExtractable with VariableType.AvailableGroups {
+
+    override def extractUsing(requestContext: RequestContext,
+                              blockContext: BlockContext): Either[ExtractError, String] = {
+      if(blockContext.availableGroups.size > 0)
+        Right(blockContext.availableGroups.mkString(","))
+      else
+        Left(ExtractError(s"There was no groups for request: ${requestContext.id.show}"))
+    }
+  }
 }
 
 sealed trait MultiExtractable extends Extractable[NonEmptyList[String]] {
@@ -220,6 +231,17 @@ object MultiExtractable {
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
       singleCurrentGroupExtractable
+        .extractUsing(requestContext, blockContext)
+        .map(NonEmptyList.one)
+    }
+  }
+
+  case object AvailableGroupsVar extends MultiExtractable with VariableType.AvailableGroups {
+    private val singleAvailableGroupsExtractable = SingleExtractable.AvailableGroupsVar
+
+    override def extractUsing(requestContext: RequestContext,
+                              blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
+      singleAvailableGroupsExtractable
         .extractUsing(requestContext, blockContext)
         .map(NonEmptyList.one)
     }
