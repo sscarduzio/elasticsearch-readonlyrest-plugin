@@ -187,6 +187,37 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
     }
   }
 
+  "An available groups variable" should {
+    "have been resolved" when {
+      "available groups variable is used" in {
+        val variable = forceCreateSingleVariable("@{acl:available_groups}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default).withAddedAvailableGroups(UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")))
+          )
+        variable shouldBe Right("g1,g2")
+      }
+      "available groups multivariable is used and explode" in {
+        val variable = forceCreateMultiVariable("@explode{acl:available_groups}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default).withAddedAvailableGroups(UniqueNonEmptyList.of(groupFrom("g1,g2"), groupFrom("g3")))
+          )
+        variable shouldBe Right(NonEmptyList.of("g1,g2,g3"))
+      }
+    }
+    "have not been resolved" when {
+      "available groups is not available in given block context" in {
+        val variable = forceCreateSingleVariable("@{acl:available_groups}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default)
+          )
+        variable shouldBe Left(CannotExtractValue("There were no groups for request: mock"))
+      }
+    }
+  }
+
   "A jwt variable" should {
     "have been resolved" when {
       "jwt variable is used with correct JSON path to string value and JWT token was set" in {

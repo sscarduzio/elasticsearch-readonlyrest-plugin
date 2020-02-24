@@ -156,9 +156,12 @@ object SingleExtractable {
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, String] = {
       if(blockContext.availableGroups.size > 0)
-        Right(blockContext.availableGroups.mkString(","))
+        Right(blockContext
+          .availableGroups
+          .map(_.value.value)
+          .mkString(","))
       else
-        Left(ExtractError(s"There was no groups for request: ${requestContext.id.show}"))
+        Left(ExtractError(s"There were no groups for request: ${requestContext.id.show}"))
     }
   }
 }
