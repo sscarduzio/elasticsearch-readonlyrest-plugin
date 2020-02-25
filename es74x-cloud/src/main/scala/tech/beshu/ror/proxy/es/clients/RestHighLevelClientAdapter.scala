@@ -18,7 +18,7 @@ import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.support.DefaultShardOperationFailedException
 import org.elasticsearch.client.core.CountRequest
 import org.elasticsearch.client.indices.{GetIndexRequest, GetIndexResponse, GetIndexTemplatesRequest, GetMappingsRequest}
-import org.elasticsearch.client.{GetAliasesResponse, RequestOptions, RestHighLevelClient}
+import org.elasticsearch.client.{GetAliasesResponse, Request, RequestOptions, RestHighLevelClient}
 import org.elasticsearch.cluster.metadata.{IndexTemplateMetaData, MappingMetaData}
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.compress.CompressedXContent
