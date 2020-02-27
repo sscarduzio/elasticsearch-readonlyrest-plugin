@@ -28,7 +28,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext}
+import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils._
 
 class LocalHostsRuleTests extends WordSpec with MockFactory {
@@ -71,7 +72,10 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     assertRule(configuredAddresses, localAddress, isMatched = false)
 
   private def assertRule(configuredAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]], localAddress: Address, isMatched: Boolean) = {
-    val rule = new LocalHostsRule(LocalHostsRule.Settings(configuredAddresses))
+    val rule = new LocalHostsRule(
+      LocalHostsRule.Settings(configuredAddresses),
+      new Ip4sBasedHostnameResolver
+    )
     val blockContext = mock[BlockContext]
     val requestContext = MockRequestContext(localAddress = localAddress)
     rule.check(requestContext, blockContext).runSyncStep shouldBe Right{

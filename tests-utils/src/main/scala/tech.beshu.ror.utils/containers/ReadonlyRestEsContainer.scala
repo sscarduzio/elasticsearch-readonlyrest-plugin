@@ -24,6 +24,7 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
+import org.apache.http.Header
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
 import tech.beshu.ror.utils.containers.ReadonlyRestEsContainer.adminCredentials
@@ -50,8 +51,8 @@ class ReadonlyRestEsContainer private(val name: String, val esVersion: String, u
   def adminClient: RestClient =
     new RestClient(true, host, port, Optional.of(Tuple.from(adminCredentials._1, adminCredentials._2)))
 
-  def client(user: String, password: String): RestClient =
-    new RestClient(true, host, port, Optional.of(Tuple.from(user, password)))
+  def client(user: String, password: String, headers: Header*): RestClient =
+    new RestClient(true, host, port, Optional.of(Tuple.from(user, password)), headers: _*)
 }
 
 object ReadonlyRestEsContainer extends StrictLogging {

@@ -142,11 +142,6 @@ object domain {
         parseIpAddress(value) orElse
         parseHostname(value)
     }
-
-    // fixme: (improvements) blocking resolving (shift to another EC)
-    def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
-      HostnameResolver.resolveAll[Task](hostname.value).map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
-    }
   }
 
   private def parseCidr(value: String) =

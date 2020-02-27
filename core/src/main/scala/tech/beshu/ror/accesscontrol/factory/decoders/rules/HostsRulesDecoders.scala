@@ -28,12 +28,15 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.HostRulesDecodersHelp
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 
 class HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boolean](
   ruleDecoderCreator = acceptXForwardedFor =>
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-      .map(nes => RuleWithVariableUsageDefinition.create(new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor)))),
+      .map(nes => RuleWithVariableUsageDefinition.create(
+        new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor), new Ip4sBasedHostnameResolver)
+      )),
   associatedFields = NonEmptySet.one("accept_x-forwarded-for_header"),
   associatedFieldsDecoder =
     Decoder.instance(_.downField("accept_x-forwarded-for_header").as[Boolean])
@@ -43,7 +46,9 @@ class HostsRuleDecoder extends RuleDecoderWithAssociatedFields[HostsRule, Boolea
 class LocalHostsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Address]]
-    .map(addresses => RuleWithVariableUsageDefinition.create(new LocalHostsRule(LocalHostsRule.Settings(addresses))))
+    .map(addresses => RuleWithVariableUsageDefinition.create(
+      new LocalHostsRule(LocalHostsRule.Settings(addresses), new Ip4sBasedHostnameResolver)
+    ))
 )
 
 private object HostRulesDecodersHelper {

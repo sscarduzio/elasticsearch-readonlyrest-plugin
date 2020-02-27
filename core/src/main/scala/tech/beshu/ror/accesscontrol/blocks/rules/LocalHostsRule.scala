@@ -25,8 +25,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-class LocalHostsRule(val settings: Settings)
-  extends BaseHostsRule {
+class LocalHostsRule(val settings: Settings,
+                     resolver: HostnameResolver)
+  extends BaseHostsRule(resolver) {
 
   override val name: Rule.Name = LocalHostsRule.name
 
@@ -44,5 +45,4 @@ object LocalHostsRule {
   val name = Rule.Name("hosts_local")
 
   final case class Settings(allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]])
-
 }

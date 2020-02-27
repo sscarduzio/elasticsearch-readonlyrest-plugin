@@ -25,12 +25,14 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
+import tech.beshu.ror.accesscontrol.domain.Address.{Ip, Name}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
 
-abstract class BaseHostsRule extends RegularRule with Logging {
+abstract class BaseHostsRule(resolver: HostnameResolver)
+  extends RegularRule with Logging {
 
   protected def checkAllowedAddresses(requestContext: RequestContext,
                                       blockContext: BlockContext)
@@ -64,10 +66,14 @@ abstract class BaseHostsRule extends RegularRule with Logging {
       case address: Address.Ip =>
         Task.now(Some(NonEmptyList.one(address)))
       case address: Address.Name =>
-        Address
+        resolver
           .resolve(address)
           .andThen {
             case Success(None) => logger.warn(s"Cannot resolve hostname: ${address.value.show}")
           }
     }
+}
+
+trait HostnameResolver {
+  def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]]
 }
