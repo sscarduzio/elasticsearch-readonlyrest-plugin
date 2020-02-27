@@ -41,7 +41,8 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       rorConfigFile = rorConfigFile,
       configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
-      xPackSupport = clusterSettings.xPackSupport)
+      xPackSupport = clusterSettings.xPackSupport,
+      externalSslEnabled = true)
     EsWithRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
   }
 }

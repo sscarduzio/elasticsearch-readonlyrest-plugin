@@ -41,7 +41,8 @@ object EsWithRorPluginContainer {
                           rorPluginFile: File,
                           rorConfigFile: File,
                           configHotReloadingEnabled: Boolean,
-                          internodeSslEnabled: Boolean) extends EsContainer.Config
+                          internodeSslEnabled: Boolean,
+                          externalSslEnabled: Boolean) extends EsContainer.Config
 
   def create(config: EsWithRorPluginContainer.Config, initializer: ElasticsearchNodeDataInitializer) = {
     val rorContainer = new EsWithRorPluginContainer(

@@ -56,6 +56,9 @@ object EsContainer extends StrictLogging {
     def nodes: NonEmptyList[String]
     def esVersion: String
     def xPackSupport: Boolean
+    def internodeSslEnabled: Boolean
+    def configHotReloadingEnabled: Boolean
+    def externalSslEnabled: Boolean
   }
 
   def init(esContainer: EsContainer,

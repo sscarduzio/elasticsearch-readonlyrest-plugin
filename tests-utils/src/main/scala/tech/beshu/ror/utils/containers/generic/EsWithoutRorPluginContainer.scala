@@ -38,7 +38,10 @@ object EsWithoutRorPluginContainer {
   final case class Config(nodeName: String,
                           nodes: NonEmptyList[String],
                           esVersion: String,
-                          xPackSupport: Boolean) extends EsContainer.Config
+                          xPackSupport: Boolean,
+                          configHotReloadingEnabled: Boolean,
+                          internodeSslEnabled: Boolean,
+                          externalSslEnabled: Boolean) extends EsContainer.Config
 
   def create(config: EsWithoutRorPluginContainer.Config,
              initializer: ElasticsearchNodeDataInitializer) = {
