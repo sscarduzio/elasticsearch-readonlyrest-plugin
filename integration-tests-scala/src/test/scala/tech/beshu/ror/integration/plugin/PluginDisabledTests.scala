@@ -14,35 +14,39 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration
+package tech.beshu.ror.integration.plugin
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
+import tech.beshu.ror.utils.elasticsearch.{ClusterStateManager, RorApiManager}
 
-class ClusterStateWithInternodeSslTests extends WordSpec with ForAllTestContainer {
+class PluginDisabledTests extends WordSpec with ForAllTestContainer {
 
   override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
-    rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(
-      numberOfInstances = 3,
-      internodeSslEnabled = true
-    )
+    rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
   )
 
-  private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
+  "ROR with `enable: false` in settings" should {
+    "pass ES request through" in {
+      val user1ClusterStateManager = new ClusterStateManager(container.nodesContainers.head.client("user1", "pass"))
 
-  "Health check" should {
-    "be successful" when {
-      "internode ssl is enabled" in {
-        val response = adminClusterStateManager.healthCheck()
+      val result = user1ClusterStateManager.catTemplates()
 
-        response.responseCode should be(200)
+      result.responseCode should be (200)
+    }
+    "return information that ROR is disabled" when {
+      "ROR API endpoint is being called" in {
+        val user1MetadataManager = new RorApiManager(container.nodesContainers.head.client("user1", "pass"))
+
+        val result = user1MetadataManager.fetchMetadata()
+
+        result.responseCode should be (503)
+        result.responseJson("error")("reason").str should be ("ReadonlyREST plugin was disabled in settings")
       }
     }
   }
+
 }

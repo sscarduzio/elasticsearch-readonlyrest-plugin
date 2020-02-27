@@ -32,15 +32,16 @@ test {
 
         tags {
             exclude 'tech.beshu.tags.ExcludeESModule.' + module
-            def mode = project.properties['mode']
-            if (mode == 'plugin') {
-                exclude 'tech.beshu.ror.integration.Proxy'
-            } else if (mode == 'proxy') {
-                include 'tech.beshu.ror.integration.Proxy'
-                enableAssertions(false)
-            } else {
-                throw new Exception("Invalid mode!")
-            }
+        }
+
+        def mode = project.properties['mode']
+        if (mode == 'plugin') {
+            suite 'tech.beshu.ror.integration.plugin.*'
+        } else if (mode == 'proxy') {
+            suite 'tech.beshu.ror.integration.proxy.*'
+            enableAssertions(false)
+        } else {
+            throw new Exception("Invalid mode: '$mode'! Allowed 'proxy' or 'plugin'")
         }
     }
     outputs.upToDateWhen { false }
