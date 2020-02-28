@@ -77,6 +77,3 @@ object EsContainer extends StrictLogging {
     esContainer
   }
 }
-
-
-

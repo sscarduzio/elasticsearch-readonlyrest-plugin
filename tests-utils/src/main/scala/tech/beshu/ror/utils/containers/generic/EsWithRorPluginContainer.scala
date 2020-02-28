@@ -53,4 +53,3 @@ object EsWithRorPluginContainer {
     EsContainer.init(rorContainer, config, initializer)
   }
 }
-
