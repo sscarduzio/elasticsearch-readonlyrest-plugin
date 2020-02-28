@@ -20,7 +20,7 @@ import better.files._
 import cats.effect.{ContextShift, IO}
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.{BeforeAndAfterAll, Suite}
-import tech.beshu.ror.proxy.{RorProxy, RorProxyApp}
+import tech.beshu.ror.proxy.RorProxy
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.generic.{CallingProxy, EsWithoutRorPluginContainerCreator, TargetEsContainer}
 
@@ -52,7 +52,7 @@ trait ProxyTestSupport
   }
 
   //TODO: Create proxy instance dynamically based on 'esModule' property. Now it's fixed on es74-cloud
-  private def createApp(): RorProxy = new RorProxyApp {
+  private def createApp(): RorProxy = new RorProxy {
 
     System.setProperty("com.readonlyrest.settings.file.path", ContainerUtils.getResourceFile(rorConfigFileName).getAbsolutePath)
 

@@ -20,9 +20,11 @@ import tech.beshu.ror.proxy.es.{EsCode, EsRestServiceSimulator}
 import tech.beshu.ror.proxy.server.ProxyRestInterceptorService
 import tech.beshu.ror.utils.ScalaOps.{twitterFutureToIo, _}
 
-trait RorProxyApp extends RorProxy {
+trait RorProxy  {
 
   implicit protected def contextShift: ContextShift[IO]
+
+  def config: RorProxy.Config
 
   def start: IO[Either[StartingFailure, CloseHandler]] = {
     for {
@@ -50,4 +52,13 @@ trait RorProxyApp extends RorProxy {
   private def createEsHighLevelClient() = {
     new RestHighLevelClient(RestClient.builder(HttpHost.create(config.targetEsNode)))
   }
+}
+
+object RorProxy {
+  type CloseHandler = () => IO[Unit]
+
+  final case class Config(targetEsNode: String,
+                          proxyPort: String,
+                          esConfigFile: File)
+
 }

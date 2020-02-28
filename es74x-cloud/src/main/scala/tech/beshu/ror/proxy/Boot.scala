@@ -10,7 +10,7 @@ import org.apache.logging.log4j.scala.Logging
 
 object Boot
   extends IOApp
-    with RorProxyApp
+    with RorProxy
     with Logging {
 
   //TODO: load from real config
