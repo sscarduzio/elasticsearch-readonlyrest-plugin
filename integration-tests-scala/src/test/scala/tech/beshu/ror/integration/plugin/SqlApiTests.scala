@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration
+package tech.beshu.ror.integration.plugin
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
@@ -28,7 +28,7 @@ import ujson.{Null, Num, Str}
 
 class SqlApiTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/sql_api/readonlyrest.yml",
     clusterSettings = AdditionalClusterSettings(

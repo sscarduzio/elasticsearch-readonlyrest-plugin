@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration
+package tech.beshu.ror.integration.plugin
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 class UriRegexRuleTests extends WordSpec with ForAllTestContainer {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
   )
