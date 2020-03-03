@@ -23,7 +23,7 @@ import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory
 import tech.beshu.ror.configuration.RawRorConfig
-import tech.beshu.ror.mocks.MockHttpClientsFactory
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
@@ -45,7 +45,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
     val aclEngineT = for {
       config <- RawRorConfig.fromString(configYaml)
         .map(_.fold(err => throw new IllegalStateException(err.show), identity))
-      core <- factory.createCoreFrom(config, MockHttpClientsFactory)
+      core <- factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider)
         .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), identity))
     } yield core.aclEngine
     aclEngineT.runSyncUnsafe()

@@ -16,6 +16,9 @@
  */
 package tech.beshu.ror.mocks
 
+import com.unboundid.ldap.sdk.LDAPConnectionPool
+import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{LdapConnectionConfig, LdapConnectionPoolProvider}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
 

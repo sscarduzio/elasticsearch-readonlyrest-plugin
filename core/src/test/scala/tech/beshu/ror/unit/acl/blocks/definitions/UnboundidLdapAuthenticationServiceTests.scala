@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
+import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.LdapContainer
@@ -90,6 +91,7 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
     UnboundidLdapAuthenticationService
       .create(
         Name("my_ldap".nonempty),
+        MockLdapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${ldap1Container.ldapHost}:${ldap1Container.ldapPort}").get),
           Refined.unsafeApply(10),
@@ -111,6 +113,7 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
     UnboundidLdapAuthenticationService
       .create(
         Name("my_ldap".nonempty),
+        MockLdapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SeveralServers(
             NonEmptyList.of(

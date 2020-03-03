@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
-import tech.beshu.ror.mocks.MockHttpClientsFactory
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -54,7 +54,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
           """.stripMargin)
-        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, None)) => }
       }
       "audit collector is disabled" in {
@@ -70,7 +70,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
           """.stripMargin)
-        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, None)) => }
       }
     }
@@ -88,7 +88,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
           """.stripMargin)
-        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
@@ -109,7 +109,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
           """.stripMargin)
-        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("custom_template_20181231")
@@ -130,7 +130,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
           """.stripMargin)
-        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
@@ -151,7 +151,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
           """.stripMargin)
-        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider).runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
           auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
@@ -174,7 +174,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
           """.stripMargin)
-        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider).runSyncUnsafe()
         inside(core) { case Left(errors) =>
           errors.length should be(1)
           errors.head should be (AuditingSettingsCreationError(Message(
@@ -196,7 +196,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
             |    auth_key: admin:container
             |
           """.stripMargin)
-        val core = factory.createCoreFrom(config, MockHttpClientsFactory).runSyncUnsafe()
+        val core = factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider).runSyncUnsafe()
         inside(core) { case Left(errors) =>
           errors.length should be(1)
           errors.head should be (AuditingSettingsCreationError(Message(

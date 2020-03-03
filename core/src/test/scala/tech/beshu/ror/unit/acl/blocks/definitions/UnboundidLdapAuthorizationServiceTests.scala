@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Ldap
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
+import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -73,6 +74,7 @@ class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestCon
     UnboundidLdapAuthorizationService
       .create(
         Name("ldap1".nonempty),
+        MockLdapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${container.ldapHost}:${container.ldapPort}").get),
           Refined.unsafeApply(10),

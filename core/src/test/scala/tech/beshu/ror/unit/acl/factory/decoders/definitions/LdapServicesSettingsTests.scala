@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthService, Ld
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
+import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.utils.TestsUtils.StringOps
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
 import tech.beshu.ror.utils.containers.LdapContainer
@@ -29,7 +30,7 @@ import tech.beshu.ror.utils.containers.LdapContainer
 import scala.language.postfixOps
 
 class LdapServicesSettingsTests
-  extends BaseDecoderTest(LdapServicesDecoder.ldapServicesDefinitionsDecoder)
+  extends BaseDecoderTest(LdapServicesDecoder.ldapServicesDefinitionsDecoder(MockLdapConnectionPoolProvider))
     with ForAllTestContainer {
 
   private val containerLdap1 = new LdapContainer("LDAP1", "/test_example.ldif")
