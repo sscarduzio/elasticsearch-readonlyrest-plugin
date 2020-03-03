@@ -14,27 +14,38 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class ActionsTests extends WordSpec with ForAllTestContainer {
+trait ActionsSuite
+  extends WordSpec
+    with ForAllTestContainer
+    with EsClusterProvider
+    with ClientProvider
+    with TargetEsContainer
+    with ESVersionSupport {
+  this: EsContainerCreator =>
 
-  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/actions/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(
-      nodeDataInitializer = ActionsTests.nodeDataInitializer()
+  val rorConfigFileName = "/actions/readonlyrest.yml"
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
+      rorConfigFileName = rorConfigFileName,
+      nodeDataInitializer = ActionsSuite.nodeDataInitializer()
     )
   )
 
-  private lazy val actionManager = new ActionManagerJ(container.nodesContainers.head.client("any", "whatever"))
+  override lazy val targetEsContainer = container.nodesContainers.head
+
+  private lazy val actionManager = new ActionManagerJ(client("any", "whatever"))
 
   "A actions rule" should {
     "work for delete request" which {
@@ -50,7 +61,7 @@ class ActionsTests extends WordSpec with ForAllTestContainer {
   }
 }
 
-object ActionsTests {
+object ActionsSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
@@ -58,3 +69,6 @@ object ActionsTests {
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
   }
 }
+
+
+
