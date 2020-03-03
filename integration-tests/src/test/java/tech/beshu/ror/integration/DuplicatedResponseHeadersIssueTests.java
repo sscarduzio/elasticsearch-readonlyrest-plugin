@@ -23,14 +23,10 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
-import tech.beshu.ror.utils.containers.MultiContainer;
-import tech.beshu.ror.utils.containers.MultiContainerDependent;
-import tech.beshu.ror.utils.containers.WireMockContainer;
+import tech.beshu.ror.utils.containers.*;
+import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.httpclient.RestClient;
-import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 
 import java.util.List;
 import java.util.Objects;

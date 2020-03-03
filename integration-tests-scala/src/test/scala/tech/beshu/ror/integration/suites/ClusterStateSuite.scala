@@ -14,26 +14,36 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration
+package tech.beshu.ror.integration.suites
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.utils.containers.generic.{ClientProvider, EsClusterProvider, EsClusterSettings, EsContainerCreator, TargetEsContainer}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
-class ClusterStateTests  extends WordSpec with ForAllTestContainer {
+trait ClusterStateSuite
+  extends WordSpec
+    with ClientProvider
+    with EsClusterProvider
+    with TargetEsContainer
+    with ForAllTestContainer {
+  this: EsContainerCreator =>
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/cluster_state/readonlyrest.yml"
+  val rorConfigFileName = "/cluster_state/readonlyrest.yml"
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
+      rorConfigFileName = rorConfigFileName
+    )
   )
+  override lazy val targetEsContainer = container.nodesContainers.head
 
-  private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
+  private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
 
   "/_cat/state should work as expected" in {
     val response = adminClusterStateManager.healthCheck()
 
-    response.responseCode should be (200)
+    response.responseCode should be(200)
   }
 }

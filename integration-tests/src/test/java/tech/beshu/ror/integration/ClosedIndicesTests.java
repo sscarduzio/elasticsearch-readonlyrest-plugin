@@ -23,18 +23,16 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
+import org.junit.ClassRule;
+import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 import tech.beshu.ror.utils.httpclient.RestClient;
-import org.junit.ClassRule;
-import org.junit.Test;
 
 import java.util.Optional;
 
+import static org.junit.Assert.*;
 import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class ClosedIndicesTests {
 
