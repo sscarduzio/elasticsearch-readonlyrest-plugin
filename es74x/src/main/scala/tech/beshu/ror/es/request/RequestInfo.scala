@@ -436,6 +436,8 @@ class RequestInfo(channel: RestChannel,
         } else {
           ar.names(templateNamesToReturn.toList: _*)
         }
+      case ar: PutIndexTemplateRequest =>
+        ar.patterns(indices.toList.asJava)
       case _ =>
       // ignore
     }
