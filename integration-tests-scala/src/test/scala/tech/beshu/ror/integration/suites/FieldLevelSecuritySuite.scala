@@ -14,29 +14,42 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
+trait FieldLevelSecuritySuite
+  extends WordSpec
+    with ForAllTestContainer
+    with EsClusterProvider
+    with ClientProvider
+    with TargetEsContainer
+    with ESVersionSupport {
+  this: EsContainerCreator =>
 
-  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/field_level_security/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = FieldLevelSecurityTests.nodeDataInitializer())
+  val rorConfigFileName = "/field_level_security/readonlyrest.yml"
+
+  override val targetEsContainer = container.nodesContainers.head
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
+      rorConfigFileName = rorConfigFileName,
+      nodeDataInitializer = FieldLevelSecuritySuite.nodeDataInitializer()
+    )
   )
 
   "A fields rule" should {
     "work for simple cases" when {
       "whitelist mode is used" in {
-        val searchManager = new SearchManager(container.nodesContainers.head.client("user1", "pass"))
+        val searchManager = new SearchManager(client("user1", "pass"))
 
         val result = searchManager.search("/testfiltera/_search")
 
@@ -44,10 +57,10 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-        source should be (ujson.read("""{"dummy2":"true"}"""))
+        source should be(ujson.read("""{"dummy2":"true"}"""))
       }
       "whitelist mode with wildcard is used" in {
-        val searchManager = new SearchManager(container.nodesContainers.head.client("user2", "pass"))
+        val searchManager = new SearchManager(client("user2", "pass"))
 
         val result = searchManager.search("/testfiltera/_search")
 
@@ -55,10 +68,10 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-        source should be (ujson.read("""{"dummy2":"true"}"""))
+        source should be(ujson.read("""{"dummy2":"true"}"""))
       }
       "blacklist mode is used" in {
-        val searchManager = new SearchManager(container.nodesContainers.head.client("user3", "pass"))
+        val searchManager = new SearchManager(client("user3", "pass"))
 
         val result = searchManager.search("/testfiltera/_search")
 
@@ -66,10 +79,10 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-        source should be (ujson.read("""{"dummy":"a1"}"""))
+        source should be(ujson.read("""{"dummy":"a1"}"""))
       }
       "blacklist mode with wildcard is used" in {
-        val searchManager = new SearchManager(container.nodesContainers.head.client("user4", "pass"))
+        val searchManager = new SearchManager(client("user4", "pass"))
 
         val result = searchManager.search("/testfiltera/_search")
 
@@ -77,12 +90,12 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-        source should be (ujson.read("""{"dummy":"a1"}"""))
+        source should be(ujson.read("""{"dummy":"a1"}"""))
       }
     }
     "work for nested fields" when {
       "whitelist mode is used" in {
-        val searchManager = new SearchManager(container.nodesContainers.head.client("user1", "pass"))
+        val searchManager = new SearchManager(client("user1", "pass"))
 
         val result = searchManager.search("/nestedtest/_search")
 
@@ -90,21 +103,21 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-       source should be (ujson.read(
-         """
-           |{
-           |  "items":[
-           |    {"endDate":"2019-07-31"},
-           |    {"endDate":"2019-06-30"},
-           |    {"endDate":"2019-09-30"}
-           |  ],
-           |  "secrets":[{},{}]
-           |}
-           |""".stripMargin
-         ))
+        source should be(ujson.read(
+          """
+            |{
+            |  "items":[
+            |    {"endDate":"2019-07-31"},
+            |    {"endDate":"2019-06-30"},
+            |    {"endDate":"2019-09-30"}
+            |  ],
+            |  "secrets":[{},{}]
+            |}
+            |""".stripMargin
+        ))
       }
       "whitelist mode with wildcard is used" in {
-        val searchManager = new SearchManager(container.nodesContainers.head.client("user2", "pass"))
+        val searchManager = new SearchManager(client("user2", "pass"))
 
         val result = searchManager.search("/nestedtest/_search")
 
@@ -112,7 +125,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-        source should be (ujson.read(
+        source should be(ujson.read(
           s"""
              |{
              |  "items":[
@@ -129,7 +142,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         ))
       }
       "blacklist mode is used" in {
-        val searchManager = new SearchManager(container.nodesContainers.head.client("user3", "pass"))
+        val searchManager = new SearchManager(client("user3", "pass"))
 
         val result = searchManager.search("/nestedtest/_search")
 
@@ -137,7 +150,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-        source should be (ujson.read(
+        source should be(ujson.read(
           """
             |{
             |  "id":1,
@@ -150,7 +163,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         ))
       }
       "blacklist mode with wildcards is used" in {
-        val searchManager = new SearchManager(container.nodesContainers.head.client("user4", "pass"))
+        val searchManager = new SearchManager(client("user4", "pass"))
 
         val result = searchManager.search("/nestedtest/_search")
 
@@ -158,7 +171,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
         val searchJson = result.searchHits
         val source = searchJson.get(0)("_source")
 
-        source should be (ujson.read(
+        source should be(ujson.read(
           """
             |{
             |  "id":1,
@@ -175,7 +188,7 @@ class FieldLevelSecurityTests extends WordSpec with ForAllTestContainer {
   }
 }
 
-object FieldLevelSecurityTests {
+object FieldLevelSecuritySuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
