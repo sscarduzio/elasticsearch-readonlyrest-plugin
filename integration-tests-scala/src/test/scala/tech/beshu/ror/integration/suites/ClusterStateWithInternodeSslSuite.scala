@@ -14,27 +14,36 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
-class ClusterStateWithInternodeSslTests extends WordSpec with ForAllTestContainer {
+trait ClusterStateWithInternodeSslSuite
+  extends WordSpec
+    with ClientProvider
+    with EsClusterProvider
+    with TargetEsContainer
+    with ForAllTestContainer {
+  this: EsContainerCreator =>
 
-  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(
+  val rorConfigFileName = "/cluster_state/readonlyrest.yml"
+
+  override lazy val targetEsContainer = container.nodesContainers.head
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
+      rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml",
       numberOfInstances = 3,
       internodeSslEnabled = true
     )
   )
 
-  private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
+  private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
 
   "Health check" should {
     "be successful" when {
