@@ -14,11 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
-import tech.beshu.ror.integration.base.BaseIndexApiTests
+import tech.beshu.ror.utils.containers.generic.EsContainerCreator
 
-class IndexApiWithNonFreeKibanaSupportTests extends BaseIndexApiTests {
-  override protected val rorConfigFileName: String =  "/index_api/nonfree_readonlyrest.yml"
-  override protected val notFoundIndexStatusReturned: Int = 404
+trait IndexApiWithFreeKibanaSupportSuite extends BaseIndexApiSuite {
+  this: EsContainerCreator =>
+
+  override protected val rorConfigFileName: String =  "/index_api/free_readonlyrest.yml"
+  override protected val notFoundIndexStatusReturned: Int = 401
 }
