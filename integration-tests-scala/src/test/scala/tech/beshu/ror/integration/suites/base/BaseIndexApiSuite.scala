@@ -14,31 +14,42 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.base
+package tech.beshu.ror.integration.suites.base
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait BaseIndexApiTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
+trait BaseIndexApiSuite
+  extends WordSpec
+    with ClientProvider
+    with EsClusterProvider
+    with TargetEsContainer
+    with ForAllTestContainer
+    with ESVersionSupport {
+  this: EsContainerCreator =>
 
   protected def rorConfigFileName: String
+
   protected def notFoundIndexStatusReturned: Int
-  
-  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = rorConfigFileName,
-    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = BaseIndexApiTests.nodeDataInitializer())
+
+  override lazy val targetEsContainer = container.nodesContainers.head
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
+      rorConfigFileName = rorConfigFileName,
+      nodeDataInitializer = BaseIndexApiSuite.nodeDataInitializer()
+    )
   )
 
-  private lazy val dev1IndexManager = new IndexManager(container.nodesContainers.head.client("dev1", "test"))
-  private lazy val dev2IndexManager = new IndexManager(container.nodesContainers.head.client("dev2", "test"))
-  private lazy val dev3IndexManager = new IndexManager(container.nodesContainers.head.client("dev3", "test"))
+  private lazy val dev1IndexManager = new IndexManager(client("dev1", "test"))
+  private lazy val dev2IndexManager = new IndexManager(client("dev2", "test"))
+  private lazy val dev3IndexManager = new IndexManager(client("dev3", "test"))
 
   "ROR" when {
     "Get index API is used" should {
@@ -133,55 +144,55 @@ trait BaseIndexApiTests extends WordSpec with ForAllTestContainer with ESVersion
         "/_alias API is used" in {
           val aliasResponse = dev1IndexManager.getAliases
 
-          aliasResponse.responseCode should be (200)
-          aliasResponse.responseJson.obj.size should be (1)
+          aliasResponse.responseCode should be(200)
+          aliasResponse.responseJson.obj.size should be(1)
           val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-          aliasesJson.size should be (1)
-          aliasesJson.contains("index1_alias") should be (true)
+          aliasesJson.size should be(1)
+          aliasesJson.contains("index1_alias") should be(true)
         }
         "/[index]/_alias API is used" when {
           "index full name is passed" in {
             val aliasResponse = dev1IndexManager.getAlias("index1")
 
-            aliasResponse.responseCode should be (200)
-            aliasResponse.responseJson.obj.size should be (1)
+            aliasResponse.responseCode should be(200)
+            aliasResponse.responseJson.obj.size should be(1)
             val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-            aliasesJson.size should be (1)
-            aliasesJson.contains("index1_alias") should be (true)
+            aliasesJson.size should be(1)
+            aliasesJson.contains("index1_alias") should be(true)
           }
           "index name has wildcard" in {
             val aliasResponse = dev1IndexManager.getAlias("index*")
 
-            aliasResponse.responseCode should be (200)
-            aliasResponse.responseJson.obj.size should be (1)
+            aliasResponse.responseCode should be(200)
+            aliasResponse.responseJson.obj.size should be(1)
             val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-            aliasesJson.size should be (1)
-            aliasesJson.contains("index1_alias") should be (true)
+            aliasesJson.size should be(1)
+            aliasesJson.contains("index1_alias") should be(true)
           }
           "one of passed indices doesn't exist" in {
             val aliasResponse = dev1IndexManager.getAlias(indices = "index1", "nonexistent")
 
-            aliasResponse.responseCode should be (notFoundIndexStatusReturned)
+            aliasResponse.responseCode should be(notFoundIndexStatusReturned)
           }
         }
         "/[index]/_alias/[alias] API is used" when {
           "alias full name is passed" in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1_alias")
 
-            aliasResponse.responseCode should be (200)
-            aliasResponse.responseJson.obj.size should be (1)
+            aliasResponse.responseCode should be(200)
+            aliasResponse.responseJson.obj.size should be(1)
             val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-            aliasesJson.size should be (1)
-            aliasesJson.contains("index1_alias") should be (true)
+            aliasesJson.size should be(1)
+            aliasesJson.contains("index1_alias") should be(true)
           }
           "alias name has wildcard" in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "index1*")
 
-            aliasResponse.responseCode should be (200)
-            aliasResponse.responseJson.obj.size should be (1)
+            aliasResponse.responseCode should be(200)
+            aliasResponse.responseJson.obj.size should be(1)
             val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
-            aliasesJson.size should be (1)
-            aliasesJson.contains("index1_alias") should be (true)
+            aliasesJson.size should be(1)
+            aliasesJson.contains("index1_alias") should be(true)
           }
         }
       }
@@ -190,24 +201,24 @@ trait BaseIndexApiTests extends WordSpec with ForAllTestContainer with ESVersion
           "there is no matching index" in {
             val aliasResponse = dev1IndexManager.getAlias("nonexistent*")
 
-            aliasResponse.responseCode should be (200)
-            aliasResponse.responseJson.obj.size should be (0)
+            aliasResponse.responseCode should be(200)
+            aliasResponse.responseJson.obj.size should be(0)
           }
         }
         "the alias name with wildcard is used" when {
           "there is no matching alias" excludeES("^es55x$".r, allEs6xExceptEs66x) in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
-            aliasResponse.responseCode should be (200)
-            aliasResponse.responseJson.obj.size should be (0)
+            aliasResponse.responseCode should be(200)
+            aliasResponse.responseJson.obj.size should be(0)
           }
         }
         "the full name alias is used" when {
           "there is no matching alias" excludeES("^es55x$".r, allEs6x, allEs7x) in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent")
 
-            aliasResponse.responseCode should be (200)
-            aliasResponse.responseJson.obj.size should be (0)
+            aliasResponse.responseCode should be(200)
+            aliasResponse.responseJson.obj.size should be(0)
           }
         }
       }
@@ -215,26 +226,26 @@ trait BaseIndexApiTests extends WordSpec with ForAllTestContainer with ESVersion
         "called index really doesn't exist" in {
           val aliasResponse = dev1IndexManager.getAlias("nonexistent")
 
-          aliasResponse.responseCode should be (notFoundIndexStatusReturned)
+          aliasResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "called index exists, but the user has no access to it" in {
           val aliasResponse = dev1IndexManager.getAlias("index2")
 
-          aliasResponse.responseCode should be (notFoundIndexStatusReturned)
+          aliasResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "the alias name with wildcard is used" when {
           "there is no matching alias" excludeES(allEs7x, "^es66x$".r, allEs5xExceptEs55x) in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
-            aliasResponse.responseCode should be (404)
+            aliasResponse.responseCode should be(404)
           }
         }
       }
       "return alias not found" when {
-        "full alias name is used and the alias doesn't exist" excludeES(allEs5xExceptEs55x) in {
+        "full alias name is used and the alias doesn't exist" excludeES (allEs5xExceptEs55x) in {
           val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent")
 
-          aliasResponse.responseCode should be (404)
+          aliasResponse.responseCode should be(404)
         }
       }
     }
@@ -341,7 +352,7 @@ trait BaseIndexApiTests extends WordSpec with ForAllTestContainer with ESVersion
   }
 }
 
-object BaseIndexApiTests {
+object BaseIndexApiSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient)

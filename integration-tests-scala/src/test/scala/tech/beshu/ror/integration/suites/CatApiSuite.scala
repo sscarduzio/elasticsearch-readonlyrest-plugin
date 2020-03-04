@@ -18,6 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic.{EsClusterProvider, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
