@@ -14,20 +14,34 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import org.scalatest.{Matchers, WordSpec}
+import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
-class UriRegexRuleTests extends WordSpec with ForAllTestContainer {
+trait UriRegexRuleSuite
+  extends WordSpec
+    with ForAllTestContainer
+    with EsClusterProvider
+    with ClientProvider
+    with TargetEsContainer
+    with ESVersionSupport
+    with Matchers {
+  this: EsContainerCreator =>
 
-  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
+  val rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
+
+  override val targetEsContainer = container.nodesContainers.head
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
+      rorConfigFileName = rorConfigFileName
+    )
   )
 
   "A uri rule" should {
@@ -61,7 +75,7 @@ class UriRegexRuleTests extends WordSpec with ForAllTestContainer {
   private def assertRuleDoesNotMatchForUser(name: String): Unit = assertHealthCheckStatus(401, name)
 
   private def assertHealthCheckStatus(status: Int, name: String): Unit = {
-    val manager = new ClusterStateManager(container.nodesContainers.head.client(name, "pass"))
+    val manager = new ClusterStateManager(client(name, "pass"))
     val result = manager.healthCheck()
     assertEquals(status, result.responseCode)
   }
