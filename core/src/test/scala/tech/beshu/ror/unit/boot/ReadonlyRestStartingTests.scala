@@ -536,7 +536,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
                                aclStaticContext: AccessControlStaticContext = mockAccessControlStaticContext) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, MockLdapConnectionPoolProvider :LdapConnectionPoolProvider) => config == rorConfigFromResource(resourceFileName)
+        (config: RawRorConfig, _, mockLdapConnectionPoolProvider :LdapConnectionPoolProvider) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(Task.now(Right(CoreSettings(mock[AccessControl], aclStaticContext, None))))
@@ -556,7 +556,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
                               createCoreResult: Task[Either[NonEmptyList[AclCreationError], CoreSettings]]) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, MockLdapConnectionPoolProvider :LdapConnectionPoolProvider) => config == rorConfigFromResource(resourceFileName)
+        (config: RawRorConfig, _, mockLdapConnectionPoolProvider :LdapConnectionPoolProvider) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(createCoreResult)
@@ -567,7 +567,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
                                     resourceFileName: String) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig,_, MockLdapConnectionPoolProvider :LdapConnectionPoolProvider) => config == rorConfigFromResource(resourceFileName)
+        (config: RawRorConfig,_, mockLdapConnectionPoolProvider :LdapConnectionPoolProvider) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(Task.now(Left(NonEmptyList.one(AclCreationError.GeneralReadonlyrestSettingsError(Message("failed"))))))

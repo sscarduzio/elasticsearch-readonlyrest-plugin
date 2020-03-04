@@ -22,7 +22,7 @@ import eu.timepit.refined.api.Refined
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.{BeforeAndAfterAll, Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
@@ -36,12 +36,22 @@ import tech.beshu.ror.utils.containers.LdapContainer
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestContainer with Inside {
+class UnboundidLdapAuthenticationServiceTests
+  extends WordSpec
+    with BeforeAndAfterAll
+    with ForAllTestContainer
+    with Inside {
 
   private val ldap1Container = new LdapContainer("LDAP1", "/test_example.ldif")
   private val ldap2Container = new LdapContainer("LDAP2", "/test_example.ldif")
   override val container: Container = MultipleContainers(ldap1Container, ldap2Container)
+  private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    ldapConnectionPoolProvider.close()
+      .runSyncUnsafe()
+  }
   "An LdapAuthenticationService" should {
     "has method to authenticate" which {
       "returns true" when {
@@ -91,7 +101,7 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
     UnboundidLdapAuthenticationService
       .create(
         Name("my_ldap".nonempty),
-        MockLdapConnectionPoolProvider,
+        ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${ldap1Container.ldapHost}:${ldap1Container.ldapPort}").get),
           Refined.unsafeApply(10),
@@ -113,7 +123,7 @@ class UnboundidLdapAuthenticationServiceTests extends WordSpec with ForAllTestCo
     UnboundidLdapAuthenticationService
       .create(
         Name("my_ldap".nonempty),
-        MockLdapConnectionPoolProvider,
+        ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SeveralServers(
             NonEmptyList.of(
