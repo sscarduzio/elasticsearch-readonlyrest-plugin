@@ -14,25 +14,38 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.collection.JavaConverters._
 
-class ImpersonationTests extends WordSpec with ForAllTestContainer {
+trait ImpersonationSuite
+  extends WordSpec
+    with ForAllTestContainer
+    with EsClusterProvider
+    with ClientProvider
+    with TargetEsContainer
+    with ESVersionSupport {
+  this: EsContainerCreator =>
 
-  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/impersonation/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = ImpersonationTests.nodeDataInitializer())
+  val rorConfigFileName = "/impersonation/readonlyrest.yml"
+
+  override val targetEsContainer = container.nodesContainers.head
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
+      rorConfigFileName = "/impersonation/readonlyrest.yml",
+      nodeDataInitializer = ImpersonationSuite.nodeDataInitializer()
+    )
   )
 
   "Impersonation can be done" when {
@@ -106,7 +119,7 @@ class ImpersonationTests extends WordSpec with ForAllTestContainer {
   }
 }
 
-object ImpersonationTests {
+object ImpersonationSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
@@ -114,3 +127,4 @@ object ImpersonationTests {
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
   }
 }
+
