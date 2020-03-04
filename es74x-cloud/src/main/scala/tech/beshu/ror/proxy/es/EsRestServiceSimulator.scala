@@ -175,14 +175,14 @@ object EsRestServiceSimulator {
   }
 
   def create(esClient: RestHighLevelClientAdapter,
+             esConfigFile: File,
              threadPool: ThreadPool)
             (implicit scheduler: Scheduler): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
-    val simulatorEsSettingsFile = File(getClass.getClassLoader.getResource("elasticsearch.yml"))
-    val simulatorEsSettingsFolder = simulatorEsSettingsFile.parent.path
+    val simulatorEsSettingsFolder = esConfigFile.parent.path
     val esActionRequestHandler = new EsActionRequestHandler(esClient)
     val result = for {
       filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool))
-    } yield new EsRestServiceSimulator(simulatorEsSettingsFile, filter, esClient, esActionRequestHandler, threadPool)
+    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, esActionRequestHandler, threadPool)
     result.value
   }
 }

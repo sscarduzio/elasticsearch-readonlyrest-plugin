@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration
+package tech.beshu.ror.integration.plugin
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.{Matchers, WordSpec}
@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 class MustacheLangTests extends WordSpec with ForAllTestContainer with ESVersionSupport with Matchers {
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
+  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
     name = "ROR1",
     rorConfigFileName = "/plugin_indices/readonlyrest.yml",
     clusterSettings = AdditionalClusterSettings(

@@ -14,11 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration
+package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.base.BaseIndexApiTests
+import tech.beshu.ror.integration.suites.ClusterStateSuite
 
-class IndexApiWithFreeKibanaSupportTests extends BaseIndexApiTests {
-  override protected val rorConfigFileName: String =  "/index_api/free_readonlyrest.yml"
-  override protected val notFoundIndexStatusReturned: Int = 401
-}
+class ClusterStatePluginTests extends ClusterStateSuite with PluginTestSupport

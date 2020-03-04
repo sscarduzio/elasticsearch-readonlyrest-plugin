@@ -19,10 +19,10 @@ package tech.beshu.ror.integration;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
-import tech.beshu.ror.utils.elasticsearch.AuditIndexManagerJ;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
+import tech.beshu.ror.utils.elasticsearch.AuditIndexManagerJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import java.util.List;
 import java.util.Map;
