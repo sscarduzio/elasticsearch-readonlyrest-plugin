@@ -14,44 +14,57 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
-import org.scalatest.WordSpec
+import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class ReindexTests extends WordSpec with ForAllTestContainer with ESVersionSupport {
+trait ReindexSuite
+  extends WordSpec
+    with ForAllTestContainer
+    with EsClusterProvider
+    with ClientProvider
+    with TargetEsContainer
+    with ESVersionSupport
+    with Matchers {
+  this: EsContainerCreator =>
 
-  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/reindex/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(nodeDataInitializer = ReindexTests.nodeDataInitializer())
+  val rorConfigFileName = "/reindex/readonlyrest.yml"
+
+  override val targetEsContainer = container.nodesContainers.head
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
+      rorConfigFileName = rorConfigFileName,
+      nodeDataInitializer = ReindexSuite.nodeDataInitializer()
+    )
   )
 
-  private lazy val user1ActionManager = new ActionManagerJ(container.nodesContainers.head.client("dev1", "test"))
+  private lazy val user1ActionManager = new ActionManagerJ(client("dev1", "test"))
 
   "A reindex request" should {
     "be able to proceed" when {
       "user has permission to source index and dest index" excludeES("es51x", "es52x") in {
-        val result = user1ActionManager.actionPost("_reindex", ReindexTests.reindexPayload("test1_index"))
+        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test1_index"))
         assertEquals(200, result.getResponseCode)
       }
     }
     "not be able to proceed" when {
       "user has no permission to source index and dest index" excludeES("es51x", "es52x") in {
-        val result = user1ActionManager.actionPost("_reindex", ReindexTests.reindexPayload("test2_index"))
+        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test2_index"))
         assertEquals(401, result.getResponseCode)
       }
     }
   }
 }
 
-object ReindexTests {
+object ReindexSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
