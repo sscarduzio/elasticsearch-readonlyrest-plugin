@@ -14,23 +14,34 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, ScriptManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class MustacheLangTests extends WordSpec with ForAllTestContainer with ESVersionSupport with Matchers {
+trait MustacheLangSuite
+  extends WordSpec
+    with ForAllTestContainer
+    with EsClusterProvider
+    with ClientProvider
+    with TargetEsContainer
+    with ESVersionSupport
+    with Matchers {
+  this: EsContainerCreator =>
 
-  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/plugin_indices/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(
-      nodeDataInitializer = MustacheLangTests.nodeDataInitializer(),
+  val rorConfigFileName = "/plugin_indices/readonlyrest.yml"
+
+  override val targetEsContainer = container.nodesContainers.head
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
+      rorConfigFileName = rorConfigFileName,
+      nodeDataInitializer = MustacheLangSuite.nodeDataInitializer(),
       xPackSupport = true
     )
   )
@@ -38,7 +49,7 @@ class MustacheLangTests extends WordSpec with ForAllTestContainer with ESVersion
   "Search can be done" when {
     "user uses local auth rule" when {
       "mustache template can be used" excludeES("es51x", "es52x", "es53x") in {
-        val searchManager = new SearchManager(container.nodesContainers.head.client("dev1", "test"))
+        val searchManager = new SearchManager(client("dev1", "test"))
         val query =
           s"""
              |{
@@ -57,7 +68,7 @@ class MustacheLangTests extends WordSpec with ForAllTestContainer with ESVersion
   }
   "Template rendering can be done" when {
     "user uses local auth rule" excludeES("es51x", "es52x", "es53x") in {
-      val searchManager = new SearchManager(container.nodesContainers.head.client("dev1", "test"))
+      val searchManager = new SearchManager(client("dev1", "test"))
 
       val result = searchManager.renderTemplate(
         s"""
@@ -71,12 +82,12 @@ class MustacheLangTests extends WordSpec with ForAllTestContainer with ESVersion
       )
 
       result.responseCode shouldEqual 200
-      result.body should be ("""{"template_output":{"query":{"match":{"hello":"world"}}}}""")
+      result.body should be("""{"template_output":{"query":{"match":{"hello":"world"}}}}""")
     }
   }
 }
 
-object MustacheLangTests {
+object MustacheLangSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDocAndWaitForRefresh("/test1_index/test/1", "{\"hello\":\"world\"}")
@@ -97,6 +108,6 @@ object MustacheLangTests {
         |    }
         |}
       """.stripMargin
-    val storeResult = scriptManager.store(s"/_scripts/template1", script)
+    scriptManager.store(s"/_scripts/template1", script)
   }
 }
