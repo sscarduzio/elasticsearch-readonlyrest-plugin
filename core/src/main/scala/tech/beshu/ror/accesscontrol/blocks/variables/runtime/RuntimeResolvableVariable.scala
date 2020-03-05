@@ -155,13 +155,7 @@ object SingleExtractable {
 
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, String] = {
-      if(blockContext.availableGroups.size > 0)
-        Right(blockContext
-          .availableGroups
-          .map(_.value.value)
-          .mkString(","))
-      else
-        Left(ExtractError(s"There were no groups for request: ${requestContext.id.show}"))
+      Left(ExtractError(s"Available groups are usable only with @explode"))
     }
   }
 }
@@ -240,13 +234,17 @@ object MultiExtractable {
   }
 
   case object AvailableGroupsVar extends MultiExtractable with VariableType.AvailableGroups {
-    private val singleAvailableGroupsExtractable = SingleExtractable.AvailableGroupsVar
-
     override def extractUsing(requestContext: RequestContext,
                               blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
-      singleAvailableGroupsExtractable
-        .extractUsing(requestContext, blockContext)
-        .map(NonEmptyList.one)
+      NonEmptyList.fromList(
+        blockContext
+          .availableGroups
+          .map(_.value.value)
+          .toList
+      ) match {
+        case Some(value) => Right(value)
+        case None => Left(ExtractError(s"There were no groups for request: ${requestContext.id.show}"))
+      }
     }
   }
 }

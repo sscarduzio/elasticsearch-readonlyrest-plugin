@@ -189,26 +189,26 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
 
   "An available groups variable" should {
     "have been resolved" when {
-      "available groups variable is used" in {
+      "available groups multivariable is used and explode" in {
+        val variable = forceCreateMultiVariable("@explode{acl:available_groups}")
+          .resolve(
+            MockRequestContext.default,
+            fromRequestContext(MockRequestContext.default).withAddedAvailableGroups(UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")))
+          )
+        variable shouldBe Right(NonEmptyList.of("g1","g2"))
+      }
+    }
+    "have not been resolved" when {
+      "available groups variable is used without explode" in {
         val variable = forceCreateSingleVariable("@{acl:available_groups}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default).withAddedAvailableGroups(UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")))
           )
-        variable shouldBe Right("g1,g2")
+        variable shouldBe Left(CannotExtractValue("Available groups are usable only with @explode"))
       }
-      "available groups multivariable is used and explode" in {
+      "available groups are not available in given block context" in {
         val variable = forceCreateMultiVariable("@explode{acl:available_groups}")
-          .resolve(
-            MockRequestContext.default,
-            fromRequestContext(MockRequestContext.default).withAddedAvailableGroups(UniqueNonEmptyList.of(groupFrom("g1,g2"), groupFrom("g3")))
-          )
-        variable shouldBe Right(NonEmptyList.of("g1,g2,g3"))
-      }
-    }
-    "have not been resolved" when {
-      "available groups is not available in given block context" in {
-        val variable = forceCreateSingleVariable("@{acl:available_groups}")
           .resolve(
             MockRequestContext.default,
             fromRequestContext(MockRequestContext.default)
