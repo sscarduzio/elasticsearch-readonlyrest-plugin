@@ -21,6 +21,7 @@ import java.time.Clock
 import cats.implicits._
 import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControl
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
@@ -40,12 +41,13 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     new RawRorConfigBasedCoreFactory
   }
+  protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
 
   lazy val acl: AccessControl = {
     val aclEngineT = for {
       config <- RawRorConfig.fromString(configYaml)
         .map(_.fold(err => throw new IllegalStateException(err.show), identity))
-      core <- factory.createCoreFrom(config, MockHttpClientsFactory, MockLdapConnectionPoolProvider)
+      core <- factory.createCoreFrom(config, MockHttpClientsFactory, ldapConnectionPoolProvider)
         .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), identity))
     } yield core.aclEngine
     aclEngineT.runSyncUnsafe()

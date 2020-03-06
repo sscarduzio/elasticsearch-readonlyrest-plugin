@@ -45,13 +45,6 @@ trait HttpClientsFactory {
   def shutdown(): Unit
 }
 
-trait LdapClientsFactory {
-
-  def create(config: LdapClientsFactory.Config): HttpClient
-
-  def shutdown(): Unit
-}
-
 object LdapClientsFactory {
   final case class Config(connectionMethod: ConnectionMethod,
                                         poolSize: Int Refined Positive,

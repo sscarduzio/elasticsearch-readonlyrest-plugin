@@ -17,7 +17,9 @@
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.Matchers._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthService, LdapAuthenticationService, LdapService}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
@@ -29,9 +31,19 @@ import tech.beshu.ror.utils.containers.LdapContainer
 
 import scala.language.postfixOps
 
-class LdapServicesSettingsTests
-  extends BaseDecoderTest(LdapServicesDecoder.ldapServicesDefinitionsDecoder(MockLdapConnectionPoolProvider))
+class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
+  extends BaseDecoderTest(LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider))
+    with BeforeAndAfterAll
     with ForAllTestContainer {
+
+  def this(){
+    this(new UnboundidLdapConnectionPoolProvider)
+  }
+
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    ldapConnectionPoolProvider.close()
+  }
 
   private val containerLdap1 = new LdapContainer("LDAP1", "/test_example.ldif")
   private val containerLdap2 = new LdapContainer("LDAP2", "/test_example.ldif")

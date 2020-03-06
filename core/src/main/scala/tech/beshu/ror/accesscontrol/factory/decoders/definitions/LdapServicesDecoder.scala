@@ -49,13 +49,13 @@ object LdapServicesDecoder {
 
   implicit val nameDecoder: Decoder[Name] = DecoderHelpers.decodeStringLikeNonEmpty.map(Name.apply)
 
-  def ldapServicesDefinitionsDecoder(implicit ldapConnectionPoolProvider: LdapConnectionPoolProvider): AsyncDecoder[Definitions[LdapService]] = {
+  def ldapServicesDefinitionsDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[Definitions[LdapService]] = {
     AsyncDecoderCreator.instance { c =>
       DefinitionsBaseDecoder.instance[Task, LdapService]("ldaps").apply(c)
     }
   }
 
-  private implicit def cachableLdapServiceDecoder(implicit ldapConnectionPoolProvider: LdapConnectionPoolProvider): AsyncDecoder[LdapService] =
+  private implicit def cachableLdapServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapService] =
     AsyncDecoderCreator.instance { c =>
      c.downFields("cache_ttl_in_sec", "cache_ttl")
         .as[Option[FiniteDuration Refined Positive]]
@@ -73,7 +73,7 @@ object LdapServicesDecoder {
     }
 
   private def decodeLdapService(cursor: HCursor)
-                               (implicit ldapConnectionPoolProvider: LdapConnectionPoolProvider): Task[Either[DecodingFailure, LdapUserService]] = {
+                               (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[DecodingFailure, LdapUserService]] = {
     for {
       authenticationService <- (authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService])(cursor)
       authortizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
@@ -87,7 +87,7 @@ object LdapServicesDecoder {
     }
   }
 
-  private def authenticationServiceDecoder(implicit ldapConnectionPoolProvider: LdapConnectionPoolProvider): AsyncDecoder[LdapAuthenticationService] =
+  private def authenticationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthenticationService] =
     AsyncDecoderCreator
       .instance[LdapAuthenticationService] { c =>
       val ldapServiceDecodingResult = for {
@@ -112,7 +112,7 @@ object LdapServicesDecoder {
       }
     }.mapError(DefinitionsLevelCreationError.apply)
 
-  private def authorizationServiceDecoder(implicit ldapConnectionPoolProvider: LdapConnectionPoolProvider): AsyncDecoder[LdapAuthorizationService] =
+  private def authorizationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthorizationService] =
     AsyncDecoderCreator
       .instance[LdapAuthorizationService] { c =>
       val ldapServiceDecodingResult = for {

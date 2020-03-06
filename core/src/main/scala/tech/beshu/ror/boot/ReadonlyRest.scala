@@ -29,7 +29,7 @@ import monix.execution.Scheduler.{global => scheduler}
 import monix.execution.atomic.Atomic
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.{LdapConnectionPoolProvider, UnboundidLdapConnectionPoolProvider}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.consts.RorProperties
 import tech.beshu.ror.accesscontrol.factory.consts.RorProperties.RefreshInterval

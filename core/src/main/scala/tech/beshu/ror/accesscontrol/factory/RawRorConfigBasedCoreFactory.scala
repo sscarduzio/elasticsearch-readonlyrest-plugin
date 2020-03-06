@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol._
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -57,7 +57,7 @@ final case class CoreSettings(aclEngine: AccessControl,
 trait CoreFactory {
   def createCoreFrom(config: RawRorConfig,
                      httpClientFactory: HttpClientsFactory,
-                     ldapConnectionPoolProvider: LdapConnectionPoolProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
+                     ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
 }
 
 class RawRorConfigBasedCoreFactory(implicit clock: Clock,
@@ -68,7 +68,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
 
   override def createCoreFrom(config: RawRorConfig,
                               httpClientFactory: HttpClientsFactory,
-                              ldapConnectionPoolProvider: LdapConnectionPoolProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
+                              ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
     config.configJson \\ Attributes.rorSectionName match {
       case Nil => createCoreFromRorSection(config.configJson, httpClientFactory, ldapConnectionPoolProvider)
       case rorSection :: Nil => createCoreFromRorSection(rorSection, httpClientFactory, ldapConnectionPoolProvider)
@@ -78,7 +78,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
 
   private def createCoreFromRorSection(rorSection: Json,
                                        httpClientFactory: HttpClientsFactory,
-                                       ldapConnectionPoolProvider: LdapConnectionPoolProvider) = {
+                                       ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) = {
     JsonConfigStaticVariableResolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
         createFrom(resolvedRorSection, httpClientFactory, ldapConnectionPoolProvider).map {
@@ -94,7 +94,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
 
   private def createFrom(settingsJson: Json,
                          httpClientFactory: HttpClientsFactory,
-                         ldapConnectionPoolProvider: LdapConnectionPoolProvider) = {
+                         ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) = {
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
@@ -246,7 +246,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
   }
 
   private def aclDecoder(httpClientFactory: HttpClientsFactory,
-                         ldapConnectionPoolProvider: LdapConnectionPoolProvider): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
+                         ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)

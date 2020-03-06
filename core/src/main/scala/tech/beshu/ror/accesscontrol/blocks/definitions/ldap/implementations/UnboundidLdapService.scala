@@ -74,7 +74,7 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
 
 object UnboundidLdapAuthenticationService {
   def create(id: LdapService#Id,
-             poolProvider:LdapConnectionPoolProvider,
+             poolProvider:UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
     (for {
@@ -207,7 +207,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
 
 object UnboundidLdapAuthorizationService {
   def create(id: LdapService#Id,
-             poolProvider:LdapConnectionPoolProvider,
+             poolProvider:UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig,
              userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
