@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.refined._
 import org.asynchttpclient.Dsl.asyncHttpClient
 import org.asynchttpclient.netty.channel.DefaultChannelPool
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
 
 import scala.collection.JavaConverters._
@@ -43,15 +42,6 @@ trait HttpClientsFactory {
   def create(config: Config): HttpClient
 
   def shutdown(): Unit
-}
-
-object LdapClientsFactory {
-  final case class Config(connectionMethod: ConnectionMethod,
-                                        poolSize: Int Refined Positive,
-                                        connectionTimeout: FiniteDuration Refined Positive,
-                                        requestTimeout: FiniteDuration Refined Positive,
-                                        trustAllCerts: Boolean,
-                                        bindRequestUser: BindRequestUser)
 }
 
 object HttpClientsFactory {

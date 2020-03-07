@@ -1,0 +1,119 @@
+package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
+
+import cats.{Id, Monad}
+import monix.execution.atomic.{AtomicBoolean, AtomicInt}
+import org.scalatest.WordSpec
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ReleasablePoolTest.Counter
+import cats.implicits._
+import monix.eval.Task
+import monix.execution.schedulers.TestScheduler
+
+import concurrent.duration._
+import language.postfixOps
+import language.higherKinds
+import org.scalatest.Matchers._
+
+import scala.concurrent.Await
+private final class ReleasablePoolTaskTest extends ReleasablePoolTest[Task] {
+  implicit val scheduler: TestScheduler= TestScheduler()
+  override protected def acquire(counter: Counter): Task[counter.ReleasableResource] = Task.evalAsync(counter.create)
+  override protected def release(counter: Counter)(resource: counter.ReleasableResource): Task[Unit] = Task.evalAsync(resource.close)
+  override protected def await[A](a: Task[A]): A = {
+    val t = a.executeAsync.runToFuture
+    scheduler.tick()
+    Await.result(t, 2 second)
+  }
+}
+private final class ReleasablePoolIdTest extends ReleasablePoolTest[Id] {
+  override protected def acquire(counter: Counter): Id[counter.ReleasableResource] = counter.create
+  override protected def release(counter: Counter)(resource: counter.ReleasableResource): Id[Unit] = resource.close
+  override protected def await[A](a: Id[A]): A = a
+}
+private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends WordSpec {
+  protected def acquire(counter: Counter):M[counter.ReleasableResource]
+  protected def release(counter: Counter)(resource:counter.ReleasableResource):M[Unit]
+  protected def await[A](a:M[A]):A
+  "releasable pool" when {
+    "resource is gotten" should {
+      "create new resource" in {
+        val counter = new Counter
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val resource = await(releasablePool.get(())).right.get
+        resource.isClosed shouldBe false
+        counter.count shouldBe 1
+      }
+      "resource can be closed"in {
+        val counter = new Counter
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val resource = await(releasablePool.get(())).right.get
+        resource.isClosed shouldBe false
+        counter.count shouldBe 1
+        resource.close
+        resource.isClosed shouldBe true
+        counter.count shouldBe 0
+      }
+      "close on pool closes resource"in {
+        val counter = new Counter
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val resource = await(releasablePool.get(())).right.get
+        resource.isClosed shouldBe false
+        counter.count shouldBe 1
+        await(releasablePool.close)
+        resource.isClosed shouldBe true
+        counter.count shouldBe 0
+      }
+      "close on pool closes all resources"in {
+        val counter = new Counter
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val resource1 = await(releasablePool.get(())).right.get
+        val resource2 = await(releasablePool.get(())).right.get
+        counter.count shouldBe 2
+        await(releasablePool.close)
+        resource1.isClosed shouldBe true
+        resource2.isClosed shouldBe true
+        counter.count shouldBe 0
+      }
+      "close 100 resources for 100 opened resources"in {
+        val counter = new Counter
+        val releasablePool: ReleseablePool[M, counter.ReleasableResource, Unit] = createReleseablePool(counter)
+        val resuurcesF = (0 until 100).map(_ => releasablePool.get(())).toList.sequence
+        await(resuurcesF)
+        counter.count shouldEqual 100
+        await(releasablePool.close)
+        counter.count shouldBe 0
+      }
+    }
+  }
+
+  private def createReleseablePool(counter: Counter): ReleseablePool[M, counter.ReleasableResource, Unit] = {
+
+    def acquireR(counter: Counter)(unit: Unit): M[counter.ReleasableResource] = acquire(counter)
+
+    def releaseR(resource: counter.ReleasableResource): M[Unit] = release(counter)(resource)
+
+    new ReleseablePool[M, counter.ReleasableResource, Unit](acquireR(counter)(_))(releaseR _)
+
+  }
+}
+object ReleasablePoolTest {
+  final class Counter {
+    private val atom = AtomicInt(0)
+    def count: Int = atom.get()
+
+    def create: ReleasableResource =
+      atom.transformAndExtract(c => (new ReleasableResource, c + 1))
+
+    final class ReleasableResource() {
+      private val isOpen = AtomicBoolean(true)
+
+      def close: Unit = isOpen.transform{
+        case false => false
+        case true =>
+          atom.decrement()
+          false
+      }
+
+      def isClosed: Boolean = !isOpen.get()
+    }
+  }
+}

@@ -200,10 +200,9 @@ trait ReadonlyRest extends Logging {
             implicit val loggingContext = LoggingContext(coreSettings.aclStaticContext.obfuscatedHeaders)
             val engine = new Engine(
               accessControl = new AccessControlLoggingDecorator(
-                underlying = coreSettings.aclEngine,
-                auditingTool = coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
-              ),
-              context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory)
+                            underlying = coreSettings.aclEngine,
+                            auditingTool = coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
+                          ), context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory, ldapConnectionPoolProvider)
             engine
           }
           .left
@@ -466,10 +465,12 @@ final case class StartingFailure(message: String, throwable: Option[Throwable] =
 
 final class Engine(val accessControl: AccessControl,
                    val context: AccessControlStaticContext,
-                   httpClientsFactory: AsyncHttpClientsFactory) {
+                   httpClientsFactory: AsyncHttpClientsFactory,
+                   ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) {
 
   private [ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()
+    ldapConnectionPoolProvider.close().runAsyncAndForget
   }
 }
 

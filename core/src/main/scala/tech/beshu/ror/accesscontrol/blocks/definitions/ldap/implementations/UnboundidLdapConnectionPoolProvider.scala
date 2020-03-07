@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.implicits._
-import com.unboundid.ldap.sdk.{LDAPConnectionPool, _}
+import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -33,7 +33,7 @@ class UnboundidLdapConnectionPoolProvider {
   import UnboundidLdapConnectionPoolProvider._
 
   private val poolOfPools: ReleseablePool[Task, LDAPConnectionPool, LdapConnectionConfig] = new ReleseablePool(createConnection)(pool => Task(pool.close()))
-//TODO: test closing
+
   def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] =
     poolOfPools.get(connectionConfig).flatMap {
       case Left(ReleseablePool.ClosedPool) => Task.raiseError(ClosedLdapPool)
