@@ -19,7 +19,6 @@ package tech.beshu.ror.configuration
 import cats.Show
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError, auditIndexConsts}
@@ -30,13 +29,14 @@ import tech.beshu.ror.utils.LoggerOps._
 
 import scala.collection.JavaConverters._
 
-class IndexConfigManager(indexContentManager: IndexJsonContentManager)
+class IndexConfigManager(indexContentManager: IndexJsonContentManager,
+                         val rorIndexNameConfiguration: RorIndexNameConfiguration)
   extends ConfigLoader[IndexConfigError]
     with Logging {
 
   override def load(): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
     indexContentManager
-      .sourceOf(IndexName.readonlyrest, auditIndexConsts.typeName, auditIndexConsts.id)
+      .sourceOf(rorIndexNameConfiguration.name, auditIndexConsts.typeName, auditIndexConsts.id)
       .flatMap {
         case Right(source) =>
           source.asScala
@@ -54,7 +54,7 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager)
   def save(config: RawRorConfig): Task[Either[SavingIndexConfigError, Unit]] = {
     indexContentManager
       .saveContent(
-        IndexName.readonlyrest,
+        rorIndexNameConfiguration.name,
         auditIndexConsts.typeName,
         auditIndexConsts.id,
         Map(auditIndexConsts.settingsKey -> config.raw).asJava

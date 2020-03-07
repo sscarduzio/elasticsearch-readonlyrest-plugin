@@ -55,7 +55,7 @@ public class EsIndexJsonContentProvider implements IndexJsonContentManager {
   @Override
   public Task<Either<ReadError, Map<String, ?>>> sourceOf(domain.IndexName index, String type, String id) {
     try {
-      GetResponse response = client.get(client.prepareGet(index.value().value(), type, id).request()).actionGet();
+      GetResponse response = client.get(client.prepareGet(index.value().toString(), type, id).request()).actionGet();
       Map<String, Object> source = Optional.ofNullable(response.getSourceAsMap()).orElse(Maps.newHashMap());
       return Task$.MODULE$
           .eval((Function0<Either<ReadError, Map<String, ?>>>) () -> Right$.MODULE$.apply(source))
@@ -74,7 +74,7 @@ public class EsIndexJsonContentProvider implements IndexJsonContentManager {
         .prepareBulk()
         .add(
             client
-                .prepareIndex(index.value().value(), type, id)
+                .prepareIndex(index.value().toString(), type, id)
                 .setSource(content, XContentType.JSON)
                 .request()
         )

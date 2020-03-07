@@ -42,7 +42,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
-import tech.beshu.ror.configuration.RawRorConfig
+import tech.beshu.ror.configuration.{RawRorConfig, RorIndexNameConfiguration}
 import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.yaml.YamlOps
@@ -55,6 +55,7 @@ final case class CoreSettings(aclEngine: AccessControl,
 
 trait CoreFactory {
   def createCoreFrom(config: RawRorConfig,
+                     rorIndexNameConfiguration: RorIndexNameConfiguration,
                      httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
 }
 
@@ -65,18 +66,21 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
   extends CoreFactory with Logging {
 
   override def createCoreFrom(config: RawRorConfig,
+                              rorIndexNameConfiguration: RorIndexNameConfiguration,
                               httpClientFactory: HttpClientsFactory): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
     config.configJson \\ Attributes.rorSectionName match {
-      case Nil => createCoreFromRorSection(config.configJson, httpClientFactory)
-      case rorSection :: Nil => createCoreFromRorSection(rorSection, httpClientFactory)
+      case Nil => createCoreFromRorSection(config.configJson, rorIndexNameConfiguration, httpClientFactory)
+      case rorSection :: Nil => createCoreFromRorSection(rorSection, rorIndexNameConfiguration, httpClientFactory)
       case _ => Task.now(Left(NonEmptyList.one(GeneralReadonlyrestSettingsError(Message(s"Malformed settings")))))
     }
   }
 
-  private def createCoreFromRorSection(rorSection: Json, httpClientFactory: HttpClientsFactory) = {
+  private def createCoreFromRorSection(rorSection: Json,
+                                       rorIndexNameConfiguration: RorIndexNameConfiguration,
+                                       httpClientFactory: HttpClientsFactory) = {
     JsonConfigStaticVariableResolver.resolve(rorSection) match {
       case Right(resolvedRorSection) =>
-        createFrom(resolvedRorSection, httpClientFactory).map {
+        createFrom(resolvedRorSection, rorIndexNameConfiguration, httpClientFactory).map {
           case Right(settings) =>
             Right(settings)
           case Left(failure) =>
@@ -87,7 +91,9 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     }
   }
 
-  private def createFrom(settingsJson: Json, httpClientFactory: HttpClientsFactory) = {
+  private def createFrom(settingsJson: Json,
+                         rorIndexNameConfiguration: RorIndexNameConfiguration,
+                         httpClientFactory: HttpClientsFactory) = {
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
@@ -96,7 +102,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
           .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
       } else {
         for {
-          aclAndContext <- aclDecoder(httpClientFactory)
+          aclAndContext <- aclDecoder(httpClientFactory, rorIndexNameConfiguration)
           (acl, context) = aclAndContext
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
         } yield CoreSettings(aclEngine = acl,
@@ -116,13 +122,14 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     }
   }
 
-  private implicit def rulesNelDecoder(definitions: DefinitionsPack): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
+  private implicit def rulesNelDecoder(definitions: DefinitionsPack,
+                                       rorIndexNameConfiguration: RorIndexNameConfiguration): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Option[Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](None)
     val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
           last <- collectedRuleResults
-          current <- decodeRuleInCursorContext(currentRuleName, definitions).map(_.map(_.map(_ :: Nil)))
+          current <- decodeRuleInCursorContext(currentRuleName, definitions, rorIndexNameConfiguration).map(_.map(_.map(_ :: Nil)))
         } yield Monoid.combine(last, current)
       }
       .run(c)
@@ -145,11 +152,13 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     }
   }
 
-  private def decodeRuleInCursorContext(name: String, definitions: DefinitionsPack): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] =
+  private def decodeRuleInCursorContext(name: String,
+                                        definitions: DefinitionsPack,
+                                        rorIndexNameConfiguration: RorIndexNameConfiguration): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] =
     State(cursor => {
       if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
-        ruleDecoderBy(Rule.Name(name), definitions) match {
+        ruleDecoderBy(Rule.Name(name), definitions, rorIndexNameConfiguration) match {
           case Some(decoder) =>
             val decodingResult = decoder.decode(
               cursor.downField(name),
@@ -160,7 +169,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
                 .associatedFields
                 .foldLeft(json.remove(name)) {
                   case (currentJson, field) =>
-                    ruleDecoderBy(Rule.Name(field), definitions) match {
+                    ruleDecoderBy(Rule.Name(field), definitions, rorIndexNameConfiguration) match {
                       case Some(_) => currentJson
                       case None => currentJson.remove(field)
                     }
@@ -173,7 +182,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       }
     })
 
-  private def blockDecoder(definitions: DefinitionsPack)
+  private def blockDecoder(definitions: DefinitionsPack,
+                           rorIndexNameConfiguration: RorIndexNameConfiguration)
                           (implicit loggingContext: LoggingContext): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
@@ -202,7 +212,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          rules <- rulesNelDecoder(definitions)
+          rules <- rulesNelDecoder(definitions, rorIndexNameConfiguration)
             .toSyncDecoder
             .decoder
             .tryDecode(c.withFocus(
@@ -238,7 +248,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       .map(_.getOrElse(Set(Header.Name.authorization)))
   }
 
-  private def aclDecoder(httpClientFactory: HttpClientsFactory): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
+  private def aclDecoder(httpClientFactory: HttpClientsFactory,
+                         rorIndexNameConfiguration: RorIndexNameConfiguration): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
@@ -253,7 +264,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
         blocks <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
-            blockDecoder(DefinitionsPack(
+            blockDecoder(
+              DefinitionsPack(
               proxies = authProxies,
               users = userDefs,
               authenticationServices = authenticationServices,
@@ -261,7 +273,10 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
               jwts = jwtDefs,
               rorKbns = rorKbnDefs,
               ldaps = ldapServices,
-              impersonators = impersonationDefs))
+              impersonators = impersonationDefs
+              ),
+              rorIndexNameConfiguration
+            )
           }
           DecoderHelpers
             .decodeFieldList[Block, Task](Attributes.acl, RulesLevelCreationError.apply)
