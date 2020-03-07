@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.request
 import cats.{Monad, StackSafeMonad}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.identityNT
+import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 
@@ -77,6 +78,8 @@ trait RequestInfoShim {
 
   def extractHasRemoteClusters: Boolean
 
+  def indicesOperation: InvolvingIndexOperation = InvolvingIndexOperation.NonIndexOperation
+
   def involvesIndices: Boolean
 
   def writeIndices(newIndices: Set[String]): WriteResult[Unit]
@@ -94,6 +97,7 @@ trait RequestInfoShim {
 
 object RequestInfoShim {
 
+  // todo: to remove
   sealed trait ExtractedIndices {
     def indices: Set[String]
   }

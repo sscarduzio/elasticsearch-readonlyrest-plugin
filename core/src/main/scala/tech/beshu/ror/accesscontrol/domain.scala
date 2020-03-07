@@ -19,8 +19,8 @@ package tech.beshu.ror.accesscontrol
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.{Base64, Locale}
 
-import cats.{Eq, Functor}
-import cats.data.NonEmptyList
+import cats.Eq
+import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import com.comcast.ip4s.interop.cats.HostnameResolver
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
@@ -30,7 +30,11 @@ import monix.eval.Task
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.IndexName.from
+import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.SqlOperation.IndexSqlTable
+import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.TemplateOperation
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 import scala.util.Try
@@ -147,26 +151,26 @@ object domain {
     def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
       HostnameResolver.resolveAll[Task](hostname.value).map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
     }
-  }
 
-  private def parseCidr(value: String) =
-    Cidr.fromString(value).map(Address.Ip.apply)
+    private def parseCidr(value: String) =
+      Cidr.fromString(value).map(Address.Ip.apply)
 
-  private def parseHostname(value: String) =
-    Hostname(value).map(Address.Name.apply)
+    private def parseHostname(value: String) =
+      Hostname(value).map(Address.Name.apply)
 
-  private def parseIpAddress(value: String) =
-    (cutOffZoneIndex _ andThen IpAddress.apply andThen (_.map(createAddressIp))) (value)
+    private def parseIpAddress(value: String) =
+      (cutOffZoneIndex _ andThen IpAddress.apply andThen (_.map(createAddressIp))) (value)
 
-  private def createAddressIp(ip: IpAddress) =
-    Address.Ip(Cidr(ip, 32))
+    private def createAddressIp(ip: IpAddress) =
+      Address.Ip(Cidr(ip, 32))
 
-  private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
+    private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
 
-  private def cutOffZoneIndex(value: String): String = { //https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
-    value match {
-      case ipv6WithLiteralScope(ipv6) => ipv6
-      case noLiteralIp => noLiteralIp
+    private def cutOffZoneIndex(value: String): String = { //https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
+      value match {
+        case ipv6WithLiteralScope(ipv6) => ipv6
+        case noLiteralIp => noLiteralIp
+      }
     }
   }
 
@@ -220,6 +224,35 @@ object domain {
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
     def all: Set[IndexName] = aliases + index
+  }
+
+  sealed trait InvolvingIndexOperation
+  object InvolvingIndexOperation {
+    case object NonIndexOperation extends InvolvingIndexOperation
+    sealed trait DirectIndexOperation extends InvolvingIndexOperation
+    sealed trait IndirectIndexOperation extends InvolvingIndexOperation
+
+    final case class GeneralIndexOperation(indices: Set[IndexName]) extends DirectIndexOperation
+
+    sealed trait TemplateOperation extends IndirectIndexOperation
+    object Template {
+      case object GetAll extends TemplateOperation
+      final case class Get(templates: NonEmptyList[Template]) extends TemplateOperation
+      final case class Create(template: Template) extends TemplateOperation
+      final case class Delete(template: Template) extends TemplateOperation
+
+      final case class Template(value: NonEmptyString, patterns: NonEmptySet[IndexPattern])
+      final case class IndexPattern(value: NonEmptyString)
+      object IndexPattern {
+        def from(value: String): Option[IndexPattern] =
+          NonEmptyString.from(value).map(new IndexPattern(_)).toOption
+      }
+    }
+
+    final case class SqlOperation(tables: List[IndexSqlTable]) extends DirectIndexOperation
+    object SqlOperation {
+      final case class IndexSqlTable(tableStringInQuery: NonEmptyString, indices: NonEmptySet[IndexName])
+    }
   }
 
   final case class ApiKey(value: NonEmptyString)
@@ -310,7 +343,6 @@ object domain {
       }
     }
   }
-
 
   final case class ClaimName(name: JsonPath) {
 

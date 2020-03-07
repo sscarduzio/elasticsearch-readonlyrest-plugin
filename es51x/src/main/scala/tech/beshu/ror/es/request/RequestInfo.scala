@@ -53,6 +53,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
+import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.RegularIndices
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
@@ -87,7 +88,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override val extractPath: String = request.path()
 
-  override val involvesIndices: Boolean = {
+  override val involvesIndices: InvolvingIndexOperation = {
     actionRequest.isInstanceOf[IndicesRequest] || actionRequest.isInstanceOf[CompositeIndicesRequest] ||
       // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
       actionRequest.isInstanceOf[RestoreSnapshotRequest] ||

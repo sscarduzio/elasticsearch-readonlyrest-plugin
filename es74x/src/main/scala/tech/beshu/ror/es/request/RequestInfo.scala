@@ -20,6 +20,7 @@ import java.util.UUID
 
 import cats.data.NonEmptyList
 import com.google.common.collect.Sets
+import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
 import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
@@ -52,10 +53,15 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
+import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.Template.{IndexPattern, Template}
+import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.{GeneralIndexOperation, NonIndexOperation}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, InvolvingIndexOperation}
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.{NoIndices, RegularIndices, SqlIndices}
+import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.{NoIndices, RegularIndices}
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.request.RequestInfo.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.utils.ClusterServiceHelper._
 import tech.beshu.ror.es.utils.SqlRequestHelper
 import tech.beshu.ror.utils.LoggerOps._
@@ -65,6 +71,7 @@ import tech.beshu.ror.utils.{RCUtils, ReflecUtils}
 
 import scala.collection.JavaConverters._
 import scala.math.Ordering.comparatorToOrdering
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 
 class RequestInfo(channel: RestChannel,
@@ -97,6 +104,93 @@ class RequestInfo(channel: RestChannel,
       // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
       actionRequest.isInstanceOf[RestoreSnapshotRequest] ||
       actionRequest.isInstanceOf[GetIndexTemplatesRequest] || actionRequest.isInstanceOf[PutIndexTemplateRequest] || actionRequest.isInstanceOf[DeleteIndexTemplateRequest]
+  }
+
+  override val indicesOperation: InvolvingIndexOperation = {
+    actionRequest match {
+      case ar: PutIndexTemplateRequest =>
+        val createTemplate = for {
+          templateName <- NonEmptyString.unapply(ar.name())
+          indexPatterns <- ar.indices
+            .asSafeSet
+            .flatMap(IndexPattern.from)
+            .toNonEmptySet
+        } yield {
+          InvolvingIndexOperation.Template.Create(Template(templateName, indexPatterns))
+        }
+        createTemplate.getOrElse(throw RequestSeemsToBeInvalid[PutIndexTemplateRequest]())
+      case ar: IndexRequest => // The most common case first
+        GeneralIndexOperation(ar.indices.asSafeSet.flatMap(IndexName.fromString))
+      case ar: MultiGetRequest =>
+        GeneralIndexOperation(
+          ar.getItems.asScala.flatMap(_.indices.asSafeSet.flatMap(IndexName.fromString)).toSet
+        )
+      case ar: MultiSearchRequest =>
+        GeneralIndexOperation(
+          ar.requests().asScala.flatMap(_.indices.asSafeSet.flatMap(IndexName.fromString)).toSet
+        )
+      case ar: MultiTermVectorsRequest =>
+        GeneralIndexOperation(
+          ar.getRequests.asScala.flatMap(_.indices.asSafeSet.flatMap(IndexName.fromString)).toSet
+        )
+      case ar: BulkRequest =>
+        GeneralIndexOperation(
+          ar.requests().asScala.flatMap(_.indices.asSafeSet.flatMap(IndexName.fromString)).toSet
+        )
+      case ar: DeleteRequest =>
+        GeneralIndexOperation(ar.indices.asSafeSet.flatMap(IndexName.fromString))
+      case ar: IndicesAliasesRequest =>
+        GeneralIndexOperation(
+          ar.getAliasActions.asScala.flatMap(_.indices.asSafeSet.flatMap(IndexName.fromString)).toSet
+        )
+      case ar: GetSettingsRequest =>
+        GeneralIndexOperation(ar.indices.asSafeSet.flatMap(IndexName.fromString))
+      case ar: IndicesStatsRequest =>
+        GeneralIndexOperation(ar.indices.asSafeSet.flatMap(IndexName.fromString))
+      case ar: IndicesShardStoresRequest =>
+        val indices = ar.indices.asSafeSet.flatMap(IndexName.fromString)
+        GeneralIndexOperation(if(indices.isEmpty) Set(IndexName.wildcard) else indices)
+      case ar: ReindexRequest => // Buggy cases here onwards
+        GeneralIndexOperation {
+          Try {
+            val sr = invokeMethodCached(ar, ar.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
+            val ir = invokeMethodCached(ar, ar.getClass, "getDestination").asInstanceOf[IndexRequest]
+            sr.indices.asSafeSet ++ ir.indices.asSafeSet
+          } fold(
+            ex => {
+              logger.errorEx(s"cannot extract indices from: $extractMethod $extractPath\n$extractContent", ex)
+              Set.empty[String]
+            },
+            identity
+          ) flatMap {
+            IndexName.fromString
+          }
+        }
+      case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql")  =>
+        SqlRequestHelper.indicesFrom(ar) match {
+          case Success(operation) => operation
+          case Failure(ex) =>
+            throw new IllegalArgumentException(s"Cannot process SQL request - ${ar.getDescription}", ex)
+        }
+      case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
+        GeneralIndexOperation {
+          Option(invokeMethodCached(ar, ar.getClass, "getRequest"))
+            .map(_.asInstanceOf[SearchRequest].indices.asSafeSet)
+            .getOrElse(Set.empty)
+            .flatMap(IndexName.fromString)
+        }
+      case ar: CompositeIndicesRequest =>
+        logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${ar.getClass.getSimpleName}")
+        GeneralIndexOperation(Set.empty[IndexName])
+      case ar: RestoreSnapshotRequest => // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
+        GeneralIndexOperation(ar.indices.asSafeSet.flatMap(IndexName.fromString))
+      case ar =>
+        NonEmptyList
+          .fromList(extractStringArrayFromPrivateMethod("indices", ar).asSafeList)
+          .orElse(NonEmptyList.fromList(extractStringArrayFromPrivateMethod("index", ar).asSafeList))
+          .map(indices => GeneralIndexOperation(indices.toList.toSet.flatMap(IndexName.fromString)))
+          .getOrElse(NonIndexOperation)
+    }
   }
 
   override lazy val extractIndices: ExtractedIndices = {
@@ -142,12 +236,13 @@ class RequestInfo(channel: RestChannel,
             identity
           )
         }
-      case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql")  =>
-        SqlRequestHelper.indicesFrom(ar) match {
-          case Success(indices) => indices
-          case Failure(ex) =>
-            throw new IllegalArgumentException(s"Cannot process SQL request - ${ar.getDescription}", ex)
-        }
+        // fixme:
+//      case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql")  =>
+//        SqlRequestHelper.__old_indicesFrom(ar) match {
+//          case Success(indices) => indices
+//          case Failure(ex) =>
+//            throw new IllegalArgumentException(s"Cannot process SQL request - ${ar.getDescription}", ex)
+//        }
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
         RegularIndices {
           Option(invokeMethodCached(ar, ar.getClass, "getRequest"))
@@ -383,22 +478,23 @@ class RequestInfo(channel: RestChannel,
           }
         }
         WriteResult.Success(())
-      case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql") =>
-        extractIndices match {
-          case sqlIndices: SqlIndices =>
-            if(newIndices != extractIndices.indices) {
-              SqlRequestHelper.modifyIndicesOf(ar, sqlIndices, indices.toSet) match {
-                case Success(_) => WriteResult.Success(())
-                case Failure(ex) =>
-                  logger.error("Cannot modify SQL indices of incoming request", ex)
-                  WriteResult.Failure
-              }
-            } else {
-              WriteResult.Success(())
-            }
-          case _ =>
-            throw new IllegalStateException("Regular indices in SQL request")
-        }
+        // fixme:
+//      case ar: CompositeIndicesRequest if extractPath.startsWith("/_sql") =>
+//        extractIndices match {
+//          case sqlIndices: SqlIndices =>
+//            if(newIndices != extractIndices.indices) {
+//              SqlRequestHelper.modifyIndicesOf(ar, sqlIndices, indices.toSet) match {
+//                case Success(_) => WriteResult.Success(())
+//                case Failure(ex) =>
+//                  logger.error("Cannot modify SQL indices of incoming request", ex)
+//                  WriteResult.Failure
+//              }
+//            } else {
+//              WriteResult.Success(())
+//            }
+//          case _ =>
+//            throw new IllegalStateException("Regular indices in SQL request")
+//        }
       case ar if ar.getClass.getSimpleName.startsWith("SearchTemplateRequest") =>
         Option(invokeMethodCached(ar, ar.getClass, "getRequest"))
           .foreach(_.asInstanceOf[SearchRequest].indices(indices: _*))
@@ -443,4 +539,9 @@ class RequestInfo(channel: RestChannel,
     }
     WriteResult.Success(())
   }
+}
+
+object RequestInfo {
+  final case class RequestSeemsToBeInvalid[T : ClassTag]()
+    extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].getClass.getSimpleName}' cannot be handled")
 }

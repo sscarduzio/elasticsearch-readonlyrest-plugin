@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.Template.IndexPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
@@ -111,6 +112,7 @@ object orders {
     case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2
     case ForbiddenByMismatched.Cause.ImpersonationNotSupported => 3
   }
+  implicit val indexPatternOrder: Order[IndexPattern] = Order.by(_.value)
 }
 
 object show {
