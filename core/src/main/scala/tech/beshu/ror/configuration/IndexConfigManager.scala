@@ -19,6 +19,7 @@ package tech.beshu.ror.configuration
 import cats.Show
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError, auditIndexConsts}
@@ -35,7 +36,7 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager)
 
   override def load(): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
     indexContentManager
-      .sourceOf(auditIndexConsts.indexName, auditIndexConsts.typeName, auditIndexConsts.id)
+      .sourceOf(IndexName.readonlyrest, auditIndexConsts.typeName, auditIndexConsts.id)
       .flatMap {
         case Right(source) =>
           source.asScala
@@ -53,7 +54,7 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager)
   def save(config: RawRorConfig): Task[Either[SavingIndexConfigError, Unit]] = {
     indexContentManager
       .saveContent(
-        auditIndexConsts.indexName,
+        IndexName.readonlyrest,
         auditIndexConsts.typeName,
         auditIndexConsts.id,
         Map(auditIndexConsts.settingsKey -> config.raw).asJava
@@ -96,7 +97,6 @@ object IndexConfigManager {
   }
 
   private object auditIndexConsts {
-    val indexName = ".readonlyrest"
     val typeName = "settings"
     val id = "1"
     val settingsKey = "settings"
