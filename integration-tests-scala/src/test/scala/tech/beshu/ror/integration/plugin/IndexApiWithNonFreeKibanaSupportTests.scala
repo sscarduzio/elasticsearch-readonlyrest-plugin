@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.base.BaseIndexApiTests
+import tech.beshu.ror.integration.plugin.base.BaseIndexApiTests
 
 class IndexApiWithNonFreeKibanaSupportTests extends BaseIndexApiTests {
   override protected val rorConfigFileName: String =  "/index_api/nonfree_readonlyrest.yml"

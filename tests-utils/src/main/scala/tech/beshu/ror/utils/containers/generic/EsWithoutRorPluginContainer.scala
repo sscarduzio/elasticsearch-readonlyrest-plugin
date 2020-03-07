@@ -40,6 +40,7 @@ object EsWithoutRorPluginContainer {
                           esVersion: String,
                           xPackSupport: Boolean,
                           configHotReloadingEnabled: Boolean,
+                          customRorIndexName: Option[String],
                           internodeSslEnabled: Boolean,
                           externalSslEnabled: Boolean) extends EsContainer.Config
 
