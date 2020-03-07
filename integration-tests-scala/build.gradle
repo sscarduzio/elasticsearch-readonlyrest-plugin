@@ -24,13 +24,33 @@ repositories {
 
 test {
     systemProperty "project.dir", rootProject.projectDir
-    enabled = project.hasProperty('esModule')
+    enabled = project.hasProperty('esModule') && project.hasProperty('mode')
     if (enabled) {
         def module = project.properties['esModule']
         systemProperty "esModule", module
 
         tags {
             exclude 'tech.beshu.tags.ExcludeESModule.' + module
+        }
+
+        def mode = project.properties['mode']
+        if (mode == 'plugin') {
+            suite 'tech.beshu.ror.integration.plugin.*'
+        } else if (mode == 'proxy') {
+            suite 'tech.beshu.ror.integration.proxy.*'
+            /**
+             * Current proxy implementation uses:
+             * val threadPool: ThreadPool = new ThreadPool(Settings.EMPTY)
+             *
+             * With enabled assertions following fails:
+             *
+             * assert Node.NODE_NAME_SETTING.exists(settings)
+             *
+             * in org.elasticsearch.threadpool.ThreadPool.java
+             */
+            enableAssertions(false)
+        } else {
+            throw new Exception("Invalid mode: '$mode'! Allowed 'proxy' or 'plugin'")
         }
     }
     outputs.upToDateWhen { false }
@@ -46,7 +66,8 @@ test {
 
 dependencies {
     testCompile project(':tests-utils')
-    
+    testCompile project(':es74x-cloud')
+
     testCompile group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
     testCompile group: 'ch.qos.logback',                name: 'logback-core',               version: '1.2.3'
     testRuntime group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
