@@ -20,9 +20,7 @@ import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
-import tech.beshu.ror.integration.plugin.base.BaseAdminApiTests.insertInIndexConfig
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -236,22 +234,19 @@ trait BaseAdminApiTests extends WordSpec with ForAllTestContainer with BeforeAnd
       s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
     )
   }
-}
 
-object BaseAdminApiTests {
+  private def insertInIndexConfig(documentManager: DocumentManagerJ, resourceFilePath: String): Unit = {
+    documentManager.insertDocAndWaitForRefresh(
+      s"/$readonlyrestIndexName/settings/1",
+      s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}"""
+    )
+  }
 
-  def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
+  protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
     insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
-  }
-
-  private def insertInIndexConfig(documentManager: DocumentManagerJ, resourceFilePath: String): Unit = {
-    documentManager.insertDocAndWaitForRefresh(
-      "/.readonlyrest/settings/1",
-      s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}"""
-    )
   }
 
 }

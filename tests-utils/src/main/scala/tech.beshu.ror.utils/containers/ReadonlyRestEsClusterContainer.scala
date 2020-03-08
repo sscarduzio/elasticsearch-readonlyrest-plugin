@@ -57,6 +57,7 @@ object ReadonlyRestEsCluster {
           rorConfigFile = rorConfigFile,
           configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
           internodeSslEnabled = clusterSettings.internodeSslEnabled,
+          customRorIndexName = clusterSettings.customRorIndexName,
           xPackSupport = clusterSettings.xPackSupport)
         Task(ReadonlyRestEsContainer.create(containerConfig, clusterSettings.nodeDataInitializer))
       },

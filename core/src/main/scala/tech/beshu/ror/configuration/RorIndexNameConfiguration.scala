@@ -23,12 +23,13 @@ import better.files.File
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
 
 final case class RorIndexNameConfiguration(name: IndexName)
 
-object RorIndexNameConfiguration extends LoadFromEsConfig {
+object RorIndexNameConfiguration extends LoadFromEsConfig with Logging {
 
   private val defaultIndexName = IndexName.fromUnsafeString(".readonlyrest")
 

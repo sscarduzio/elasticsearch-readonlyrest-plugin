@@ -30,7 +30,7 @@ class AdminApiWithDefaultRorIndexTests extends BaseAdminApiTests {
       rorConfigFileName = "/admin_api/readonlyrest.yml",
       clusterSettings = AdditionalClusterSettings(
         numberOfInstances = 2,
-        nodeDataInitializer = BaseAdminApiTests.nodeDataInitializer()
+        nodeDataInitializer = nodeDataInitializer()
       )
     )
 

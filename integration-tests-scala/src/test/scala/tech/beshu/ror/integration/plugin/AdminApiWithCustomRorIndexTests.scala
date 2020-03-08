@@ -31,7 +31,7 @@ class AdminApiWithCustomRorIndexTests extends BaseAdminApiTests {
       clusterSettings = AdditionalClusterSettings(
         numberOfInstances = 2,
         customRorIndexName = Some(readonlyrestIndexName),
-        nodeDataInitializer = BaseAdminApiTests.nodeDataInitializer()
+        nodeDataInitializer = nodeDataInitializer()
       )
     )
 
