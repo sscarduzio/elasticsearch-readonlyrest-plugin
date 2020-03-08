@@ -65,6 +65,7 @@ object ReadonlyRestEsContainer extends StrictLogging {
                           rorPluginFile: File,
                           rorConfigFile: File,
                           configHotReloadingEnabled: Boolean,
+                          customRorIndexName: Option[String],
                           internodeSslEnabled: Boolean)
 
   def create(config: Config, initializer: ElasticsearchNodeDataInitializer): ReadonlyRestEsContainer = {

@@ -24,8 +24,10 @@ import org.scalatest.Matchers.{a, _}
 import org.scalatest.{Inside, Suite, WordSpec}
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.configuration.RorIndexNameConfiguration
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -49,7 +51,15 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
                             assertion: T => Unit,
                             aFactory: RawRorConfigBasedCoreFactory = factory(),
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(aFactory.createCoreFrom(rorConfigFromUnsafe(yaml), httpClientsFactory).runSyncUnsafe()) { case Right(CoreSettings(acl: AccessControlList, _, _)) =>
+    inside(
+      aFactory
+        .createCoreFrom(
+          rorConfigFromUnsafe(yaml),
+          RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+          httpClientsFactory
+        )
+        .runSyncUnsafe()
+    ) { case Right(CoreSettings(acl: AccessControlList, _, _)) =>
       val rule = acl.blocks.head.rules.collect { case r: T => r }.headOption
         .getOrElse(throw new IllegalStateException("There was no expected rule in decoding result"))
       rule shouldBe a[T]
@@ -61,7 +71,15 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
                             assertion: NonEmptyList[AclCreationError] => Unit,
                             aFactory: RawRorConfigBasedCoreFactory = factory(),
                             httpClientsFactory: HttpClientsFactory = MockHttpClientsFactory): Unit = {
-    inside(aFactory.createCoreFrom(rorConfigFromUnsafe(yaml), httpClientsFactory).runSyncUnsafe()) { case Left(error) =>
+    inside(
+      aFactory
+        .createCoreFrom(
+          rorConfigFromUnsafe(yaml),
+          RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+          httpClientsFactory
+        )
+        .runSyncUnsafe()
+    ) { case Left(error) =>
       assertion(error)
     }
   }

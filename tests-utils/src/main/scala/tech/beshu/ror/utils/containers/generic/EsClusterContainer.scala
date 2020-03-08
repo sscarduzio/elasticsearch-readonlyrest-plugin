@@ -138,6 +138,7 @@ final case class EsClusterSettings(name: String,
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    xPackSupport: Boolean = false,
                                    configHotReloadingEnabled: Boolean = true,
+                                   customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false)
 
 final case class DependencyDef(name: String, containerCreator: Coeval[GenericContainer])
