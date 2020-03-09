@@ -29,6 +29,7 @@ import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.configuration.RorIndexNameConfiguration
 import tech.beshu.ror.mocks.MockHttpClientsFactory
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -60,7 +61,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .createCoreFrom(
             config,
             RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-            MockHttpClientsFactory
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, None)) => }
@@ -82,7 +84,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .createCoreFrom(
             config,
             RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-            MockHttpClientsFactory
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, None)) => }
@@ -106,7 +109,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .createCoreFrom(
             config,
             RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-            MockHttpClientsFactory
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
@@ -133,7 +137,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .createCoreFrom(
             config,
             RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-            MockHttpClientsFactory
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
@@ -160,7 +165,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .createCoreFrom(
             config,
             RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-            MockHttpClientsFactory
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
@@ -187,7 +193,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .createCoreFrom(
             config,
             RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-            MockHttpClientsFactory
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
@@ -216,7 +223,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .createCoreFrom(
             config,
             RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-            MockHttpClientsFactory
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Left(errors) =>
@@ -244,7 +252,8 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .createCoreFrom(
             config,
             RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-            MockHttpClientsFactory
+            MockHttpClientsFactory,
+            MockLdapConnectionPoolProvider
           )
           .runSyncUnsafe()
         inside(core) { case Left(errors) =>

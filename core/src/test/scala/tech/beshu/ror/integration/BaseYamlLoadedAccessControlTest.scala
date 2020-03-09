@@ -19,15 +19,16 @@ package tech.beshu.ror.integration
 import java.time.Clock
 
 import cats.implicits._
-import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControl
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory
 import tech.beshu.ror.configuration.{RawRorConfig, RorIndexNameConfiguration}
-import tech.beshu.ror.mocks.MockHttpClientsFactory
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
+import monix.execution.Scheduler.Implicits.global
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
@@ -42,6 +43,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     new RawRorConfigBasedCoreFactory
   }
+  protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
 
   lazy val acl: AccessControl = {
     val aclEngineT = for {
@@ -52,7 +54,8 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
         .createCoreFrom(
           config,
           RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-          MockHttpClientsFactory
+          MockHttpClientsFactory,
+          ldapConnectionPoolProvider
         )
         .map(_.fold(err => throw new IllegalStateException(s"Cannot create ACL: $err"), identity))
     } yield core.aclEngine

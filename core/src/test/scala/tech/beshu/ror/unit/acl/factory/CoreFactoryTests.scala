@@ -28,6 +28,12 @@ import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{Header, IndexName}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
+import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
+import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.accesscontrol.acl.AccessControlList
+import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
@@ -474,7 +480,8 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
       .createCoreFrom(
         config,
         RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-        clientsFactory
+        clientsFactory,
+        MockLdapConnectionPoolProvider
       )
       .runSyncUnsafe()
   }

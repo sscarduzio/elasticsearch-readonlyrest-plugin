@@ -28,13 +28,31 @@ import tech.beshu.ror.utils.ScalaOps.retry
 
 import scala.util.control.NonFatal
 
-object LdapConnectionPoolProvider extends Logging {
+class UnboundidLdapConnectionPoolProvider {
 
-  final case class ConnectionError(hosts: NonEmptyList[LdapHost])
+  import UnboundidLdapConnectionPoolProvider._
 
+  private val poolOfPools: ReleseablePool[Task, LDAPConnectionPool, LdapConnectionConfig] = new ReleseablePool(createConnection)(pool => Task(pool.close()))
+
+  def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] =
+    poolOfPools.get(connectionConfig).flatMap {
+      case Left(ReleseablePool.ClosedPool) => Task.raiseError(ClosedLdapPool)
+      case Right(connection) => Task.pure(connection)
+    }
+
+  def close(): Task[Unit] = poolOfPools.close
+
+  private def createConnection(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] = retry {
+    Task {
+      val serverSet = createLdapServerSet(connectionConfig)
+      new LDAPConnectionPool(serverSet, bindRequest(connectionConfig.bindRequestUser), connectionConfig.poolSize.value)
+    }
+  }
+}
+
+object UnboundidLdapConnectionPoolProvider extends Logging {
   def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
-    val options = ldapOptions(connectionConfig)
-    val server = ldapServerSet(connectionConfig.connectionMethod, options, connectionConfig.trustAllCerts)
+    val server = createLdapServerSet(connectionConfig)
     val bindReq = bindRequest(connectionConfig.bindRequestUser)
     val bindResult = retry {
       val resource = Resource.make(Task(server.getConnection)) { conn =>
@@ -52,7 +70,7 @@ object LdapConnectionPoolProvider extends Logging {
       }
       .map {
         case true => Right(())
-        case false => Left(ConnectionError{
+        case false => Left(ConnectionError {
           connectionConfig.connectionMethod match {
             case ConnectionMethod.SingleServer(host) => NonEmptyList.one(host)
             case ConnectionMethod.SeveralServers(hosts, _) => hosts
@@ -61,11 +79,14 @@ object LdapConnectionPoolProvider extends Logging {
       }
   }
 
-  def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] = retry {
-    Task {
-      val serverSet = ldapServerSet(connectionConfig.connectionMethod, ldapOptions(connectionConfig), connectionConfig.trustAllCerts)
-      new LDAPConnectionPool(serverSet, bindRequest(connectionConfig.bindRequestUser), connectionConfig.poolSize.value)
-    }
+  private def bindRequest(bindRequestUser: BindRequestUser) = bindRequestUser match {
+    case BindRequestUser.Anonymous => new SimpleBindRequest()
+    case BindRequestUser.CustomUser(dn, password) => new SimpleBindRequest(dn.value.value, password.value.value)
+  }
+
+  private def createLdapServerSet(connectionConfig: LdapConnectionConfig) = {
+    val options = ldapOptions(connectionConfig)
+    ldapServerSet(connectionConfig.connectionMethod, options, connectionConfig.trustAllCerts)
   }
 
   private def ldapOptions(connectionConfig: LdapConnectionConfig) = {
@@ -110,13 +131,11 @@ object LdapConnectionPoolProvider extends Logging {
     }
   }
 
-  private def socketFactory(trustAllCerts:Boolean) = {
+  private def socketFactory(trustAllCerts: Boolean) = {
     val sslUtil = if (trustAllCerts) new SSLUtil(new TrustAllTrustManager) else new SSLUtil()
     sslUtil.createSSLSocketFactory
   }
 
-  private def bindRequest(bindRequestUser: BindRequestUser) = bindRequestUser match {
-    case BindRequestUser.Anonymous => new SimpleBindRequest()
-    case BindRequestUser.CustomUser(dn, password) => new SimpleBindRequest(dn.value.value, password.value.value)
-  }
+  final case class ConnectionError(hosts: NonEmptyList[LdapHost])
+  case object ClosedLdapPool extends Exception
 }

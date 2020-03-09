@@ -28,7 +28,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionPoolProvider.ConnectionError
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
@@ -74,11 +74,12 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
 
 object UnboundidLdapAuthenticationService {
   def create(id: LdapService#Id,
+             poolProvider:UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
     (for {
-      _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-      connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
+      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+      connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
     } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
   }
 }
@@ -206,12 +207,13 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
 
 object UnboundidLdapAuthorizationService {
   def create(id: LdapService#Id,
+             poolProvider:UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig,
              userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
     (for {
-      _ <- EitherT(LdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-      connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](LdapConnectionPoolProvider.connect(connectionConfig))
+      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+      connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
     } yield new UnboundidLdapAuthorizationService(id, connectionPool, userGroupsSearchFilter, userSearchFiler, connectionConfig.requestTimeout)).value
   }
 }

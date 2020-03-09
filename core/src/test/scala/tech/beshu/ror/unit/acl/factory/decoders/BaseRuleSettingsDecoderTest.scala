@@ -21,8 +21,9 @@ import java.time.Clock
 import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers.{a, _}
-import org.scalatest.{Inside, Suite, WordSpec}
+import org.scalatest.{BeforeAndAfterAll, Inside, Suite, WordSpec}
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
@@ -35,8 +36,15 @@ import tech.beshu.ror.utils.TestsUtils._
 
 import scala.reflect.ClassTag
 
-abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with Inside {
+abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with BeforeAndAfterAll with Inside {
   this: Suite =>
+
+  val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
+
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    ldapConnectionPoolProvider.close()
+  }
 
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
@@ -56,7 +64,8 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
           RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-          httpClientsFactory
+          httpClientsFactory,
+          ldapConnectionPoolProvider
         )
         .runSyncUnsafe()
     ) { case Right(CoreSettings(acl: AccessControlList, _, _)) =>
@@ -76,7 +85,8 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
           RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
-          httpClientsFactory
+          httpClientsFactory,
+          ldapConnectionPoolProvider
         )
         .runSyncUnsafe()
     ) { case Left(error) =>

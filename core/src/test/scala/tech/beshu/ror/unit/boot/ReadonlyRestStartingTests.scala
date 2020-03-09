@@ -27,6 +27,7 @@ import org.scalatest.Matchers._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -37,6 +38,7 @@ import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, 
 import tech.beshu.ror.configuration.{MalformedSettings, RawRorConfig, RorSsl}
 import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
+import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{StringOps, getResourceContent, getResourcePath, rorConfigFromResource}
@@ -535,7 +537,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
                                aclStaticContext: AccessControlStaticContext = mockAccessControlStaticContext) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _) => config == rorConfigFromResource(resourceFileName)
+        (config: RawRorConfig, _, _, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(Task.now(Right(CoreSettings(mock[AccessControl], aclStaticContext, None))))
@@ -555,7 +557,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
                               createCoreResult: Task[Either[NonEmptyList[AclCreationError], CoreSettings]]) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _) => config == rorConfigFromResource(resourceFileName)
+        (config: RawRorConfig, _, _, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(createCoreResult)
@@ -566,7 +568,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
                                     resourceFileName: String) = {
     (mockedCoreFactory.createCoreFrom _)
       .expects(where {
-        (config: RawRorConfig, _, _) => config == rorConfigFromResource(resourceFileName)
+        (config: RawRorConfig, _, _, _) => config == rorConfigFromResource(resourceFileName)
       })
       .once()
       .returns(Task.now(Left(NonEmptyList.one(AclCreationError.GeneralReadonlyrestSettingsError(Message("failed"))))))

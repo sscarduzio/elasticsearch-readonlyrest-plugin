@@ -29,6 +29,7 @@ import monix.execution.Scheduler.{global => scheduler}
 import monix.execution.atomic.Atomic
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.consts.RorProperties
 import tech.beshu.ror.accesscontrol.factory.consts.RorProperties.RefreshInterval
@@ -194,8 +195,9 @@ trait ReadonlyRest extends Logging {
                                rorIndexNameConfiguration: RorIndexNameConfiguration,
                                auditSink: AuditSink): Task[Either[StartingFailure, Engine]] = {
     val httpClientsFactory = new AsyncHttpClientsFactory
+    val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
     coreFactory
-      .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory)
+      .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider)
       .map { result =>
         result
           .right
@@ -203,10 +205,9 @@ trait ReadonlyRest extends Logging {
             implicit val loggingContext = LoggingContext(coreSettings.aclStaticContext.obfuscatedHeaders)
             val engine = new Engine(
               accessControl = new AccessControlLoggingDecorator(
-                underlying = coreSettings.aclEngine,
-                auditingTool = coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
-              ),
-              context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory)
+                            underlying = coreSettings.aclEngine,
+                            auditingTool = coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
+                          ), context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory, ldapConnectionPoolProvider)
             engine
           }
           .left
@@ -470,10 +471,12 @@ final case class StartingFailure(message: String, throwable: Option[Throwable] =
 
 final class Engine(val accessControl: AccessControl,
                    val context: AccessControlStaticContext,
-                   httpClientsFactory: AsyncHttpClientsFactory) {
+                   httpClientsFactory: AsyncHttpClientsFactory,
+                   ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) {
 
   private [ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()
+    ldapConnectionPoolProvider.close().runAsyncAndForget
   }
 }
 
