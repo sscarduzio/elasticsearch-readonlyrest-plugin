@@ -43,7 +43,7 @@ import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError}
-import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig, RorIndexNameConfiguration}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value
@@ -81,7 +81,7 @@ trait ReadonlyRest extends Logging {
             indexContentManager: IndexJsonContentManager): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       fileConfigLoader <- createFileConfigLoader(esConfigPath)
-      indexConfigLoader <- createIndexConfigLoader(indexContentManager)
+      indexConfigLoader <- createIndexConfigLoader(indexContentManager, esConfigPath)
       esConfig <- loadEsConfig(esConfigPath)
       instance <- startRor(esConfig, fileConfigLoader, indexConfigLoader, auditSink)
     } yield instance).value
@@ -91,8 +91,11 @@ trait ReadonlyRest extends Logging {
     EitherT.pure[Task, StartingFailure](FileConfigLoader.create(esConfigPath))
   }
 
-  private def createIndexConfigLoader(indexContentManager: IndexJsonContentManager) = {
-    EitherT.pure[Task, StartingFailure](new IndexConfigManager(indexContentManager))
+  private def createIndexConfigLoader(indexContentManager: IndexJsonContentManager, esConfigPath: Path) = {
+    for {
+      rorIndexNameConfig <- EitherT(RorIndexNameConfiguration.load(esConfigPath)).leftMap(ms => StartingFailure(ms.message))
+      indexConfigManager <- EitherT.pure[Task, StartingFailure](new IndexConfigManager(indexContentManager, rorIndexNameConfig))
+    } yield indexConfigManager
   }
 
   private def loadEsConfig(esConfigPath: Path) = {
@@ -115,7 +118,7 @@ trait ReadonlyRest extends Logging {
     if (esConfig.rorEsLevelSettings.forceLoadRorFromFile) {
       for {
         config <- EitherT(loadRorConfigFromFile(fileConfigLoader))
-        engine <- EitherT(loadRorCore(config, auditSink))
+        engine <- EitherT(loadRorCore(config, esConfig.rorIndex, auditSink))
         rorInstance <- EitherT.right[StartingFailure](
           RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
         )
@@ -123,7 +126,7 @@ trait ReadonlyRest extends Logging {
     } else {
       for {
         config <- EitherT(loadRorConfigFromIndex(indexConfigManager, loadRorConfigFromFile(fileConfigLoader)))
-        engine <- EitherT(loadRorCore(config, auditSink))
+        engine <- EitherT(loadRorCore(config, esConfig.rorIndex, auditSink))
         rorInstance <- EitherT.right[StartingFailure](
           RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
         )
@@ -188,11 +191,13 @@ trait ReadonlyRest extends Logging {
       }
   }
 
-  private[ror] def loadRorCore(config: RawRorConfig, auditSink: AuditSink): Task[Either[StartingFailure, Engine]] = {
+  private[ror] def loadRorCore(config: RawRorConfig,
+                               rorIndexNameConfiguration: RorIndexNameConfiguration,
+                               auditSink: AuditSink): Task[Either[StartingFailure, Engine]] = {
     val httpClientsFactory = new AsyncHttpClientsFactory
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
     coreFactory
-      .createCoreFrom(config, httpClientsFactory, ldapConnectionPoolProvider)
+      .createCoreFrom(config, rorIndexNameConfiguration, httpClientsFactory, ldapConnectionPoolProvider)
       .map { result =>
         result
           .right
@@ -390,7 +395,8 @@ class RorInstance private(boot: ReadonlyRest,
     })
   }
 
-  private def tryToLoadRorCore(config: RawRorConfig) = boot.loadRorCore(config, auditSink)
+  private def tryToLoadRorCore(config: RawRorConfig) =
+    boot.loadRorCore(config, indexConfigManager.rorIndexNameConfiguration, auditSink)
 }
 
 object RorInstance {

@@ -14,22 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations
+package tech.beshu.ror.unit.acl.blocks.definitions
 
-import cats.{Id, Monad}
-import monix.execution.atomic.{AtomicBoolean, AtomicInt}
-import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ReleasablePoolTest.Counter
 import cats.implicits._
+import cats.{Id, Monad}
 import monix.eval.Task
+import monix.execution.atomic.{AtomicBoolean, AtomicInt}
 import monix.execution.schedulers.TestScheduler
-
-import concurrent.duration._
-import language.postfixOps
-import language.higherKinds
 import org.scalatest.Matchers._
+import org.scalatest.WordSpec
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ReleseablePool
+import tech.beshu.ror.unit.acl.blocks.definitions.ReleasablePoolTest.Counter
 
 import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.language.{higherKinds, postfixOps}
+
 private final class ReleasablePoolTaskTest extends ReleasablePoolTest[Task] {
   implicit val scheduler: TestScheduler= TestScheduler()
   override protected def acquire(counter: Counter): Task[counter.ReleasableResource] = Task.evalAsync(counter.create)
@@ -40,15 +40,19 @@ private final class ReleasablePoolTaskTest extends ReleasablePoolTest[Task] {
     Await.result(t, 2 second)
   }
 }
+
 private final class ReleasablePoolIdTest extends ReleasablePoolTest[Id] {
   override protected def acquire(counter: Counter): Id[counter.ReleasableResource] = counter.create
   override protected def release(counter: Counter)(resource: counter.ReleasableResource): Id[Unit] = resource.close
   override protected def await[A](a: Id[A]): A = a
 }
+
 private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends WordSpec {
+
   protected def acquire(counter: Counter):M[counter.ReleasableResource]
   protected def release(counter: Counter)(resource:counter.ReleasableResource):M[Unit]
   protected def await[A](a:M[A]):A
+
   "releasable pool" when {
     "resource is gotten" should {
       "create new resource" in {
@@ -111,6 +115,7 @@ private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends WordSpec 
 
   }
 }
+
 object ReleasablePoolTest {
   final class Counter {
     private val atom = AtomicInt(0)

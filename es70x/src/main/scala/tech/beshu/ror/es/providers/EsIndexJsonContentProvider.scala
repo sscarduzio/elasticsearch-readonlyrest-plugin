@@ -27,6 +27,7 @@ import org.elasticsearch.action.bulk.BulkResponse
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.xcontent.XContentType
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.boot.Ror
 import tech.beshu.ror.es.IndexJsonContentManager
 import tech.beshu.ror.es.IndexJsonContentManager._
@@ -43,11 +44,11 @@ class EsIndexJsonContentProvider(client: NodeClient,
     this(client, ())
   }
 
-  override def sourceOf(index: String,
+  override def sourceOf(index: IndexName,
                         `type`: String,
                         id: String): Task[Either[ReadError, util.Map[String, _]]] = {
     Task
-      .eval(getSourceCall(index, `type`, id))
+      .eval(getSourceCall(index.value.value, `type`, id))
       .map {
         case Success(value) => Right(value)
         case Failure(_: ResourceNotFoundException) => Left(ContentNotFound: ReadError)
@@ -56,14 +57,14 @@ class EsIndexJsonContentProvider(client: NodeClient,
       .executeOn(Ror.blockingScheduler)
   }
 
-  override def saveContent(index: String,
+  override def saveContent(index: IndexName,
                            `type`: String,
                            id: String,
                            content: util.Map[String, String]): Task[Either[WriteError, Unit]] = {
     val promise = CancelablePromise[Either[WriteError, Unit]]()
     client
       .prepareBulk
-      .add(client.prepareIndex(index, `type`, id).setSource(content, XContentType.JSON).request)
+      .add(client.prepareIndex(index.value.value, `type`, id).setSource(content, XContentType.JSON).request)
       .execute(new PromiseActionListenerAdapter(promise))
     Task.fromCancelablePromise(promise)
   }

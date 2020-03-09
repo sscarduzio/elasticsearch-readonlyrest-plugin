@@ -27,7 +27,9 @@ import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, Ma
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.utils.yaml.JsonFile
 
-final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings, ssl: RorSsl)
+final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
+                          ssl: RorSsl,
+                          rorIndex: RorIndexNameConfiguration)
 
 object EsConfig {
 
@@ -37,7 +39,8 @@ object EsConfig {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
       rorEsLevelSettings <- parse(configFile)
       ssl <- loadSslSettings(esConfigFolderPath, configFile)
-    } yield EsConfig(rorEsLevelSettings, ssl)).value
+      rorIndex <- loadRorIndexNameConfiguration(configFile)
+    } yield EsConfig(rorEsLevelSettings, ssl, rorIndex)).value
   }
 
   private def parse(configFile: File): EitherT[Task, LoadEsConfigError, RorEsLevelSettings] = {
@@ -49,7 +52,13 @@ object EsConfig {
     EitherT(RorSsl.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
+  private def loadRorIndexNameConfiguration(configFile: File): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
+    EitherT(RorIndexNameConfiguration.load(configFile).map(_.left.map(error => MalformedContent(configFile, error.message))))
+  }
+
   final case class RorEsLevelSettings(forceLoadRorFromFile: Boolean)
+
+  final case class RorIndexSettings(name: String)
 
   sealed trait LoadEsConfigError
   object LoadEsConfigError {
