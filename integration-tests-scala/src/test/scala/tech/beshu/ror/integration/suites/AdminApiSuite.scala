@@ -58,10 +58,6 @@ trait AdminApiSuite
   private lazy val ror1_2Node = rorWithIndexConfig.nodesContainers.tail.head
   private lazy val ror2_1Node = rorWithNoIndexConfig.nodesContainers.head
 
-  override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
-
-  override lazy val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
-
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)
   private lazy val rorWithNoIndexConfigAdminActionManager = new ActionManagerJ(clients.last.adminClient)
 
@@ -69,6 +65,9 @@ trait AdminApiSuite
   private lazy val dev2Ror1stInstanceSearchManager = new SearchManager(clients.head.client("dev2", "test"))
   private lazy val dev1Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.client("dev1", "test"))
   private lazy val dev2Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.client("dev2", "test"))
+
+  override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
+  override lazy val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
 
   "An admin REST API" should {
     "provide a method for force refresh ROR config" which {

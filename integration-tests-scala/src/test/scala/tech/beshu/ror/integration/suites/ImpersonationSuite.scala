@@ -20,7 +20,6 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -32,8 +31,7 @@ trait ImpersonationSuite
     with ForAllTestContainer
     with EsClusterProvider
     with SingleClient
-    with SingleEsTarget
-    with ESVersionSupport {
+    with SingleEsTarget {
   this: EsContainerCreator =>
 
   val rorConfigFileName = "/impersonation/readonlyrest.yml"
@@ -127,4 +125,3 @@ object ImpersonationSuite {
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
   }
 }
-

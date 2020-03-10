@@ -20,7 +20,6 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -30,8 +29,7 @@ trait FieldLevelSecuritySuite
     with ForAllTestContainer
     with EsClusterProvider
     with SingleClient
-    with SingleEsTarget
-    with ESVersionSupport {
+    with SingleEsTarget {
   this: EsContainerCreator =>
 
   val rorConfigFileName = "/field_level_security/readonlyrest.yml"

@@ -19,7 +19,6 @@ package tech.beshu.ror.integration.suites
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
@@ -29,7 +28,6 @@ trait UriRegexRuleSuite
     with EsClusterProvider
     with SingleClient
     with SingleEsTarget
-    with ESVersionSupport
     with Matchers {
   this: EsContainerCreator =>
 

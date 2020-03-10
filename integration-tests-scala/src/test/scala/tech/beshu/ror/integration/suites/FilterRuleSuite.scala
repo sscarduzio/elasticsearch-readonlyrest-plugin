@@ -22,19 +22,18 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
 import tech.beshu.ror.utils.misc.Version
 
-trait FilterRuleSuite extends WordSpec
-  with ForAllTestContainer
-  with EsClusterProvider
-  with SingleClient
-  with SingleEsTarget
-  with ESVersionSupport {
+trait FilterRuleSuite
+  extends WordSpec
+    with ForAllTestContainer
+    with EsClusterProvider
+    with SingleClient
+    with SingleEsTarget {
   this: EsContainerCreator =>
 
   val rorConfigFileName = "/current_user_metadata/readonlyrest.yml"
