@@ -84,6 +84,9 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
   override val content: String =
     Option(rInfo.extractContent).getOrElse("")
 
+  override val indicesOperation: InvolvingIndexOperation =
+    rInfo.indicesOperation
+
   override val indices: Set[domain.IndexName] =
     rInfo.extractIndices.indices.flatMap(IndexName.fromString)
 

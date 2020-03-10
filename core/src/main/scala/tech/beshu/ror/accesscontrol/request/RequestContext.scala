@@ -50,6 +50,7 @@ trait RequestContext {
   def contentLength: Information
   def content: String
 
+  def indicesOperation: InvolvingIndexOperation
   def indices: Set[IndexName]
   def allIndicesAndAliases: Set[IndexWithAliases]
   def templateIndicesPatterns: Set[IndexName]

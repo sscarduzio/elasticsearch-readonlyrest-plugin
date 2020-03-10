@@ -228,8 +228,10 @@ object domain {
   sealed trait InvolvingIndexOperation
   object InvolvingIndexOperation {
     case object NonIndexOperation extends InvolvingIndexOperation
-    sealed trait DirectIndexOperation extends InvolvingIndexOperation
-    sealed trait IndirectIndexOperation extends InvolvingIndexOperation
+    sealed trait AnIndexOperation extends InvolvingIndexOperation
+
+    sealed trait DirectIndexOperation extends AnIndexOperation
+    sealed trait IndirectIndexOperation extends AnIndexOperation
 
     final case class GeneralIndexOperation(indices: Set[IndexName]) extends DirectIndexOperation
 
