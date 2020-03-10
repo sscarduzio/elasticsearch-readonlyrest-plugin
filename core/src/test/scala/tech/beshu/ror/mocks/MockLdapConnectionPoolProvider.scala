@@ -14,11 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.mocks
 
-import tech.beshu.ror.integration.plugin.base.BaseIndexApiTests
+import com.unboundid.ldap.sdk.LDAPConnectionPool
+import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig
 
-class IndexApiWithNonFreeKibanaSupportTests extends BaseIndexApiTests {
-  override protected val rorConfigFileName: String =  "/index_api/nonfree_readonlyrest.yml"
-  override protected val notFoundIndexStatusReturned: Int = 404
+object MockLdapConnectionPoolProvider extends UnboundidLdapConnectionPoolProvider {
+  override def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] =
+    throw new IllegalStateException("Cannot use it. It's just a mock")
+
+  override def close(): Task[Unit] = Task.pure(())
 }

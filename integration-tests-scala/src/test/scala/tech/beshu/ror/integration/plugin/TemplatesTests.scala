@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.plugin
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.base.BaseTemplatesTests
+import tech.beshu.ror.integration.plugin.base.BaseTemplatesTests
 import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.TemplateManager
 

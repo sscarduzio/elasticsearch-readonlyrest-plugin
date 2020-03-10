@@ -33,6 +33,7 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
       esVersion = esVersion,
       xPackSupport = clusterSettings.xPackSupport,
       configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
+      customRorIndexName = clusterSettings.customRorIndexName,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
       externalSslEnabled = false)
     EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)

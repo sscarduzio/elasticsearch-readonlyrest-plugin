@@ -198,7 +198,6 @@ object domain {
     val all: IndexName = fromUnsafeString("_all")
     val devNullKibana: IndexName = fromUnsafeString(".kibana-devnull")
     val kibana: IndexName = fromUnsafeString(".kibana")
-    val readonlyrest: IndexName = fromUnsafeString(".readonlyrest")
 
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
 
