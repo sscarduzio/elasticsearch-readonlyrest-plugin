@@ -19,14 +19,14 @@ package tech.beshu.ror.integration.suites
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.generic.{ClientProvider, EsClusterProvider, EsClusterSettings, EsContainerCreator, TargetEsContainer}
+import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait ClusterStateSuite
   extends WordSpec
-    with ClientProvider
+    with SingleClient
     with EsClusterProvider
-    with TargetEsContainer
+    with SingleEsTarget
     with ForAllTestContainer {
   this: EsContainerCreator =>
 
@@ -37,7 +37,7 @@ trait ClusterStateSuite
       rorConfigFileName = rorConfigFileName
     )
   )
-  override lazy val targetEsContainer = container.nodesContainers.head
+  override lazy val targetEs = container.nodesContainers.head
 
   private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
 

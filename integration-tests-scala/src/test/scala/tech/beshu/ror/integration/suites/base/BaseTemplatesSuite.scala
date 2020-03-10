@@ -26,12 +26,12 @@ import scala.collection.JavaConverters._
 
 trait BaseTemplatesSuite
   extends ForAllTestContainer
-    with ClientProvider
-    with TargetEsContainer
+    with SingleClient
+    with SingleEsTarget
     with BeforeAndAfterEach {
   this: Suite =>
 
-  override val targetEsContainer = rorContainer.nodesContainers.head
+  override val targetEs = rorContainer.nodesContainers.head
 
   def rorContainer: EsClusterContainer
   override lazy val container: Container = rorContainer

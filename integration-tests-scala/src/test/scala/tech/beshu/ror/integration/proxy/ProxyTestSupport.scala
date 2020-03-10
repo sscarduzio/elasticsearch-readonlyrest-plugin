@@ -17,12 +17,15 @@
 package tech.beshu.ror.integration.proxy
 
 import better.files._
+import cats.data.NonEmptyList
 import cats.effect.{ContextShift, IO}
 import com.dimafeng.testcontainers.ForAllTestContainer
+import org.apache.logging.log4j.scala.Logging
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.proxy.RorProxy
+import tech.beshu.ror.proxy.RorProxy.ProxyAppWithCloseHandler
 import tech.beshu.ror.utils.containers.ContainerUtils
-import tech.beshu.ror.utils.containers.generic.{CallingProxy, EsWithoutRorPluginContainerCreator, TargetEsContainer}
+import tech.beshu.ror.utils.containers.generic.{CallingProxy, EsContainer, EsWithoutRorPluginContainerCreator, MultipleEsTargets}
 
 import scala.concurrent.ExecutionContext
 
@@ -30,35 +33,50 @@ trait ProxyTestSupport
   extends BeforeAndAfterAll
     with ForAllTestContainer
     with CallingProxy
-    with EsWithoutRorPluginContainerCreator {
-  this: Suite with TargetEsContainer =>
+    with EsWithoutRorPluginContainerCreator
+    with Logging {
+  this: Suite with MultipleEsTargets =>
+
+  private var launchedProxies: NonEmptyList[ProxyAppWithCloseHandler] = _
 
   def rorConfigFileName: String
 
-  private var closeHandler: RorProxy.CloseHandler = _
-  override val proxyPort = 5000
+  override def proxyPorts: NonEmptyList[Int] = launchedProxies.map(app => app._1.config.proxyPort)
 
   override def afterStart(): Unit = {
     super.afterStart()
-    closeHandler = createApp()
-      .start
-      .unsafeRunSync()
-      .getOrElse(throw new IllegalStateException("Could not start test proxy instance"))
+    launchedProxies = esTargets.zipWithIndex
+      .map {
+        case (esContainer, index) => launchProxy(esContainer, index)
+      }
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    closeHandler().unsafeRunSync()
+    launchedProxies
+      .traverse(app => app._2())
+      .unsafeRunSync()
+  }
+
+  private def launchProxy(esContainer: EsContainer, appIndex: Int) = {
+    val proxyPort = appIndex + 5000
+    this.logger.info(s"Starting proxy instance listening on port: $proxyPort, target ES node: ${esContainer.name}")
+    val testProxyApp = createApp(proxyPort, esContainer)
+    val closeHandler = testProxyApp
+      .start
+      .unsafeRunSync()
+      .getOrElse(throw new IllegalStateException("Could not start test proxy instance"))
+    (testProxyApp, closeHandler)
   }
 
   //TODO: Create proxy instance dynamically based on 'esModule' property. Now it's fixed on es74-cloud
-  private def createApp(): RorProxy = new RorProxy {
+  private def createApp(port: Int, targetEsContainer: EsContainer): RorProxy = new RorProxy {
 
     System.setProperty("com.readonlyrest.settings.file.path", ContainerUtils.getResourceFile(rorConfigFileName).getAbsolutePath)
 
     override def config: RorProxy.Config = RorProxy.Config(
       targetEsNode = s"http://${targetEsContainer.host}:${targetEsContainer.port}",
-      proxyPort = proxyPort.toString,
+      proxyPort = port,
       esConfigFile = ContainerUtils.getResourceFile("/proxy/elasticsearch.yml").toScala
     )
 

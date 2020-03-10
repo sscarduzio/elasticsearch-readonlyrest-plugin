@@ -14,14 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites
+package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.base.BaseIndexApiSuite
-import tech.beshu.ror.utils.containers.generic.EsContainerCreator
+import tech.beshu.ror.integration.suites.AdminApiSuite
 
-trait IndexApiWithFreeKibanaSupportSuite extends BaseIndexApiSuite {
-  this: EsContainerCreator =>
-
-  override val rorConfigFileName: String =  "/index_api/free_readonlyrest.yml"
-  override val notFoundIndexStatusReturned: Int = 401
-}
+class AdminApiPluginTests extends AdminApiSuite with PluginTestSupport

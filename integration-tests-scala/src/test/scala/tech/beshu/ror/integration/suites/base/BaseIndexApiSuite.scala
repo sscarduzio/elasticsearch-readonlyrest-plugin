@@ -26,18 +26,18 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 trait BaseIndexApiSuite
   extends WordSpec
-    with ClientProvider
+    with SingleClient
     with EsClusterProvider
-    with TargetEsContainer
+    with SingleEsTarget
     with ForAllTestContainer
     with ESVersionSupport {
   this: EsContainerCreator =>
 
-  protected def rorConfigFileName: String
+  def rorConfigFileName: String
 
   protected def notFoundIndexStatusReturned: Int
 
-  override lazy val targetEsContainer = container.nodesContainers.head
+  override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

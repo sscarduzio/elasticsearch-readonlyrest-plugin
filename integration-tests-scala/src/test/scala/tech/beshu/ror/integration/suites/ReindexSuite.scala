@@ -28,15 +28,15 @@ trait ReindexSuite
   extends WordSpec
     with ForAllTestContainer
     with EsClusterProvider
-    with ClientProvider
-    with TargetEsContainer
+    with SingleClient
+    with SingleEsTarget
     with ESVersionSupport
     with Matchers {
   this: EsContainerCreator =>
 
   val rorConfigFileName = "/reindex/readonlyrest.yml"
 
-  override val targetEsContainer = container.nodesContainers.head
+  override val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

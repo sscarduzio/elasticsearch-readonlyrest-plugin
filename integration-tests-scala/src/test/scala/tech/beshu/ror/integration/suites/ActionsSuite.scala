@@ -28,8 +28,8 @@ trait ActionsSuite
   extends WordSpec
     with ForAllTestContainer
     with EsClusterProvider
-    with ClientProvider
-    with TargetEsContainer
+    with SingleClient
+    with SingleEsTarget
     with ESVersionSupport {
   this: EsContainerCreator =>
 
@@ -43,7 +43,7 @@ trait ActionsSuite
     )
   )
 
-  override lazy val targetEsContainer = container.nodesContainers.head
+  override lazy val targetEs = container.nodesContainers.head
 
   private lazy val actionManager = new ActionManagerJ(client("any", "whatever"))
 

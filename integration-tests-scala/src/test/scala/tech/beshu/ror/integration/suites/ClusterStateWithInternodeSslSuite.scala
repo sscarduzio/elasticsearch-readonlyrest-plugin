@@ -24,15 +24,15 @@ import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait ClusterStateWithInternodeSslSuite
   extends WordSpec
-    with ClientProvider
+    with SingleClient
     with EsClusterProvider
-    with TargetEsContainer
+    with SingleEsTarget
     with ForAllTestContainer {
   this: EsContainerCreator =>
 
   val rorConfigFileName = "/cluster_state/readonlyrest.yml"
 
-  override lazy val targetEsContainer = container.nodesContainers.head
+  override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

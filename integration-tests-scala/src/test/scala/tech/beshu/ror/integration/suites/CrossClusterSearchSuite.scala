@@ -29,8 +29,8 @@ trait CrossClusterSearchSuite
   extends WordSpec
     with ForAllTestContainer
     with EsClusterProvider
-    with ClientProvider
-    with TargetEsContainer
+    with SingleClient
+    with SingleEsTarget
     with ESVersionSupport {
   this: EsContainerCreator =>
 
@@ -42,7 +42,7 @@ trait CrossClusterSearchSuite
     ),
     CrossClusterSearchSuite.remoteClustersInitializer()
   )
-  override val targetEsContainer = container.localClusters.head.nodesContainers.head
+  override val targetEs = container.localClusters.head.nodesContainers.head
 
   private lazy val user1SearchManager = new SearchManagerJ(client("dev1", "test"))
   private lazy val user2SearchManager = new SearchManagerJ(client("dev2", "test"))

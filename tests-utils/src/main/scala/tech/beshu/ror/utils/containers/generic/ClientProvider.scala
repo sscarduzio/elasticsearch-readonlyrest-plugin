@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.containers.generic
 
 import java.util.Optional
 
+import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.generic.ClientProvider.adminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Tuple
@@ -32,19 +33,40 @@ object ClientProvider {
   val adminCredentials: (String, String) = ("admin", "container")
 }
 
-trait TargetEsContainer {
-  def targetEsContainer: EsContainer
+trait MultipleClients {
+  def clients: NonEmptyList[ClientProvider]
 }
 
-trait CallingEsDirectly extends ClientProvider {
-  this: TargetEsContainer =>
-
-  override def client(user: String, pass: String): RestClient = targetEsContainer.client(user, pass)
+trait MultipleEsTargets {
+  def esTargets: NonEmptyList[EsContainer]
 }
 
-trait CallingProxy extends ClientProvider {
-  def proxyPort: Int
+trait SingleEsTarget extends MultipleEsTargets {
+  def targetEs: EsContainer
 
-  override def client(user: String, pass: String): RestClient = new RestClient(false, "localhost", proxyPort, Optional.of(Tuple.from(user, pass)))
+  override def esTargets: NonEmptyList[EsContainer] = NonEmptyList.one(targetEs)
 }
 
+trait SingleClient extends ClientProvider with MultipleClients {
+  override def client(user: String, pass: String): RestClient = clients.head.client(user, pass)
+}
+
+trait CallingEsDirectly extends MultipleClients {
+  this: MultipleEsTargets =>
+
+  override def clients: NonEmptyList[ClientProvider] =  {
+    esTargets.map { target =>
+      (user: String, pass: String) => target.client(user, pass)
+    }
+  }
+}
+
+trait CallingProxy extends MultipleClients {
+  def proxyPorts: NonEmptyList[Int]
+
+  override def clients: NonEmptyList[ClientProvider] = {
+    proxyPorts.map { port =>
+      (user: String, pass: String) => new RestClient(false, "localhost", port, Optional.of(Tuple.from(user, pass)))
+    }
+  }
+}

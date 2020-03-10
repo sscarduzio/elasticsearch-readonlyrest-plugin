@@ -56,9 +56,10 @@ trait RorProxy  {
 
 object RorProxy {
   type CloseHandler = () => IO[Unit]
+  type ProxyAppWithCloseHandler = (RorProxy, RorProxy.CloseHandler)
 
   final case class Config(targetEsNode: String,
-                          proxyPort: String,
+                          proxyPort: Int,
                           esConfigFile: File)
 
 }
