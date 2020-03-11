@@ -215,6 +215,7 @@ object show {
     implicit val variableTypeShow: Show[VariableContext.VariableType] = Show.show {
       case _: VariableType.User => "user"
       case _: VariableType.CurrentGroup => "current group"
+      case _: VariableType.AvailableGroups => "available groups"
       case _: VariableType.Header => "header"
       case _: VariableType.Jwt => "JWT"
     }
