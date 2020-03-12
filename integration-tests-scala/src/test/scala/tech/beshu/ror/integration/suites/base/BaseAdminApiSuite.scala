@@ -14,42 +14,30 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites
+package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.MultipleContainers
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
-import tech.beshu.ror.integration.suites.AdminApiSuite._
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
-trait AdminApiSuite
+trait BaseAdminApiSuite
   extends WordSpec
     with BeforeAndAfterEach
     with BaseIntegrationTest
     with MultipleClientsSupport {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
+  protected def readonlyrestIndexName: String
+  protected def rorWithIndexConfig: EsClusterContainer
+  protected def rorWithNoIndexConfig: EsClusterContainer
 
-  private lazy val rorWithIndexConfig = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      numberOfInstances = 2,
-      nodeDataInitializer = AdminApiSuite.nodeDataInitializer()
-    )
-  )
-
-  private lazy val rorWithNoIndexConfig = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR2",
-      configHotReloadingEnabled = false)
-  )
 
   private lazy val ror1_1Node = rorWithIndexConfig.nodesContainers.head
   private lazy val ror1_2Node = rorWithIndexConfig.nodesContainers.tail.head
@@ -57,11 +45,6 @@ trait AdminApiSuite
 
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)
   private lazy val rorWithNoIndexConfigAdminActionManager = new ActionManagerJ(clients.last.adminClient)
-
-  private lazy val dev1Ror1stInstanceSearchManager = new SearchManager(clients.head.client("dev1", "test"))
-  private lazy val dev2Ror1stInstanceSearchManager = new SearchManager(clients.head.client("dev2", "test"))
-  private lazy val dev1Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.client("dev1", "test"))
-  private lazy val dev2Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.client("dev2", "test"))
 
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
   override lazy val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
@@ -137,7 +120,12 @@ trait AdminApiSuite
             result.getResponseJsonMap.get("message") should be("updated settings")
           }
 
-          // before first reload no user can access indices 
+          val dev1Ror1stInstanceSearchManager = new SearchManager(clients.head.client("dev1", "test"))
+          val dev2Ror1stInstanceSearchManager = new SearchManager(clients.head.client("dev2", "test"))
+          val dev1Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.client("dev1", "test"))
+          val dev2Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.client("dev2", "test"))
+
+          // before first reload no user can access indices
           val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("/test1_index/_search")
           dev1ror1Results.responseCode should be(401)
           val dev2ror1Results = dev2Ror1stInstanceSearchManager.search("/test2_index/_search")
@@ -251,32 +239,25 @@ trait AdminApiSuite
       "_readonlyrest/admin/config",
       s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest.yml"))}"}"""
     )
-    removeConfigIndex(new IndexManagerJ(ror2_1Node.adminClient))
+    new IndexManagerJ(ror2_1Node.adminClient).remove(readonlyrestIndexName)
 
     ror1WithIndexConfigAdminActionManager.actionPost(
       "_readonlyrest/admin/config",
       s"""{"settings": "${escapeJava(getResourceContent("/admin_api/readonlyrest_index.yml"))}"}"""
     )
   }
-}
-
-object AdminApiSuite {
-
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
-    insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
-  }
 
   private def insertInIndexConfig(documentManager: DocumentManagerJ, resourceFilePath: String): Unit = {
     documentManager.insertDocAndWaitForRefresh(
-      "/.readonlyrest/settings/1",
+      s"/$readonlyrestIndexName/settings/1",
       s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}"""
     )
   }
 
-  private def removeConfigIndex(indexManager: IndexManagerJ): Unit = {
-    indexManager.remove(".readonlyrest")
+  protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManagerJ(adminRestClient)
+    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
+    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
+    insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
   }
 }

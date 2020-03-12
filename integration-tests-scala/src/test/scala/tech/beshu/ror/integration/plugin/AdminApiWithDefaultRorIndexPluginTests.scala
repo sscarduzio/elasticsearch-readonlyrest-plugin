@@ -14,8 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.AdminApiSuite
+import tech.beshu.ror.integration.suites.AdminApiWithDefaultRorIndexSuite
 
-class AdminApiProxyTests extends AdminApiSuite with ProxyTestSupport
+class AdminApiWithDefaultRorIndexPluginTests extends AdminApiWithDefaultRorIndexSuite with PluginTestSupport
