@@ -22,6 +22,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -31,10 +32,14 @@ trait CrossClusterSearchSuite
     with EsClusterProvider
     with SingleClient
     with SingleEsTarget
+    with RorConfigFileNameProvider
     with ESVersionSupport {
   this: EsContainerCreator =>
 
-  val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
+  override val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
+
+  override lazy val targetEs = container.localClusters.head.nodesContainers.head
+
   override lazy val container = createRemoteClustersContainer(
     NonEmptyList.of(
       EsClusterSettings(name = "ROR1", rorConfigFileName = rorConfigFileName, nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
@@ -42,7 +47,6 @@ trait CrossClusterSearchSuite
     ),
     CrossClusterSearchSuite.remoteClustersInitializer()
   )
-  override val targetEs = container.localClusters.head.nodesContainers.head
 
   private lazy val user1SearchManager = new SearchManagerJ(client("dev1", "test"))
   private lazy val user2SearchManager = new SearchManagerJ(client("dev2", "test"))

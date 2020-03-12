@@ -21,6 +21,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -29,12 +30,13 @@ trait FieldLevelSecuritySuite
     with ForAllTestContainer
     with EsClusterProvider
     with SingleClient
-    with SingleEsTarget {
+    with SingleEsTarget
+    with RorConfigFileNameProvider {
   this: EsContainerCreator =>
 
-  val rorConfigFileName = "/field_level_security/readonlyrest.yml"
+  override val rorConfigFileName = "/field_level_security/readonlyrest.yml"
 
-  override val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

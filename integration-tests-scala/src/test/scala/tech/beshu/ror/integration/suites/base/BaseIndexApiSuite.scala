@@ -21,19 +21,19 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait BaseIndexApiSuite
   extends WordSpec
-    with SingleClient
-    with EsClusterProvider
-    with SingleEsTarget
     with ForAllTestContainer
+    with EsClusterProvider
+    with SingleClient
+    with SingleEsTarget
+    with RorConfigFileNameProvider
     with ESVersionSupport {
   this: EsContainerCreator =>
-
-  def rorConfigFileName: String
 
   protected def notFoundIndexStatusReturned: Int
 

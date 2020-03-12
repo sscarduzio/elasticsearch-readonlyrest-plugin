@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
+import tech.beshu.ror.utils.containers.generic.providers.RorConfigFileNameProvider
 import tech.beshu.ror.utils.containers.generic.{EsClusterProvider, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.TemplateManagerJ
 
@@ -27,10 +28,11 @@ import scala.collection.JavaConverters._
 trait TemplatesSuite
   extends WordSpec
     with BaseTemplatesSuite
+    with RorConfigFileNameProvider
     with EsClusterProvider {
   this: EsContainerCreator =>
 
-  def rorConfigFileName = "/cat_api/readonlyrest.yml"
+  override val rorConfigFileName = "/cat_api/readonlyrest.yml"
 
   override lazy val rorContainer = createLocalClusterContainer(
     EsClusterSettings(

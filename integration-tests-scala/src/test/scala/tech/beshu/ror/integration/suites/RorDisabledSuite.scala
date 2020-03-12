@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{ClusterStateManager, RorApiManager}
 
 trait RorDisabledSuite
@@ -27,12 +28,13 @@ trait RorDisabledSuite
     with EsClusterProvider
     with SingleClient
     with SingleEsTarget
+    with RorConfigFileNameProvider
     with Matchers {
   this: EsContainerCreator =>
 
-  val rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
+  override val rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
 
-  override val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

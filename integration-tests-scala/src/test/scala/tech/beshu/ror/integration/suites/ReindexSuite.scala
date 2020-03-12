@@ -21,6 +21,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -30,13 +31,14 @@ trait ReindexSuite
     with EsClusterProvider
     with SingleClient
     with SingleEsTarget
+    with RorConfigFileNameProvider
     with ESVersionSupport
     with Matchers {
   this: EsContainerCreator =>
 
-  val rorConfigFileName = "/reindex/readonlyrest.yml"
+  override val rorConfigFileName = "/reindex/readonlyrest.yml"
 
-  override val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

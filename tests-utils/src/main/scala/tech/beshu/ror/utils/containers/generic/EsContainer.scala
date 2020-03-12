@@ -26,6 +26,7 @@ import monix.eval.Coeval
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
+import tech.beshu.ror.utils.containers.generic.providers.ClientProvider
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
 import tech.beshu.ror.utils.misc.Tuple

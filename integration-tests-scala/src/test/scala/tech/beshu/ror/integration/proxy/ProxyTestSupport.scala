@@ -25,7 +25,8 @@ import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.proxy.RorProxy
 import tech.beshu.ror.proxy.RorProxy.ProxyAppWithCloseHandler
 import tech.beshu.ror.utils.containers.ContainerUtils
-import tech.beshu.ror.utils.containers.generic.{CallingProxy, EsContainer, EsWithoutRorPluginContainerCreator, MultipleEsTargets}
+import tech.beshu.ror.utils.containers.generic.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
+import tech.beshu.ror.utils.containers.generic.{EsContainer, EsWithoutRorPluginContainerCreator}
 
 import scala.concurrent.ExecutionContext
 
@@ -35,13 +36,11 @@ trait ProxyTestSupport
     with CallingProxy
     with EsWithoutRorPluginContainerCreator
     with Logging {
-  this: Suite with MultipleEsTargets =>
+  this: Suite with MultipleEsTargets with RorConfigFileNameProvider =>
 
   private var launchedProxies: NonEmptyList[ProxyAppWithCloseHandler] = _
 
-  def rorConfigFileName: String
-
-  override def proxyPorts: NonEmptyList[Int] = launchedProxies.map(app => app._1.config.proxyPort)
+  override lazy val proxyPorts: NonEmptyList[Int] = launchedProxies.map(app => app._1.config.proxyPort)
 
   override def afterStart(): Unit = {
     super.afterStart()

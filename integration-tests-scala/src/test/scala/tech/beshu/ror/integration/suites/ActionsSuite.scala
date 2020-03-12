@@ -20,6 +20,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -28,10 +29,13 @@ trait ActionsSuite
     with ForAllTestContainer
     with EsClusterProvider
     with SingleClient
-    with SingleEsTarget {
+    with SingleEsTarget
+    with RorConfigFileNameProvider {
   this: EsContainerCreator =>
 
-  val rorConfigFileName = "/actions/readonlyrest.yml"
+  override val rorConfigFileName = "/actions/readonlyrest.yml"
+
+  override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
@@ -40,8 +44,6 @@ trait ActionsSuite
       nodeDataInitializer = ActionsSuite.nodeDataInitializer()
     )
   )
-
-  override lazy val targetEs = container.nodesContainers.head
 
   private lazy val actionManager = new ActionManagerJ(client("any", "whatever"))
 

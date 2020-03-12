@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer}
 import org.scalatest.{BeforeAndAfterEach, Suite}
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, TemplateManagerJ}
 import tech.beshu.ror.utils.misc.Version
 
@@ -26,12 +27,12 @@ import scala.collection.JavaConverters._
 
 trait BaseTemplatesSuite
   extends ForAllTestContainer
+    with BeforeAndAfterEach
     with SingleClient
-    with SingleEsTarget
-    with BeforeAndAfterEach {
+    with SingleEsTarget {
   this: Suite =>
 
-  override val targetEs = rorContainer.nodesContainers.head
+  override lazy val targetEs = rorContainer.nodesContainers.head
 
   def rorContainer: EsClusterContainer
   override lazy val container: Container = rorContainer

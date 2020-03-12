@@ -23,6 +23,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.suites.AdminApiSuite._
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{MultipleClients, MultipleEsTargets, RorConfigFileNameProvider}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -30,13 +31,14 @@ import tech.beshu.ror.utils.misc.Resources.getResourceContent
 trait AdminApiSuite
   extends WordSpec
     with ForAllTestContainer
-    with EsClusterProvider
     with BeforeAndAfterEach
+    with EsClusterProvider
     with MultipleEsTargets
-    with MultipleClients {
+    with MultipleClients
+    with RorConfigFileNameProvider {
   this: EsContainerCreator =>
 
-  val rorConfigFileName = "/admin_api/readonlyrest.yml"
+  override val rorConfigFileName = "/admin_api/readonlyrest.yml"
 
   private lazy val rorWithIndexConfig = createLocalClusterContainer(
     EsClusterSettings(

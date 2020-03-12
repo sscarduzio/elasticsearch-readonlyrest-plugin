@@ -20,24 +20,28 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait ClusterStateSuite
   extends WordSpec
-    with SingleClient
+    with ForAllTestContainer
     with EsClusterProvider
+    with SingleClient
     with SingleEsTarget
-    with ForAllTestContainer {
+    with RorConfigFileNameProvider {
   this: EsContainerCreator =>
 
-  val rorConfigFileName = "/cluster_state/readonlyrest.yml"
+  override val rorConfigFileName = "/cluster_state/readonlyrest.yml"
+
+  override lazy val targetEs = container.nodesContainers.head
+
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       rorConfigFileName = rorConfigFileName
     )
   )
-  override lazy val targetEs = container.nodesContainers.head
 
   private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
 

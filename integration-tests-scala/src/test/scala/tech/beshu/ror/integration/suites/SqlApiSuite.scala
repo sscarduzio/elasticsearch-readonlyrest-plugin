@@ -20,6 +20,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest._
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SqlApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
@@ -30,13 +31,14 @@ trait SqlApiSuite
     with EsClusterProvider
     with SingleClient
     with SingleEsTarget
+    with RorConfigFileNameProvider
     with ESVersionSupport
     with Matchers {
   this: EsContainerCreator =>
 
-  val rorConfigFileName = "/sql_api/readonlyrest.yml"
+  override val rorConfigFileName = "/sql_api/readonlyrest.yml"
 
-  override val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
