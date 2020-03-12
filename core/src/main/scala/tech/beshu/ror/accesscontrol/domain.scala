@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.{Base64, Locale}
 
-import cats.{Eq, Functor}
+import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
 import com.comcast.ip4s.interop.cats.HostnameResolver
@@ -32,6 +32,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.Try
 
@@ -84,6 +85,17 @@ object domain {
     def apply[T](name: Name, value: T)
                 (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
     def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
+
+    def fromAuthorizationValue(value: NonEmptyString): Header = {
+      val (first, second) = value.value.splitByFirst(char = '=')
+      val headerFromValue = for {
+        _ <- Either.cond(!first.contains(" "), (), ())
+        // if contains space in first segment, it means that it's basic, bearer or other type of authorization value
+        name <- NonEmptyString.from(first).map(Name.apply)
+        value <- NonEmptyString.from(second)
+      } yield new Header(name, value)
+      headerFromValue.getOrElse(new Header(Name.authorization, value))
+    }
 
     implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
   }

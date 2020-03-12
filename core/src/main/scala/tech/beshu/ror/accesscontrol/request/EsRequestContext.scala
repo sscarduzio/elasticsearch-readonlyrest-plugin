@@ -18,11 +18,11 @@ package tech.beshu.ror.accesscontrol.request
 
 import java.time.Instant
 
+import cats.data.NonEmptyList
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
 
 import scala.util.Try
@@ -32,62 +32,72 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
   override val timestamp: Instant =
     Instant.now()
 
-  override val taskId: Long =
+  override lazy val taskId: Long =
     rInfo.extractTaskId
 
-  override val id: RequestContext.Id =
+  override lazy val id: RequestContext.Id =
   Option(rInfo.extractId)
     .map(RequestContext.Id.apply)
     .getOrElse(throw new IllegalArgumentException(s"Cannot create request ID"))
 
-  override val action: Action =
+  override lazy val action: Action =
     Option(rInfo.extractAction)
       .map(Action.apply)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create request action"))
 
-  override val headers: Set[Header] =
+  override lazy val headers: Set[Header] =
     rInfo
       .extractRequestHeaders
-      .flatMap { case (name, value) =>
-        (NonEmptyString.unapply(name), NonEmptyString.unapply(value)) match {
-          case (Some(headerName), Some(headerValue)) => Some(Header(Name(headerName), headerValue))
-          case _ => None
+      .flatMap { case (name, values) =>
+        val result: Option[NonEmptyList[Header]] = for {
+          nonEmptyName <- NonEmptyString.unapply(name)
+          nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
+        } yield {
+          nonEmptyValues.map { value =>
+            Header.Name(nonEmptyName) match {
+              case Header.Name.authorization =>
+                Header.fromAuthorizationValue(value)
+              case other =>
+                new Header(other, value)
+            }
+          }
         }
+        result.map(_.toList).getOrElse(List.empty[Header])
       }
       .toSet
 
-  override val remoteAddress: Option[Address] =
+  override lazy val remoteAddress: Option[Address] =
     Try(rInfo.extractRemoteAddress).toOption
       .flatMap(Address.from)
 
-  override val localAddress: Address =
+  override lazy val localAddress: Address =
     forceCreateAddressFrom(rInfo.extractLocalAddress)
 
-  override val method: Method =
+  override lazy val method: Method =
     Option(rInfo.extractMethod)
       .map(Method.apply)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create request method"))
 
-  override val uriPath: UriPath =
+  override lazy val uriPath: UriPath =
   Option(rInfo.extractPath)
     .map(UriPath.apply)
     .getOrElse(throw new IllegalArgumentException(s"Cannot create request URI path"))
 
-  override val contentLength: Information =
+  override lazy val contentLength: Information =
     Bytes(rInfo.extractContentLength.toLong)
 
-  override val `type`: Type =
+  override lazy val `type`: Type =
     Option(rInfo.extractType)
       .map(Type.apply)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create request type"))
 
-  override val content: String =
+  override lazy val content: String =
     Option(rInfo.extractContent).getOrElse("")
 
-  override val indices: Set[domain.IndexName] =
+  override lazy val indices: Set[domain.IndexName] =
     rInfo.extractIndices.indices.flatMap(IndexName.fromString)
 
-  override val allIndicesAndAliases: Set[IndexWithAliases] =
+  override lazy val allIndicesAndAliases: Set[IndexWithAliases] =
     rInfo
       .extractAllIndicesAndAliases
       .flatMap { case (indexName, aliases) =>
@@ -99,28 +109,28 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
       }
       .toSet
 
-  override val templateIndicesPatterns: Set[IndexName] =
+  override lazy val templateIndicesPatterns: Set[IndexName] =
     rInfo.extractTemplateIndicesPatterns.flatMap(IndexName.fromString)
 
-  override val repositories: Set[IndexName] =
+  override lazy val repositories: Set[IndexName] =
     rInfo.extractRepositories.flatMap(IndexName.fromString)
 
-  override val snapshots: Set[IndexName] =
+  override lazy val snapshots: Set[IndexName] =
     rInfo.extractSnapshots.flatMap(IndexName.fromString)
 
-  override val isReadOnlyRequest: Boolean =
+  override lazy val isReadOnlyRequest: Boolean =
     rInfo.extractIsReadRequest
 
-  override val involvesIndices: Boolean =
+  override lazy val involvesIndices: Boolean =
     rInfo.involvesIndices
 
-  override val isCompositeRequest: Boolean =
+  override lazy val isCompositeRequest: Boolean =
     rInfo.extractIsCompositeRequest
 
-  override val isAllowedForDLS: Boolean =
+  override lazy val isAllowedForDLS: Boolean =
     rInfo.extractIsAllowedForDLS
 
-  override val hasRemoteClusters: Boolean =
+  override lazy val hasRemoteClusters: Boolean =
     rInfo.extractHasRemoteClusters
 
   private def forceCreateAddressFrom(value: String) = {

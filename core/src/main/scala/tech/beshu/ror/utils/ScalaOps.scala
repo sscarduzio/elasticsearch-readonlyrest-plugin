@@ -178,4 +178,15 @@ object ScalaOps {
     import cats.implicits._
     def widen[S >: T : Ordering]: NonEmptySet[S] = NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
   }
+
+  implicit class StringOps(val value: String) extends AnyVal {
+    def splitByFirst(char: Char): (String, String) = {
+      val prefix = value.takeWhile(_ != char)
+      val suffix = value.dropWhile(_ != char) match {
+        case "" => ""
+        case nonEmpty => nonEmpty.substring(1)
+      }
+      (prefix, suffix)
+    }
+  }
 }
