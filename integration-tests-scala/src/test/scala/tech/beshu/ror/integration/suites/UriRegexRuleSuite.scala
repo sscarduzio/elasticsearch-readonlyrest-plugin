@@ -16,31 +16,26 @@
  */
 package tech.beshu.ror.integration.suites
 
-import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
+import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait UriRegexRuleSuite
   extends WordSpec
-    with ForAllTestContainer
-    with EsClusterProvider
-    with SingleClient
-    with SingleEsTarget
-    with RorConfigFileNameProvider
+    with BaseIntegrationTest
+    with SingleClientSupport
     with Matchers {
   this: EsContainerCreator =>
 
-  override val rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
 
   override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
-      name = "ROR1",
-      rorConfigFileName = rorConfigFileName
+      name = "ROR1"
     )
   )
 

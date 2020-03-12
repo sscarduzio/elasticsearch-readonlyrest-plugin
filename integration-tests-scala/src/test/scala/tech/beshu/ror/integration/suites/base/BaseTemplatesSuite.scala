@@ -16,25 +16,25 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import com.dimafeng.testcontainers.{Container, ForAllTestContainer}
+import com.dimafeng.testcontainers.Container
 import org.scalatest.{BeforeAndAfterEach, Suite}
+import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.containers.generic.providers.{SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, TemplateManagerJ}
 import tech.beshu.ror.utils.misc.Version
 
 import scala.collection.JavaConverters._
 
 trait BaseTemplatesSuite
-  extends ForAllTestContainer
-    with BeforeAndAfterEach
-    with SingleClient
-    with SingleEsTarget {
-  this: Suite =>
+  extends BaseIntegrationTest
+    with SingleClientSupport
+    with BeforeAndAfterEach {
+  this: Suite with EsContainerCreator =>
 
   override lazy val targetEs = rorContainer.nodesContainers.head
 
   def rorContainer: EsClusterContainer
+
   override lazy val container: Container = rorContainer
 
   protected lazy val adminTemplateManager = new TemplateManagerJ(adminClient)
@@ -42,7 +42,7 @@ trait BaseTemplatesSuite
 
   protected def createIndexWithExampleDoc(documentManager: DocumentManagerJ, index: String): Unit = {
     val esVersion = rorContainer.esVersion
-    if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       adminDocumentManager.insertDocAndWaitForRefresh(s"/$index/_doc/1", "{\"hello\":\"world\"}")
     } else {
       adminDocumentManager.insertDocAndWaitForRefresh(s"/$index/doc/1", "{\"hello\":\"world\"}")
@@ -51,9 +51,9 @@ trait BaseTemplatesSuite
 
   protected def templateExample(indexPattern: String): String = {
     val esVersion = rorContainer.esVersion
-    if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       s"""{"index_patterns":["$indexPattern"],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
-    } else if(Version.greaterOrEqualThan(esVersion, 6, 1, 0)) {
+    } else if (Version.greaterOrEqualThan(esVersion, 6, 1, 0)) {
       s"""{"index_patterns":["$indexPattern"],"settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
     } else {
       s"""{"template":"$indexPattern","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
@@ -69,25 +69,25 @@ trait BaseTemplatesSuite
 
   private def truncateTemplates(): Unit = {
     val templates = adminTemplateManager.getTemplates
-    if(templates.getResponseCode != 200) throw new IllegalStateException("Cannot get all templates by admin")
+    if (templates.getResponseCode != 200) throw new IllegalStateException("Cannot get all templates by admin")
     templates
       .getResponseJsonMap.keySet().asScala
       .foreach { template =>
         val deleteTemplateResult = adminTemplateManager.deleteTemplate(template)
-        if(deleteTemplateResult.getResponseCode != 200) throw new IllegalStateException(s"Admin cannot delete '$template' template")
+        if (deleteTemplateResult.getResponseCode != 200) throw new IllegalStateException(s"Admin cannot delete '$template' template")
       }
   }
 
   private def truncateIndices(): Unit = {
     val indicesManager = new IndexManagerJ(adminClient)
-    if(indicesManager.removeAll().getResponseCode != 200) {
+    if (indicesManager.removeAll().getResponseCode != 200) {
       throw new IllegalStateException("Admin cannot remove all indices")
     }
   }
 
   private def addControlTemplate(): Unit = {
     val response = adminTemplateManager.insertTemplate("control_one", templateExample("control_*"))
-    if(response.getResponseCode != 200) {
+    if (response.getResponseCode != 200) {
       throw new IllegalStateException("Cannot add control template")
     }
   }

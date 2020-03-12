@@ -36,7 +36,7 @@ object providers {
   }
 
   trait RorConfigFileNameProvider {
-    def rorConfigFileName: String
+    implicit def rorConfigFileName: String
   }
 
   trait MultipleClients {
@@ -76,4 +76,5 @@ object providers {
       }
     }
   }
+
 }

@@ -16,33 +16,28 @@
  */
 package tech.beshu.ror.integration.suites
 
-import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.{Matchers, WordSpec}
+import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, ScriptManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait MustacheLangSuite
   extends WordSpec
-    with ForAllTestContainer
-    with EsClusterProvider
-    with SingleClient
-    with SingleEsTarget
-    with RorConfigFileNameProvider
+    with BaseIntegrationTest
+    with SingleClientSupport
     with ESVersionSupport
     with Matchers {
   this: EsContainerCreator =>
 
-  override val rorConfigFileName = "/plugin_indices/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/plugin_indices/readonlyrest.yml"
 
   override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      rorConfigFileName = rorConfigFileName,
       nodeDataInitializer = MustacheLangSuite.nodeDataInitializer(),
       xPackSupport = true
     )

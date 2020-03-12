@@ -17,33 +17,29 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import com.dimafeng.testcontainers.ForAllTestContainer
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
+import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait CrossClusterSearchSuite
   extends WordSpec
-    with ForAllTestContainer
-    with EsClusterProvider
-    with SingleClient
-    with SingleEsTarget
-    with RorConfigFileNameProvider
+    with BaseIntegrationTest
+    with SingleClientSupport
     with ESVersionSupport {
   this: EsContainerCreator =>
 
-  override val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/cross_cluster_search/readonlyrest.yml"
 
   override lazy val targetEs = container.localClusters.head.nodesContainers.head
 
   override lazy val container = createRemoteClustersContainer(
     NonEmptyList.of(
-      EsClusterSettings(name = "ROR1", rorConfigFileName = rorConfigFileName, nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
-      EsClusterSettings(name = "ROR2", rorConfigFileName = rorConfigFileName, nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
+      EsClusterSettings(name = "ROR1", nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
+      EsClusterSettings(name = "ROR2", nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
     ),
     CrossClusterSearchSuite.remoteClustersInitializer()
   )

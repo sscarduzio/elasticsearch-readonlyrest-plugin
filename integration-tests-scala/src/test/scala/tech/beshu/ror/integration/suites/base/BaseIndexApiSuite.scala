@@ -16,22 +16,18 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.containers.generic.providers.{RorConfigFileNameProvider, SingleClient, SingleEsTarget}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait BaseIndexApiSuite
   extends WordSpec
-    with ForAllTestContainer
-    with EsClusterProvider
-    with SingleClient
-    with SingleEsTarget
-    with RorConfigFileNameProvider
+    with BaseIntegrationTest
+    with SingleClientSupport
     with ESVersionSupport {
   this: EsContainerCreator =>
 
@@ -42,7 +38,6 @@ trait BaseIndexApiSuite
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      rorConfigFileName = rorConfigFileName,
       nodeDataInitializer = BaseIndexApiSuite.nodeDataInitializer()
     )
   )

@@ -17,33 +17,29 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
+import com.dimafeng.testcontainers.MultipleContainers
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.suites.AdminApiSuite._
+import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.containers.generic.providers.{MultipleClients, MultipleEsTargets, RorConfigFileNameProvider}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 trait AdminApiSuite
   extends WordSpec
-    with ForAllTestContainer
     with BeforeAndAfterEach
-    with EsClusterProvider
-    with MultipleEsTargets
-    with MultipleClients
-    with RorConfigFileNameProvider {
+    with BaseIntegrationTest
+    with MultipleClientsSupport {
   this: EsContainerCreator =>
 
-  override val rorConfigFileName = "/admin_api/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
 
   private lazy val rorWithIndexConfig = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      rorConfigFileName = rorConfigFileName,
       numberOfInstances = 2,
       nodeDataInitializer = AdminApiSuite.nodeDataInitializer()
     )
@@ -52,7 +48,6 @@ trait AdminApiSuite
   private lazy val rorWithNoIndexConfig = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR2",
-      rorConfigFileName = rorConfigFileName,
       configHotReloadingEnabled = false)
   )
 

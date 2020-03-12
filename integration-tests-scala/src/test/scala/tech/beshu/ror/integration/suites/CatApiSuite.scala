@@ -20,25 +20,21 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.generic.providers.RorConfigFileNameProvider
-import tech.beshu.ror.utils.containers.generic.{EsClusterProvider, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.generic.{EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 import ujson.Str
 
 trait CatApiSuite
   extends WordSpec
     with BaseTemplatesSuite
-    with EsClusterProvider
-    with RorConfigFileNameProvider
     with ESVersionSupport {
   this: EsContainerCreator =>
 
-  override val rorConfigFileName = "/cat_api/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/cat_api/readonlyrest.yml"
 
   override lazy val rorContainer = createLocalClusterContainer(
     EsClusterSettings(
-      name = "ROR1",
-      rorConfigFileName = rorConfigFileName
+      name = "ROR1"
     )
   )
 

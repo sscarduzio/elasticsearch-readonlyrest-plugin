@@ -131,13 +131,12 @@ trait RemoteClustersInitializer {
 }
 
 final case class EsClusterSettings(name: String,
-                                   rorConfigFileName: String,
                                    numberOfInstances: Int = 1,
                                    nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
                                    clusterInitializer: EsClusterInitializer = NoOpEsClusterInitializer,
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    xPackSupport: Boolean = false,
                                    configHotReloadingEnabled: Boolean = true,
-                                   internodeSslEnabled: Boolean = false)
+                                   internodeSslEnabled: Boolean = false)(implicit val rorConfigFileName: String)
 
 final case class DependencyDef(name: String, containerCreator: Coeval[GenericContainer])
