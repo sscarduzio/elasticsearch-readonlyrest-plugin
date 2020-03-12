@@ -14,26 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es
+package tech.beshu.ror.mocks
 
+import com.unboundid.ldap.sdk.LDAPConnectionPool
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.es.IndexJsonContentManager.{ReadError, WriteError}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig
 
-trait IndexJsonContentManager {
+object MockLdapConnectionPoolProvider extends UnboundidLdapConnectionPoolProvider {
+  override def connect(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] =
+    throw new IllegalStateException("Cannot use it. It's just a mock")
 
-  // todo: remove java types
-  def sourceOf(index: IndexName, `type`: String, id: String): Task[Either[ReadError, java.util.Map[String, _]]]
-
-  def saveContent(index: IndexName, `type`: String, id: String, content: java.util.Map[String, String]): Task[Either[WriteError, Unit]]
-}
-
-object IndexJsonContentManager {
-
-  sealed trait ReadError
-  case object ContentNotFound extends ReadError
-  case object CannotReachContentSource extends ReadError
-
-  sealed trait WriteError
-  final case class CannotWriteToIndex(throwable: Throwable) extends WriteError
+  override def close(): Task[Unit] = Task.pure(())
 }

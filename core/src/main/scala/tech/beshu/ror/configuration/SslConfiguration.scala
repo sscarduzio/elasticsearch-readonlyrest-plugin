@@ -24,18 +24,15 @@ import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
-import tech.beshu.ror.utils.yaml
 
 import scala.language.implicitConversions
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
 
-object RorSsl extends Logging {
+object RorSsl extends LoadFromEsConfig with Logging {
 
   val noSsl = RorSsl(None, None)
-
-  final case class MalformedSettings(message: String)
 
   def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorSsl]] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
@@ -61,20 +58,9 @@ object RorSsl extends Logging {
     }
   }
 
-  private def loadSslConfigFromFile(file: File)
+  private def loadSslConfigFromFile(config: File)
                                    (implicit rorSslDecoder: Decoder[RorSsl]) = {
-    file.fileReader { reader =>
-      yaml
-        .parser
-        .parse(reader)
-        .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
-        .right
-        .flatMap { json =>
-          rorSslDecoder
-            .decodeJson(json)
-            .left.map(e => MalformedSettings(s"Invalid ROR SSL configuration"))
-        }
-    }
+    loadConfigFromFile[RorSsl](config, "ROR SSL")
   }
 }
 

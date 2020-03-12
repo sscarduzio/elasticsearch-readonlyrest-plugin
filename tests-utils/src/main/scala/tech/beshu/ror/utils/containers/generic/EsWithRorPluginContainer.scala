@@ -41,6 +41,7 @@ object EsWithRorPluginContainer {
                           rorPluginFile: File,
                           rorConfigFile: File,
                           configHotReloadingEnabled: Boolean,
+                          customRorIndexName: Option[String],
                           internodeSslEnabled: Boolean,
                           externalSslEnabled: Boolean) extends EsContainer.Config
 

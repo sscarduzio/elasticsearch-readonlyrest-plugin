@@ -40,6 +40,7 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       rorPluginFile = rorPluginFile,
       rorConfigFile = rorConfigFile,
       configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
+      customRorIndexName = clusterSettings.customRorIndexName,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
       xPackSupport = clusterSettings.xPackSupport,
       externalSslEnabled = true)

@@ -59,6 +59,7 @@ object EsContainer extends StrictLogging {
     def xPackSupport: Boolean
     def internodeSslEnabled: Boolean
     def configHotReloadingEnabled: Boolean
+    def customRorIndexName: Option[String]
     def externalSslEnabled: Boolean
   }
 
