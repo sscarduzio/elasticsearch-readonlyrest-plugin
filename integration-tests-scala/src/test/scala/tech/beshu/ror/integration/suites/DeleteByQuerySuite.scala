@@ -1,5 +1,6 @@
 package tech.beshu.ror.integration.suites
 
+import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
@@ -32,13 +33,13 @@ trait DeleteByQuerySuite
     "be allowed" when {
       "is executed by blue client" in {
         val response = blueTeamDeleteByQueryManager.delete("twitter", matchAllQuery)
-        response.getResponseCode should be 200
+        assertEquals(200, response.getResponseCode)
       }
     }
     "not be alllowed" when {
       "is executed by red client" in {
         val response = redTeamDeleteByQueryManager.delete("facebook", matchAllQuery)
-        response.getResponseCode should be 401
+        assertEquals(401, response.getResponseCode)
       }
     }
   }
