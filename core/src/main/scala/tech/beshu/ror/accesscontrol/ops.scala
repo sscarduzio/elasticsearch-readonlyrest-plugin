@@ -226,7 +226,7 @@ object show {
     def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
       Show.show[Header] {
         case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
-        case Header(name, value) => s"${name.show}=${value.value.show}"
+        case header => headerShow.show(header)
       }
     }
     val headerShow: Show[Header] = Show.show { case Header(name, value) => s"${name.show}=${value.value.show}" }
