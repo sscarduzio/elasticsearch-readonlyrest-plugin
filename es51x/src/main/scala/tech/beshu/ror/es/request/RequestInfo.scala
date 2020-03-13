@@ -188,10 +188,10 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override val extractAction: String = action
 
-  override val extractRequestHeaders: Map[String, String] =
+  override val extractRequestHeaders: Map[String, Set[String]] =
     request
       .headers().asScala
-      .map { h => (h.getKey, h.getValue) }
+      .map { h => (h.getKey, Set(h.getValue)) }
       .toMap
 
   override val extractRemoteAddress: String = {

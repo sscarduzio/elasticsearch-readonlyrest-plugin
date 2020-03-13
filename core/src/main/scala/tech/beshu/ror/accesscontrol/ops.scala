@@ -227,9 +227,10 @@ object show {
     def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
       Show.show[Header] {
         case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
-        case Header(name, value) => s"${name.show}=${value.value.show}"
+        case header => headerShow.show(header)
       }
     }
+    val headerShow: Show[Header] = Show.show { case Header(name, value) => s"${name.show}=${value.value.show}" }
     def blockValidationErrorShow(block: Block.Name): Show[BlockValidationError] = Show.show {
       case BlockValidationError.AuthorizationWithoutAuthentication =>
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."

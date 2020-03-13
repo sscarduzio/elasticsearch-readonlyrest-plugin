@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.mocks.{MockLdapConnectionPoolProvider, MockRequestContext}
+import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
 import tech.beshu.ror.utils.containers.LdapContainer
 
@@ -64,7 +64,9 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     super.afterAll()
     ldapConnectionPoolProvider.close()
   }
+
   override protected val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
+
   "An LDAP connectivity check" should {
     "allow to core to start" when {
       "HA is enabled and one of LDAP hosts is unavailable" in {
