@@ -57,6 +57,17 @@ public class LdapIntegrationGroupsTests {
   }
 
   @Test
+  public void checkCartmanWithGroup1AsCurrentGroupPassedAsValueOfAuthorizationHeader() throws Exception {
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
+    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> null,
+        httpRequest -> {
+          httpRequest.addHeader("Authorization", "x-ror-current-group=group1");
+          httpRequest.addHeader("Authorization", "header1=xyz");
+          return null;
+        });
+  }
+
+  @Test
   public void checkCartmanWithGroup3AsCurrentGroup() throws Exception {
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
     assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> null,

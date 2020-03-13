@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain._
 
 import scala.util.Try
 
-class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
+class EsRequestContext private(rInfo: RequestInfoShim) extends RequestContext {
 
   override val timestamp: Instant =
     Instant.now()
@@ -36,35 +36,35 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
     rInfo.extractTaskId
 
   override lazy val id: RequestContext.Id =
-  Option(rInfo.extractId)
-    .map(RequestContext.Id.apply)
-    .getOrElse(throw new IllegalArgumentException(s"Cannot create request ID"))
+    Option(rInfo.extractId)
+      .map(RequestContext.Id.apply)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot create request ID"))
 
   override lazy val action: Action =
     Option(rInfo.extractAction)
       .map(Action.apply)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create request action"))
 
-  override lazy val headers: Set[Header] =
-    rInfo
+  override lazy val headers: Set[Header] = {
+    val (authorizationHeaders, otherHeaders) = rInfo
       .extractRequestHeaders
       .flatMap { case (name, values) =>
-        val result: Option[NonEmptyList[Header]] = for {
+        for {
           nonEmptyName <- NonEmptyString.unapply(name)
           nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
-        } yield {
-          nonEmptyValues.map { value =>
-            Header.Name(nonEmptyName) match {
-              case Header.Name.authorization =>
-                Header.fromAuthorizationValue(value)
-              case other =>
-                new Header(other, value)
-            }
-          }
-        }
-        result.map(_.toList).getOrElse(List.empty[Header])
+        } yield (Header.Name(nonEmptyName), nonEmptyValues)
       }
+      .toSeq
+      .partition { case (name, _) => name == Header.Name.authorization }
+    val headersFromAuthorizationHeaderValues = authorizationHeaders
+      .flatMap { case (_, values) => values.map(Header.fromAuthorizationValue).toList }
       .toSet
+    val restOfHeaders = otherHeaders
+      .flatMap { case (name, values) => values.map(new Header(name, _)).toList }
+      .toSet
+    val restOfHeaderNames = restOfHeaders.map(_.name)
+    restOfHeaders ++ headersFromAuthorizationHeaderValues.filter { header => !restOfHeaderNames.contains(header.name) }
+  }
 
   override lazy val remoteAddress: Option[Address] =
     Try(rInfo.extractRemoteAddress).toOption
@@ -79,9 +79,9 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
       .getOrElse(throw new IllegalArgumentException(s"Cannot create request method"))
 
   override lazy val uriPath: UriPath =
-  Option(rInfo.extractPath)
-    .map(UriPath.apply)
-    .getOrElse(throw new IllegalArgumentException(s"Cannot create request URI path"))
+    Option(rInfo.extractPath)
+      .map(UriPath.apply)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot create request URI path"))
 
   override lazy val contentLength: Information =
     Bytes(rInfo.extractContentLength.toLong)
