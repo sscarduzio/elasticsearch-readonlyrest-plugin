@@ -47,7 +47,7 @@ trait ImpersonationSuite
     "user uses local auth rule" when {
       "impersonator can be properly authenticated" in {
         val searchManager = new SearchManagerJ(
-          container.nodesContainers.head.client("admin1", "pass"),
+          client("admin1", "pass"),
           Map("impersonate_as" -> "dev1").asJava
         )
 
@@ -60,7 +60,7 @@ trait ImpersonationSuite
   "Impersonation cannot be done" when {
     "there is no such user with admin privileges" in {
       val searchManager = new SearchManagerJ(
-        container.nodesContainers.head.client("unknown", "pass"),
+        client("unknown", "pass"),
         Map("impersonate_as" -> "dev1").asJava
       )
 
@@ -73,7 +73,7 @@ trait ImpersonationSuite
     }
     "user with admin privileges cannot be authenticated" in {
       val searchManager = new SearchManagerJ(
-        container.nodesContainers.head.client("admin1", "wrong_pass"),
+        client("admin1", "wrong_pass"),
         Map("impersonate_as" -> "dev1").asJava
       )
 
@@ -86,7 +86,7 @@ trait ImpersonationSuite
     }
     "admin user is authenticated but cannot impersonate given user" in {
       val searchManager = new SearchManagerJ(
-        container.nodesContainers.head.client("admin2", "pass"),
+        client("admin2", "pass"),
         Map("impersonate_as" -> "dev1").asJava
       )
 
@@ -100,7 +100,7 @@ trait ImpersonationSuite
     "not supported authentication rule is used" which {
       "is full hashed auth credentials" in {
         val searchManager = new SearchManagerJ(
-          container.nodesContainers.head.client("admin1", "pass"),
+          client("admin1", "pass"),
           Map("impersonate_as" -> "dev1").asJava
         )
 
