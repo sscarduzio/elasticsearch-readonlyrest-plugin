@@ -18,12 +18,14 @@ package tech.beshu.ror.accesscontrol.request
 
 import java.time.Instant
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.show.logs.authorizationValueErrorShow
 
 import scala.util.Try
 
@@ -57,7 +59,18 @@ class EsRequestContext private(rInfo: RequestInfoShim) extends RequestContext {
       .toSeq
       .partition { case (name, _) => name == Header.Name.authorization }
     val headersFromAuthorizationHeaderValues = authorizationHeaders
-      .flatMap { case (_, values) => values.map(Header.fromAuthorizationValue).toList }
+      .flatMap { case (_, values) =>
+        val headersFromAuthorizationHeaderValues = values
+          .map(Header.fromAuthorizationValue)
+          .toList
+          .map(_.map(_.toList))
+          .traverse(identity)
+          .map(_.flatten)
+        headersFromAuthorizationHeaderValues match {
+          case Left(error) => throw new IllegalArgumentException(error.show)
+          case Right(v) => v
+        }
+      }
       .toSet
     val restOfHeaders = otherHeaders
       .flatMap { case (name, values) => values.map(new Header(name, _)).toList }

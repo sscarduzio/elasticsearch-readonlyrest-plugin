@@ -17,6 +17,8 @@
 
 package tech.beshu.ror.integration;
 
+import org.apache.http.Header;
+import org.apache.http.message.BasicHeader;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
@@ -58,13 +60,12 @@ public class LdapIntegrationGroupsTests {
 
   @Test
   public void checkCartmanWithGroup1AsCurrentGroupPassedAsValueOfAuthorizationHeader() throws Exception {
+    Header authenticationHeader = new BasicHeader(
+        "Authorization",
+        "Basic Y2FydG1hbjp1c2VyMg==, ror_metadata=eyJoZWFkZXJzIjpbIngtcm9yLWN1cnJlbnQtZ3JvdXA6Z3JvdXAxIiwgImhlYWRlcjE6eHl6Il19"
+    );
     ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
-    assertions.assertUserHasAccessToIndex("cartman", "user2", "twitter", response -> null,
-        httpRequest -> {
-          httpRequest.addHeader("Authorization", "x-ror-current-group=group1");
-          httpRequest.addHeader("Authorization", "header1=xyz");
-          return null;
-        });
+    assertions.assertUserHasAccessToIndex(authenticationHeader, "twitter", response -> null, httpRequest -> null);
   }
 
   @Test

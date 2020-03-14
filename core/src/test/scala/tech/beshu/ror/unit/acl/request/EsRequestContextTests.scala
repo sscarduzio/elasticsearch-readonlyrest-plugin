@@ -110,10 +110,10 @@ class EsRequestContextTests extends WordSpec with MockFactory with Inside {
             )
           }
         }
-        "it's used with multiple values and some of them are inner, artificial headers" in {
+        "inside its value there is ror_metadata json with inner, artificial headers" in {
           val requestInfo = mockHeaders(Map(
             "header1" -> Set("value1"),
-            "Authorization" -> Set("Basic a2liYW5hOmtpYmFuYQ==", "x-ror-current-group=g1", "key=value")
+            "Authorization" -> Set("Basic a2liYW5hOmtpYmFuYQ==, ror_metadata=eyJoZWFkZXJzIjpbIngtcm9yLWN1cnJlbnQtZ3JvdXA6ZzEiLCAia2V5OnZhbHVlIl19")
           ))
 
           EsRequestContext.from(requestInfo) hasHeaders {
@@ -128,7 +128,7 @@ class EsRequestContextTests extends WordSpec with MockFactory with Inside {
         "artificial header is passed and real header is also passed, the latter one is taken" in {
           val requestInfo = mockHeaders(Map(
             "header1" -> Set("value1"),
-            "Authorization" -> Set("Basic a2liYW5hOmtpYmFuYQ==", "x-ror-current-group=g1"),
+            "Authorization" -> Set("Basic a2liYW5hOmtpYmFuYQ==, ror_metadata=eyJoZWFkZXJzIjpbIngtcm9yLWN1cnJlbnQtZ3JvdXA6ZzEiLCAia2V5OnZhbHVlIl19"),
             "x-ror-current-group" -> Set("g2")
           ))
 
@@ -136,7 +136,8 @@ class EsRequestContextTests extends WordSpec with MockFactory with Inside {
             Set(
               header("header1", "value1"),
               header("Authorization", "Basic a2liYW5hOmtpYmFuYQ=="),
-              header("x-ror-current-group", "g2")
+              header("x-ror-current-group", "g2"),
+              header("key", "value")
             )
           }
         }

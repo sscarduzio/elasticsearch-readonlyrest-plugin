@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
@@ -247,6 +248,11 @@ object show {
     }
     private def showOption[T : Show](name: String, option: Option[T]) = {
       option.map(v => s"$name=${v.show}")
+    }
+    implicit val authorizationValueErrorShow: Show[AuthorizationValueError] = Show.show {
+      case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
+      case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [$value]"
+      case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [$value], reason: [$message]"
     }
   }
 }
