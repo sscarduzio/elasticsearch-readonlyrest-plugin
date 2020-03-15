@@ -40,7 +40,7 @@ trait DynamicVariablesSuite
     )
   )
 
-  private lazy val searchManager = new SearchManagerJ(client("simone", "dev"))
+  private lazy val searchManager = new SearchManagerJ(basicAuthClient("simone", "dev"))
 
   "A search request" should {
     "be allowed with username as suffix" in {

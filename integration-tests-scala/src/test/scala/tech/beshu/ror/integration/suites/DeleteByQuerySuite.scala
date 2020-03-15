@@ -26,8 +26,8 @@ trait DeleteByQuerySuite
       nodeDataInitializer = DeleteByQuerySuite.nodeDataInitializer()
     )
   )
-  private lazy val blueTeamDeleteByQueryManager = new DeleteByQueryManagerJ(client("blue", "dev"))
-  private lazy val redTeamDeleteByQueryManager = new DeleteByQueryManagerJ(client("red", "dev"))
+  private lazy val blueTeamDeleteByQueryManager = new DeleteByQueryManagerJ(basicAuthClient("blue", "dev"))
+  private lazy val redTeamDeleteByQueryManager = new DeleteByQueryManagerJ(basicAuthClient("red", "dev"))
 
   "Delete by query" should {
     "be allowed" when {

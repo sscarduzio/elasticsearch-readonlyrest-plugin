@@ -26,9 +26,13 @@ import tech.beshu.ror.utils.misc.Tuple
 object providers {
 
   trait ClientProvider {
-    def client(user: String, pass: String): RestClient
+    def basicAuthClient(user: String, pass: String): RestClient = client(Some(user, pass))
 
-    def adminClient: RestClient = client(adminCredentials._1, adminCredentials._2)
+    def noBasicAuthClient: RestClient = client(None)
+
+    def adminClient: RestClient = basicAuthClient(adminCredentials._1, adminCredentials._2)
+
+    private[providers] def client(credentials: Option[(String, String)]): RestClient
   }
 
   object ClientProvider {
@@ -54,7 +58,7 @@ object providers {
   }
 
   trait SingleClient extends ClientProvider with MultipleClients {
-    override def client(user: String, pass: String): RestClient = clients.head.client(user, pass)
+    override private[providers] def client(credentials: Option[(String, String)]): RestClient = clients.head.client(credentials)
   }
 
   trait CallingEsDirectly extends MultipleClients {
@@ -62,7 +66,7 @@ object providers {
 
     override def clients: NonEmptyList[ClientProvider] = {
       esTargets.map { target =>
-        (user: String, pass: String) => target.client(user, pass)
+        (credentials: Option[(String, String)]) => target.client(credentials)
       }
     }
   }
@@ -71,10 +75,12 @@ object providers {
     def proxyPorts: NonEmptyList[Int]
 
     override def clients: NonEmptyList[ClientProvider] = {
-      proxyPorts.map { port =>
-        (user: String, pass: String) => new RestClient(false, "localhost", port, Optional.of(Tuple.from(user, pass)))
-      }
+      proxyPorts.map(createProxyClient)
+    }
+
+    private def createProxyClient(port: Int): ClientProvider = {
+      case Some((user, password)) => new RestClient(false, "localhost", port, Optional.of(Tuple.from(user, password)))
+      case None => new RestClient(false, "localhost", port, Optional.empty())
     }
   }
-
 }

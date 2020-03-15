@@ -44,8 +44,8 @@ trait CrossClusterSearchSuite
     CrossClusterSearchSuite.remoteClustersInitializer()
   )
 
-  private lazy val user1SearchManager = new SearchManagerJ(client("dev1", "test"))
-  private lazy val user2SearchManager = new SearchManagerJ(client("dev2", "test"))
+  private lazy val user1SearchManager = new SearchManagerJ(basicAuthClient("dev1", "test"))
+  private lazy val user2SearchManager = new SearchManagerJ(basicAuthClient("dev2", "test"))
 
   "A cluster search for given index" should {
     "return 200 and allow user to its content" when {

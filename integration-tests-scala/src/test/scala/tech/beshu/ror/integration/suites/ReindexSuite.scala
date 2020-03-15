@@ -43,7 +43,7 @@ trait ReindexSuite
     )
   )
 
-  private lazy val user1ActionManager = new ActionManagerJ(client("dev1", "test"))
+  private lazy val user1ActionManager = new ActionManagerJ(basicAuthClient("dev1", "test"))
 
   "A reindex request" should {
     "be able to proceed" when {

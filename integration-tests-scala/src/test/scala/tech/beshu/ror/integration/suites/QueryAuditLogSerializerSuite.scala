@@ -41,7 +41,7 @@ trait QueryAuditLogSerializerSuite
     )
   )
 
-  private lazy val auditIndexManager = new AuditIndexManagerJ(client("admin", "container"), "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManagerJ(basicAuthClient("admin", "container"), "audit_index")
 
   override def beforeEach() = {
     super.beforeEach()
@@ -51,7 +51,7 @@ trait QueryAuditLogSerializerSuite
   "Request" should {
     "be audited" when {
       "rule 1 is matching" in {
-        val indexManager = new IndexManagerJ(client("user", "dev"))
+        val indexManager = new IndexManagerJ(basicAuthClient("user", "dev"))
         val response = indexManager.get("twitter")
         response.getResponseCode should be(200)
 
@@ -63,7 +63,7 @@ trait QueryAuditLogSerializerSuite
       }
 
       "no rule is matching" in {
-        val indexManager = new IndexManagerJ(client("user", "wrong"))
+        val indexManager = new IndexManagerJ(basicAuthClient("user", "wrong"))
         val response = indexManager.get("twitter")
         response.getResponseCode should be(403)
 
@@ -75,7 +75,7 @@ trait QueryAuditLogSerializerSuite
     }
     "not be audited" when {
       "rule 2 is matching" in {
-        val indexManager = new IndexManagerJ(client("user", "dev"))
+        val indexManager = new IndexManagerJ(basicAuthClient("user", "dev"))
         val response = indexManager.get("facebook")
         response.getResponseCode should be(200)
 

@@ -45,8 +45,8 @@ trait SqlApiSuite
   )
 
   private lazy val adminSqlManager = new SqlApiManager(adminClient, container.esVersion)
-  private lazy val dev1SqlManager = new SqlApiManager(client("dev1", "test"), container.esVersion)
-  private lazy val dev2SqlManager = new SqlApiManager(client("dev2", "test"), container.esVersion)
+  private lazy val dev1SqlManager = new SqlApiManager(basicAuthClient("dev1", "test"), container.esVersion)
+  private lazy val dev2SqlManager = new SqlApiManager(basicAuthClient("dev2", "test"), container.esVersion)
 
   "SQL query request" when {
     "SELECT query is used" should {

@@ -45,7 +45,7 @@ trait LocalGroupsSuite
 
   "good credentials but with non matching preferred group are sent" in {
     val searchManager = new SearchManagerJ(
-      client("user", "passwd"),
+      basicAuthClient("user", "passwd"),
       Map("x-ror-current-group" -> "group_extra").asJava)
 
     val response = searchManager.search(matchingEndpoint)
@@ -53,21 +53,21 @@ trait LocalGroupsSuite
     response.getResponseCode should be(401)
   }
   "bad credentials, good rule" in {
-    val searchManager = new SearchManagerJ(client("user", "wrong"))
+    val searchManager = new SearchManagerJ(basicAuthClient("user", "wrong"))
 
     val response = searchManager.search(matchingEndpoint)
 
     response.getResponseCode should be(401)
   }
   "bad credentials, bad rule" in {
-    val searchManager = new SearchManagerJ(client("user", "wrong"))
+    val searchManager = new SearchManagerJ(basicAuthClient("user", "wrong"))
 
     val response = searchManager.search("/_cat/indices")
 
     response.getResponseCode should be(401)
   }
   "identify retrieval" in {
-    val userMetadataManager = new RorApiManager(client("user", "passwd"))
+    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"))
 
     val response = userMetadataManager.fetchMetadata()
 
@@ -81,7 +81,7 @@ trait LocalGroupsSuite
     response.responseJson("x-ror-kibana_access").str should be("admin")
   }
   "identify retrieval with preferred group" in {
-    val userMetadataManager = new RorApiManager(client("user", "passwd"))
+    val userMetadataManager = new RorApiManager(basicAuthClient("user", "passwd"))
 
     val response = userMetadataManager.fetchMetadata(preferredGroup = "foogroup")
 

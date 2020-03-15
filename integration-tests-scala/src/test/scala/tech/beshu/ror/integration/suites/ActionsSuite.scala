@@ -40,7 +40,7 @@ trait ActionsSuite
     )
   )
 
-  private lazy val actionManager = new ActionManagerJ(client("any", "whatever"))
+  private lazy val actionManager = new ActionManagerJ(basicAuthClient("any", "whatever"))
 
   "A actions rule" should {
     "work for delete request" which {

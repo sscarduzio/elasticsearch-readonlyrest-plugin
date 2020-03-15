@@ -40,7 +40,7 @@ trait RorDisabledSuite
 
   "ROR with `enable: false` in settings" should {
     "pass ES request through" in {
-      val user1ClusterStateManager = new ClusterStateManager(client("user1", "pass"))
+      val user1ClusterStateManager = new ClusterStateManager(basicAuthClient("user1", "pass"))
 
       val result = user1ClusterStateManager.catTemplates()
 
@@ -48,7 +48,7 @@ trait RorDisabledSuite
     }
     "return information that ROR is disabled" when {
       "ROR API endpoint is being called" in {
-        val user1MetadataManager = new RorApiManager(client("user1", "pass"))
+        val user1MetadataManager = new RorApiManager(basicAuthClient("user1", "pass"))
 
         val result = user1MetadataManager.fetchMetadata()
 

@@ -70,7 +70,7 @@ trait UriRegexRuleSuite
   private def assertRuleDoesNotMatchForUser(name: String): Unit = assertHealthCheckStatus(401, name)
 
   private def assertHealthCheckStatus(status: Int, name: String): Unit = {
-    val manager = new ClusterStateManager(client(name, "pass"))
+    val manager = new ClusterStateManager(basicAuthClient(name, "pass"))
     val result = manager.healthCheck()
     assertEquals(status, result.responseCode)
   }

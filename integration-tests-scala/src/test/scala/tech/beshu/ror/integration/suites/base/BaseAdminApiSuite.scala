@@ -120,10 +120,10 @@ trait BaseAdminApiSuite
             result.getResponseJsonMap.get("message") should be("updated settings")
           }
 
-          val dev1Ror1stInstanceSearchManager = new SearchManager(clients.head.client("dev1", "test"))
-          val dev2Ror1stInstanceSearchManager = new SearchManager(clients.head.client("dev2", "test"))
-          val dev1Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.client("dev1", "test"))
-          val dev2Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.client("dev2", "test"))
+          val dev1Ror1stInstanceSearchManager = new SearchManager(clients.head.basicAuthClient("dev1", "test"))
+          val dev2Ror1stInstanceSearchManager = new SearchManager(clients.head.basicAuthClient("dev2", "test"))
+          val dev1Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.basicAuthClient("dev1", "test"))
+          val dev2Ror2ndInstanceSearchManager = new SearchManager(clients.tail.head.basicAuthClient("dev2", "test"))
 
           // before first reload no user can access indices
           val dev1ror1Results = dev1Ror1stInstanceSearchManager.search("/test1_index/_search")

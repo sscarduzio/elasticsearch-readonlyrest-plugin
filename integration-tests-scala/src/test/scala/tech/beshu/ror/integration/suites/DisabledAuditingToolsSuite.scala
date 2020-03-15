@@ -42,7 +42,7 @@ trait DisabledAuditingToolsSuite
     )
   )
 
-  private lazy val auditIndexManager = new AuditIndexManagerJ(client("admin", "container"), "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManagerJ(basicAuthClient("admin", "container"), "audit_index")
 
   override def beforeEach() = {
     super.beforeEach()
@@ -52,7 +52,7 @@ trait DisabledAuditingToolsSuite
   "Request" should {
     "not be audited" when {
       "rule 1 is matching" in {
-        val indexManager = new IndexManagerJ(client("user", "dev"))
+        val indexManager = new IndexManagerJ(basicAuthClient("user", "dev"))
         val response = indexManager.get("twitter")
         assertEquals(200, response.getResponseCode)
 
@@ -60,7 +60,7 @@ trait DisabledAuditingToolsSuite
         assertEquals(false, auditResponse.isSuccess)
       }
       "rule 2 is matching" in {
-        val indexManager = new IndexManagerJ(client("user", "dev"))
+        val indexManager = new IndexManagerJ(basicAuthClient("user", "dev"))
         val response = indexManager.get("facebook")
         assertEquals(200, response.getResponseCode)
 
@@ -68,7 +68,7 @@ trait DisabledAuditingToolsSuite
         assertEquals(false, auditResponse.isSuccess)
       }
       "no rule is matching" in {
-        val indexManager = new IndexManagerJ(client("user", "wrong"))
+        val indexManager = new IndexManagerJ(basicAuthClient("user", "wrong"))
         val response = indexManager.get("twitter")
         assertEquals(403, response.getResponseCode)
 

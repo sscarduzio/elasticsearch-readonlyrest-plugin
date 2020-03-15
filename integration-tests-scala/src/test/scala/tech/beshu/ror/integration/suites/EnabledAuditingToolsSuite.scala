@@ -41,7 +41,7 @@ trait EnabledAuditingToolsSuite
     )
   )
 
-  private lazy val auditIndexManager = new AuditIndexManagerJ(client("admin", "container"), "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManagerJ(basicAuthClient("admin", "container"), "audit_index")
 
   override def beforeEach() = {
     super.beforeEach()
@@ -51,7 +51,7 @@ trait EnabledAuditingToolsSuite
   "Request" should {
     "be audited" when {
       "rule 1 is matching with logged user" in {
-        val indexManager = new IndexManagerJ(client("username", "dev"))
+        val indexManager = new IndexManagerJ(basicAuthClient("username", "dev"))
         val response = indexManager.get("twitter")
         response.getResponseCode should be (200)
 
@@ -63,7 +63,7 @@ trait EnabledAuditingToolsSuite
       }
 
       "no rule is matching with username from auth header" in {
-        val indexManager = new IndexManagerJ(client("username", "wrong"))
+        val indexManager = new IndexManagerJ(basicAuthClient("username", "wrong"))
         val response = indexManager.get("twitter")
         response.getResponseCode should be (403)
 
@@ -74,7 +74,7 @@ trait EnabledAuditingToolsSuite
       }
 
       "no rule is matching with raw auth header as user" in {
-        val indexManager = new IndexManagerJ(client("usernameWithEmptyPass", ""))
+        val indexManager = new IndexManagerJ(basicAuthClient("usernameWithEmptyPass", ""))
         val response = indexManager.get("twitter")
         response.getResponseCode should be (403)
 
@@ -86,7 +86,7 @@ trait EnabledAuditingToolsSuite
     }
     "not be audited" when {
       "rule 2 is matching" in {
-        val indexManager = new IndexManagerJ(client("username", "dev"))
+        val indexManager = new IndexManagerJ(basicAuthClient("username", "dev"))
         val response = indexManager.get("facebook")
         response.getResponseCode should be (200)
 

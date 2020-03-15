@@ -46,11 +46,11 @@ trait IndicesAliasesSuite
     )
   )
 
-  private lazy val restrictedDevSearchManager = new SearchManagerJ(client("restricted", "dev"))
-  private lazy val unrestrictedDevSearchManager = new SearchManagerJ(client("unrestricted", "dev"))
+  private lazy val restrictedDevSearchManager = new SearchManagerJ(basicAuthClient("restricted", "dev"))
+  private lazy val unrestrictedDevSearchManager = new SearchManagerJ(basicAuthClient("unrestricted", "dev"))
   private lazy val adminIndexManager = new IndexManagerJ(adminClient)
-  private lazy val perfmonIndexManager = new IndexManagerJ(client("perfmon", "dev"))
-  private lazy val vietMyanSearchManager = new SearchManagerJ(client("VIET_MYAN", "dev"))
+  private lazy val perfmonIndexManager = new IndexManagerJ(basicAuthClient("perfmon", "dev"))
+  private lazy val vietMyanSearchManager = new SearchManagerJ(basicAuthClient("VIET_MYAN", "dev"))
 
   "A search request" should {
     "return proper data" when {

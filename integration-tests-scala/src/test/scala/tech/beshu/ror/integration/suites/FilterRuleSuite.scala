@@ -46,7 +46,7 @@ trait FilterRuleSuite
     )
   )
 
-  private lazy val searchManager = new SearchManagerJ(client("user1", "pass"))
+  private lazy val searchManager = new SearchManagerJ(basicAuthClient("user1", "pass"))
 
   "A filter rule" should {
     "show only doc according to defined filter" when {

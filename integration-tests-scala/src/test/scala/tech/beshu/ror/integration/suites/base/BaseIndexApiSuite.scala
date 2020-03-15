@@ -42,9 +42,9 @@ trait BaseIndexApiSuite
     )
   )
 
-  private lazy val dev1IndexManager = new IndexManager(client("dev1", "test"))
-  private lazy val dev2IndexManager = new IndexManager(client("dev2", "test"))
-  private lazy val dev3IndexManager = new IndexManager(client("dev3", "test"))
+  private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
+  private lazy val dev2IndexManager = new IndexManager(basicAuthClient("dev2", "test"))
+  private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"))
 
   "ROR" when {
     "Get index API is used" should {
