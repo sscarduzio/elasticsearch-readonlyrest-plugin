@@ -30,6 +30,7 @@ import monix.eval.Task
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{RorMetadataInvalidFormat, EmptyAuthorizationValue, InvalidHeaderFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
@@ -86,15 +87,57 @@ object domain {
                 (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
     def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-    def fromAuthorizationValue(value: NonEmptyString): Header = {
-      val (first, second) = value.value.splitByFirst(char = '=')
-      val headerFromValue = for {
-        _ <- Either.cond(!first.contains(" "), (), ())
-        // if contains space in first segment, it means that it's basic, bearer or other type of authorization value
-        name <- NonEmptyString.from(first).map(Name.apply)
-        value <- NonEmptyString.from(second)
-      } yield new Header(name, value)
-      headerFromValue.getOrElse(new Header(Name.authorization, value))
+    def fromAuthorizationValue(value: NonEmptyString): Either[AuthorizationValueError, NonEmptyList[Header]] = {
+      value.value.splitBy("ror_metadata=") match {
+        case (_, None) =>
+          Right(NonEmptyList.one(new Header(Name.authorization, value)))
+        case (basicAuthStr, Some(rorMetadata)) =>
+          for {
+            authorizationHeader <- createHeaderFromAuthorizationString(basicAuthStr)
+            headersStr <- parseRorMetadataString(rorMetadata)
+            headers <- headersStr.map(headerFrom).traverse(identity)
+          } yield NonEmptyList.of(authorizationHeader, headers: _*)
+      }
+    }
+
+    private def createHeaderFromAuthorizationString(authStr: String) = {
+      val trimmed = authStr.trim
+      val sanitized = if(trimmed.endsWith(",")) trimmed.substring(0, trimmed.length - 1) else trimmed
+      NonEmptyString
+        .from(sanitized)
+        .map(new Header(Name.authorization, _))
+        .left.map(_ => EmptyAuthorizationValue)
+    }
+
+    private def parseRorMetadataString(rorMetadataString: String) = {
+      rorMetadataString.decodeBase64 match {
+        case Some(value) =>
+          Try(ujson.read(value).obj("headers").arr.toList.map(_.str))
+            .toEither.left.map(_ => RorMetadataInvalidFormat(rorMetadataString, "Parsing JSON failed"))
+        case None =>
+          Left(RorMetadataInvalidFormat(rorMetadataString, "Decoding Base64 failed"))
+      }
+
+    }
+
+    private def headerFrom(value: String) = {
+      value.splitByFirst(':') match {
+        case Some((headerNameStr, headerValueStr)) =>
+          val header = for {
+            nonEmptyName <- NonEmptyString.from(headerNameStr)
+            nonEmptyValue <- NonEmptyString.from(headerValueStr)
+          } yield new Header(Name(nonEmptyName), nonEmptyValue)
+          header.left.map(_ => InvalidHeaderFormat(value))
+        case None =>
+          Left(InvalidHeaderFormat(value))
+      }
+    }
+
+    sealed trait AuthorizationValueError
+    object AuthorizationValueError {
+      case object EmptyAuthorizationValue extends AuthorizationValueError
+      final case class InvalidHeaderFormat(value: String) extends AuthorizationValueError
+      final case class RorMetadataInvalidFormat(value: String, message: String) extends AuthorizationValueError
     }
 
     implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
@@ -133,8 +176,8 @@ object domain {
 
     private def fromBase64(base64Value: String) = {
       import tech.beshu.ror.utils.StringWiseSplitter._
-      Try(new String(Base64.getDecoder.decode(base64Value), UTF_8))
-        .toOption
+      base64Value
+        .decodeBase64
         .flatMap(_.toNonEmptyStringsTuple.toOption)
         .map { case (first, second) =>
           BasicAuth(Credentials(User.Id(first), PlainTextSecret(second)))

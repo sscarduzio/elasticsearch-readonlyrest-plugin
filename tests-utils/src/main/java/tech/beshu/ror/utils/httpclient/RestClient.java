@@ -68,7 +68,27 @@ public class RestClient {
     this.underlying = createUnderlyingClient(basicAuth, headers);
   }
 
+  public RestClient(boolean ssl, String host, int port, Header... headers) {
+    this.ssl = ssl;
+    this.host = host;
+    this.port = port;
+    this.underlying = createUnderlyingClient(headers);
+  }
+
+
   private CloseableHttpClient createUnderlyingClient(Optional<Tuple<String, String>> basicAuth, Header... headers) {
+    // Common ops
+    if (basicAuth.isPresent()) {
+      System.out.println("SETTING CREDENTIALS " + (basicAuth.isPresent() ? (basicAuth.get().v1() + ":" + basicAuth.get().v2()) : ""));
+      Header auth = createBasicAuthHeader(basicAuth.get().v1(), basicAuth.get().v2());
+      Header[] tmp = Arrays.copyOf(headers, headers.length + 1);
+      tmp[tmp.length - 1] = auth;
+      headers = tmp;
+    }
+    return createUnderlyingClient(headers);
+  }
+
+  private CloseableHttpClient createUnderlyingClient(Header... headers) {
     HttpClientBuilder builder = null;
 
     if (ssl) {
@@ -85,17 +105,6 @@ public class RestClient {
       builder = HttpClientBuilder.create();
     }
 
-    // Common ops
-    if (basicAuth.isPresent()) {
-      System.out.println("SETTING CREDENTIALS " + (basicAuth.isPresent() ? (basicAuth.get().v1() + ":" + basicAuth.get().v2()) : ""));
-      Header auth = BasicScheme.authenticate(
-        new UsernamePasswordCredentials(basicAuth.get().v1(), basicAuth.get().v2()), "UTF-8", false);
-
-      Header[] tmp = Arrays.copyOf(headers, headers.length + 1);
-      tmp[tmp.length - 1] = auth;
-      headers = tmp;
-    }
-
     int timeout = 30;
     builder
       .setRetryHandler(new StandardHttpRequestRetryHandler(3, true))
@@ -109,6 +118,10 @@ public class RestClient {
       );
 
     return builder.build();
+  }
+
+  private Header createBasicAuthHeader(String user, String password) {
+    return BasicScheme.authenticate(new UsernamePasswordCredentials(user, password), "UTF-8", false);
   }
 
   public HttpClient getUnderlyingClient() {
