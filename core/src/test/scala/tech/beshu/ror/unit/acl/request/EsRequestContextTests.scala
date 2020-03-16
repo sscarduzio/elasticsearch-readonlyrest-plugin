@@ -110,6 +110,20 @@ class EsRequestContextTests extends WordSpec with MockFactory with Inside {
             )
           }
         }
+        "it's used with multiple values - authorization header is lower case" in {
+          val requestInfo = mockHeaders(Map(
+            "header1" -> Set("value1"),
+            "authorization" -> Set("Basic a2liYW5hOmtpYmFuYQ==", "Bearer mF_9.B5f-4.1JqM")
+          ))
+
+          EsRequestContext.from(requestInfo) hasHeaders {
+            Set(
+              header("header1", "value1"),
+              header("Authorization", "Basic a2liYW5hOmtpYmFuYQ=="),
+              header("Authorization", "Bearer mF_9.B5f-4.1JqM")
+            )
+          }
+        }
         "inside its value there is ror_metadata json with inner, artificial headers" in {
           val requestInfo = mockHeaders(Map(
             "header1" -> Set("value1"),

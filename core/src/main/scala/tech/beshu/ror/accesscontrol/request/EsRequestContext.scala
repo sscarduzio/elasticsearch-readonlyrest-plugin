@@ -57,7 +57,7 @@ class EsRequestContext private(rInfo: RequestInfoShim) extends RequestContext {
         } yield (Header.Name(nonEmptyName), nonEmptyValues)
       }
       .toSeq
-      .partition { case (name, _) => name == Header.Name.authorization }
+      .partition { case (name, _) => name === Header.Name.authorization }
     val headersFromAuthorizationHeaderValues = authorizationHeaders
       .flatMap { case (_, values) =>
         val headersFromAuthorizationHeaderValues = values
