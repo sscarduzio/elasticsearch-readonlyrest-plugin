@@ -21,7 +21,8 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class IndexManager(client: RestClient)
+class IndexManager(client: RestClient,
+                   override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
   def getIndex(indices: String*): JsonResponse = {

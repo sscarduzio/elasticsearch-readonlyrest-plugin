@@ -38,7 +38,7 @@ class EsClusterContainer private[containers](esClusterContainers: NonEmptyList[T
     NonEmptyList.fromListUnsafe(Task.gather(esClusterContainers.toList).runSyncUnsafe())
   }
 
-  val depsContainers: List[(DependencyDef, GenericContainer)] =
+  val depsContainers: List[(DependencyDef, Container)] =
     dependencies.map(d => (d, d.containerCreator.apply()))
 
   val esVersion: String = nodesContainers.head.esVersion
@@ -140,4 +140,4 @@ final case class EsClusterSettings(name: String,
                                    customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false)(implicit val rorConfigFileName: String)
 
-final case class DependencyDef(name: String, containerCreator: Coeval[GenericContainer])
+final case class DependencyDef(name: String, containerCreator: Coeval[Container])

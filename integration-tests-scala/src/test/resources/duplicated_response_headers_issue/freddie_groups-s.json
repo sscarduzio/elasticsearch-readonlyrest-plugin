@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "/groups?token=freddie"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "groups":[{ "name": "013" }]
+    }
+  }
+}
