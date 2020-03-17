@@ -121,16 +121,13 @@ object domain {
     }
 
     private def headerFrom(value: String) = {
-      value.splitByFirst(':') match {
-        case Some((headerNameStr, headerValueStr)) =>
-          val header = for {
-            nonEmptyName <- NonEmptyString.from(headerNameStr)
-            nonEmptyValue <- NonEmptyString.from(headerValueStr)
-          } yield new Header(Name(nonEmptyName), nonEmptyValue)
-          header.left.map(_ => InvalidHeaderFormat(value))
-        case None =>
-          Left(InvalidHeaderFormat(value))
-      }
+      import tech.beshu.ror.utils.StringWiseSplitter._
+      value
+        .toNonEmptyStringsTuple
+        .bimap(
+          { case Error.CannotSplitUsingColon | Error.TupleMemberCannotBeEmpty => InvalidHeaderFormat(value) },
+          { case (nonEmptyName, nonEmptyValue) => new Header(Name(nonEmptyName), nonEmptyValue) }
+        )
     }
 
     sealed trait AuthorizationValueError
@@ -140,12 +137,12 @@ object domain {
       final case class RorMetadataInvalidFormat(value: String, message: String) extends AuthorizationValueError
     }
 
-    implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
+    implicit val eqHeader: Eq[Header] = Eq.by(header => (header.name, header.value.value))
   }
 
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
   final case class BasicAuth private(credentials: Credentials) {
-    def header: Header = Header(
+    def header: Header = new Header(
       Header.Name.authorization,
       NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${credentials.user.value}:${credentials.secret.value}".getBytes(UTF_8))}")
     )
