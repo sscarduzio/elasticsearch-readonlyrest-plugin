@@ -24,18 +24,20 @@ import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.language.implicitConversions
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
 
-object RorSsl extends LoadFromEsConfig with Logging {
+object RorSsl extends Logging {
 
   val noSsl = RorSsl(None, None)
 
   def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorSsl]] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
+    implicit val envVarsProvider:EnvVarsProvider = OsEnvVarsProvider
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadSslConfigFromFile(esConfig)
       .fold(
@@ -48,7 +50,8 @@ object RorSsl extends LoadFromEsConfig with Logging {
   }
 
   private def fallbackToRorConfig(esConfigFolderPath: Path)
-                                 (implicit rorSslDecoder: Decoder[RorSsl]) = {
+                                 (implicit rorSslDecoder: Decoder[RorSsl],
+                                  envVarsProvider: EnvVarsProvider) = {
     val rorConfig = FileConfigLoader.create(esConfigFolderPath).rawConfigFile
     logger.info(s"Cannot find SSL configuration is elasticsearch.yml, trying: ${rorConfig.pathAsString}")
     if (rorConfig.exists) {
@@ -59,8 +62,9 @@ object RorSsl extends LoadFromEsConfig with Logging {
   }
 
   private def loadSslConfigFromFile(config: File)
-                                   (implicit rorSslDecoder: Decoder[RorSsl]) = {
-    loadConfigFromFile[RorSsl](config, "ROR SSL")
+                                   (implicit rorSslDecoder: Decoder[RorSsl],
+                                    envVarsProvider: EnvVarsProvider) = {
+    new EsConfigFileLoader[RorSsl]().loadConfigFromFile(config, "ROR SSL")
   }
 }
 

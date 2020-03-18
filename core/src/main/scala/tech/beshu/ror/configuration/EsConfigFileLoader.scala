@@ -17,13 +17,19 @@
 package tech.beshu.ror.configuration
 
 import better.files.File
+import cats.Show
+import cats.data.NonEmptyList
+import cats.implicits._
 import io.circe.Decoder
+import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
+import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver.ResolvingError
+import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.yaml
 
-trait LoadFromEsConfig {
+final class EsConfigFileLoader[CONFIG: Decoder]()(implicit envVarsProvider: EnvVarsProvider) {
 
-  protected def loadConfigFromFile[CONFIG: Decoder](file: File,
-                                                    configName: String): Either[MalformedSettings, CONFIG] = {
+  def loadConfigFromFile(file: File,
+                         configName: String): Either[MalformedSettings, CONFIG] = {
     file.fileReader { reader =>
       yaml
         .parser
@@ -31,12 +37,21 @@ trait LoadFromEsConfig {
         .left.map(e => MalformedSettings(s"Cannot parse file ${file.pathAsString} content. Cause: ${e.message}"))
         .right
         .flatMap { json =>
+          JsonConfigStaticVariableResolver.resolve(json)
+            .left.map(e => MalformedSettings(show"""Invalid $configName configuration. $e."""))
+        }
+        .flatMap { json =>
           implicitly[Decoder[CONFIG]]
             .decodeJson(json)
-            .left.map(e => MalformedSettings(s"Invalid $configName configuration"))
+            .left.map(_ => MalformedSettings(s"Invalid $configName configuration"))
         }
     }
   }
+
+  private implicit val showResolvingError: Show[NonEmptyList[ResolvingError]] =
+    Show.show { nel =>
+      nel.map(_.msg).mkString_(", ")
+    }
 }
 
 final case class MalformedSettings(message: String)
