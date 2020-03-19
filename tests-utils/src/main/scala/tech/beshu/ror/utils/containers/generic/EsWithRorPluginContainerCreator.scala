@@ -33,12 +33,22 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
     val esVersion = project.getESVersion
     val rorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
 
+    val temp = FileAdjuster.createTempFile
+    import better.files._
+
+    val deps = clusterSettings
+      .dependentServicesContainers.map(d => (d.name, d.containerCreator.apply().container))
+
+    val adjusted = FileAdjuster.adjust(rorConfigFile.toScala, temp, deps)
+
+    println(adjusted.contentAsString)
+
     val containerConfig = EsWithRorPluginContainer.Config(
       nodeName = name,
       nodes = nodeNames,
       esVersion = esVersion,
       rorPluginFile = rorPluginFile,
-      rorConfigFile = rorConfigFile,
+      rorConfigFile = adjusted.toJava,
       configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
       customRorIndexName = clusterSettings.customRorIndexName,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,

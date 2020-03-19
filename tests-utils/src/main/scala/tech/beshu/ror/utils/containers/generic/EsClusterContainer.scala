@@ -18,12 +18,13 @@ package tech.beshu.ror.utils.containers.generic
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import com.dimafeng.testcontainers.{Container, GenericContainer}
+import com.dimafeng.testcontainers.{Container, SingleContainer}
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
 import org.junit.runner.Description
+import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils._
 
@@ -31,20 +32,19 @@ import scala.language.existentials
 import scala.util.Try
 
 class EsClusterContainer private[containers](esClusterContainers: NonEmptyList[Task[EsContainer]],
-                                             dependencies: List[DependencyDef],
                                              clusterInitializer: EsClusterInitializer) extends Container {
 
   val nodesContainers: NonEmptyList[EsContainer] = {
     NonEmptyList.fromListUnsafe(Task.gather(esClusterContainers.toList).runSyncUnsafe())
   }
 
-  val depsContainers: List[(DependencyDef, Container)] =
-    dependencies.map(d => (d, d.containerCreator.apply()))
+//  val depsContainers: List[(DependencyDef, SingleContainer[GenericContainer[_]])] =
+//    dependencies.map(d => (d, d.containerCreator.apply()))
 
   val esVersion: String = nodesContainers.head.esVersion
 
   override def starting()(implicit description: Description): Unit = {
-    Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
+//    Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
 
     Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
     clusterInitializer.initialize(nodesContainers.head.adminClient, this)
@@ -140,4 +140,4 @@ final case class EsClusterSettings(name: String,
                                    customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false)(implicit val rorConfigFileName: String)
 
-final case class DependencyDef(name: String, containerCreator: Coeval[Container])
+final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]])
