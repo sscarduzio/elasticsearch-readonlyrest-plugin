@@ -53,11 +53,9 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
-import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.Template.{IndexPattern, Template}
 import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.{GeneralIndexOperation, NonIndexOperation}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, InvolvingIndexOperation}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, IndexPattern, InvolvingIndexOperation, Template}
 import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.{NoIndices, RegularIndices}
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, WriteResult}
 import tech.beshu.ror.es.RorClusterService
@@ -89,7 +87,7 @@ class RequestInfo(channel: RestChannel,
 
   override def extractIndexMetadata(index: String): Set[String] = clusterService.indexOrAliasUuids(index)
 
-  override val extractTaskId: Long = taskId
+//  override val extractTaskId: Long = taskId
 
   override lazy val extractContentLength: Int = if(request.content == null) 0 else request.content().length()
 
@@ -312,7 +310,7 @@ class RequestInfo(channel: RestChannel,
     }
   }
 
-  override val extractAction: String = action
+//  override val extractAction: String = action
 
   override val extractRequestHeaders: Map[String, String] =
     request
@@ -346,10 +344,10 @@ class RequestInfo(channel: RestChannel,
     )
   }
 
-  override val extractId: String = {
-    val tmpID = request.hashCode() + "-" + actionRequest.hashCode()
-    s"$tmpID#$taskId"
-  }
+//  override val extractId: String = {
+//    val tmpID = request.hashCode() + "-" + actionRequest.hashCode()
+//    s"$tmpID#$taskId"
+//  }
 
   override lazy val extractAllIndicesAndAliases: Map[String, Set[String]] = clusterService.allIndicesAndAliases
 

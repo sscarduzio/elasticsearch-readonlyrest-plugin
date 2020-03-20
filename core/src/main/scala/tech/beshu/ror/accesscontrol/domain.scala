@@ -241,19 +241,20 @@ object domain {
       final case class Get(templates: NonEmptyList[Template]) extends TemplateOperation
       final case class Create(template: Template) extends TemplateOperation
       final case class Delete(template: Template) extends TemplateOperation
-
-      final case class Template(value: NonEmptyString, patterns: NonEmptySet[IndexPattern])
-      final case class IndexPattern(value: NonEmptyString)
-      object IndexPattern {
-        def from(value: String): Option[IndexPattern] =
-          NonEmptyString.from(value).map(new IndexPattern(_)).toOption
-      }
     }
 
     final case class SqlOperation(tables: List[IndexSqlTable]) extends DirectIndexOperation
     object SqlOperation {
       final case class IndexSqlTable(tableStringInQuery: NonEmptyString, indices: NonEmptySet[IndexName])
     }
+  }
+
+  final case class Template(value: NonEmptyString, patterns: NonEmptySet[IndexPattern])
+
+  final case class IndexPattern(value: NonEmptyString)
+  object IndexPattern {
+    def from(value: String): Option[IndexPattern] =
+      NonEmptyString.from(value).map(new IndexPattern(_)).toOption
   }
 
   final case class ApiKey(value: NonEmptyString)

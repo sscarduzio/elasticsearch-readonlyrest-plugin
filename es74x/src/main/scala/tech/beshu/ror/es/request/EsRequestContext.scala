@@ -14,47 +14,78 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.request
+package tech.beshu.ror.es.request
 
 import java.time.Instant
 
+import cats.data.NonEmptyList
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
+import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.rest.RestChannel
+import org.elasticsearch.threadpool.ThreadPool
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.es.RorClusterService
 
+import scala.collection.JavaConverters._
 import scala.util.Try
 
-class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
+class EsRequestContext private(channel: RestChannel,
+                               override val taskId: Long,
+                               actionType: String,
+                               actionRequest: ActionRequest,
+                               clusterService: RorClusterService,
+                               threadPool: ThreadPool,
+                               crossClusterSearchEnabled: Boolean)
+  extends RequestContext {
+
+  private val request = channel.request()
 
   override val timestamp: Instant =
     Instant.now()
 
-  override val taskId: Long =
-    rInfo.extractTaskId
+  override val id: RequestContext.Id = RequestContext.Id(s"${request.hashCode()}-${actionRequest.hashCode()}#$taskId")
 
-  override val id: RequestContext.Id =
-  Option(rInfo.extractId)
-    .map(RequestContext.Id.apply)
-    .getOrElse(throw new IllegalArgumentException(s"Cannot create request ID"))
+  override val action: Action = Action(actionType)
 
-  override val action: Action =
-    Option(rInfo.extractAction)
-      .map(Action.apply)
-      .getOrElse(throw new IllegalArgumentException(s"Cannot create request action"))
+  override lazy val headers: Set[Header] = {
+    val (authorizationHeaders, otherHeaders) =
 
-  override val headers: Set[Header] =
-    rInfo
-      .extractRequestHeaders
-      .flatMap { case (name, value) =>
-        (NonEmptyString.unapply(name), NonEmptyString.unapply(value)) match {
-          case (Some(headerName), Some(headerValue)) => Some(Header(Name(headerName), headerValue))
-          case _ => None
+      request
+        .getHeaders.asScala
+        .map { case (name, values) => (name, values.asScala.toSet) }
+      .flatMap { case (name, values) =>
+        for {
+          nonEmptyName <- NonEmptyString.unapply(name)
+          nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
+        } yield (Header.Name(nonEmptyName), nonEmptyValues)
+      }
+      .toSeq
+      .partition { case (name, _) => name === Header.Name.authorization }
+    val headersFromAuthorizationHeaderValues = authorizationHeaders
+      .flatMap { case (_, values) =>
+        val headersFromAuthorizationHeaderValues = values
+          .map(Header.fromAuthorizationValue)
+          .toList
+          .map(_.map(_.toList))
+          .traverse(identity)
+          .map(_.flatten)
+        headersFromAuthorizationHeaderValues match {
+          case Left(error) => throw new IllegalArgumentException(error.show)
+          case Right(v) => v
         }
       }
       .toSet
+    val restOfHeaders = otherHeaders
+      .flatMap { case (name, values) => values.map(new Header(name, _)).toList }
+      .toSet
+    val restOfHeaderNames = restOfHeaders.map(_.name)
+    restOfHeaders ++ headersFromAuthorizationHeaderValues.filter { header => !restOfHeaderNames.contains(header.name) }
+  }
 
   override val remoteAddress: Option[Address] =
     Try(rInfo.extractRemoteAddress).toOption
@@ -69,9 +100,9 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
       .getOrElse(throw new IllegalArgumentException(s"Cannot create request method"))
 
   override val uriPath: UriPath =
-  Option(rInfo.extractPath)
-    .map(UriPath.apply)
-    .getOrElse(throw new IllegalArgumentException(s"Cannot create request URI path"))
+    Option(rInfo.extractPath)
+      .map(UriPath.apply)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot create request URI path"))
 
   override val contentLength: Information =
     Bytes(rInfo.extractContentLength.toLong)
@@ -132,5 +163,12 @@ class EsRequestContext private (rInfo: RequestInfoShim) extends RequestContext {
 }
 
 object EsRequestContext {
-  def from(rInfo: RequestInfoShim): Try[RequestContext] = Try(new EsRequestContext(rInfo))
+  def from(channel: RestChannel,
+           taskId: Long,
+           action: String,
+           actionRequest: ActionRequest,
+           clusterService: RorClusterService,
+           threadPool: ThreadPool,
+           crossClusterSearchEnabled: Boolean): Try[RequestContext] =
+    Try(new EsRequestContext(channel, taskId, action, actionRequest, clusterService, threadPool, crossClusterSearchEnabled))
 }

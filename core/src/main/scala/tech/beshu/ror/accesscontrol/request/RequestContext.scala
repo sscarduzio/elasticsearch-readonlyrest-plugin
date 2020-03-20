@@ -53,6 +53,7 @@ trait RequestContext {
   def indicesOperation: InvolvingIndexOperation
   def indices: Set[IndexName]
   def allIndicesAndAliases: Set[IndexWithAliases]
+  def allTemplates: Set[Template]
   def templateIndicesPatterns: Set[IndexName]
   def repositories: Set[IndexName]
   def snapshots: Set[IndexName]

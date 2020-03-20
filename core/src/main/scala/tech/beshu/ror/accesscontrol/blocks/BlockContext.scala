@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks
 
 import cats.{Eval, Foldable, Functor}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{IndexRelated, Outcome}
 import tech.beshu.ror.accesscontrol.blocks.RequestContextInitiatedBlockContext.BlockContextData
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -44,6 +44,9 @@ trait BlockContext {
 
   def indices: Outcome[Set[IndexName]]
   def withIndices(indices: Set[IndexName]): BlockContext
+
+  def filteredIndices: Outcome[Set[IndexRelated]]
+  def withFilteredIndices(indexRelated: Set[IndexRelated]): BlockContext
 
   def repositories: Outcome[Set[IndexName]]
   def withRepositories(indices: Set[IndexName]): BlockContext
@@ -100,6 +103,12 @@ object BlockContext {
         }
       }
     }
+  }
+
+  sealed trait IndexRelated
+  object IndexRelated {
+    final case class Itself(index: IndexName) extends IndexRelated
+    final case class Template(name: Template, indices: Set[IndexName]) extends IndexRelated
   }
 }
 

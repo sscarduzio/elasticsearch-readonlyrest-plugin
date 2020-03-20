@@ -88,7 +88,7 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override val extractPath: String = request.path()
 
-  override val involvesIndices: InvolvingIndexOperation = {
+  override val involvesIndices: Boolean = {
     actionRequest.isInstanceOf[IndicesRequest] || actionRequest.isInstanceOf[CompositeIndicesRequest] ||
       // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
       actionRequest.isInstanceOf[RestoreSnapshotRequest] ||

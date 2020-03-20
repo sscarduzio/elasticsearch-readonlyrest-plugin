@@ -46,7 +46,7 @@ object ScalaOps {
     private def safeArray = Option(array).getOrElse(Array.empty[T])
   }
 
-  implicit class SetOps[T : Order](val value: Set[T]) extends AnyVal {
+  implicit class SetOps[T : Order](value: Set[T]) {
     def toNonEmptySet: Option[NonEmptySet[T]] = {
       NonEmptySet.fromSet[T](SortedSet.empty[T] ++ value)
     }
