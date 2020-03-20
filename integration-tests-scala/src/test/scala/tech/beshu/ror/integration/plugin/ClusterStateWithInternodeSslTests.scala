@@ -40,7 +40,7 @@ class ClusterStateWithInternodeSslTests
   )
 
   private def setContainerEnv(container: ReadonlyRestEsClusterContainer) = {
-    container.nodesContainers.map(_.container.setEnv(List("ROR_INTER_KEY_PASS=readonlyrest").asJava))
+    container.nodesContainers.map(_.container.setEnv(List("ROR_INTER_KEY_PASS=readonlyrest2").asJava))
   }
 
   private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
