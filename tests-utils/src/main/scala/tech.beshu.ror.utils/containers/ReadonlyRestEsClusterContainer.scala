@@ -95,6 +95,12 @@ class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: N
                                                          dependencies: List[DependencyDef],
                                                          clusterInitializer: ReadonlyRestEsClusterInitializer)
   extends Container {
+  def mapContainer(f:ReadonlyRestEsContainer => ReadonlyRestEsContainer) =
+    new ReadonlyRestEsClusterContainer(
+      rorClusterContainers = this.rorClusterContainers.map(_.map(f)),
+      dependencies = this.dependencies,
+      clusterInitializer = this.clusterInitializer,
+    )
 
   val nodesContainers: NonEmptyList[ReadonlyRestEsContainer] = {
     NonEmptyList.fromListUnsafe(Task.gather(rorClusterContainers.toList).runSyncUnsafe())

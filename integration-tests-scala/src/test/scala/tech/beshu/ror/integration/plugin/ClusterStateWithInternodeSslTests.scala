@@ -24,25 +24,25 @@ import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClu
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 import scala.collection.JavaConverters._
+
 class ClusterStateWithInternodeSslTests
   extends WordSpec
     with ForAllTestContainer
-    with BeforeAndAfterAll{
+    with BeforeAndAfterAll {
 
-  override lazy val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(
-      clusterInitializer = (_, container) => setContainerEnv(container),
-      numberOfInstances = 3,
-      internodeSslEnabled = true
-    )
-  )
-
-  private def setContainerEnv(container: ReadonlyRestEsClusterContainer) = {
-    container.nodesContainers.map(_.container.setEnv(List("ROR_INTER_KEY_PASS=readonlyrest").asJava))
+  override lazy val container: ReadonlyRestEsClusterContainer = {
+    ReadonlyRestEsCluster.createLocalClusterContainer(
+      name = "ROR1",
+      rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml",
+      clusterSettings = AdditionalClusterSettings(
+        numberOfInstances = 3,
+        internodeSslEnabled = true
+      )
+    ).mapContainer { c =>
+      c.container.setEnv(List("ROR_INTER_KEY_PASS=readonlyrest").asJava)
+      c
+    }
   }
-
   private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
 
   "Health check" should {
