@@ -50,7 +50,7 @@ final class EsConfigFileLoader[CONFIG: Decoder]()(implicit envVarsProvider: EnvV
 
   private implicit val showResolvingError: Show[NonEmptyList[ResolvingError]] =
     Show.show { nel =>
-      nel.map(_.msg).mkString_(", ")
+      nel.map(_.msg).mkString_("\n\t* ")
     }
 }
 
