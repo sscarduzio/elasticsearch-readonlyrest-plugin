@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo, RorNotAvailableResponse}
+import tech.beshu.ror.es.request.{ForbiddenResponse, RorNotAvailableResponse}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -44,13 +44,13 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
                                        (implicit scheduler: Scheduler)
   extends Logging {
 
-  def handle(requestInfo: RequestInfo, requestContext: RequestContext): Unit = {
+  def handle(requestContext: RequestContext): Unit = {
     engine.accessControl
       .handleMetadataRequest(requestContext)
       .runAsync {
         case Right(r) =>
           threadPool.getThreadContext.stashContext.bracket { _ =>
-            commitResult(r.result, requestContext, requestInfo)
+            commitResult(r.result, requestContext)
           }
         case Left(ex) =>
           baseListener.onFailure(new Exception(ex))
@@ -58,12 +58,11 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def commitResult(result: UserMetadataRequestResult,
-                           requestContext: RequestContext,
-                           requestInfo: RequestInfo): Unit = {
+                           requestContext: RequestContext): Unit = {
     Try {
       result match {
         case UserMetadataRequestResult.Allow(userMetadata, _) =>
-          onAllow(requestContext, requestInfo, userMetadata)
+          onAllow(requestContext, userMetadata)
         case UserMetadataRequestResult.Forbidden =>
           onForbidden()
         case UserMetadataRequestResult.PassedThrough =>
@@ -77,7 +76,6 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def onAllow(requestContext: RequestContext,
-                      requestInfo: RequestInfo,
                       userMetadata: UserMetadata): Unit = {
     val responseActionListener = new CurrentUserMetadataResponseActionListener(baseListener, userMetadata)
     chain.proceed(task, action, request, responseActionListener)

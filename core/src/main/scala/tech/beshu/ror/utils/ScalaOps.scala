@@ -18,6 +18,9 @@ package tech.beshu.ror.utils
 
 import cats.implicits._
 import cats.{Functor, Order}
+import java.util.Base64
+
+import cats.Functor
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
 import com.twitter.{util => twitter}
@@ -186,5 +189,27 @@ object ScalaOps {
   implicit class NonEmptySetOps[T](val value: NonEmptySet[T]) extends AnyVal {
     import cats.implicits._
     def widen[S >: T : Ordering]: NonEmptySet[S] = NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
+  }
+
+  implicit class StringOps(val value: String) extends AnyVal {
+    def splitByFirst(char: Char): Option[(String, String)] = {
+      value.split(char).toList match {
+        case Nil => None
+        case _ :: Nil => None
+        case one :: _ => Some((one, value.substring(one.length + 1)))
+      }
+    }
+    def splitBy(str: String): (String, Option[String]) = {
+      value.indexOf(str) match {
+        case -1 =>
+          (value, None)
+        case idx =>
+          val endOfStrIndex = idx + str.length
+          (value.substring(0, idx), Some(if(endOfStrIndex < value.length) value.substring(endOfStrIndex) else ""))
+      }
+    }
+    def decodeBase64: Option[String] = {
+      Try(new String(Base64.getDecoder.decode(value), "UTF-8")).toOption
+    }
   }
 }

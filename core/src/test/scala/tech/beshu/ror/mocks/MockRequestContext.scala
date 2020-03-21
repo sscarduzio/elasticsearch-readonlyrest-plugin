@@ -38,6 +38,7 @@ final case class MockRequestContext(override val timestamp: Instant = Instant.no
                                     override val indicesOperation: InvolvingIndexOperation = InvolvingIndexOperation.NonIndexOperation,
                                     override val indices: Set[IndexName] = Set.empty,
                                     override val templateIndicesPatterns: Set[IndexName] = Set.empty,
+                                    override val allTemplates: Set[Template] = Set.empty,
                                     override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
                                     override val repositories: Set[IndexName] = Set.empty,
                                     override val snapshots: Set[IndexName] = Set.empty,

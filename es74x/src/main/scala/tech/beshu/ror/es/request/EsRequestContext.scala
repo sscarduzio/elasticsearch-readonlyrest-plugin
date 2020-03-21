@@ -19,17 +19,21 @@ package tech.beshu.ror.es.request
 import java.time.Instant
 
 import cats.data.NonEmptyList
+import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.threadpool.ThreadPool
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -41,31 +45,30 @@ class EsRequestContext private(channel: RestChannel,
                                clusterService: RorClusterService,
                                threadPool: ThreadPool,
                                crossClusterSearchEnabled: Boolean)
-  extends RequestContext {
+  extends RequestContext with Logging {
 
   private val request = channel.request()
 
-  override val timestamp: Instant =
+  override lazy val timestamp: Instant =
     Instant.now()
 
-  override val id: RequestContext.Id = RequestContext.Id(s"${request.hashCode()}-${actionRequest.hashCode()}#$taskId")
+  override lazy val id: RequestContext.Id = RequestContext.Id(s"${request.hashCode()}-${actionRequest.hashCode()}#$taskId")
 
-  override val action: Action = Action(actionType)
+  override lazy val action: Action = Action(actionType)
 
   override lazy val headers: Set[Header] = {
     val (authorizationHeaders, otherHeaders) =
-
       request
         .getHeaders.asScala
         .map { case (name, values) => (name, values.asScala.toSet) }
-      .flatMap { case (name, values) =>
-        for {
-          nonEmptyName <- NonEmptyString.unapply(name)
-          nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
-        } yield (Header.Name(nonEmptyName), nonEmptyValues)
-      }
-      .toSeq
-      .partition { case (name, _) => name === Header.Name.authorization }
+        .flatMap { case (name, values) =>
+          for {
+            nonEmptyName <- NonEmptyString.unapply(name)
+            nonEmptyValues <- NonEmptyList.fromList(values.toList.flatMap(NonEmptyString.unapply))
+          } yield (Header.Name(nonEmptyName), nonEmptyValues)
+        }
+        .toSeq
+        .partition { case (name, _) => name === Header.Name.authorization }
     val headersFromAuthorizationHeaderValues = authorizationHeaders
       .flatMap { case (_, values) =>
         val headersFromAuthorizationHeaderValues = values
@@ -87,43 +90,41 @@ class EsRequestContext private(channel: RestChannel,
     restOfHeaders ++ headersFromAuthorizationHeaderValues.filter { header => !restOfHeaderNames.contains(header.name) }
   }
 
-  override val remoteAddress: Option[Address] =
-    Try(rInfo.extractRemoteAddress).toOption
+  override lazy val remoteAddress: Option[Address] =
+    Try(request.getHttpChannel.getRemoteAddress.getAddress.getHostAddress)
+      .toEither
+      .left
+      .map(ex => logger.error("Could not extract remote address", ex))
+      .map { remoteHost => if (RCUtils.isLocalHost(remoteHost)) RCUtils.LOCALHOST else remoteHost }
+      .toOption
       .flatMap(Address.from)
 
-  override val localAddress: Address =
-    forceCreateAddressFrom(rInfo.extractLocalAddress)
+  override lazy val localAddress: Address =
+    Try(request.getHttpChannel.getLocalAddress.getAddress.getHostAddress)
+      .toEither
+      .left
+      .map(ex => logger.error("Could not extract local address", ex))
+      .toOption
+      .flatMap(Address.from)
+      .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
 
-  override val method: Method =
-    Option(rInfo.extractMethod)
-      .map(Method.apply)
-      .getOrElse(throw new IllegalArgumentException(s"Cannot create request method"))
+  override lazy val method: Method = Method(request.method().name())
 
-  override val uriPath: UriPath =
-    Option(rInfo.extractPath)
-      .map(UriPath.apply)
-      .getOrElse(throw new IllegalArgumentException(s"Cannot create request URI path"))
+  override lazy val uriPath: UriPath = UriPath(request.path())
 
-  override val contentLength: Information =
-    Bytes(rInfo.extractContentLength.toLong)
+  override lazy val contentLength: Information = Bytes(if(request.content == null) 0 else request.content().length())
 
-  override val `type`: Type =
-    Option(rInfo.extractType)
-      .map(Type.apply)
-      .getOrElse(throw new IllegalArgumentException(s"Cannot create request type"))
+  override lazy val `type`: Type = Type(actionRequest.getClass.getSimpleName)
 
-  override val content: String =
-    Option(rInfo.extractContent).getOrElse("")
+  override lazy val content: String = if(request.content == null) "" else request.content().utf8ToString()
 
-  override val indicesOperation: InvolvingIndexOperation =
-    rInfo.indicesOperation
+  override lazy val indicesOperation: InvolvingIndexOperation = ???
 
-  override val indices: Set[domain.IndexName] =
-    rInfo.extractIndices.indices.flatMap(IndexName.fromString)
+  override lazy val indices: Set[domain.IndexName] = ???
 
-  override val allIndicesAndAliases: Set[IndexWithAliases] =
-    rInfo
-      .extractAllIndicesAndAliases
+  override lazy val allIndicesAndAliases: Set[IndexWithAliases] =
+    clusterService
+      .allIndicesAndAliases
       .flatMap { case (indexName, aliases) =>
         IndexName
           .fromString(indexName)
@@ -133,33 +134,30 @@ class EsRequestContext private(channel: RestChannel,
       }
       .toSet
 
-  override val templateIndicesPatterns: Set[IndexName] =
-    rInfo.extractTemplateIndicesPatterns.flatMap(IndexName.fromString)
+  override lazy val templateIndicesPatterns: Set[IndexName] = ???
 
-  override val repositories: Set[IndexName] =
-    rInfo.extractRepositories.flatMap(IndexName.fromString)
+  override lazy val repositories: Set[IndexName] = ???
 
-  override val snapshots: Set[IndexName] =
-    rInfo.extractSnapshots.flatMap(IndexName.fromString)
+  override lazy val snapshots: Set[IndexName] = ???
 
-  override val isReadOnlyRequest: Boolean =
-    rInfo.extractIsReadRequest
+  override lazy val allTemplates: Set[Template] = ???
 
-  override val involvesIndices: Boolean =
-    rInfo.involvesIndices
+  override lazy val isReadOnlyRequest: Boolean = ???
 
-  override val isCompositeRequest: Boolean =
-    rInfo.extractIsCompositeRequest
+  override lazy val involvesIndices: Boolean = ???
 
-  override val isAllowedForDLS: Boolean =
-    rInfo.extractIsAllowedForDLS
+  override lazy val isCompositeRequest: Boolean = ???
 
-  override val hasRemoteClusters: Boolean =
-    rInfo.extractHasRemoteClusters
-
-  private def forceCreateAddressFrom(value: String) = {
-    Address.from(value).getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname from $value"))
+  override lazy val isAllowedForDLS: Boolean = {
+    actionRequest match {
+      case _ if !isReadOnlyRequest => false
+      case sr: SearchRequest if sr.source() == null => true
+      case sr: SearchRequest if sr.source.profile || (sr.source.suggest != null && !sr.source.suggest.getSuggestions.isEmpty) => false
+      case _ => true
+    }
   }
+
+  override val hasRemoteClusters = crossClusterSearchEnabled
 }
 
 object EsRequestContext {

@@ -16,36 +16,16 @@
  */
 package tech.beshu.ror.es.request.regular
 
-import cats.data.NonEmptyList
-import cats.implicits._
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse
-import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
-import org.elasticsearch.common.collect.ImmutableOpenMap
-import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
-import tech.beshu.ror.accesscontrol.AccessControlActionHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed}
-import tech.beshu.ror.accesscontrol.BlockContextRawDataHelper.indicesFrom
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.domain.UriPath.{CatIndicesPath, CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.WriteResult
-import tech.beshu.ror.accesscontrol.{AccessControlActionHandler, AccessControlStaticContext, BlockContextRawDataHelper}
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo}
-import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
-
-import scala.collection.JavaConverters._
-import scala.util.{Failure, Success, Try}
 
 class RegularRequestHandler(engine: Engine,
                             task: Task,
@@ -58,190 +38,189 @@ class RegularRequestHandler(engine: Engine,
                            (implicit scheduler: Scheduler)
   extends Logging {
 
-  def handle(requestInfo: RequestInfo, requestContext: RequestContext): Unit = {
+  def handle(requestContext: RequestContext): Unit = {
     engine.accessControl
       .handleRegularRequest(requestContext)
       .runAsync {
         case Right(r) =>
           threadPool.getThreadContext.stashContext.bracket { _ =>
-            commitResult(r.result, requestContext, requestInfo)
+            // todo
+            //commitResult(r.result, requestContext)
           }
         case Left(ex) =>
           baseListener.onFailure(new Exception(ex))
       }
   }
 
-  private def commitResult(result: RegularRequestResult,
-                           requestContext: RequestContext,
-                           requestInfo: RequestInfo): Unit = {
-    Try {
-      result match {
-        case RegularRequestResult.Allow(blockContext, _) =>
-          onAllow(requestContext, requestInfo, blockContext)
-        case RegularRequestResult.ForbiddenBy(_, _) =>
-          onForbidden(NonEmptyList.one(ForbiddenBlockMatch))
-        case RegularRequestResult.ForbiddenByMismatched(causes) =>
-          onForbidden(causes.toNonEmptyList.map(AccessControlActionHandler.fromMismatchedCause))
-        case RegularRequestResult.IndexNotFound =>
-          onIndexNotFound(requestContext, requestInfo)
-        case RegularRequestResult.Failed(ex) =>
-          baseListener.onFailure(ex.asInstanceOf[Exception])
-        case RegularRequestResult.PassedThrough =>
-          proceed(baseListener)
-      }
-    } match {
-      case Success(_) =>
-      case Failure(ex) =>
-        logger.errorEx("ACL committing result failure", ex)
-    }
-  }
+//  private def commitResult(result: RegularRequestResult,
+//                           requestContext: RequestContext): Unit = {
+//    Try {
+//      result match {
+//        case RegularRequestResult.Allow(blockContext, _) =>
+//          onAllow(requestContext, blockContext)
+//        case RegularRequestResult.ForbiddenBy(_, _) =>
+//          onForbidden(NonEmptyList.one(ForbiddenBlockMatch))
+//        case RegularRequestResult.ForbiddenByMismatched(causes) =>
+//          onForbidden(causes.toNonEmptyList.map(AccessControlActionHandler.fromMismatchedCause))
+//        case RegularRequestResult.IndexNotFound =>
+//          onIndexNotFound(requestContext)
+//        case RegularRequestResult.Failed(ex) =>
+//          baseListener.onFailure(ex.asInstanceOf[Exception])
+//        case RegularRequestResult.PassedThrough =>
+//          proceed(baseListener)
+//      }
+//    } match {
+//      case Success(_) =>
+//      case Failure(ex) =>
+//        logger.errorEx("ACL committing result failure", ex)
+//    }
+//  }
 
-  private def onAllow(requestContext: RequestContext,
-                      requestInfo: RequestInfo,
-                      blockContext: BlockContext): Unit = {
-    requestContext.uriPath match {
-      case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
-        respondWithEmptyCatIndicesResponse()
-      case CatTemplatePath(_) | TemplatePath(_) =>
-        proceedAfterSuccessfulWrite(requestContext, blockContext) {
-          for {
-            _ <- writeTemplatesIfNeeded(blockContext, requestInfo)
-            _ <- writeCommonParts(requestInfo, blockContext)
-          } yield ()
-        }
-      case _ =>
-        proceedAfterSuccessfulWrite(requestContext, blockContext) {
-          for {
-            _ <- writeIndicesIfNeeded(blockContext, requestInfo)
-            _ <- requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
-            _ <- requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
-            _ <- writeCommonParts(requestInfo, blockContext)
-          } yield ()
-        }
-    }
-  }
-
-  private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
-    channel.sendResponse(ForbiddenResponse.create(channel, causes.toList, engine.context))
-  }
-
-  private def onIndexNotFound(requestContext: RequestContext, requestInfo: RequestInfo): Unit = {
-    requestContext.uriPath match {
-      case CatIndicesPath(_) =>
-        respondWithEmptyCatIndicesResponse()
-      case _ if engine.context.doesRequirePassword => // this is required by free kibana users who want to see basic auth prompt
-        val nonExistentIndex = randomNonexistentIndex(requestContext)
-        if(nonExistentIndex.hasWildcard) {
-          proceedWithModifiedIndexIfPossible(requestInfo, nonExistentIndex)
-        } else {
-          onForbidden(NonEmptyList.one(OperationNotAllowed))
-        }
-      case _ =>
-        proceedWithModifiedIndexIfPossible(requestInfo, randomNonexistentIndex(requestContext))
-    }
-  }
-
-  private def proceedWithModifiedIndexIfPossible(requestInfo: RequestInfo, index: IndexName): Unit = {
-    requestInfo.writeIndices(Set(index.value.value)) match {
-      case WriteResult.Success(_) => proceed(baseListener)
-      case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
-    }
-  }
-
-  private def proceedAfterSuccessfulWrite(requestContext: RequestContext,
-                                          blockContext: BlockContext)
-                                         (result: WriteResult[Unit]): Unit = {
-    result match {
-      case WriteResult.Success(_) =>
-        val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-        proceed(searchListener)
-      case WriteResult.Failure =>
-        logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
-        onForbidden(NonEmptyList.one(OperationNotAllowed))
-    }
-  }
-
-  private def writeTemplatesIfNeeded(blockContext: BlockContext, requestInfo: RequestInfo) = {
-    writeIndicesBasedResultIfNeeded(
-      blockContext,
-      requestInfo,
-      requestInfo.writeTemplatesOf
-    )
-  }
-
-  private def writeIndicesIfNeeded(blockContext: BlockContext, requestInfo: RequestInfo) = {
-    writeIndicesBasedResultIfNeeded(
-      blockContext,
-      requestInfo,
-      requestInfo.writeIndices
-    )
-  }
-
-  private def writeIndicesBasedResultIfNeeded(blockContext: BlockContext,
-                                              requestInfo: RequestInfo,
-                                              write: Set[String] => WriteResult[Unit]) = {
-    indicesFrom(blockContext) match {
-      case Outcome.Exist(indices) => write(indices)
-      case Outcome.NotExist => WriteResult.Success(())
-    }
-  }
-
-  private def writeCommonParts(requestInfo: RequestInfo, blockContext: BlockContext) = {
-    for {
-      _ <- requestInfo.writeResponseHeaders(BlockContextRawDataHelper.responseHeadersFrom(blockContext))
-      _ <- requestInfo.writeToThreadContextHeaders(BlockContextRawDataHelper.contextHeadersFrom(blockContext))
-    } yield ()
-  }
-
-  private def emptySetOfFoundIndices(blockContext: BlockContext) = {
-    blockContext.indices match {
-      case Outcome.Exist(foundIndices) => foundIndices.isEmpty
-      case Outcome.NotExist => false
-    }
-  }
-
-  private def proceed(responseActionListener: ActionListener[ActionResponse]): Unit =
-    chain.proceed(task, action, request, responseActionListener)
-
-  private def createSearchListener(requestContext: RequestContext,
-                                   blockContext: BlockContext,
-                                   aclStaticContext: AccessControlStaticContext): ActionListener[ActionResponse] = {
-    Try {
-      // Cache disabling for those 2 kind of request is crucial for
-      // document level security to work. Otherwise we'd get an answer from
-      // the cache some times and would not be filtered
-      if (aclStaticContext.involvesFilter) {
-        request match {
-          case r: SearchRequest =>
-            logger.debug("ACL involves filters, will disable request cache for SearchRequest")
-            r.requestCache(false)
-          case r: MultiSearchRequest =>
-            logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest")
-            r.requests().asScala.foreach(_.requestCache(false))
-          case _ =>
-        }
-      }
-      new RegularResponseActionListener(baseListener.asInstanceOf[ActionListener[ActionResponse]], requestContext, blockContext)
-    } fold(
-      e => {
-        logger.error("on allow exception", e)
-        baseListener
-      },
-      identity
-    )
-  }
-
-  private def randomNonexistentIndex(requestContext: RequestContext): IndexName = {
-    requestContext.indices.headOption match {
-      case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
-      case None => IndexName.randomNonexistentIndex()
-    }
-  }
-
-  private def respondWithEmptyCatIndicesResponse(): Unit = {
-    baseListener.onResponse(new GetSettingsResponse(
-      ImmutableOpenMap.of[String, Settings](),
-      ImmutableOpenMap.of[String, Settings]()
-    ))
-  }
+//  private def onAllow(requestContext: RequestContext,
+//                      blockContext: BlockContext): Unit = {
+//    requestContext.uriPath match {
+//      case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
+//        respondWithEmptyCatIndicesResponse()
+//      case CatTemplatePath(_) | TemplatePath(_) =>
+//        proceedAfterSuccessfulWrite(requestContext, blockContext) {
+//          for {
+//            _ <- writeTemplatesIfNeeded(blockContext)
+//            _ <- writeCommonParts(blockContext)
+//          } yield ()
+//        }
+//      case _ =>
+//        proceedAfterSuccessfulWrite(requestContext, blockContext) {
+//          for {
+//            _ <- writeIndicesIfNeeded(blockContext)
+////            _ <- requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
+////            _ <- requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
+//            _ <- writeCommonParts(blockContext)
+//          } yield ()
+//        }
+//    }
+//  }
+//
+//  private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
+//    channel.sendResponse(ForbiddenResponse.create(channel, causes.toList, engine.context))
+//  }
+//
+//  private def onIndexNotFound(requestContext: RequestContext): Unit = {
+//    requestContext.uriPath match {
+//      case CatIndicesPath(_) =>
+//        respondWithEmptyCatIndicesResponse()
+//      case _ if engine.context.doesRequirePassword => // this is required by free kibana users who want to see basic auth prompt
+//        val nonExistentIndex = randomNonexistentIndex(requestContext)
+//        if(nonExistentIndex.hasWildcard) {
+//          proceedWithModifiedIndexIfPossible(requestInfo, nonExistentIndex)
+//        } else {
+//          onForbidden(NonEmptyList.one(OperationNotAllowed))
+//        }
+//      case _ =>
+//        proceedWithModifiedIndexIfPossible(requestInfo, randomNonexistentIndex(requestContext))
+//    }
+//  }
+//
+//  private def proceedWithModifiedIndexIfPossible(index: IndexName): Unit = {
+//    requestInfo.writeIndices(Set(index.value.value)) match {
+//      case WriteResult.Success(_) => proceed(baseListener)
+//      case WriteResult.Failure => onForbidden(NonEmptyList.one(OperationNotAllowed))
+//    }
+//  }
+//
+//  private def proceedAfterSuccessfulWrite(requestContext: RequestContext,
+//                                          blockContext: BlockContext)
+//                                         (result: WriteResult[Unit]): Unit = {
+//    result match {
+//      case WriteResult.Success(_) =>
+//        val searchListener = createSearchListener(requestContext, blockContext, engine.context)
+//        proceed(searchListener)
+//      case WriteResult.Failure =>
+//        logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
+//        onForbidden(NonEmptyList.one(OperationNotAllowed))
+//    }
+//  }
+//
+//  private def writeTemplatesIfNeeded(blockContext: BlockContext) = {
+//    writeIndicesBasedResultIfNeeded(
+//      blockContext,
+//      requestInfo,
+//      requestInfo.writeTemplatesOf
+//    )
+//  }
+//
+//  private def writeIndicesIfNeeded(blockContext: BlockContext) = {
+//    writeIndicesBasedResultIfNeeded(
+//      blockContext,
+//      requestInfo,
+//      requestInfo.writeIndices
+//    )
+//  }
+//
+//  private def writeIndicesBasedResultIfNeeded(blockContext: BlockContext,
+//                                              requestInfo: RequestInfo,
+//                                              write: Set[String] => WriteResult[Unit]) = {
+//    indicesFrom(blockContext) match {
+//      case Outcome.Exist(indices) => write(indices)
+//      case Outcome.NotExist => WriteResult.Success(())
+//    }
+//  }
+//
+//  private def writeCommonParts(requestInfo: RequestInfo, blockContext: BlockContext) = {
+//    for {
+//      _ <- requestInfo.writeResponseHeaders(BlockContextRawDataHelper.responseHeadersFrom(blockContext))
+//      _ <- requestInfo.writeToThreadContextHeaders(BlockContextRawDataHelper.contextHeadersFrom(blockContext))
+//    } yield ()
+//  }
+//
+//  private def emptySetOfFoundIndices(blockContext: BlockContext) = {
+//    blockContext.indices match {
+//      case Outcome.Exist(foundIndices) => foundIndices.isEmpty
+//      case Outcome.NotExist => false
+//    }
+//  }
+//
+//  private def proceed(responseActionListener: ActionListener[ActionResponse]): Unit =
+//    chain.proceed(task, action, request, responseActionListener)
+//
+//  private def createSearchListener(requestContext: RequestContext,
+//                                   blockContext: BlockContext,
+//                                   aclStaticContext: AccessControlStaticContext): ActionListener[ActionResponse] = {
+//    Try {
+//      // Cache disabling for those 2 kind of request is crucial for
+//      // document level security to work. Otherwise we'd get an answer from
+//      // the cache some times and would not be filtered
+//      if (aclStaticContext.involvesFilter) {
+//        request match {
+//          case r: SearchRequest =>
+//            logger.debug("ACL involves filters, will disable request cache for SearchRequest")
+//            r.requestCache(false)
+//          case r: MultiSearchRequest =>
+//            logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest")
+//            r.requests().asScala.foreach(_.requestCache(false))
+//          case _ =>
+//        }
+//      }
+//      new RegularResponseActionListener(baseListener.asInstanceOf[ActionListener[ActionResponse]], requestContext, blockContext)
+//    } fold(
+//      e => {
+//        logger.error("on allow exception", e)
+//        baseListener
+//      },
+//      identity
+//    )
+//  }
+//
+//  private def randomNonexistentIndex(requestContext: RequestContext): IndexName = {
+//    requestContext.indices.headOption match {
+//      case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
+//      case None => IndexName.randomNonexistentIndex()
+//    }
+//  }
+//
+//  private def respondWithEmptyCatIndicesResponse(): Unit = {
+//    baseListener.onResponse(new GetSettingsResponse(
+//      ImmutableOpenMap.of[String, Settings](),
+//      ImmutableOpenMap.of[String, Settings]()
+//    ))
+//  }
 }

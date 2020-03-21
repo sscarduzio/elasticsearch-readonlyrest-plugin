@@ -34,7 +34,7 @@ import tech.beshu.ror.SecurityPermissionException
 import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
 import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider, EsServerBasedRorClusterService}
-import tech.beshu.ror.es.request.{EsRequestContext, RequestInfo}
+import tech.beshu.ror.es.request.EsRequestContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse._
 import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
@@ -127,28 +127,24 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             channel: RestChannel): Unit = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        val requestInfo = new RequestInfo(channel, task.getId, action, request, rorEsClusterService, threadPool, remoteClusterService.isCrossClusterSearchEnabled)
-        val requestContext = requestContextFrom(requestInfo)
+        val requestContext = EsRequestContext
+          .from(channel, task.getId, action, request, rorEsClusterService, threadPool, remoteClusterService.isCrossClusterSearchEnabled)
+          .fold(
+            ex => throw new SecurityPermissionException("Cannot create request context object", ex),
+            identity
+          )
         requestContext.uriPath match {
           case CurrentUserMetadataPath(_) =>
             val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestInfo, requestContext)
+            handler.handle(requestContext)
           case _ =>
             val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestInfo, requestContext)
+            handler.handle(requestContext)
         }
       case None =>
         listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
     }
   }
-
-  private def requestContextFrom(requestInfo: RequestInfo) =
-    EsRequestContext
-      .from(requestInfo)
-      .fold(
-        ex => throw new SecurityPermissionException("Cannot create request context object", ex),
-        identity
-      )
 }
 
 private sealed trait RorInstanceStartingState

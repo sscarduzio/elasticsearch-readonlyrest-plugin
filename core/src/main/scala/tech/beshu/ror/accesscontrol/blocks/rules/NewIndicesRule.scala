@@ -140,8 +140,7 @@ class NewIndicesRule(val settings: Settings)
                                      resolvedAllowedIndices: Set[IndexName]): CanPass = {
     operation match {
       case directIndexOperation: DirectIndexOperation => canDirectIndexOperationRequestPass(directIndexOperation, requestContext, matcher)
-      case InvolvingIndexOperation.Template.GetAll =>
-        requestContext.allIndicesAndAliases
+      case InvolvingIndexOperation.Template.GetAll => ???
       case InvolvingIndexOperation.Template.Get(templates) => ???
       case InvolvingIndexOperation.Template.Create(_) => CanPass.No()
       case InvolvingIndexOperation.Template.Delete(_) => CanPass.No()

@@ -152,6 +152,10 @@ object NoOpBlockContext extends BlockContext {
 
   override val snapshots: Outcome[Set[IndexName]] = Outcome.NotExist
   override def withSnapshots(indices: Set[IndexName]): BlockContext = this
+
+  override def filteredIndices: Outcome[Set[IndexRelated]] = ???
+
+  override def withFilteredIndices(indexRelated: Set[IndexRelated]): BlockContext = ???
 }
 
 class RequestContextInitiatedBlockContext private(val data: BlockContextData)
@@ -226,6 +230,10 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
 
   override def withJwt(token: JwtTokenPayload): BlockContext =
     new RequestContextInitiatedBlockContext(data.copy(jsonToken = Some(token)))
+
+  override def filteredIndices: Outcome[Set[IndexRelated]] = ???
+
+  override def withFilteredIndices(indexRelated: Set[IndexRelated]): BlockContext = ???
 }
 
 object RequestContextInitiatedBlockContext {
