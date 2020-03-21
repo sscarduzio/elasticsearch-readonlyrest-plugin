@@ -51,6 +51,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
+  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   "A ReadonlyREST core" should {
     "be loaded from file" when {

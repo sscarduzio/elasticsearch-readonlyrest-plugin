@@ -41,6 +41,7 @@ import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.language.postfixOps
 
@@ -53,10 +54,11 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
+  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val rorEsClusterService = new EsServerBasedRorClusterService(clusterService)
 
   private val startingTaskCancellable = Ror
-    .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
+.start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
     .runAsync {
       case Right(Right(instance)) =>
         RorInstanceSupplier.update(instance)

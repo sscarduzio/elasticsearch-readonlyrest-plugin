@@ -35,9 +35,9 @@ object RorSsl extends Logging {
 
   val noSsl = RorSsl(None, None)
 
-  def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorSsl]] = Task {
+  def load(esConfigFolderPath: Path)
+          (implicit envVarsProvider:EnvVarsProvider): Task[Either[MalformedSettings, RorSsl]] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
-    implicit val envVarsProvider:EnvVarsProvider = OsEnvVarsProvider
     val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadSslConfigFromFile(esConfig)
       .fold(
