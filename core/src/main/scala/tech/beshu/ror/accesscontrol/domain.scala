@@ -30,10 +30,9 @@ import monix.eval.Task
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{RorMetadataInvalidFormat, EmptyAuthorizationValue, InvalidHeaderFormat}
-import tech.beshu.ror.accesscontrol.domain.IndexName.from
-import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.SqlOperation.IndexSqlTable
-import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.TemplateOperation
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
+import tech.beshu.ror.accesscontrol.domain.Operation.SqlOperation.IndexSqlTable
+import tech.beshu.ror.accesscontrol.domain.Operation.{DirectIndexOperation, TemplateOperation}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
@@ -276,10 +275,10 @@ object domain {
     def all: Set[IndexName] = aliases + index
   }
 
-  sealed trait InvolvingIndexOperation
-  object InvolvingIndexOperation {
-    case object NonIndexOperation extends InvolvingIndexOperation
-    sealed trait AnIndexOperation extends InvolvingIndexOperation
+  sealed trait Operation
+  object Operation {
+    case object NonIndexOperation extends Operation
+    sealed trait AnIndexOperation extends Operation
 
     sealed trait DirectIndexOperation extends AnIndexOperation
     sealed trait IndirectIndexOperation extends AnIndexOperation
@@ -287,8 +286,7 @@ object domain {
     final case class GeneralIndexOperation(indices: Set[IndexName]) extends DirectIndexOperation
 
     sealed trait TemplateOperation extends IndirectIndexOperation
-    object Template {
-      case object GetAll extends TemplateOperation
+    object TemplateOperation {
       final case class Get(templates: NonEmptyList[Template]) extends TemplateOperation
       final case class Create(template: Template) extends TemplateOperation
       final case class Delete(template: Template) extends TemplateOperation
@@ -298,6 +296,12 @@ object domain {
     object SqlOperation {
       final case class IndexSqlTable(tableStringInQuery: NonEmptyString, indices: NonEmptySet[IndexName])
     }
+  }
+
+  sealed trait OperationModification[T <: Operation]
+  object OperationModification {
+    final case class FilterIndices(indices: Set[IndexName]) extends OperationModification[DirectIndexOperation]
+    final case class Other(indices: Set[IndexName]) extends OperationModification[TemplateOperation]
   }
 
   final case class Template(value: NonEmptyString, patterns: NonEmptySet[IndexPattern])

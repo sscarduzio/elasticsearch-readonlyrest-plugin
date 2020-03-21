@@ -21,6 +21,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.accesscontrol.domain.Operation
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -31,16 +32,16 @@ object RuntimeMultiResolvableVariable {
   final case class AlreadyResolved[T](value: NonEmptyList[T])
     extends RuntimeMultiResolvableVariable[T] {
 
-    override def resolve(requestContext: RequestContext,
-                         blockContext: BlockContext): Either[RuntimeResolvableVariable.Unresolvable, NonEmptyList[T]] =
+    override def resolve[O <: Operation](requestContext: RequestContext[O],
+                                         blockContext: BlockContext[O]): Either[RuntimeResolvableVariable.Unresolvable, NonEmptyList[T]] =
       Right(value)
   }
 
-  final case class ToBeResolved[T : Convertible](values: NonEmptyList[MultiExtractable])
+  final case class ToBeResolved[T: Convertible](values: NonEmptyList[MultiExtractable])
     extends RuntimeMultiResolvableVariable[T] {
 
-    override def resolve(requestContext: RequestContext,
-                         blockContext: BlockContext): Either[RuntimeResolvableVariable.Unresolvable, NonEmptyList[T]] = {
+    override def resolve[O <: Operation](requestContext: RequestContext[O],
+                                         blockContext: BlockContext[O]): Either[RuntimeResolvableVariable.Unresolvable, NonEmptyList[T]] = {
       values
         .map { extractable =>
           extractable

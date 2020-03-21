@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.{LoggedUser, User}
+import tech.beshu.ror.accesscontrol.domain.{LoggedUser, Operation, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.MatcherWithWildcards
@@ -35,15 +35,15 @@ class UsersRule(val settings: Settings)
 
   override val name: Rule.Name = UsersRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def check[T <: Operation](requestContext: RequestContext[T],
+                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     blockContext.loggedUser match {
       case None => Rejected()
       case Some(user) => matchUser(user, requestContext, blockContext)
     }
   }
 
-  private def matchUser(user: LoggedUser, requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
+  private def matchUser[T <: Operation](user: LoggedUser, requestContext: RequestContext[T], blockContext: BlockContext[T]): RuleResult[T] = {
     val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, requestContext, blockContext).toSet
     RuleResult.fromCondition(blockContext) {
       new MatcherWithWildcards(resolvedIds.map(_.value.value).asJava).`match`(user.id.value.value)

@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.request
 
 import java.time.Instant
 
-import cats.{Monoid, Show}
 import cats.implicits._
+import cats.{Monoid, Show}
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
@@ -27,6 +27,7 @@ import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
+import tech.beshu.ror.accesscontrol.domain.Operation._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -35,33 +36,53 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
 
-trait RequestContext {
+sealed trait RequestContext[T <: Operation] {
   def timestamp: Instant
+
   def taskId: Long
 
   def id: Id
+
   def `type`: Type
+
   def action: Action
+
   def headers: Set[Header]
+
   def remoteAddress: Option[Address]
+
   def localAddress: Address
+
   def method: Method
+
   def uriPath: UriPath
+
   def contentLength: Information
+
   def content: String
 
-  def indicesOperation: InvolvingIndexOperation
+  def operation: T
+
   def indices: Set[IndexName]
+
   def allIndicesAndAliases: Set[IndexWithAliases]
+
   def allTemplates: Set[Template]
+
   def templateIndicesPatterns: Set[IndexName]
+
   def repositories: Set[IndexName]
+
   def snapshots: Set[IndexName]
 
   def isReadOnlyRequest: Boolean
+
   def involvesIndices: Boolean
+
   def isCompositeRequest: Boolean
+
   def isAllowedForDLS: Boolean
+
   def hasRemoteClusters: Boolean
 }
 
@@ -72,10 +93,10 @@ object RequestContext extends Logging {
     implicit val show: Show[Id] = Show.show(_.value)
   }
 
-  def show(loggedUser: Option[LoggedUser],
-           kibanaIndex: Option[IndexName],
-           history: Vector[Block.History])
-          (implicit headerShow: Show[Header]): Show[RequestContext] =
+  def show[T <: Operation](loggedUser: Option[LoggedUser],
+                           kibanaIndex: Option[IndexName],
+                           history: Vector[Block.History[T]])
+                          (implicit headerShow: Show[Header]): Show[RequestContext[T]] =
     Show.show { r =>
       def stringifyUser = {
         loggedUser match {
@@ -112,12 +133,12 @@ object RequestContext extends Logging {
          | PTH:${r.uriPath.show},
          | CNT:$stringifyContentLength,
          | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
-         | HIS:${history.map(_.show).mkString(", ")}
+         | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")}
          | }""".stripMargin.replaceAll("\n", " ")
     }
 }
 
-class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
+class RequestContextOps(val requestContext: RequestContext[_]) extends AnyVal {
 
   type AliasName = IndexName
 
@@ -143,7 +164,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
   }
 
   def isCurrentGroupEligible(groups: UniqueNonEmptyList[Group]): Boolean = {
-    requestContext.currentGroup match {
+    currentGroup match {
       case RequestGroup.AGroup(preferredGroup) =>
         requestContext.uriPath.isCurrentUserMetadataPath || groups.contains(preferredGroup)
       case RequestGroup.`N/A` =>
@@ -181,11 +202,11 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       }
   }
 
-  def indicesPerAliasMap: Map[AliasName,  Set[IndexName]] = {
-    val mapMonoid = Monoid[Map[AliasName,  Set[IndexName]]]
+  def indicesPerAliasMap: Map[AliasName, Set[IndexName]] = {
+    val mapMonoid = Monoid[Map[AliasName, Set[IndexName]]]
     requestContext
       .allIndicesAndAliases
-      .foldLeft(Map.empty[AliasName,  Set[IndexName]]) {
+      .foldLeft(Map.empty[AliasName, Set[IndexName]]) {
         case (acc, indexWithAliases) =>
           val localIndicesPerAliasMap = indexWithAliases.aliases.map((_, Set(indexWithAliases.index))).toMap
           mapMonoid.combine(acc, localIndicesPerAliasMap)
@@ -196,7 +217,7 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 }
 
 object RequestContextOps {
-  implicit def from(rc: RequestContext): RequestContextOps = new RequestContextOps(rc)
+  implicit def from(rc: RequestContext[_]): RequestContextOps = new RequestContextOps(rc)
 
   sealed trait RequestGroup
   object RequestGroup {
@@ -217,3 +238,9 @@ object RequestContextOps {
   }
 }
 
+trait NonIndexOperationRequestContext extends RequestContext[NonIndexOperation.type]
+trait DirectIndexOperationRequestContext extends RequestContext[DirectIndexOperation]
+sealed trait TemplateOperationRequestContext[T <: TemplateOperation] extends RequestContext[T]
+trait GetTemplateOperationRequestContext extends TemplateOperationRequestContext[TemplateOperation.Get]
+trait CreateTemplateOperationRequestContext extends TemplateOperationRequestContext[TemplateOperation.Create]
+trait DeleteTemplateOperationRequestContext extends TemplateOperationRequestContext[TemplateOperation.Delete]

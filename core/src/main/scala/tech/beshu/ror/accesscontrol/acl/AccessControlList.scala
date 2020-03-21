@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Poli
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
-import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.domain.{Group, Operation}
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -38,7 +38,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
                        (implicit val loggingContext: LoggingContext)
   extends AccessControl {
 
-  override def handleRegularRequest(context: RequestContext): Task[WithHistory[RegularRequestResult]] = {
+  override def handleRegularRequest[T <: Operation](context: RequestContext[T]): Task[WithHistory[RegularRequestResult[T], T]] = {
     blocks
       .tail
       .foldLeft(checkBlock(blocks.head, context)) { case (currentResult, block) =>
@@ -54,7 +54,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
       }
       .run
       .map { case (history, result) =>
-        val res: RegularRequestResult = result match {
+        val res: RegularRequestResult[T] = result match {
           case Matched(block, blockContext) =>
             block.policy match {
               case Policy.Allow => RegularRequestResult.Allow(blockContext, block)
@@ -74,7 +74,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
       }
   }
 
-  override def handleMetadataRequest(context: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
+  override def handleMetadataRequest[T <: Operation](context: RequestContext[T]): Task[WithHistory[UserMetadataRequestResult, T]] = {
     Task
       .gather(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
       .map(_.flatten)
@@ -93,8 +93,8 @@ class AccessControlList(val blocks: NonEmptyList[Block])
       }
   }
 
-  private def userMetadataFrom(matchedResults: NonEmptyList[Matched],
-                               preferredGroup: Option[Group]) = {
+  private def userMetadataFrom[T <: Operation](matchedResults: NonEmptyList[Matched[T]],
+                                               preferredGroup: Option[Group]) = {
     val allGroupsWithRelatedResults =
       matchedResults
         .toList
@@ -121,14 +121,16 @@ class AccessControlList(val blocks: NonEmptyList[Block])
             }
             .getOrElse {
               val Matched(block, blockContext) = matchedResults.head
-              val userMetadata = createUserMetadata(matchedResults.head.blockContext, None, UniqueList.empty)
+              val userMetadata = createUserMetadata(blockContext, None, UniqueList.empty)
               (userMetadata, block)
             }
         }
     }
   }
 
-  private def createUserMetadata(blockContext: BlockContext, currentGroup: Option[Group], availableGroups: UniqueList[Group]) = {
+  private def createUserMetadata[T <: Operation](blockContext: BlockContext[T],
+                                                 currentGroup: Option[Group],
+                                                 availableGroups: UniqueList[Group]) = {
     UserMetadata(
       loggedUser = blockContext.loggedUser,
       currentGroup = currentGroup,
@@ -141,14 +143,14 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     )
   }
 
-  private def executeBlocksForUserMetadata(block: Block, context: RequestContext) = {
+  private def executeBlocksForUserMetadata[T <: Operation](block: Block, context: RequestContext[T]) = {
     block
       .execute(context)
       .map(Some.apply)
       .onErrorRecover { case _ => None }
   }
 
-  private def matchedAllowedBlocks(blockResults: List[Block.ExecutionResult]) = {
+  private def matchedAllowedBlocks[T <: Operation](blockResults: List[Block.ExecutionResult[T]]) = {
     NonEmptyList
       .fromList {
         blockResults.collect { case r@Matched(block, _) if block.policy === Policy.Allow => r }
@@ -158,7 +160,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     }
   }
 
-  private def checkBlock(block: Block, requestContent: RequestContext): WriterT[Task, Vector[History], ExecutionResult] = {
+  private def checkBlock[T <: Operation](block: Block, requestContent: RequestContext[T]): WriterT[Task, Vector[History[T]], ExecutionResult[T]] = {
     WriterT.apply {
       block
         .execute(requestContent)
@@ -166,11 +168,11 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     }
   }
 
-  private def lift(executionResult: ExecutionResult): WriterT[Task, Vector[History], ExecutionResult] = {
-    WriterT.value[Task, Vector[History], ExecutionResult](executionResult)
+  private def lift[T <: Operation](executionResult: ExecutionResult[T]): WriterT[Task, Vector[History[T]], ExecutionResult[T]] = {
+    WriterT.value[Task, Vector[History[T]], ExecutionResult[T]](executionResult)
   }
 
-  private def nonEmptySetOfMismatchedCausesFromHistory(history: Vector[History]): NonEmptySet[ForbiddenByMismatched.Cause] = {
+  private def nonEmptySetOfMismatchedCausesFromHistory[T <: Operation](history: Vector[History[T]]): NonEmptySet[ForbiddenByMismatched.Cause] = {
     val causes = rejectionsFrom(history).map {
       case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound)) => ForbiddenByMismatched.Cause.OperationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => ForbiddenByMismatched.Cause.ImpersonationNotAllowed
@@ -182,7 +184,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
       .toNes
   }
 
-  private def wasRejectedDueToIndexNotFound(history: Vector[History]) = {
+  private def wasRejectedDueToIndexNotFound[T <: Operation](history: Vector[History[T]]) = {
     val rejections = rejectionsFrom(history)
     !impersonationRejectionExists(rejections) && indexNotFoundRejectionExists(rejections)
   }
@@ -205,7 +207,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     }
   }
 
-  private def rejectionsFrom(history: Vector[History]) = {
+  private def rejectionsFrom[T <: Operation](history: Vector[History[T]]) = {
     history.flatMap(_.items.map(_.result).collect { case r: Rejected => r })
   }
 }

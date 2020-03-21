@@ -21,11 +21,11 @@ import cats.implicits._
 import com.github.tototoshi.csv.{CSVParser, DefaultCSVFormat}
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.Extractable.ExtractError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
-import tech.beshu.ror.accesscontrol.domain.{ClaimName, Header}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
+import tech.beshu.ror.accesscontrol.domain.{ClaimName, Header, Operation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
@@ -33,10 +33,10 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.CustomClaimValue.{Collection
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
-private [runtime] trait RuntimeResolvableVariable[VALUE] {
+private[runtime] trait RuntimeResolvableVariable[VALUE] {
 
-  def resolve(requestContext: RequestContext,
-              blockContext: BlockContext): Either[Unresolvable, VALUE]
+  def resolve[T <: Operation](requestContext: RequestContext[T],
+                              blockContext: BlockContext[T]): Either[Unresolvable, VALUE]
 }
 
 object RuntimeResolvableVariable {
@@ -55,6 +55,7 @@ object RuntimeResolvableVariable {
 
     trait AlwaysRightConvertible[T] extends Convertible[T] {
       def safeConvert: NonEmptyString => T
+
       override def convert: String => Either[ConvertError, T] = str => {
         NonEmptyString
           .from(str)
@@ -66,6 +67,7 @@ object RuntimeResolvableVariable {
       def from[T](conversion: NonEmptyString => T): AlwaysRightConvertible[T] = new AlwaysRightConvertible[T] {
         override def safeConvert: NonEmptyString => T = conversion
       }
+
       val stringAlwaysRightConvertible: AlwaysRightConvertible[String] = new AlwaysRightConvertible[String] {
         override def safeConvert: NonEmptyString => String = _.value
       }
@@ -75,8 +77,8 @@ object RuntimeResolvableVariable {
 
 sealed trait Extractable[VALUE] {
 
-  def extractUsing(requestContext: RequestContext,
-                   blockContext: BlockContext): Either[ExtractError, VALUE]
+  def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                   blockContext: BlockContext[T]): Either[ExtractError, VALUE]
 }
 object Extractable {
 
@@ -88,13 +90,13 @@ sealed trait SingleExtractable extends Extractable[String]
 object SingleExtractable {
 
   final case class Const(value: String) extends SingleExtractable {
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, String] = Right(value)
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, String] = Right(value)
   }
 
   case object UserIdVar extends SingleExtractable with VariableType.User {
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, String] = {
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, String] = {
       blockContext
         .loggedUser
         .map(_.id.value) match {
@@ -105,8 +107,8 @@ object SingleExtractable {
   }
 
   final case class HeaderVar(header: Header.Name) extends SingleExtractable with VariableType.Header {
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, String] = {
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, String] = {
       requestContext
         .headers
         .find(_.name === header)
@@ -120,8 +122,8 @@ object SingleExtractable {
   final case class JwtPayloadVar(jsonPath: JsonPath) extends SingleExtractable with VariableType.Jwt {
     private val varClaim = ClaimName(jsonPath)
 
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, String] = {
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, String] = {
       blockContext.jwt match {
         case Some(payload) =>
           payload.claims.customClaim(varClaim) match {
@@ -140,8 +142,8 @@ object SingleExtractable {
 
   case object CurrentGroupVar extends SingleExtractable with VariableType.CurrentGroup {
 
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, String] = {
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, String] = {
       blockContext
         .currentGroup
         .map(_.value.value) match {
@@ -153,15 +155,15 @@ object SingleExtractable {
 
   case object AvailableGroupsVar extends SingleExtractable with VariableType.AvailableGroups {
 
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, String] = {
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, String] = {
       Left(ExtractError(s"Available groups are usable only with @explode"))
     }
   }
 }
 
 sealed trait MultiExtractable extends Extractable[NonEmptyList[String]] {
-  private val csvParser =  new CSVParser(new DefaultCSVFormat {})
+  private val csvParser = new CSVParser(new DefaultCSVFormat {})
 
   protected def parseCsvValue(csvValue: String): NonEmptyList[String] = {
     (for {
@@ -176,15 +178,16 @@ sealed trait MultiExtractable extends Extractable[NonEmptyList[String]] {
 object MultiExtractable {
 
   final case class SingleExtractableWrapper(extractable: SingleExtractable) extends MultiExtractable {
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] =
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, NonEmptyList[String]] =
       extractable.extractUsing(requestContext, blockContext).map(NonEmptyList.one)
   }
 
   final case class Const(value: String) extends MultiExtractable {
     private val singleConst = SingleExtractable.Const(value)
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] =
+
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, NonEmptyList[String]] =
       singleConst
         .extractUsing(requestContext, blockContext)
         .map(NonEmptyList.one)
@@ -193,8 +196,8 @@ object MultiExtractable {
   case object UserIdVar extends MultiExtractable with VariableType.User {
     private val singleUserIdExtractable = SingleExtractable.UserIdVar
 
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, NonEmptyList[String]] = {
       singleUserIdExtractable
         .extractUsing(requestContext, blockContext)
         .map(NonEmptyList.one)
@@ -203,8 +206,9 @@ object MultiExtractable {
 
   final case class HeaderVar(header: Header.Name) extends MultiExtractable with VariableType.Header {
     private val singleHeaderExtractable = SingleExtractable.HeaderVar(header)
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
+
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, NonEmptyList[String]] = {
       singleHeaderExtractable
         .extractUsing(requestContext, blockContext)
         .map(parseCsvValue)
@@ -214,8 +218,8 @@ object MultiExtractable {
   final case class JwtPayloadVar(jsonPath: JsonPath) extends MultiExtractable with VariableType.Jwt {
     private val singleJwtPayloadExtractable = SingleExtractable.JwtPayloadVar(jsonPath)
 
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, NonEmptyList[String]] = {
       singleJwtPayloadExtractable
         .extractUsing(requestContext, blockContext)
         .map(parseCsvValue)
@@ -225,8 +229,8 @@ object MultiExtractable {
   case object CurrentGroupVar extends MultiExtractable with VariableType.CurrentGroup {
     private val singleCurrentGroupExtractable = SingleExtractable.CurrentGroupVar
 
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, NonEmptyList[String]] = {
       singleCurrentGroupExtractable
         .extractUsing(requestContext, blockContext)
         .map(NonEmptyList.one)
@@ -234,8 +238,8 @@ object MultiExtractable {
   }
 
   case object AvailableGroupsVar extends MultiExtractable with VariableType.AvailableGroups {
-    override def extractUsing(requestContext: RequestContext,
-                              blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
+    override def extractUsing[T <: Operation](requestContext: RequestContext[T],
+                                              blockContext: BlockContext[T]): Either[ExtractError, NonEmptyList[String]] = {
       NonEmptyList.fromList(
         blockContext
           .availableGroups

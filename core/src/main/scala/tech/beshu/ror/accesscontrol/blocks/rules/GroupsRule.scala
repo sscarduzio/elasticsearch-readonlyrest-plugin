@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.domain.{Group, Operation}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id._
@@ -45,8 +45,8 @@ class GroupsRule(val settings: Settings)
 
   override val name: Rule.Name = GroupsRule.name
 
-  override def tryToAuthenticate(requestContext: RequestContext,
-                                 blockContext: BlockContext): Task[RuleResult] = Task.unit
+  override def tryToAuthenticate[T <: Operation](requestContext: RequestContext[T],
+                                                 blockContext: BlockContext[T]): Task[RuleResult[T]] = Task.unit
     .flatMap { _ =>
       UniqueNonEmptyList.fromList(resolveGroups(requestContext, blockContext)) match {
         case None => Task.now(Rejected())
@@ -57,9 +57,9 @@ class GroupsRule(val settings: Settings)
       }
     }
 
-  private def continueCheckingWithUserDefinitions(requestContext: RequestContext,
-                                                  blockContext: BlockContext,
-                                                  resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult] = {
+  private def continueCheckingWithUserDefinitions[T <: Operation](requestContext: RequestContext[T],
+                                                                  blockContext: BlockContext[T],
+                                                                  resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[T]] = {
     blockContext.loggedUser match {
       case Some(user) =>
         NonEmptySet.fromSet(settings.usersDefinitions.filter(_.id === user.id)) match {
@@ -73,10 +73,10 @@ class GroupsRule(val settings: Settings)
     }
   }
 
-  private def tryToAuthorizeAndAuthenticateUsing(userDefs: NonEmptySet[UserDef],
-                                                 requestContext: RequestContext,
-                                                 blockContext: BlockContext,
-                                                 resolvedGroups: UniqueNonEmptyList[Group]) = {
+  private def tryToAuthorizeAndAuthenticateUsing[T <: Operation](userDefs: NonEmptySet[UserDef],
+                                                                 requestContext: RequestContext[T],
+                                                                 blockContext: BlockContext[T],
+                                                                 resolvedGroups: UniqueNonEmptyList[Group]) = {
     userDefs
       .reduceLeftTo(authorizeAndAuthenticate(requestContext, blockContext, resolvedGroups)) {
         case (lastUserDefResult, nextUserDef) =>
@@ -91,10 +91,10 @@ class GroupsRule(val settings: Settings)
       }
   }
 
-  private def authorizeAndAuthenticate(requestContext: RequestContext,
-                                       blockContext: BlockContext,
-                                       resolvedGroups: UniqueNonEmptyList[Group])
-                                      (userDef: UserDef) = {
+  private def authorizeAndAuthenticate[T <: Operation](requestContext: RequestContext[T],
+                                                       blockContext: BlockContext[T],
+                                                       resolvedGroups: UniqueNonEmptyList[Group])
+                                                      (userDef: UserDef): Task[Option[BlockContext[T]]] = {
     UniqueNonEmptyList.fromSortedSet(userDef.groups.intersect(resolvedGroups)) match {
       case None =>
         Task.now(None)
@@ -105,7 +105,8 @@ class GroupsRule(val settings: Settings)
           .map {
             case RuleResult.Rejected(_) =>
               None
-            case RuleResult.Fulfilled(newBlockContext) =>
+            case fulfilled: RuleResult.Fulfilled[T] =>
+              val newBlockContext = fulfilled.blockContext
               newBlockContext.loggedUser match {
                 case Some(loggedUser) if loggedUser.id === userDef.id => Some {
                   newBlockContext.withAddedAvailableGroups(availableGroups)
@@ -121,8 +122,8 @@ class GroupsRule(val settings: Settings)
     }
   }
 
-  private def resolveGroups(requestContext: RequestContext,
-                            blockContext: BlockContext) = {
+  private def resolveGroups[T <: Operation](requestContext: RequestContext[T],
+                                            blockContext: BlockContext[T]) = {
     resolveAll(settings.groups.toNonEmptyList, requestContext, blockContext)
   }
 }

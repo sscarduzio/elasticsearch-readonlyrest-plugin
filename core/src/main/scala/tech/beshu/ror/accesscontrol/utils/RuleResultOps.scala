@@ -18,26 +18,29 @@ package tech.beshu.ror.accesscontrol.utils
 
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.domain.Operation
 
 import scala.language.implicitConversions
 
-class RuleResultOps(val ruleResult: RuleResult) extends AnyVal {
+class RuleResultOps[T <: Operation](val ruleResult: RuleResult[T]) extends AnyVal {
 
-  def toEither: Either[Rejected, Fulfilled] = ruleResult match {
-    case fulfilled: Fulfilled => Right(fulfilled)
-    case rejected: RuleResult.Rejected => Left(Rejected())
+  def toEither: Either[Rejected, Fulfilled[T]] = ruleResult match {
+    case fulfilled: Fulfilled[T] => Right(fulfilled)
+    case _: RuleResult.Rejected => Left(Rejected())
   }
 }
 
-class RuleResultEitherOps(val ruleResultEither: Either[Rejected, Fulfilled]) extends AnyVal {
+class RuleResultEitherOps[T <: Operation](val ruleResultEither: Either[Rejected, Fulfilled[T]]) extends AnyVal {
 
-  def toRuleResult: RuleResult = ruleResultEither match {
+  def toRuleResult: RuleResult[T] = ruleResultEither match {
     case Right(value) => value
     case Left(value) => value
   }
 }
 
 object RuleResultOps {
-  implicit def from(ruleResult: RuleResult): RuleResultOps = new RuleResultOps(ruleResult)
-  implicit def from(ruleResultEither: Either[Rejected, Fulfilled]): RuleResultEitherOps = new RuleResultEitherOps(ruleResultEither)
+  implicit def from[T <: Operation](ruleResult: RuleResult[T]): RuleResultOps[T] =
+    new RuleResultOps(ruleResult)
+  implicit def from[T <: Operation](ruleResultEither: Either[Rejected, Fulfilled[T]]): RuleResultEitherOps[T] =
+    new RuleResultEitherOps(ruleResultEither)
 }

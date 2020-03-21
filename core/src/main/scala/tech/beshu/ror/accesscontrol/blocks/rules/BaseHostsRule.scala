@@ -24,7 +24,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.Address
+import tech.beshu.ror.accesscontrol.domain.{Address, Operation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TaskOps._
 
@@ -32,10 +32,10 @@ import scala.util.Success
 
 abstract class BaseHostsRule extends RegularRule with Logging {
 
-  protected def checkAllowedAddresses(requestContext: RequestContext,
-                                      blockContext: BlockContext)
-                                     (allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
-                                      addressToCheck: Address): Task[Boolean] = {
+  protected def checkAllowedAddresses[T <: Operation](requestContext: RequestContext[T],
+                                                      blockContext: BlockContext[T])
+                                                     (allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
+                                                      addressToCheck: Address): Task[Boolean] = {
     allowedAddresses
       .foldLeft(Task.now(false)) {
         case (result, host) =>

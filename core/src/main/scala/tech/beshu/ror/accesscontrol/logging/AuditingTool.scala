@@ -16,21 +16,21 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import java.time.{Clock, Instant}
 import java.time.format.DateTimeFormatter
+import java.time.{Clock, Instant}
 
 import cats.Show
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
+import tech.beshu.ror.accesscontrol.domain.{Address, Header, Operation}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.es.AuditSink
 
 class AuditingTool(settings: Settings,
@@ -38,7 +38,7 @@ class AuditingTool(settings: Settings,
                   (implicit clock: Clock,
                    loggingContext: LoggingContext) {
 
-  def audit(response: ResponseContext): Task[Unit] = {
+  def audit[T <: Operation](response: ResponseContext[T]): Task[Unit] = {
     safeRunSerializer(response)
       .map {
         case Some(entry) =>
@@ -51,7 +51,7 @@ class AuditingTool(settings: Settings,
       }
   }
 
-  private def toAuditResponse(responseContext: ResponseContext) = {
+  private def toAuditResponse[T <: Operation](responseContext: ResponseContext[T]) = {
     responseContext match {
       case ResponseContext.AllowedBy(requestContext, block, blockContext, history) =>
         AuditResponseContext.Allowed(
@@ -80,18 +80,18 @@ class AuditingTool(settings: Settings,
     }
   }
 
-  private def toAuditRequestContext(requestContext: RequestContext,
-                                    blockContext: Option[BlockContext],
-                                    historyEntries: Vector[History]): AuditRequestContext = {
+  private def toAuditRequestContext[T <: Operation](requestContext: RequestContext[T],
+                                                    blockContext: Option[BlockContext[T]],
+                                                    historyEntries: Vector[History[T]]): AuditRequestContext = {
     new AuditRequestContext {
-      implicit val showHeader:Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
+      implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       override val timestamp: Instant = requestContext.timestamp
       override val id: String = requestContext.id.value
       override val indices: Set[String] = requestContext.indices.map(_.value.value)
       override val action: String = requestContext.action.value
       override val headers: Map[String, String] = requestContext.headers.map(h => (h.name.value.value, h.value.value)).toMap
       override val uriPath: String = requestContext.uriPath.value
-      override val history: String = historyEntries.map(_.show).mkString(", ")
+      override val history: String = historyEntries.map(h => historyShow(showHeader).show(h)).mkString(", ")
       override val content: String = requestContext.content
       override val contentLength: Integer = requestContext.contentLength.toBytes.toInt
       override val remoteAddress: String = requestContext.remoteAddress match {
@@ -99,7 +99,7 @@ class AuditingTool(settings: Settings,
         case Some(Address.Name(value)) => value.toString
         case None => "N/A"
       }
-      override val localAddress: String = requestContext.localAddress  match {
+      override val localAddress: String = requestContext.localAddress match {
         case Address.Ip(value) => value.toString
         case Address.Name(value) => value.toString
       }
@@ -122,7 +122,7 @@ class AuditingTool(settings: Settings,
     case Verbosity.Error => AuditResponseContext.Verbosity.Error
   }
 
-  private def safeRunSerializer(response: ResponseContext) = {
+  private def safeRunSerializer[T <: Operation](response: ResponseContext[T]) = {
     Task(settings.logSerializer.onResponse(toAuditResponse(response)))
   }
 }

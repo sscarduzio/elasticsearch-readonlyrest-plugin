@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.{Header, Operation}
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -40,17 +40,17 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
                                    (implicit loggingContext: LoggingContext)
   extends AccessControl with Logging {
 
-  override def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]] = {
+  override def handleRegularRequest[T <: Operation](requestContext: RequestContext[T]): Task[WithHistory[RegularRequestResult[T], T]] = {
     logger.debug(s"checking request: ${requestContext.id.show}")
     underlying
       .handleRegularRequest(requestContext)
       .andThen {
         case Success(resultWithHistory) =>
           resultWithHistory.result match {
-            case RegularRequestResult.Allow(blockContext, block) =>
-              log(AllowedBy(requestContext, block, blockContext, resultWithHistory.history))
-            case RegularRequestResult.ForbiddenBy(blockContext, block) =>
-              log(ForbiddenBy(requestContext, block, blockContext, resultWithHistory.history))
+            case allow: RegularRequestResult.Allow[T] =>
+              log(AllowedBy(requestContext, allow.block, allow.blockContext, resultWithHistory.history))
+            case forbiddenBy: RegularRequestResult.ForbiddenBy[T] =>
+              log(ForbiddenBy(requestContext, forbiddenBy.block, forbiddenBy.blockContext, resultWithHistory.history))
             case RegularRequestResult.ForbiddenByMismatched(_) =>
               log(Forbidden(requestContext, resultWithHistory.history))
             case RegularRequestResult.IndexNotFound =>
@@ -58,14 +58,14 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
             case RegularRequestResult.Failed(ex) =>
               log(Errored(requestContext, ex))
             case RegularRequestResult.PassedThrough =>
-              // ignore
+            // ignore
           }
         case Failure(ex) =>
           logger.error("Request handling unexpected failure", ex)
       }
   }
 
-  override def handleMetadataRequest(requestContext: RequestContext): Task[WithHistory[UserMetadataRequestResult]] = {
+  override def handleMetadataRequest[T <: Operation](requestContext: RequestContext[T]): Task[WithHistory[UserMetadataRequestResult, T]] = {
     logger.debug(s"checking user metadata request: ${requestContext.id.show}")
     underlying
       .handleMetadataRequest(requestContext)
@@ -77,20 +77,20 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
             case UserMetadataRequestResult.Forbidden =>
               log(Forbidden(requestContext, resultWithHistory.history))
             case UserMetadataRequestResult.PassedThrough =>
-              // ignore
+            // ignore
           }
         case Failure(ex) =>
           logger.error("Request handling unexpected failure", ex)
       }
   }
 
-  private def log(responseContext: ResponseContext): Unit = {
+  private def log[T <: Operation](responseContext: ResponseContext[T]): Unit = {
     if (isLoggableEntry(responseContext)) {
       implicit val showHeader: Show[Header] =
-        if(logger.delegate.isDebugEnabled()) headerShow
+        if (logger.delegate.isDebugEnabled()) headerShow
         else obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator.responseContextShow
-      logger.info(responseContext.show)
+      logger.info(responseContextShow[T].show(responseContext))
     }
     auditingTool.foreach {
       _
@@ -101,47 +101,53 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
           case Left(ex) =>
             logger.warn("Auditing issue", ex)
         }
-      }
+    }
   }
 
-  private def isLoggableEntry(context: ResponseContext): Boolean = {
+  private def isLoggableEntry[T <: Operation](context: ResponseContext[T]): Boolean = {
     def shouldBeLogged(block: Block) = {
       block.verbosity match {
         case Verbosity.Info => true
         case Verbosity.Error => false
       }
     }
+
     context match {
       case AllowedBy(_, block, _, _) => shouldBeLogged(block)
       case Allow(_, _, _, _) => true
-      case _: ForbiddenBy | _: Forbidden | _: Errored | _: RequestedIndexNotExist => true
+      case _: ForbiddenBy[T] | _: Forbidden[T] | _: Errored[T] | _: RequestedIndexNotExist[T] => true
     }
   }
-
 }
 
 object AccessControlLoggingDecorator {
 
-  private implicit def responseContextShow(implicit headerShow:Show[Header]): Show[ResponseContext] = {
-    Show.show {
-      case AllowedBy(requestContext, block, blockContext, history) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)
-        s"""${Constants.ANSI_CYAN}ALLOWED by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
-      case Allow(requestContext, metadata, block, history) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(metadata.loggedUser, metadata.foundKibanaIndex, history)
-        s"""${Constants.ANSI_CYAN}ALLOWED by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
-      case ForbiddenBy(requestContext, block, blockContext, history) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(blockContext.loggedUser, blockContext.kibanaIndex, history)
-        s"""${Constants.ANSI_PURPLE}FORBIDDEN by ${block.show} req=${requestContext.show}${Constants.ANSI_RESET}"""
-      case Forbidden(requestContext, history) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, history)
-        s"""${Constants.ANSI_PURPLE}FORBIDDEN by default req=${requestContext.show}${Constants.ANSI_RESET}"""
-      case RequestedIndexNotExist(requestContext, history) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, history)
-        s"""${Constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestContext.show}${Constants.ANSI_RESET}"""
-      case Errored(requestContext, _) =>
-        implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector.empty)
-        s"""${Constants.ANSI_YELLOW}ERRORED by error req=${requestContext.show}${Constants.ANSI_RESET}"""
+  private implicit def responseContextShow[T <: Operation](implicit headerShow: Show[Header]): Show[ResponseContext[T]] = {
+    Show.show[ResponseContext[T]] {
+      case allowedBy: AllowedBy[T] =>
+        implicit val requestShow: Show[RequestContext[T]] = RequestContext.show(
+          allowedBy.blockContext.loggedUser, allowedBy.blockContext.kibanaIndex, allowedBy.history
+        )
+        s"""${Constants.ANSI_CYAN}ALLOWED by ${allowedBy.block.show} req=${allowedBy.requestContext.show}${Constants.ANSI_RESET}"""
+      case allow: Allow[T] =>
+        implicit val requestShow: Show[RequestContext[T]] = RequestContext.show(
+          allow.userMetadata.loggedUser, allow.userMetadata.foundKibanaIndex, allow.history
+        )
+        s"""${Constants.ANSI_CYAN}ALLOWED by ${allow.block.show} req=${allow.requestContext.show}${Constants.ANSI_RESET}"""
+      case forbiddenBy: ForbiddenBy[T] =>
+        implicit val requestShow: Show[RequestContext[T]] = RequestContext.show(
+          forbiddenBy.blockContext.loggedUser, forbiddenBy.blockContext.kibanaIndex, forbiddenBy.history
+        )
+        s"""${Constants.ANSI_PURPLE}FORBIDDEN by ${forbiddenBy.block.show} req=${forbiddenBy.requestContext.show}${Constants.ANSI_RESET}"""
+      case forbidden: Forbidden[T] =>
+        implicit val requestShow: Show[RequestContext[T]] = RequestContext.show(None, None, forbidden.history)
+        s"""${Constants.ANSI_PURPLE}FORBIDDEN by default req=${forbidden.requestContext.show}${Constants.ANSI_RESET}"""
+      case requestedIndexNotExist: RequestedIndexNotExist[T] =>
+        implicit val requestShow: Show[RequestContext[T]] = RequestContext.show(None, None, requestedIndexNotExist.history)
+        s"""${Constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestedIndexNotExist.requestContext.show}${Constants.ANSI_RESET}"""
+      case errored: Errored[T] =>
+        implicit val requestShow: Show[RequestContext[T]] = RequestContext.show[T](None, None, Vector.empty)
+        s"""${Constants.ANSI_YELLOW}ERRORED by error req=${errored.requestContext.show}${Constants.ANSI_RESET}"""
     }
   }
 }

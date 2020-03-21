@@ -55,8 +55,8 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
 
   private val hasher = new SecureStringHasher(Algorithm.Sha256)
 
-  override def tryToAuthenticate(requestContext: RequestContext,
-                                 blockContext: BlockContext): Task[RuleResult] = Task
+  override def tryToAuthenticate[T <: Operation](requestContext: RequestContext[T],
+                                                 blockContext: BlockContext[T]): Task[RuleResult[T]] = Task
     .unit
     .flatMap { _ =>
       jwtTokenFrom(requestContext) match {
@@ -68,18 +68,20 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       }
     }
 
-  private def jwtTokenFrom(requestContext: RequestContext) = {
+  private def jwtTokenFrom[T <: Operation](requestContext: RequestContext[T]) = {
     requestContext
-        .authorizationToken(settings.jwt.authorizationTokenDef)
-        .map(t => JwtToken(t.value))
+      .authorizationToken(settings.jwt.authorizationTokenDef)
+      .map(t => JwtToken(t.value))
   }
 
-  private def process(token: JwtToken, blockContext: BlockContext) = {
+  private def process[T <: Operation](token: JwtToken, blockContext: BlockContext[T]) = {
     userAndGroupsFromJwtToken(token) match {
       case Left(_) =>
         Task.now(Rejected())
       case Right((tokenPayload, user, groups)) =>
-        if(logger.delegate.isDebugEnabled) { logClaimSearchResults(user, groups) }
+        if (logger.delegate.isDebugEnabled) {
+          logClaimSearchResults(user, groups)
+        }
         val claimProcessingResult = for {
           newBlockContext <- handleUserClaimSearchResult(blockContext, user)
           finalBlockContext <- handleGroupsClaimSearchResult(newBlockContext, groups)
@@ -140,7 +142,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
             Try(parser.parseClaimsJwt(s"$fst.$snd.").getBody)
               .toEither
               .map(JwtTokenPayload.apply)
-              .left.map { ex => logBadToken(ex, token)}
+              .left.map { ex => logBadToken(ex, token) }
           case _ =>
             Left(())
         }
@@ -148,7 +150,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
         Try(parser.parseClaimsJws(token.value.value).getBody)
           .toEither
           .map(JwtTokenPayload.apply)
-          .left.map { ex => logBadToken(ex, token)}
+          .left.map { ex => logBadToken(ex, token) }
     }
   }
 
@@ -160,7 +162,8 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     settings.jwt.groupsClaim.map(payload.claims.groupsClaim)
   }
 
-  private def handleUserClaimSearchResult(blockContext: BlockContext, result: Option[ClaimSearchResult[User.Id]]) = {
+  private def handleUserClaimSearchResult[T <: Operation](blockContext: BlockContext[T],
+                                                          result: Option[ClaimSearchResult[User.Id]]) = {
     result match {
       case None => Right(blockContext)
       case Some(Found(userId)) => Right(blockContext.withLoggedUser(DirectlyLoggedUser(userId)))
@@ -168,7 +171,8 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
   }
 
-  private def handleGroupsClaimSearchResult(blockContext: BlockContext, result: Option[ClaimSearchResult[UniqueList[Group]]]) = {
+  private def handleGroupsClaimSearchResult[T <: Operation](blockContext: BlockContext[T],
+                                                            result: Option[ClaimSearchResult[UniqueList[Group]]]) = {
     result match {
       case None if settings.groups.nonEmpty => Left(())
       case Some(NotFound) if settings.groups.nonEmpty => Left(())

@@ -21,9 +21,10 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Forbidden
 import tech.beshu.ror.accesscontrol.AccessControlActionHandler.ForbiddenCause
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.domain.Operation
 
 trait AccessControlActionHandler {
-  def onAllow(blockContext: BlockContext): Unit
+  def onAllow[T <: Operation](blockContext: BlockContext[T]): Unit
   def onForbidden(causes: java.util.List[ForbiddenCause]): Unit
   def onError(t: Throwable): Unit
   def onPassThrough(): Unit
@@ -55,34 +56,35 @@ object AccessControlActionHandler {
   }
 }
 
+// todo: do we need it?
 object BlockContextRawDataHelper {
 
-  def responseHeadersFrom(blockContext: BlockContext): Map[String, String] = {
+  def responseHeadersFrom[T <: Operation](blockContext: BlockContext[T]): Map[String, String] = {
     blockContext
       .responseHeaders
       .map(h => (h.name.value.value, h.value.value))
       .toMap
   }
 
-  def contextHeadersFrom(blockContext: BlockContext): Map[String, String] = {
+  def contextHeadersFrom[T <: Operation](blockContext: BlockContext[T]): Map[String, String] = {
     blockContext
       .contextHeaders
       .map { h => (h.name.value.value, h.value.value) }
       .toMap
   }
 
-  def indicesFrom(blockContext: BlockContext): Outcome[Set[String]] = {
+  def indicesFrom[T <: Operation](blockContext: BlockContext[T]): Outcome[Set[String]] = {
     blockContext.indices.map(_.map(_.value.value))
   }
 
-  def repositoriesFrom(blockContext: BlockContext): Set[String] = {
+  def repositoriesFrom[T <: Operation](blockContext: BlockContext[T]): Set[String] = {
     blockContext.repositories match {
       case BlockContext.Outcome.Exist(repositories) => repositories.map(_.value.value)
       case BlockContext.Outcome.NotExist => Set.empty
     }
   }
 
-  def snapshotsFrom(blockContext: BlockContext): Set[String] = {
+  def snapshotsFrom[T <: Operation](blockContext: BlockContext[T]): Set[String] = {
     blockContext.snapshots match {
       case BlockContext.Outcome.Exist(snapshots) => snapshots.map(_.value.value)
       case BlockContext.Outcome.NotExist => Set.empty

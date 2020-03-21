@@ -24,12 +24,12 @@ import cats.implicits._
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
 import io.circe.parser._
 import io.circe.{Decoder, Encoder}
-import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
-import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.Header.Name.setCookie
+import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, Operation, User}
+import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.providers.UuidProvider
@@ -49,8 +49,8 @@ object RorSessionCookie extends Logging {
     case object Invalid extends ExtractingError
   }
 
-  def extractFrom(context: RequestContext, user: LoggedUser)
-                 (implicit clock: Clock, uuidProvider: UuidProvider): Either[ExtractingError, RorSessionCookie] = {
+  def extractFrom[T <: Operation](context: RequestContext[T], user: LoggedUser)
+                                 (implicit clock: Clock, uuidProvider: UuidProvider): Either[ExtractingError, RorSessionCookie] = {
     for {
       httpCookie <- extractRorHttpCookie(context).toRight(Absent)
       cookieAndSignature <- parseRorSessionCookieAndSignature(httpCookie).left.map(_ => Invalid: ExtractingError)
@@ -66,7 +66,7 @@ object RorSessionCookie extends Logging {
       NonEmptyString.unsafeFrom(s"$rorCookieName=${coders.encoder((cookie, Signature.sign(cookie))).noSpaces}")
     )
 
-  private def extractRorHttpCookie(context: RequestContext) = {
+  private def extractRorHttpCookie[T <: Operation](context: RequestContext[T]) = {
     context
       .headers
       .find(_.name === Header.Name.cookie)

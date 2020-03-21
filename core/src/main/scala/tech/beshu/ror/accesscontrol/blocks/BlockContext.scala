@@ -19,56 +19,57 @@ package tech.beshu.ror.accesscontrol.blocks
 import cats.{Eval, Foldable, Functor}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{IndexRelated, Outcome}
 import tech.beshu.ror.accesscontrol.blocks.RequestContextInitiatedBlockContext.BlockContextData
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.{Operation, _}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-trait BlockContext {
+trait BlockContext[T <: Operation] {
 
   def loggedUser: Option[LoggedUser]
-  def withLoggedUser(user: LoggedUser): BlockContext
+  def withLoggedUser(user: LoggedUser): BlockContext[T]
 
   def jwt: Option[JwtTokenPayload]
-  def withJwt(token: JwtTokenPayload): BlockContext
+  def withJwt(token: JwtTokenPayload): BlockContext[T]
 
   def availableGroups: UniqueList[Group]
   def currentGroup: Option[Group]
-  def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext
+  def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext[T]
 
   def responseHeaders: Set[Header]
-  def withAddedResponseHeader(header: Header): BlockContext
+  def withAddedResponseHeader(header: Header): BlockContext[T]
 
   def contextHeaders: Set[Header]
-  def withAddedContextHeader(header: Header): BlockContext
+  def withAddedContextHeader(header: Header): BlockContext[T]
 
   def indices: Outcome[Set[IndexName]]
-  def withIndices(indices: Set[IndexName]): BlockContext
+  def withIndices(indices: Set[IndexName]): BlockContext[T]
 
   def filteredIndices: Outcome[Set[IndexRelated]]
-  def withFilteredIndices(indexRelated: Set[IndexRelated]): BlockContext
+  def withFilteredIndices(indexRelated: Set[IndexRelated]): BlockContext[T]
 
   def repositories: Outcome[Set[IndexName]]
-  def withRepositories(indices: Set[IndexName]): BlockContext
+  def withRepositories(indices: Set[IndexName]): BlockContext[T]
 
   def snapshots: Outcome[Set[IndexName]]
-  def withSnapshots(indices: Set[IndexName]): BlockContext
+  def withSnapshots(indices: Set[IndexName]): BlockContext[T]
 
   def hiddenKibanaApps: Set[KibanaApp]
-  def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext
+  def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext[T]
 
   def userOrigin: Option[UserOrigin]
-  def withUserOrigin(origin: UserOrigin): BlockContext
+  def withUserOrigin(origin: UserOrigin): BlockContext[T]
 
   def kibanaAccess: Option[KibanaAccess]
-  def withKibanaAccess(access: KibanaAccess): BlockContext
+  def withKibanaAccess(access: KibanaAccess): BlockContext[T]
 
   def kibanaIndex: Option[IndexName]
-  def withKibanaIndex(index: IndexName): BlockContext
+  def withKibanaIndex(index: IndexName): BlockContext[T]
 
   def kibanaTemplateIndex: Option[IndexName]
-  def withKibanaTemplateIndex(index: IndexName): BlockContext
+  def withKibanaTemplateIndex(index: IndexName): BlockContext[T]
 
+  def modifyOperation(modification: OperationModification[T]): BlockContext[T]
 }
 
 object BlockContext {
@@ -85,7 +86,7 @@ object BlockContext {
     implicit val functor: Functor[Outcome] = new Functor[Outcome] {
       override def map[A, B](fa: Outcome[A])(f: A => B): Outcome[B] = fa match {
         case Exist(value) => Exist(f(value))
-        case ne@NotExist => ne
+        case NotExist => NotExist
       }
     }
     implicit val foldable: Foldable[Outcome] = new Foldable[Outcome] {
@@ -112,64 +113,65 @@ object BlockContext {
   }
 }
 
-object NoOpBlockContext extends BlockContext {
+class NoOpBlockContext[T <: Operation] extends BlockContext[T] {
   override val loggedUser: Option[LoggedUser] = None
-  override def withLoggedUser(user: LoggedUser): BlockContext = this
+  override def withLoggedUser(user: LoggedUser): BlockContext[T] = this
 
   override val jwt: Option[JwtTokenPayload] = None
-  override def withJwt(token: JwtTokenPayload): BlockContext = this
+  override def withJwt(token: JwtTokenPayload): BlockContext[T] = this
 
   override val availableGroups: UniqueList[Group] = UniqueList.empty
-  override def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext = this
+  override def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext[T]= this
   override val currentGroup: Option[Group] = None
 
   override val responseHeaders: Set[Header] = Set.empty
-  override def withAddedResponseHeader(header: Header): BlockContext = this
+  override def withAddedResponseHeader(header: Header): BlockContext[T]= this
 
   override val hiddenKibanaApps: Set[KibanaApp] = Set.empty
-  override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext = this
+  override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext[T]= this
 
   override val kibanaAccess: Option[KibanaAccess] = None
-  override def withKibanaAccess(access: KibanaAccess): BlockContext = this
+  override def withKibanaAccess(access: KibanaAccess): BlockContext[T]= this
 
   override val contextHeaders: Set[Header] = Set.empty
-  override def withAddedContextHeader(header: Header): BlockContext = this
+  override def withAddedContextHeader(header: Header): BlockContext[T]= this
 
   override val kibanaIndex: Option[IndexName] = None
-  override def withKibanaIndex(index: IndexName): BlockContext = this
+  override def withKibanaIndex(index: IndexName): BlockContext[T]= this
 
   override val kibanaTemplateIndex: Option[IndexName] = None
-  override def withKibanaTemplateIndex(index: IndexName): BlockContext = this
+  override def withKibanaTemplateIndex(index: IndexName): BlockContext[T]= this
 
   override val userOrigin: Option[UserOrigin] = None
-  override def withUserOrigin(origin: UserOrigin): BlockContext = this
+  override def withUserOrigin(origin: UserOrigin): BlockContext[T]= this
 
   override val indices: Outcome[Set[IndexName]] = Outcome.NotExist
-  override def withIndices(indices: Set[IndexName]): BlockContext = this
+  override def withIndices(indices: Set[IndexName]): BlockContext[T]= this
 
   override val repositories: Outcome[Set[IndexName]] = Outcome.NotExist
-  override def withRepositories(indices: Set[IndexName]): BlockContext = this
+  override def withRepositories(indices: Set[IndexName]): BlockContext[T]= this
 
   override val snapshots: Outcome[Set[IndexName]] = Outcome.NotExist
-  override def withSnapshots(indices: Set[IndexName]): BlockContext = this
+  override def withSnapshots(indices: Set[IndexName]): BlockContext[T]= this
 
   override def filteredIndices: Outcome[Set[IndexRelated]] = ???
+  override def withFilteredIndices(indexRelated: Set[IndexRelated]): BlockContext[T]= ???
 
-  override def withFilteredIndices(indexRelated: Set[IndexRelated]): BlockContext = ???
+  override def modifyOperation(modification: OperationModification[T]): BlockContext[T]= ???
 }
 
-class RequestContextInitiatedBlockContext private(val data: BlockContextData)
-  extends BlockContext {
+class RequestContextInitiatedBlockContext[T <: Operation] private(val data: BlockContextData)
+  extends BlockContext[T] {
 
   override def loggedUser: Option[LoggedUser] = data.loggedUser
 
-  override def withLoggedUser(user: LoggedUser): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(loggedUser = Some(user)))
+  override def withLoggedUser(user: LoggedUser): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(loggedUser = Some(user)))
 
   override def availableGroups: UniqueList[Group] = data.availableGroups
 
-  override def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(availableGroups = UniqueList.fromSortedSet(data.availableGroups ++ groups.toUniqueList)))
+  override def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(availableGroups = UniqueList.fromSortedSet(data.availableGroups ++ groups.toUniqueList)))
 
   override def currentGroup: Option[Group] = data.initialCurrentGroup match {
     case Some(initialGroup) => Some(initialGroup)
@@ -178,62 +180,64 @@ class RequestContextInitiatedBlockContext private(val data: BlockContextData)
 
   override def responseHeaders: Set[Header] = data.responseHeaders.toSet
 
-  override def withAddedResponseHeader(header: Header): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(responseHeaders = data.responseHeaders :+ header))
+  override def withAddedResponseHeader(header: Header): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(responseHeaders = data.responseHeaders :+ header))
 
   override def hiddenKibanaApps: Set[KibanaApp] = data.hiddenKibanaApps
 
-  override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(hiddenKibanaApps = apps))
+  override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(hiddenKibanaApps = apps))
 
   override def kibanaAccess: Option[KibanaAccess] = data.kibanaAccess
 
-  override def withKibanaAccess(access: KibanaAccess): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(kibanaAccess = Some(access)))
+  override def withKibanaAccess(access: KibanaAccess): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(kibanaAccess = Some(access)))
 
   override def userOrigin: Option[UserOrigin] = data.userOrigin
 
-  override def withUserOrigin(origin: UserOrigin): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(userOrigin = Some(origin)))
+  override def withUserOrigin(origin: UserOrigin): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(userOrigin = Some(origin)))
 
   override def contextHeaders: Set[Header] = data.contextHeaders.toSet
 
-  override def withAddedContextHeader(header: Header): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(contextHeaders = data.contextHeaders :+ header))
+  override def withAddedContextHeader(header: Header): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(contextHeaders = data.contextHeaders :+ header))
 
   override def kibanaIndex: Option[IndexName] = data.kibanaIndex
 
-  override def withKibanaIndex(index: IndexName): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(kibanaIndex = Some(index)))
+  override def withKibanaIndex(index: IndexName): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(kibanaIndex = Some(index)))
 
   override def kibanaTemplateIndex: Option[IndexName] = data.kibanaTemplateIndex
 
-  override def withKibanaTemplateIndex(index: IndexName): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(kibanaTemplateIndex = Some(index)))
+  override def withKibanaTemplateIndex(index: IndexName): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(kibanaTemplateIndex = Some(index)))
 
   override def indices: Outcome[Set[IndexName]] = data.indices
 
-  override def withIndices(indices: Set[IndexName]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(indices = Outcome.Exist(indices)))
+  override def withIndices(indices: Set[IndexName]): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(indices = Outcome.Exist(indices)))
 
   override def repositories: Outcome[Set[IndexName]] = data.repositories
 
-  override def withRepositories(repositories: Set[IndexName]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(repositories = Outcome.Exist(repositories)))
+  override def withRepositories(repositories: Set[IndexName]): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(repositories = Outcome.Exist(repositories)))
 
   override def snapshots: Outcome[Set[IndexName]] = data.snapshots
 
-  override def withSnapshots(snapshots: Set[IndexName]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(snapshots = Outcome.Exist(snapshots)))
+  override def withSnapshots(snapshots: Set[IndexName]): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(snapshots = Outcome.Exist(snapshots)))
 
   override def jwt: Option[JwtTokenPayload] = data.jsonToken
 
-  override def withJwt(token: JwtTokenPayload): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(jsonToken = Some(token)))
+  override def withJwt(token: JwtTokenPayload): BlockContext[T] =
+    new RequestContextInitiatedBlockContext[T](data.copy(jsonToken = Some(token)))
 
   override def filteredIndices: Outcome[Set[IndexRelated]] = ???
 
-  override def withFilteredIndices(indexRelated: Set[IndexRelated]): BlockContext = ???
+  override def withFilteredIndices(indexRelated: Set[IndexRelated]): BlockContext[T] = ???
+
+  override def modifyOperation(modification: OperationModification[T]): BlockContext[T] = ???
 }
 
 object RequestContextInitiatedBlockContext {
@@ -253,7 +257,7 @@ object RequestContextInitiatedBlockContext {
                                     snapshots: Outcome[Set[IndexName]],
                                     jsonToken: Option[JwtTokenPayload])
 
-  def fromRequestContext(requestContext: RequestContext): RequestContextInitiatedBlockContext =
+  def fromRequestContext[T <: Operation](requestContext: RequestContext[T]): RequestContextInitiatedBlockContext[T] =
     new RequestContextInitiatedBlockContext(
       BlockContextData(
         loggedUser = None,

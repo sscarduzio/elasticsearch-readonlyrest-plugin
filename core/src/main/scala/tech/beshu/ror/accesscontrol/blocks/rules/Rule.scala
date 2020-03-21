@@ -27,21 +27,22 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, NoOpBlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{Operation, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 
 sealed trait Rule {
   def name: Name
-  def check(requestContext: RequestContext,
-            blockContext: BlockContext): Task[RuleResult]
+
+  def check[T <: Operation](requestContext: RequestContext[T],
+                            blockContext: BlockContext[T]): Task[RuleResult[T]]
 }
 
 object Rule {
@@ -49,13 +50,13 @@ object Rule {
   final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, variableUsage: VariableUsage[T])
 
   object RuleWithVariableUsageDefinition {
-    def create[T <: Rule: VariableUsage](rule: T) = new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]])
+    def create[T <: Rule : VariableUsage](rule: T) = new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]])
   }
 
-  sealed trait RuleResult
+  sealed trait RuleResult[+T <: Operation]
   object RuleResult {
-    final case class Fulfilled(blockContext: BlockContext) extends RuleResult
-    final case class Rejected(specialCause: Option[Cause] = None) extends RuleResult
+    final case class Fulfilled[T <: Operation](blockContext: BlockContext[T]) extends RuleResult[T]
+    final case class Rejected(specialCause: Option[Cause] = None) extends RuleResult[Nothing]
     object Rejected {
       def apply(specialCause: Cause): Rejected = new Rejected(Some(specialCause))
       sealed trait Cause
@@ -66,8 +67,8 @@ object Rule {
       }
     }
 
-    private [rules] def fromCondition(blockContext: BlockContext)(condition: => Boolean): RuleResult = {
-      if(condition) Fulfilled(blockContext)
+    private[rules] def fromCondition[T <: Operation](blockContext: BlockContext[T])(condition: => Boolean): RuleResult[T] = {
+      if (condition) Fulfilled(blockContext)
       else Rejected()
     }
   }
@@ -80,11 +81,11 @@ object Rule {
   trait MatchingAlwaysRule {
     this: Rule =>
 
-    def process(requestContext: RequestContext,
-                blockContext: BlockContext): Task[BlockContext]
+    def process[T <: Operation](requestContext: RequestContext[T],
+                                blockContext: BlockContext[T]): Task[BlockContext[T]]
 
-    override def check(requestContext: RequestContext,
-                       blockContext: BlockContext): Task[RuleResult] =
+    override def check[T <: Operation](requestContext: RequestContext[T],
+                                       blockContext: BlockContext[T]): Task[RuleResult[T]] =
       process(requestContext, blockContext).map(RuleResult.Fulfilled.apply)
   }
 
@@ -107,11 +108,11 @@ object Rule {
 
     protected def exists(user: User.Id): Task[UserExistence]
 
-    def tryToAuthenticate(requestContext: RequestContext,
-                          blockContext: BlockContext): Task[Rule.RuleResult]
+    def tryToAuthenticate[T <: Operation](requestContext: RequestContext[T],
+                                          blockContext: BlockContext[T]): Task[Rule.RuleResult[T]]
 
-    override def check(requestContext: RequestContext,
-                       blockContext: BlockContext): Task[Rule.RuleResult] = {
+    override def check[T <: Operation](requestContext: RequestContext[T],
+                                       blockContext: BlockContext[T]): Task[Rule.RuleResult[T]] = {
       requestContext.impersonateAs match {
         case Some(theImpersonatedUserId) => toRuleResult {
           for {
@@ -125,8 +126,8 @@ object Rule {
       }
     }
 
-    private def findImpersonatorWithProperRights(theImpersonatedUserId: User.Id,
-                                                 requestContext: RequestContext) = {
+    private def findImpersonatorWithProperRights[T <: Operation](theImpersonatedUserId: User.Id,
+                                                                 requestContext: RequestContext[T]) = {
       EitherT.fromOption[Task](
         requestContext
           .basicAuth
@@ -141,11 +142,11 @@ object Rule {
       )
     }
 
-    private def authenticateImpersonator(impersonatorDef: ImpersonatorDef,
-                                         requestContext: RequestContext) = EitherT {
+    private def authenticateImpersonator[T <: Operation](impersonatorDef: ImpersonatorDef,
+                                                         requestContext: RequestContext[T]) = EitherT {
       impersonatorDef
         .authenticationRule
-        .tryToAuthenticate(requestContext, NoOpBlockContext)
+        .tryToAuthenticate(requestContext, new NoOpBlockContext[T])
         .map {
           case Fulfilled(_) => Right(())
           case Rejected(_) => Left(Rejected(Cause.ImpersonationNotAllowed))
@@ -161,7 +162,7 @@ object Rule {
         }
     }
 
-    private def toRuleResult(result: EitherT[Task, Rejected, BlockContext]) = {
+    private def toRuleResult[T <: Operation](result: EitherT[Task, Rejected, BlockContext[T]]) = {
       result
         .value
         .map {
@@ -183,6 +184,7 @@ object Rule {
     this: AuthenticationRule =>
 
     override protected val impersonators: List[ImpersonatorDef] = Nil
+
     override protected def exists(user: User.Id): Task[UserExistence] = Task.now(CannotCheck)
   }
 

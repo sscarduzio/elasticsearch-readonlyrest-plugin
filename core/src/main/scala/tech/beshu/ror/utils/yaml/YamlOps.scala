@@ -16,12 +16,7 @@
  */
 package tech.beshu.ror.utils.yaml
 
-import java.io.{Reader, StringReader}
-
-import io.circe.{Json, JsonNumber, JsonObject, ParsingFailure}
-import org.yaml.snakeyaml.Yaml
-import org.yaml.snakeyaml.constructor.SafeConstructor
-import org.yaml.snakeyaml.nodes._
+import io.circe.Json
 import tech.beshu.ror.com.fasterxml.jackson.databind.ObjectMapper
 import tech.beshu.ror.com.fasterxml.jackson.dataformat.yaml.YAMLMapper
 

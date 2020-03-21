@@ -23,7 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RegularRule}
-import tech.beshu.ror.accesscontrol.domain.KibanaApp
+import tech.beshu.ror.accesscontrol.domain.{KibanaApp, Operation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 
@@ -32,8 +32,8 @@ class KibanaHideAppsRule(val settings: Settings)
 
   override val name: Rule.Name = KibanaHideAppsRule.name
 
-  override def process(requestContext: RequestContext,
-                       blockContext: BlockContext): Task[BlockContext] = Task {
+  override def process[T <: Operation](requestContext: RequestContext[T],
+                                       blockContext: BlockContext[T]): Task[BlockContext[T]] = Task {
     blockContext.loggedUser match {
       case Some(user) =>
         logger.debug(s"setting hidden apps for user ${user.show}: ${settings.kibanaAppsToHide.toList.map(_.show).mkString(",")}")

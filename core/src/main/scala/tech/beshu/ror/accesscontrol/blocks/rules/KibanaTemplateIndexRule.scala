@@ -21,7 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaTemplateIndexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RegularRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, Operation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class KibanaTemplateIndexRule(val settings: Settings)
@@ -29,8 +29,8 @@ class KibanaTemplateIndexRule(val settings: Settings)
 
   override val name: Rule.Name = KibanaTemplateIndexRule.name
 
-  override def process(requestContext: RequestContext,
-                       blockContext: BlockContext): Task[BlockContext] = Task {
+  override def process[T <: Operation](requestContext: RequestContext[T],
+                                       blockContext: BlockContext[T]): Task[BlockContext[T]] = Task {
     settings
       .kibanaTemplateIndex
       .resolve(requestContext, blockContext)

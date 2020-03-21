@@ -23,8 +23,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleResult}
-import tech.beshu.ror.accesscontrol.domain.Credentials
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.{Credentials, Operation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -35,8 +35,8 @@ abstract class BaseBasicAuthenticationRule
 
   protected def authenticateUsing(credentials: Credentials): Task[Boolean]
 
-  override def tryToAuthenticate(requestContext: RequestContext,
-                                 blockContext: BlockContext): Task[RuleResult] =
+  override def tryToAuthenticate[T <: Operation](requestContext: RequestContext[T],
+                                                 blockContext: BlockContext[T]): Task[RuleResult[T]] =
     Task
       .unit
       .flatMap { _ =>

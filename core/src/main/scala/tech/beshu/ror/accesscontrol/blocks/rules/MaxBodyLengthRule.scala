@@ -20,7 +20,8 @@ import monix.eval.Task
 import squants.information.Information
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RegularRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.domain.Operation
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class MaxBodyLengthRule(val settings: Settings)
@@ -28,8 +29,8 @@ class MaxBodyLengthRule(val settings: Settings)
 
   override val name: Rule.Name = MaxBodyLengthRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def check[T <: Operation](requestContext: RequestContext[T],
+                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     RuleResult.fromCondition(blockContext) {
       requestContext.contentLength <= settings.maxContentLength
     }

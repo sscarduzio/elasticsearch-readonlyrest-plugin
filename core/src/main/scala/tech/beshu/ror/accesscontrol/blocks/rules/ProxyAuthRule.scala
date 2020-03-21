@@ -16,23 +16,23 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.User.Id
+import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, Operation, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
-import StringTNaturalTransformation.instances.stringUserIdNT
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 
 class ProxyAuthRule(val settings: Settings)
   extends AuthenticationRule
@@ -45,8 +45,8 @@ class ProxyAuthRule(val settings: Settings)
 
   override val name: Rule.Name = ProxyAuthRule.name
 
-  override def tryToAuthenticate(requestContext: RequestContext,
-                                 blockContext: BlockContext): Task[RuleResult] = Task {
+  override def tryToAuthenticate[T <: Operation](requestContext: RequestContext[T],
+                                                 blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     getLoggedUser(requestContext) match {
       case None =>
         Rejected()
@@ -57,7 +57,7 @@ class ProxyAuthRule(val settings: Settings)
     }
   }
 
-  private def getLoggedUser(context: RequestContext) = {
+  private def getLoggedUser[T <: Operation](context: RequestContext[T]) = {
     context
       .headers
       .find(_.name === settings.userHeaderName)

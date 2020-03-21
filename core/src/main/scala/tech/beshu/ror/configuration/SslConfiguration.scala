@@ -25,8 +25,6 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
 
-import scala.language.implicitConversions
-
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
 

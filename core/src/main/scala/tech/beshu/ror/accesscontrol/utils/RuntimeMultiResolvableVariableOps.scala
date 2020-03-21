@@ -19,13 +19,14 @@ package tech.beshu.ror.accesscontrol.utils
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.domain.Operation
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 object RuntimeMultiResolvableVariableOps {
 
-  def resolveAll[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]],
-                    requestContext: RequestContext,
-                    blockContext: BlockContext): List[T] = {
+  def resolveAll[T, O <: Operation](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]],
+                                    requestContext: RequestContext[O],
+                                    blockContext: BlockContext[O]): List[T] = {
     variables
       .toList
       .flatMap { variable =>

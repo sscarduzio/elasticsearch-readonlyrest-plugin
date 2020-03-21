@@ -18,13 +18,13 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import org.apache.logging.log4j.scala.Logging
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.ActionsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.domain.{Action, Operation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.MatcherWithWildcards
 
@@ -37,8 +37,8 @@ class ActionsRule(val settings: Settings)
 
   private val matcher = new MatcherWithWildcards(settings.actions.map(_.value).toSortedSet.asJava)
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def check[T <: Operation](requestContext: RequestContext[T],
+                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     if (matcher.`match`(requestContext.action.value)) {
       RuleResult.Fulfilled(blockContext)
     } else {

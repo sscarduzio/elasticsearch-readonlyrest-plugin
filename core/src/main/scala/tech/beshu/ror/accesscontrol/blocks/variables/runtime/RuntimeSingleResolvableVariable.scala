@@ -23,6 +23,7 @@ import cats.syntax.order._
 import cats.syntax.traverse._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
+import tech.beshu.ror.accesscontrol.domain.Operation
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 sealed trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariable[T]
@@ -32,16 +33,16 @@ object RuntimeSingleResolvableVariable {
   final case class AlreadyResolved[T](value: T)
     extends RuntimeSingleResolvableVariable[T] {
 
-    override def resolve(requestContext: RequestContext,
-                         blockContext: BlockContext): Either[RuntimeResolvableVariable.Unresolvable, T] =
+    override def resolve[O <: Operation](requestContext: RequestContext[O],
+                                         blockContext: BlockContext[O]): Either[RuntimeResolvableVariable.Unresolvable, T] =
       Right(value)
   }
 
-  final case class ToBeResolved[T : Convertible](values: NonEmptyList[SingleExtractable])
+  final case class ToBeResolved[T: Convertible](values: NonEmptyList[SingleExtractable])
     extends RuntimeSingleResolvableVariable[T] {
 
-    override def resolve(requestContext: RequestContext,
-                         blockContext: BlockContext): Either[RuntimeResolvableVariable.Unresolvable, T] = {
+    override def resolve[O <: Operation](requestContext: RequestContext[O],
+                                         blockContext: BlockContext[O]): Either[RuntimeResolvableVariable.Unresolvable, T]= {
       values
         .map { extractable =>
           extractable

@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.{Action, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, Operation}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
@@ -40,9 +40,8 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
-
+  override def check[T <: Operation](requestContext: RequestContext[T],
+                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     if (!isSpecializedIndexAction(requestContext.action)) Fulfilled(blockContext)
     else {
       checkAllowedIndices(
@@ -53,9 +52,9 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
     }
   }
 
-  private def checkAllowedIndices(allowedSpecializedIndices: Set[IndexName],
-                                  requestContext: RequestContext,
-                                  blockContext: BlockContext) = {
+  private def checkAllowedIndices[T <: Operation](allowedSpecializedIndices: Set[IndexName],
+                                                  requestContext: RequestContext[T],
+                                                  blockContext: BlockContext[T]) = {
     if (allowedSpecializedIndices.contains(IndexName.all) || allowedSpecializedIndices.contains(IndexName.wildcard)) {
       Fulfilled(blockContext)
     } else {
@@ -76,10 +75,12 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
     }
   }
 
-  protected def specializedIndicesFromRequest(request: RequestContext): Set[IndexName]
+  protected def specializedIndicesFromRequest[T <: Operation](request: RequestContext[T]): Set[IndexName]
+
   protected def isSpecializedIndexAction(action: Action): Boolean
-  protected def blockContextWithSpecializedIndices(blockContext: BlockContext,
-                                                   indices: NonEmptySet[IndexName]): BlockContext
+
+  protected def blockContextWithSpecializedIndices[T <: Operation](blockContext: BlockContext[T],
+                                                                   indices: NonEmptySet[IndexName]): BlockContext[T]
 }
 
 object BaseSpecializedIndicesRule {

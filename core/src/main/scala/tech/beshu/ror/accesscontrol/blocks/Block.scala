@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Misma
 import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.{Header, Operation}
 import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.BlocksLevelCreationError
@@ -46,9 +46,11 @@ class Block(val name: Name,
            (implicit loggingContext: LoggingContext)
   extends Logging {
 
-  def execute(requestContext: RequestContext): BlockResultWithHistory = {
+  import Lifter._
+
+  def execute[T <: Operation](requestContext: RequestContext[T]): BlockResultWithHistory[T] = {
     implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
-    val initBlockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
+    val initBlockContext: BlockContext[T] = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
     rules
       .foldLeft(matched(initBlockContext)) {
         case (currentResult, rule) =>
@@ -62,10 +64,10 @@ class Block(val name: Name,
                     logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
                     RuleResult.Rejected()
                   }
-                lift(ruleResult)
+                lift[T](ruleResult)
                   .flatMap {
-                    case result@RuleResult.Fulfilled(newBlockContext) =>
-                      matched(newBlockContext)
+                    case result: RuleResult.Fulfilled[T] =>
+                      matched(result.blockContext)
                         .tell(Vector(HistoryItem(rule.name, result)))
                     case result: RuleResult.Rejected =>
                       mismatched(blockContext)
@@ -85,26 +87,23 @@ class Block(val name: Name,
         case Success((Matched(_, blockContext), _)) =>
           val block: Block = this
           logger.debug(s"${ANSI_CYAN}matched ${block.show} { found: ${blockContext.show} }$ANSI_RESET")
-        case Success((_: Mismatched, history)) =>
-          implicit val requestShow: Show[RequestContext] = RequestContext.show(None, None, Vector(history))
+        case Success((_: Mismatched[T], history)) =>
+          implicit val requestShow: Show[RequestContext[T]] = RequestContext.show(None, None, Vector(history))
           logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
       }
   }
 
-  private def matched[T <: BlockContext](blockContext: T): WriterT[Task, Vector[HistoryItem], ExecutionResult] =
-    lift(Task.now(Matched(this, blockContext): ExecutionResult))
+  private def matched[T <: Operation](blockContext: BlockContext[T]): WriterT[Task, Vector[HistoryItem[T]], ExecutionResult[T]] =
+    lift[T](Task.now(Matched(this, blockContext): ExecutionResult[T]))
 
-  private def mismatched[T <: BlockContext](blockContext: T): WriterT[Task, Vector[HistoryItem], ExecutionResult] =
-    lift(Task.now(Mismatched(blockContext)))
-
-  private def lift[T](task: Task[T]) =
-    WriterT.liftF[Task, Vector[HistoryItem], T](task)
+  private def mismatched[T <: Operation](blockContext: BlockContext[T]): WriterT[Task, Vector[HistoryItem[T]], ExecutionResult[T]] =
+    lift[T](Task.now(Mismatched(blockContext)))
 
 }
 
 object Block {
 
-  type BlockResultWithHistory = Task[(Block.ExecutionResult, History)]
+  type BlockResultWithHistory[T <: Operation] = Task[(Block.ExecutionResult[T], History[T])]
 
   def createFrom(name: Name,
                  policy: Option[Policy],
@@ -133,15 +132,15 @@ object Block {
     )
 
   final case class Name(value: String) extends AnyVal
-  final case class History(block: Block.Name, items: Vector[HistoryItem], blockContext: BlockContext)
-  final case class HistoryItem(rule: Rule.Name, result: RuleResult)
+  final case class History[T <: Operation](block: Block.Name, items: Vector[HistoryItem[T]], blockContext: BlockContext[T])
+  final case class HistoryItem[T <: Operation](rule: Rule.Name, result: RuleResult[T])
 
-  sealed trait ExecutionResult {
-    def blockContext: BlockContext
+  sealed trait ExecutionResult[T <: Operation] {
+    def blockContext: BlockContext[T]
   }
   object ExecutionResult {
-    final case class Matched(block: Block, override val blockContext: BlockContext) extends ExecutionResult
-    final case class Mismatched(override val blockContext: BlockContext) extends ExecutionResult
+    final case class Matched[T <: Operation](block: Block, override val blockContext: BlockContext[T]) extends ExecutionResult[T]
+    final case class Mismatched[T <: Operation](override val blockContext: BlockContext[T]) extends ExecutionResult[T]
   }
 
   sealed trait Policy
@@ -160,4 +159,11 @@ object Block {
     implicit val eq: Eq[Verbosity] = Eq.fromUniversalEquals
   }
 
+  private class Lifter[O <: Operation] {
+    def apply[A](task: Task[A]): WriterT[Task, Vector[HistoryItem[O]], A] =
+      WriterT.liftF[Task, Vector[HistoryItem[O]], A](task)
+  }
+  private object Lifter {
+    def lift[O <: Operation]: Lifter[O] = new Lifter[O]()
+  }
 }

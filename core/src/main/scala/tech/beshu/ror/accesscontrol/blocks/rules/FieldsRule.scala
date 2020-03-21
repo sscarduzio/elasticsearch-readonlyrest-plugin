@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{DocumentField, Header}
+import tech.beshu.ror.accesscontrol.domain.{DocumentField, Header, Operation}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -35,8 +35,8 @@ class FieldsRule(val settings: Settings)
 
   override val name: Rule.Name = FieldsRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def check[T <: Operation](requestContext: RequestContext[T],
+                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     if(!requestContext.isReadOnlyRequest) RuleResult.Rejected()
     else RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
   }

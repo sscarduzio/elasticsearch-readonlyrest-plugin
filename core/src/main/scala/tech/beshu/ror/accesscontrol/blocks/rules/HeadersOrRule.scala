@@ -21,9 +21,9 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.HeadersOrRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RegularRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.{Header, Operation}
 import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.accesscontrol.header.FlatHeader._
 
@@ -37,8 +37,8 @@ class HeadersOrRule(val settings: Settings)
 
   override val name: Rule.Name = HeadersOrRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def check[T <: Operation](requestContext: RequestContext[T],
+                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     val headersSubset = requestContext
       .headers
       .filter(h => settings.headers.exists(_.name === h.name))

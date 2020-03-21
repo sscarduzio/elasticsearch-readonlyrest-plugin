@@ -20,6 +20,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.accesscontrol.domain.Operation
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class LdapAuthRule(val authentication: LdapAuthenticationRule,
@@ -30,12 +31,13 @@ class LdapAuthRule(val authentication: LdapAuthenticationRule,
 
   override val name: Rule.Name = LdapAuthRule.name
 
-  override def tryToAuthenticate(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] = {
+  override def tryToAuthenticate[T <: Operation](requestContext: RequestContext[T],
+                                                 blockContext: BlockContext[T]): Task[RuleResult[T]] = {
     authentication
       .check(requestContext, blockContext)
       .flatMap {
-        case Fulfilled(modifiedBlockContext) =>
-          authorization.check(requestContext, modifiedBlockContext)
+        case fulfilled: Fulfilled[T] =>
+          authorization.check(requestContext, fulfilled.blockContext)
         case Rejected(_) =>
           Task.now(Rejected())
       }

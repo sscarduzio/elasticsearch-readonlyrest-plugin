@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.HostsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.domain.Address
+import tech.beshu.ror.accesscontrol.domain.{Address, Operation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
@@ -32,8 +32,8 @@ class HostsRule(val settings: Settings)
 
   override val name: Rule.Name = HostsRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = {
+  override def check[T <: Operation](requestContext: RequestContext[T],
+                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = {
     requestContext.xForwardedForHeaderValue match {
       case Some(xForwardedHeaderValue) if settings.acceptXForwardedForHeader =>
         checkAllowedAddresses(requestContext, blockContext)(
@@ -50,8 +50,8 @@ class HostsRule(val settings: Settings)
     }
   }
 
-  private def checkRemoteAddress(requestContext: RequestContext,
-                                 blockContext: BlockContext) = {
+  private def checkRemoteAddress[T <: Operation](requestContext: RequestContext[T],
+                                                 blockContext: BlockContext[T]) = {
     requestContext.remoteAddress match {
       case Some(remoteAddress) =>
         checkAllowedAddresses(requestContext, blockContext)(

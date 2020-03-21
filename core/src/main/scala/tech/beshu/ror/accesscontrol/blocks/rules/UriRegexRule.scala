@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.domain.Operation
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class UriRegexRule(val settings: Settings)
@@ -31,8 +32,8 @@ class UriRegexRule(val settings: Settings)
 
   override val name: Rule.Name = UriRegexRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def check[T <: Operation](requestContext: RequestContext[T],
+                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     RuleResult.fromCondition(blockContext) {
       settings
         .uriPatterns
@@ -40,15 +41,15 @@ class UriRegexRule(val settings: Settings)
     }
   }
 
-  private def variableMatchingRequestedUri(requestContext: RequestContext,
-                                           blockContext: BlockContext)
-                                          (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
+  private def variableMatchingRequestedUri[T <: Operation](requestContext: RequestContext[T],
+                                                           blockContext: BlockContext[T])
+                                                          (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
     patternVariable
       .resolve(requestContext, blockContext)
       .exists(matchingResolvedPattern(requestContext))
 
-  private def matchingResolvedPattern(requestContext: RequestContext)
-                                     (patterns: NonEmptyList[Pattern]): Boolean =
+  private def matchingResolvedPattern[T <: Operation](requestContext: RequestContext[T])
+                                                     (patterns: NonEmptyList[Pattern]): Boolean =
     patterns
       .exists {
         _.matcher(requestContext.uriPath.value).find()

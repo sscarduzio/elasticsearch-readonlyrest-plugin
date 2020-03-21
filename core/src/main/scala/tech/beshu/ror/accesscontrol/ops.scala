@@ -145,18 +145,20 @@ object show {
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
-    implicit def blockContextShow(implicit showHeader:Show[Header]): Show[BlockContext] = Show.show { bc =>
-      (showOption("user", bc.loggedUser) ::
-        showOption("group", bc.currentGroup) ::
-        showTraversable("av_groups", bc.availableGroups) ::
-        showTraversable("indices", bc.indices.getOrElse(Set.empty)) ::
-        showOption("kibana_idx", bc.kibanaIndex) ::
-        showTraversable("response_hdr", bc.responseHeaders) ::
-        showTraversable("context_hdr", bc.contextHeaders) ::
-        showTraversable("repositories", bc.repositories.getOrElse(Set.empty)) ::
-        showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
-        Nil flatten) mkString ";"
-    }
+
+    implicit def blockContextShow[T <: Operation](implicit showHeader: Show[Header]): Show[BlockContext[T]] =
+      Show.show { bc =>
+        (showOption("user", bc.loggedUser) ::
+          showOption("group", bc.currentGroup) ::
+          showTraversable("av_groups", bc.availableGroups) ::
+          showTraversable("indices", bc.indices.getOrElse(Set.empty)) ::
+          showOption("kibana_idx", bc.kibanaIndex) ::
+          showTraversable("response_hdr", bc.responseHeaders) ::
+          showTraversable("context_hdr", bc.contextHeaders) ::
+          showTraversable("repositories", bc.repositories.getOrElse(Set.empty)) ::
+          showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
+          Nil flatten) mkString ";"
+      }
     private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
       case KibanaAccess.RO => "ro"
       case KibanaAccess.ROStrict => "ro_strict"
@@ -175,7 +177,7 @@ object show {
         Nil flatten) mkString ";"
     }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
-    implicit val historyItemShow: Show[HistoryItem] = Show.show { hi =>
+    implicit def historyItemShow[T <: Operation]: Show[HistoryItem[T]] = Show.show { hi =>
       s"${hi.rule.show}->${
         hi.result match {
           case RuleResult.Fulfilled(_) => "true"
@@ -183,12 +185,13 @@ object show {
         }
       }"
     }
-    implicit def historyShow(implicit headerShow: Show[Header]): Show[History] = Show.show { h =>
-      val resolvedPart = h.blockContext.show.some
-        .filter(!_.isEmpty)
-        .map(context => s", RESOLVED:[$context]").getOrElse("")
-      s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}]$resolvedPart]"""
-    }
+    implicit def historyShow[T <: Operation](implicit headerShow: Show[Header]): Show[History[T]] =
+      Show.show[History[T]] { h =>
+        val resolvedPart = h.blockContext.show.some
+          .filter(!_.isEmpty)
+          .map(context => s", RESOLVED:[$context]").getOrElse("")
+        s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}]$resolvedPart]"""
+      }
     implicit val policyShow: Show[Policy] = Show.show {
       case Allow => "ALLOW"
       case Forbid => "FORBID"

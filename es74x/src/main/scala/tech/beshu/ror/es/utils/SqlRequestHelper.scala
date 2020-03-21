@@ -22,9 +22,9 @@ import java.util.regex.Pattern
 import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.CompositeIndicesRequest
-import tech.beshu.ror.accesscontrol.domain.{IndexName, InvolvingIndexOperation}
-import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.{NonIndexOperation, SqlOperation}
-import tech.beshu.ror.accesscontrol.domain.InvolvingIndexOperation.SqlOperation.IndexSqlTable
+import tech.beshu.ror.accesscontrol.domain.{IndexName, Operation}
+import tech.beshu.ror.accesscontrol.domain.Operation.{NonIndexOperation, SqlOperation}
+import tech.beshu.ror.accesscontrol.domain.Operation.SqlOperation.IndexSqlTable
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.accesscontrol.orders._
@@ -40,7 +40,7 @@ object SqlRequestHelper {
     setQuery(request, newQueryFrom(getQuery(request), operation.tables, finalIndices))
   }
 
-  def indicesFrom(request: CompositeIndicesRequest): Try[InvolvingIndexOperation] = Try {
+  def indicesFrom(request: CompositeIndicesRequest): Try[Operation] = Try {
     val query = getQuery(request)
     val params = ReflecUtils.invokeMethodCached(request, request.getClass, "params")
 
@@ -174,7 +174,7 @@ final class Command(val underlyingObject: Any)
                    (implicit classLoader: ClassLoader)
   extends Statement {
 
-  lazy val indices: InvolvingIndexOperation = {
+  lazy val indices: Operation = {
     Try {
       getIndicesString
         .orElse(getIndexPatternsString)

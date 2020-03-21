@@ -118,7 +118,7 @@ class EsRequestContext private(channel: RestChannel,
 
   override lazy val content: String = if(request.content == null) "" else request.content().utf8ToString()
 
-  override lazy val indicesOperation: InvolvingIndexOperation = ???
+  override lazy val operation: Operation = ???
 
   override lazy val indices: Set[domain.IndexName] = ???
 
@@ -157,7 +157,7 @@ class EsRequestContext private(channel: RestChannel,
     }
   }
 
-  override val hasRemoteClusters = crossClusterSearchEnabled
+  override val hasRemoteClusters: Boolean = crossClusterSearchEnabled
 }
 
 object EsRequestContext {

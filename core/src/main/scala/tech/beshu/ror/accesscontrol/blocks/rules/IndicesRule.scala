@@ -33,13 +33,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherW
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.Action.{mSearchAction, searchAction}
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, Operation}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-
-import scala.language.postfixOps
 
 class IndicesRule(val settings: Settings)
   extends RegularRule with Logging {
@@ -51,20 +49,19 @@ class IndicesRule(val settings: Settings)
 
   private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def check[T <: Operation](requestContext: RequestContext[T],
+                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     if (!requestContext.involvesIndices) Fulfilled(blockContext)
     else if (matchAll) Fulfilled(blockContext)
     else process(requestContext, blockContext)
   }
 
-  private def process(requestContext: RequestContext, blockContext: BlockContext): RuleResult = {
+  private def process[T <: Operation](requestContext: RequestContext[T], blockContext: BlockContext[T]): RuleResult[T] = {
     val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, requestContext, blockContext).toSet
     val indicesMatcher = IndicesMatcher.create(resolvedAllowedIndices)
 
     // Cross cluster search awareness
     if (isSearchAction(requestContext)) {
-
       val (crossClusterIndices, localIndices) =
         if (!requestContext.hasRemoteClusters) {
           // Only requested X-cluster when we don't have remote, will return empty.
@@ -116,17 +113,17 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def isSearchAction(requestContext: RequestContext): Boolean =
+  private def isSearchAction[T <: Operation](requestContext: RequestContext[T]): Boolean =
     requestContext.isReadOnlyRequest && List(searchAction, mSearchAction).contains(requestContext.action)
 
-  private def canPass(requestContext: RequestContext, matcher: IndicesMatcher, resolvedAllowedIndices: Set[IndexName]): CanPass = {
+  private def canPass[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher, resolvedAllowedIndices: Set[IndexName]): CanPass = {
     if (requestContext.isReadOnlyRequest) canReadOnlyRequestPass(requestContext, matcher, resolvedAllowedIndices)
     else canWriteRequestPass(requestContext, matcher, resolvedAllowedIndices)
   }
 
-  private def canReadOnlyRequestPass(requestContext: RequestContext,
-                                     matcher: IndicesMatcher,
-                                     resolvedAllowedIndices: Set[IndexName]): CanPass = {
+  private def canReadOnlyRequestPass[T <: Operation](requestContext: RequestContext[T],
+                                                     matcher: IndicesMatcher,
+                                                     resolvedAllowedIndices: Set[IndexName]): CanPass = {
     val result = for {
       _ <- templateIndicesPatterns(requestContext, resolvedAllowedIndices)
       _ <- noneOrAllIndices(requestContext, matcher)
@@ -137,11 +134,11 @@ class IndicesRule(val settings: Settings)
     result.left.getOrElse(CanPass.No())
   }
 
-  private def noneOrAllIndices(requestContext: RequestContext, matcher: IndicesMatcher): IndicesCheckContinuation = {
+  private def noneOrAllIndices[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher): IndicesCheckContinuation = {
     logger.debug("Checking - none or all indices ...")
     val indices = requestContext.indices
     val allIndicesAndAliases = requestContext.allIndicesAndAliases.flatMap(_.all)
-    if(allIndicesAndAliases.isEmpty) {
+    if (allIndicesAndAliases.isEmpty) {
       stop(CanPass.Yes(indices))
     } else if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
       val allowedIdxs = matcher.filterIndices(allIndicesAndAliases)
@@ -154,7 +151,7 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def allIndicesMatchedByWildcard(requestContext: RequestContext, matcher: IndicesMatcher): IndicesCheckContinuation = {
+  private def allIndicesMatchedByWildcard[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher): IndicesCheckContinuation = {
     logger.debug("Checking if all indices are matched ...")
     val indices = requestContext.indices
     indices.toList match {
@@ -171,7 +168,7 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def atLeastOneNonWildcardIndexNotExist(requestContext: RequestContext, matcher: IndicesMatcher): IndicesCheckContinuation = {
+  private def atLeastOneNonWildcardIndexNotExist[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher): IndicesCheckContinuation = {
     logger.debug("Checking if at least one non-wildcard index doesn't exist ...")
     val indices = requestContext.indices
     val real = requestContext.allIndicesAndAliases.flatMap(_.all)
@@ -188,22 +185,22 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def indicesAliases(requestContext: RequestContext, matcher: IndicesMatcher): IndicesCheckContinuation = {
+  private def indicesAliases[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher): IndicesCheckContinuation = {
     logger.debug("Checking - indices & aliases ...")
     val allowedRealIndices =
       filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(requestContext, matcher) ++
-      filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured(requestContext, matcher) ++
-      filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(requestContext, matcher) ++
-      filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(requestContext, matcher)
-    if(allowedRealIndices.nonEmpty) {
+        filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured(requestContext, matcher) ++
+        filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(requestContext, matcher) ++
+        filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(requestContext, matcher)
+    if (allowedRealIndices.nonEmpty) {
       stop(CanPass.Yes(allowedRealIndices))
     } else {
       stop(CanPass.No(Reason.IndexNotExist))
     }
   }
 
-  private def filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(requestContext: RequestContext,
-                                                                           matcher: IndicesMatcher) = {
+  private def filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured[T <: Operation](requestContext: RequestContext[T],
+                                                                                           matcher: IndicesMatcher) = {
     val allIndices = requestContext.allIndicesAndAliases.map(_.index)
     val requestedIndicesNames = requestContext.indices
     val requestedIndices = MatcherWithWildcardsScalaAdapter.create(requestedIndicesNames).filter(allIndices)
@@ -211,16 +208,16 @@ class IndicesRule(val settings: Settings)
     matcher.filterIndices(requestedIndices)
   }
 
-  private def filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured(requestContext: RequestContext,
-                                                                           matcher: IndicesMatcher) = {
+  private def filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured[T <: Operation](requestContext: RequestContext[T],
+                                                                                           matcher: IndicesMatcher) = {
     // eg. alias A1 of index I1 can be defined with filtering, so result of /I1/_search will be different than
     // result of /A1/_search. It means that if indices are requested and aliases are configured, the result of
     // this kind of method will always be empty set.
     Set.empty[IndexName]
   }
 
-  private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(requestContext: RequestContext,
-                                                                           matcher: IndicesMatcher) = {
+  private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured[T <: Operation](requestContext: RequestContext[T],
+                                                                                           matcher: IndicesMatcher) = {
     val allAliases = requestContext.allIndicesAndAliases.flatMap(_.aliases)
     val requestedAliasesNames = requestContext.indices
     val requestedAliases = MatcherWithWildcardsScalaAdapter.create(requestedAliasesNames).filter(allAliases)
@@ -228,8 +225,8 @@ class IndicesRule(val settings: Settings)
     matcher.filterIndices(requestedAliases)
   }
 
-  private def filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(requestContext: RequestContext,
-                                                                           matcher: IndicesMatcher) = {
+  private def filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured[T <: Operation](requestContext: RequestContext[T],
+                                                                                           matcher: IndicesMatcher) = {
     val requestedAliasesNames = requestContext.indices
     val allAliases = requestContext.allIndicesAndAliases.flatMap(_.aliases)
     val requestedAliases = MatcherWithWildcardsScalaAdapter.create(requestedAliasesNames).filter(allAliases)
@@ -239,11 +236,11 @@ class IndicesRule(val settings: Settings)
     matcher.filterIndices(indicesOfRequestedAliases)
   }
 
-  private def templateIndicesPatterns(requestContext: RequestContext, allowedIndices: Set[IndexName]): IndicesCheckContinuation = {
+  private def templateIndicesPatterns[T <: Operation](requestContext: RequestContext[T], allowedIndices: Set[IndexName]): IndicesCheckContinuation = {
     logger.debug("Checking - template indices patterns...")
     requestContext match {
       case rc if rc.action.isTemplate || rc.uriPath.isCatTemplatePath =>
-        if(rc.templateIndicesPatterns.nonEmpty) {
+        if (rc.templateIndicesPatterns.nonEmpty) {
           val allowed = findTemplatesIndicesPatterns(rc.templateIndicesPatterns, allowedIndices)
           if (allowed.nonEmpty) stop(CanPass.Yes(allowed))
           else stop(CanPass.Yes(allowedIndices))
@@ -255,9 +252,9 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def canWriteRequestPass(requestContext: RequestContext,
-                                  matcher: IndicesMatcher,
-                                  resolvedAllowedIndices: Set[IndexName]): CanPass = {
+  private def canWriteRequestPass[T <: Operation](requestContext: RequestContext[T],
+                                                  matcher: IndicesMatcher,
+                                                  resolvedAllowedIndices: Set[IndexName]): CanPass = {
     val result = for {
       _ <- writeTemplateIndicesPatterns(requestContext, resolvedAllowedIndices)
       _ <- generalWriteRequest(requestContext, matcher)
@@ -265,7 +262,7 @@ class IndicesRule(val settings: Settings)
     result.left.getOrElse(CanPass.No())
   }
 
-  private def writeTemplateIndicesPatterns(requestContext: RequestContext, allowedIndices: Set[IndexName]): IndicesCheckContinuation = {
+  private def writeTemplateIndicesPatterns[T <: Operation](requestContext: RequestContext[T], allowedIndices: Set[IndexName]): IndicesCheckContinuation = {
     logger.debug("Checking - write template request...")
     requestContext match {
       case rc if rc.action.isTemplate || rc.uriPath.isCatTemplatePath =>
@@ -277,7 +274,7 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def generalWriteRequest(requestContext: RequestContext, matcher: IndicesMatcher): IndicesCheckContinuation = {
+  private def generalWriteRequest[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher): IndicesCheckContinuation = {
     logger.debug("Checking - write request ...")
     val indices = requestContext.indices
     // Write requests
@@ -306,6 +303,7 @@ class IndicesRule(val settings: Settings)
   private type IndicesCheckContinuation = Either[CanPass, Unit]
   private object IndicesCheckContinuation {
     def stop(result: CanPass): IndicesCheckContinuation = Left(result)
+
     val continue: IndicesCheckContinuation = Right(())
   }
 }

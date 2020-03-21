@@ -52,8 +52,8 @@ class RorKbnAuthRule(val settings: Settings)
     case Ec(pubKey) => Jwts.parser.setSigningKey(pubKey)
   }
 
-  override def tryToAuthenticate(requestContext: RequestContext,
-                                 blockContext: BlockContext): Task[RuleResult] = Task {
+  override def tryToAuthenticate[T <: Operation](requestContext: RequestContext[T],
+                                                 blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
     val authHeaderName = Header.Name.authorization
     requestContext.bearerToken.map(h => JwtToken(h.value)) match {
       case None =>
@@ -64,7 +64,7 @@ class RorKbnAuthRule(val settings: Settings)
     }
   }
 
-  private def process(token: JwtToken, blockContext: BlockContext) = {
+  private def process[T <: Operation](token: JwtToken, blockContext: BlockContext[T]) = {
     jwtTokenData(token) match {
       case Left(_) =>
         Rejected()
@@ -101,14 +101,16 @@ class RorKbnAuthRule(val settings: Settings)
       .left.map { ex => logger.debug(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
   }
 
-  private def handleUserClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[User.Id]) = {
+  private def handleUserClaimSearchResult[T <: Operation](blockContext: BlockContext[T],
+                                                          result: ClaimSearchResult[User.Id]) = {
     result match {
       case Found(userId) => Right(blockContext.withLoggedUser(DirectlyLoggedUser(userId)))
       case NotFound => Left(())
     }
   }
 
-  private def handleGroupsClaimSearchResult(blockContext: BlockContext, result: ClaimSearchResult[UniqueList[Group]]) = {
+  private def handleGroupsClaimSearchResult[T <: Operation](blockContext: BlockContext[T],
+                                                            result: ClaimSearchResult[UniqueList[Group]]) = {
     result match {
       case NotFound if settings.groups.nonEmpty => Left(())
       case NotFound => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
@@ -121,7 +123,8 @@ class RorKbnAuthRule(val settings: Settings)
     }
   }
 
-  private def handleUserOriginResult(blockContext: BlockContext, result: ClaimSearchResult[Header]): BlockContext = {
+  private def handleUserOriginResult[T <: Operation](blockContext: BlockContext[T],
+                                                     result: ClaimSearchResult[Header]): BlockContext[T] = {
     result match {
       case Found(header) => blockContext.withUserOrigin(UserOrigin(header.value))
       case ClaimSearchResult.NotFound => blockContext

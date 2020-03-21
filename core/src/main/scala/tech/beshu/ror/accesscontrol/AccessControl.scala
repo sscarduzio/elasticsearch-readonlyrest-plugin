@@ -23,25 +23,26 @@ import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMet
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.Operation
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 trait AccessControl {
-  def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]]
-  def handleMetadataRequest(requestContext: RequestContext): Task[WithHistory[UserMetadataRequestResult]]
+  def handleRegularRequest[T <: Operation](requestContext: RequestContext[T]): Task[WithHistory[RegularRequestResult[T], T]]
+  def handleMetadataRequest[T <: Operation](requestContext: RequestContext[T]): Task[WithHistory[UserMetadataRequestResult, T]]
 }
 
 object AccessControl {
 
-  final case class WithHistory[RESULT](history: Vector[History], result: RESULT)
+  final case class WithHistory[RESULT, T <: Operation](history: Vector[History[T]], result: RESULT)
   object WithHistory {
-    def withNoHistory[RESULT](handlingResult: RESULT): WithHistory[RESULT] = WithHistory(Vector.empty, handlingResult)
+    def withNoHistory[RESULT, T <: Operation](handlingResult: RESULT): WithHistory[RESULT, T] = WithHistory(Vector.empty, handlingResult)
   }
 
-  sealed trait RegularRequestResult
+  sealed trait RegularRequestResult[+T <: Operation]
   object RegularRequestResult {
-    final case class Allow(blockContext: BlockContext, block: Block) extends RegularRequestResult
-    final case class ForbiddenBy(blockContext: BlockContext, block: Block) extends RegularRequestResult
-    final case class ForbiddenByMismatched(causes: NonEmptySet[Cause]) extends RegularRequestResult
+    final case class Allow[T <: Operation](blockContext: BlockContext[T], block: Block) extends RegularRequestResult[T]
+    final case class ForbiddenBy[T <: Operation](blockContext: BlockContext[T], block: Block) extends RegularRequestResult[T]
+    final case class ForbiddenByMismatched(causes: NonEmptySet[Cause]) extends RegularRequestResult[Nothing]
     case object ForbiddenByMismatched {
       sealed trait Cause
       object Cause {
@@ -50,9 +51,9 @@ object AccessControl {
         case object ImpersonationNotAllowed extends Cause
       }
     }
-    case object IndexNotFound extends RegularRequestResult
-    final case class Failed(ex: Throwable) extends RegularRequestResult
-    case object PassedThrough extends RegularRequestResult
+    case object IndexNotFound extends RegularRequestResult[Nothing]
+    final case class Failed(ex: Throwable) extends RegularRequestResult[Nothing]
+    case object PassedThrough extends RegularRequestResult[Nothing]
   }
 
   sealed trait UserMetadataRequestResult
