@@ -43,6 +43,10 @@ object providers {
     implicit def rorConfigFileName: String
   }
 
+  trait RorConfigFileProvider {
+    implicit def rorConfigFile: better.files.File
+  }
+
   trait MultipleClients {
     def clients: NonEmptyList[ClientProvider]
   }

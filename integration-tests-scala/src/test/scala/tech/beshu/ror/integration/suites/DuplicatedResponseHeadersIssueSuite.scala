@@ -41,7 +41,7 @@ trait DuplicatedResponseHeadersIssueSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        DependencyDef(name = "EXT1", containerCreator = Coeval(new WireMockS(WireMockContainer.create(
+        DependencyDef(name = "EXT1", containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(
           "/duplicated_response_headers_issue/auth-s.json",
           "/duplicated_response_headers_issue/brian_groups-s.json",
           "/duplicated_response_headers_issue/freddie_groups-s.json"))))

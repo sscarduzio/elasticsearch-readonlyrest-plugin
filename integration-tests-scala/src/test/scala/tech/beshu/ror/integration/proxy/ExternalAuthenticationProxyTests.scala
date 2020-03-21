@@ -14,16 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.integration.proxy
 
-package tech.beshu.ror.utils.containers.generic
+import tech.beshu.ror.integration.suites.ExternalAuthenticationSuite
 
-import com.dimafeng.testcontainers.SingleContainer
-import org.testcontainers.containers.GenericContainer
-import tech.beshu.ror.utils.containers.WireMockContainer
-
-class WireMockS(proxy: WireMockContainer) extends SingleContainer[GenericContainer[_]]{
-  def getWireMockHost: String = proxy.getWireMockHost
-  def getWireMockPort: Integer = proxy.getWireMockPort
-
-  override implicit val container: GenericContainer[_] = proxy
-}
+class ExternalAuthenticationProxyTests extends ExternalAuthenticationSuite with ProxyTestSupport

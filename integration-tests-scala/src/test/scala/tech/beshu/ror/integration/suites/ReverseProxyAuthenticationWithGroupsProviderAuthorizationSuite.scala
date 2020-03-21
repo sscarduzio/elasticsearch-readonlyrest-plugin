@@ -39,10 +39,10 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        DependencyDef(name = "GROUPS1", containerCreator = Coeval(new WireMockS(WireMockContainer.create(
+        DependencyDef(name = "GROUPS1", containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(
           "/rev_proxy_groups_provider/wiremock_service1_cartman-s.json",
           "/rev_proxy_groups_provider/wiremock_service1_morgan-s.json")))),
-        DependencyDef(name = "GROUPS2", containerCreator = Coeval(new WireMockS(WireMockContainer.create(
+        DependencyDef(name = "GROUPS2", containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(
           "/rev_proxy_groups_provider/wiremock_service2-s.json"))))
       ),
       nodeDataInitializer = ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite.nodeDataInitializer()

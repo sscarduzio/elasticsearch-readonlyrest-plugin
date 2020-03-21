@@ -14,15 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.utils.containers.generic
 
-import cats.data.NonEmptyList
-import tech.beshu.ror.utils.containers.generic.EsClusterContainer.StartedClusterDependencies
+import com.dimafeng.testcontainers.SingleContainer
+import org.testcontainers.containers.GenericContainer
+import tech.beshu.ror.utils.containers.WireMockContainer
 
-trait EsContainerCreator {
+class WireMockScalaAdapter(proxy: WireMockContainer) extends SingleContainer[GenericContainer[_]]{
+  def getWireMockHost: String = proxy.getWireMockHost
+  def getWireMockPort: Integer = proxy.getWireMockPort
 
-  def create(name: String,
-             nodeNames: NonEmptyList[String],
-             clusterSettings: EsClusterSettings,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer
+  override implicit val container: GenericContainer[_] = proxy
 }

@@ -17,13 +17,15 @@
 package tech.beshu.ror.utils.containers.generic
 
 import cats.data.NonEmptyList
+import tech.beshu.ror.utils.containers.generic.EsClusterContainer.StartedClusterDependencies
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
 
   override def create(name: String,
                       nodeNames: NonEmptyList[String],
-                      clusterSettings: EsClusterSettings): EsContainer = {
+                      clusterSettings: EsClusterSettings,
+                      startedClusterDependencies: StartedClusterDependencies): EsContainer = {
     val project = RorPluginGradleProject.fromSystemProperty
     val esVersion = project.getESVersion
 
@@ -36,6 +38,6 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
       configHotReloadingEnabled = true,
       internodeSslEnabled = false,
       externalSslEnabled = false)
-    EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
+    EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer, startedClusterDependencies)
   }
 }

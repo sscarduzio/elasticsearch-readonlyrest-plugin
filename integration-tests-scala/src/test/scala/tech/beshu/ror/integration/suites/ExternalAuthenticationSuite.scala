@@ -16,15 +16,12 @@
  */
 package tech.beshu.ror.integration.suites
 
-import monix.eval.Coeval
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.WireMockContainer
 import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManagerJ}
+import tech.beshu.ror.utils.containers.generic.dependencies.wiremock
+import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
-
-import scala.collection.JavaConverters._
 
 trait ExternalAuthenticationSuite
   extends WordSpec
@@ -41,60 +38,35 @@ trait ExternalAuthenticationSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        DependencyDef(name = "EXT1", containerCreator = Coeval(new WireMockS(WireMockContainer.create("/external_authentication/wiremock_service1_cartman-s.json", "/external_authentication/wiremock_service1_morgan-s.json")))),
-        DependencyDef(name = "EXT2", containerCreator = Coeval(new WireMockS(WireMockContainer.create("/external_authentication/wiremock_service2_cartman-s.json"))))
+        wiremock(name = "EXT1", mappings = "/external_authentication/wiremock_service1_cartman-s.json", "/external_authentication/wiremock_service1_morgan-s.json"),
+        wiremock(name = "EXT2", mappings = "/external_authentication/wiremock_service2_cartman-s.json")
       ),
       nodeDataInitializer = ExternalAuthenticationSuite.nodeDataInitializer()
     )
   )
 
-  "A search request" should {
-    "return only data related to a1 index and ignore closed a2 index" when {
-      "direct index search is used" in {
-        val searchManager = new SearchManagerJ(
-          adminClient,
-          Map("x-api-key" -> "g").asJava
-        )
-        val response = searchManager.search("/intentp1_a1/_search")
+  "testAuthenticationSuccessWithService1" in {
+    val indexManager = new IndexManagerJ(basicAuthClient("cartman", "user1"))
+    val response = indexManager.get("twitter")
 
-        response.getResponseCode should be(200)
-        response.getSearchHits.size() should be(1)
-        response.getSearchHits.get(0).get("_id") should be("doc-a1")
-      }
-      "wildcard search is used" in {
-        val searchManager = new SearchManagerJ(
-          adminClient,
-          Map("x-api-key" -> "g").asJava
-        )
-        val response = searchManager.search("/*/_search")
+    response.getResponseCode should be(200)
+  }
+  "testAuthenticationSuccessWithService2" in {
+    val indexManager = new IndexManagerJ(basicAuthClient("cartman", "user1"))
+    val response = indexManager.get("facebook")
 
-        response.getResponseCode should be(200)
-        response.getSearchHits.size() should be(1)
-        response.getSearchHits.get(0).get("_id") should be("doc-a1")
-      }
-      "generic search all" in {
-        val searchManager = new SearchManagerJ(
-          adminClient,
-          Map("x-api-key" -> "g").asJava
-        )
-        val response = searchManager.search("/_search")
+    response.getResponseCode should be(200)
+  }
+  "testAuthenticationErrorWithService1" in {
+    val firstIndexManager = new IndexManagerJ(basicAuthClient("cartman", "user2"))
+    val firstResult = firstIndexManager.get("twitter")
 
-        response.getResponseCode should be(200)
-        response.getSearchHits.size() should be(1)
-        response.getSearchHits.get(0).get("_id") should be("doc-a1")
-      }
+    firstResult.getResponseCode should be(403)
 
-      "get mappings is used" in {
-        val searchManager = new SearchManagerJ(
-          adminClient,
-          Map("x-api-key" -> "g").asJava
-        )
-        val response = searchManager.search("/intentp1_*/_mapping/field/*")
-        response.getResponseCode should be(200)
-        response.getRawBody.contains("intentp1_a1") should be(true)
-        response.getRawBody.contains("intentp1_a2") should be(false)
-      }
-    }
+    val indexManager = new IndexManagerJ(basicAuthClient("morgan", "user2"))
+    val response = indexManager.get("twitter")
+
+    response.getResponseCode should be(403)
   }
 }
 
@@ -103,5 +75,3 @@ object ExternalAuthenticationSuite {
     new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }
 }
-
-

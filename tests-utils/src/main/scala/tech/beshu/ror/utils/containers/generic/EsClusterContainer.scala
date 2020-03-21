@@ -25,29 +25,40 @@ import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
 import org.junit.runner.Description
 import org.testcontainers.containers.GenericContainer
+import tech.beshu.ror.utils.containers.generic.EsClusterContainer.{StartedClusterDependencies, StartedDependency}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils._
 
 import scala.language.existentials
 import scala.util.Try
 
-class EsClusterContainer private[containers](esClusterContainers: NonEmptyList[Task[EsContainer]],
+class EsClusterContainer private[containers](esClusterContainersCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
+                                             dependencies: List[DependencyDef],
                                              clusterInitializer: EsClusterInitializer) extends Container {
 
-  val nodesContainers: NonEmptyList[EsContainer] = {
-    NonEmptyList.fromListUnsafe(Task.gather(esClusterContainers.toList).runSyncUnsafe())
-  }
+  private var clusterDependencies = StartedClusterDependencies(List.empty)
+  private var createdContainers = List.empty[EsContainer]
 
-//  val depsContainers: List[(DependencyDef, SingleContainer[GenericContainer[_]])] =
-//    dependencies.map(d => (d, d.containerCreator.apply()))
+  def esVersion: String = nodesContainers.head.esVersion
 
-  val esVersion: String = nodesContainers.head.esVersion
+  def nodesContainers: NonEmptyList[EsContainer] = NonEmptyList.fromListUnsafe(createdContainers)
+
+  def startedClusterDependencies: StartedClusterDependencies = clusterDependencies
 
   override def starting()(implicit description: Description): Unit = {
-//    Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
+    val createdDependenciesContainers = dependencies.map(d => (d.name, d.containerCreator.apply()))
+    //starting dependencies...
+    Task.gather(createdDependenciesContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
 
-    Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
-    clusterInitializer.initialize(nodesContainers.head.adminClient, this)
+    val justStartedClusterDependencies = StartedClusterDependencies(createdDependenciesContainers.map { case (name, container) => StartedDependency(name, container)})
+    clusterDependencies = justStartedClusterDependencies
+
+    val justCreatedContainers = esClusterContainersCreators.toList.map(creator => creator(justStartedClusterDependencies))
+    createdContainers = justCreatedContainers
+
+    //starting es containers...
+    Task.gather(justCreatedContainers.map(s => Task(s.starting()(description)))).runSyncUnsafe()
+    clusterInitializer.initialize(createdContainers.head.adminClient, this)
   }
 
   override def finished()(implicit description: Description): Unit =
@@ -59,6 +70,11 @@ class EsClusterContainer private[containers](esClusterContainers: NonEmptyList[T
   override def failed(e: Throwable)(implicit description: Description): Unit =
     nodesContainers.toList.foreach(_.failed(e)(description))
 
+}
+
+object EsClusterContainer {
+  final case class StartedDependency(name: String, container: SingleContainer[GenericContainer[_]])
+  final case class StartedClusterDependencies(values: List[StartedDependency])
 }
 
 class EsRemoteClustersContainer private[containers](val localClusters: NonEmptyList[EsClusterContainer],
@@ -141,3 +157,6 @@ final case class EsClusterSettings(name: String,
                                    internodeSslEnabled: Boolean = false)(implicit val rorConfigFileName: String)
 
 final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]])
+
+
+

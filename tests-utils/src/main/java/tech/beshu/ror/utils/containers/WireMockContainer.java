@@ -22,6 +22,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder;
@@ -58,6 +59,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         }));
     WireMockContainer cont = container
         .withExposedPorts(WIRE_MOCK_PORT)
+//            .withNetwork(Network.SHARED)
         .waitingFor(
             container.waitStrategy()
                      .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)

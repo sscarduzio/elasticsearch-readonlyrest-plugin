@@ -18,28 +18,25 @@ package tech.beshu.ror.utils.containers.generic
 
 import java.io.File
 
+import better.files._
 import cats.data.NonEmptyList
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
+import tech.beshu.ror.utils.containers.generic.EsClusterContainer.StartedClusterDependencies
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 trait EsWithRorPluginContainerCreator extends EsContainerCreator {
 
   override def create(name: String,
                       nodeNames: NonEmptyList[String],
-                      clusterSettings: EsClusterSettings): EsContainer = {
+                      clusterSettings: EsClusterSettings,
+                      startedClusterDependencies: StartedClusterDependencies): EsContainer = {
     val project = RorPluginGradleProject.fromSystemProperty
     val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val esVersion = project.getESVersion
-    val rorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
+    val rawRorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
 
-    val temp = FileAdjuster.createTempFile
-    import better.files._
-
-    val deps = clusterSettings
-      .dependentServicesContainers.map(d => (d.name, d.containerCreator.apply().container))
-
-    val adjusted = FileAdjuster.adjust(rorConfigFile.toScala, temp, deps)
+    val adjusted = FileAdjuster.adjust(rawRorConfigFile.toScala, FileAdjuster.createTempFile, startedClusterDependencies)
 
     println(adjusted.contentAsString)
 
@@ -54,6 +51,6 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
       xPackSupport = clusterSettings.xPackSupport,
       externalSslEnabled = true)
-    EsWithRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
+    EsWithRorPluginContainer.create(containerConfig, startedClusterDependencies, clusterSettings.nodeDataInitializer)
   }
 }

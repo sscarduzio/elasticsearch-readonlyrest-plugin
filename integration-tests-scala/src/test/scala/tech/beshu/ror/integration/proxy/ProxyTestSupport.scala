@@ -26,7 +26,7 @@ import tech.beshu.ror.proxy.RorProxy
 import tech.beshu.ror.proxy.RorProxy.ProxyAppWithCloseHandler
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.generic.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
-import tech.beshu.ror.utils.containers.generic.{EsContainer, EsWithoutRorPluginContainerCreator}
+import tech.beshu.ror.utils.containers.generic.{EsContainer, EsWithoutRorPluginContainer, EsWithoutRorPluginContainerCreator, FileAdjuster}
 
 import scala.concurrent.ExecutionContext
 
@@ -71,7 +71,9 @@ trait ProxyTestSupport
   //TODO: Create proxy instance dynamically based on 'esModule' property. Now it's fixed on es74-cloud
   private def createApp(port: Int, targetEsContainer: EsContainer): RorProxy = new RorProxy {
 
-    System.setProperty("com.readonlyrest.settings.file.path", ContainerUtils.getResourceFile(rorConfigFileName).getAbsolutePath)
+    val rawFile = ContainerUtils.getResourceFile(rorConfigFileName)
+    val adjusted = FileAdjuster.adjust(rawFile.toScala, FileAdjuster.createTempFile, targetEsContainer.startedClusterDependencies)
+    System.setProperty("com.readonlyrest.settings.file.path", adjusted.toJava.getAbsolutePath)
 
     override def config: RorProxy.Config = RorProxy.Config(
       targetEsNode = s"http://${targetEsContainer.host}:${targetEsContainer.port}",
