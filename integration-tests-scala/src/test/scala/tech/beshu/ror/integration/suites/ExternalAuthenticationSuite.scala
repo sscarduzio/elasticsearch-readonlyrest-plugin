@@ -38,8 +38,8 @@ trait ExternalAuthenticationSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        wiremock(name = "EXT1", mappings = "/external_authentication/wiremock_service1_cartman-s.json", "/external_authentication/wiremock_service1_morgan-s.json"),
-        wiremock(name = "EXT2", mappings = "/external_authentication/wiremock_service2_cartman-s.json")
+        wiremock(name = "EXT1", mappings = "/external_authentication/wiremock_service1_cartman.json", "/external_authentication/wiremock_service1_morgan.json"),
+        wiremock(name = "EXT2", mappings = "/external_authentication/wiremock_service2_cartman.json")
       ),
       nodeDataInitializer = ExternalAuthenticationSuite.nodeDataInitializer()
     )

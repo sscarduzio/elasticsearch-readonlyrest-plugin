@@ -16,11 +16,10 @@
  */
 package tech.beshu.ror.integration.suites
 
-import monix.eval.Coeval
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.LdapContainer
-import tech.beshu.ror.utils.containers.generic.{DependencyDef, ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.generic.dependencies.ldap
+import tech.beshu.ror.utils.containers.generic.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -39,8 +38,8 @@ trait LdapIntegrationSecondOptionSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        DependencyDef(name = "LDAP1", Coeval(new LdapContainer("LDAP1", "/ldap_integration_2nd/ldapNew.ldif"))),
-        DependencyDef(name = "LDAP2", Coeval(new LdapContainer("LDAP2", "/ldap_integration_2nd/ldapNew.ldif"))),
+        ldap(name = "LDAP1", ldapInitScript = "/ldap_integration_2nd/ldap.ldif"),
+        ldap(name = "LDAP2", ldapInitScript = "/ldap_integration_2nd/ldap.ldif")
       ),
       nodeDataInitializer = LdapIntegrationSecondOptionSuite.nodeDataInitializer()
     )

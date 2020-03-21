@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.integration.suites
 
-import monix.eval.Coeval
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite.SearchResult
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.WireMockContainer
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.dependencies.wiremock
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+
 
 trait DuplicatedResponseHeadersIssueSuite
   extends WordSpec
@@ -41,10 +41,10 @@ trait DuplicatedResponseHeadersIssueSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        DependencyDef(name = "EXT1", containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(
-          "/duplicated_response_headers_issue/auth-s.json",
-          "/duplicated_response_headers_issue/brian_groups-s.json",
-          "/duplicated_response_headers_issue/freddie_groups-s.json"))))
+        wiremock(name = "EXT1", mappings =
+          "/duplicated_response_headers_issue/auth.json",
+          "/duplicated_response_headers_issue/brian_groups.json",
+          "/duplicated_response_headers_issue/freddie_groups.json")
       ),
       nodeDataInitializer = DuplicatedResponseHeadersIssueSuite.nodeDataInitializer()
     )
@@ -87,6 +87,7 @@ trait DuplicatedResponseHeadersIssueSuite
 object DuplicatedResponseHeadersIssueSuite {
 
   final case class SearchResult(responseCode: Int, headers: List[SimpleHeader])
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }

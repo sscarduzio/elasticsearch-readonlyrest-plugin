@@ -16,11 +16,10 @@
  */
 package tech.beshu.ror.integration.suites
 
-import monix.eval.Coeval
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.WireMockContainer
 import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.dependencies.wiremock
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -39,11 +38,11 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        DependencyDef(name = "GROUPS1", containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(
-          "/rev_proxy_groups_provider/wiremock_service1_cartman-s.json",
-          "/rev_proxy_groups_provider/wiremock_service1_morgan-s.json")))),
-        DependencyDef(name = "GROUPS2", containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(
-          "/rev_proxy_groups_provider/wiremock_service2-s.json"))))
+        wiremock(name = "GROUPS1", mappings =
+          "/rev_proxy_groups_provider/wiremock_service1_cartman.json",
+          "/rev_proxy_groups_provider/wiremock_service1_morgan.json"),
+        wiremock(name = "GROUPS2", mappings =
+          "/rev_proxy_groups_provider/wiremock_service2.json")
       ),
       nodeDataInitializer = ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite.nodeDataInitializer()
     )
