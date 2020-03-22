@@ -44,39 +44,39 @@ class KibanaAccessRule(val settings: Settings)
 
   override val name: Rule.Name = KibanaAccessRule.name
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
+  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+    val requestContext = blockContext.requestContext
     if (requestContext.uriPath.isCurrentUserMetadataPath) Fulfilled(modifyMatched(blockContext))
     // Allow other actions if devnull is targeted to readers and writers
-    else if (requestContext.indices.contains(devNullKibana)) Fulfilled(modifyMatched(blockContext))
+    else if (requestContext.__old_indices.contains(devNullKibana)) Fulfilled(modifyMatched(blockContext))
     // Any index, read op
     else if (Matchers.roMatcher.`match`(requestContext.action)) Fulfilled(modifyMatched(blockContext))
     else if (Matchers.clusterMatcher.`match`(requestContext.action)) Fulfilled(modifyMatched(blockContext))
     else if (emptyIndicesMatch(requestContext)) Fulfilled(modifyMatched(blockContext))
     else if (isKibanaSimplaData(requestContext)) Fulfilled(modifyMatched(blockContext))
-    else processCheck(requestContext, blockContext)
+    else processCheck(blockContext)
   }
 
-  private def processCheck[T <: Operation](requestContext: RequestContext[T], blockContext: BlockContext[T]): RuleResult[T] = {
+  private def processCheck[B <: BlockContext[B]](blockContext: B): RuleResult[B] = {
     val kibanaIndex = settings
       .kibanaIndex
-      .resolve(requestContext, blockContext)
+      .resolve(blockContext)
       .getOrElse(IndexName.kibana)
 
     // Save UI state in discover & Short urls
     kibanaIndexPattern(kibanaIndex) match {
       case None =>
         Rejected()
-      case Some(pattern) if isRoNonStrictCase(requestContext, kibanaIndex, pattern) =>
+      case Some(pattern) if isRoNonStrictCase(blockContext.requestContext, kibanaIndex, pattern) =>
         Fulfilled(modifyMatched(blockContext, Some(kibanaIndex)))
       case Some(_) =>
-        continueProcessing(requestContext, blockContext, kibanaIndex)
+        continueProcessing(blockContext, kibanaIndex)
     }
   }
 
-  private def continueProcessing[T <: Operation](requestContext: RequestContext[T],
-                                 blockContext: BlockContext[T],
-                                 kibanaIndex: IndexName): RuleResult[T] = {
+  private def continueProcessing[B <: BlockContext[B]](blockContext: B,
+                                                       kibanaIndex: IndexName): RuleResult[B] = {
+    val requestContext = blockContext.requestContext
     if (kibanaCanBeModified && isTargetingKibana(requestContext, kibanaIndex)) {
       if (Matchers.roMatcher.`match`(requestContext.action) ||
         Matchers.rwMatcher.`match`(requestContext.action) ||
@@ -96,7 +96,7 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def isReadonlyrestAdmin[T <: Operation](requestContext: RequestContext[T]) = {
-    (requestContext.indices.isEmpty || requestContext.indices.contains(settings.rorIndex)) &&
+    (requestContext.__old_indices.isEmpty || requestContext.__old_indices.contains(settings.rorIndex)) &&
       settings.access === KibanaAccess.Admin &&
       Matchers.adminMatcher.`match`(requestContext.action)
   }
@@ -110,18 +110,18 @@ class KibanaAccessRule(val settings: Settings)
   }
 
   private def isKibanaSimplaData[T <: Operation](requestContext: RequestContext[T]) = {
-    kibanaCanBeModified && requestContext.indices.size == 1 && requestContext.indices.head.hasPrefix("kibana_sample_data_")
+    kibanaCanBeModified && requestContext.__old_indices.size == 1 && requestContext.__old_indices.head.hasPrefix("kibana_sample_data_")
   }
 
   private def emptyIndicesMatch[T <: Operation](requestContext: RequestContext[T]) = {
-    requestContext.indices.isEmpty && {
+    requestContext.__old_indices.isEmpty && {
       (kibanaCanBeModified && Matchers.rwMatcher.`match`(requestContext.action)) ||
         (settings.access === KibanaAccess.Admin && Matchers.adminMatcher.`match`(requestContext.action))
     }
   }
 
   private def isTargetingKibana[T <: Operation](requestContext: RequestContext[T], kibanaIndex: IndexName) = {
-    requestContext.indices.toList match {
+    requestContext.__old_indices.toList match {
       case head :: Nil => head === kibanaIndex
       case _ => false
     }
@@ -134,14 +134,14 @@ class KibanaAccessRule(val settings: Settings)
     )).toOption
   }
 
-  private def modifyMatched[T <: Operation](blockContext: BlockContext[T], kibanaIndex: Option[IndexName] = None) = {
-    def applyKibanaAccess = (bc: BlockContext[T]) => {
-      bc.withKibanaAccess(settings.access)
+  private def modifyMatched[B <: BlockContext[B]](blockContext: B, kibanaIndex: Option[IndexName] = None) = {
+    def applyKibanaAccess = (bc: B) => {
+      bc.withUserMetadata(_.withKibanaAccess(settings.access))
     }
 
-    def applyKibanaIndex = (bc: BlockContext[T]) => {
+    def applyKibanaIndex = (bc: B) => {
       kibanaIndex match {
-        case Some(index) => bc.withKibanaIndex(index)
+        case Some(index) => bc.withUserMetadata(_.withKibanaIndex(index))
         case None => bc
       }
     }

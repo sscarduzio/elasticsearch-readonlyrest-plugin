@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.{Address, Operation}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 class HostsRule(val settings: Settings)
@@ -32,29 +31,28 @@ class HostsRule(val settings: Settings)
 
   override val name: Rule.Name = HostsRule.name
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = {
+  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = {
+    val requestContext = blockContext.requestContext
     requestContext.xForwardedForHeaderValue match {
       case Some(xForwardedHeaderValue) if settings.acceptXForwardedForHeader =>
-        checkAllowedAddresses(requestContext, blockContext)(
+        checkAllowedAddresses(blockContext)(
           allowedAddresses = settings.allowedHosts,
           addressToCheck = xForwardedHeaderValue
         ).flatMap {
           case true =>
             Task.now(RuleResult.Fulfilled(blockContext))
           case false =>
-            checkRemoteAddress(requestContext, blockContext)
+            checkRemoteAddress(blockContext)
         }
       case _ =>
-        checkRemoteAddress(requestContext, blockContext)
+        checkRemoteAddress(blockContext)
     }
   }
 
-  private def checkRemoteAddress[T <: Operation](requestContext: RequestContext[T],
-                                                 blockContext: BlockContext[T]) = {
-    requestContext.remoteAddress match {
+  private def checkRemoteAddress[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = {
+    blockContext.requestContext.remoteAddress match {
       case Some(remoteAddress) =>
-        checkAllowedAddresses(requestContext, blockContext)(
+        checkAllowedAddresses(blockContext)(
           allowedAddresses = settings.allowedHosts,
           addressToCheck = remoteAddress
         ).map(condition => RuleResult.fromCondition(blockContext)(condition))

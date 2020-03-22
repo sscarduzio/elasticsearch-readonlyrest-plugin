@@ -32,23 +32,21 @@ class UriRegexRule(val settings: Settings)
 
   override val name: Rule.Name = UriRegexRule.name
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
+  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.fromCondition(blockContext) {
       settings
         .uriPatterns
-        .exists(variableMatchingRequestedUri(requestContext, blockContext))
+        .exists(variableMatchingRequestedUri(blockContext))
     }
   }
 
-  private def variableMatchingRequestedUri[T <: Operation](requestContext: RequestContext[T],
-                                                           blockContext: BlockContext[T])
-                                                          (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
+  private def variableMatchingRequestedUri[B <: BlockContext[B]](blockContext: B)
+                                                                (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
     patternVariable
-      .resolve(requestContext, blockContext)
-      .exists(matchingResolvedPattern(requestContext))
+      .resolve(blockContext)
+      .exists(matchingResolvedPattern(blockContext.requestContext))
 
-  private def matchingResolvedPattern[T <: Operation](requestContext: RequestContext[T])
+  private def matchingResolvedPattern[O <: Operation](requestContext: RequestContext[O])
                                                      (patterns: NonEmptyList[Pattern]): Boolean =
     patterns
       .exists {

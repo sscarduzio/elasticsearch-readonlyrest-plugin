@@ -24,10 +24,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{DocumentField, Header, Operation}
+import tech.beshu.ror.accesscontrol.domain.{DocumentField, Header}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.ScalaOps._
 
 class FieldsRule(val settings: Settings)
@@ -35,9 +34,8 @@ class FieldsRule(val settings: Settings)
 
   override val name: Rule.Name = FieldsRule.name
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
-    if(!requestContext.isReadOnlyRequest) RuleResult.Rejected()
+  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+    if (!blockContext.requestContext.isReadOnlyRequest) RuleResult.Rejected()
     else RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
   }
 
@@ -53,6 +51,7 @@ object FieldsRule {
   final case class Settings private(fields: NonEmptySet[DocumentField])
   object Settings {
     def ofFields(fields: NonEmptySet[ADocumentField]): Settings = Settings(fields.widen[DocumentField])
+
     def ofNegatedFields(fields: NonEmptySet[NegatedDocumentField]): Settings = Settings(fields.widen[DocumentField])
   }
 }

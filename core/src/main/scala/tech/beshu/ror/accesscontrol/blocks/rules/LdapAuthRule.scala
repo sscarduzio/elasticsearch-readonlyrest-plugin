@@ -21,7 +21,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.accesscontrol.domain.Operation
-import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class LdapAuthRule(val authentication: LdapAuthenticationRule,
                    val authorization: LdapAuthorizationRule)
@@ -31,13 +30,12 @@ class LdapAuthRule(val authentication: LdapAuthenticationRule,
 
   override val name: Rule.Name = LdapAuthRule.name
 
-  override def tryToAuthenticate[T <: Operation](requestContext: RequestContext[T],
-                                                 blockContext: BlockContext[T]): Task[RuleResult[T]] = {
+  override def tryToAuthenticate[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = {
     authentication
-      .check(requestContext, blockContext)
+      .check(blockContext)
       .flatMap {
-        case fulfilled: Fulfilled[T] =>
-          authorization.check(requestContext, fulfilled.blockContext)
+        case fulfilled: Fulfilled[B] =>
+          authorization.check(fulfilled.blockContext)
         case Rejected(_) =>
           Task.now(Rejected())
       }

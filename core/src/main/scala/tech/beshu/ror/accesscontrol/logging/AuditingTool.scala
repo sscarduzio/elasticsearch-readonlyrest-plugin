@@ -38,7 +38,7 @@ class AuditingTool(settings: Settings,
                   (implicit clock: Clock,
                    loggingContext: LoggingContext) {
 
-  def audit[T <: Operation](response: ResponseContext[T]): Task[Unit] = {
+  def audit[B <: BlockContext.Aux[B, O], O <: Operation](response: ResponseContext[B, O]): Task[Unit] = {
     safeRunSerializer(response)
       .map {
         case Some(entry) =>
@@ -51,43 +51,54 @@ class AuditingTool(settings: Settings,
       }
   }
 
-  private def toAuditResponse[T <: Operation](responseContext: ResponseContext[T]) = {
+  private def safeRunSerializer[B <: BlockContext.Aux[B, O], O <: Operation](response: ResponseContext[B, O]) = {
+    Task(settings.logSerializer.onResponse(toAuditResponse(response)))
+  }
+
+  private def toAuditResponse[B <: BlockContext.Aux[B, O], O <: Operation](responseContext: ResponseContext[B, O]) = {
     responseContext match {
-      case ResponseContext.AllowedBy(requestContext, block, blockContext, history) =>
+      case allowedBy: ResponseContext.AllowedBy[B, O] =>
         AuditResponseContext.Allowed(
-          toAuditRequestContext(requestContext, Some(blockContext), history),
-          toAuditVerbosity(block.verbosity),
-          block.show
+          toAuditRequestContext(allowedBy.requestContext, Some(allowedBy.blockContext), allowedBy.history),
+          toAuditVerbosity(allowedBy.block.verbosity),
+          allowedBy.block.show
         )
-      case ResponseContext.Allow(requestContext, _, block, history) =>
+      case allow: ResponseContext.Allow[B, O] =>
         AuditResponseContext.Allowed(
-          toAuditRequestContext(requestContext, None, history),
+          toAuditRequestContext(allow.requestContext, None, allow.history),
           toAuditVerbosity(Block.Verbosity.Info),
-          block.show
+          allow.block.show
         )
-      case ResponseContext.ForbiddenBy(requestContext, block, blockContext, history) =>
+      case forbiddenBy: ResponseContext.ForbiddenBy[B, O] =>
         AuditResponseContext.ForbiddenBy(
-          toAuditRequestContext(requestContext, Some(blockContext), history),
-          toAuditVerbosity(block.verbosity),
-          block.show
+          toAuditRequestContext(forbiddenBy.requestContext, Some(forbiddenBy.blockContext), forbiddenBy.history),
+          toAuditVerbosity(forbiddenBy.block.verbosity),
+          forbiddenBy.block.show
         )
-      case ResponseContext.Forbidden(requestContext, history) =>
-        AuditResponseContext.Forbidden(toAuditRequestContext(requestContext, None, history))
-      case ResponseContext.RequestedIndexNotExist(requestContext, history) =>
-        AuditResponseContext.RequestedIndexNotExist(toAuditRequestContext(requestContext, None, history))
-      case ResponseContext.Errored(requestContext, cause) =>
-        AuditResponseContext.Errored(toAuditRequestContext(requestContext, None, Vector.empty), cause)
+      case forbidden: ResponseContext.Forbidden[B, O] =>
+        AuditResponseContext.Forbidden(toAuditRequestContext(forbidden.requestContext, None, forbidden.history))
+      case requestedIndexNotExist: ResponseContext.RequestedIndexNotExist[B, O] =>
+        AuditResponseContext.RequestedIndexNotExist(
+          toAuditRequestContext(requestedIndexNotExist.requestContext, None, requestedIndexNotExist.history)
+        )
+      case errored: ResponseContext.Errored[B, O] =>
+        AuditResponseContext.Errored(toAuditRequestContext(errored.requestContext, None, Vector.empty), errored.cause)
     }
   }
 
-  private def toAuditRequestContext[T <: Operation](requestContext: RequestContext[T],
-                                                    blockContext: Option[BlockContext[T]],
-                                                    historyEntries: Vector[History[T]]): AuditRequestContext = {
+  private def toAuditVerbosity(verbosity: Verbosity) = verbosity match {
+    case Verbosity.Info => AuditResponseContext.Verbosity.Info
+    case Verbosity.Error => AuditResponseContext.Verbosity.Error
+  }
+
+  private def toAuditRequestContext[B <: BlockContext.Aux[B, O], O <: Operation](requestContext: RequestContext.Aux[O, B],
+                                                                                 blockContext: Option[B],
+                                                                                 historyEntries: Vector[History[B]]): AuditRequestContext = {
     new AuditRequestContext {
       implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       override val timestamp: Instant = requestContext.timestamp
       override val id: String = requestContext.id.value
-      override val indices: Set[String] = requestContext.indices.map(_.value.value)
+      override val indices: Set[String] = requestContext.__old_indices.map(_.value.value)
       override val action: String = requestContext.action.value
       override val headers: Map[String, String] = requestContext.headers.map(h => (h.name.value.value, h.value.value)).toMap
       override val uriPath: String = requestContext.uriPath.value
@@ -106,25 +117,20 @@ class AuditingTool(settings: Settings,
       override val `type`: String = requestContext.`type`.value
       override val taskId: Long = requestContext.taskId
       override val httpMethod: String = requestContext.method.m
-      override val loggedInUserName: Option[String] = blockContext.flatMap(_.loggedUser.map(_.id.value.value))
-      override val impersonatedByUserName: Option[String] = blockContext.flatMap(_.loggedUser).flatMap {
-        case DirectlyLoggedUser(_) => None
-        case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
-      }
+      override val loggedInUserName: Option[String] = blockContext.flatMap(_.userMetadata.loggedUser.map(_.id.value.value))
+      override val impersonatedByUserName: Option[String] =
+        blockContext
+          .flatMap(_.userMetadata.loggedUser)
+          .flatMap {
+            case DirectlyLoggedUser(_) => None
+            case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
+          }
       override val involvesIndices: Boolean = requestContext.involvesIndices
       override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
       override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
     }
   }
 
-  private def toAuditVerbosity(verbosity: Verbosity) = verbosity match {
-    case Verbosity.Info => AuditResponseContext.Verbosity.Info
-    case Verbosity.Error => AuditResponseContext.Verbosity.Error
-  }
-
-  private def safeRunSerializer[T <: Operation](response: ResponseContext[T]) = {
-    Task(settings.logSerializer.onResponse(toAuditResponse(response)))
-  }
 }
 
 object AuditingTool {

@@ -146,19 +146,21 @@ object show {
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
 
-    implicit def blockContextShow[T <: Operation](implicit showHeader: Show[Header]): Show[BlockContext[T]] =
+    implicit def blockContextShow[B <: BlockContext[B]](implicit showHeader: Show[Header]): Show[B] =
       Show.show { bc =>
-        (showOption("user", bc.loggedUser) ::
-          showOption("group", bc.currentGroup) ::
-          showTraversable("av_groups", bc.availableGroups) ::
+        (showOption("user", bc.userMetadata.loggedUser) ::
+          showOption("group", bc.userMetadata.currentGroup) ::
+          showTraversable("av_groups", bc.userMetadata.availableGroups) ::
           showTraversable("indices", bc.indices.getOrElse(Set.empty)) ::
-          showOption("kibana_idx", bc.kibanaIndex) ::
+          showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
           showTraversable("response_hdr", bc.responseHeaders) ::
           showTraversable("context_hdr", bc.contextHeaders) ::
           showTraversable("repositories", bc.repositories.getOrElse(Set.empty)) ::
           showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
           Nil flatten) mkString ";"
+        // todo: add new indices
       }
+
     private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
       case KibanaAccess.RO => "ro"
       case KibanaAccess.ROStrict => "ro_strict"
@@ -170,14 +172,15 @@ object show {
       (showOption("user", u.loggedUser) ::
         showOption("curr_group", u.currentGroup) ::
         showTraversable("av_groups", u.availableGroups) ::
-        showOption("kibana_idx", u.foundKibanaIndex) ::
+        showOption("kibana_idx", u.kibanaIndex) ::
         showTraversable("hidden_apps", u.hiddenKibanaApps) ::
         showOption("kibana_access", u.kibanaAccess) ::
         showOption("user_origin", u.userOrigin) ::
         Nil flatten) mkString ";"
     }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
-    implicit def historyItemShow[T <: Operation]: Show[HistoryItem[T]] = Show.show { hi =>
+
+    implicit def historyItemShow[B <: BlockContext[B]]: Show[HistoryItem[B]] = Show.show { hi =>
       s"${hi.rule.show}->${
         hi.result match {
           case RuleResult.Fulfilled(_) => "true"
@@ -185,13 +188,15 @@ object show {
         }
       }"
     }
-    implicit def historyShow[T <: Operation](implicit headerShow: Show[Header]): Show[History[T]] =
-      Show.show[History[T]] { h =>
+
+    implicit def historyShow[B <: BlockContext[B]](implicit headerShow: Show[Header]): Show[History[B]] =
+      Show.show[History[B]] { h =>
         val resolvedPart = h.blockContext.show.some
           .filter(!_.isEmpty)
           .map(context => s", RESOLVED:[$context]").getOrElse("")
         s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}]$resolvedPart]"""
       }
+
     implicit val policyShow: Show[Policy] = Show.show {
       case Allow => "ALLOW"
       case Forbid => "FORBID"
@@ -229,13 +234,16 @@ object show {
       case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
         s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
     }
+
     def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
       Show.show[Header] {
         case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
         case header => headerShow.show(header)
       }
     }
+
     val headerShow: Show[Header] = Show.show { case Header(name, value) => s"${name.show}=${value.value.show}" }
+
     def blockValidationErrorShow(block: Block.Name): Show[BlockValidationError] = Show.show {
       case BlockValidationError.AuthorizationWithoutAuthentication =>
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
@@ -246,13 +254,16 @@ object show {
       case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
         s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
     }
-    private def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {
-      if(traversable.isEmpty) None
+
+    private def showTraversable[T: Show](name: String, traversable: Traversable[T]) = {
+      if (traversable.isEmpty) None
       else Some(s"$name=${traversable.map(_.show).mkString(",")}")
     }
-    private def showOption[T : Show](name: String, option: Option[T]) = {
+
+    private def showOption[T: Show](name: String, option: Option[T]) = {
       option.map(v => s"$name=${v.show}")
     }
+
     implicit val authorizationValueErrorShow: Show[AuthorizationValueError] = Show.show {
       case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
       case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [$value]"
@@ -270,11 +281,12 @@ object refined {
 }
 
 object headerValues {
-  implicit def nonEmptyListHeaderValue[T : ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
+  implicit def nonEmptyListHeaderValue[T: ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
     implicit val nesShow: Show[NonEmptyString] = Show.show(_.value)
     val tToHeaderValue = implicitly[ToHeaderValue[T]]
     NonEmptyString.unsafeFrom(list.map(tToHeaderValue.toRawValue).mkString_(","))
   }
+
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
   implicit val transientFilterHeaderValue: ToHeaderValue[Filter] = ToHeaderValue { filter =>

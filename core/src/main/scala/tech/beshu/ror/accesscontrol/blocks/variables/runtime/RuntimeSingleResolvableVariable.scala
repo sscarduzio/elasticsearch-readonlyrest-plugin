@@ -22,9 +22,7 @@ import cats.instances.either._
 import cats.syntax.order._
 import cats.syntax.traverse._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
-import tech.beshu.ror.accesscontrol.domain.Operation
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.{Convertible, Unresolvable}
 
 sealed trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariable[T]
 
@@ -33,20 +31,18 @@ object RuntimeSingleResolvableVariable {
   final case class AlreadyResolved[T](value: T)
     extends RuntimeSingleResolvableVariable[T] {
 
-    override def resolve[O <: Operation](requestContext: RequestContext[O],
-                                         blockContext: BlockContext[O]): Either[RuntimeResolvableVariable.Unresolvable, T] =
+    override def resolve(blockContext: BlockContext[_]): Either[Unresolvable, T] =
       Right(value)
   }
 
   final case class ToBeResolved[T: Convertible](values: NonEmptyList[SingleExtractable])
     extends RuntimeSingleResolvableVariable[T] {
 
-    override def resolve[O <: Operation](requestContext: RequestContext[O],
-                                         blockContext: BlockContext[O]): Either[RuntimeResolvableVariable.Unresolvable, T]= {
+    override def resolve(blockContext: BlockContext[_]): Either[Unresolvable, T]= {
       values
         .map { extractable =>
           extractable
-            .extractUsing(requestContext, blockContext)
+            .extractUsing(blockContext)
             .left.map(error => RuntimeResolvableVariable.Unresolvable.CannotExtractValue(error.msg))
         }
         .sequence

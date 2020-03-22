@@ -30,14 +30,10 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
-import tech.beshu.ror.SecurityPermissionException
-import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
 import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider, EsServerBasedRorClusterService}
-import tech.beshu.ror.es.request.EsRequestContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse._
-import tech.beshu.ror.es.request.regular.RegularRequestHandler
-import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
+import tech.beshu.ror.es.request.context.AclAwareRequestFilter
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
 
@@ -52,7 +48,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
-  private val rorEsClusterService = new EsServerBasedRorClusterService(clusterService)
+  private val aclAwareRequestFilter = new AclAwareRequestFilter(
+    new EsServerBasedRorClusterService(clusterService), threadPool
+  )
 
   private val startingTaskCancellable = Ror
     .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
@@ -127,20 +125,27 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             channel: RestChannel): Unit = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        val requestContext = EsRequestContext
-          .from(channel, task.getId, action, request, rorEsClusterService, threadPool, remoteClusterService.isCrossClusterSearchEnabled)
-          .fold(
-            ex => throw new SecurityPermissionException("Cannot create request context object", ex),
-            identity
-          )
-        requestContext.uriPath match {
-          case CurrentUserMetadataPath(_) =>
-            val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestContext)
-          case _ =>
-            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestContext)
-        }
+        aclAwareRequestFilter
+          .handle(engine, channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled)
+          .runAsync {
+            case Right(_) =>
+            case Left(ex) => listener.onFailure(new Exception(ex))
+          }
+        // todo:
+//        val requestContext = EsRequestContext
+//          .from(channel, task.getId, action, request, rorEsClusterService, threadPool, remoteClusterService.isCrossClusterSearchEnabled)
+//          .fold(
+//            ex => throw new SecurityPermissionException("Cannot create request context object", ex),
+//            identity
+//          )
+//        requestContext.uriPath match {
+//          case CurrentUserMetadataPath(_) =>
+//            val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
+//            handler.handle(requestContext)
+//          case _ =>
+//            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
+//            handler.handle(requestContext)
+//        }
       case None =>
         listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
     }

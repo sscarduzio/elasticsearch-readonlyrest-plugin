@@ -21,20 +21,18 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RegularRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Operation}
+import tech.beshu.ror.accesscontrol.domain.IndexName
 
 class KibanaIndexRule(val settings: Settings)
   extends RegularRule with MatchingAlwaysRule {
 
   override val name: Rule.Name = KibanaIndexRule.name
 
-  override def process[T <: Operation](requestContext: RequestContext[T],
-                                       blockContext: BlockContext[T]): Task[BlockContext[T]] = Task {
+  override def process[B <: BlockContext[B]](blockContext: B): Task[B] = Task {
     settings
       .kibanaIndex
-      .resolve(requestContext, blockContext)
-      .map(blockContext.withKibanaIndex)
+      .resolve(blockContext)
+      .map(index => blockContext.withUserMetadata(_.withKibanaIndex(index)))
       .getOrElse(blockContext)
   }
 }

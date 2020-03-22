@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.ActionsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.domain.{Action, Operation}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.MatcherWithWildcards
 
@@ -37,8 +36,8 @@ class ActionsRule(val settings: Settings)
 
   private val matcher = new MatcherWithWildcards(settings.actions.map(_.value).toSortedSet.asJava)
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
+  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+    val requestContext = blockContext.requestContext
     if (matcher.`match`(requestContext.action.value)) {
       RuleResult.Fulfilled(blockContext)
     } else {

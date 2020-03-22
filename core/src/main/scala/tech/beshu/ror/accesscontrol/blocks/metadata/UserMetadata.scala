@@ -16,14 +16,44 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.metadata
 
+import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.utils.uniquelist.UniqueList
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-final case class UserMetadata(loggedUser: Option[LoggedUser],
-                              currentGroup: Option[Group],
-                              availableGroups: UniqueList[Group],
-                              foundKibanaIndex: Option[IndexName],
-                              foundKibanaTemplateIndex: Option[IndexName],
-                              hiddenKibanaApps: Set[KibanaApp],
-                              kibanaAccess: Option[KibanaAccess],
-                              userOrigin: Option[UserOrigin])
+final case class UserMetadata private(loggedUser: Option[LoggedUser],
+                                      currentGroup: Option[Group],
+                                      availableGroups: UniqueList[Group],
+                                      kibanaIndex: Option[IndexName],
+                                      kibanaTemplateIndex: Option[IndexName],
+                                      hiddenKibanaApps: Set[KibanaApp],
+                                      kibanaAccess: Option[KibanaAccess],
+                                      userOrigin: Option[UserOrigin],
+                                      jwtToken: Option[JwtTokenPayload]) {
+
+  def withLoggedUser(user: LoggedUser): UserMetadata = this.copy(loggedUser = Some(user))
+  def withCurrentGroup(group: Group): UserMetadata = this.copy(currentGroup = Some(group))
+  def addAvailableGroup(group: Group): UserMetadata = this.copy(availableGroups = this.availableGroups + group)
+  def addAvailableGroups(groups: UniqueNonEmptyList[Group]): UserMetadata = this.copy(availableGroups = UniqueList.fromSortedSet(this.availableGroups ++ groups))
+  def withAvailableGroups(groups: UniqueList[Group]): UserMetadata = this.copy(availableGroups = groups)
+  def withKibanaIndex(index: IndexName): UserMetadata = this.copy(kibanaIndex = Some(index))
+  def withKibanaTemplateIndex(index: IndexName): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
+  def addHiddenKibanaApp(app: KibanaApp): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps + app)
+  def withHiddenKibanaApps(apps: NonEmptySet[KibanaApp]): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps ++ apps.toSortedSet)
+  def withKibanaAccess(access: KibanaAccess): UserMetadata = this.copy(kibanaAccess = Some(access))
+  def withUserOrigin(origin: UserOrigin): UserMetadata = this.copy(userOrigin = Some(origin))
+  def withJwtToken(token: JwtTokenPayload): UserMetadata = this.copy(jwtToken = Some(token))
+}
+
+object UserMetadata {
+  def empty: UserMetadata = new UserMetadata(
+    loggedUser = None,
+    currentGroup = None,
+    availableGroups = UniqueList.empty,
+    kibanaIndex = None,
+    kibanaTemplateIndex = None,
+    hiddenKibanaApps = Set.empty,
+    kibanaAccess = None,
+    userOrigin = None,
+    jwtToken = None
+  )
+}

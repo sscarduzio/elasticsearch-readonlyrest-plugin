@@ -18,6 +18,7 @@ package tech.beshu.ror.es.providers
 
 import org.elasticsearch.cluster.metadata.MetaDataIndexTemplateService
 import org.elasticsearch.cluster.service.ClusterService
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 
@@ -57,4 +58,6 @@ class EsServerBasedRorClusterService(clusterService: ClusterService) extends Ror
       }
       .toMap
   }
+
+  override def expandIndices(indices: Set[domain.IndexName]): Set[domain.IndexName] = ???
 }

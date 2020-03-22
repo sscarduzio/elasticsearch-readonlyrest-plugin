@@ -18,17 +18,17 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import java.time.{Clock, Instant}
 
-import org.apache.logging.log4j.scala.Logging
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.{LoggedUser, Operation}
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
+import tech.beshu.ror.accesscontrol.domain.LoggedUser
+import tech.beshu.ror.accesscontrol.request.RorSessionCookie
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.{ExtractingError, toSessionHeader}
-import tech.beshu.ror.accesscontrol.request.{RequestContext, RorSessionCookie}
 import tech.beshu.ror.providers.UuidProvider
 
 import scala.concurrent.duration.FiniteDuration
@@ -39,21 +39,19 @@ class SessionMaxIdleRule(val settings: Settings)
 
   override val name: Rule.Name = SessionMaxIdleRule.name
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
-    blockContext.loggedUser match {
+  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+    blockContext.userMetadata.loggedUser match {
       case Some(user) =>
-        checkCookieFor(user, requestContext, blockContext)
+        checkCookieFor(user, blockContext)
       case None =>
         logger.warn("Cannot state the logged in user, put the authentication rule on top of the block!")
         Rejected()
     }
   }
 
-  private def checkCookieFor[T <: Operation](user: LoggedUser,
-                                             requestContext: RequestContext[T],
-                                             blockContext: BlockContext[T]) = {
-    RorSessionCookie.extractFrom(requestContext, user) match {
+  private def checkCookieFor[B <: BlockContext[B]](user: LoggedUser,
+                                                   blockContext: B): RuleResult[B] = {
+    RorSessionCookie.extractFrom(blockContext.requestContext, user) match {
       case Right(_) | Left(ExtractingError.Absent) =>
         val newCookie = RorSessionCookie(user.id, newExpiryDate)
         Fulfilled(blockContext.withAddedResponseHeader(toSessionHeader(newCookie)))

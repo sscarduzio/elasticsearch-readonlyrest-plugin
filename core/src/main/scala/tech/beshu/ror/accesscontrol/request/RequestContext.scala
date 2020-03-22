@@ -25,9 +25,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.Operation._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -36,7 +35,12 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
 
-sealed trait RequestContext[T <: Operation] {
+trait RequestContext[O <: Operation] {
+
+  type BLOCK_CONTEXT <: BlockContext.Aux[BLOCK_CONTEXT, O]
+
+  def emptyBlockContext: BLOCK_CONTEXT
+
   def timestamp: Instant
 
   def taskId: Long
@@ -61,9 +65,10 @@ sealed trait RequestContext[T <: Operation] {
 
   def content: String
 
-  def operation: T
+  // todo: lazy?
+  def operation: O
 
-  def indices: Set[IndexName]
+  def __old_indices: Set[IndexName]
 
   def allIndicesAndAliases: Set[IndexWithAliases]
 
@@ -88,15 +93,17 @@ sealed trait RequestContext[T <: Operation] {
 
 object RequestContext extends Logging {
 
+  type Aux[O <: Operation, B <: BlockContext[B]] = RequestContext[O] { type BLOCK_CONTEXT = B }
+
   final case class Id(value: String) extends AnyVal
   object Id {
     implicit val show: Show[Id] = Show.show(_.value)
   }
 
-  def show[T <: Operation](loggedUser: Option[LoggedUser],
-                           kibanaIndex: Option[IndexName],
-                           history: Vector[Block.History[T]])
-                          (implicit headerShow: Show[Header]): Show[RequestContext[T]] =
+  def show[B <: BlockContext.Aux[B, O], O <: Operation](loggedUser: Option[LoggedUser],
+                                                        kibanaIndex: Option[IndexName],
+                                                        history: Vector[Block.History[B]])
+                                                       (implicit headerShow: Show[Header]): Show[RequestContext.Aux[O, B]] =
     Show.show { r =>
       def stringifyUser = {
         loggedUser match {
@@ -113,7 +120,7 @@ object RequestContext extends Logging {
       }
 
       def stringifyIndices = {
-        val idx = r.indices.toList.map(_.show)
+        val idx = r.__old_indices.toList.map(_.show)
         if (idx.isEmpty) "<N/A>"
         else idx.mkString(",")
       }
@@ -237,10 +244,3 @@ object RequestContextOps {
     }
   }
 }
-
-trait NonIndexOperationRequestContext extends RequestContext[NonIndexOperation.type]
-trait DirectIndexOperationRequestContext extends RequestContext[DirectIndexOperation]
-sealed trait TemplateOperationRequestContext[T <: TemplateOperation] extends RequestContext[T]
-trait GetTemplateOperationRequestContext extends TemplateOperationRequestContext[TemplateOperation.Get]
-trait CreateTemplateOperationRequestContext extends TemplateOperationRequestContext[TemplateOperation.Create]
-trait DeleteTemplateOperationRequestContext extends TemplateOperationRequestContext[TemplateOperation.Delete]

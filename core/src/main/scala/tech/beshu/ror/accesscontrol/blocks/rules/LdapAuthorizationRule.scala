@@ -22,8 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationSer
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.Settings
-import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, Operation}
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -32,9 +31,9 @@ class LdapAuthorizationRule(val settings: Settings)
 
   override val name: Rule.Name = LdapAuthorizationRule.name
 
-  override protected def authorize[T <: Operation](requestContext: RequestContext[T],
-                                                   blockContext: BlockContext[T],
-                                                   user: LoggedUser): Task[AuthorizationResult] = {
+  override protected def authorize[B <: BlockContext[B]](blockContext: B,
+                                                         user: LoggedUser): Task[AuthorizationResult] = {
+    val requestContext = blockContext.requestContext
     requestContext.currentGroup.toOption match {
       case Some(currentGroup) if !settings.permittedGroups.contains(currentGroup) =>
         Task.now(Unauthorized)
@@ -43,9 +42,9 @@ class LdapAuthorizationRule(val settings: Settings)
     }
   }
 
-  private def authorizeWithLdapGroups[T <: Operation](blockContext: BlockContext[T],
-                                                      currentGroup: Option[Group],
-                                                      user: LoggedUser): Task[AuthorizationResult] = {
+  private def authorizeWithLdapGroups[B <: BlockContext[B]](blockContext: B,
+                                                            currentGroup: Option[Group],
+                                                            user: LoggedUser): Task[AuthorizationResult] = {
     settings
       .ldap
       .groupsOf(user.id)

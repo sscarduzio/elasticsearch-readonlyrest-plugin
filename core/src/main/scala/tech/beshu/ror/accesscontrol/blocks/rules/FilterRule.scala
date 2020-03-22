@@ -25,9 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{Filter, Header, Operation}
+import tech.beshu.ror.accesscontrol.domain.{Filter, Header}
 import tech.beshu.ror.accesscontrol.headerValues.transientFilterHeaderValue
-import tech.beshu.ror.accesscontrol.request.RequestContext
 
 /**
   * Document level security (DLS) rule.
@@ -37,11 +36,11 @@ class FilterRule(val settings: Settings)
 
   override val name: Rule.Name = FilterRule.name
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
+  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+    val requestContext = blockContext.requestContext
     if (!requestContext.isAllowedForDLS) Rejected()
     else {
-      settings.filter.resolve(requestContext, blockContext) match {
+      settings.filter.resolve(blockContext) match {
         case Left(_: Unresolvable) =>
           Rejected()
         case Right(filter) =>

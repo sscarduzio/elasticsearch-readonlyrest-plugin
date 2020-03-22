@@ -36,6 +36,7 @@ import tech.beshu.ror.accesscontrol.domain.Operation.{DirectIndexOperation, Temp
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.util.Try
 
@@ -277,32 +278,33 @@ object domain {
 
   sealed trait Operation
   object Operation {
-    case object NonIndexOperation extends Operation
-    sealed trait AnIndexOperation extends Operation
+    abstract class NonIndexOperation extends Operation
+    object CurrentUserMetadataOperation extends NonIndexOperation
+    abstract class RepositoryOperation(repositories: NonEmptySet[Repository]) extends NonIndexOperation
 
+    sealed trait AnIndexOperation extends Operation
     sealed trait DirectIndexOperation extends AnIndexOperation
     sealed trait IndirectIndexOperation extends AnIndexOperation
 
-    final case class GeneralIndexOperation(indices: Set[IndexName]) extends DirectIndexOperation
+    abstract class GeneralIndexOperation(val indices: Set[IndexName]) extends DirectIndexOperation
 
-    sealed trait TemplateOperation extends IndirectIndexOperation
-    object TemplateOperation {
-      final case class Get(templates: NonEmptyList[Template]) extends TemplateOperation
-      final case class Create(template: Template) extends TemplateOperation
-      final case class Delete(template: Template) extends TemplateOperation
-    }
-
-    final case class SqlOperation(tables: List[IndexSqlTable]) extends DirectIndexOperation
+    abstract class SqlOperation(val tables: List[IndexSqlTable]) extends DirectIndexOperation
     object SqlOperation {
       final case class IndexSqlTable(tableStringInQuery: NonEmptyString, indices: NonEmptySet[IndexName])
     }
+
+    sealed trait TemplateOperation extends IndirectIndexOperation
+    object TemplateOperation {
+      abstract class Get(val templates: NonEmptyList[Template]) extends TemplateOperation
+      abstract class Create(val template: Template) extends TemplateOperation
+      abstract class Delete(val template: Template) extends TemplateOperation
+    }
+
+    abstract class SnapshotOperation(snapshots: NonEmptySet[Snapshot]) extends IndirectIndexOperation
   }
 
-  sealed trait OperationModification[T <: Operation]
-  object OperationModification {
-    final case class FilterIndices(indices: Set[IndexName]) extends OperationModification[DirectIndexOperation]
-    final case class Other(indices: Set[IndexName]) extends OperationModification[TemplateOperation]
-  }
+  final case class Repository(name: NonEmptyString)
+  final case class Snapshot(name: NonEmptyString, repository: Repository, indices: NonEmptySet[IndexName])
 
   final case class Template(value: NonEmptyString, patterns: NonEmptySet[IndexPattern])
 

@@ -109,14 +109,14 @@ final class SimpleStatement(val underlyingObject: AnyRef)
     val tableInfoList = tableInfosFrom {
       doPreAnalyze(newPreAnalyzer, underlyingObject)
     }
-    SqlOperation {
+    new SqlOperation(
       tableInfoList
         .map(tableIdentifierFrom)
         .map(indicesStringFrom)
         .map { tableString =>
           IndexSqlTable(tableString, splitToIndicesPatterns(tableString))
         }
-    }
+    ) {} // todo:
   }
 
   private def newPreAnalyzer(implicit classLoader: ClassLoader) = {
@@ -179,11 +179,11 @@ final class Command(val underlyingObject: Any)
       getIndicesString
         .orElse(getIndexPatternsString)
         .map { indicesString =>
-          SqlOperation(IndexSqlTable(indicesString, splitToIndicesPatterns(indicesString)) :: Nil)
+          new SqlOperation(IndexSqlTable(indicesString, splitToIndicesPatterns(indicesString)) :: Nil) {} // todo:
         }
-        .getOrElse(SqlOperation(Nil))
+        .getOrElse(new SqlOperation(Nil) {}) // todo:
     } getOrElse {
-      NonIndexOperation
+      new NonIndexOperation {} // todo:
     }
   }
 

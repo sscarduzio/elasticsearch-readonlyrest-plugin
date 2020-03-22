@@ -17,9 +17,9 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
-import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, Operation}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseSpecializedIndicesRule.Settings
+import tech.beshu.ror.accesscontrol.domain.{Action, IndexName}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class SnapshotsRule(override val settings: Settings)
@@ -29,10 +29,10 @@ class SnapshotsRule(override val settings: Settings)
 
   override protected def isSpecializedIndexAction(action: Action): Boolean = action.isSnapshot
 
-  override protected def specializedIndicesFromRequest[T <: Operation](request: RequestContext[T]): Set[IndexName] = request.snapshots
+  override protected def specializedIndicesFromRequest(request: RequestContext[_]): Set[IndexName] = request.snapshots
 
-  override protected def blockContextWithSpecializedIndices[T <: Operation](blockContext: BlockContext[T],
-                                                            indices: NonEmptySet[IndexName]): BlockContext[T] =
+  override protected def blockContextWithSpecializedIndices[B <: BlockContext[B]](blockContext: B,
+                                                                                  indices: NonEmptySet[IndexName]): B =
     blockContext.withSnapshots(indices.toSortedSet)
 
 }

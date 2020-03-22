@@ -24,17 +24,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.ApiKeysRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.domain.Header.Name._
 import tech.beshu.ror.accesscontrol.domain.{ApiKey, Operation}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class ApiKeysRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = ApiKeysRule.name
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
+  def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.fromCondition(blockContext) {
-      requestContext
+      blockContext
+        .requestContext
         .headers
         .find(_.name === xApiKeyHeaderName)
         .exists { header => settings.apiKeys.contains(ApiKey(header.value)) }

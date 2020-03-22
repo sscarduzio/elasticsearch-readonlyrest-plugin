@@ -49,30 +49,30 @@ class IndicesRule(val settings: Settings)
 
   private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
-    if (!requestContext.involvesIndices) Fulfilled(blockContext)
+  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+    if (!blockContext.requestContext.involvesIndices) Fulfilled(blockContext)
     else if (matchAll) Fulfilled(blockContext)
-    else process(requestContext, blockContext)
+    else process(blockContext)
   }
-
-  private def process[T <: Operation](requestContext: RequestContext[T], blockContext: BlockContext[T]): RuleResult[T] = {
-    val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, requestContext, blockContext).toSet
+  
+  private def process[B <: BlockContext[B]](blockContext: B): RuleResult[B] = {
+    val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
     val indicesMatcher = IndicesMatcher.create(resolvedAllowedIndices)
+    val requestContext = blockContext.requestContext
 
     // Cross cluster search awareness
     if (isSearchAction(requestContext)) {
       val (crossClusterIndices, localIndices) =
         if (!requestContext.hasRemoteClusters) {
           // Only requested X-cluster when we don't have remote, will return empty.
-          val crossClusterIndices = requestContext.indices.filter(_.isClusterIndex)
-          if (requestContext.indices.nonEmpty && requestContext.indices.size == crossClusterIndices.size) {
+          val crossClusterIndices = requestContext.__old_indices.filter(_.isClusterIndex)
+          if (requestContext.__old_indices.nonEmpty && requestContext.__old_indices.size == crossClusterIndices.size) {
             return Fulfilled(blockContext)
           }
           // If you requested local + X-cluster indices while we don't have remotes, it's like you asked for only local indices.
-          (Set.empty[IndexName], requestContext.indices.filter(index => !index.isClusterIndex))
+          (Set.empty[IndexName], requestContext.__old_indices.filter(index => !index.isClusterIndex))
         } else {
-          requestContext.indices.partition(_.isClusterIndex)
+          requestContext.__old_indices.partition(_.isClusterIndex)
         }
 
       // Scatter gather for local and remote indices barring algorithms
@@ -136,7 +136,7 @@ class IndicesRule(val settings: Settings)
 
   private def noneOrAllIndices[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher): IndicesCheckContinuation = {
     logger.debug("Checking - none or all indices ...")
-    val indices = requestContext.indices
+    val indices = requestContext.__old_indices
     val allIndicesAndAliases = requestContext.allIndicesAndAliases.flatMap(_.all)
     if (allIndicesAndAliases.isEmpty) {
       stop(CanPass.Yes(indices))
@@ -153,7 +153,7 @@ class IndicesRule(val settings: Settings)
 
   private def allIndicesMatchedByWildcard[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher): IndicesCheckContinuation = {
     logger.debug("Checking if all indices are matched ...")
-    val indices = requestContext.indices
+    val indices = requestContext.__old_indices
     indices.toList match {
       case index :: Nil if !index.hasWildcard =>
         if (matcher.`match`(index)) {
@@ -170,7 +170,7 @@ class IndicesRule(val settings: Settings)
 
   private def atLeastOneNonWildcardIndexNotExist[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher): IndicesCheckContinuation = {
     logger.debug("Checking if at least one non-wildcard index doesn't exist ...")
-    val indices = requestContext.indices
+    val indices = requestContext.__old_indices
     val real = requestContext.allIndicesAndAliases.flatMap(_.all)
     val nonExistent = indices.foldLeft(Set.empty[IndexName]) {
       case (acc, index) if !index.hasWildcard && !real.contains(index) => acc + index
@@ -202,7 +202,7 @@ class IndicesRule(val settings: Settings)
   private def filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured[T <: Operation](requestContext: RequestContext[T],
                                                                                            matcher: IndicesMatcher) = {
     val allIndices = requestContext.allIndicesAndAliases.map(_.index)
-    val requestedIndicesNames = requestContext.indices
+    val requestedIndicesNames = requestContext.__old_indices
     val requestedIndices = MatcherWithWildcardsScalaAdapter.create(requestedIndicesNames).filter(allIndices)
 
     matcher.filterIndices(requestedIndices)
@@ -219,7 +219,7 @@ class IndicesRule(val settings: Settings)
   private def filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured[T <: Operation](requestContext: RequestContext[T],
                                                                                            matcher: IndicesMatcher) = {
     val allAliases = requestContext.allIndicesAndAliases.flatMap(_.aliases)
-    val requestedAliasesNames = requestContext.indices
+    val requestedAliasesNames = requestContext.__old_indices
     val requestedAliases = MatcherWithWildcardsScalaAdapter.create(requestedAliasesNames).filter(allAliases)
 
     matcher.filterIndices(requestedAliases)
@@ -227,7 +227,7 @@ class IndicesRule(val settings: Settings)
 
   private def filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured[T <: Operation](requestContext: RequestContext[T],
                                                                                            matcher: IndicesMatcher) = {
-    val requestedAliasesNames = requestContext.indices
+    val requestedAliasesNames = requestContext.__old_indices
     val allAliases = requestContext.allIndicesAndAliases.flatMap(_.aliases)
     val requestedAliases = MatcherWithWildcardsScalaAdapter.create(requestedAliasesNames).filter(allAliases)
 
@@ -276,7 +276,7 @@ class IndicesRule(val settings: Settings)
 
   private def generalWriteRequest[T <: Operation](requestContext: RequestContext[T], matcher: IndicesMatcher): IndicesCheckContinuation = {
     logger.debug("Checking - write request ...")
-    val indices = requestContext.indices
+    val indices = requestContext.__old_indices
     // Write requests
     // Handle <no-index> (#TODO LEGACY)
     logger.debug("Stage 7")

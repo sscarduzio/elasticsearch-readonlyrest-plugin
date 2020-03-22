@@ -40,47 +40,45 @@ abstract class BaseSpecializedIndicesRule(val settings: Settings)
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
-  override def check[T <: Operation](requestContext: RequestContext[T],
-                                     blockContext: BlockContext[T]): Task[RuleResult[T]] = Task {
+  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+    val requestContext = blockContext.requestContext
     if (!isSpecializedIndexAction(requestContext.action)) Fulfilled(blockContext)
     else {
       checkAllowedIndices(
-        resolveAll(settings.allowedIndices.toNonEmptyList, requestContext, blockContext).toSet,
-        requestContext,
+        resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet,
         blockContext
       )
     }
   }
 
-  private def checkAllowedIndices[T <: Operation](allowedSpecializedIndices: Set[IndexName],
-                                                  requestContext: RequestContext[T],
-                                                  blockContext: BlockContext[T]) = {
+  private def checkAllowedIndices[B <: BlockContext[B]](allowedSpecializedIndices: Set[IndexName],
+                                                        blockContext: B) = {
     if (allowedSpecializedIndices.contains(IndexName.all) || allowedSpecializedIndices.contains(IndexName.wildcard)) {
-      Fulfilled(blockContext)
+      Fulfilled[B](blockContext)
     } else {
       zeroKnowledgeMatchFilter.alterIndicesIfNecessary(
-        specializedIndicesFromRequest(requestContext),
+        specializedIndicesFromRequest(blockContext.requestContext),
         new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(allowedSpecializedIndices.map(_.value.value).asJava))
       ) match {
         case NotAltered =>
-          Fulfilled(blockContext)
+          Fulfilled[B](blockContext)
         case Altered(indices) =>
           NonEmptySet.fromSet(SortedSet.empty[IndexName] ++ indices) match {
-            case Some(nesIndices) if requestContext.isReadOnlyRequest =>
-              Fulfilled(blockContextWithSpecializedIndices(blockContext, nesIndices))
+            case Some(nesIndices) if blockContext.requestContext.isReadOnlyRequest =>
+              Fulfilled[B](blockContextWithSpecializedIndices(blockContext, nesIndices))
             case None | Some(_) =>
-              Rejected()
+              Rejected[B]()
           }
       }
     }
   }
 
-  protected def specializedIndicesFromRequest[T <: Operation](request: RequestContext[T]): Set[IndexName]
+  protected def specializedIndicesFromRequest(request: RequestContext[_]): Set[IndexName]
 
   protected def isSpecializedIndexAction(action: Action): Boolean
 
-  protected def blockContextWithSpecializedIndices[T <: Operation](blockContext: BlockContext[T],
-                                                                   indices: NonEmptySet[IndexName]): BlockContext[T]
+  protected def blockContextWithSpecializedIndices[B <: BlockContext[B]](blockContext: B,
+                                                                         indices: NonEmptySet[IndexName]): B
 }
 
 object BaseSpecializedIndicesRule {

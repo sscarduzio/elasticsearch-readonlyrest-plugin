@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.Authoriza
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter}
-import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, Operation, User}
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -42,16 +41,15 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   override val name: Rule.Name = ExternalAuthorizationRule.name
 
-  override protected def authorize[T <: Operation](requestContext: RequestContext[T],
-                                                   blockContext: BlockContext[T],
-                                                   user: LoggedUser): Task[AuthorizationResult] = {
-    if (userMatcher.`match`(user.id)) checkUserGroups(user, requestContext.currentGroup.toOption, blockContext)
+  override protected def authorize[B <: BlockContext[B]](blockContext: B,
+                                                         user: LoggedUser): Task[AuthorizationResult] = {
+    if (userMatcher.`match`(user.id)) checkUserGroups(user, blockContext.requestContext.currentGroup.toOption, blockContext)
     else Task.now(Unauthorized)
   }
 
-  private def checkUserGroups[T <: Operation](user: LoggedUser,
-                                              currentGroup: Option[Group],
-                                              blockContext: BlockContext[T]): Task[AuthorizationResult] = {
+  private def checkUserGroups[B <: BlockContext[B]](user: LoggedUser,
+                                                    currentGroup: Option[Group],
+                                                    blockContext: B): Task[AuthorizationResult] = {
     settings
       .service
       .grantsFor(user)
