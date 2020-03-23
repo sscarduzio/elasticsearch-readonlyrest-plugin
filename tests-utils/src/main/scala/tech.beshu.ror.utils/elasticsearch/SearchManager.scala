@@ -20,13 +20,14 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
-import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
+import tech.beshu.ror.utils.elasticsearch.SearchManager.{MSearchResult, SearchResult}
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
 import scala.util.Try
 
-class SearchManager(client: RestClient)
+class SearchManager(client: RestClient,
+                    override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
   def search(endpoint: String, query: String): SearchResult =
@@ -35,8 +36,18 @@ class SearchManager(client: RestClient)
   def search(endpoint: String): SearchResult =
     call(createSearchRequest(endpoint), new SearchResult(_))
 
+  def msearch(query: String): MSearchResult =
+    call(createMSearchRequest(query), new MSearchResult(_))
+
   def renderTemplate(query: String): JsonResponse =
     call(createRenderTemplateRequest(query), new JsonResponse(_))
+
+  private def createMSearchRequest(query: String) = {
+    val request = new HttpPost(client.from("/_msearch"))
+    request.addHeader("Content-type", "application/json")
+    request.setEntity(new StringEntity(query))
+    request
+  }
 
   private def createSearchRequest(endpoint: String, query: String) = {
     val request = new HttpPost(client.from(endpoint))
@@ -63,5 +74,11 @@ class SearchManager(client: RestClient)
 object SearchManager {
   class SearchResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val searchHits: Try[Value] = Try(responseJson("hits")("hits"))
+  }
+
+  class MSearchResult(response: HttpResponse) extends JsonResponse(response) {
+    lazy val responses: List[Value] = responseJson("responses").arr.toList
+
+    def totalHitsForResponse(responseIdx: Int): Int = responseJson("responses").arr(responseIdx)("hits")("total")("value").num.toInt
   }
 }

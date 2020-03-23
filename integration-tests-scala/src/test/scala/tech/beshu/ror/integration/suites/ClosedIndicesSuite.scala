@@ -42,13 +42,11 @@ trait ClosedIndicesSuite
     )
   )
 
+  private lazy val searchManager = new SearchManagerJ(adminClient, Map("x-api-key" -> "g").asJava)
+
   "A search request" should {
     "return only data related to a1 index and ignore closed a2 index" when {
       "direct index search is used" in {
-        val searchManager = new SearchManagerJ(
-          adminClient,
-          Map("x-api-key" -> "g").asJava
-        )
         val response = searchManager.search("/intentp1_a1/_search")
 
         response.getResponseCode should be(200)
@@ -56,10 +54,6 @@ trait ClosedIndicesSuite
         response.getSearchHits.get(0).get("_id") should be("doc-a1")
       }
       "wildcard search is used" in {
-        val searchManager = new SearchManagerJ(
-          adminClient,
-          Map("x-api-key" -> "g").asJava
-        )
         val response = searchManager.search("/*/_search")
 
         response.getResponseCode should be(200)
@@ -67,10 +61,6 @@ trait ClosedIndicesSuite
         response.getSearchHits.get(0).get("_id") should be("doc-a1")
       }
       "generic search all" in {
-        val searchManager = new SearchManagerJ(
-          adminClient,
-          Map("x-api-key" -> "g").asJava
-        )
         val response = searchManager.search("/_search")
 
         response.getResponseCode should be(200)
@@ -79,11 +69,8 @@ trait ClosedIndicesSuite
       }
 
       "get mappings is used" in {
-        val searchManager = new SearchManagerJ(
-          adminClient,
-          Map("x-api-key" -> "g").asJava
-        )
         val response = searchManager.search("/intentp1_*/_mapping/field/*")
+
         response.getResponseCode should be(200)
         response.getRawBody.contains("intentp1_a1") should be(true)
         response.getRawBody.contains("intentp1_a2") should be(false)

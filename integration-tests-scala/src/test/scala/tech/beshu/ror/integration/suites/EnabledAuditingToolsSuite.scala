@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager, IndexManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait EnabledAuditingToolsSuite
@@ -51,47 +51,53 @@ trait EnabledAuditingToolsSuite
   "Request" should {
     "be audited" when {
       "rule 1 is matching with logged user" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("username", "dev"))
-        val response = indexManager.get("twitter")
-        response.getResponseCode should be (200)
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"))
+        val response = indexManager.getIndex("twitter")
+        response.responseCode shouldBe 200
 
         val auditEntries = auditIndexManager.auditIndexSearch().getEntries
-        auditEntries.size should be(1)
-        auditEntries.get(0).get("final_state") should be("ALLOWED")
-        auditEntries.get(0).get("block").asInstanceOf[String] should contain ("name: 'Rule 1'")
-        auditEntries.get(0).get("user") should be ("username")
+        auditEntries.size shouldBe 1
+
+        val firstEntry = auditEntries.get(0)
+        firstEntry.get("final_state") shouldBe "ALLOWED"
+        firstEntry.get("user") shouldBe "username"
+        firstEntry.get("block").asInstanceOf[String].contains("name: 'Rule 1'") shouldBe true
       }
 
       "no rule is matching with username from auth header" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("username", "wrong"))
-        val response = indexManager.get("twitter")
-        response.getResponseCode should be (403)
+        val indexManager = new IndexManager(basicAuthClient("username", "wrong"))
+        val response = indexManager.getIndex("twitter")
+        response.responseCode shouldBe 403
 
         val auditEntries = auditIndexManager.auditIndexSearch().getEntries
-        auditEntries.size should be(1)
-        auditEntries.get(0).get("final_state") should be("FORBIDDEN")
-        auditEntries.get(0).get("user") should be ("username")
+        auditEntries.size shouldBe 1
+
+        val firstEntry = auditEntries.get(0)
+        firstEntry.get("final_state") shouldBe "FORBIDDEN"
+        firstEntry.get("user") shouldBe "username"
       }
 
       "no rule is matching with raw auth header as user" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("usernameWithEmptyPass", ""))
-        val response = indexManager.get("twitter")
-        response.getResponseCode should be (403)
+        val indexManager = new IndexManager(basicAuthClient("usernameWithEmptyPass", ""))
+        val response = indexManager.getIndex("twitter")
+        response.responseCode shouldBe 403
 
         val auditEntries = auditIndexManager.auditIndexSearch().getEntries
-        auditEntries.size should be(1)
-        auditEntries.get(0).get("final_state") should be("FORBIDDEN")
-        auditEntries.get(0).get("user") should be("Basic dXNlcm5hbWVXaXRoRW1wdHlQYXNzOg==")
+        auditEntries.size shouldBe 1
+
+        val firstEntry = auditEntries.get(0)
+        firstEntry.get("final_state") shouldBe "FORBIDDEN"
+        firstEntry.get("user") shouldBe "Basic dXNlcm5hbWVXaXRoRW1wdHlQYXNzOg=="
       }
     }
     "not be audited" when {
       "rule 2 is matching" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("username", "dev"))
-        val response = indexManager.get("facebook")
-        response.getResponseCode should be (200)
+        val indexManager = new IndexManager(basicAuthClient("username", "dev"))
+        val response = indexManager.getIndex("facebook")
+        response.responseCode shouldBe 200
 
         val auditEntries = auditIndexManager.auditIndexSearch().getEntries
-        auditEntries.size should be(0)
+        auditEntries.size shouldBe 0
       }
     }
   }

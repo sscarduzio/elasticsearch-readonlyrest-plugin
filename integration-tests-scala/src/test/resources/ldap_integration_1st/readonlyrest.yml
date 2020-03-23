@@ -45,8 +45,8 @@ readonlyrest:
 
   ldaps:
   - name: ldap1
-    host: "{LDAP1}"
-    port: 389                                                 # default 389
+    host: "{LDAP1_HOST}"
+    port: {LDAP1_PORT}                                        # default 389
     ssl_enabled: false                                        # default true
     ssl_trust_all_certs: true                                 # default false
     bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -61,8 +61,8 @@ readonlyrest:
     cache_ttl_in_sec: 60                                      # default 0 - cache disabled
 
   - name: ldap2
-    host: "{LDAP2}"
-    port: 389                                                 # default 389
+    host: "{LDAP2_HOST}"
+    port: {LDAP2_PORT}                                        # default 389
     ssl_enabled: false                                        # default true
     ssl_trust_all_certs: true                                 # default false
     bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind

@@ -16,11 +16,10 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.junit.Assert.assertEquals
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait DisabledAuditingToolsSuite
@@ -52,28 +51,28 @@ trait DisabledAuditingToolsSuite
   "Request" should {
     "not be audited" when {
       "rule 1 is matching" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("user", "dev"))
-        val response = indexManager.get("twitter")
-        assertEquals(200, response.getResponseCode)
+        val indexManager = new IndexManager(basicAuthClient("user", "dev"))
+        val response = indexManager.getIndex("twitter")
+        response.responseCode shouldBe 200
 
         val auditResponse = auditIndexManager.auditIndexSearch()
-        assertEquals(false, auditResponse.isSuccess)
+        auditResponse.isSuccess shouldBe false
       }
       "rule 2 is matching" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("user", "dev"))
-        val response = indexManager.get("facebook")
-        assertEquals(200, response.getResponseCode)
+        val indexManager = new IndexManager(basicAuthClient("user", "dev"))
+        val response = indexManager.getIndex("facebook")
+        response.responseCode shouldBe 200
 
         val auditResponse = auditIndexManager.auditIndexSearch()
-        assertEquals(false, auditResponse.isSuccess)
+        auditResponse.isSuccess shouldBe false
       }
       "no rule is matching" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("user", "wrong"))
-        val response = indexManager.get("twitter")
-        assertEquals(403, response.getResponseCode)
+        val indexManager = new IndexManager(basicAuthClient("user", "wrong"))
+        val response = indexManager.getIndex("twitter")
+        response.responseCode shouldBe 403
 
         val auditResponse = auditIndexManager.auditIndexSearch()
-        assertEquals(false, auditResponse.isSuccess)
+        auditResponse.isSuccess shouldBe false
       }
     }
   }

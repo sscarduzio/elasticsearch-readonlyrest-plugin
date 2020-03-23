@@ -57,6 +57,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
 
     result.responseCode should be(200)
   }
+
   "testAuthenticationAndAuthorizationErrorWithService1" in {
     val indexManager = new IndexManager(
       client = noBasicAuthClient,
@@ -66,6 +67,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
 
     result.responseCode should be(403)
   }
+
   "testAuthenticationAndAuthorizationSuccessWithService2" in {
     val indexManager = new IndexManager(
       client = noBasicAuthClient,

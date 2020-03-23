@@ -66,20 +66,20 @@ trait DuplicatedResponseHeadersIssueSuite
     val b7 = searchCall(brianSearchManager)
     val b8 = searchCall(brianSearchManager)
 
-    f2 should be(f1)
-    f3 should be(f1)
-    b2 should be(b1)
-    b3 should be(b1)
-    b4 should be(b1)
-    b5 should be(b1)
-    b6 should be(b1)
-    b7 should be(b1)
-    b8 should be(b1)
+    f2 shouldBe f1
+    f3 shouldBe f1
+    b2 shouldBe b1
+    b3 shouldBe b1
+    b4 shouldBe b1
+    b5 shouldBe b1
+    b6 shouldBe b1
+    b7 shouldBe b1
+    b8 shouldBe b1
   }
 
   private def searchCall(searchManager: SearchManager) = {
     val result = searchManager.search("/neg*/_search")
-    result.responseCode should be(200)
+    result.responseCode shouldBe 200
     SearchResult(result.responseCode, result.headers)
   }
 }

@@ -37,7 +37,7 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
 
   private static Logger logger = LogManager.getLogger(WireMockContainer.class);
 
-  private static int WIRE_MOCK_PORT = 8080;
+  public static int WIRE_MOCK_PORT = 8080;
   private static Duration CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(240);
 
   private WireMockContainer(ImageFromDockerfile imageFromDockerfile) {

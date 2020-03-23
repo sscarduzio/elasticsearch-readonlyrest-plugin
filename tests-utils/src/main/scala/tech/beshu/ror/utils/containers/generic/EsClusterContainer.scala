@@ -46,11 +46,12 @@ class EsClusterContainer private[containers](esClusterContainersCreators: NonEmp
   def startedClusterDependencies: StartedClusterDependencies = clusterDependencies
 
   override def starting()(implicit description: Description): Unit = {
-    val createdDependenciesContainers = dependencies.map(d => (d.name, d.containerCreator.apply()))
+    val createdDependenciesContainers = dependencies.map(d => (d.name, d.containerCreator.apply(), d.originalPort))
     //starting dependencies...
     Task.gather(createdDependenciesContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
 
-    val justStartedClusterDependencies = StartedClusterDependencies(createdDependenciesContainers.map { case (name, container) => StartedDependency(name, container)})
+    val justStartedClusterDependencies = StartedClusterDependencies(createdDependenciesContainers
+      .map { case (name, container, port) => StartedDependency(name, container, port)})
     clusterDependencies = justStartedClusterDependencies
 
     val justCreatedContainers = esClusterContainersCreators.toList.map(creator => creator(justStartedClusterDependencies))
@@ -73,7 +74,7 @@ class EsClusterContainer private[containers](esClusterContainersCreators: NonEmp
 }
 
 object EsClusterContainer {
-  final case class StartedDependency(name: String, container: SingleContainer[GenericContainer[_]])
+  final case class StartedDependency(name: String, container: SingleContainer[GenericContainer[_]], originalPort: Int)
   final case class StartedClusterDependencies(values: List[StartedDependency])
 }
 
@@ -156,7 +157,7 @@ final case class EsClusterSettings(name: String,
                                    customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false)(implicit val rorConfigFileName: String)
 
-final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]])
+final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]], originalPort: Int)
 
 
 

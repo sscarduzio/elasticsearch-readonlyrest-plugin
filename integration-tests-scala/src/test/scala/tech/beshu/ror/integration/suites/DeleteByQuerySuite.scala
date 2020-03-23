@@ -1,6 +1,5 @@
 package tech.beshu.ror.integration.suites
 
-import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
@@ -14,7 +13,7 @@ trait DeleteByQuerySuite
     with Matchers {
   this: EsContainerCreator =>
 
-  private val matchAllQuery = "{\"query\" : {\"match_all\" : {}}}\n"
+  private val matchAllQuery = """{"query" : {"match_all" : {}}}""".stripMargin
 
   override implicit val rorConfigFileName = "/delete_by_query/readonlyrest.yml"
 
@@ -26,6 +25,7 @@ trait DeleteByQuerySuite
       nodeDataInitializer = DeleteByQuerySuite.nodeDataInitializer()
     )
   )
+
   private lazy val blueTeamDeleteByQueryManager = new DeleteByQueryManagerJ(basicAuthClient("blue", "dev"))
   private lazy val redTeamDeleteByQueryManager = new DeleteByQueryManagerJ(basicAuthClient("red", "dev"))
 
@@ -33,13 +33,13 @@ trait DeleteByQuerySuite
     "be allowed" when {
       "is executed by blue client" in {
         val response = blueTeamDeleteByQueryManager.delete("twitter", matchAllQuery)
-        assertEquals(200, response.getResponseCode)
+        response.getResponseCode shouldBe 200
       }
     }
     "not be alllowed" when {
       "is executed by red client" in {
         val response = redTeamDeleteByQueryManager.delete("facebook", matchAllQuery)
-        assertEquals(401, response.getResponseCode)
+        response.getResponseCode shouldBe 401
       }
     }
   }

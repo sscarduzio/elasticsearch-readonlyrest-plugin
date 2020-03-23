@@ -36,7 +36,7 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
     val esVersion = project.getESVersion
     val rawRorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
 
-    val adjusted = FileAdjuster.adjust(rawRorConfigFile.toScala, FileAdjuster.createTempFile, startedClusterDependencies)
+    val adjusted = FileAdjuster.adjust(rawRorConfigFile.toScala, startedClusterDependencies, FileAdjuster.Mode.Plugin)
 
     println(adjusted.contentAsString)
 

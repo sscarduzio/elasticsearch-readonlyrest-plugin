@@ -84,14 +84,14 @@ readonlyrest:
 
   external_authentication_service_configs:
     - name: "ExternalAuthService"
-      authentication_endpoint: "http://{EXT1}:8080/auth"
+      authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
       success_status_code: 200
       cache_ttl_in_sec: 1
       validate: false # SSL certificate validation (default to true)
 
   user_groups_providers:
     - name: "ExternalGroupService"
-      groups_endpoint: "http://{EXT1}:8080/groups"
+      groups_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/groups"
       auth_token_name: "token"
       auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
       response_groups_json_path: "$..groups[?(@.name)].name"   # see: <https://github.com/json-path/JsonPath>

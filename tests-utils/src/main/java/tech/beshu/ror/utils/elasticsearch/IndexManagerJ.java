@@ -37,15 +37,19 @@ public class IndexManagerJ extends JBaseManager {
   }
 
   public SimpleResponse removeAll() {
+
     return call(createDeleteIndicesRequest(), SimpleResponse::new);
   }
-
   public SimpleResponse remove(String indexName) {
     return call(createDeleteIndex(indexName), GetIndexResult::new);
   }
 
   public SimpleResponse close(String indexName) {
     return call(createCloseIndex(indexName), SimpleResponse::new);
+  }
+
+  public SimpleResponse create(String indexName) {
+    return call(createCreateIndicesRequest(indexName), SimpleResponse::new);
   }
 
   private HttpUriRequest createGetIndexRequest(String indexName) {
@@ -62,6 +66,10 @@ public class IndexManagerJ extends JBaseManager {
 
   private HttpUriRequest createDeleteIndicesRequest() {
     return new HttpDelete(restClient.from("/_all"));
+  }
+
+  private HttpUriRequest createCreateIndicesRequest(String indexName) {
+    return new HttpPut(restClient.from("/" + indexName));
   }
 
   public static class GetIndexResult extends JsonResponse {

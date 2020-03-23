@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait QueryAuditLogSerializerSuite
@@ -51,36 +51,40 @@ trait QueryAuditLogSerializerSuite
   "Request" should {
     "be audited" when {
       "rule 1 is matching" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("user", "dev"))
-        val response = indexManager.get("twitter")
-        response.getResponseCode should be(200)
+        val indexManager = new IndexManager(basicAuthClient("user", "dev"))
+        val response = indexManager.getIndex("twitter")
+        response.responseCode shouldBe 200
 
         val auditEntries = auditIndexManager.auditIndexSearch().getEntries
-        auditEntries.size should be(1)
-        auditEntries.get(0).get("final_state") should be("ALLOWED")
-        auditEntries.get(0).get("block").asInstanceOf[String] should contain("name: 'Rule 1'")
-        auditEntries.get(0).get("content") should be("")
+        auditEntries.size shouldBe 1
+
+        val firstEntry = auditEntries.get(0)
+        firstEntry.get("final_state") shouldBe "ALLOWED"
+        firstEntry.get("block").asInstanceOf[String].contains("name: 'Rule 1'") shouldBe true
+        firstEntry.get("content") shouldBe ""
       }
 
       "no rule is matching" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("user", "wrong"))
-        val response = indexManager.get("twitter")
-        response.getResponseCode should be(403)
+        val indexManager = new IndexManager(basicAuthClient("user", "wrong"))
+        val response = indexManager.getIndex("twitter")
+        response.responseCode shouldBe 403
 
         val auditEntries = auditIndexManager.auditIndexSearch().getEntries
-        auditEntries.size should be(1)
-        auditEntries.get(0).get("final_state") should be("FORBIDDEN")
-        auditEntries.get(0).get("content") should be("")
+        auditEntries.size shouldBe 1
+
+        val firstEntry = auditEntries.get(0)
+        firstEntry.get("final_state") shouldBe "FORBIDDEN"
+        firstEntry.get("content") shouldBe ""
       }
     }
     "not be audited" when {
       "rule 2 is matching" in {
-        val indexManager = new IndexManagerJ(basicAuthClient("user", "dev"))
-        val response = indexManager.get("facebook")
-        response.getResponseCode should be(200)
+        val indexManager = new IndexManager(basicAuthClient("user", "dev"))
+        val response = indexManager.getIndex("facebook")
+        response.responseCode shouldBe 200
 
         val auditEntries = auditIndexManager.auditIndexSearch().getEntries
-        auditEntries.size should be(0)
+        auditEntries.size shouldBe 0
       }
     }
   }
@@ -91,4 +95,3 @@ object QueryAuditLogSerializerSuite {
     new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }
 }
-

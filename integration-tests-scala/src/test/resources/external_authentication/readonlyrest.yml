@@ -39,11 +39,11 @@ readonlyrest:
   external_authentication_service_configs:
 
   - name: "ext1"
-    authentication_endpoint: "http://{EXT1}:8080/auth1"
+    authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth1"
     success_status_code: 200
     cache_ttl_in_sec: 60
 
   - name: "ext2"
-    authentication_endpoint: "http://{EXT2}:8080/auth2"
+    authentication_endpoint: "http://{EXT2_HOST}:{EXT2_PORT}/auth2"
     success_status_code: 204
     cache_ttl_in_sec: 60

@@ -20,7 +20,7 @@ import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic.dependencies.ldap
 import tech.beshu.ror.utils.containers.generic.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait LdapIntegrationFirstOptionSuite
@@ -38,51 +38,51 @@ trait LdapIntegrationFirstOptionSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        ldap(name = "LDAP1", ldapInitScript = "//ldap_integration_1st/ldap.ldif"),
-        ldap(name = "LDAP2", ldapInitScript = "//ldap_integration_1st/ldap.ldif")
+        ldap(name = "LDAP1", ldapInitScript = "/ldap_integration_1st/ldap.ldif"),
+        ldap(name = "LDAP2", ldapInitScript = "/ldap_integration_1st/ldap.ldif")
       ),
       nodeDataInitializer = LdapIntegrationFirstOptionSuite.nodeDataInitializer()
     )
   )
 
   "usersFromGroup1CanSeeTweets" in {
-    val firstIndexManager = new IndexManagerJ(basicAuthClient("cartman", "user2"))
-    val firstResult = firstIndexManager.get("twitter")
+    val firstIndexManager = new IndexManager(basicAuthClient("cartman", "user2"))
+    val firstResult = firstIndexManager.getIndex("twitter")
 
-    firstResult.getResponseCode should be(200)
+    firstResult.responseCode should be(200)
 
-    val indexManager = new IndexManagerJ(basicAuthClient("bong", "user1"))
-    val response = indexManager.get("twitter")
+    val indexManager = new IndexManager(basicAuthClient("bong", "user1"))
+    val response = indexManager.getIndex("twitter")
 
-    response.getResponseCode should be(200)
+    response.responseCode should be(200)
   }
   "usersFromOutsideOfGroup1CannotSeeTweets" in {
-    val indexManager = new IndexManagerJ(basicAuthClient("morgan", "user1"))
-    val response = indexManager.get("twitter")
+    val indexManager = new IndexManager(basicAuthClient("morgan", "user1"))
+    val response = indexManager.getIndex("twitter")
 
-    response.getResponseCode should be(404)
+    response.responseCode should be(404)
   }
   "unauthenticatedUserCannotSeeTweets" in {
-    val indexManager = new IndexManagerJ(basicAuthClient("cartman", "wrong_password"))
-    val response = indexManager.get("twitter")
+    val indexManager = new IndexManager(basicAuthClient("cartman", "wrong_password"))
+    val response = indexManager.getIndex("twitter")
 
-    response.getResponseCode should be(403)
+    response.responseCode should be(403)
   }
   "usersFromGroup3CanSeeFacebookPosts" in {
-    val cartmanIndexManager = new IndexManagerJ(basicAuthClient("cartman", "user2"))
-    val cartmanResult = cartmanIndexManager.get("facebook")
+    val cartmanIndexManager = new IndexManager(basicAuthClient("cartman", "user2"))
+    val cartmanResult = cartmanIndexManager.getIndex("facebook")
 
-    cartmanResult.getResponseCode should be(200)
+    cartmanResult.responseCode should be(200)
 
-    val bongIndexManager = new IndexManagerJ(basicAuthClient("bong", "user1"))
-    val bongResult = bongIndexManager.get("facebook")
+    val bongIndexManager = new IndexManager(basicAuthClient("bong", "user1"))
+    val bongResult = bongIndexManager.getIndex("facebook")
 
-    bongResult.getResponseCode should be(200)
+    bongResult.responseCode should be(200)
 
-    val morganIndexManager = new IndexManagerJ(basicAuthClient("morgan", "user1"))
-    val morganResult = morganIndexManager.get("facebook")
+    val morganIndexManager = new IndexManager(basicAuthClient("morgan", "user1"))
+    val morganResult = morganIndexManager.getIndex("facebook")
 
-    morganResult.getResponseCode should be(200)
+    morganResult.responseCode should be(200)
   }
 }
 
