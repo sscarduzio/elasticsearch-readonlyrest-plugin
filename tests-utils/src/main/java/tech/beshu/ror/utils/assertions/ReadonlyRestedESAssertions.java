@@ -17,6 +17,7 @@
 
 package tech.beshu.ror.utils.assertions;
 
+import org.apache.http.Header;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -51,6 +52,15 @@ public class ReadonlyRestedESAssertions {
       throws IOException, URISyntaxException {
     assertGetIndexResponseCode(
         rorContainer.getBasicAuthClient(name, password), index, 200, responseHandler, requestHandler
+    );
+  }
+
+  public void assertUserHasAccessToIndex(Header authenticationHeader, String index, Function<HttpResponse, Void> responseHandler,
+                                         Function<HttpRequest, Void> requestHandler)
+
+      throws IOException, URISyntaxException {
+    assertGetIndexResponseCode(
+        rorContainer.getBasicAuthClient(authenticationHeader), index, 200, responseHandler, requestHandler
     );
   }
 

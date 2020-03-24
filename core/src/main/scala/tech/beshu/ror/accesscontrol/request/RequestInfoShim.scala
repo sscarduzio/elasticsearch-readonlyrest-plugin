@@ -57,7 +57,7 @@ trait RequestInfoShim {
 
   def extractAction: String
 
-  def extractRequestHeaders: Map[String, String]
+  def extractRequestHeaders: Map[String, Set[String]]
 
   def extractRemoteAddress: String
 

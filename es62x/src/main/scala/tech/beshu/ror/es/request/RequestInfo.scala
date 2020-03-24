@@ -62,7 +62,6 @@ import tech.beshu.ror.accesscontrol.request.RequestInfoShim.{ExtractedIndices, W
 import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.RegularIndices
 
 import scala.collection.JavaConverters._
-import scala.math.Ordering.comparatorToOrdering
 import scala.util.{Failure, Success, Try}
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -212,10 +211,10 @@ class RequestInfo(channel: RestChannel, taskId: Long, action: String, actionRequ
 
   override val extractAction: String = action
 
-  override val extractRequestHeaders: Map[String, String] =
+  override val extractRequestHeaders: Map[String, Set[String]] =
     request
       .getHeaders.asScala
-      .map { h => (h._1, h._2.asScala.min(comparatorToOrdering(String.CASE_INSENSITIVE_ORDER))) }
+      .map { case (name, values) => (name, values.asScala.toSet) }
       .toMap
 
   override val extractRemoteAddress: String = Try {

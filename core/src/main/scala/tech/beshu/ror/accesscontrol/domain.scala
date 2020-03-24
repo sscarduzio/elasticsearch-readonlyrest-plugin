@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.{Base64, Locale}
 
-import cats.{Eq, Functor}
+import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
 import com.comcast.ip4s.interop.cats.HostnameResolver
@@ -30,8 +30,10 @@ import monix.eval.Task
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{RorMetadataInvalidFormat, EmptyAuthorizationValue, InvalidHeaderFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.Try
 
@@ -85,12 +87,62 @@ object domain {
                 (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
     def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-    implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
+    def fromAuthorizationValue(value: NonEmptyString): Either[AuthorizationValueError, NonEmptyList[Header]] = {
+      value.value.splitBy("ror_metadata=") match {
+        case (_, None) =>
+          Right(NonEmptyList.one(new Header(Name.authorization, value)))
+        case (basicAuthStr, Some(rorMetadata)) =>
+          for {
+            authorizationHeader <- createHeaderFromAuthorizationString(basicAuthStr)
+            headersStr <- parseRorMetadataString(rorMetadata)
+            headers <- headersStr.map(headerFrom).traverse(identity)
+          } yield NonEmptyList.of(authorizationHeader, headers: _*)
+      }
+    }
+
+    private def createHeaderFromAuthorizationString(authStr: String) = {
+      val trimmed = authStr.trim
+      val sanitized = if(trimmed.endsWith(",")) trimmed.substring(0, trimmed.length - 1) else trimmed
+      NonEmptyString
+        .from(sanitized)
+        .map(new Header(Name.authorization, _))
+        .left.map(_ => EmptyAuthorizationValue)
+    }
+
+    private def parseRorMetadataString(rorMetadataString: String) = {
+      rorMetadataString.decodeBase64 match {
+        case Some(value) =>
+          Try(ujson.read(value).obj("headers").arr.toList.map(_.str))
+            .toEither.left.map(_ => RorMetadataInvalidFormat(rorMetadataString, "Parsing JSON failed"))
+        case None =>
+          Left(RorMetadataInvalidFormat(rorMetadataString, "Decoding Base64 failed"))
+      }
+
+    }
+
+    private def headerFrom(value: String) = {
+      import tech.beshu.ror.utils.StringWiseSplitter._
+      value
+        .toNonEmptyStringsTuple
+        .bimap(
+          { case Error.CannotSplitUsingColon | Error.TupleMemberCannotBeEmpty => InvalidHeaderFormat(value) },
+          { case (nonEmptyName, nonEmptyValue) => new Header(Name(nonEmptyName), nonEmptyValue) }
+        )
+    }
+
+    sealed trait AuthorizationValueError
+    object AuthorizationValueError {
+      case object EmptyAuthorizationValue extends AuthorizationValueError
+      final case class InvalidHeaderFormat(value: String) extends AuthorizationValueError
+      final case class RorMetadataInvalidFormat(value: String, message: String) extends AuthorizationValueError
+    }
+
+    implicit val eqHeader: Eq[Header] = Eq.by(header => (header.name, header.value.value))
   }
 
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
   final case class BasicAuth private(credentials: Credentials) {
-    def header: Header = Header(
+    def header: Header = new Header(
       Header.Name.authorization,
       NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${credentials.user.value}:${credentials.secret.value}".getBytes(UTF_8))}")
     )
@@ -121,8 +173,8 @@ object domain {
 
     private def fromBase64(base64Value: String) = {
       import tech.beshu.ror.utils.StringWiseSplitter._
-      Try(new String(Base64.getDecoder.decode(base64Value), UTF_8))
-        .toOption
+      base64Value
+        .decodeBase64
         .flatMap(_.toNonEmptyStringsTuple.toOption)
         .map { case (first, second) =>
           BasicAuth(Credentials(User.Id(first), PlainTextSecret(second)))
