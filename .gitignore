@@ -30,14 +30,14 @@ eclipse-build
 // Script generated files
 
 docker/*
-integration-tests/src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties
+eshome/plugins/readonlyrest/plugin-descriptor.properties
 integration-tests/src/main/resources/plugin-descriptor.properties
-integration-tests/src/test/eshome/logs/
-integration-tests/src/test/eshome/data/
-integration-tests/src/test/eshome/modules/
-integration-tests/src/test/eshome/*.log
-integration-tests/src/test/eshome/modules/*
-integration-tests/src/test/eshome/config/elasticsearch.keystore
+eshome/logs/
+eshome/data/
+eshome/modules/
+eshome/*.log
+eshome/modules/*
+eshome/config/elasticsearch.keystore
 target/
 
 // Crypto
