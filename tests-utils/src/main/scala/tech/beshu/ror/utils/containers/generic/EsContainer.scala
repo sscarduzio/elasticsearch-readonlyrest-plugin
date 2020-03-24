@@ -54,7 +54,7 @@ abstract class EsContainer(val name: String,
 
   override def client(credentials: Option[(String, String)]): RestClient = credentials match {
     case Some((user, password)) => new RestClient(sslEnabled, host, port, Optional.of(Tuple.from(user, password)))
-    case None => new RestClient(sslEnabled, host, port, Optional.empty())
+    case None => new RestClient(sslEnabled, host, port, Optional.empty[Tuple[String, String]]())
   }
 }
 

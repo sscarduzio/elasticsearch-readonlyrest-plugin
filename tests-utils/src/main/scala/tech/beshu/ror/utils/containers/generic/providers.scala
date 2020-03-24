@@ -43,10 +43,6 @@ object providers {
     implicit def rorConfigFileName: String
   }
 
-  trait RorConfigFileProvider {
-    implicit def rorConfigFile: better.files.File
-  }
-
   trait MultipleClients {
     def clients: NonEmptyList[ClientProvider]
   }
@@ -84,7 +80,7 @@ object providers {
 
     private def createProxyClient(port: Int): ClientProvider = {
       case Some((user, password)) => new RestClient(false, "localhost", port, Optional.of(Tuple.from(user, password)))
-      case None => new RestClient(false, "localhost", port, Optional.empty())
+      case None => new RestClient(false, "localhost", port, Optional.empty[Tuple[String, String]]())
     }
   }
 }

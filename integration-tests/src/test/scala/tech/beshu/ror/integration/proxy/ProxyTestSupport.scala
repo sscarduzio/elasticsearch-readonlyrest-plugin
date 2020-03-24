@@ -74,8 +74,6 @@ trait ProxyTestSupport
     private val rawRorConfig = ContainerUtils.getResourceFile(rorConfigFileName)
     private val adjustedRorConfig = FileAdjuster.adjust(rawRorConfig.toScala, targetEsContainer.startedClusterDependencies, FileAdjuster.Mode.Proxy)
 
-    println(adjustedRorConfig.contentAsString)
-
     System.setProperty("com.readonlyrest.settings.file.path", adjustedRorConfig.toJava.getAbsolutePath)
 
     override def config: RorProxy.Config = RorProxy.Config(

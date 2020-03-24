@@ -61,6 +61,17 @@ trait LdapIntegrationGroupsSuite
 
     result.responseCode should be(200)
   }
+
+  "checkCartmanWithGroup1AsCurrentGroupPassedAsValueOfAuthorizationHeader" in {
+    val indexManager = new IndexManager(
+      client = noBasicAuthClient,
+      additionalHeaders = Map("Authorization" -> "Basic Y2FydG1hbjp1c2VyMg==, ror_metadata=eyJoZWFkZXJzIjpbIngtcm9yLWN1cnJlbnQtZ3JvdXA6Z3JvdXAxIiwgImhlYWRlcjE6eHl6Il19"))
+
+    val result = indexManager.getIndex("twitter")
+
+    result.responseCode should be(200)
+  }
+
   "checkCartmanWithGroup3AsCurrentGroup" in {
     val indexManager = new IndexManager(
       client = basicAuthClient("cartman", "user2"),
