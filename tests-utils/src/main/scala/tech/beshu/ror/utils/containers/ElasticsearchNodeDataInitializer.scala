@@ -14,16 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.utils.containers
 
-package tech.beshu.ror.utils.containers.generic
+import tech.beshu.ror.utils.httpclient.RestClient
 
-import com.dimafeng.testcontainers.SingleContainer
-import org.testcontainers.containers.GenericContainer
-import tech.beshu.ror.utils.containers.WireMockContainer
+trait ElasticsearchNodeDataInitializer {
+  def initialize(esVersion: String, adminRestClient: RestClient): Unit
+}
 
-class WireMockScalaAdapter(proxy: WireMockContainer) extends SingleContainer[GenericContainer[_]]{
-  def getWireMockHost: String = proxy.getWireMockHost
-  def getWireMockPort: Integer = proxy.getWireMockPort
-
-  override implicit val container: GenericContainer[_] = proxy
+object NoOpElasticsearchNodeDataInitializer extends ElasticsearchNodeDataInitializer {
+  override def initialize(esVersion: String, adminRestClient: RestClient): Unit = {}
 }

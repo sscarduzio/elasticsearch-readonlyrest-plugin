@@ -22,7 +22,7 @@ import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
-import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent

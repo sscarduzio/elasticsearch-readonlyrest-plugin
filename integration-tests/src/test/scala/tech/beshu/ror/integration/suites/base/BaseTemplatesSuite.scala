@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import com.dimafeng.testcontainers.Container
 import org.scalatest.{BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, TemplateManagerJ}
 import tech.beshu.ror.utils.misc.Version
 

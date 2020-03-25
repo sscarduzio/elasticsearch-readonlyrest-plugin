@@ -17,7 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseIndexApiSuite
-import tech.beshu.ror.utils.containers.generic.EsContainerCreator
+import tech.beshu.ror.utils.containers.EsContainerCreator
 
 trait IndexApiWithFreeKibanaSupportSuite extends BaseIndexApiSuite {
   this: EsContainerCreator =>

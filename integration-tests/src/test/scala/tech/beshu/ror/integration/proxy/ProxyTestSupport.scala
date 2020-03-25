@@ -24,9 +24,8 @@ import org.apache.logging.log4j.scala.Logging
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.proxy.RorProxy
 import tech.beshu.ror.proxy.RorProxy.ProxyAppWithCloseHandler
-import tech.beshu.ror.utils.containers.ContainerUtils
-import tech.beshu.ror.utils.containers.generic.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
-import tech.beshu.ror.utils.containers.generic.{EsContainer, EsWithoutRorPluginContainerCreator, RorConfigAdjuster}
+import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
+import tech.beshu.ror.utils.containers.{ContainerUtils, EsContainer, EsWithoutRorPluginContainerCreator, RorConfigAdjuster}
 
 import scala.concurrent.ExecutionContext
 

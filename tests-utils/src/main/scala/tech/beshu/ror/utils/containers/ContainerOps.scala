@@ -1,4 +1,4 @@
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
@@ -10,7 +10,7 @@ object ContainerOps {
 
   implicit class RichContainer(val container: SingleContainer[GenericContainer[_]]) extends AnyVal {
 
-    def ipAddressFromFirstSharedNetwork: Option[String] =
+    def ipAddressFromFirstNetwork: Option[String] =
       Try(container.containerInfo)
         .map(_
           .getNetworkSettings

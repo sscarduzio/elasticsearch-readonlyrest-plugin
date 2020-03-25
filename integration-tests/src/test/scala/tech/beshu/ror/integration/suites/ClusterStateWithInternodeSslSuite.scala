@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait ClusterStateWithInternodeSslSuite

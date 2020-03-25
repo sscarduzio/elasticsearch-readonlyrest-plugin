@@ -14,13 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
-import DockerfileBuilderOps._
-import tech.beshu.ror.utils.containers.generic.EsContainer.Config
+import tech.beshu.ror.utils.containers.DockerfileBuilderOps._
+import tech.beshu.ror.utils.containers.EsContainer.Config
 import tech.beshu.ror.utils.misc.Version
 
 trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {

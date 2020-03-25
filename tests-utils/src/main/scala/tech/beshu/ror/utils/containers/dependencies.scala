@@ -1,7 +1,6 @@
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import monix.eval.Coeval
-import tech.beshu.ror.utils.containers.WireMockContainer
 
 object dependencies {
 

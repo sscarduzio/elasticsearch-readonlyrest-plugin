@@ -1,9 +1,8 @@
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import better.files.File
-import tech.beshu.ror.utils.containers.generic.ContainerOps._
-import tech.beshu.ror.utils.containers.generic.EsClusterContainer.{StartedClusterDependencies, StartedDependency}
-
+import tech.beshu.ror.utils.containers.ContainerOps._
+import tech.beshu.ror.utils.containers.EsClusterContainer.{StartedClusterDependencies, StartedDependency}
 object RorConfigAdjuster {
 
   private val hostPlaceholder = "HOST"
@@ -36,7 +35,7 @@ object RorConfigAdjuster {
 
   private def resolveReplacementForGivenMode(mode: Mode, dependency: StartedDependency): Replacement = mode match {
     case Mode.Plugin => Replacement(
-      host = dependency.container.ipAddressFromFirstSharedNetwork.getOrElse(throw new IllegalStateException("Could not extract ip address inside docker shared network")),
+      host = dependency.container.ipAddressFromFirstNetwork.getOrElse(throw new IllegalStateException("Could not extract ip address inside docker network")),
       port = dependency.originalPort
     )
     case Mode.Proxy => Replacement(

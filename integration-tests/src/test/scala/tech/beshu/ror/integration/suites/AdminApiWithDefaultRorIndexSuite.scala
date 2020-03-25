@@ -17,7 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import tech.beshu.ror.integration.suites.base.BaseAdminApiSuite
-import tech.beshu.ror.utils.containers.generic.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
 
 trait AdminApiWithDefaultRorIndexSuite extends BaseAdminApiSuite {
   this: EsContainerCreator =>

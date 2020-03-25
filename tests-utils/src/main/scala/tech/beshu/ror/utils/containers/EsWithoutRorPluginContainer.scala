@@ -14,12 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
-import tech.beshu.ror.utils.containers.generic.EsClusterContainer.StartedClusterDependencies
+import tech.beshu.ror.utils.containers.EsClusterContainer.StartedClusterDependencies
 
 import scala.language.postfixOps
 

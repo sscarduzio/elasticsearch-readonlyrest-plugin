@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 

@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.generic.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 

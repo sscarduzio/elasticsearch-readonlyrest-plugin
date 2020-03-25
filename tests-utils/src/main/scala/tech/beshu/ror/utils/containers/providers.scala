@@ -14,12 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import java.util.Optional
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.utils.containers.generic.providers.ClientProvider.adminCredentials
+import tech.beshu.ror.utils.containers.providers.ClientProvider.adminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Tuple
 
@@ -58,7 +58,9 @@ object providers {
   }
 
   trait SingleClient extends ClientProvider with MultipleClients {
-    override private[providers] def client(credentials: Option[(String, String)]): RestClient = clients.head.client(credentials)
+
+    override private[providers] def client(credentials: Option[(String, String)]): RestClient =
+      clients.head.client(credentials)
   }
 
   trait CallingEsDirectly extends MultipleClients {

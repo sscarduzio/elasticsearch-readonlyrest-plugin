@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import java.io.InputStream
 
@@ -26,7 +26,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
-import tech.beshu.ror.utils.containers.generic.LdapContainer.defaults
+import tech.beshu.ror.utils.containers.LdapContainer.defaults
 import tech.beshu.ror.utils.misc.ScalaUtils._
 
 import scala.concurrent.duration._

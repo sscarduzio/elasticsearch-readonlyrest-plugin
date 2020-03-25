@@ -21,7 +21,8 @@ import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers
+import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -39,7 +40,7 @@ trait CrossClusterSearchSuite
   override lazy val container = createRemoteClustersContainer(
     NonEmptyList.of(
       EsClusterSettings(name = "ROR1", nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
-      EsClusterSettings(name = "ROR2", nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
+      containers.EsClusterSettings(name = "ROR2", nodeDataInitializer = CrossClusterSearchSuite.nodeDataInitializer()),
     ),
     CrossClusterSearchSuite.remoteClustersInitializer()
   )

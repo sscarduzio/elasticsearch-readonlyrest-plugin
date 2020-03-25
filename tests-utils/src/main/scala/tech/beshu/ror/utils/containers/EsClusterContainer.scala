@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -25,7 +25,7 @@ import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
 import org.junit.runner.Description
 import org.testcontainers.containers.GenericContainer
-import tech.beshu.ror.utils.containers.generic.EsClusterContainer.{StartedClusterDependencies, StartedDependency}
+import tech.beshu.ror.utils.containers.EsClusterContainer.{StartedClusterDependencies, StartedDependency}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils._
 

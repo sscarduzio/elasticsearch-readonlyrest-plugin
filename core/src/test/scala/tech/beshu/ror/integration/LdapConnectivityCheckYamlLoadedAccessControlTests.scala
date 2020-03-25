@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
-import tech.beshu.ror.utils.containers.generic.LdapContainer
+import tech.beshu.ror.utils.containers.LdapContainer
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
   extends WordSpec

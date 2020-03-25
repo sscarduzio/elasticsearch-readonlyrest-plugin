@@ -14,15 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import java.io.File
 
 import better.files._
 import cats.data.NonEmptyList
-import tech.beshu.ror.utils.containers.ContainerUtils
+import tech.beshu.ror.utils.containers.EsClusterContainer.StartedClusterDependencies
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
-import tech.beshu.ror.utils.containers.generic.EsClusterContainer.StartedClusterDependencies
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 trait EsWithRorPluginContainerCreator extends EsContainerCreator {

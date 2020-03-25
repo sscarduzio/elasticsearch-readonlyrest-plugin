@@ -14,6 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
-object ESWithoutRorPluginImage extends EsImage[EsWithoutRorPluginContainer.Config]
+import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
+
+object DockerfileBuilderOps {
+
+  implicit class OptionalCommandRunner(val builder: DockerfileBuilder) extends AnyVal {
+
+    def runWhen(condition: Boolean, command: => String): DockerfileBuilder = {
+      if (condition) builder.run(command)
+      else builder
+    }
+  }
+}

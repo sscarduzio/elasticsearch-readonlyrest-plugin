@@ -14,11 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers.generic
+package tech.beshu.ror.utils.containers
 
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
-import tech.beshu.ror.utils.containers.ContainerUtils
 
 object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
 

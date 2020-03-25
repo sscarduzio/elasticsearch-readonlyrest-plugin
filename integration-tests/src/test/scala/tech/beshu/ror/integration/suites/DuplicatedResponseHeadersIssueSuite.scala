@@ -19,8 +19,8 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite.SearchResult
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.containers.generic.dependencies.wiremock
+import tech.beshu.ror.utils.containers.dependencies.wiremock
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
