@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDec
 import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.utils.TestsUtils.StringOps
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
-import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.containers.generic.LdapContainer
 
 import scala.language.postfixOps
 

@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.containers.generic.LdapContainer
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

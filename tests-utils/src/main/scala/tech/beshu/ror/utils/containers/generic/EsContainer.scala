@@ -81,7 +81,7 @@ object EsContainer extends StrictLogging {
       new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, Coeval(esContainer.adminClient), initializer)
         .withStartupTimeout(3 minutes)
     )
-//    esContainer.container.setNetwork(Network.SHARED)
+    esContainer.container.setNetwork(Network.SHARED)
     esContainer.container.setNetworkAliases((config.nodeName :: Nil).asJava)
     esContainer
   }

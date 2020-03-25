@@ -26,7 +26,7 @@ import tech.beshu.ror.proxy.RorProxy
 import tech.beshu.ror.proxy.RorProxy.ProxyAppWithCloseHandler
 import tech.beshu.ror.utils.containers.ContainerUtils
 import tech.beshu.ror.utils.containers.generic.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
-import tech.beshu.ror.utils.containers.generic.{EsContainer, EsWithoutRorPluginContainerCreator, FileAdjuster}
+import tech.beshu.ror.utils.containers.generic.{EsContainer, EsWithoutRorPluginContainerCreator, RorConfigAdjuster}
 
 import scala.concurrent.ExecutionContext
 
@@ -72,7 +72,7 @@ trait ProxyTestSupport
   private def createApp(port: Int, targetEsContainer: EsContainer): RorProxy = new RorProxy {
 
     private val rawRorConfig = ContainerUtils.getResourceFile(rorConfigFileName)
-    private val adjustedRorConfig = FileAdjuster.adjust(rawRorConfig.toScala, targetEsContainer.startedClusterDependencies, FileAdjuster.Mode.Proxy)
+    private val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(rawRorConfig.toScala, targetEsContainer.startedClusterDependencies, RorConfigAdjuster.Mode.Proxy)
 
     System.setProperty("com.readonlyrest.settings.file.path", adjustedRorConfig.toJava.getAbsolutePath)
 

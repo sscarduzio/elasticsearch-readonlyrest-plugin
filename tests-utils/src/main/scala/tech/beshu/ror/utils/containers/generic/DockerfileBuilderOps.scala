@@ -14,26 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.assertions;
+package tech.beshu.ror.utils.containers.generic
 
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
+import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 
-import java.time.Duration;
-import java.util.concurrent.Callable;
-import java.util.function.Predicate;
+object DockerfileBuilderOps {
 
-public class EnhancedAssertion {
+  implicit class OptionalCommandRunner(val builder: DockerfileBuilder) extends AnyVal {
 
-  public static void assertNAttempts(Integer n, Callable<Void> action) {
-    RetryPolicy<Void> retryPolicy = new RetryPolicy<Void>()
-        .handleIf(assertionFails())
-        .withMaxRetries(n)
-        .withDelay(Duration.ofMillis(200));
-    Failsafe.with(retryPolicy).get(action::call);
-  }
-
-  private static Predicate<Throwable> assertionFails() {
-    return throwable -> throwable instanceof AssertionError;
+    def runWhen(condition: Boolean, command: => String): DockerfileBuilder = {
+      if (condition) builder.run(command)
+      else builder
+    }
   }
 }

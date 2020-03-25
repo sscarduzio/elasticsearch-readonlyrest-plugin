@@ -19,16 +19,14 @@ package tech.beshu.ror.utils.elasticsearch;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 
-public class ElasticsearchTweetsInitializer implements ESWithReadonlyRestContainer.ESInitalizer {
+public class ElasticsearchTweetsInitializer {
 
-  @Override
   public void initialize(RestClient client) {
     createTweet(client, "1", "cartman",
         "You can't be the dwarf character, Butters, I'm the dwarf."

@@ -45,13 +45,4 @@ public class ContainerUtils {
     }
     return false;
   }
-
-  public static Optional<String> getIpAddress(GenericContainer<?> container) {
-    return Optional.ofNullable(container.getContainerInfo())
-        .map(info -> info
-            .getNetworkSettings()
-            .getNetworks()
-            .get("bridge")
-            .getIpAddress());
-  }
 }

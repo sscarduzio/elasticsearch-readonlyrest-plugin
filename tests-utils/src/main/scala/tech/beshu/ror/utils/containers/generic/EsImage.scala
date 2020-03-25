@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.containers.generic
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
-import tech.beshu.ror.utils.containers.DockerfileBuilderOps._
+import DockerfileBuilderOps._
 import tech.beshu.ror.utils.containers.generic.EsContainer.Config
 import tech.beshu.ror.utils.misc.Version
 

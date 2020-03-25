@@ -1,14 +1,14 @@
 package tech.beshu.ror.utils.containers.generic
 
 import monix.eval.Coeval
-import tech.beshu.ror.utils.containers.{LdapContainer, WireMockContainer}
+import tech.beshu.ror.utils.containers.WireMockContainer
 
 object dependencies {
 
   def ldap(name: String, ldapInitScript: String): DependencyDef = {
     DependencyDef(
       name = name,
-      Coeval(new LdapContainer(name, ldapInitScript)),
+      Coeval(LdapContainer.create(name, ldapInitScript)),
       originalPort = LdapContainer.defaults.ldap.port)
   }
 

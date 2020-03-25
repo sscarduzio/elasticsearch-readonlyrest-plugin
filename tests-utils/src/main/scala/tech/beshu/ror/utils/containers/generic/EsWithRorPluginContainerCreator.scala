@@ -36,14 +36,17 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
     val esVersion = project.getESVersion
     val rawRorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
 
-    val adjusted = FileAdjuster.adjust(rawRorConfigFile.toScala, startedClusterDependencies, FileAdjuster.Mode.Plugin)
+    val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
+      rawRorConfigFile.toScala,
+      startedClusterDependencies,
+      RorConfigAdjuster.Mode.Plugin)
 
     val containerConfig = EsWithRorPluginContainer.Config(
       nodeName = name,
       nodes = nodeNames,
       esVersion = esVersion,
       rorPluginFile = rorPluginFile,
-      rorConfigFile = adjusted.toJava,
+      rorConfigFile = adjustedRorConfig.toJava,
       configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
       customRorIndexName = clusterSettings.customRorIndexName,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,

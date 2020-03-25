@@ -59,11 +59,12 @@ public class WireMockContainer extends GenericContainer<WireMockContainer> {
         }));
     WireMockContainer cont = container
         .withExposedPorts(WIRE_MOCK_PORT)
-//            .withNetwork(Network.SHARED)
         .waitingFor(
             container.waitStrategy()
                      .withStartupTimeout(CONTAINER_STARTUP_TIMEOUT)
         );
+
+    cont.setNetwork(Network.SHARED);
     return cont.withLogConsumer(s -> System.out.print("[WIREMOCK-ext-port:" + cont.getWireMockPort() + "] " + s.getUtf8String()));
   }
 
