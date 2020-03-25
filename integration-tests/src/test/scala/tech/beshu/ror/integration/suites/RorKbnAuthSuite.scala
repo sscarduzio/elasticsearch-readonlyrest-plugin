@@ -139,14 +139,13 @@ trait RorKbnAuthSuite
     assert(kvs.length % 2 == 0)
     val claims: mutable.Map[String, Any] = mutable.Map.empty
     var i: Int = 0
-    while ( {
-      i < kvs.length
-    }) {
+    while (i < kvs.length) {
       claims.put(kvs(i).asInstanceOf[String], kvs(i + 1))
-
       i += 2
     }
-    if (!claims.contains(userClaim)) claims.put(userClaim, "user")
+    if (!claims.contains(userClaim))
+      claims.put(userClaim, "user")
+
     claims
   }
 }
