@@ -36,6 +36,7 @@ import tech.beshu.ror.accesscontrol.factory.consts.RorProperties.RefreshInterval
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
+import tech.beshu.ror.boot.ComposedConfigLoader.{File, Index}
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
@@ -43,7 +44,7 @@ import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError}
-import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig, RorIndexNameConfiguration}
+import tech.beshu.ror.configuration._
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value
@@ -68,6 +69,7 @@ object Ror extends ReadonlyRest {
     new RawRorConfigBasedCoreFactory
   }
 }
+
 
 trait ReadonlyRest extends Logging {
 
@@ -111,29 +113,50 @@ trait ReadonlyRest extends Logging {
     }
   }
 
+
   private def startRor(esConfig: EsConfig,
                        fileConfigLoader: FileConfigLoader,
                        indexConfigManager: IndexConfigManager,
                        auditSink: AuditSink) = {
-    if (esConfig.rorEsLevelSettings.forceLoadRorFromFile) {
-      for {
-        config <- EitherT(loadRorConfigFromFile(fileConfigLoader))
-        engine <- EitherT(loadRorCore(config, esConfig.rorIndex, auditSink))
-        rorInstance <- EitherT.right[StartingFailure](
+
+    for {
+      loadedConfig <- loadConfig(esConfig, fileConfigLoader, indexConfigManager)
+      engine <- EitherT(loadRorCore(getConfig(loadedConfig), esConfig.rorIndex, auditSink))
+      rorInstance <- createRorInstance(indexConfigManager, auditSink, engine, loadedConfig)
+    } yield rorInstance
+  }
+
+  private def createRorInstance(indexConfigManager: IndexConfigManager, auditSink: AuditSink, engine: Engine, loadedConfig: ComposedConfigLoader.LoadedConfig) = {
+    EitherT.right[StartingFailure] {
+      loadedConfig match {
+        case ComposedConfigLoader.FileRecoveredIndex(config, error) =>
           RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
-        )
-      } yield rorInstance
-    } else {
-      for {
-        config <- EitherT(loadRorConfigFromIndex(indexConfigManager, loadRorConfigFromFile(fileConfigLoader)))
-        engine <- EitherT(loadRorCore(config, esConfig.rorIndex, auditSink))
-        rorInstance <- EitherT.right[StartingFailure](
+        case Index(config) =>
           RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
-        )
-      } yield rorInstance
+        case ComposedConfigLoader.ForcedFile(config) =>
+          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
+      }
     }
   }
 
+  private def getConfig(loadedConfig: ComposedConfigLoader.LoadedConfig): RawRorConfig = loadedConfig match {
+    case ComposedConfigLoader.FileRecoveredIndex(config, error) => config
+    case Index(config) => config
+    case ComposedConfigLoader.ForcedFile(config) => config
+  }
+
+  private def loadConfig(esConfig: EsConfig, fileConfigLoader: FileConfigLoader, indexConfigManager: IndexConfigManager) = {
+    EitherT(new ComposedConfigLoader(fileConfigLoader, indexConfigManager, esConfig).loadConfig())
+      .leftMap {
+        case File.ParsingError(underlying) =>
+          StartingFailure(underlying.show)
+        case File.FileNotExist(file) =>
+          StartingFailure(s"Cannot find settings file: ${file.pathAsString}")
+        case Index.ParsingError(underlying) =>
+          logger.error(show"Loading ReadonlyREST settings from index failed: $underlying")
+          StartingFailure(underlying.show)
+      }
+  }
   private def loadRorConfigFromFile(fileConfigLoader: FileConfigLoader) = {
     logger.info(s"Loading ReadonlyREST settings from file: ${fileConfigLoader.rawConfigFile.pathAsString}")
     fileConfigLoader
