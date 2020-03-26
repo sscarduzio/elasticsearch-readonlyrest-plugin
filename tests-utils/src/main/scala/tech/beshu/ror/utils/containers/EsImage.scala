@@ -79,7 +79,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           "-Xms512m",
           "-Xmx512m",
           "-Djava.security.egd=file:/dev/./urandoms",
-          "-Dcom.unboundid.ldap.sdk.debug.enabled=true",
+          "-Dcom.unboundid.ldap.sdk.debug.enabled=false",
           if (!configHotReloadingEnabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
         ).mkString(" ")
 
