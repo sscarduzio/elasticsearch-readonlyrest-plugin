@@ -47,7 +47,6 @@ object ESWithReadonlyRestImage extends StrictLogging {
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         builder
           .from(baseDockerImage + ":" + esVersion)
-          .env("TEST_VAR", "dev")
           .env(config.envs.asJava)
           .copy(rorPluginFile.getAbsolutePath, "/tmp/")
           .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
