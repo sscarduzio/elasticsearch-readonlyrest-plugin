@@ -44,6 +44,7 @@ import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -61,6 +62,7 @@ class ReadonlyRestPlugin(s: Settings)
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
 
   private val environment = new Environment(s)
+  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl
     .load(environment.configFile)
