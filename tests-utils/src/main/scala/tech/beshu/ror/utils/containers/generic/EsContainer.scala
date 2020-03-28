@@ -55,6 +55,7 @@ object EsContainer extends StrictLogging {
   trait Config {
     def nodeName: String
     def nodes: NonEmptyList[String]
+    def envs: Map[String, String]
     def esVersion: String
     def xPackSupport: Boolean
     def internodeSslEnabled: Boolean

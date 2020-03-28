@@ -30,6 +30,7 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
     val containerConfig = EsWithoutRorPluginContainer.Config(
       nodeName = name,
       nodes = nodeNames,
+      envs = clusterSettings.rorContainerSpecification.environmentVariables,
       esVersion = esVersion,
       xPackSupport = clusterSettings.xPackSupport,
       customRorIndexName = clusterSettings.customRorIndexName,

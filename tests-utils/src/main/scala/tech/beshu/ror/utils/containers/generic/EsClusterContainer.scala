@@ -31,8 +31,7 @@ import scala.language.existentials
 import scala.util.Try
 
 class EsClusterContainer private[containers](esClusterContainers: NonEmptyList[Task[EsContainer]],
-                                             dependencies: List[DependencyDef],
-                                             clusterInitializer: EsClusterInitializer) extends Container {
+                                             dependencies: List[DependencyDef]) extends Container {
 
   val nodesContainers: NonEmptyList[EsContainer] = {
     NonEmptyList.fromListUnsafe(Task.gather(esClusterContainers.toList).runSyncUnsafe())
@@ -47,7 +46,6 @@ class EsClusterContainer private[containers](esClusterContainers: NonEmptyList[T
     Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
 
     Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
-    clusterInitializer.initialize(nodesContainers.head.adminClient, this)
   }
 
   override def finished()(implicit description: Description): Unit =
@@ -118,13 +116,7 @@ class EsRemoteClustersContainer private[containers](val localClusters: NonEmptyL
 
 }
 
-trait EsClusterInitializer {
-  def initialize(esClient: RestClient, container: EsClusterContainer): Unit
-}
-
-object NoOpEsClusterInitializer extends EsClusterInitializer {
-  override def initialize(esClient: RestClient, container: EsClusterContainer): Unit = ()
-}
+final case class ContainerSpecification(environmentVariables: Map[String, String])
 
 trait RemoteClustersInitializer {
   def remoteClustersConfiguration(localClusterRepresentatives: NonEmptyList[EsContainer]): Map[String, NonEmptyList[EsContainer]]
@@ -133,7 +125,7 @@ trait RemoteClustersInitializer {
 final case class EsClusterSettings(name: String,
                                    numberOfInstances: Int = 1,
                                    nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                   clusterInitializer: EsClusterInitializer = NoOpEsClusterInitializer,
+                                   rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    xPackSupport: Boolean = false,
                                    configHotReloadingEnabled: Boolean = true,
