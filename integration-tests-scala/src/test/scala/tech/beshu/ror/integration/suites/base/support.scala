@@ -14,11 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites.base
 
-import tech.beshu.ror.utils.containers.generic.EsWithRorPluginContainerCreator
-import tech.beshu.ror.utils.containers.generic.providers.{CallingEsDirectly, MultipleEsTargets}
+import com.dimafeng.testcontainers.ForAllTestContainer
+import org.scalatest.Suite
+import tech.beshu.ror.utils.containers.generic.providers.{MultipleClients, MultipleEsTargets, RorConfigFileNameProvider, SingleClient, SingleEsTarget}
+import tech.beshu.ror.utils.containers.generic.{EsClusterProvider, EsContainerCreator}
 
-trait PluginTestSupport extends EsWithRorPluginContainerCreator with CallingEsDirectly {
-  this: MultipleEsTargets =>
+object support {
+
+  trait BaseIntegrationTest
+    extends ForAllTestContainer
+      with EsClusterProvider
+      with RorConfigFileNameProvider {
+    this: Suite with EsContainerCreator =>
+  }
+
+  trait SingleClientSupport extends SingleClient with SingleEsTarget
+  trait MultipleClientsSupport extends MultipleClients with MultipleEsTargets
 }

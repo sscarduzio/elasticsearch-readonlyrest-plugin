@@ -17,32 +17,40 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.utils.containers.generic.{ContainerSpecification, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
-trait ClusterStateSuite
+trait ClusterStateWithInternodeSslSuite
   extends WordSpec
     with BaseIntegrationTest
-    with SingleClientSupport {
+    with SingleClientSupport
+    with BeforeAndAfterAll {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName = "/cluster_state/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml"
 
   override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
-      name = "ROR1"
+      name = "ROR1",
+      numberOfInstances = 3,
+      rorContainerSpecification = ContainerSpecification(Map("ROR_INTER_KEY_PASS" -> "readonlyrest")),
+      internodeSslEnabled = true
     )
   )
 
   private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
 
-  "/_cat/state should work as expected" in {
-    val response = adminClusterStateManager.healthCheck()
+  "Health check" should {
+    "be successful" when {
+      "internode ssl is enabled" in {
+        val response = adminClusterStateManager.healthCheck()
 
-    response.responseCode should be(200)
+        response.responseCode should be(200)
+      }
+    }
   }
 }

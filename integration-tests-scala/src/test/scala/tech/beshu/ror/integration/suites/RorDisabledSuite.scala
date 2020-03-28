@@ -16,19 +16,19 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
+import tech.beshu.ror.utils.elasticsearch.{ClusterStateManager, RorApiManager}
 
-trait ClusterStateSuite
+trait RorDisabledSuite
   extends WordSpec
     with BaseIntegrationTest
-    with SingleClientSupport {
+    with SingleClientSupport
+    with Matchers {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName = "/cluster_state/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
 
   override lazy val targetEs = container.nodesContainers.head
 
@@ -38,11 +38,23 @@ trait ClusterStateSuite
     )
   )
 
-  private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
+  "ROR with `enable: false` in settings" should {
+    "pass ES request through" in {
+      val user1ClusterStateManager = new ClusterStateManager(client("user1", "pass"))
 
-  "/_cat/state should work as expected" in {
-    val response = adminClusterStateManager.healthCheck()
+      val result = user1ClusterStateManager.catTemplates()
 
-    response.responseCode should be(200)
+      result.responseCode should be(200)
+    }
+    "return information that ROR is disabled" when {
+      "ROR API endpoint is being called" in {
+        val user1MetadataManager = new RorApiManager(client("user1", "pass"))
+
+        val result = user1MetadataManager.fetchMetadata()
+
+        result.responseCode should be(503)
+        result.responseJson("error")("reason").str should be("ReadonlyREST plugin was disabled in settings")
+      }
+    }
   }
 }

@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.utils.containers.generic.EsWithRorPluginContainerCreator
-import tech.beshu.ror.utils.containers.generic.providers.{CallingEsDirectly, MultipleEsTargets}
+import tech.beshu.ror.integration.suites.CatApiSuite
 
-trait PluginTestSupport extends EsWithRorPluginContainerCreator with CallingEsDirectly {
-  this: MultipleEsTargets =>
-}
+class CatApiPluginTests extends CatApiSuite with PluginTestSupport

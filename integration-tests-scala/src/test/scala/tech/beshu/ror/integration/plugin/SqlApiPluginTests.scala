@@ -16,9 +16,6 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.utils.containers.generic.EsWithRorPluginContainerCreator
-import tech.beshu.ror.utils.containers.generic.providers.{CallingEsDirectly, MultipleEsTargets}
+import tech.beshu.ror.integration.suites.SqlApiSuite
 
-trait PluginTestSupport extends EsWithRorPluginContainerCreator with CallingEsDirectly {
-  this: MultipleEsTargets =>
-}
+class SqlApiPluginTests extends SqlApiSuite with PluginTestSupport

@@ -16,33 +16,51 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.Matchers._
+import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.generic._
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
+import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
+import tech.beshu.ror.utils.httpclient.RestClient
 
-trait ClusterStateSuite
+trait ActionsSuite
   extends WordSpec
     with BaseIntegrationTest
     with SingleClientSupport {
   this: EsContainerCreator =>
 
-  override implicit val rorConfigFileName = "/cluster_state/readonlyrest.yml"
+  override implicit val rorConfigFileName = "/actions/readonlyrest.yml"
 
   override lazy val targetEs = container.nodesContainers.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
-      name = "ROR1"
+      name = "ROR1",
+      nodeDataInitializer = ActionsSuite.nodeDataInitializer()
     )
   )
 
-  private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
+  private lazy val actionManager = new ActionManagerJ(client("any", "whatever"))
 
-  "/_cat/state should work as expected" in {
-    val response = adminClusterStateManager.healthCheck()
+  "A actions rule" should {
+    "work for delete request" which {
+      "forbid deleting from test1_index" in {
+        val result = actionManager.actionDelete("test1_index/test/1")
+        assertEquals(401, result.getResponseCode)
+      }
+      "allow deleting from test2_index" in {
+        val result = actionManager.actionDelete("test2_index/test/1")
+        assertEquals(200, result.getResponseCode)
+      }
+    }
+  }
+}
 
-    response.responseCode should be(200)
+object ActionsSuite {
+
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManagerJ(adminRestClient)
+    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
+    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
   }
 }
