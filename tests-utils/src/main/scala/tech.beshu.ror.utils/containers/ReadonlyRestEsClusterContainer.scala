@@ -53,7 +53,7 @@ object ReadonlyRestEsCluster {
           nodeName = name,
           nodes = nodeNames,
           esVersion = esVersion,
-          envs = clusterSettings.rorNodeSpecification.environmentVariables,
+          envs = clusterSettings.rorContainerSpecification.environmentVariables,
           rorPluginFile = rorPluginFile,
           rorConfigFile = rorConfigFile,
           configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
@@ -80,7 +80,7 @@ object ReadonlyRestEsCluster {
 
   final case class AdditionalClusterSettings(numberOfInstances: Int = 1,
                                              nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                             rorNodeSpecification: NodeContainerSpecification = NodeContainerSpecification(Map.empty),
+                                             rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                              dependentServicesContainers: List[DependencyDef] = Nil,
                                              xPackSupport: Boolean = false,
                                              configHotReloadingEnabled: Boolean = true,
@@ -177,7 +177,7 @@ class ReadonlyRestEsRemoteClustersContainer private[containers](val localCluster
   }
 
 }
-final case class NodeContainerSpecification(environmentVariables: Map[String, String])
+final case class ContainerSpecification(environmentVariables: Map[String, String])
 
 trait RemoteClustersInitializer {
   def remoteClustersConfiguration(localClusterRepresentatives: NonEmptyList[ReadonlyRestEsContainer]): Map[String, NonEmptyList[ReadonlyRestEsContainer]]

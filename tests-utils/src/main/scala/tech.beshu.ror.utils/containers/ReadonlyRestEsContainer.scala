@@ -80,7 +80,6 @@ object ReadonlyRestEsContainer extends StrictLogging {
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
     rorContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     rorContainer.container.addExposedPort(9200)
-    rorContainer.container.setEnv(toEnvs(config.envs))
     rorContainer.container.setWaitStrategy(
       new ElasticsearchNodeWaitingStrategy(config.esVersion, rorContainer.name, Coeval(rorContainer.adminClient), initializer)
         .withStartupTimeout(3 minutes)
@@ -90,10 +89,4 @@ object ReadonlyRestEsContainer extends StrictLogging {
     rorContainer
   }
 
-  private def toEnvs(envs: Map[String, String]) = {
-    envs
-      .map { case (variable, value) => s"$variable=$value" }
-      .toList
-      .asJava
-  }
 }

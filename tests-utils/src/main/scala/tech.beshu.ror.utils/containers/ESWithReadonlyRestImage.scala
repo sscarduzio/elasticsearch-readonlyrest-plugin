@@ -22,7 +22,7 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.containers.DockerfileBuilderOps._
 import tech.beshu.ror.utils.containers.ReadonlyRestEsContainer.Config
 import tech.beshu.ror.utils.misc.Version
-
+import scala.collection.JavaConverters._
 object ESWithReadonlyRestImage extends StrictLogging {
 
   private val rorConfigFileName = "readonlyrest.yml"
@@ -48,6 +48,7 @@ object ESWithReadonlyRestImage extends StrictLogging {
         builder
           .from(baseDockerImage + ":" + esVersion)
           .env("TEST_VAR", "dev")
+          .env(config.envs.asJava)
           .copy(rorPluginFile.getAbsolutePath, "/tmp/")
           .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
           .copy(keystoreFileName, "/usr/share/elasticsearch/config/")

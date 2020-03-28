@@ -20,7 +20,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer, NodeContainerSpecification}
+import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer, ContainerSpecification}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 class ClusterStateWithInternodeSslTests
@@ -34,7 +34,7 @@ class ClusterStateWithInternodeSslTests
       rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml",
       clusterSettings = AdditionalClusterSettings(
         numberOfInstances = 3,
-        rorNodeSpecification = NodeContainerSpecification(Map("ROR_INTER_KEY_PASS" -> "readonlyrest")),
+        rorContainerSpecification = ContainerSpecification(Map("ROR_INTER_KEY_PASS" -> "readonlyrest")),
         internodeSslEnabled = true
       )
     )
