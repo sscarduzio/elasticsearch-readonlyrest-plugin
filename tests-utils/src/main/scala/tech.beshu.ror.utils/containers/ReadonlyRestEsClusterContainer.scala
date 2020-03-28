@@ -18,9 +18,8 @@ package tech.beshu.ror.utils.containers
 
 import java.io.File
 
-import cats.implicits._
 import cats.data.NonEmptyList
-import cats.kernel.Monoid
+import cats.implicits._
 import com.dimafeng.testcontainers.{Container, GenericContainer}
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
@@ -54,7 +53,7 @@ object ReadonlyRestEsCluster {
           nodeName = name,
           nodes = nodeNames,
           esVersion = esVersion,
-          envs = clusterSettings.rorNodeSpecification.envs,
+          envs = clusterSettings.rorNodeSpecification.environmentVariables,
           rorPluginFile = rorPluginFile,
           rorConfigFile = rorConfigFile,
           configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
@@ -81,7 +80,7 @@ object ReadonlyRestEsCluster {
 
   final case class AdditionalClusterSettings(numberOfInstances: Int = 1,
                                              nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                             rorNodeSpecification: RorNodeSpecification = Monoid[RorNodeSpecification].empty,
+                                             rorNodeSpecification: NodeContainerSpecification = NodeContainerSpecification(Map.empty),
                                              dependentServicesContainers: List[DependencyDef] = Nil,
                                              xPackSupport: Boolean = false,
                                              configHotReloadingEnabled: Boolean = true,
@@ -178,13 +177,8 @@ class ReadonlyRestEsRemoteClustersContainer private[containers](val localCluster
   }
 
 }
-final case class RorNodeSpecification(envs:Map[String,String])
-object RorNodeSpecification {
-  implicit val monoidRorNodeSpecification: Monoid[RorNodeSpecification] = {
-    import cats.derived.auto._
-    cats.derived.semi.monoid
-  }
-}
+final case class NodeContainerSpecification(environmentVariables: Map[String, String])
+
 trait RemoteClustersInitializer {
   def remoteClustersConfiguration(localClusterRepresentatives: NonEmptyList[ReadonlyRestEsContainer]): Map[String, NonEmptyList[ReadonlyRestEsContainer]]
 }
