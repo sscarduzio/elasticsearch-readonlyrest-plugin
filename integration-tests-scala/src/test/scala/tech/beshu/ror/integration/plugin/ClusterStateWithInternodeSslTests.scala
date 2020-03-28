@@ -39,10 +39,7 @@ class ClusterStateWithInternodeSslTests
         rorNodeSpecification = RorNodeSpecification(Map("ROR_INTER_KEY_PASS" -> "readonlyrest")),
         internodeSslEnabled = true
       )
-    ).mapContainer { c =>
-      c.container.setEnv(List("ROR_INTER_KEY_PASS=readonlyrest").asJava)
-      c
-    }
+    )
   }
   private lazy val adminClusterStateManager = new ClusterStateManager(container.nodesContainers.head.adminClient)
 

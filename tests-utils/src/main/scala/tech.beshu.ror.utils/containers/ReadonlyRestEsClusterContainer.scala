@@ -95,12 +95,6 @@ final case class DependencyDef(name: String, containerCreator: Coeval[GenericCon
 class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: NonEmptyList[Task[ReadonlyRestEsContainer]],
                                                          dependencies: List[DependencyDef])
   extends Container {
-//  def setEnvs(envs:Map[String,String])
-  def mapContainer(f:ReadonlyRestEsContainer => ReadonlyRestEsContainer) =
-    new ReadonlyRestEsClusterContainer(
-      rorClusterContainers = this.rorClusterContainers.map(_.map(f)),
-      dependencies = this.dependencies,
-    )
 
   val nodesContainers: NonEmptyList[ReadonlyRestEsContainer] = {
     NonEmptyList.fromListUnsafe(Task.gather(rorClusterContainers.toList).runSyncUnsafe())
