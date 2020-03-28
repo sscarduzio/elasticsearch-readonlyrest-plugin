@@ -47,7 +47,6 @@ object ESWithReadonlyRestImage extends StrictLogging {
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         builder
           .from(baseDockerImage + ":" + esVersion)
-          .env(config.envs.asJava)
           .copy(rorPluginFile.getAbsolutePath, "/tmp/")
           .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
           .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
@@ -68,6 +67,8 @@ object ESWithReadonlyRestImage extends StrictLogging {
           .user("root")
           .run("chown elasticsearch:elasticsearch config/*")
 
+        if(config.envs.nonEmpty) builder.env(config.envs.asJava)
+        
         if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
           builder
             .run("egrep -v 'node\\.name|cluster\\.initial_master_nodes|cluster\\.name|network\\.host' /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
