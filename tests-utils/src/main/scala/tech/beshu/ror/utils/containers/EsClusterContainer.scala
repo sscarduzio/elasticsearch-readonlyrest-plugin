@@ -33,8 +33,7 @@ import scala.language.existentials
 import scala.util.Try
 
 class EsClusterContainer private[containers](esClusterContainersCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
-                                             dependencies: List[DependencyDef],
-                                             clusterInitializer: EsClusterInitializer) extends Container {
+                                             dependencies: List[DependencyDef]) extends Container {
 
   private var clusterDependencies = StartedClusterDependencies(List.empty)
   private var createdContainers = List.empty[EsContainer]
@@ -59,7 +58,6 @@ class EsClusterContainer private[containers](esClusterContainersCreators: NonEmp
 
     //starting es containers...
     Task.gather(justCreatedContainers.map(s => Task(s.starting()(description)))).runSyncUnsafe()
-    clusterInitializer.initialize(createdContainers.head.adminClient, this)
   }
 
   override def finished()(implicit description: Description): Unit =

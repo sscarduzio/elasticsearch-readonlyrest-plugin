@@ -38,7 +38,8 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       rawRorConfigFile.toScala,
       startedClusterDependencies,
-      RorConfigAdjuster.Mode.Plugin)
+      RorConfigAdjuster.Mode.Plugin
+    )
 
     val containerConfig = EsWithRorPluginContainer.Config(
       nodeName = name,

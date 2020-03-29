@@ -49,7 +49,7 @@ fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es62x" ]]; then
     echo ">>> es62x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es63x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=es62x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
