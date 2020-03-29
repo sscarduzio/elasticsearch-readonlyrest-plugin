@@ -57,6 +57,6 @@ trait DynamicVariablesSuite
 object DynamicVariablesSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/.kibana_simone/documents/doc-asd", """{"title": ".kibana_simone"}""")
+    documentManager.insertDocAndWaitForRefresh("/.kibana_simone/documents/doc-asd", """{"title": ".kibana_simone"}""")
   }
 }
