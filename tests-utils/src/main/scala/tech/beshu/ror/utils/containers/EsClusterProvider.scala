@@ -32,11 +32,8 @@ trait EsClusterProvider {
 
     new  EsClusterContainer(
       nodeNames.map(fromDependenciesCreator),
-      esClusterSettings.dependentServicesContainers,
-      esClusterSettings.clusterInitializer)
+      esClusterSettings.dependentServicesContainers)
   }
-
-
 
   def createRemoteClustersContainer(localClustersSettings: NonEmptyList[EsClusterSettings],
                                     remoteClustersInitializer: RemoteClustersInitializer) = {

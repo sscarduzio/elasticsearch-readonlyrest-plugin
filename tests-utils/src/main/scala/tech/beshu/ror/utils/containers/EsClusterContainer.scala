@@ -135,13 +135,7 @@ class EsRemoteClustersContainer private[containers](val localClusters: NonEmptyL
 
 }
 
-trait EsClusterInitializer {
-  def initialize(esClient: RestClient, container: EsClusterContainer): Unit
-}
-
-object NoOpEsClusterInitializer extends EsClusterInitializer {
-  override def initialize(esClient: RestClient, container: EsClusterContainer): Unit = ()
-}
+final case class ContainerSpecification(environmentVariables: Map[String, String])
 
 trait RemoteClustersInitializer {
   def remoteClustersConfiguration(localClusterRepresentatives: NonEmptyList[EsContainer]): Map[String, NonEmptyList[EsContainer]]
@@ -150,7 +144,7 @@ trait RemoteClustersInitializer {
 final case class EsClusterSettings(name: String,
                                    numberOfInstances: Int = 1,
                                    nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                   clusterInitializer: EsClusterInitializer = NoOpEsClusterInitializer,
+                                   rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    xPackSupport: Boolean = false,
                                    configHotReloadingEnabled: Boolean = true,

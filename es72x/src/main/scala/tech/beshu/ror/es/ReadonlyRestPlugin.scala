@@ -61,6 +61,7 @@ import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -85,6 +86,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   private val environment = new Environment(s, p)
+  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl
     .load(environment.configFile)

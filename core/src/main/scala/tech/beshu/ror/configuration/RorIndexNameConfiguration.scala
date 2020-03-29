@@ -26,20 +26,22 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
+import tech.beshu.ror.providers.OsEnvVarsProvider
 
 final case class RorIndexNameConfiguration(name: IndexName)
 
-object RorIndexNameConfiguration extends LoadFromEsConfig with Logging {
+object RorIndexNameConfiguration extends Logging {
 
   private val defaultIndexName = IndexName.fromUnsafeString(".readonlyrest")
-
-  def load(esConfig: File): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = Task {
-    loadConfigFromFile[RorIndexNameConfiguration](esConfig, "Custom ROR index name")
-  }
-
   def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {
     load(File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath))
   }
+
+  def load(esConfig: File): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = Task {
+    new EsConfigFileLoader[RorIndexNameConfiguration]().loadConfigFromFile(esConfig, "Custom ROR index name")
+  }
+
+  private implicit val envVarsProvider: OsEnvVarsProvider.type = OsEnvVarsProvider
 
   private implicit val rorIndexNameConfigurationDecoder: Decoder[RorIndexNameConfiguration] = {
     Decoder.instance { c =>

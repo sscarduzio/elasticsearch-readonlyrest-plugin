@@ -9,7 +9,7 @@ readonlyrest:
     enable: true
     keystore_file: "keystore.jks"
     keystore_pass: readonlyrest
-    key_pass: readonlyrest
+    key_pass: ${ROR_INTER_KEY_PASS}
     truststore_file: "truststore.jks"
     truststore_pass: readonlyrest
     certificate_verification: true

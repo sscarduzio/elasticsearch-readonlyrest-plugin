@@ -22,6 +22,7 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.containers.DockerfileBuilderOps._
 import tech.beshu.ror.utils.containers.EsContainer.Config
 import tech.beshu.ror.utils.misc.Version
+import scala.collection.JavaConverters._
 
 trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
@@ -41,7 +42,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         builder
           .from(baseDockerImage + ":" + esVersion)
-          .env("TEST_VAR", "dev")
+          .env(config.envs.asJava)
 
         copyNecessaryFiles(builder, config)
 

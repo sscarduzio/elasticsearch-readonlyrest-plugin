@@ -29,6 +29,7 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
@@ -177,7 +178,8 @@ object EsRestServiceSimulator {
   def create(esClient: RestHighLevelClientAdapter,
              esConfigFile: File,
              threadPool: ThreadPool)
-            (implicit scheduler: Scheduler): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
+            (implicit scheduler: Scheduler,
+             envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFolder = esConfigFile.parent.path
     val esActionRequestHandler = new EsActionRequestHandler(esClient)
     val result = for {

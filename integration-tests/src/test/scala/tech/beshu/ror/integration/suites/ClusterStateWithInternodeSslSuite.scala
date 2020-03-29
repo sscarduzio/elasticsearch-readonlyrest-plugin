@@ -17,15 +17,16 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ContainerSpecification, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait ClusterStateWithInternodeSslSuite
   extends WordSpec
     with BaseIntegrationTest
-    with SingleClientSupport  {
+    with SingleClientSupport
+    with BeforeAndAfterAll {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml"
@@ -36,6 +37,7 @@ trait ClusterStateWithInternodeSslSuite
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 3,
+      rorContainerSpecification = ContainerSpecification(Map("ROR_INTER_KEY_PASS" -> "readonlyrest")),
       internodeSslEnabled = true
     )
   )
