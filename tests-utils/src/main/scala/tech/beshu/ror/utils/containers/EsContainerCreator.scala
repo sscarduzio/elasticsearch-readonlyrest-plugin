@@ -26,3 +26,4 @@ trait EsContainerCreator {
              clusterSettings: EsClusterSettings,
              startedClusterDependencies: StartedClusterDependencies): EsContainer
 }
+
