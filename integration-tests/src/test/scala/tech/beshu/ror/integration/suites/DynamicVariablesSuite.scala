@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ContainerSpecification, ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -36,6 +36,7 @@ trait DynamicVariablesSuite
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
+      rorContainerSpecification = ContainerSpecification(Map("TEST_VAR" -> "dev")),
       nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer()
     )
   )

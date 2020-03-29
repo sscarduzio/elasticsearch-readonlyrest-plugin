@@ -42,7 +42,6 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         builder
           .from(baseDockerImage + ":" + esVersion)
-          .env(config.envs.asJava)
 
         copyNecessaryFiles(builder, config)
 
@@ -59,6 +58,8 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
           .user("root")
           .run("chown elasticsearch:elasticsearch config/*")
+
+        if(config.envs.nonEmpty) builder.env(config.envs.asJava)
 
         builder
           .run("(egrep -v 'node\\.name|cluster\\.initial_master_nodes|cluster\\.name|network\\.host' /usr/share/elasticsearch/config/elasticsearch.yml || echo -n '') > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
