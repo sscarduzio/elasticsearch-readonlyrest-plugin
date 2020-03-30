@@ -84,7 +84,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           if (!configHotReloadingEnabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
         ).mkString(" ")
 
-        builder.user("elasticsearch").env("ES_JAVA_OPTS", javaOpts)
+        builder
+          .user("elasticsearch")
+          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts ) asJava)
 
         install(builder, config)
 
