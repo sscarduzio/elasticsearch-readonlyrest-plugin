@@ -26,25 +26,22 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
   private val javaOptionsFileName = "jvm.options"
   private val keystoreFileName = "keystore.jks"
   private val truststoreFileName = "truststore.jks"
+  private val configDir = "/config"
 
   override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithRorPluginContainer.Config): DockerfileBuilder = {
     builder
       .copy(config.rorPluginFile.getAbsolutePath, "/tmp/")
-      .copy(log4j2FileName, "/usr/share/elasticsearch/config/")
-      .copy(keystoreFileName, "/usr/share/elasticsearch/config/")
-      .copy(truststoreFileName, "/usr/share/elasticsearch/config/")
-      .copy(javaOptionsFileName, "/usr/share/elasticsearch/config/")
-      .copy(rorConfigFileName, "/usr/share/elasticsearch/config/readonlyrest.yml")
+      .copy(s"$configDir/*", "/usr/share/elasticsearch/config/")
   }
 
   override protected def entry(config: EsWithRorPluginContainer.Config): ImageFromDockerfile = {
     new ImageFromDockerfile()
       .withFileFromFile(config.rorPluginFile.getAbsolutePath, config.rorPluginFile)
-      .withFileFromFile(rorConfigFileName, config.rorConfigFile)
-      .withFileFromFile(log4j2FileName, ContainerUtils.getResourceFile("/" + log4j2FileName))
-      .withFileFromFile(keystoreFileName, ContainerUtils.getResourceFile("/" + keystoreFileName))
-      .withFileFromFile(truststoreFileName, ContainerUtils.getResourceFile("/" + truststoreFileName))
-      .withFileFromFile(javaOptionsFileName, ContainerUtils.getResourceFile("/" + javaOptionsFileName))
+      .withFileFromFile(s"$configDir/$rorConfigFileName", config.rorConfigFile)
+      .withFileFromFile(s"$configDir/$log4j2FileName", ContainerUtils.getResourceFile("/" + log4j2FileName))
+      .withFileFromFile(s"$configDir/$keystoreFileName", ContainerUtils.getResourceFile("/" + keystoreFileName))
+      .withFileFromFile(s"$configDir/$truststoreFileName", ContainerUtils.getResourceFile("/" + truststoreFileName))
+      .withFileFromFile(s"$configDir/$javaOptionsFileName", ContainerUtils.getResourceFile("/" + javaOptionsFileName))
   }
 
   override protected def install(builder: DockerfileBuilder,

@@ -19,9 +19,9 @@ package tech.beshu.ror.utils.containers
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
-import tech.beshu.ror.utils.containers.DockerfileBuilderOps._
 import tech.beshu.ror.utils.containers.EsContainer.Config
 import tech.beshu.ror.utils.misc.Version
+
 import scala.collection.JavaConverters._
 
 trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
@@ -45,7 +45,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
         copyNecessaryFiles(builder, config)
 
-        builder
+        if (config.envs.nonEmpty) builder.env(config.envs.asJava)
+
+        RunCommandCombiner.empty
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(config.xPackSupport && Version.greaterOrEqualThan(esVersion, 6, 3, 0),
@@ -56,26 +58,24 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(customRorIndexName.isDefined, s"echo 'readonlyrest.settings_index: ${customRorIndexName.get}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
+          .applyTo(builder)
           .user("root")
+
+        RunCommandCombiner.empty
           .run("chown elasticsearch:elasticsearch config/*")
-
-        if(config.envs.nonEmpty) builder.env(config.envs.asJava)
-
-        builder
           .run("(egrep -v 'node\\.name|cluster\\.initial_master_nodes|cluster\\.name|network\\.host' /usr/share/elasticsearch/config/elasticsearch.yml || echo -n '') > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'node.name: $nodeName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-          .run(s"echo 'network.host: 0.0.0.0' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-          .run(s"echo 'cluster.name: test-cluster' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-
-        if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-          builder
-            .run(s"echo 'discovery.seed_hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-            .run(s"echo 'cluster.initial_master_nodes: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-        } else {
-          builder
-            .run(s"echo 'discovery.zen.ping.unicast.hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-            .run(s"echo 'node.master: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-        }
+          .run("echo 'network.host: 0.0.0.0' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'cluster.name: test-cluster' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
+            command = s"echo 'discovery.seed_hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml",
+            orElse = s"echo 'discovery.zen.ping.unicast.hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml"
+          )
+          .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
+            command = s"echo 'cluster.initial_master_nodes: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml",
+            orElse = s"echo 'node.master: true' >> /usr/share/elasticsearch/config/elasticsearch.yml"
+          )
+          .applyTo(builder)
 
         val javaOpts = List(
           "-Xms512m",

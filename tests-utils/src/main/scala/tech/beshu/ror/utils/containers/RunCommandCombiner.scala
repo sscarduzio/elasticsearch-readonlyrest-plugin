@@ -18,13 +18,28 @@ package tech.beshu.ror.utils.containers
 
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 
-object DockerfileBuilderOps {
+object RunCommandCombiner {
 
-  implicit class OptionalCommandRunner(val builder: DockerfileBuilder) extends AnyVal {
+  def empty = RunCommands(List.empty)
 
-    def runWhen(condition: Boolean, command: => String): DockerfileBuilder = {
-      if (condition) builder.run(command)
-      else builder
+  final case class RunCommands(commands: List[String]) {
+
+    def run(command: String): RunCommands = RunCommands(commands :+ s"($command)")
+
+    def runWhen(condition: Boolean, command: => String): RunCommands = {
+      if (condition) run(command)
+      else this
+    }
+
+    def runWhen(condition: Boolean,
+                command: => String,
+                orElse: => String): RunCommands = {
+      if (condition) run(command)
+      else run(orElse)
+    }
+
+    def applyTo(builder: DockerfileBuilder): DockerfileBuilder = {
+      builder.run(commands.mkString(" && "))
     }
   }
 }
