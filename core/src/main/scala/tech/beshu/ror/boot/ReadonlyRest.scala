@@ -80,7 +80,8 @@ trait ReadonlyRest extends Logging {
 
   def start(esConfigPath: Path,
             auditSink: AuditSink,
-            indexContentManager: IndexJsonContentManager): Task[Either[StartingFailure, RorInstance]] = {
+            indexContentManager: IndexJsonContentManager)
+           (implicit envVarsProvider:EnvVarsProvider): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       fileConfigLoader <- createFileConfigLoader(esConfigPath)
       indexConfigLoader <- createIndexConfigLoader(indexContentManager, esConfigPath)
@@ -100,7 +101,8 @@ trait ReadonlyRest extends Logging {
     } yield indexConfigManager
   }
 
-  private def loadEsConfig(esConfigPath: Path) = {
+  private def loadEsConfig(esConfigPath: Path)
+                          (implicit envVarsProvider:EnvVarsProvider) = {
     EitherT {
       EsConfig
         .from(esConfigPath)

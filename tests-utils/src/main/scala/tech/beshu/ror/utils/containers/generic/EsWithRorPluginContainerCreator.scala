@@ -36,6 +36,7 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
     val containerConfig = EsWithRorPluginContainer.Config(
       nodeName = name,
       nodes = nodeNames,
+      envs = clusterSettings.rorContainerSpecification.environmentVariables,
       esVersion = esVersion,
       rorPluginFile = rorPluginFile,
       rorConfigFile = rorConfigFile,

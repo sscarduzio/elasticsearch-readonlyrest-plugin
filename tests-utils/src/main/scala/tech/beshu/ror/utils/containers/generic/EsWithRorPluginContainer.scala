@@ -36,6 +36,7 @@ object EsWithRorPluginContainer {
 
   final case class Config(nodeName: String,
                           nodes: NonEmptyList[String],
+                          envs: Map[String, String],
                           esVersion: String,
                           xPackSupport: Boolean,
                           rorPluginFile: File,

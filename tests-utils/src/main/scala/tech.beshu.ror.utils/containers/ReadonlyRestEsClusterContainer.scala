@@ -18,8 +18,8 @@ package tech.beshu.ror.utils.containers
 
 import java.io.File
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import com.dimafeng.testcontainers.{Container, GenericContainer}
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
@@ -53,6 +53,7 @@ object ReadonlyRestEsCluster {
           nodeName = name,
           nodes = nodeNames,
           esVersion = esVersion,
+          envs = clusterSettings.rorContainerSpecification.environmentVariables,
           rorPluginFile = rorPluginFile,
           rorConfigFile = rorConfigFile,
           configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
@@ -62,7 +63,6 @@ object ReadonlyRestEsCluster {
         Task(ReadonlyRestEsContainer.create(containerConfig, clusterSettings.nodeDataInitializer))
       },
       clusterSettings.dependentServicesContainers,
-      clusterSettings.clusterInitializer
     )
   }
 
@@ -80,7 +80,7 @@ object ReadonlyRestEsCluster {
 
   final case class AdditionalClusterSettings(numberOfInstances: Int = 1,
                                              nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
-                                             clusterInitializer: ReadonlyRestEsClusterInitializer = NoOpReadonlyRestEsClusterInitializer,
+                                             rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                              dependentServicesContainers: List[DependencyDef] = Nil,
                                              xPackSupport: Boolean = false,
                                              configHotReloadingEnabled: Boolean = true,
@@ -92,8 +92,7 @@ final case class LocalClusterDef(name: String, rorConfigFileName: String, nodeDa
 final case class DependencyDef(name: String, containerCreator: Coeval[GenericContainer])
 
 class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: NonEmptyList[Task[ReadonlyRestEsContainer]],
-                                                         dependencies: List[DependencyDef],
-                                                         clusterInitializer: ReadonlyRestEsClusterInitializer)
+                                                         dependencies: List[DependencyDef])
   extends Container {
 
   val nodesContainers: NonEmptyList[ReadonlyRestEsContainer] = {
@@ -109,7 +108,6 @@ class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: N
     Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
 
     Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
-    clusterInitializer.initialize(nodesContainers.head.adminClient, this)
   }
 
   override def finished()(implicit description: Description): Unit =
@@ -179,14 +177,7 @@ class ReadonlyRestEsRemoteClustersContainer private[containers](val localCluster
   }
 
 }
-
-trait ReadonlyRestEsClusterInitializer {
-  def initialize(adminClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit
-}
-
-object NoOpReadonlyRestEsClusterInitializer extends ReadonlyRestEsClusterInitializer {
-  override def initialize(adminClient: RestClient, container: ReadonlyRestEsClusterContainer): Unit = ()
-}
+final case class ContainerSpecification(environmentVariables: Map[String, String])
 
 trait RemoteClustersInitializer {
   def remoteClustersConfiguration(localClusterRepresentatives: NonEmptyList[ReadonlyRestEsContainer]): Map[String, NonEmptyList[ReadonlyRestEsContainer]]

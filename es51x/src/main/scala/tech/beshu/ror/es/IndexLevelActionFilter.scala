@@ -41,6 +41,7 @@ import tech.beshu.ror.es.request.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.{IndexLevelActionFilterJavaHelper, ThreadRepo}
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.language.postfixOps
 
@@ -68,6 +69,7 @@ class IndexLevelActionFilter(settings: Settings,
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
+  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   private val startingTaskCancellable = doPrivileged {
     Ror
