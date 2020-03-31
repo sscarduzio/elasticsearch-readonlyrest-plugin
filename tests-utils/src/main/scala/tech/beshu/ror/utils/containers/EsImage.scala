@@ -45,8 +45,6 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
         copyNecessaryFiles(builder, config)
 
-        if (config.envs.nonEmpty) builder.env(config.envs.asJava)
-
         RunCommandCombiner.empty
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
