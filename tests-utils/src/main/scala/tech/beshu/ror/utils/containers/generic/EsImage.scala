@@ -42,7 +42,6 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         builder
           .from(baseDockerImage + ":" + esVersion)
-          .env(config.envs.asJava)
 
         copyNecessaryFiles(builder, config)
 
