@@ -31,14 +31,14 @@ object RuntimeSingleResolvableVariable {
   final case class AlreadyResolved[T](value: T)
     extends RuntimeSingleResolvableVariable[T] {
 
-    override def resolve(blockContext: BlockContext[_]): Either[Unresolvable, T] =
+    override def resolve(blockContext: BlockContext): Either[Unresolvable, T] =
       Right(value)
   }
 
   final case class ToBeResolved[T: Convertible](values: NonEmptyList[SingleExtractable])
     extends RuntimeSingleResolvableVariable[T] {
 
-    override def resolve(blockContext: BlockContext[_]): Either[Unresolvable, T]= {
+    override def resolve(blockContext: BlockContext): Either[Unresolvable, T]= {
       values
         .map { extractable =>
           extractable

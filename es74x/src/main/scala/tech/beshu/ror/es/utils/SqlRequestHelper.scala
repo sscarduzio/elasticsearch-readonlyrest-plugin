@@ -19,28 +19,54 @@ package tech.beshu.ror.es.utils
 import java.lang.reflect.Modifier
 import java.util.regex.Pattern
 
-import cats.data.NonEmptySet
-import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.CompositeIndicesRequest
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Operation}
-import tech.beshu.ror.accesscontrol.domain.Operation.{NonIndexOperation, SqlOperation}
-import tech.beshu.ror.accesscontrol.domain.Operation.SqlOperation.IndexSqlTable
+import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices
+import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
+import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.accesscontrol.orders._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
 
+sealed trait ExtractedIndices {
+  def indices: Set[String]
+}
+object ExtractedIndices {
+  case object NoIndices extends ExtractedIndices {
+    override def indices: Set[String] = Set.empty
+  }
+  final case class RegularIndices(override val indices: Set[String]) extends ExtractedIndices
+  sealed trait SqlIndices extends ExtractedIndices {
+    def indices: Set[String]
+  }
+  object SqlIndices {
+    final case class SqlTableRelated(tables: List[IndexSqlTable]) extends SqlIndices {
+      override lazy val indices: Set[String] = tables.flatMap(_.indices).toSet
+    }
+    object SqlTableRelated {
+      final case class IndexSqlTable(tableStringInQuery: String, indices: Set[String])
+    }
+    case object SqlNotTableRelated extends SqlIndices {
+      override def indices: Set[String] = Set.empty
+    }
+  }
+}
+
 object SqlRequestHelper {
 
   def modifyIndicesOf(request: CompositeIndicesRequest,
-                      operation: SqlOperation,
+                      extractedIndices: SqlIndices,
                       finalIndices: Set[String]): Try[CompositeIndicesRequest] = Try {
-    setQuery(request, newQueryFrom(getQuery(request), operation.tables, finalIndices))
+    extractedIndices match {
+      case s: SqlTableRelated =>
+        setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))
+      case SqlNotTableRelated =>
+        request
+    }
   }
 
-  def indicesFrom(request: CompositeIndicesRequest): Try[Operation] = Try {
+  def indicesFrom(request: CompositeIndicesRequest): Try[SqlIndices] = Try {
     val query = getQuery(request)
     val params = ReflecUtils.invokeMethodCached(request, request.getClass, "params")
 
@@ -63,14 +89,14 @@ object SqlRequestHelper {
     request
   }
 
-  private def newQueryFrom(oldQuery: String, tables: List[IndexSqlTable], finalIndices: Set[String]) = {
-    tables match {
+  private def newQueryFrom(oldQuery: String, extractedIndices: SqlIndices.SqlTableRelated, finalIndices: Set[String]) = {
+    extractedIndices.tables match {
       case Nil =>
         s"""$oldQuery "${finalIndices.mkString(",")}""""
-      case xs =>
-        xs.foldLeft(oldQuery) {
+      case tables =>
+        tables.foldLeft(oldQuery) {
           case (currentQuery, table) =>
-            currentQuery.replaceAll(Pattern.quote(table.tableStringInQuery.value), finalIndices.mkString(","))
+            currentQuery.replaceAll(Pattern.quote(table.tableStringInQuery), finalIndices.mkString(","))
         }
     }
   }
@@ -92,12 +118,8 @@ final class SqlParser(implicit classLoader: ClassLoader) {
 }
 
 sealed trait Statement {
-  protected def splitToIndicesPatterns(value: NonEmptyString): NonEmptySet[IndexName] = {
-    value.value
-      .split(',').asSafeSet
-      .flatMap(NonEmptyString.unapply)
-      .map(IndexName.apply)
-      .unsafeToNonEmptySet
+  protected def splitToIndicesPatterns(value: String): Set[String] = {
+    value.split(',').asSafeSet.filter(_.nonEmpty)
   }
 }
 
@@ -105,18 +127,18 @@ final class SimpleStatement(val underlyingObject: AnyRef)
                            (implicit classLoader: ClassLoader)
   extends Statement {
 
-  lazy val indices: SqlOperation = {
+  lazy val indices: SqlIndices = {
     val tableInfoList = tableInfosFrom {
       doPreAnalyze(newPreAnalyzer, underlyingObject)
     }
-    new SqlOperation(
+    SqlIndices.SqlTableRelated {
       tableInfoList
         .map(tableIdentifierFrom)
         .map(indicesStringFrom)
         .map { tableString =>
           IndexSqlTable(tableString, splitToIndicesPatterns(tableString))
         }
-    ) {} // todo:
+    }
   }
 
   private def newPreAnalyzer(implicit classLoader: ClassLoader) = {
@@ -149,12 +171,10 @@ final class SimpleStatement(val underlyingObject: AnyRef)
 
   private def indicesStringFrom(tableIdentifier: Any)
                                (implicit classLoader: ClassLoader) = {
-    NonEmptyString.unsafeFrom {
-      ReflecUtils
-        .getMethodOf(tableIdentifierClass, Modifier.PUBLIC, "index", 0)
-        .invoke(tableIdentifier)
-        .asInstanceOf[String]
-    }
+    ReflecUtils
+      .getMethodOf(tableIdentifierClass, Modifier.PUBLIC, "index", 0)
+      .invoke(tableIdentifier)
+      .asInstanceOf[String]
   }
 
   private def preAnalyzerClass(implicit classLoader: ClassLoader) =
@@ -174,27 +194,25 @@ final class Command(val underlyingObject: Any)
                    (implicit classLoader: ClassLoader)
   extends Statement {
 
-  lazy val indices: Operation = {
+  lazy val indices: SqlIndices = {
     Try {
       getIndicesString
         .orElse(getIndexPatternsString)
         .map { indicesString =>
-          new SqlOperation(IndexSqlTable(indicesString, splitToIndicesPatterns(indicesString)) :: Nil) {} // todo:
+          SqlTableRelated(IndexSqlTable(indicesString, splitToIndicesPatterns(indicesString)) :: Nil)
         }
-        .getOrElse(new SqlOperation(Nil) {}) // todo:
+        .getOrElse(SqlTableRelated(Nil))
     } getOrElse {
-      new NonIndexOperation {} // todo:
+      SqlNotTableRelated
     }
   }
 
-  private def getIndicesString =
-  for {
-    value <- Option(ReflecUtils
+  private def getIndicesString = Option {
+    ReflecUtils
       .getMethodOf(underlyingObject.getClass, Modifier.PUBLIC, "index", 0)
       .invoke(underlyingObject)
-      .asInstanceOf[String])
-    indicesString <- NonEmptyString.unapply(value)
-  } yield indicesString
+      .asInstanceOf[String]
+  }
 
   private def getIndexPatternsString = {
     for {
@@ -204,8 +222,7 @@ final class Command(val underlyingObject: Any)
       index <- Option(ReflecUtils
         .getMethodOf(pattern.getClass, Modifier.PUBLIC, "asIndexNameWildcard", 0)
         .invoke(pattern))
-      nonEmptyIndexName <- NonEmptyString.unapply(index.asInstanceOf[String])
-    } yield nonEmptyIndexName
+    } yield index.asInstanceOf[String]
   }
 }
 object Command {

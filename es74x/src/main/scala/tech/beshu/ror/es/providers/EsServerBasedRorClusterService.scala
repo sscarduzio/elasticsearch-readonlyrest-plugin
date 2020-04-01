@@ -18,7 +18,10 @@ package tech.beshu.ror.es.providers
 
 import org.elasticsearch.cluster.metadata.MetaDataIndexTemplateService
 import org.elasticsearch.cluster.service.ClusterService
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 
@@ -28,16 +31,22 @@ class EsServerBasedRorClusterService(clusterService: ClusterService) extends Ror
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
-    lookup.get(indexOrAlias).getIndices.asScala.map(_.getIndexUUID).toSet
+    lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndices: Set[IndexName] = clusterService.state.getMetaData.getIndices.keysIt.asScala.toSet
+  override def allIndices: Set[IndexName] =
+    clusterService
+      .state
+      .getMetaData
+      .getIndices.keysIt.asScala.toSet
+      .flatMap(IndexName.fromString)
 
   override def findTemplatesOfIndices(indices: Set[IndexName]): Set[IndexName] = {
     val metaData = clusterService.state.getMetaData
     indices
-      .flatMap(index => MetaDataIndexTemplateService.findTemplates(metaData, index).asScala)
+      .flatMap(index => MetaDataIndexTemplateService.findTemplates(metaData, index.value.value).asScala)
       .map(_.getName)
+      .flatMap(IndexName.fromString)
   }
 
   override def getTemplatesWithPatterns: Map[TemplateName, Set[IndexPatten]] =
@@ -50,14 +59,22 @@ class EsServerBasedRorClusterService(clusterService: ClusterService) extends Ror
     val indices = clusterService.state.metaData.getIndices
     indices
       .keysIt().asScala
-      .map { index =>
+      .flatMap { index =>
         val indexMetaData = indices.get(index)
-        val indexName = indexMetaData.getIndex.getName
-        val aliases: Set[String] = indexMetaData.getAliases.keysIt.asScala.toSet
-        (indexName, aliases)
+        IndexName
+          .fromString(indexMetaData.getIndex.getName)
+          .map { indexName =>
+            val aliases = indexMetaData.getAliases.keysIt.asScala.toSet.flatMap(IndexName.fromString)
+            (indexName, aliases)
+          }
       }
       .toMap
   }
 
-  override def expandIndices(indices: Set[domain.IndexName]): Set[domain.IndexName] = ???
+  override def expandIndices(indices: Set[domain.IndexName]): Set[domain.IndexName] = {
+    val all = allIndicesAndAliases
+      .flatMap { case (indexName, aliases) => aliases + indexName}
+      .toSet
+    MatcherWithWildcardsScalaAdapter.create(indices).filter(all)
+  }
 }

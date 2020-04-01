@@ -31,7 +31,7 @@ class LdapAuthorizationRule(val settings: Settings)
 
   override val name: Rule.Name = LdapAuthorizationRule.name
 
-  override protected def authorize[B <: BlockContext[B]](blockContext: B,
+  override protected def authorize[B <: BlockContext](blockContext: B,
                                                          user: LoggedUser): Task[AuthorizationResult] = {
     val requestContext = blockContext.requestContext
     requestContext.currentGroup.toOption match {
@@ -42,7 +42,7 @@ class LdapAuthorizationRule(val settings: Settings)
     }
   }
 
-  private def authorizeWithLdapGroups[B <: BlockContext[B]](blockContext: B,
+  private def authorizeWithLdapGroups[B <: BlockContext](blockContext: B,
                                                             currentGroup: Option[Group],
                                                             user: LoggedUser): Task[AuthorizationResult] = {
     settings

@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.BasicAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -34,7 +34,7 @@ abstract class BaseBasicAuthenticationRule
 
   protected def authenticateUsing(credentials: Credentials): Task[Boolean]
 
-  override def tryToAuthenticate[B <: BlockContext[B]](blockContext: B): Task[Rule.RuleResult[B]] =
+  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
     Task
       .unit
       .flatMap { _ =>

@@ -41,13 +41,13 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   override val name: Rule.Name = ExternalAuthorizationRule.name
 
-  override protected def authorize[B <: BlockContext[B]](blockContext: B,
+  override protected def authorize[B <: BlockContext](blockContext: B,
                                                          user: LoggedUser): Task[AuthorizationResult] = {
     if (userMatcher.`match`(user.id)) checkUserGroups(user, blockContext.requestContext.currentGroup.toOption, blockContext)
     else Task.now(Unauthorized)
   }
 
-  private def checkUserGroups[B <: BlockContext[B]](user: LoggedUser,
+  private def checkUserGroups[B <: BlockContext](user: LoggedUser,
                                                     currentGroup: Option[Group],
                                                     blockContext: B): Task[AuthorizationResult] = {
     settings

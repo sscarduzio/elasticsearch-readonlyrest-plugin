@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.rules.XForwardedForRule.Settings
@@ -31,7 +31,7 @@ class XForwardedForRule(val settings: Settings)
 
   override val name: Rule.Name = XForwardedForRule.name
 
-  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = {
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     blockContext.requestContext.xForwardedForHeaderValue match {
       case Some(xForwardedForAddress) =>
         checkAllowedAddresses(blockContext)(

@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 
 import scala.language.implicitConversions
 
-class RuleResultOps[B <: BlockContext[B]](val ruleResult: RuleResult[B]) extends AnyVal {
+class RuleResultOps[B <: BlockContext](val ruleResult: RuleResult[B]) extends AnyVal {
 
   def toEither: Either[Rejected[B], Fulfilled[B]] = ruleResult match {
     case fulfilled: Fulfilled[B] => Right(fulfilled)
@@ -30,7 +30,7 @@ class RuleResultOps[B <: BlockContext[B]](val ruleResult: RuleResult[B]) extends
   }
 }
 
-class RuleResultEitherOps[B <: BlockContext[B]](val ruleResultEither: Either[Rejected[B], Fulfilled[B]]) extends AnyVal {
+class RuleResultEitherOps[B <: BlockContext](val ruleResultEither: Either[Rejected[B], Fulfilled[B]]) extends AnyVal {
 
   def toRuleResult: RuleResult[B] = ruleResultEither match {
     case Right(value) => value
@@ -39,8 +39,8 @@ class RuleResultEitherOps[B <: BlockContext[B]](val ruleResultEither: Either[Rej
 }
 
 object RuleResultOps {
-  implicit def from[B <: BlockContext[B]](ruleResult: RuleResult[B]): RuleResultOps[B] =
+  implicit def from[B <: BlockContext](ruleResult: RuleResult[B]): RuleResultOps[B] =
     new RuleResultOps(ruleResult)
-  implicit def from[B <: BlockContext[B]](ruleResultEither: Either[Rejected[B], Fulfilled[B]]): RuleResultEitherOps[B] =
+  implicit def from[B <: BlockContext](ruleResultEither: Either[Rejected[B], Fulfilled[B]]): RuleResultEitherOps[B] =
     new RuleResultEitherOps(ruleResultEither)
 }

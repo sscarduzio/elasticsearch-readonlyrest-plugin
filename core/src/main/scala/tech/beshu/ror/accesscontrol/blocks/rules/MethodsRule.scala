@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.data.NonEmptySet
 import com.softwaremill.sttp.Method
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 
@@ -33,7 +33,7 @@ class MethodsRule(val settings: Settings)
     So it's normal if you allowed GET and see a 'LINK' request going throw.
     It's actually interpreted by all means as a GET!
    */
-  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.fromCondition(blockContext) {
       settings.methods.contains(blockContext.requestContext.method)
     }

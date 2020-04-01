@@ -17,26 +17,83 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.BaseSpecializedIndicesRule.Settings
-import tech.beshu.ror.accesscontrol.domain.{Action, IndexName}
+import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RepositoryName}
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.utils.MatcherWithWildcards
+import BlockContext._
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-class RepositoriesRule(override val settings: Settings)
-  extends BaseSpecializedIndicesRule(settings) {
+import scala.collection.JavaConverters._
+
+class RepositoriesRule(val settings: Settings)
+  extends RegularRule {
 
   override val name: Rule.Name = RepositoriesRule.name
+  private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
-  override protected def isSpecializedIndexAction(action: Action): Boolean = action.isRepository
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+    BlockContextUpdater[B] match {
+      case BlockContextUpdater.RepositoryRequestBlockContextUpdater =>
+        checkRepositories(blockContext)
+      case BlockContextUpdater.SnapshotRequestBlockContextUpdater =>
+        checkSnapshotRepositories(blockContext)
+      case _ =>
+        Fulfilled(blockContext)
+    }
+  }
 
-  override protected def specializedIndicesFromRequest(request: RequestContext[_]): Set[IndexName] = request.repositories
+  private def checkRepositories(blockContext: RepositoryRequestBlockContext): RuleResult[RepositoryRequestBlockContext] = {
+    checkAllowedRepositories(
+      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toSet,
+      blockContext.repositories,
+      blockContext.requestContext
+    ) match {
+      case Right(filteredRepositories) => Fulfilled(blockContext.withRepositories(filteredRepositories))
+      case Left(_) => Rejected()
+    }
+  }
 
-  override protected def blockContextWithSpecializedIndices[B <: BlockContext[B]](blockContext: B,
-                                                                                  indices: NonEmptySet[IndexName]): B =
-    blockContext.withRepositories(indices.toSortedSet)
+  private def checkSnapshotRepositories(blockContext: SnapshotRequestBlockContext): RuleResult[SnapshotRequestBlockContext] = {
+    checkAllowedRepositories(
+      resolveAll(settings.allowedRepositories.toNonEmptyList, blockContext).toSet,
+      blockContext.repositories,
+      blockContext.requestContext
+    ) match {
+      case Right(filteredRepositories) => Fulfilled(blockContext.withRepositories(filteredRepositories))
+      case Left(_) => Rejected()
+    }
+  }
 
+  private def checkAllowedRepositories(allowedRepositories: Set[RepositoryName],
+                                       repositoriesToCheck: Set[RepositoryName],
+                                       requestContext: RequestContext) = {
+    if (allowedRepositories.contains(RepositoryName.all) || allowedRepositories.contains(RepositoryName.wildcard)) {
+      Right(repositoriesToCheck)
+    } else {
+      zeroKnowledgeMatchFilter.alterRepositoriesIfNecessary(
+        repositoriesToCheck,
+        new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(allowedRepositories.map(_.value.value).asJava))
+      ) match {
+        case NotAltered => Right(repositoriesToCheck)
+        case Altered(filteredRepositories) if requestContext.isReadOnlyRequest => Right(filteredRepositories)
+        case Altered(_) => Left(())
+      }
+    }
+  }
 }
 
 object RepositoriesRule {
   val name = Rule.Name("repositories")
+
+  final case class Settings(allowedRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]])
 }

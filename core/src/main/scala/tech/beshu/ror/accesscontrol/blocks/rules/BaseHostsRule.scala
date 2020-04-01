@@ -31,7 +31,7 @@ import scala.util.Success
 
 abstract class BaseHostsRule extends RegularRule with Logging {
 
-  protected def checkAllowedAddresses(blockContext: BlockContext[_])
+  protected def checkAllowedAddresses(blockContext: BlockContext)
                                      (allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
                                       addressToCheck: Address): Task[Boolean] = {
     allowedAddresses

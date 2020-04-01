@@ -35,11 +35,11 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
 
-trait RequestContext[O <: Operation] {
+trait RequestContext {
 
-  type BLOCK_CONTEXT <: BlockContext.Aux[BLOCK_CONTEXT, O]
+  type BLOCK_CONTEXT <: BlockContext
 
-  def emptyBlockContext: BLOCK_CONTEXT
+  def initialBlockContext: BLOCK_CONTEXT
 
   def timestamp: Instant
 
@@ -65,20 +65,9 @@ trait RequestContext[O <: Operation] {
 
   def content: String
 
-  // todo: lazy?
-  def operation: O
-
-  def __old_indices: Set[IndexName]
-
   def allIndicesAndAliases: Set[IndexWithAliases]
 
-  def allTemplates: Set[Template]
-
   def templateIndicesPatterns: Set[IndexName]
-
-  def repositories: Set[IndexName]
-
-  def snapshots: Set[IndexName]
 
   def isReadOnlyRequest: Boolean
 
@@ -93,17 +82,17 @@ trait RequestContext[O <: Operation] {
 
 object RequestContext extends Logging {
 
-  type Aux[O <: Operation, B <: BlockContext[B]] = RequestContext[O] { type BLOCK_CONTEXT = B }
+  type Aux[B <: BlockContext] = RequestContext { type BLOCK_CONTEXT = B }
 
   final case class Id(value: String) extends AnyVal
   object Id {
     implicit val show: Show[Id] = Show.show(_.value)
   }
 
-  def show[B <: BlockContext.Aux[B, O], O <: Operation](loggedUser: Option[LoggedUser],
-                                                        kibanaIndex: Option[IndexName],
-                                                        history: Vector[Block.History[B]])
-                                                       (implicit headerShow: Show[Header]): Show[RequestContext.Aux[O, B]] =
+  def show[B <: BlockContext](loggedUser: Option[LoggedUser],
+                              kibanaIndex: Option[IndexName],
+                              history: Vector[Block.History[B]])
+                             (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] =
     Show.show { r =>
       def stringifyUser = {
         loggedUser match {
@@ -120,7 +109,7 @@ object RequestContext extends Logging {
       }
 
       def stringifyIndices = {
-        val idx = r.__old_indices.toList.map(_.show)
+        val idx = r.initialBlockContext.indices.toList.map(_.show)
         if (idx.isEmpty) "<N/A>"
         else idx.mkString(",")
       }
@@ -145,7 +134,7 @@ object RequestContext extends Logging {
     }
 }
 
-class RequestContextOps(val requestContext: RequestContext[_]) extends AnyVal {
+class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
 
   type AliasName = IndexName
 
@@ -224,7 +213,7 @@ class RequestContextOps(val requestContext: RequestContext[_]) extends AnyVal {
 }
 
 object RequestContextOps {
-  implicit def from(rc: RequestContext[_]): RequestContextOps = new RequestContextOps(rc)
+  implicit def from(rc: RequestContext): RequestContextOps = new RequestContextOps(rc)
 
   sealed trait RequestGroup
   object RequestGroup {

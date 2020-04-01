@@ -113,6 +113,8 @@ object orders {
     case ForbiddenByMismatched.Cause.ImpersonationNotSupported => 3
   }
   implicit val indexPatternOrder: Order[IndexPattern] = Order.by(_.value)
+  implicit val repositoryOrder: Order[RepositoryName] = Order.by(_.value.value)
+  implicit val snapshotOrder: Order[SnapshotName] = Order.by(_.value.value)
 }
 
 object show {
@@ -145,18 +147,21 @@ object show {
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
+    implicit val repositoryShow: Show[RepositoryName] = Show.show(_.value.value)
+    implicit val snapshotShow: Show[SnapshotName] = Show.show(_.value.value)
 
-    implicit def blockContextShow[B <: BlockContext[B]](implicit showHeader: Show[Header]): Show[B] =
+    implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
       Show.show { bc =>
         (showOption("user", bc.userMetadata.loggedUser) ::
           showOption("group", bc.userMetadata.currentGroup) ::
           showTraversable("av_groups", bc.userMetadata.availableGroups) ::
-          showTraversable("indices", bc.indices.getOrElse(Set.empty)) ::
+//          showTraversable("indices", bc.indices) ::
           showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
           showTraversable("response_hdr", bc.responseHeaders) ::
           showTraversable("context_hdr", bc.contextHeaders) ::
-          showTraversable("repositories", bc.repositories.getOrElse(Set.empty)) ::
-          showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
+          // todo:
+//          showTraversable("repositories", bc.repositories.getOrElse(Set.empty)) ::
+//          showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
           Nil flatten) mkString ";"
         // todo: add new indices
       }
@@ -180,7 +185,7 @@ object show {
     }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
 
-    implicit def historyItemShow[B <: BlockContext[B]]: Show[HistoryItem[B]] = Show.show { hi =>
+    implicit def historyItemShow[B <: BlockContext]: Show[HistoryItem[B]] = Show.show { hi =>
       s"${hi.rule.show}->${
         hi.result match {
           case RuleResult.Fulfilled(_) => "true"
@@ -189,7 +194,7 @@ object show {
       }"
     }
 
-    implicit def historyShow[B <: BlockContext[B]](implicit headerShow: Show[Header]): Show[History[B]] =
+    implicit def historyShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[History[B]] =
       Show.show[History[B]] { h =>
         val resolvedPart = h.blockContext.show.some
           .filter(!_.isEmpty)

@@ -17,6 +17,7 @@
 package tech.beshu.ror.es
 
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService._
 
 trait RorClusterService {
@@ -31,9 +32,8 @@ trait RorClusterService {
 }
 
 object RorClusterService {
-  type IndexOrAlias = String
-  type IndexName = String
-  type AliasName = String
+  type IndexOrAlias = IndexName
+  type AliasName = IndexName
   type IndexUuid = String
   type IndexPatten = String
   type TemplateName = String

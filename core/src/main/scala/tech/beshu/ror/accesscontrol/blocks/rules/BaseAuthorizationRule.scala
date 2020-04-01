@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleResult}
@@ -29,10 +29,10 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 abstract class BaseAuthorizationRule
   extends AuthorizationRule {
 
-  protected def authorize[B <: BlockContext[B]](blockContext: B,
+  protected def authorize[B <: BlockContext](blockContext: B,
                                                 user: LoggedUser): Task[AuthorizationResult]
 
-  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = {
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
       case Some(user) =>
         authorize(blockContext, user)

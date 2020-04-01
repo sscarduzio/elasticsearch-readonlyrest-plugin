@@ -20,12 +20,12 @@ import cats.implicits._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -51,7 +51,7 @@ class RorKbnAuthRule(val settings: Settings)
     case Ec(pubKey) => Jwts.parser.setSigningKey(pubKey)
   }
 
-  override def tryToAuthenticate[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     val authHeaderName = Header.Name.authorization
     blockContext.requestContext.bearerToken.map(h => JwtToken(h.value)) match {
       case None =>
@@ -62,7 +62,7 @@ class RorKbnAuthRule(val settings: Settings)
     }
   }
 
-  private def process[B <: BlockContext[B]](token: JwtToken, blockContext: B): RuleResult[B] = {
+  private def process[B <: BlockContext : BlockContextUpdater](token: JwtToken, blockContext: B): RuleResult[B] = {
     jwtTokenData(token) match {
       case Left(_) =>
         Rejected()
@@ -99,16 +99,16 @@ class RorKbnAuthRule(val settings: Settings)
       .left.map { ex => logger.debug(s"JWT token '${token.show}' parsing error " + ex.getClass.getSimpleName) }
   }
 
-  private def handleUserClaimSearchResult[B <: BlockContext[B]](blockContext: B,
-                                                                result: ClaimSearchResult[User.Id]) = {
+  private def handleUserClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                   result: ClaimSearchResult[User.Id]) = {
     result match {
       case Found(userId) => Right(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(userId))))
       case NotFound => Left(())
     }
   }
 
-  private def handleGroupsClaimSearchResult[B <: BlockContext[B]](blockContext: B,
-                                                                  result: ClaimSearchResult[UniqueList[Group]]) = {
+  private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                     result: ClaimSearchResult[UniqueList[Group]]) = {
     result match {
       case NotFound if settings.groups.nonEmpty => Left(())
       case NotFound => Right(blockContext) // if groups field is not found, we treat this situation as same as empty groups would be passed
@@ -121,8 +121,8 @@ class RorKbnAuthRule(val settings: Settings)
     }
   }
 
-  private def handleUserOriginResult[B <: BlockContext[B]](blockContext: B,
-                                                           result: ClaimSearchResult[Header]): B = {
+  private def handleUserOriginResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                              result: ClaimSearchResult[Header]): B = {
     result match {
       case Found(header) => blockContext.withUserMetadata(_.withUserOrigin(UserOrigin(header.value)))
       case ClaimSearchResult.NotFound => blockContext

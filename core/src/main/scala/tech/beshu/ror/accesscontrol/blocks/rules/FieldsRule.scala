@@ -19,9 +19,9 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, Header}
@@ -34,7 +34,7 @@ class FieldsRule(val settings: Settings)
 
   override val name: Rule.Name = FieldsRule.name
 
-  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     if (!blockContext.requestContext.isReadOnlyRequest) RuleResult.Rejected()
     else RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
   }

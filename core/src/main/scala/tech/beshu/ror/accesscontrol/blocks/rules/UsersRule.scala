@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule.Settings
@@ -34,14 +34,14 @@ class UsersRule(val settings: Settings)
 
   override val name: Rule.Name = UsersRule.name
 
-  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     blockContext.userMetadata.loggedUser match {
       case None => Rejected()
       case Some(user) => matchUser(user, blockContext)
     }
   }
 
-  private def matchUser[B <: BlockContext[B]](user: LoggedUser, blockContext: B): RuleResult[B] = {
+  private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): RuleResult[B] = {
     val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet
     RuleResult.fromCondition(blockContext) {
       new MatcherWithWildcards(resolvedIds.map(_.value.value).asJava).`match`(user.id.value.value)

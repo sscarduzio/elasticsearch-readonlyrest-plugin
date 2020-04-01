@@ -30,14 +30,14 @@ object RuntimeMultiResolvableVariable {
   final case class AlreadyResolved[T](value: NonEmptyList[T])
     extends RuntimeMultiResolvableVariable[T] {
 
-    override def resolve(blockContext: BlockContext[_]): Either[Unresolvable, NonEmptyList[T]] =
+    override def resolve(blockContext: BlockContext): Either[Unresolvable, NonEmptyList[T]] =
       Right(value)
   }
 
   final case class ToBeResolved[T: Convertible](values: NonEmptyList[MultiExtractable])
     extends RuntimeMultiResolvableVariable[T] {
 
-    override def resolve(blockContext: BlockContext[_]): Either[Unresolvable, NonEmptyList[T]] = {
+    override def resolve(blockContext: BlockContext): Either[Unresolvable, NonEmptyList[T]] = {
       values
         .map { extractable =>
           extractable

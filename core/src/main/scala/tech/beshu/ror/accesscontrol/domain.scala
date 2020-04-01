@@ -31,12 +31,9 @@ import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
-import tech.beshu.ror.accesscontrol.domain.Operation.SqlOperation.IndexSqlTable
-import tech.beshu.ror.accesscontrol.domain.Operation.{DirectIndexOperation, TemplateOperation}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.util.Try
 
@@ -276,35 +273,20 @@ object domain {
     def all: Set[IndexName] = aliases + index
   }
 
-  sealed trait Operation
-  object Operation {
-    abstract class NonIndexOperation extends Operation
-    object CurrentUserMetadataOperation extends NonIndexOperation
-    abstract class RepositoryOperation(repositories: NonEmptySet[Repository]) extends NonIndexOperation
+  final case class RepositoryName(value: NonEmptyString)
+  object RepositoryName {
+    val all: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("_all"))
+    val wildcard: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("*"))
 
-    sealed trait AnIndexOperation extends Operation
-    sealed trait DirectIndexOperation extends AnIndexOperation
-    sealed trait IndirectIndexOperation extends AnIndexOperation
-
-    abstract class GeneralIndexOperation(val indices: Set[IndexName]) extends DirectIndexOperation
-
-    abstract class SqlOperation(val tables: List[IndexSqlTable]) extends DirectIndexOperation
-    object SqlOperation {
-      final case class IndexSqlTable(tableStringInQuery: NonEmptyString, indices: NonEmptySet[IndexName])
-    }
-
-    sealed trait TemplateOperation extends IndirectIndexOperation
-    object TemplateOperation {
-      abstract class Get(val templates: NonEmptyList[Template]) extends TemplateOperation
-      abstract class Create(val template: Template) extends TemplateOperation
-      abstract class Delete(val template: Template) extends TemplateOperation
-    }
-
-    abstract class SnapshotOperation(snapshots: NonEmptySet[Snapshot]) extends IndirectIndexOperation
+    implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
   }
+  final case class SnapshotName(value: NonEmptyString)
+  object SnapshotName {
+    val all: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("_all"))
+    val wildcard: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("*"))
 
-  final case class Repository(name: NonEmptyString)
-  final case class Snapshot(name: NonEmptyString, repository: Repository, indices: NonEmptySet[IndexName])
+    implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+  }
 
   final case class Template(value: NonEmptyString, patterns: NonEmptySet[IndexPattern])
 

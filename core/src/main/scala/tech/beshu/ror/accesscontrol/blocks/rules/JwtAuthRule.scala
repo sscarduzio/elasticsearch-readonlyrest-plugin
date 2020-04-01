@@ -20,11 +20,11 @@ import cats.implicits._
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -55,7 +55,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
 
   private val hasher = new SecureStringHasher(Algorithm.Sha256)
 
-  override def tryToAuthenticate[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task
+  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task
     .unit
     .flatMap { _ =>
       jwtTokenFrom(blockContext.requestContext) match {
@@ -67,14 +67,14 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
       }
     }
 
-  private def jwtTokenFrom[O <: Operation](requestContext: RequestContext[O]) = {
+  private def jwtTokenFrom(requestContext: RequestContext) = {
     requestContext
       .authorizationToken(settings.jwt.authorizationTokenDef)
       .map(t => JwtToken(t.value))
   }
 
-  private def process[B <: BlockContext[B]](token: JwtToken,
-                                            blockContext: B): Task[RuleResult[B]] = {
+  private def process[B <: BlockContext : BlockContextUpdater](token: JwtToken,
+                                                               blockContext: B): Task[RuleResult[B]] = {
     userAndGroupsFromJwtToken(token) match {
       case Left(_) =>
         Task.now(Rejected())
@@ -162,8 +162,8 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     settings.jwt.groupsClaim.map(payload.claims.groupsClaim)
   }
 
-  private def handleUserClaimSearchResult[B <: BlockContext[B]](blockContext: B,
-                                                                result: Option[ClaimSearchResult[User.Id]]) = {
+  private def handleUserClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                   result: Option[ClaimSearchResult[User.Id]]) = {
     result match {
       case None => Right(blockContext)
       case Some(Found(userId)) => Right(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(userId))))
@@ -171,8 +171,8 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     }
   }
 
-  private def handleGroupsClaimSearchResult[B <: BlockContext[B]](blockContext: B,
-                                                                  result: Option[ClaimSearchResult[UniqueList[Group]]]) = {
+  private def handleGroupsClaimSearchResult[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                     result: Option[ClaimSearchResult[UniqueList[Group]]]) = {
     result match {
       case None if settings.groups.nonEmpty => Left(())
       case Some(NotFound) if settings.groups.nonEmpty => Left(())

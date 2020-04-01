@@ -1,7 +1,0 @@
-node.name: n1_it
-cluster.initial_master_nodes: n1_it
-
-readonlyrest:
-  ssl_internode:
-    keystore_pass: readonlyrest1
-    key_pass: readonlyrest2

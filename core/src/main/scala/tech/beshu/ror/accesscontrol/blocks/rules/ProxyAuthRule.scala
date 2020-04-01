@@ -20,15 +20,15 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, Operation, User}
+import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.MatcherWithWildcards
 
@@ -45,7 +45,7 @@ class ProxyAuthRule(val settings: Settings)
 
   override val name: Rule.Name = ProxyAuthRule.name
 
-  override def tryToAuthenticate[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     getLoggedUser(blockContext.requestContext) match {
       case None =>
         Rejected()
@@ -56,7 +56,7 @@ class ProxyAuthRule(val settings: Settings)
     }
   }
 
-  private def getLoggedUser[T <: Operation](context: RequestContext[T]) = {
+  private def getLoggedUser(context: RequestContext) = {
     context
       .headers
       .find(_.name === settings.userHeaderName)

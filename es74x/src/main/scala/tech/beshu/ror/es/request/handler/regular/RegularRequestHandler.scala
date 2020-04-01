@@ -21,42 +21,34 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse
-import org.elasticsearch.action.support.ActionFilterChain
-import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
+import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.rest.RestChannel
-import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.domain.UriPath.CatIndicesPath
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Operation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.ForbiddenResponse
-import tech.beshu.ror.es.request.context.EsRequest
-import tech.beshu.ror.es.request.handler.RequestHandler
+import tech.beshu.ror.es.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, fromMismatchedCause}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.{Failure, Success, Try}
 
-class RegularRequestHandler[B <: BlockContext.Aux[B, O], O <: Operation](engine: Engine,
-                                                                         task: EsTask,
-                                                                         action: String,
-                                                                         request: ActionRequest,
-                                                                         baseListener: ActionListener[ActionResponse],
-                                                                         chain: ActionFilterChain[ActionRequest, ActionResponse],
-                                                                         channel: RestChannel,
-                                                                         threadPool: ThreadPool)
-                                                                        (implicit scheduler: Scheduler)
-  extends RequestHandler[B, O] with Logging {
+class RegularRequestHandler(engine: Engine,
+                            esContext: EsContext,
+                            threadPool: ThreadPool)
+                           (implicit scheduler: Scheduler)
+  extends Logging {
 
-  override def handle(request: RequestContext.Aux[O, B] with EsRequest[B]): Task[Unit] = {
+  def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
     engine.accessControl
       .handleRegularRequest(request)
       .map { r =>
@@ -66,8 +58,8 @@ class RegularRequestHandler[B <: BlockContext.Aux[B, O], O <: Operation](engine:
       }
   }
 
-  private def commitResult(result: RegularRequestResult[B],
-                           request: EsRequest[B] with RequestContext.Aux[O, B]): Unit = {
+  private def commitResult[B <: BlockContext : BlockContextUpdater](result: RegularRequestResult[B],
+                                                                    request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     Try {
       result match {
         case allow: RegularRequestResult.Allow[B] =>
@@ -79,9 +71,9 @@ class RegularRequestHandler[B <: BlockContext.Aux[B, O], O <: Operation](engine:
         case RegularRequestResult.IndexNotFound() =>
           onIndexNotFound(request)
         case RegularRequestResult.Failed(ex) =>
-          baseListener.onFailure(ex.asInstanceOf[Exception])
+          esContext.listener.onFailure(ex.asInstanceOf[Exception])
         case RegularRequestResult.PassedThrough() =>
-          proceed(baseListener)
+          proceed(esContext.listener)
       }
     } match {
       case Success(_) =>
@@ -90,36 +82,45 @@ class RegularRequestHandler[B <: BlockContext.Aux[B, O], O <: Operation](engine:
     }
   }
 
-  private def onAllow(request: EsRequest[B] with RequestContext.Aux[O, B],
-                      blockContext: B): Unit = {
-    request.uriPath match {
-      //        case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
-      //          respondWithEmptyCatIndicesResponse()
-      //      case CatTemplatePath(_) | TemplatePath(_) =>
-      //        proceedAfterSuccessfulWrite(requestContext, blockContext) {
-      //          for {
-      //            _ <- writeTemplatesIfNeeded(blockContext)
-      //            _ <- writeCommonParts(blockContext)
-      //          } yield ()
-      //        }
-      case _ =>
-        request.modifyUsing(blockContext)
-      //        proceedAfterSuccessfulWrite(requestContext, blockContext) {
-      //          for {
-      //            _ <- writeIndicesIfNeeded(blockContext)
-      //            _ <- requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
-      //            _ <- requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
-      //            _ <- writeCommonParts(blockContext)
-      //          } yield ()
-      //        }
+  private def onAllow[B <: BlockContext](request: EsRequest[B] with RequestContext.Aux[B],
+                                         blockContext: B): Unit = {
+    request.modifyUsing(blockContext) match {
+      case ModificationResult.Modified =>
+        val searchListener = createSearchListener(request, blockContext, engine.context)
+        proceed(searchListener)
+      case ModificationResult.ShouldBeInterrupted =>
+        onForbidden(NonEmptyList.one(OperationNotAllowed))
+      case ModificationResult.CannotModify =>
+        logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
+        onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
+    //    request.uriPath match {
+    //        case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
+    //          respondWithEmptyCatIndicesResponse()
+    //      case CatTemplatePath(_) | TemplatePath(_) =>
+    //        proceedAfterSuccessfulWrite(requestContext, blockContext) {
+    //          for {
+    //            _ <- writeTemplatesIfNeeded(blockContext)
+    //            _ <- writeCommonParts(blockContext)
+    //          } yield ()
+    //        }
+    //      case _ =>
+    //        proceedAfterSuccessfulWrite(requestContext, blockContext) {
+    //          for {
+    //            _ <- writeIndicesIfNeeded(blockContext)
+    //            _ <- requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
+    //            _ <- requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
+    //            _ <- writeCommonParts(blockContext)
+    //          } yield ()
+    //        }
+    //    }
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
-    channel.sendResponse(ForbiddenResponse.create(channel, causes.toList, engine.context))
+    esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, causes.toList, engine.context))
   }
 
-  private def onIndexNotFound(request: RequestContext[O] with EsRequest[B]): Unit = {
+  private def onIndexNotFound[B <: BlockContext](request: RequestContext with EsRequest[B]): Unit = {
     request.uriPath match {
       case CatIndicesPath(_) =>
         respondWithEmptyCatIndicesResponse()
@@ -135,7 +136,8 @@ class RegularRequestHandler[B <: BlockContext.Aux[B, O], O <: Operation](engine:
     }
   }
 
-  private def proceedWithModifiedIndexIfPossible(request: RequestContext[O] with EsRequest[B], index: IndexName): Unit = {
+  private def proceedWithModifiedIndexIfPossible[B <: BlockContext](request: RequestContext with EsRequest[B],
+                                                                    index: IndexName): Unit = {
     //    request match {
     //      case value: NonIndexOperationRequestContext[_] =>
     //      case value: AnIndexOperationRequestContext[_] =>
@@ -192,54 +194,40 @@ class RegularRequestHandler[B <: BlockContext.Aux[B, O], O <: Operation](engine:
   //      _ <- requestInfo.writeToThreadContextHeaders(BlockContextRawDataHelper.contextHeadersFrom(blockContext))
   //    } yield ()
   //  }
-  private def emptySetOfFoundIndices(blockContext: B) = {
-    blockContext.indices match {
-      case Outcome.Exist(foundIndices) => foundIndices.isEmpty
-      case Outcome.NotExist => false
-    }
-  }
+//  private def emptySetOfFoundIndices[B <: BlockContext](blockContext: B) = {
+//    //    blockContext.indices match {
+//    //      case Outcome.Exist(foundIndices) => foundIndices.isEmpty
+//    //      case Outcome.NotExist => false
+//    //    }
+//  }
 
   private def proceed(responseActionListener: ActionListener[ActionResponse]): Unit =
-    chain.proceed(task, action, request, responseActionListener)
+    esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, responseActionListener)
 
-  //  private def createSearchListener(requestContext: RequestContext,
-  //                                   blockContext: BlockContext,
-  //                                   aclStaticContext: AccessControlStaticContext): ActionListener[ActionResponse] = {
-  //    Try {
-  //      // Cache disabling for those 2 kind of request is crucial for
-  //      // document level security to work. Otherwise we'd get an answer from
-  //      // the cache some times and would not be filtered
-  //      if (aclStaticContext.involvesFilter) {
-  //        request match {
-  //          case r: SearchRequest =>
-  //            logger.debug("ACL involves filters, will disable request cache for SearchRequest")
-  //            r.requestCache(false)
-  //          case r: MultiSearchRequest =>
-  //            logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest")
-  //            r.requests().asScala.foreach(_.requestCache(false))
-  //          case _ =>
-  //        }
-  //      }
-  //      new RegularResponseActionListener(baseListener.asInstanceOf[ActionListener[ActionResponse]], requestContext, blockContext)
-  //    } fold(
-  //      e => {
-  //        logger.error("on allow exception", e)
-  //        baseListener
-  //      },
-  //      identity
-  //    )
-  //  }
-  //
-  private def randomNonexistentIndex(requestContext: RequestContext[O]): IndexName = {
+  private def createSearchListener(requestContext: RequestContext,
+                                   blockContext: BlockContext,
+                                   aclStaticContext: AccessControlStaticContext): ActionListener[ActionResponse] = {
+    Try {
+      new RegularResponseActionListener(esContext.listener, requestContext, blockContext)
+    } fold(
+      e => {
+        logger.error("on allow exception", e)
+        esContext.listener
+      },
+      identity
+    )
+  }
+
+  private def randomNonexistentIndex(requestContext: RequestContext): IndexName = {
     // todo:
-    requestContext.__old_indices.headOption match {
+    requestContext.initialBlockContext.indices.headOption match {
       case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
       case None => IndexName.randomNonexistentIndex()
     }
   }
 
   private def respondWithEmptyCatIndicesResponse(): Unit = {
-    baseListener.onResponse(new GetSettingsResponse(
+    esContext.listener.onResponse(new GetSettingsResponse(
       ImmutableOpenMap.of[String, Settings](),
       ImmutableOpenMap.of[String, Settings]()
     ))

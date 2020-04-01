@@ -1,20 +1,32 @@
 package tech.beshu.ror.es.request.context
 
+import cats.implicits._
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.accesscontrol.show.logs._
 
-trait EsRequest[B <: BlockContext[B]] {
+import scala.util.Try
+
+trait EsRequest[B <: BlockContext] extends Logging {
   def threadPool: ThreadPool
 
-  final def modifyUsing(blockContext: B): Unit = {
+  final def modifyUsing(blockContext: B): ModificationResult = {
     threadPool.getThreadContext.stashContext.bracket { _ =>
       modifyCommonParts(blockContext)
-      modifyRequest(blockContext)
+      Try(modifyRequest(blockContext))
+        .fold(
+          ex => {
+            logger.error(s"[${blockContext.requestContext.id.show}] Cannot modify request with filtered data", ex)
+            ModificationResult.CannotModify
+          },
+          identity
+        )
     }
   }
 
-  protected def modifyRequest(blockContext: B): Unit
+  protected def modifyRequest(blockContext: B): ModificationResult
 
   private def modifyCommonParts(blockContext: B): Unit = {
     modifyResponseHeaders(blockContext)
@@ -34,6 +46,12 @@ trait EsRequest[B <: BlockContext[B]] {
   }
 }
 
+sealed trait ModificationResult
+object ModificationResult {
+  case object Modified extends ModificationResult
+  case object CannotModify extends ModificationResult
+  case object ShouldBeInterrupted extends ModificationResult
+}
 
 
 

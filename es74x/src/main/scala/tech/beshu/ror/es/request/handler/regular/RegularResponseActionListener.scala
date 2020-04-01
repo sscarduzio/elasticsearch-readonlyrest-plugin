@@ -23,17 +23,17 @@ import org.elasticsearch.cluster.ClusterState
 import org.elasticsearch.cluster.metadata.MetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.domain.UriPath.CatTemplatePath
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Operation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import scala.collection.JavaConverters._
 
-class RegularResponseActionListener[O <: Operation](baseListener: ActionListener[ActionResponse],
-                                                    requestContext: RequestContext[O],
-                                                    blockContext: BlockContext[_])
+class RegularResponseActionListener(baseListener: ActionListener[ActionResponse],
+                                    requestContext: RequestContext,
+                                    blockContext: BlockContext)
   extends ActionListener[ActionResponse] {
 
   override def onResponse(response: ActionResponse): Unit = {
@@ -50,10 +50,7 @@ class RegularResponseActionListener[O <: Operation](baseListener: ActionListener
   // templates are not filtered so we have to do this for our own
   private def filterTemplatesInClusterStateResponse(response: ClusterStateResponse): ClusterStateResponse = {
     val oldMetadata = response.getState.metaData()
-    val allowedIndices = blockContext.indices match {
-      case Outcome.Exist(indices) if indices.nonEmpty => indices
-      case Outcome.Exist(_) | Outcome.NotExist => Set(IndexName.fromUnsafeString("*"))
-    }
+    val allowedIndices = nonEmptyOrAll(blockContext.indices)
     val filteredTemplates = oldMetadata
       .templates().valuesIt().asScala.toSet
       .filter { t =>
@@ -87,4 +84,7 @@ class RegularResponseActionListener[O <: Operation](baseListener: ActionListener
       response.isWaitForTimedOut
     )
   }
+
+  private def nonEmptyOrAll(indices: Set[IndexName]) =
+    if (indices.isEmpty) Set(IndexName.fromUnsafeString("*")) else indices
 }

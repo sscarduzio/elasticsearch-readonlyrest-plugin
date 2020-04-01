@@ -22,10 +22,10 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.{ExtractingError, toSessionHeader}
@@ -39,7 +39,7 @@ class SessionMaxIdleRule(val settings: Settings)
 
   override val name: Rule.Name = SessionMaxIdleRule.name
 
-  override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] = Task {
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     blockContext.userMetadata.loggedUser match {
       case Some(user) =>
         checkCookieFor(user, blockContext)
@@ -49,8 +49,8 @@ class SessionMaxIdleRule(val settings: Settings)
     }
   }
 
-  private def checkCookieFor[B <: BlockContext[B]](user: LoggedUser,
-                                                   blockContext: B): RuleResult[B] = {
+  private def checkCookieFor[B <: BlockContext : BlockContextUpdater](user: LoggedUser,
+                                                                      blockContext: B): RuleResult[B] = {
     RorSessionCookie.extractFrom(blockContext.requestContext, user) match {
       case Right(_) | Left(ExtractingError.Absent) =>
         val newCookie = RorSessionCookie(user.id, newExpiryDate)

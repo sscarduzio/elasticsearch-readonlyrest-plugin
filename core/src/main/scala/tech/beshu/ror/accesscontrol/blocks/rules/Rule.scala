@@ -20,7 +20,6 @@ import cats.Show
 import cats.data.EitherT
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence.{CannotCheck, Exists, NotExist}
@@ -30,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -41,7 +41,7 @@ import scala.collection.JavaConverters._
 sealed trait Rule {
   def name: Name
 
-  def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]]
+  def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
 }
 
 object Rule {
@@ -52,14 +52,14 @@ object Rule {
     def create[T <: Rule : VariableUsage](rule: T) = new RuleWithVariableUsageDefinition(rule, implicitly[VariableUsage[T]])
   }
 
-  sealed trait RuleResult[B <: BlockContext[B]]
+  sealed trait RuleResult[B <: BlockContext]
   object RuleResult {
-    final case class Fulfilled[B <: BlockContext[B]](blockContext: B)
+    final case class Fulfilled[B <: BlockContext](blockContext: B)
       extends RuleResult[B]
-    final case class Rejected[B <: BlockContext[B]](specialCause: Option[Cause] = None)
+    final case class Rejected[B <: BlockContext](specialCause: Option[Cause] = None)
       extends RuleResult[B]
     object Rejected {
-      def apply[B <: BlockContext[B]](specialCause: Cause): Rejected[B] = new Rejected(Some(specialCause))
+      def apply[B <: BlockContext](specialCause: Cause): Rejected[B] = new Rejected(Some(specialCause))
       sealed trait Cause
       object Cause {
         case object ImpersonationNotSupported extends Cause
@@ -68,7 +68,7 @@ object Rule {
       }
     }
 
-    private[rules] def fromCondition[B <: BlockContext[B]](blockContext: B)(condition: => Boolean): RuleResult[B] = {
+    private[rules] def fromCondition[B <: BlockContext](blockContext: B)(condition: => Boolean): RuleResult[B] = {
       if (condition) Fulfilled[B](blockContext)
       else Rejected[B]()
     }
@@ -82,9 +82,9 @@ object Rule {
   trait MatchingAlwaysRule {
     this: Rule =>
 
-    def process[B <: BlockContext[B]](blockContext: B): Task[B]
+    def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B]
 
-    override def check[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] =
+    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       process(blockContext).map(RuleResult.Fulfilled.apply)
   }
 
@@ -107,26 +107,28 @@ object Rule {
 
     protected def exists(user: User.Id): Task[UserExistence]
 
-    def tryToAuthenticate[B <: BlockContext[B]](blockContext: B): Task[Rule.RuleResult[B]]
+    def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
 
-    override def check[B <: BlockContext[B]](blockContext: B): Task[Rule.RuleResult[B]] = {
+    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
       val requestContext = blockContext.requestContext
       requestContext.impersonateAs match {
         case Some(theImpersonatedUserId) => toRuleResult[B] {
           for {
             // todo: why everywhere B?
             impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, requestContext)
-            _ <- authenticateImpersonator[B](impersonatorDef, requestContext)
+            _ <- authenticateImpersonator[B](impersonatorDef, blockContext)
             _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId)
-          } yield blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, impersonatorDef.id)))
+          } yield {
+            blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, impersonatorDef.id)))
+          }
         }
         case None =>
           tryToAuthenticate(blockContext)
       }
     }
 
-    private def findImpersonatorWithProperRights[B <: BlockContext[B]](theImpersonatedUserId: User.Id,
-                                                                       requestContext: RequestContext[_]) = {
+    private def findImpersonatorWithProperRights[B <: BlockContext](theImpersonatedUserId: User.Id,
+                                                                    requestContext: RequestContext) = {
       EitherT.fromOption[Task](
         requestContext
           .basicAuth
@@ -141,18 +143,18 @@ object Rule {
       )
     }
 
-    private def authenticateImpersonator[B <: BlockContext[B]](impersonatorDef: ImpersonatorDef,
-                                                               requestContext: RequestContext.Aux[_, B]) = EitherT {
+    private def authenticateImpersonator[B <: BlockContext : BlockContextUpdater](impersonatorDef: ImpersonatorDef,
+                                                                                  blockContext: B) = EitherT {
       impersonatorDef
         .authenticationRule
-        .tryToAuthenticate(requestContext.emptyBlockContext)
+        .tryToAuthenticate(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
         .map {
           case Fulfilled(_) => Right(())
           case Rejected(_) => Left(Rejected[B](Cause.ImpersonationNotAllowed))
         }
     }
 
-    private def checkIfTheImpersonatedUserExist[B <: BlockContext[B]](theImpersonatedUserId: User.Id) = EitherT {
+    private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id) = EitherT {
       exists(theImpersonatedUserId)
         .map {
           case Exists => Right(())
@@ -161,7 +163,7 @@ object Rule {
         }
     }
 
-    private def toRuleResult[B <: BlockContext[B]](result: EitherT[Task, Rejected[B], B]) = {
+    private def toRuleResult[B <: BlockContext](result: EitherT[Task, Rejected[B], B]) = {
       result
         .value
         .map {

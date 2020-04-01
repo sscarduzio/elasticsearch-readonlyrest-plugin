@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 object RuntimeMultiResolvableVariableOps {
 
   def resolveAll[T](variables: NonEmptyList[RuntimeMultiResolvableVariable[T]],
-                    blockContext: BlockContext[_]): List[T] = {
+                    blockContext: BlockContext): List[T] = {
     variables
       .toList
       .flatMap { variable =>

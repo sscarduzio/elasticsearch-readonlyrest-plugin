@@ -20,12 +20,12 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -43,7 +43,7 @@ class GroupsRule(val settings: Settings)
 
   override val name: Rule.Name = GroupsRule.name
 
-  override def tryToAuthenticate[B <: BlockContext[B]](blockContext: B): Task[RuleResult[B]] =
+  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task
       .unit
       .flatMap { _ =>
@@ -56,8 +56,8 @@ class GroupsRule(val settings: Settings)
         }
       }
 
-  private def continueCheckingWithUserDefinitions[B <: BlockContext[B]](blockContext: B,
-                                                                        resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
+  private def continueCheckingWithUserDefinitions[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                           resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
       case Some(user) =>
         NonEmptySet.fromSet(settings.usersDefinitions.filter(_.id === user.id)) match {
@@ -71,9 +71,9 @@ class GroupsRule(val settings: Settings)
     }
   }
 
-  private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext[B]](userDefs: NonEmptySet[UserDef],
-                                                                       blockContext: B,
-                                                                       resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
+  private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext : BlockContextUpdater](userDefs: NonEmptySet[UserDef],
+                                                                                          blockContext: B,
+                                                                                          resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
     userDefs
       .reduceLeftTo(authorizeAndAuthenticate(blockContext, resolvedGroups)) {
         case (lastUserDefResult, nextUserDef) =>
@@ -88,9 +88,9 @@ class GroupsRule(val settings: Settings)
       }
   }
 
-  private def authorizeAndAuthenticate[B <: BlockContext[B]](blockContext: B,
-                                                             resolvedGroups: UniqueNonEmptyList[Group])
-                                                            (userDef: UserDef): Task[Option[B]] = {
+  private def authorizeAndAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B,
+                                                                                resolvedGroups: UniqueNonEmptyList[Group])
+                                                                               (userDef: UserDef): Task[Option[B]] = {
     UniqueNonEmptyList.fromSortedSet(userDef.groups.intersect(resolvedGroups)) match {
       case None =>
         Task.now(None)
@@ -118,7 +118,7 @@ class GroupsRule(val settings: Settings)
     }
   }
 
-  private def resolveGroups[B <: BlockContext[B]](blockContext: B) = {
+  private def resolveGroups[B <: BlockContext](blockContext: B) = {
     resolveAll(settings.groups.toNonEmptyList, blockContext)
   }
 }

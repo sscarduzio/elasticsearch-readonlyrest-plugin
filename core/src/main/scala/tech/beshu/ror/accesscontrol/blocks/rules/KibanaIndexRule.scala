@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RegularRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
@@ -28,7 +28,7 @@ class KibanaIndexRule(val settings: Settings)
 
   override val name: Rule.Name = KibanaIndexRule.name
 
-  override def process[B <: BlockContext[B]](blockContext: B): Task[B] = Task {
+  override def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B] = Task {
     settings
       .kibanaIndex
       .resolve(blockContext)

@@ -19,20 +19,14 @@ package tech.beshu.ror.es.request.handler.usermetadata
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.support.ActionFilterChain
-import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
-import org.elasticsearch.rest.RestChannel
-import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult
-import tech.beshu.ror.accesscontrol.blocks.CurrentUserMetadataOperationBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.Operation
-import tech.beshu.ror.accesscontrol.domain.Operation.CurrentUserMetadataOperation
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.EsRequest
-import tech.beshu.ror.es.request.handler.RequestHandler
 import tech.beshu.ror.es.request.{ForbiddenResponse, RorNotAvailableResponse}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
@@ -40,17 +34,12 @@ import tech.beshu.ror.utils.ScalaOps._
 import scala.util.{Failure, Success, Try}
 
 class CurrentUserMetadataRequestHandler(engine: Engine,
-                                        task: EsTask,
-                                        action: String,
-                                        request: ActionRequest,
-                                        baseListener: ActionListener[ActionResponse],
-                                        chain: ActionFilterChain[ActionRequest, ActionResponse],
-                                        channel: RestChannel,
+                                        esContext: EsContext,
                                         threadPool: ThreadPool)
                                        (implicit scheduler: Scheduler)
-  extends RequestHandler[CurrentUserMetadataOperationBlockContext, CurrentUserMetadataOperation.type] with Logging {
+  extends Logging {
 
-  override def handle(request: RequestContext.Aux[CurrentUserMetadataOperation.type, CurrentUserMetadataOperationBlockContext] with EsRequest[CurrentUserMetadataOperationBlockContext]): Task[Unit] = {
+  def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
     engine.accessControl
       .handleMetadataRequest(request)
       .map { r =>
@@ -60,8 +49,8 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
       }
   }
 
-  private def commitResult[T <: Operation](result: UserMetadataRequestResult,
-                                           requestContext: RequestContext[T]): Unit = {
+  private def commitResult(result: UserMetadataRequestResult,
+                           requestContext: RequestContext): Unit = {
     Try {
       result match {
         case UserMetadataRequestResult.Allow(userMetadata, _) =>
@@ -78,15 +67,15 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     }
   }
 
-  private def onAllow[T <: Operation](userMetadata: UserMetadata): Unit = {
-    val responseActionListener = new CurrentUserMetadataResponseActionListener(baseListener, userMetadata)
-    chain.proceed(task, action, request, responseActionListener)
+  private def onAllow(userMetadata: UserMetadata): Unit = {
+    val responseActionListener = new CurrentUserMetadataResponseActionListener(esContext.listener, userMetadata)
+    esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, responseActionListener)
   }
 
   private def onForbidden(): Unit = {
-    channel.sendResponse(ForbiddenResponse.create(channel, Nil, engine.context))
+    esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, Nil, engine.context))
   }
 
   private def onPassThrough(): Unit =
-    channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(channel))
+    esContext.channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(esContext.channel))
 }

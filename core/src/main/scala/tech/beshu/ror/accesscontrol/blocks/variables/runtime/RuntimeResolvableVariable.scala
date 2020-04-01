@@ -34,7 +34,7 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
 private[runtime] trait RuntimeResolvableVariable[VALUE] {
 
-  def resolve(blockContext: BlockContext[_]): Either[Unresolvable, VALUE]
+  def resolve(blockContext: BlockContext): Either[Unresolvable, VALUE]
 }
 
 object RuntimeResolvableVariable {
@@ -75,7 +75,7 @@ object RuntimeResolvableVariable {
 
 sealed trait Extractable[VALUE] {
 
-  def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, VALUE]
+  def extractUsing(blockContext: BlockContext): Either[ExtractError, VALUE]
 }
 object Extractable {
 
@@ -87,11 +87,11 @@ sealed trait SingleExtractable extends Extractable[String]
 object SingleExtractable {
 
   final case class Const(value: String) extends SingleExtractable {
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, String] = Right(value)
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = Right(value)
   }
 
   case object UserIdVar extends SingleExtractable with VariableType.User {
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, String] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = {
       blockContext
         .userMetadata
         .loggedUser
@@ -103,7 +103,7 @@ object SingleExtractable {
   }
 
   final case class HeaderVar(header: Header.Name) extends SingleExtractable with VariableType.Header {
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, String] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = {
       blockContext
         .requestContext
         .headers
@@ -118,7 +118,7 @@ object SingleExtractable {
   final case class JwtPayloadVar(jsonPath: JsonPath) extends SingleExtractable with VariableType.Jwt {
     private val varClaim = ClaimName(jsonPath)
 
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, String] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = {
       blockContext.userMetadata.jwtToken match {
         case Some(payload) =>
           payload.claims.customClaim(varClaim) match {
@@ -137,7 +137,7 @@ object SingleExtractable {
 
   case object CurrentGroupVar extends SingleExtractable with VariableType.CurrentGroup {
 
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, String] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = {
       blockContext
         .userMetadata
         .currentGroup
@@ -150,7 +150,7 @@ object SingleExtractable {
 
   case object AvailableGroupsVar extends SingleExtractable with VariableType.AvailableGroups {
 
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, String] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, String] = {
       Left(ExtractError(s"Available groups are usable only with @explode"))
     }
   }
@@ -172,14 +172,14 @@ sealed trait MultiExtractable extends Extractable[NonEmptyList[String]] {
 object MultiExtractable {
 
   final case class SingleExtractableWrapper(extractable: SingleExtractable) extends MultiExtractable {
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, NonEmptyList[String]] =
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] =
       extractable.extractUsing(blockContext).map(NonEmptyList.one)
   }
 
   final case class Const(value: String) extends MultiExtractable {
     private val singleConst = SingleExtractable.Const(value)
 
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, NonEmptyList[String]] =
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] =
       singleConst
         .extractUsing(blockContext)
         .map(NonEmptyList.one)
@@ -188,7 +188,7 @@ object MultiExtractable {
   case object UserIdVar extends MultiExtractable with VariableType.User {
     private val singleUserIdExtractable = SingleExtractable.UserIdVar
 
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, NonEmptyList[String]] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
       singleUserIdExtractable
         .extractUsing(blockContext)
         .map(NonEmptyList.one)
@@ -198,7 +198,7 @@ object MultiExtractable {
   final case class HeaderVar(header: Header.Name) extends MultiExtractable with VariableType.Header {
     private val singleHeaderExtractable = SingleExtractable.HeaderVar(header)
 
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, NonEmptyList[String]] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
       singleHeaderExtractable
         .extractUsing(blockContext)
         .map(parseCsvValue)
@@ -208,7 +208,7 @@ object MultiExtractable {
   final case class JwtPayloadVar(jsonPath: JsonPath) extends MultiExtractable with VariableType.Jwt {
     private val singleJwtPayloadExtractable = SingleExtractable.JwtPayloadVar(jsonPath)
 
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, NonEmptyList[String]] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
       singleJwtPayloadExtractable
         .extractUsing(blockContext)
         .map(parseCsvValue)
@@ -218,7 +218,7 @@ object MultiExtractable {
   case object CurrentGroupVar extends MultiExtractable with VariableType.CurrentGroup {
     private val singleCurrentGroupExtractable = SingleExtractable.CurrentGroupVar
 
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, NonEmptyList[String]] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
       singleCurrentGroupExtractable
         .extractUsing(blockContext)
         .map(NonEmptyList.one)
@@ -226,7 +226,7 @@ object MultiExtractable {
   }
 
   case object AvailableGroupsVar extends MultiExtractable with VariableType.AvailableGroups {
-    override def extractUsing(blockContext: BlockContext[_]): Either[ExtractError, NonEmptyList[String]] = {
+    override def extractUsing(blockContext: BlockContext): Either[ExtractError, NonEmptyList[String]] = {
       NonEmptyList.fromList(
         blockContext
           .userMetadata

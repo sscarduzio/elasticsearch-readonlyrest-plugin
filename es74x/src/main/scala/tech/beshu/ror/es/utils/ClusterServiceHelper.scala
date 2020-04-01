@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.es.utils
 
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.RorClusterService.{IndexName, IndexPatten, TemplateName}
-import tech.beshu.ror.utils.MatcherWithWildcards
-
-import scala.collection.JavaConverters._
+import tech.beshu.ror.es.RorClusterService.{IndexPatten, TemplateName}
 
 object ClusterServiceHelper {
 
@@ -32,9 +32,9 @@ object ClusterServiceHelper {
 
   def indicesFromPatterns(clusterService: RorClusterService,
                           indicesPatterns: Set[IndexPatten]): Map[IndexPatten, Set[IndexName]] = {
-    val allIndices = clusterService.allIndices.asJava
+    val allIndices = clusterService.allIndices
     indicesPatterns
-      .map(p => (p, new MatcherWithWildcards(Set(p).asJava).filter(allIndices).asScala.toSet))
+      .map(p => (p, MatcherWithWildcardsScalaAdapter.create(Set(IndexName.fromUnsafeString(p))).filter(allIndices)))
       .toMap
   }
 

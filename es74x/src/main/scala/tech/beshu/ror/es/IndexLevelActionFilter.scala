@@ -32,8 +32,9 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
 import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider, EsServerBasedRorClusterService}
+import tech.beshu.ror.es.request.AclAwareRequestFilter
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse._
-import tech.beshu.ror.es.request.context.AclAwareRequestFilter
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
 
@@ -126,7 +127,10 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         aclAwareRequestFilter
-          .handle(engine, channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled)
+          .handle(
+            engine,
+            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled, engine.context.involvesFilter)
+          )
           .runAsync {
             case Right(_) =>
             case Left(ex) => listener.onFailure(new Exception(ex))
