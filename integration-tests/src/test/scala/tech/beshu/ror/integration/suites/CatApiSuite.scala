@@ -32,12 +32,6 @@ trait CatApiSuite
 
   override implicit val rorConfigFileName = "/cat_api/readonlyrest.yml"
 
-  override lazy val rorContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1"
-    )
-  )
-
   private lazy val dev1ClusterStateManager = new ClusterStateManager(basicAuthClient("dev1", "test"))
   private lazy val dev2ClusterStateManager = new ClusterStateManager(basicAuthClient("dev2", "test"))
   private lazy val dev3ClusterStateManager = new ClusterStateManager(basicAuthClient("dev3", "test"))

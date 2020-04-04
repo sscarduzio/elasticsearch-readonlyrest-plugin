@@ -31,12 +31,6 @@ trait TemplatesSuite
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
-  override lazy val rorContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1"
-    )
-  )
-
   "A template API" when {
     "user is dev1" should {
       "see empty list of templates" when {

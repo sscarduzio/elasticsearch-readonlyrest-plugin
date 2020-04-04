@@ -30,7 +30,7 @@ trait EsClusterProvider {
     def fromDependenciesCreator(name: String): StartedClusterDependencies => EsContainer =
       dependencies => create(name, nodeNames, esClusterSettings, dependencies)
 
-    new  EsClusterContainer(
+    new EsClusterContainer(
       nodeNames.map(fromDependenciesCreator),
       esClusterSettings.dependentServicesContainers)
   }

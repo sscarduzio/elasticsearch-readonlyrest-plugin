@@ -43,6 +43,10 @@ object providers {
     implicit def rorConfigFileName: String
   }
 
+  trait NodeInitializerProvider {
+    def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = None
+  }
+
   trait MultipleClients {
     def clients: NonEmptyList[ClientProvider]
   }

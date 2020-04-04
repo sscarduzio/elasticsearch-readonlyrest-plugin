@@ -18,25 +18,16 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait ClusterStateSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport {
+    with BasicSingleNodeEsClusterSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/cluster_state/readonlyrest.yml"
-
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1"
-    )
-  )
 
   private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
 

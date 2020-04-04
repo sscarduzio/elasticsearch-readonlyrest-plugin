@@ -16,9 +16,35 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.utils.containers.EsWithRorPluginContainerCreator
-import tech.beshu.ror.utils.containers.providers.{CallingEsDirectly, MultipleEsTargets}
+import org.apache.commons.lang.StringEscapeUtils.escapeJava
+import org.scalatest.{BeforeAndAfterAll, Suite}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.providers._
+import tech.beshu.ror.utils.containers.{EsContainer, EsWithRorPluginContainerCreator}
+import tech.beshu.ror.utils.elasticsearch.ActionManagerJ
+import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 trait PluginTestSupport extends EsWithRorPluginContainerCreator with CallingEsDirectly {
   this: MultipleEsTargets =>
+}
+
+trait SingletonPluginTestSupport extends PluginTestSupport with BeforeAndAfterAll {
+  this: Suite with BasicSingleNodeEsClusterSupport =>
+
+  override lazy val targetEs: EsContainer = SingletonEsContainer.singleton.nodesContainers.head
+
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    SingletonEsContainer.removeAllIndices()
+    updateConfig()
+    nodeDataInitializer.foreach(_.initialize(targetEs.esVersion, SingletonEsContainer.adminClient))
+  }
+
+  private def updateConfig() = {
+    val adminApiManager = new ActionManagerJ(SingletonEsContainer.adminClient)
+    adminApiManager.actionPost(
+      "_readonlyrest/admin/config",
+      s"""{"settings": "${escapeJava(getResourceContent(rorConfigFileName))}"}"""
+    )
+  }
 }

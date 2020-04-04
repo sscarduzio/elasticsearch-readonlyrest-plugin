@@ -16,9 +16,8 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import com.dimafeng.testcontainers.Container
 import org.scalatest.{BeforeAndAfterEach, Suite}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, TemplateManagerJ}
 import tech.beshu.ror.utils.misc.Version
@@ -26,16 +25,11 @@ import tech.beshu.ror.utils.misc.Version
 import scala.collection.JavaConverters._
 
 trait BaseTemplatesSuite
-  extends BaseIntegrationTest
-    with SingleClientSupport
+  extends BasicSingleNodeEsClusterSupport
     with BeforeAndAfterEach {
   this: Suite with EsContainerCreator =>
 
-  override lazy val targetEs = rorContainer.nodesContainers.head
-
   def rorContainer: EsClusterContainer
-
-  override lazy val container: Container = rorContainer
 
   protected lazy val adminTemplateManager = new TemplateManagerJ(adminClient)
   protected lazy val adminDocumentManager = new DocumentManagerJ(adminClient)

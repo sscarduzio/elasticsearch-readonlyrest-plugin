@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Suite
 import tech.beshu.ror.utils.containers.providers._
-import tech.beshu.ror.utils.containers.{EsClusterProvider, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{EsClusterProvider, EsClusterSettings, EsContainerCreator}
 
 object support {
 
@@ -28,6 +28,18 @@ object support {
       with EsClusterProvider
       with RorConfigFileNameProvider {
     this: Suite with EsContainerCreator =>
+  }
+
+  trait BasicSingleNodeEsClusterSupport
+    extends RorConfigFileNameProvider
+      with SingleClientSupport
+      with EsClusterProvider
+      with NodeInitializerProvider {
+    this: Suite with EsContainerCreator =>
+  }
+
+  object BasicSingleNodeEsClusterSupport {
+    val basicEsSettings = EsClusterSettings(name = "ROR1")("/basic/readonlyrest.yml")
   }
 
   trait SingleClientSupport extends SingleClient with SingleEsTarget

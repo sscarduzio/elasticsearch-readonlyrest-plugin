@@ -22,6 +22,7 @@ import cats.effect.{ContextShift, IO}
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.apache.logging.log4j.scala.Logging
 import org.scalatest.{BeforeAndAfterAll, Suite}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.proxy.RorProxy
 import tech.beshu.ror.proxy.RorProxy.ProxyAppWithCloseHandler
 import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
@@ -83,4 +84,16 @@ trait ProxyTestSupport
 
     override implicit protected def contextShift: ContextShift[IO] = IO.contextShift(ExecutionContext.Implicits.global)
   }
+}
+
+trait BasicClusterProxyTestSupport extends ProxyTestSupport {
+  this: Suite with BasicSingleNodeEsClusterSupport =>
+
+  override lazy val container = createLocalClusterContainer(
+    nodeDataInitializer.foldLeft(BasicSingleNodeEsClusterSupport.basicEsSettings) {
+      case (settings, definedInitializer) => settings.copy(nodeDataInitializer = definedInitializer)
+    }
+  )
+
+  override lazy val targetEs = container.nodesContainers.head
 }

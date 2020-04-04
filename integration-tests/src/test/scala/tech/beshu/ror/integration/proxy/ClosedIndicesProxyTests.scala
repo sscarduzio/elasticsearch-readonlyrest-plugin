@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ClosedIndicesSuite
 
-class ClosedIndicesProxyTests extends ClosedIndicesSuite with ProxyTestSupport
+class ClosedIndicesProxyTests extends ClosedIndicesSuite with BasicClusterProxyTestSupport

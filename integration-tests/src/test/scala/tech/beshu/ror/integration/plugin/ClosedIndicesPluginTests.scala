@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.ClosedIndicesSuite
 
-class ClosedIndicesPluginTests extends ClosedIndicesSuite with PluginTestSupport
+class ClosedIndicesPluginTests extends ClosedIndicesSuite with SingletonPluginTestSupport

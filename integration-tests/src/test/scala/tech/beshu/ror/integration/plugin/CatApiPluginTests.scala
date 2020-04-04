@@ -17,5 +17,8 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.CatApiSuite
+import tech.beshu.ror.utils.containers.EsClusterContainer
 
-class CatApiPluginTests extends CatApiSuite with PluginTestSupport
+class CatApiPluginTests extends CatApiSuite with SingletonPluginTestSupport {
+  override lazy val rorContainer: EsClusterContainer = SingletonEsContainer.singleton
+}

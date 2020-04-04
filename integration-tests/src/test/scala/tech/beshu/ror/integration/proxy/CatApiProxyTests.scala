@@ -17,5 +17,8 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.CatApiSuite
+import tech.beshu.ror.utils.containers.EsClusterContainer
 
-class CatApiProxyTests extends CatApiSuite with ProxyTestSupport
+class CatApiProxyTests extends CatApiSuite with BasicClusterProxyTestSupport {
+  override lazy val rorContainer: EsClusterContainer = container
+}
