@@ -15,6 +15,7 @@ readonlyrest:
     indices: logstash-a*
 
   - name: "CONTAINER ADMIN"
-    actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*"]
-    #auth_key: admin:container
+    verbosity: error
+    type: allow
+    auth_key: admin:container
 
