@@ -38,5 +38,6 @@ readonlyrest:
     indices: ["*myanmar*", "*vietnam*"]
 
   - name: "CONTAINER ADMIN"
-    actions: ["cluster:monitor/health*", "indices:data/write/*", "indices:admin/create*", "indices:admin/aliases"]
-    #auth_key: admin:container
+    verbosity: error
+    type: allow
+    auth_key: admin:container
