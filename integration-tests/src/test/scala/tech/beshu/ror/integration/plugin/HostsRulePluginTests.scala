@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.HostsRuleSuite
 
-class HostsRulePluginTests extends HostsRuleSuite with PluginTestSupport
+class HostsRulePluginTests extends HostsRuleSuite with SingletonPluginTestSupport

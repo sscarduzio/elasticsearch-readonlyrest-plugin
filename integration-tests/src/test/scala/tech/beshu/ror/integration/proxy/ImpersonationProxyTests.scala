@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ImpersonationSuite
 
-class ImpersonationProxyTests extends ImpersonationSuite with ProxyTestSupport
+class ImpersonationProxyTests extends ImpersonationSuite with BasicClusterProxyTestSupport

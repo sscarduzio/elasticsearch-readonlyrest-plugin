@@ -17,28 +17,21 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait IndicesReverseWildcardSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport
+    with BasicSingleNodeEsClusterSupport
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/indices_reverse_wildcards/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override def nodeDataInitializer = Some(IndicesReverseWildcardSuite.nodeDataInitializer())
 
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = IndicesReverseWildcardSuite.nodeDataInitializer()
-    )
-  )
   private lazy val searchManager = new SearchManagerJ(adminClient)
 
   "A search request" should {

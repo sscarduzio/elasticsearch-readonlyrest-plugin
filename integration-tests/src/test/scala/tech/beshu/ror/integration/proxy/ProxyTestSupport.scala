@@ -26,7 +26,7 @@ import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSu
 import tech.beshu.ror.proxy.RorProxy
 import tech.beshu.ror.proxy.RorProxy.ProxyAppWithCloseHandler
 import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
-import tech.beshu.ror.utils.containers.{ContainerUtils, EsContainer, EsWithoutRorPluginContainerCreator, RorConfigAdjuster}
+import tech.beshu.ror.utils.containers.{ContainerUtils, EsClusterSettings, EsContainer, EsWithoutRorPluginContainerCreator, RorConfigAdjuster, SingletonEsContainer}
 
 import scala.concurrent.ExecutionContext
 
@@ -90,7 +90,7 @@ trait BasicClusterProxyTestSupport extends ProxyTestSupport {
   this: Suite with BasicSingleNodeEsClusterSupport =>
 
   override lazy val container = createLocalClusterContainer(
-    nodeDataInitializer.foldLeft(BasicSingleNodeEsClusterSupport.basicEsSettings) {
+    nodeDataInitializer.foldLeft(EsClusterSettings.basic) {
       case (settings, definedInitializer) => settings.copy(nodeDataInitializer = definedInitializer)
     }
   )

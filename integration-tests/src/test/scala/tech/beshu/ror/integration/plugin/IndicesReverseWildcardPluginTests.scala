@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.IndicesReverseWildcardSuite
 
-class IndicesReverseWildcardPluginTests extends IndicesReverseWildcardSuite with PluginTestSupport
+class IndicesReverseWildcardPluginTests extends IndicesReverseWildcardSuite with SingletonPluginTestSupport

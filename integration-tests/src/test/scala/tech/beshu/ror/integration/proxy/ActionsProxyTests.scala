@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ActionsSuite
 
-class ActionsProxyTests extends ActionsSuite with ProxyTestSupport
+class ActionsProxyTests extends ActionsSuite with BasicClusterProxyTestSupport

@@ -23,8 +23,8 @@ import com.google.common.collect.Lists
 import io.jsonwebtoken.{JwtBuilder, Jwts, SignatureAlgorithm}
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 import scala.collection.mutable
@@ -32,8 +32,7 @@ import scala.collection.mutable
 //TODO change test names. Current names are copies from old java integration tests
 trait JwtAuthSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport {
+    with BasicSingleNodeEsClusterSupport {
   this: EsContainerCreator =>
 
   private val algo = "HS256"
@@ -44,14 +43,6 @@ trait JwtAuthSuite
   private val rolesClaim = "roles"
 
   override implicit val rorConfigFileName = "/jwt_auth/readonlyrest.yml"
-
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1"
-    )
-  )
 
   "rejectRequestWithoutAuthorizationHeader" in {
     val clusterStateManager = new ClusterStateManager(noBasicAuthClient)

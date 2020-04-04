@@ -18,29 +18,21 @@ package tech.beshu.ror.integration.suites.base
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait BaseIndexApiSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport
+    with BasicSingleNodeEsClusterSupport
     with ESVersionSupport {
   this: EsContainerCreator =>
 
   protected def notFoundIndexStatusReturned: Int
 
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = BaseIndexApiSuite.nodeDataInitializer()
-    )
-  )
+  override def nodeDataInitializer = Some(BaseIndexApiSuite.nodeDataInitializer())
 
   private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
   private lazy val dev2IndexManager = new IndexManager(basicAuthClient("dev2", "test"))

@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.JwtAuthSuite
 
-class JwtAuthPluginTests extends JwtAuthSuite with PluginTestSupport
+class JwtAuthPluginTests extends JwtAuthSuite with SingletonPluginTestSupport

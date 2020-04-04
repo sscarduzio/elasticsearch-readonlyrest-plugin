@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.ImpersonationSuite
 
-class ImpersonationPluginTests extends ImpersonationSuite with PluginTestSupport
+class ImpersonationPluginTests extends ImpersonationSuite with SingletonPluginTestSupport

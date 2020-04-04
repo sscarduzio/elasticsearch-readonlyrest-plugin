@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.ReindexSuite
 
-class ReindexPluginTests extends ReindexSuite with PluginTestSupport
+class ReindexPluginTests extends ReindexSuite with SingletonPluginTestSupport

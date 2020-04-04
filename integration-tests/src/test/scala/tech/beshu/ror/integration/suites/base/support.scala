@@ -38,10 +38,6 @@ object support {
     this: Suite with EsContainerCreator =>
   }
 
-  object BasicSingleNodeEsClusterSupport {
-    val basicEsSettings = EsClusterSettings(name = "ROR1")("/basic/readonlyrest.yml")
-  }
-
   trait SingleClientSupport extends SingleClient with SingleEsTarget
   trait MultipleClientsSupport extends MultipleClients with MultipleEsTargets
 }

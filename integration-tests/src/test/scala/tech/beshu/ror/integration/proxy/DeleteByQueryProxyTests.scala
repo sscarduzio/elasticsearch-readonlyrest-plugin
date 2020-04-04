@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.DeleteByQuerySuite
 
-class DeleteByQueryProxyTests extends DeleteByQuerySuite with ProxyTestSupport
+class DeleteByQueryProxyTests extends DeleteByQuerySuite with BasicClusterProxyTestSupport

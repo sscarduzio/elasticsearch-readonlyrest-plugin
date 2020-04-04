@@ -14,9 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin.check
+package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.plugin.SingletonPluginTestSupport
-import tech.beshu.ror.integration.suites.ClusterStateSuite
+import tech.beshu.ror.integration.suites.CurrentUserMetadataSuite
 
-class ClusterStatePluginTests extends ClusterStateSuite with SingletonPluginTestSupport
+class CurrentUserMetadataPluginTests extends CurrentUserMetadataSuite with SingletonPluginTestSupport

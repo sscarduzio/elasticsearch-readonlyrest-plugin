@@ -149,6 +149,10 @@ final case class EsClusterSettings(name: String,
                                    customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false)(implicit val rorConfigFileName: String)
 
+object EsClusterSettings {
+  val basic = EsClusterSettings(name = "ROR_SINGLE")("/basic/readonlyrest.yml")
+}
+
 final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]], originalPort: Int)
 
 

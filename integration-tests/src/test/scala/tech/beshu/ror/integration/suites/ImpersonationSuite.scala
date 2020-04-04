@@ -19,8 +19,8 @@ package tech.beshu.ror.integration.suites
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -28,20 +28,12 @@ import scala.collection.JavaConverters._
 
 trait ImpersonationSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport {
+    with BasicSingleNodeEsClusterSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/impersonation/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = ImpersonationSuite.nodeDataInitializer()
-    )
-  )
+  override def nodeDataInitializer = Some(ImpersonationSuite.nodeDataInitializer())
 
   "Impersonation can be done" when {
     "user uses local auth rule" when {

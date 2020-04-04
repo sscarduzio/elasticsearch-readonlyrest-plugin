@@ -17,15 +17,14 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DeleteByQueryManagerJ, ElasticsearchTweetsInitializer}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait DeleteByQuerySuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport
+    with BasicSingleNodeEsClusterSupport
     with Matchers {
   this: EsContainerCreator =>
 
@@ -33,14 +32,7 @@ trait DeleteByQuerySuite
 
   override implicit val rorConfigFileName = "/delete_by_query/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = DeleteByQuerySuite.nodeDataInitializer()
-    )
-  )
+  override def nodeDataInitializer = Some(DeleteByQuerySuite.nodeDataInitializer())
 
   private lazy val blueTeamDeleteByQueryManager = new DeleteByQueryManagerJ(basicAuthClient("blue", "dev"))
   private lazy val redTeamDeleteByQueryManager = new DeleteByQueryManagerJ(basicAuthClient("red", "dev"))

@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.MSearchWithFilterSuite
 
-class MSearchWithFilterPluginTests extends MSearchWithFilterSuite with PluginTestSupport
+class MSearchWithFilterPluginTests extends MSearchWithFilterSuite with SingletonPluginTestSupport

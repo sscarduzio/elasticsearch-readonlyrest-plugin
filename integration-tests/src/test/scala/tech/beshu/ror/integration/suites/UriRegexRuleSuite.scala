@@ -18,26 +18,17 @@ package tech.beshu.ror.integration.suites
 
 import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
 trait UriRegexRuleSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport
+    with BasicSingleNodeEsClusterSupport
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/uri_regex_rules/readonlyrest.yml"
-
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1"
-    )
-  )
 
   "A uri rule" should {
     "allow health check" when {

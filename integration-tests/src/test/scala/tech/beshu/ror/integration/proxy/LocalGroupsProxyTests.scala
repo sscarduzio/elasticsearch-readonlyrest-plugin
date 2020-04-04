@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.LocalGroupsSuite
 
-class LocalGroupsProxyTests extends LocalGroupsSuite with ProxyTestSupport
+class LocalGroupsProxyTests extends LocalGroupsSuite with BasicClusterProxyTestSupport

@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.UriRegexRuleSuite
 
-class UriRegexRuleProxyTests extends UriRegexRuleSuite with ProxyTestSupport
+class UriRegexRuleProxyTests extends UriRegexRuleSuite with BasicClusterProxyTestSupport

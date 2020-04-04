@@ -30,6 +30,7 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
     val esVersion = project.getESVersion
 
     val containerConfig = EsWithoutRorPluginContainer.Config(
+      clusterName = clusterSettings.name,
       nodeName = name,
       nodes = nodeNames,
       envs = clusterSettings.rorContainerSpecification.environmentVariables,

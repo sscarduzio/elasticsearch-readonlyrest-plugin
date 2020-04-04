@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.QueryAuditLogSerializerSuite
 
-class QueryAuditLogSerializerPluginTests extends QueryAuditLogSerializerSuite with PluginTestSupport
+class QueryAuditLogSerializerPluginTests extends QueryAuditLogSerializerSuite with SingletonPluginTestSupport

@@ -60,6 +60,7 @@ abstract class EsContainer(val name: String,
 
 object EsContainer extends StrictLogging {
   trait Config {
+    def clusterName: String
     def nodeName: String
     def nodes: NonEmptyList[String]
     def envs: Map[String, String]

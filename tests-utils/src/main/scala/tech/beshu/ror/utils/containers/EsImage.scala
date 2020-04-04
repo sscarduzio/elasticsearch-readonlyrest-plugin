@@ -64,7 +64,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .run("(egrep -v 'node\\.name|cluster\\.initial_master_nodes|cluster\\.name|network\\.host' /usr/share/elasticsearch/config/elasticsearch.yml || echo -n '') > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'node.name: $nodeName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'network.host: 0.0.0.0' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-          .run("echo 'cluster.name: test-cluster' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run(s"echo 'cluster.name: $clusterName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
             command = s"echo 'discovery.seed_hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml",
             orElse = s"echo 'discovery.zen.ping.unicast.hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml"

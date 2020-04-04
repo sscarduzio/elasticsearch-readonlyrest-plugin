@@ -17,8 +17,8 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{RorApiManager, SearchManagerJ}
 import ujson.Str
 
@@ -27,22 +27,13 @@ import scala.collection.JavaConverters._
 //TODO change test names. Current names are copies from old java integration tests
 trait LocalGroupsSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport
+    with BasicSingleNodeEsClusterSupport
     with Matchers {
   this: EsContainerCreator =>
 
   private val matchingEndpoint = "/_nodes/local"
 
   override implicit val rorConfigFileName = "/local_groups/readonlyrest.yml"
-
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1"
-    )
-  )
 
   "good credentials but with non matching preferred group are sent" in {
     val searchManager = new SearchManagerJ(

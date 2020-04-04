@@ -38,7 +38,6 @@ trait BaseAdminApiSuite
   protected def rorWithIndexConfig: EsClusterContainer
   protected def rorWithNoIndexConfig: EsClusterContainer
 
-
   private lazy val ror1_1Node = rorWithIndexConfig.nodesContainers.head
   private lazy val ror1_2Node = rorWithIndexConfig.nodesContainers.tail.head
   private lazy val ror2_1Node = rorWithNoIndexConfig.nodesContainers.head

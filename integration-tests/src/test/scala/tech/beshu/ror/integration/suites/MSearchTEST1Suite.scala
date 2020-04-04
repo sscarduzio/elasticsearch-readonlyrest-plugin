@@ -17,16 +17,15 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
 trait MSearchTEST1Suite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport
+    with BasicSingleNodeEsClusterSupport
     with Matchers {
   this: EsContainerCreator =>
 
@@ -49,15 +48,7 @@ trait MSearchTEST1Suite
 
   override implicit val rorConfigFileName = "/msearch_test1/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = MSearchTEST1Suite.nodeDataInitializer()
-    )
-  )
-
+  override def nodeDataInitializer = Some(MSearchTEST1Suite.nodeDataInitializer())
 
   "test274_1_notexist" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))

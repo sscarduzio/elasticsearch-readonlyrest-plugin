@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.JwtAuthSuite
 
-class JwtAuthProxyTests extends JwtAuthSuite with ProxyTestSupport
+class JwtAuthProxyTests extends JwtAuthSuite with BasicClusterProxyTestSupport

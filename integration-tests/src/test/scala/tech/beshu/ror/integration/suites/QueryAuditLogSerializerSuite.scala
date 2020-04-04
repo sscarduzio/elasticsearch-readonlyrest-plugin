@@ -17,29 +17,21 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait QueryAuditLogSerializerSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport
+    with BasicSingleNodeEsClusterSupport
     with BeforeAndAfterEach
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/query_audit_log_serializer/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = QueryAuditLogSerializerSuite.nodeDataInitializer()
-    )
-  )
+  override def nodeDataInitializer = Some(QueryAuditLogSerializerSuite.nodeDataInitializer())
 
   private lazy val auditIndexManager = new AuditIndexManagerJ(basicAuthClient("admin", "container"), "audit_index")
 

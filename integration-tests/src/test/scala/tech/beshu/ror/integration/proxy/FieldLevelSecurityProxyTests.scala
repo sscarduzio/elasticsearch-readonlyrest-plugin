@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.FieldLevelSecuritySuite
 
-class FieldLevelSecurityProxyTests extends FieldLevelSecuritySuite with ProxyTestSupport
+class FieldLevelSecurityProxyTests extends FieldLevelSecuritySuite with BasicClusterProxyTestSupport

@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.UriRegexRuleSuite
 
-class UriRegexRulePluginTests extends UriRegexRuleSuite with PluginTestSupport
+class UriRegexRulePluginTests extends UriRegexRuleSuite with SingletonPluginTestSupport

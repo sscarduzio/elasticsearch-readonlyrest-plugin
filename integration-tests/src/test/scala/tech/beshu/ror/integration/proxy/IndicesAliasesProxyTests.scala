@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.IndicesAliasesSuite
 
-class IndicesAliasesProxyTests extends IndicesAliasesSuite with ProxyTestSupport
+class IndicesAliasesProxyTests extends IndicesAliasesSuite with BasicClusterProxyTestSupport

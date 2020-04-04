@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.ActionsSuite
 
-class ActionsPluginTests extends ActionsSuite with PluginTestSupport
+class ActionsPluginTests extends ActionsSuite with SingletonPluginTestSupport

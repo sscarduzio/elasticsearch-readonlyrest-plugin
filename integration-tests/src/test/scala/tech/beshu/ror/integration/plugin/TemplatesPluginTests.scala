@@ -17,7 +17,7 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.TemplatesSuite
-import tech.beshu.ror.utils.containers.EsClusterContainer
+import tech.beshu.ror.utils.containers.{EsClusterContainer, SingletonEsContainer}
 
 class TemplatesPluginTests extends TemplatesSuite with SingletonPluginTestSupport {
   override lazy val rorContainer: EsClusterContainer = SingletonEsContainer.singleton

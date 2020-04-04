@@ -36,7 +36,8 @@ class EsWithoutRorPluginContainer(name: String,
 
 object EsWithoutRorPluginContainer {
 
-  final case class Config(nodeName: String,
+  final case class Config(clusterName: String,
+                          nodeName: String,
                           nodes: NonEmptyList[String],
                           envs: Map[String, String],
                           esVersion: String,

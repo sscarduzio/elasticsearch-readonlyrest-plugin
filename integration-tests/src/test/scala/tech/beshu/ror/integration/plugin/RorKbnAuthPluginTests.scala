@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.RorKbnAuthSuite
 
-class RorKbnAuthPluginTests extends RorKbnAuthSuite with PluginTestSupport
+class RorKbnAuthPluginTests extends RorKbnAuthSuite with SingletonPluginTestSupport

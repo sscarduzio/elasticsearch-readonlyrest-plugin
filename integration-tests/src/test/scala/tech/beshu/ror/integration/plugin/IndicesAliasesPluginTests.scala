@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.IndicesAliasesSuite
 
-class IndicesAliasesPluginTests extends IndicesAliasesSuite with PluginTestSupport
+class IndicesAliasesPluginTests extends IndicesAliasesSuite with SingletonPluginTestSupport

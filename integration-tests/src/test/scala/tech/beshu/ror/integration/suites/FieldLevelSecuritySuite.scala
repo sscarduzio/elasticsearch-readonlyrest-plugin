@@ -19,27 +19,19 @@ package tech.beshu.ror.integration.suites
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait FieldLevelSecuritySuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport {
+    with BasicSingleNodeEsClusterSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/field_level_security/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = FieldLevelSecuritySuite.nodeDataInitializer()
-    )
-  )
+  override def nodeDataInitializer = Some(FieldLevelSecuritySuite.nodeDataInitializer())
 
   "A fields rule" should {
     "work for simple cases" when {

@@ -18,30 +18,22 @@ package tech.beshu.ror.integration.suites
 
 import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ReindexSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport
+    with BasicSingleNodeEsClusterSupport
     with ESVersionSupport
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/reindex/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = ReindexSuite.nodeDataInitializer()
-    )
-  )
+  override def nodeDataInitializer = Some(ReindexSuite.nodeDataInitializer())
 
   private lazy val user1ActionManager = new ActionManagerJ(basicAuthClient("dev1", "test"))
 

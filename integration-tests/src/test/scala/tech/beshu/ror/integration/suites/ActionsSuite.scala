@@ -18,27 +18,19 @@ package tech.beshu.ror.integration.suites
 
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ActionsSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport {
+    with BasicSingleNodeEsClusterSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/actions/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = ActionsSuite.nodeDataInitializer()
-    )
-  )
+  override def nodeDataInitializer = Some(ActionsSuite.nodeDataInitializer())
 
   private lazy val actionManager = new ActionManagerJ(basicAuthClient("any", "whatever"))
 

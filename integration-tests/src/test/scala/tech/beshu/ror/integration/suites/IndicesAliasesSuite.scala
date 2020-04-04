@@ -18,8 +18,8 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -28,8 +28,7 @@ import scala.collection.JavaConverters._
 //TODO change test names. Current names are copies from old java integration tests
 trait IndicesAliasesSuite
   extends WordSpec
-    with BaseIntegrationTest
-    with SingleClientSupport
+    with BasicSingleNodeEsClusterSupport
     with Eventually
     with IntegrationPatience
     with Matchers {
@@ -37,14 +36,7 @@ trait IndicesAliasesSuite
 
   override implicit val rorConfigFileName = "/indices_aliases_test/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
-
-  override lazy val container = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      nodeDataInitializer = IndicesAliasesSuite.nodeDataInitializer()
-    )
-  )
+  override def nodeDataInitializer = Some(IndicesAliasesSuite.nodeDataInitializer())
 
   private lazy val restrictedDevSearchManager = new SearchManagerJ(basicAuthClient("restricted", "dev"))
   private lazy val unrestrictedDevSearchManager = new SearchManagerJ(basicAuthClient("unrestricted", "dev"))
