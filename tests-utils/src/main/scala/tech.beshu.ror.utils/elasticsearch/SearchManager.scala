@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
 
 class SearchManager(client: RestClient,
                     override val additionalHeaders: Map[String, String] = Map.empty)
@@ -89,6 +90,8 @@ object SearchManager {
 
     def searchHitsNoSettingsForResponse(responseIdx: Int) = searchHitsForResponse(responseIdx).removeRorSettings()
 
-    def totalHitsForResponse(responseIdx: Int): Int = responses(responseIdx)("hits")("total")("value").num.toInt
+    def totalHitsForResponse(responseIdx: Int): Int =
+      Try(responses(responseIdx)("hits")("total")("value").num.toInt)
+        .getOrElse(responses(responseIdx)("hits")("total").num.toInt)
   }
 }
