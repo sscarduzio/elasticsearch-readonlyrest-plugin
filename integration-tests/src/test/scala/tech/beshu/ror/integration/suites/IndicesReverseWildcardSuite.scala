@@ -41,7 +41,7 @@ trait IndicesReverseWildcardSuite
 
         response.responseCode should be(200)
         response.searchHits.size should be(1)
-        response.searchHits.head("_id") should be("doc-a1")
+        response.searchHits.head("_id").str should be("doc-a1")
       }
       "simple wildcard search is used" in {
         val response = searchManager.search("/logstash-a*/_search")
