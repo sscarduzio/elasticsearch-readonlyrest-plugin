@@ -79,16 +79,16 @@ object SearchManager {
   }
 
   class SearchResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val searchHits = responseJson("hits")("hits")
-    lazy val searchHitsNoSettings = searchHits.arr.removeRorSettings()
+    lazy val searchHitsWithSettings = responseJson("hits")("hits")
+    lazy val searchHits = searchHitsWithSettings.arr.removeRorSettings()
   }
 
   class MSearchResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val responses = responseJson("responses").arr
 
-    def searchHitsForResponse(responseIdx: Int) = responses(responseIdx)("hits")("hits").arr
+    def searchHitsForResponseWithSettings(responseIdx: Int) = responses(responseIdx)("hits")("hits").arr
 
-    def searchHitsNoSettingsForResponse(responseIdx: Int) = searchHitsForResponse(responseIdx).removeRorSettings()
+    def searchHitsForResponse(responseIdx: Int) = searchHitsForResponseWithSettings(responseIdx).removeRorSettings()
 
     def totalHitsForResponse(responseIdx: Int): Int =
       Try(responses(responseIdx)("hits")("total")("value").num.toInt)

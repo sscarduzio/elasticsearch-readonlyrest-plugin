@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait IndicesReverseWildcardSuite
@@ -32,50 +32,46 @@ trait IndicesReverseWildcardSuite
 
   override def nodeDataInitializer = Some(IndicesReverseWildcardSuite.nodeDataInitializer())
 
-  private lazy val searchManager = new SearchManagerJ(adminClient)
+  private lazy val searchManager = new SearchManager(adminClient)
 
   "A search request" should {
     "return proper data" when {
       "direct index search is used" in {
         val response = searchManager.search("/logstash-a1/_search")
 
-        response.getResponseCode should be(200)
-        response.getSearchHits.size() should be(1)
-        response.getSearchHits.get(0).get("_id") should be("doc-a1")
+        response.responseCode should be(200)
+        response.searchHits.size should be(1)
+        response.searchHits.head("_id") should be("doc-a1")
       }
       "simple wildcard search is used" in {
         val response = searchManager.search("/logstash-a*/_search")
 
-        response.getResponseCode should be(200)
-        response.getSearchHits.size() should be(2)
-        response.getSearchHits.get(0).get("_id") should be("doc-a1")
-        response.getSearchHits.get(1).get("_id") should be("doc-a2")
+        response.responseCode should be(200)
+        response.searchHits.size should be(2)
+        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
       "reverse wildcard search is used" in {
         val response = searchManager.search("/logstash-*/_search")
 
-        response.getResponseCode should be(200)
-        response.getSearchHits.size() should be(2)
-        response.getSearchHits.get(0).get("_id") should be("doc-a1")
-        response.getSearchHits.get(1).get("_id") should be("doc-a2")
+        response.responseCode should be(200)
+        response.searchHits.size should be(2)
+        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
 
       "reverse total wildcard search is used" in {
         val response = searchManager.search("/*/_search")
 
-        response.getResponseCode should be(200)
-        response.getSearchHits.size() should be(2)
-        response.getSearchHits.get(0).get("_id") should be("doc-a1")
-        response.getSearchHits.get(1).get("_id") should be("doc-a2")
+        response.responseCode should be(200)
+        response.searchHits.size should be(2)
+        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
 
       "generic search all is used" in {
         val response = searchManager.search("/_search")
 
-        response.getResponseCode should be(200)
-        response.getSearchHits.size() should be(2)
-        response.getSearchHits.get(0).get("_id") should be("doc-a1")
-        response.getSearchHits.get(1).get("_id") should be("doc-a2")
+        response.responseCode should be(200)
+        response.searchHits.size should be(2)
+        response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
     }
   }

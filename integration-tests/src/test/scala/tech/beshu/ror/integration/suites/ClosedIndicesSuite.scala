@@ -42,22 +42,22 @@ trait ClosedIndicesSuite
         val response = searchManager.search("/intentp1_a1/_search")
 
         response.responseCode should be(200)
-        response.searchHitsNoSettings.size should be(1)
-        response.searchHitsNoSettings.head("_id").str should be("doc-a1")
+        response.searchHits.size should be(1)
+        response.searchHits.head("_id").str should be("doc-a1")
       }
       "wildcard search is used" in {
         val response = searchManager.search("/*/_search")
 
         response.responseCode should be(200)
-        response.searchHitsNoSettings.size should be(1)
-        response.searchHitsNoSettings.head("_id").str should be("doc-a1")
+        response.searchHits.size should be(1)
+        response.searchHits.head("_id").str should be("doc-a1")
       }
       "generic search all" in {
         val response = searchManager.search("/_search")
 
         response.responseCode should be(200)
-        response.searchHitsNoSettings.size should be(1)
-        response.searchHitsNoSettings.head("_id").str should be("doc-a1")
+        response.searchHits.size should be(1)
+        response.searchHits.head("_id").str should be("doc-a1")
       }
 
       "get mappings is used" in {

@@ -67,7 +67,7 @@ trait MSearchWithFilterSuite
     searchResult.responseCode shouldBe 200
     searchResult.responses.size shouldBe 1
 
-    val searchHits = searchResult.searchHitsNoSettingsForResponse(responseIdx = 0)
+    val searchHits = searchResult.searchHitsForResponse(responseIdx = 0)
     searchHits.size shouldBe 2
     searchHits.foreach { hit =>
       hit("_index").str shouldBe expectedIndex
