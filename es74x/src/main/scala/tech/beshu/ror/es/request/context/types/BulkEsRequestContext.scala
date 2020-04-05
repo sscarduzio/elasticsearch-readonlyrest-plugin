@@ -12,7 +12,6 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
@@ -28,7 +27,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     UserMetadata.empty,
     Set.empty,
     Set.empty,
-    indicesFromRequest
+    indicesFrom(actionRequest)
   )
 
   override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
@@ -37,11 +36,11 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     else Modified
   }
 
-  private def indicesFromRequest =
-    actionRequest.requests().asScala.map(_.index()).flatMap(IndexName.fromString).toSet
+  private def indicesFrom(request: BulkRequest) =
+    request.requests().asScala.map(_.index()).flatMap(IndexName.fromString).toSet
 
   private def removeOrAlter(request: DocWriteRequest[_], filteredIndices: Set[IndexName]) = {
-    val expandedIndicesOfRequest = clusterService.expandIndices(request.indices.asSafeSet.flatMap(IndexName.fromString))
+    val expandedIndicesOfRequest = clusterService.expandIndices(IndexName.fromString(request.index()).toSet)
     val remaining = expandedIndicesOfRequest.intersect(filteredIndices).toList
     remaining match {
       case Nil =>

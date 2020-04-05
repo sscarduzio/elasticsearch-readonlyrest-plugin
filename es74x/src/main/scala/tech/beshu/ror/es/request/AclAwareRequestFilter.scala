@@ -12,7 +12,7 @@ import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
-import org.elasticsearch.action.bulk.BulkRequest
+import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.MultiGetRequest
 import org.elasticsearch.action.index.IndexRequest
@@ -60,6 +60,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: PutIndexTemplateRequest =>
         regularRequestHandler.handle(new CreateTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       // todo: more template requests
+      case request: BulkShardRequest =>
+        regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, clusterService, threadPool))
       case request: IndexRequest =>
         regularRequestHandler.handle(new IndexEsRequestContext(request, esContext, clusterService, threadPool))
       case request: MultiGetRequest =>

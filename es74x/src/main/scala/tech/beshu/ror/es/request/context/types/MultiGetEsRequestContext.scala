@@ -11,7 +11,6 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
@@ -51,7 +50,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private def removeOrAlter(item: MultiGetRequest.Item,
                             filteredIndices: Set[IndexName]): Boolean = {
-    val expandedIndicesOfRequest = clusterService.expandIndices(item.indices().asSafeSet.flatMap(IndexName.fromString))
+    val expandedIndicesOfRequest = clusterService.expandIndices(IndexName.fromString(item.index()).toSet)
     val remaining = expandedIndicesOfRequest.intersect(filteredIndices).toList
     remaining match {
       case Nil =>
