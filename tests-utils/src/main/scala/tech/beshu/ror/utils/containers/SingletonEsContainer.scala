@@ -53,6 +53,6 @@ object SingletonEsContainer
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
     nodeDataInitializer.initialize(singleton.esVersion, adminClient)
   }
-``
+
   final case class CouldNotUpdateRorConfigException() extends Exception("ROR config update using admin api failed")
 }
