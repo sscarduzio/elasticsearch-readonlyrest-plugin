@@ -16,12 +16,15 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.junit.Assert.assertEquals
+import java.time.Duration
+import java.util.function.BiPredicate
+
+import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.SearchManagerJ.MSearchResult
-import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManagerJ}
+import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
+import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
@@ -40,15 +43,18 @@ trait MSearchWithFilterSuite
       |{"query" : {"match_all" : {}}}
       |""".stripMargin
 
-  private lazy val user1SearchManager = new SearchManagerJ(basicAuthClient("test1", "dev"))
-  private lazy val user2SearchManager = new SearchManagerJ(basicAuthClient("test2", "dev"))
+  private lazy val adminSearchManager = new SearchManager(adminClient)
+  private lazy val user1SearchManager = new SearchManager(basicAuthClient("test1", "dev"))
+  private lazy val user2SearchManager = new SearchManager(basicAuthClient("test2", "dev"))
 
   "userShouldOnlySeeFacebookPostsFilterTest" in {
-    val searchResult1 = user1SearchManager.mSearch(matchAllIndicesQuery)
-    val searchResult2 = user1SearchManager.mSearch(matchAllIndicesQuery)
-    val searchResult3 = user2SearchManager.mSearch(matchAllIndicesQuery)
-    val searchResult4 = user2SearchManager.mSearch(matchAllIndicesQuery)
-    val searchResult5 = user1SearchManager.mSearch(matchAllIndicesQuery)
+    waitUntilAllIndexed()
+
+    val searchResult1 = user1SearchManager.msearch(matchAllIndicesQuery)
+    val searchResult2 = user1SearchManager.msearch(matchAllIndicesQuery)
+    val searchResult3 = user2SearchManager.msearch(matchAllIndicesQuery)
+    val searchResult4 = user2SearchManager.msearch(matchAllIndicesQuery)
+    val searchResult5 = user1SearchManager.msearch(matchAllIndicesQuery)
 
     assertSearchResult("facebook", searchResult1)
     assertSearchResult("facebook", searchResult2)
@@ -58,10 +64,28 @@ trait MSearchWithFilterSuite
   }
 
   private def assertSearchResult(expectedIndex: String, searchResult: MSearchResult): Unit = {
-    searchResult.getResponseCode shouldBe 200
-    searchResult.getMSearchHits.size shouldBe 2
-    searchResult.getMSearchHits.forEach(result => assertEquals(expectedIndex, result.get("_index")))
+    searchResult.responseCode shouldBe 200
+    searchResult.responses.size shouldBe 1
+
+    val searchHits = searchResult.searchHitsNoSettingsForResponse(responseIdx = 0)
+    searchHits.size shouldBe 2
+    searchHits.foreach { hit =>
+      hit("_index").str shouldBe expectedIndex
+    }
   }
+
+  private def waitUntilAllIndexed(): Unit = {
+    val retryPolicy: RetryPolicy[MSearchResult] = new RetryPolicy[MSearchResult]()
+      .handleIf(resultsContainsLessElementsThan())
+      .withMaxRetries(20)
+      .withDelay(Duration.ofMillis(500))
+      .withMaxDuration(Duration.ofSeconds(10))
+    Failsafe.`with`[MSearchResult, RetryPolicy[MSearchResult]](retryPolicy).get(() => adminSearchManager.msearch(matchAllIndicesQuery))
+  }
+
+  private def resultsContainsLessElementsThan(): BiPredicate[MSearchResult, Throwable] =
+    (searchResult: MSearchResult, throwable: Throwable) =>
+      throwable != null || searchResult == null || searchResult.totalHitsForResponse(0) < 4
 }
 
 object MSearchWithFilterSuite {

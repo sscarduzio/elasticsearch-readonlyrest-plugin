@@ -43,13 +43,16 @@ object SingletonEsContainer
   }
 
   def updateConfig(rorConfigFileName: String) = {
-    adminApiManager.actionPost(
+    val response = adminApiManager.actionPost(
       "_readonlyrest/admin/config",
       s"""{"settings": "${escapeJava(getResourceContent(rorConfigFileName))}"}"""
     )
+    if (!response.isSuccess) throw CouldNotUpdateRorConfigException()
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
     nodeDataInitializer.initialize(singleton.esVersion, adminClient)
   }
+``
+  final case class CouldNotUpdateRorConfigException() extends Exception("ROR config update using admin api failed")
 }

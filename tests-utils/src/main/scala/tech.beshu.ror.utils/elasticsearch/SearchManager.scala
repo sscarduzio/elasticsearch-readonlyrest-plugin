@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.elasticsearch.SearchManager.{MSearchResult, SearchRe
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
-import scala.util.Try
+import scala.collection.mutable.ArrayBuffer
 
 class SearchManager(client: RestClient,
                     override val additionalHeaders: Map[String, String] = Map.empty)
@@ -72,13 +72,23 @@ class SearchManager(client: RestClient,
 }
 
 object SearchManager {
+
+  implicit class SearchResultOps (val hits: ArrayBuffer[Value]) extends AnyVal {
+    def removeRorSettings() = hits.filter(hit => hit("_index").str != ".readonlyrest")
+  }
+
   class SearchResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val searchHits: Try[Value] = Try(responseJson("hits")("hits"))
+    lazy val searchHits = responseJson("hits")("hits")
+    lazy val searchHitsNoSettings = searchHits.arr.removeRorSettings()
   }
 
   class MSearchResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val responses: List[Value] = responseJson("responses").arr.toList
+    lazy val responses = responseJson("responses").arr
 
-    def totalHitsForResponse(responseIdx: Int): Int = responseJson("responses").arr(responseIdx)("hits")("total")("value").num.toInt
+    def searchHitsForResponse(responseIdx: Int) = responses(responseIdx)("hits")("hits").arr
+
+    def searchHitsNoSettingsForResponse(responseIdx: Int) = searchHitsForResponse(responseIdx).removeRorSettings()
+
+    def totalHitsForResponse(responseIdx: Int): Int = responses(responseIdx)("hits")("total")("value").num.toInt
   }
 }
