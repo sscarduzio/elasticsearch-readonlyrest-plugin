@@ -24,11 +24,8 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 // todo: maybe type/specific to not repeat?
 sealed trait BlockContext {
   def requestContext: RequestContext
-
   def userMetadata: UserMetadata
-
   def responseHeaders: Set[Header]
-
   def contextHeaders: Set[Header]
 }
 object BlockContext {
@@ -137,6 +134,32 @@ object BlockContext {
         case bc: SnapshotRequestBlockContext => bc.indices
         case _: TemplateRequestBlockContext => Set.empty // todo:
         case bc: GeneralIndexRequestBlockContext => bc.indices
+      }
+    }
+  }
+
+  implicit class RepositoriesFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def repositories: Set[RepositoryName] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => Set.empty
+        case _: GeneralNonIndexRequestBlockContext => Set.empty
+        case bc: RepositoryRequestBlockContext => bc.repositories
+        case bc: SnapshotRequestBlockContext => bc.repositories
+        case _: TemplateRequestBlockContext => Set.empty
+        case _: GeneralIndexRequestBlockContext => Set.empty
+      }
+    }
+  }
+
+  implicit class SnapshotsFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def snapshots: Set[SnapshotName] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => Set.empty
+        case _: GeneralNonIndexRequestBlockContext => Set.empty
+        case bc: RepositoryRequestBlockContext => Set.empty
+        case bc: SnapshotRequestBlockContext => bc.snapshots
+        case _: TemplateRequestBlockContext => Set.empty
+        case _: GeneralIndexRequestBlockContext => Set.empty
       }
     }
   }

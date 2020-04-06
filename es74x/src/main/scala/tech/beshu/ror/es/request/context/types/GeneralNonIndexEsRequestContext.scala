@@ -18,7 +18,7 @@ class GeneralNonIndexEsRequestContext(actionRequest: ActionRequest,
 
   override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
     this,
-    UserMetadata.empty,
+    UserMetadata.from(this),
     Set.empty,
     Set.empty
   )

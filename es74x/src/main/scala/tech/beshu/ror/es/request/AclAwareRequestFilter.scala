@@ -4,9 +4,15 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action._
+import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
+import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
+import org.elasticsearch.action.admin.cluster.repositories.put.PutRepositoryRequest
+import org.elasticsearch.action.admin.cluster.repositories.verify.VerifyRepositoryRequest
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
+import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
+import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
@@ -53,13 +59,31 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 
   private def handleEsRestApiRequest(regularRequestHandler: RegularRequestHandler, esContext: EsContext) = {
     esContext.actionRequest match {
+      // snapshots
       case request: GetSnapshotsRequest =>
         regularRequestHandler.handle(new GetSnapshotsEsRequestContext(request, esContext, clusterService, threadPool))
       case request: CreateSnapshotRequest =>
         regularRequestHandler.handle(new CreateSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: DeleteSnapshotRequest =>
+        regularRequestHandler.handle(new DeleteSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: RestoreSnapshotRequest =>
+        regularRequestHandler.handle(new RestoreSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: SnapshotsStatusRequest =>
+        regularRequestHandler.handle(new SnapshotsStatusEsRequestContext(request, esContext, clusterService, threadPool))
       case request: PutIndexTemplateRequest =>
         regularRequestHandler.handle(new CreateTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+      // repositories
+      case request: GetRepositoriesRequest =>
+        regularRequestHandler.handle(new GetRepositoriesEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: PutRepositoryRequest =>
+        regularRequestHandler.handle(new PutRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: DeleteRepositoryRequest =>
+        regularRequestHandler.handle(new DeleteRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: VerifyRepositoryRequest =>
+        regularRequestHandler.handle(new VerifyRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
+      // templates
       // todo: more template requests
+      // indices
       case request: BulkShardRequest =>
         regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, clusterService, threadPool))
       case request: IndexRequest =>
@@ -84,9 +108,6 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new IndicesStatsEsRequestContext(request, esContext, clusterService, threadPool))
       case request: IndicesShardStoresRequest =>
         regularRequestHandler.handle(new IndicesShardStoresEsRequestContext(request, esContext, clusterService, threadPool))
-      case request: RestoreSnapshotRequest =>
-        // Particular case because bug: https://github.com/elastic/elasticsearch/issues/28671
-        regularRequestHandler.handle(new RestoreSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
       case request: IndicesRequest.Replaceable =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, clusterService, threadPool))
       case request: ReindexRequest =>
@@ -100,6 +121,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
             regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, clusterService, threadPool))
         }
       // todo: sth here
+      // rest
       case _ =>
         handleSearchTemplateRequest(regularRequestHandler, esContext) orElse
           handleReflectionBasedIndicesRequest(regularRequestHandler, esContext) getOrElse

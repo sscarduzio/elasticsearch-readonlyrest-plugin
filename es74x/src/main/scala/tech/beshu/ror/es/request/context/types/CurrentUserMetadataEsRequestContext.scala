@@ -19,7 +19,7 @@ class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
 
   override val initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this,
-    UserMetadata.empty,
+    UserMetadata.from(this),
     Set.empty,
     Set.empty
   )

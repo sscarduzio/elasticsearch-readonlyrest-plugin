@@ -18,7 +18,9 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 
 import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.request.{RequestContext, RequestContextOps}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 final case class UserMetadata private(loggedUser: Option[LoggedUser],
                                       currentGroup: Option[Group],
@@ -32,9 +34,18 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
 
   def withLoggedUser(user: LoggedUser): UserMetadata = this.copy(loggedUser = Some(user))
   def withCurrentGroup(group: Group): UserMetadata = this.copy(currentGroup = Some(group))
-  def addAvailableGroup(group: Group): UserMetadata = this.copy(availableGroups = this.availableGroups + group)
-  def addAvailableGroups(groups: UniqueNonEmptyList[Group]): UserMetadata = this.copy(availableGroups = UniqueList.fromSortedSet(this.availableGroups ++ groups))
-  def withAvailableGroups(groups: UniqueList[Group]): UserMetadata = this.copy(availableGroups = groups)
+  def addAvailableGroup(group: Group): UserMetadata = addAvailableGroups(UniqueNonEmptyList.of(group))
+  def addAvailableGroups(groups: UniqueNonEmptyList[Group]): UserMetadata = {
+    val newAvailableGroups = this.availableGroups.mergeWith(groups.toUniqueList)
+    this.copy(
+      availableGroups = newAvailableGroups,
+      currentGroup = this.currentGroup.orElse(newAvailableGroups.headOption)
+    )
+  }
+  def withAvailableGroups(groups: UniqueList[Group]): UserMetadata = this.copy(
+    availableGroups = groups,
+    currentGroup = this.currentGroup.orElse(groups.headOption)
+  )
   def withKibanaIndex(index: IndexName): UserMetadata = this.copy(kibanaIndex = Some(index))
   def withKibanaTemplateIndex(index: IndexName): UserMetadata = this.copy(kibanaTemplateIndex = Some(index))
   def addHiddenKibanaApp(app: KibanaApp): UserMetadata = this.copy(hiddenKibanaApps = this.hiddenKibanaApps + app)
@@ -45,6 +56,13 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
 }
 
 object UserMetadata {
+  def from(request: RequestContext): UserMetadata = {
+    new RequestContextOps(request).currentGroup.toOption match {
+      case Some(group) => UserMetadata.empty.withCurrentGroup(group)
+      case None => UserMetadata.empty
+    }
+  }
+
   def empty: UserMetadata = new UserMetadata(
     loggedUser = None,
     currentGroup = None,

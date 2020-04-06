@@ -1,0 +1,9 @@
+node.name: n1_it
+cluster.initial_master_nodes: n1_it
+
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest

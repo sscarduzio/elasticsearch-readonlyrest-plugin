@@ -1,28 +1,22 @@
 package tech.beshu.ror.es.request.context.types
 
+import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
-import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
 class DummyCompositeIndicesEsRequestContext(actionRequest: ActionRequest with CompositeIndicesRequest,
                                             esContext: EsContext,
                                             clusterService: RorClusterService,
                                             override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext, clusterService)
-    with EsRequest[GeneralIndexRequestBlockContext] {
+  extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  override val initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
-    this,
-    UserMetadata.empty,
-    Set.empty,
-    Set.empty,
-    Set.empty
-  )
+  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[domain.IndexName] = Set.empty
 
-  override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = Modified
+  override protected def update(request: ActionRequest with CompositeIndicesRequest,
+                                indices: NonEmptyList[domain.IndexName]): ModificationResult = Modified
 }

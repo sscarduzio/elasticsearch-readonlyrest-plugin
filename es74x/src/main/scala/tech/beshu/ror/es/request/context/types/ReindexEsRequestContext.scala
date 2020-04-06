@@ -6,13 +6,11 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.ModificationResult.{CannotModify, Modified, ShouldBeInterrupted}
-import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.context.ModificationResult.{CannotModify, Modified}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
@@ -23,36 +21,12 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
                               esContext: EsContext,
                               clusterService: RorClusterService,
                               override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext, clusterService)
-    with EsRequest[GeneralIndexRequestBlockContext] {
+  extends BaseIndicesEsRequestContext[ReindexRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  override val initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
-    this,
-    UserMetadata.empty,
-    Set.empty,
-    Set.empty,
-    indicesFromRequest
-  )
-
-  override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
-    NonEmptyList.fromList(blockContext.indices.toList) match {
-      case Some(nelOfIndices) =>
-        modifyIndicesOf(actionRequest, nelOfIndices) match {
-          case Success(_) =>
-            Modified
-          case Failure(ex) =>
-            logger.error(s"[${id.show}] Cannot modify ReindexRequest", ex)
-            CannotModify
-        }
-      case None =>
-        ShouldBeInterrupted
-    }
-  }
-
-  private def indicesFromRequest = {
+  override protected def indicesFrom(request: ReindexRequest): Set[IndexName] = {
     Try {
-      val sr = invokeMethodCached(actionRequest, actionRequest.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
-      val ir = invokeMethodCached(actionRequest, actionRequest.getClass, "getDestination").asInstanceOf[IndexRequest]
+      val sr = invokeMethodCached(request, request.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
+      val ir = invokeMethodCached(request, request.getClass, "getDestination").asInstanceOf[IndexRequest]
       sr.indices.asSafeSet ++ Set(ir.index())
     } fold(
       ex => {
@@ -62,6 +36,16 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
       identity
     ) flatMap {
       IndexName.fromString
+    }
+  }
+
+  override protected def update(request: ReindexRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
+    modifyIndicesOf(actionRequest, indices) match {
+      case Success(_) =>
+        Modified
+      case Failure(ex) =>
+        logger.error(s"[${id.show}] Cannot modify ReindexRequest", ex)
+        CannotModify
     }
   }
 

@@ -6,6 +6,8 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.context.ModificationResult.Modified
 
 class IndexEsRequestContext(actionRequest: IndexRequest,
                             esContext: EsContext,
@@ -21,7 +23,8 @@ class IndexEsRequestContext(actionRequest: IndexRequest,
       }
   }
 
-  override protected def update(request: IndexRequest, index: IndexName): Unit = {
+  override protected def update(request: IndexRequest, index: IndexName): ModificationResult = {
     request.index(index.value.value)
+    Modified
   }
 }

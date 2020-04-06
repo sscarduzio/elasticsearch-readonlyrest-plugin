@@ -1,0 +1,81 @@
+package tech.beshu.ror.es.request.context.types
+
+import cats.data.NonEmptyList
+import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
+import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
+import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
+import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.utils.ScalaOps._
+
+class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
+                                      esContext: EsContext,
+                                      clusterService: RorClusterService,
+                                      override val threadPool: ThreadPool)
+  extends BaseSnapshotEsRequestContext[SnapshotsStatusRequest](actionRequest, esContext, clusterService, threadPool) {
+
+  override protected def snapshotsFrom(request: SnapshotsStatusRequest): Set[SnapshotName] =
+    request
+      .snapshots().asSafeList
+      .flatMap { s =>
+        NonEmptyString.unapply(s).map(SnapshotName.apply)
+      }
+      .toSet[SnapshotName]
+
+  override protected def repositoriesFrom(request: SnapshotsStatusRequest): Set[RepositoryName] = Set {
+    NonEmptyString
+      .from(request.repository())
+      .map(RepositoryName.apply)
+      .fold(
+        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
+        identity
+      )
+  }
+
+  override protected def indicesFrom(request: SnapshotsStatusRequest): Set[IndexName] =
+    Set(IndexName.wildcard)
+
+  override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
+    val updateResult = for {
+      snapshots <- snapshotsFrom(blockContext)
+      repository <- repositoryFrom(blockContext)
+    } yield update(actionRequest, snapshots, repository)
+    updateResult match {
+      case Right(_) => ModificationResult.Modified
+      case Left(_) => ModificationResult.ShouldBeInterrupted
+    }
+  }
+
+  private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
+    NonEmptyList.fromList(blockContext.snapshots.toList) match {
+      case Some(list) => Right(list)
+      case None => Left(())
+    }
+  }
+
+  private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
+    val repositories = blockContext.repositories.toList
+    repositories match {
+      case Nil =>
+        Left(())
+      case repository :: rest =>
+        if (rest.nonEmpty) {
+          logger.warn(s"[${blockContext.requestContext.id.show}] Filter result contains more than one repository. First was taken. Whole set of repositories [${repositories.mkString(",")}]")
+        }
+        Right(repository)
+    }
+  }
+
+  private def update(actionRequest: SnapshotsStatusRequest,
+                     snapshots: NonEmptyList[SnapshotName],
+                     repository: RepositoryName) = {
+    actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
+    actionRequest.repository(repository.value.value)
+  }
+}

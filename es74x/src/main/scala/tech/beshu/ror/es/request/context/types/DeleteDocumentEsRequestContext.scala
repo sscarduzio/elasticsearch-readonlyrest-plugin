@@ -6,6 +6,8 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.context.ModificationResult.Modified
 
 class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
                                      esContext: EsContext,
@@ -21,7 +23,8 @@ class DeleteDocumentEsRequestContext(actionRequest: DeleteRequest,
       }
   }
 
-  override protected def update(actionRequest: DeleteRequest, index: IndexName): Unit = {
+  override protected def update(actionRequest: DeleteRequest, index: IndexName): ModificationResult = {
     actionRequest.index(index.value.value)
+    Modified
   }
 }

@@ -22,7 +22,7 @@ class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
 
   override val initialBlockContext: TemplateRequestBlockContext = TemplateRequestBlockContext(
     this,
-    UserMetadata.empty,
+    UserMetadata.from(this),
     Set.empty,
     Set.empty,
     templatesFrom(actionRequest)

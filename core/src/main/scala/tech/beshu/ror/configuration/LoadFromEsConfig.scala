@@ -20,6 +20,7 @@ import better.files.File
 import io.circe.Decoder
 import tech.beshu.ror.utils.yaml
 
+//todo: to remove?
 trait LoadFromEsConfig {
 
   protected def loadConfigFromFile[CONFIG: Decoder](file: File,
@@ -39,4 +40,4 @@ trait LoadFromEsConfig {
   }
 }
 
-final case class MalformedSettings(message: String)
+

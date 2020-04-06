@@ -20,17 +20,15 @@ import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse
 import org.elasticsearch.action.{ActionListener, ActionResponse}
-import org.elasticsearch.common.collect.ImmutableOpenMap
-import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext._
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.domain.UriPath.CatIndicesPath
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -94,112 +92,43 @@ class RegularRequestHandler(engine: Engine,
         logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
-    //    request.uriPath match {
-    //        case CatIndicesPath(_) if emptySetOfFoundIndices(blockContext) =>
-    //          respondWithEmptyCatIndicesResponse()
-    //      case CatTemplatePath(_) | TemplatePath(_) =>
-    //        proceedAfterSuccessfulWrite(requestContext, blockContext) {
-    //          for {
-    //            _ <- writeTemplatesIfNeeded(blockContext)
-    //            _ <- writeCommonParts(blockContext)
-    //          } yield ()
-    //        }
-    //      case _ =>
-    //        proceedAfterSuccessfulWrite(requestContext, blockContext) {
-    //          for {
-    //            _ <- writeIndicesIfNeeded(blockContext)
-    //            _ <- requestInfo.writeSnapshots(BlockContextRawDataHelper.snapshotsFrom(blockContext))
-    //            _ <- requestInfo.writeRepositories(BlockContextRawDataHelper.repositoriesFrom(blockContext))
-    //            _ <- writeCommonParts(blockContext)
-    //          } yield ()
-    //        }
-    //    }
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
     esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, causes.toList, engine.context))
   }
 
-  private def onIndexNotFound[B <: BlockContext](request: RequestContext with EsRequest[B]): Unit = {
-    request.uriPath match {
-      case CatIndicesPath(_) =>
-        respondWithEmptyCatIndicesResponse()
-      case _ if engine.context.doesRequirePassword => // this is required by free kibana users who want to see basic auth prompt
-        val nonExistentIndex = randomNonexistentIndex(request)
-        if (nonExistentIndex.hasWildcard) {
-          proceedWithModifiedIndexIfPossible(request, nonExistentIndex)
-        } else {
-          onForbidden(NonEmptyList.one(OperationNotAllowed))
-        }
-      case _ =>
-        proceedWithModifiedIndexIfPossible(request, randomNonexistentIndex(request))
+  private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
+    BlockContextUpdater[B] match {
+      case GeneralIndexRequestBlockContextUpdater =>
+        handleIndexNotFound(request.asInstanceOf[EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]])
+      case CurrentUserMetadataRequestBlockContextUpdater |
+           GeneralNonIndexRequestBlockContextUpdater |
+           RepositoryRequestBlockContextUpdater |
+           SnapshotRequestBlockContextUpdater |
+           TemplateRequestBlockContextUpdater =>
+        onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
 
-  private def proceedWithModifiedIndexIfPossible[B <: BlockContext](request: RequestContext with EsRequest[B],
-                                                                    index: IndexName): Unit = {
-    //    request match {
-    //      case value: NonIndexOperationRequestContext[_] =>
-    //      case value: AnIndexOperationRequestContext[_] =>
-    //      // todo: create artificial block context with the index, modify the request and that's it
-    //    }
-  }
+  private def handleIndexNotFound(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]): Unit = {
+    def allowRandomNonExistentIndex(nonExistentIndex: IndexName): Unit = {
+      val bc: GeneralIndexRequestBlockContext = request.initialBlockContext
+      val newBlockContext = bc.withIndices(Set(nonExistentIndex))
+      onAllow(request, newBlockContext)
+    }
 
-  //
-  //  private def proceedAfterSuccessfulWrite[T <: Operation](requestContext: RequestContext[T],
-  //                                          blockContext: BlockContext[T])
-  //                                         (result: WriteResult[Unit]): Unit = {
-  //  requestContext match {
-  //    case value: NonIndexOperationRequestContext[_] =>
-  //    case value: AnIndexOperationRequestContext[_] =>
-  //  }
-  //    result match {
-  //      case WriteResult.Success(_) =>
-  //        val searchListener = createSearchListener(requestContext, blockContext, engine.context)
-  //        proceed(searchListener)
-  //      case WriteResult.Failure =>
-  //        logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
-  //        onForbidden(NonEmptyList.one(OperationNotAllowed))
-  //    }
-  //  }
-  //
-  //  private def writeTemplatesIfNeeded(blockContext: BlockContext) = {
-  //    writeIndicesBasedResultIfNeeded(
-  //      blockContext,
-  //      requestInfo,
-  //      requestInfo.writeTemplatesOf
-  //    )
-  //  }
-  //
-  //  private def writeIndicesIfNeeded(blockContext: BlockContext) = {
-  //    writeIndicesBasedResultIfNeeded(
-  //      blockContext,
-  //      requestInfo,
-  //      requestInfo.writeIndices
-  //    )
-  //  }
-  //
-  //  private def writeIndicesBasedResultIfNeeded(blockContext: BlockContext,
-  //                                              requestInfo: RequestInfo,
-  //                                              write: Set[String] => WriteResult[Unit]) = {
-  //    indicesFrom(blockContext) match {
-  //      case Outcome.Exist(indices) => write(indices)
-  //      case Outcome.NotExist => WriteResult.Success(())
-  //    }
-  //  }
-  //
-  //  private def writeCommonParts(requestInfo: RequestInfo, blockContext: BlockContext) = {
-  //    for {
-  //      _ <- requestInfo.writeResponseHeaders(BlockContextRawDataHelper.responseHeadersFrom(blockContext))
-  //      _ <- requestInfo.writeToThreadContextHeaders(BlockContextRawDataHelper.contextHeadersFrom(blockContext))
-  //    } yield ()
-  //  }
-//  private def emptySetOfFoundIndices[B <: BlockContext](blockContext: B) = {
-//    //    blockContext.indices match {
-//    //      case Outcome.Exist(foundIndices) => foundIndices.isEmpty
-//    //      case Outcome.NotExist => false
-//    //    }
-//  }
+    if (engine.context.doesRequirePassword) {
+      val nonExistentIndex = randomNonexistentIndex(request)
+      if (nonExistentIndex.hasWildcard) {
+        allowRandomNonExistentIndex(nonExistentIndex)
+      } else {
+        onForbidden(NonEmptyList.one(OperationNotAllowed))
+      }
+    } else {
+      allowRandomNonExistentIndex(randomNonexistentIndex(request))
+    }
+  }
 
   private def proceed(responseActionListener: ActionListener[ActionResponse]): Unit =
     esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, responseActionListener)
@@ -219,18 +148,10 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def randomNonexistentIndex(requestContext: RequestContext): IndexName = {
-    // todo:
     requestContext.initialBlockContext.indices.headOption match {
       case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
       case None => IndexName.randomNonexistentIndex()
     }
-  }
-
-  private def respondWithEmptyCatIndicesResponse(): Unit = {
-    esContext.listener.onResponse(new GetSettingsResponse(
-      ImmutableOpenMap.of[String, Settings](),
-      ImmutableOpenMap.of[String, Settings]()
-    ))
   }
 }
 

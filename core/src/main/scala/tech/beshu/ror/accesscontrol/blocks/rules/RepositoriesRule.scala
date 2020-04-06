@@ -84,9 +84,12 @@ class RepositoriesRule(val settings: Settings)
         repositoriesToCheck,
         new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(allowedRepositories.map(_.value.value).asJava))
       ) match {
-        case NotAltered => Right(repositoriesToCheck)
-        case Altered(filteredRepositories) if requestContext.isReadOnlyRequest => Right(filteredRepositories)
-        case Altered(_) => Left(())
+        case NotAltered =>
+          Right(repositoriesToCheck)
+        case Altered(filteredRepositories) if filteredRepositories.nonEmpty && requestContext.isReadOnlyRequest =>
+          Right(filteredRepositories)
+        case Altered(_) =>
+          Left(())
       }
     }
   }

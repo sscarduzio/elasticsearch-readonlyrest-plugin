@@ -1,47 +1,29 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.IndicesRequest.Replaceable
 import org.elasticsearch.action.{ActionRequest, IndicesRequest}
+import org.elasticsearch.action.IndicesRequest.Replaceable
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
-import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._
 
 class IndicesReplaceableEsRequestContext(actionRequest: ActionRequest with Replaceable,
                                          esContext: EsContext,
                                          clusterService: RorClusterService,
                                          override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext, clusterService)
-    with EsRequest[GeneralIndexRequestBlockContext] {
+  extends BaseIndicesEsRequestContext[ActionRequest with Replaceable](actionRequest, esContext, clusterService, threadPool) {
 
-  override val initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
-    this,
-    UserMetadata.empty,
-    Set.empty,
-    Set.empty,
-    indicesFrom(actionRequest)
-  )
-
-  override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
-    NonEmptyList.fromList(blockContext.indices.toList) match {
-      case Some(indices) =>
-        update(actionRequest, indices)
-        Modified
-      case None =>
-        ShouldBeInterrupted
-    }
+  override protected def indicesFrom(request: ActionRequest with Replaceable): Set[IndexName] = {
+    request.asInstanceOf[IndicesRequest].indices.asSafeSet.flatMap(IndexName.fromString)
   }
 
-  private def indicesFrom(request: IndicesRequest) =
-    request.indices.asSafeSet.flatMap(IndexName.fromString)
-
-  private def update(request: Replaceable, indices: NonEmptyList[IndexName]) = {
+  override protected def update(request: ActionRequest with Replaceable,
+                                indices: NonEmptyList[IndexName]): ModificationResult = {
     request.indices(indices.toList.map(_.value.value): _*)
+    Modified
   }
 }

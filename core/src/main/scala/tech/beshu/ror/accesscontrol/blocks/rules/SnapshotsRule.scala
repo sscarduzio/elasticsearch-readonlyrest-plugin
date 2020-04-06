@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.MatcherWithWildcards
+
 import scala.collection.JavaConverters._
 
 class SnapshotsRule(val settings: Settings)
@@ -62,11 +63,10 @@ class SnapshotsRule(val settings: Settings)
       ) match {
         case NotAltered =>
           Fulfilled(blockContext)
-        case Altered(filteredSnapshots) =>
-          if (blockContext.requestContext.isReadOnlyRequest)
-            Fulfilled(blockContext.withSnapshots(filteredSnapshots))
-          else
-            Rejected()
+        case Altered(filteredSnapshots) if filteredSnapshots.nonEmpty && blockContext.requestContext.isReadOnlyRequest =>
+          Fulfilled(blockContext.withSnapshots(filteredSnapshots))
+        case Altered(_) =>
+          Rejected()
       }
     }
   }

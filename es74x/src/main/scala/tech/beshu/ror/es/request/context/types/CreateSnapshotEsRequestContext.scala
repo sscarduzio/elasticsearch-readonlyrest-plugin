@@ -20,9 +20,9 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
                                      override val threadPool: ThreadPool)
   extends BaseSnapshotEsRequestContext[CreateSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  override def snapshotsFromRequest: Set[SnapshotName] = Set {
+  override def snapshotsFrom(request: CreateSnapshotRequest): Set[SnapshotName] = Set {
     NonEmptyString
-      .from(actionRequest.snapshot())
+      .from(request.snapshot())
       .map(SnapshotName.apply)
       .fold(
         msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
@@ -30,9 +30,9 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
       )
   }
 
-  override protected def repositoriesFromRequest: Set[RepositoryName] = Set {
+  override protected def repositoriesFrom(request: CreateSnapshotRequest): Set[RepositoryName] = Set {
     NonEmptyString
-      .from(actionRequest.repository())
+      .from(request.repository())
       .map(RepositoryName.apply)
       .fold(
         msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
@@ -40,7 +40,8 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
       )
   }
 
-  override protected def indicesFromRequest: Set[IndexName] = Set(IndexName.wildcard)
+  override protected def indicesFrom(request: CreateSnapshotRequest): Set[IndexName] =
+    Set(IndexName.wildcard)
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {

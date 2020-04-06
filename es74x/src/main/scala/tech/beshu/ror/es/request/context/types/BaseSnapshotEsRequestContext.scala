@@ -7,7 +7,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest}
 
 abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T,
                                                                 esContext: EsContext,
@@ -18,17 +18,17 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
 
   override val initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
     this,
-    UserMetadata.empty,
+    UserMetadata.from(this),
     Set.empty,
     Set.empty,
-    snapshotsFromRequest,
-    repositoriesFromRequest,
-    indicesFromRequest
+    snapshotsFrom(actionRequest),
+    repositoriesFrom(actionRequest),
+    indicesFrom(actionRequest)
   )
 
-  protected def snapshotsFromRequest: Set[SnapshotName]
+  protected def snapshotsFrom(request: T): Set[SnapshotName]
 
-  protected def repositoriesFromRequest: Set[RepositoryName]
+  protected def repositoriesFrom(request: T): Set[RepositoryName]
 
-  protected def indicesFromRequest: Set[IndexName]
+  protected def indicesFrom(request: T): Set[IndexName]
 }

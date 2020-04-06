@@ -25,7 +25,12 @@ class UniqueList[T] private (vector: Vector[T])
   extends BaseUniqueList[T, UniqueList[T]](
     vector,
     newVector => new UniqueList(newVector)
-  )
+  ) {
+
+  def mergeWith(other: UniqueList[T]): UniqueList[T] = {
+    UniqueList.fromVector(this.vector ++ other.toVector)
+  }
+}
 
 object UniqueList {
   def fromVector[T](vector: Vector[T]): UniqueList[T] = new UniqueList[T](vector.distinct)

@@ -300,6 +300,7 @@
 //      case ar: DeleteSnapshotRequest => ar.repository.asSafeSet
 //      case ar: RestoreSnapshotRequest => ar.repository.asSafeSet
 //      case ar: SnapshotsStatusRequest => ar.repository.asSafeSet
+
 //      case ar: PutRepositoryRequest => ar.name.asSafeSet
 //      case ar: GetRepositoriesRequest => ar.repositories.asSafeSet
 //      case ar: DeleteRepositoryRequest => ar.name.asSafeSet

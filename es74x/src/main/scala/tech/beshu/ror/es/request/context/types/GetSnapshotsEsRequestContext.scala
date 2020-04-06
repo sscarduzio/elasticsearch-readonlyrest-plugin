@@ -22,8 +22,8 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
                                    override val threadPool: ThreadPool)
   extends BaseSnapshotEsRequestContext[GetSnapshotsRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def snapshotsFromRequest: Set[SnapshotName] = {
-    actionRequest
+  override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
+    request
       .snapshots().asSafeList
       .flatMap { s =>
         NonEmptyString.unapply(s).map(SnapshotName.apply)
@@ -31,9 +31,9 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       .toSet[SnapshotName]
   }
 
-  override protected def repositoriesFromRequest: Set[RepositoryName] = Set {
+  override protected def repositoriesFrom(request: GetSnapshotsRequest): Set[RepositoryName] = Set {
     NonEmptyString
-      .from(actionRequest.repository())
+      .from(request.repository())
       .map(RepositoryName.apply)
       .fold(
         msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
@@ -41,7 +41,8 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
       )
   }
 
-  override protected def indicesFromRequest: Set[domain.IndexName] = Set(IndexName.wildcard)
+  override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.IndexName] =
+    Set(IndexName.wildcard)
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
