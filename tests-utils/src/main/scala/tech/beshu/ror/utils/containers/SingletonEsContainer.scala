@@ -48,6 +48,8 @@ object SingletonEsContainer
       s"""{"settings": "${escapeJava(getResourceContent(rorConfigFileName))}"}"""
     )
     if (!response.isSuccess) throw CouldNotUpdateRorConfigException()
+
+    Thread.sleep(3000)
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
