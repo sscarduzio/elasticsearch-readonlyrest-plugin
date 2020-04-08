@@ -163,12 +163,12 @@ object Rule {
         }
     }
 
-    private def toRuleResult[B <: BlockContext](result: EitherT[Task, Rejected[B], B]) = {
+    private def toRuleResult[B <: BlockContext](result: EitherT[Task, Rejected[B], B]): Task[RuleResult[B]] = {
       result
         .value
         .map {
           case Right(newBlockContext) => Fulfilled[B](newBlockContext)
-          case Left(_) => Rejected[B]()
+          case Left(rejected) => rejected
         }
     }
   }

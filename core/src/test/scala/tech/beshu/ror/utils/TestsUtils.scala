@@ -104,15 +104,15 @@ object TestsUtils {
       blockContext.responseHeaders should be(responseHeaders)
       blockContext.contextHeaders should be(contextHeaders)
       blockContext match {
-        case bc: CurrentUserMetadataRequestBlockContext =>
-        case bc: GeneralNonIndexRequestBlockContext =>
+        case _: CurrentUserMetadataRequestBlockContext =>
+        case _: GeneralNonIndexRequestBlockContext =>
         case bc: RepositoryRequestBlockContext =>
           bc.repositories should be (repositories)
         case bc: SnapshotRequestBlockContext =>
           bc.snapshots should be (snapshots)
           bc.repositories should be (repositories)
           bc.indices should be (indices)
-        case bc: TemplateRequestBlockContext =>
+        case _: TemplateRequestBlockContext =>
           // todo: impl
         case bc: GeneralIndexRequestBlockContext =>
           bc.indices should be (indices)

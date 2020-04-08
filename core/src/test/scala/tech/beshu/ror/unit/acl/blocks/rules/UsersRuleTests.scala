@@ -81,20 +81,18 @@ class UsersRuleTests extends WordSpec with MockFactory {
 
   private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser], isMatched: Boolean) = {
     val rule = new UsersRule(UsersRule.Settings(configuredIds))
-    val requestContext = MockRequestContext.indices
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, Set.empty)
+    val requestContext = MockRequestContext.metadata
+    val blockContext = CurrentUserMetadataRequestBlockContext(
+      requestContext,
+      loggedUser match {
+        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(user)
+        case None => UserMetadata.from(requestContext)
+      },
+      Set.empty,
+      Set.empty
+    )
     rule.check(blockContext).runSyncStep shouldBe Right {
-      if (isMatched) Fulfilled(
-        CurrentUserMetadataRequestBlockContext(
-          requestContext,
-          loggedUser match {
-            case Some(user) => UserMetadata.empty.withLoggedUser(user)
-            case None => UserMetadata.empty
-          },
-          Set.empty,
-          Set.empty
-        )
-      )
+      if (isMatched) Fulfilled(blockContext)
       else Rejected()
     }
   }

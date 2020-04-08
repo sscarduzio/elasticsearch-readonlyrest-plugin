@@ -311,10 +311,16 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       UserMetadata.from(requestContext),
       Set.empty,
       Set.empty,
-      found
+      requestIndices
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
-      if (isMatched) Fulfilled(blockContext)
+      if (isMatched) Fulfilled(GeneralIndexRequestBlockContext(
+        requestContext,
+        UserMetadata.from(requestContext),
+        Set.empty,
+        Set.empty,
+        found
+      ))
       else Rejected(Some(Cause.IndexNotFound))
     }
   }

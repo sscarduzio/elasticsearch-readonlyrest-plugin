@@ -242,7 +242,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
             blockContext.userMetadata should be(
               UserMetadata
                 .from(request)
-                .withLoggedUser(DirectlyLoggedUser(User.Id("user3".nonempty)))
+                .withLoggedUser(DirectlyLoggedUser(User.Id("user4".nonempty)))
                 .withJwtToken(JwtTokenPayload(claims))
             )
             blockContext.indices should be(Set(IndexName("gj0".nonempty)))

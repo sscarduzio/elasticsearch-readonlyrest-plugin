@@ -317,7 +317,7 @@ class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
                                                          requestContext: MockUserMetadataRequestContext = MockRequestContext.metadata) = {
     CurrentUserMetadataRequestBlockContext(
       requestContext,
-      update(UserMetadata.empty),
+      update(UserMetadata.from(requestContext)),
       Set.empty,
       Set.empty
     )
