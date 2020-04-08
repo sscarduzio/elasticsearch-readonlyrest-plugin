@@ -294,17 +294,16 @@ class IndicesRule(val settings: Settings)
     // Handle <no-index> (#TODO LEGACY)
     logger.debug("Stage 7")
     if (indices.isEmpty && matcher.contains("<no-index>")) {
-      stop(CanPass.Yes(Set.empty))
+      stop(CanPass.Yes(indices))
     } else {
       // Reject write if at least one requested index is not allowed by the rule conf
       logger.debug("Stage 8")
-      val result = indices.foldLeft(CanPass.Yes(Set.empty): CanPass) {
-        case (CanPass.Yes(_), index) =>
-          if (matcher.`match`(index)) CanPass.Yes(Set.empty)
-          else CanPass.No()
-        case (CanPass.No(_), _) => CanPass.No()
+      stop {
+        indices.find(index => !matcher.`match`(index)) match {
+          case Some(_) => CanPass.No()
+          case None => CanPass.Yes(indices)
+        }
       }
-      stop(result)
     }
   }
 

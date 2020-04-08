@@ -28,7 +28,8 @@ class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
     templatesFrom(actionRequest)
   )
 
-  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = ???
+  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult =
+    ModificationResult.Modified // todo: real impl
 
   private def templatesFrom(request: PutIndexTemplateRequest) = Set {
     val template = for {

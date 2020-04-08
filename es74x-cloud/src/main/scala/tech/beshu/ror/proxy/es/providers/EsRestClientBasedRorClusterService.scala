@@ -5,6 +5,8 @@ package tech.beshu.ror.proxy.es.providers
 
 import monix.execution.Scheduler
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
+import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.es
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
@@ -23,13 +25,16 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
   override def allIndices: Set[IndexName] = throw NotDefinedForRorProxy
 
   override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
-    client
-      .getAlias(new GetAliasesRequest())
-      .map(_.getAliases.asScala.toMap.mapValues(_.asScala.map(_.alias()).toSet))
-      .runSyncUnsafe()
+//    client
+//      .getAlias(new GetAliasesRequest())
+//      .map(_.getAliases.asScala.toMap.mapValues(_.asScala.map(_.alias()).toSet))
+//      .runSyncUnsafe()
+    ???  /// todo: fixme
   }
 
   override def findTemplatesOfIndices(indices: Set[IndexName]): Set[IndexName] = throw NotDefinedForRorProxy
 
   override def getTemplatesWithPatterns: Map[TemplateName, Set[IndexPatten]] = throw NotDefinedForRorProxy
+
+  override def expandIndices(indices: Set[es.RorClusterService.AliasName]): Set[es.RorClusterService.AliasName] = ???
 }

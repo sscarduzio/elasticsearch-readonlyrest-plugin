@@ -37,7 +37,6 @@ import tech.beshu.ror.es.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, fromMismatchedCause}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
-
 import scala.util.{Failure, Success, Try}
 
 class RegularRequestHandler(engine: Engine,

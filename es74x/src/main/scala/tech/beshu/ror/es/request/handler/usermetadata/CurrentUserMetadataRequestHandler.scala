@@ -29,7 +29,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.EsRequest
 import tech.beshu.ror.es.request.{ForbiddenResponse, RorNotAvailableResponse}
 import tech.beshu.ror.utils.LoggerOps._
-import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.{Failure, Success, Try}
 
@@ -42,11 +41,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
     engine.accessControl
       .handleMetadataRequest(request)
-      .map { r =>
-        threadPool.getThreadContext.stashContext.bracket { _ =>
-          commitResult(r.result, request)
-        }
-      }
+      .map { r => commitResult(r.result, request) }
   }
 
   private def commitResult(result: UserMetadataRequestResult,

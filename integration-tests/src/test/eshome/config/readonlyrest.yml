@@ -2,30 +2,16 @@ readonlyrest:
   ssl:
     enable: true
     keystore_file: "keystore.jks"
-    keystore_pass: readonlyrest
-    key_pass: readonlyrest
-
-  prompt_for_basic_auth: true
+    keystore_pass: "readonlyrest"
+    key_pass: "readonlyrest"
 
   access_control_rules:
+    - name: "CONTAINER ADMIN - file"
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"
 
-    # ES containter initializer need this rule to configure ES instance after startup
-    - name: "CONTAINER ADMIN"
-      verbosity: error
-      type: allow
-      auth_key: admin:container
-
-    - name: "dev1 indexes"
-      indices: ["index1", "index1a", "index1b", "index1c"]
-      auth_key: dev1:test
-
-    - name: "dev2 aliases"
-      indices: ["index2_alias"]
-      auth_key: dev2:test
-
-    - name: "dev3 - there is no index of this user"
-      indices: ["index3"]
-      auth_key: dev3:test
-
-    - name: "dev4 - no indices rule"
-      auth_key: dev4:test
+    - name: "user"
+      auth_key: "user1:pass"
+      indices: ["test1_index"]
+      filter: '{"query_string":{"query":"db_name:db_@{user}"}}'
