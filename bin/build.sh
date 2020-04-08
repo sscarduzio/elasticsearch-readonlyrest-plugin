@@ -22,9 +22,19 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es74x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es74x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es74x_singleton" ]]; then
+    echo ">>> es74x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es74x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es73x" ]]; then
     echo ">>> es73x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es73x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es73x_singleton" ]]; then
+    echo ">>> es73x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es73x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es72x" ]]; then
@@ -32,9 +42,19 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es72x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es72x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es72x_singleton" ]]; then
+    echo ">>> es72x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es72x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es70x" ]]; then
     echo ">>> es70x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es70x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es70x_singleton" ]]; then
+    echo ">>> es70x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es70x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es66x" ]]; then
@@ -42,9 +62,19 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es66x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es66x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es66x_singleton" ]]; then
+    echo ">>> es66x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es66x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then
     echo ">>> es63x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es63x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x_singleton" ]]; then
+    echo ">>> es63x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es63x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es62x" ]]; then
@@ -52,9 +82,19 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es62x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es62x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es62x_singleton" ]]; then
+    echo ">>> es62x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es62x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
     echo ">>> es61x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es61x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x_singleton" ]]; then
+    echo ">>> es61x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es61x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es60x" ]]; then
@@ -62,9 +102,19 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es60x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es60x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es60x_singleton" ]]; then
+    echo ">>> es60x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es60x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es55x" ]]; then
     echo ">>> es55x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es55x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es55x_singleton" ]]; then
+    echo ">>> es55x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es55x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x" ]]; then
@@ -72,14 +122,29 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es53x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x_singleton" ]]; then
+    echo ">>> es53x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es53x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x" ]]; then
     echo ">>> es52x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es52x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x_singleton" ]]; then
+    echo ">>> es52x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es52x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es51x" ]]; then
     echo ">>> es51x => Running testcontainers.."1
     ./gradlew integration-tests:test '-PesModule=es51x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es51x_singleton" ]]; then
+    echo ">>> es51x => Running testcontainers.."1
+    ./gradlew integration-tests:test '-PesModule=es51x' '-Pmode=plugin' '-Psingleton=y' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then

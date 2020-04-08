@@ -49,7 +49,7 @@ object SingletonEsContainer
     )
     if (!response.isSuccess) throw CouldNotUpdateRorConfigException()
 
-    Thread.sleep(3000)
+    Thread.sleep(5000)
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
