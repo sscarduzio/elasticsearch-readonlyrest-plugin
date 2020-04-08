@@ -22,6 +22,7 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.containers.DockerfileBuilderOps._
 import tech.beshu.ror.utils.containers.generic.EsContainer.Config
 import tech.beshu.ror.utils.misc.Version
+import scala.collection.JavaConverters._
 
 trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
@@ -41,7 +42,6 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         builder
           .from(baseDockerImage + ":" + esVersion)
-          .env("TEST_VAR", "dev")
 
         copyNecessaryFiles(builder, config)
 
@@ -83,7 +83,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           if (!configHotReloadingEnabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
         ).mkString(" ")
 
-        builder.user("elasticsearch").env("ES_JAVA_OPTS", javaOpts)
+        builder
+          .user("elasticsearch")
+          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts ) asJava)
 
         install(builder, config)
 

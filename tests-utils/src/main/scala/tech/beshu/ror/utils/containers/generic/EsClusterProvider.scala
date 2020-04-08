@@ -29,8 +29,7 @@ trait EsClusterProvider {
 
     new EsClusterContainer(
       nodeNames.map(name => Task(create(name, nodeNames, esClusterSettings))),
-      esClusterSettings.dependentServicesContainers,
-      esClusterSettings.clusterInitializer)
+      esClusterSettings.dependentServicesContainers)
   }
 
   def createRemoteClustersContainer(localClustersSettings: NonEmptyList[EsClusterSettings],

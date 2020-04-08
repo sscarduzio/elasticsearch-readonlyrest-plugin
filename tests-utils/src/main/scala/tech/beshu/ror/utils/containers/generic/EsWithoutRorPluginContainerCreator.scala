@@ -30,11 +30,12 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
     val containerConfig = EsWithoutRorPluginContainer.Config(
       nodeName = name,
       nodes = nodeNames,
+      envs = clusterSettings.rorContainerSpecification.environmentVariables,
       esVersion = esVersion,
       xPackSupport = clusterSettings.xPackSupport,
-      configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
       customRorIndexName = clusterSettings.customRorIndexName,
-      internodeSslEnabled = clusterSettings.internodeSslEnabled,
+      configHotReloadingEnabled = true,
+      internodeSslEnabled = false,
       externalSslEnabled = false)
     EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
   }

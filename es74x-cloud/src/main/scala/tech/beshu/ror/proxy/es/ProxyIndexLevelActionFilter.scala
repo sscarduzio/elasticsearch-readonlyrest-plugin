@@ -15,6 +15,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SecurityPermissionException
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, StartingFailure}
 import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
+import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import tech.beshu.ror.proxy.es.providers.{EsRestClientBasedRorClusterService, ProxyAuditSink, ProxyIndexJsonContentManager}
@@ -95,7 +96,8 @@ object ProxyIndexLevelActionFilter {
   def create(configFile: Path,
              esClient: RestHighLevelClientAdapter,
              threadPool: ThreadPool)
-            (implicit scheduler: Scheduler): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
+            (implicit scheduler: Scheduler,
+             envVarsProvider: EnvVarsProvider): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
     val result = for {
       instance <- EitherT(Ror.start(configFile, ProxyAuditSink, ProxyIndexJsonContentManager))
     } yield new ProxyIndexLevelActionFilter(instance, esClient, threadPool)

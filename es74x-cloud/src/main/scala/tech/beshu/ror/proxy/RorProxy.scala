@@ -14,6 +14,7 @@ import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.proxy.RorProxy.CloseHandler
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import tech.beshu.ror.proxy.es.{EsCode, EsRestServiceSimulator}
@@ -36,6 +37,7 @@ trait RorProxy  {
   private def runServer: IO[Either[StartingFailure, CloseHandler]] = {
     val threadPool: ThreadPool = new ThreadPool(Settings.EMPTY)
     val esClient = createEsHighLevelClient()
+    implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
     val result = for {
       simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), config.esConfigFile, threadPool))
       server = Http.server.serve(s":${config.proxyPort}", new ProxyRestInterceptorService(simulator))
@@ -56,9 +58,10 @@ trait RorProxy  {
 
 object RorProxy {
   type CloseHandler = () => IO[Unit]
+  type ProxyAppWithCloseHandler = (RorProxy, RorProxy.CloseHandler)
 
   final case class Config(targetEsNode: String,
-                          proxyPort: String,
+                          proxyPort: Int,
                           esConfigFile: File)
 
 }
