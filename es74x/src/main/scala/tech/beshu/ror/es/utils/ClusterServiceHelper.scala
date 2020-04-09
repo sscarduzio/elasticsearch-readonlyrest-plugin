@@ -34,7 +34,7 @@ object ClusterServiceHelper {
                           indicesPatterns: Set[IndexPatten]): Map[IndexPatten, Set[IndexName]] = {
     val allIndices = clusterService.allIndices
     indicesPatterns
-      .map(p => (p, MatcherWithWildcardsScalaAdapter.create(Set(IndexName.fromUnsafeString(p))).filter(allIndices)))
+      .map(p => (p, MatcherWithWildcardsScalaAdapter.create(Set(p)).filter(allIndices)))
       .toMap
   }
 

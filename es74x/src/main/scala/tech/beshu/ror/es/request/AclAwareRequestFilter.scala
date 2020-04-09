@@ -33,6 +33,8 @@ import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
+import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
+import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.delete.DeleteRequest
@@ -86,8 +88,6 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new RestoreSnapshotEsRequestContext(request, esContext, clusterService, threadPool))
       case request: SnapshotsStatusRequest =>
         regularRequestHandler.handle(new SnapshotsStatusEsRequestContext(request, esContext, clusterService, threadPool))
-      case request: PutIndexTemplateRequest =>
-        regularRequestHandler.handle(new CreateTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       // repositories
       case request: GetRepositoriesRequest =>
         regularRequestHandler.handle(new GetRepositoriesEsRequestContext(request, esContext, clusterService, threadPool))
@@ -98,7 +98,12 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: VerifyRepositoryRequest =>
         regularRequestHandler.handle(new VerifyRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
       // templates
-      // todo: more template requests
+      case request: GetIndexTemplatesRequest =>
+        regularRequestHandler.handle(new GetIndexTemplatesEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: PutIndexTemplateRequest =>
+        regularRequestHandler.handle(new CreateTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: DeleteIndexTemplateRequest =>
+        regularRequestHandler.handle(new DeleteIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       // indices
       case request: BulkShardRequest =>
         regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, clusterService, threadPool))

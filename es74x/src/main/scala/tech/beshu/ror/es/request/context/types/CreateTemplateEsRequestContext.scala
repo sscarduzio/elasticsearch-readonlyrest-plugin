@@ -16,18 +16,19 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.{IndexPattern, Template}
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.utils.ClusterServiceHelper.indicesFromPatterns
+
+import scala.collection.JavaConverters._
 
 class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
                                      esContext: EsContext,
@@ -41,20 +42,41 @@ class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
     UserMetadata.from(this),
     Set.empty,
     Set.empty,
-    templatesFrom(actionRequest)
+    indicesPatternsFrom(actionRequest)
   )
 
-  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult =
-    ModificationResult.Modified // todo: real impl
-
-  private def templatesFrom(request: PutIndexTemplateRequest) = Set {
-    val template = for {
-      templateName <- NonEmptyString.unapply(request.name())
-      indexPatterns <- request.indices
-        .asSafeSet
-        .flatMap(IndexPattern.from)
-        .toNonEmptySet
-    } yield Template(templateName, indexPatterns)
-    template.getOrElse(throw RequestSeemsToBeInvalid[PutIndexTemplateRequest]("Template data is invalid"))
+  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
+    blockContext.indices.toList match {
+      case Nil =>
+        ModificationResult.ShouldBeInterrupted
+      case nel =>
+        updateIndicesPatterns(actionRequest, nel)
+        Modified
+    }
   }
+
+  private def indicesPatternsFrom(request: PutIndexTemplateRequest): Set[domain.IndexName] = {
+    indicesFromPatterns(clusterService, request.patterns().asScala.flatMap(IndexName.fromString).toSet)
+      .flatMap { case (pattern, relatedIndices) =>
+        if (relatedIndices.nonEmpty) relatedIndices
+        else Set(pattern)
+      }
+      .toSet
+  }
+
+  private def updateIndicesPatterns(request: PutIndexTemplateRequest, indices: List[IndexName]) = {
+    request.patterns(indices.map(_.value.value).asJava)
+  }
+
+  // todo:
+  //  private def templatesFrom(request: PutIndexTemplateRequest) = Set {
+  //    val template = for {
+  //      templateName <- NonEmptyString.unapply(request.name())
+  //      indexPatterns <- request.indices
+  //        .asSafeSet
+  //        .flatMap(IndexPattern.from)
+  //        .toNonEmptySet
+  //    } yield Template(templateName, indexPatterns)
+  //    template.getOrElse(throw RequestSeemsToBeInvalid[PutIndexTemplateRequest]("Template data is invalid"))
+  //  }
 }

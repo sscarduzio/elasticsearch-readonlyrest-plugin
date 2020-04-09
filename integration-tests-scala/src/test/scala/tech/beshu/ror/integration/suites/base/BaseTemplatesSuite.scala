@@ -51,10 +51,11 @@ trait BaseTemplatesSuite
     val esVersion = rorContainer.esVersion
     val patternsString = indexPatterns.mkString("\"", "\",\"", "\"")
     if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-      s"""{"index_patterns":["$patternsString"],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
+      s"""{"index_patterns":[$patternsString],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
     } else if (Version.greaterOrEqualThan(esVersion, 6, 1, 0)) {
-      s"""{"index_patterns":["$patternsString"],"settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
+      s"""{"index_patterns":[$patternsString],"settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
     } else {
+      // todo: more than one pattern?
       s"""{"template":"$patternsString","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
     }
   }

@@ -16,13 +16,12 @@
  */
 package tech.beshu.ror.utils
 
-import cats.implicits._
-import cats.{Functor, Order}
 import java.util.Base64
 
-import cats.Functor
+import cats.{Functor, Order}
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
+import cats.implicits._
 import com.twitter.{util => twitter}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task

@@ -62,29 +62,9 @@ object BlockContext {
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
                                                override val contextHeaders: Set[Header],
-                                               templates: Set[Template])
+                                               indices: Set[IndexName])
     extends BlockContext
 
-  // todo:
-  //
-  //  final case class GetTemplateRequestBlockContext(override val requestContext: RequestContext,
-  //                                                  override val userMetadata: UserMetadata,
-  //                                                  override val responseHeaders: Set[Header],
-  //                                                  override val contextHeaders: Set[Header])
-  //    extends BlockContext
-  //
-  //  final case class CreateTemplateRequestBlockContext(override val requestContext: RequestContext,
-  //                                                     override val userMetadata: UserMetadata,
-  //                                                     override val responseHeaders: Set[Header],
-  //                                                     override val contextHeaders: Set[Header],
-  //                                                     template: Option[Template])
-  //    extends BlockContext
-  //
-  //  final case class DeleteTemplateRequestBlockContext(override val requestContext: RequestContext,
-  //                                                     override val userMetadata: UserMetadata,
-  //                                                     override val responseHeaders: Set[Header],
-  //                                                     override val contextHeaders: Set[Header])
-  //    extends BlockContext
   final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
                                                    override val userMetadata: UserMetadata,
                                                    override val responseHeaders: Set[Header],

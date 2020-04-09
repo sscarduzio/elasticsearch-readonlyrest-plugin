@@ -35,6 +35,6 @@ object RorClusterService {
   type IndexOrAlias = IndexName
   type AliasName = IndexName
   type IndexUuid = String
-  type IndexPatten = String
+  type IndexPatten = IndexName
   type TemplateName = String
 }

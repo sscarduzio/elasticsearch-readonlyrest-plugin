@@ -117,6 +117,7 @@ class RegularRequestHandler(engine: Engine,
       onAllow(request, newBlockContext)
     }
 
+    // todo: this should be moved to request context
     if (engine.context.doesRequirePassword) {
       val nonExistentIndex = randomNonexistentIndex(request)
       if (nonExistentIndex.hasWildcard) {

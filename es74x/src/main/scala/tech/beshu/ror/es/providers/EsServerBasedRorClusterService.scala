@@ -52,7 +52,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService) extends Ror
   override def getTemplatesWithPatterns: Map[TemplateName, Set[IndexPatten]] =
     Option(clusterService.state.getMetaData.templates)
       .toList
-      .flatMap(t => t.iterator().asScala.map(t => (t.key, t.value.patterns().asScala.toSet)))
+      .flatMap(t => t.iterator().asScala.map(t => (t.key, t.value.patterns().asScala.flatMap(IndexName.fromString).toSet)))
       .toMap
 
   override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
