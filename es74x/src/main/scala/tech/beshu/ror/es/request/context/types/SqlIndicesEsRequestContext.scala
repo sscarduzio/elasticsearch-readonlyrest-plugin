@@ -19,7 +19,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
                                          override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  private val sqlIndices = SqlRequestHelper
+  private lazy val sqlIndices = SqlRequestHelper
     .indicesFrom(actionRequest)
     .getOrElse(throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.getName}"))
 

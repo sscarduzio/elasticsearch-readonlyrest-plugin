@@ -1,7 +1,7 @@
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.NonEmptyList
 import cats.implicits._
+import cats.data.NonEmptyList
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.reindex.ReindexRequest
@@ -10,7 +10,7 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.{CannotModify, Modified}
+import tech.beshu.ror.es.request.context.ModificationResult.{CannotModify, Modified, ShouldBeInterrupted}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
@@ -41,8 +41,8 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
 
   override protected def update(request: ReindexRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
     modifyIndicesOf(actionRequest, indices) match {
-      case Success(_) =>
-        Modified
+      case Success(modificationResult) =>
+        modificationResult
       case Failure(ex) =>
         logger.error(s"[${id.show}] Cannot modify ReindexRequest", ex)
         CannotModify
@@ -57,9 +57,13 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
       sr.indices(remainingSearchIndices.map(_.value.value): _*)
 
       val ir = invokeMethodCached(actionRequest, actionRequest.getClass, "getDestination").asInstanceOf[IndexRequest]
-      val expandedDestinationIndices = clusterService.expandIndices(IndexName.fromString(ir.index()).toSet)
-      val remainingDestinationIndices = expandedDestinationIndices.intersect(indices.toList.toSet).toList
-      ir.index(remainingDestinationIndices.head.value.value)
+      IndexName.fromString(ir.index()) match {
+        case Some(destinationIndex) if indices.toList.contains(destinationIndex) =>
+          Modified
+        case Some(_) | None =>
+          logger.info(s"[${id.show}] Destination index of _reindex request is forbidden")
+          ShouldBeInterrupted
+      }
     }
   }
 }

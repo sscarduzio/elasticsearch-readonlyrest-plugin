@@ -1,5 +1,6 @@
 package tech.beshu.ror.es.request.context.types
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
@@ -31,6 +32,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
       case Some(indices) =>
         update(actionRequest, indices)
       case None =>
+        logger.debug(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
         ShouldBeInterrupted
     }
   }

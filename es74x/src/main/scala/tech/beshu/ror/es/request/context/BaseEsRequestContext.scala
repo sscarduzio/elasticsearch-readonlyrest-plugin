@@ -7,7 +7,12 @@ import cats.implicits._
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
+import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
+import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
+import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.action.search.SearchRequest
+import org.elasticsearch.action.{CompositeIndicesRequest, IndicesRequest}
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain._
@@ -110,8 +115,17 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val isReadOnlyRequest: Boolean = RCUtils.isReadRequest(action.value)
 
-  override lazy val involvesIndices: Boolean = true // todo: remove
-  override lazy val isCompositeRequest: Boolean = false // todo: remove
+  // todo; this info is in block context
+  override lazy val involvesIndices: Boolean = {
+    val actionRequest = esContext.actionRequest
+    actionRequest.isInstanceOf[IndicesRequest] || actionRequest.isInstanceOf[CompositeIndicesRequest] ||
+      // Necessary because it won't implement IndicesRequest as it should (bug: https://github.com/elastic/elasticsearch/issues/28671)
+      actionRequest.isInstanceOf[RestoreSnapshotRequest] ||
+      actionRequest.isInstanceOf[GetIndexTemplatesRequest] || actionRequest.isInstanceOf[PutIndexTemplateRequest] || actionRequest.isInstanceOf[DeleteIndexTemplateRequest]
+  }
+
+  override lazy val isCompositeRequest: Boolean = esContext.actionRequest.isInstanceOf[CompositeIndicesRequest]
+
   override lazy val isAllowedForDLS: Boolean = {
     esContext.actionRequest match {
       case _ if !isReadOnlyRequest => false

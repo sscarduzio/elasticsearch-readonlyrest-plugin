@@ -49,7 +49,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     Try {
       result match {
         case UserMetadataRequestResult.Allow(userMetadata, _) =>
-          onAllow(userMetadata)
+          onAllow(requestContext, userMetadata)
         case UserMetadataRequestResult.Forbidden =>
           onForbidden()
         case UserMetadataRequestResult.PassedThrough =>
@@ -62,8 +62,8 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     }
   }
 
-  private def onAllow(userMetadata: UserMetadata): Unit = {
-    val responseActionListener = new CurrentUserMetadataResponseActionListener(esContext.listener, userMetadata)
+  private def onAllow(requestContext: RequestContext, userMetadata: UserMetadata): Unit = {
+    val responseActionListener = new CurrentUserMetadataResponseActionListener(requestContext, esContext.listener, userMetadata)
     esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, responseActionListener)
   }
 

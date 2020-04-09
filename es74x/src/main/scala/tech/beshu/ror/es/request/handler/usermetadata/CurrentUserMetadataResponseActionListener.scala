@@ -20,14 +20,21 @@ import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import scala.collection.JavaConverters._
 
-class CurrentUserMetadataResponseActionListener(baseListener: ActionListener[ActionResponse],
+class CurrentUserMetadataResponseActionListener(requestContext: RequestContext,
+                                                baseListener: ActionListener[ActionResponse],
                                                 userMetadata: UserMetadata)
   extends ActionListener[ActionResponse] {
 
-  override def onResponse(response: ActionResponse): Unit = baseListener.onResponse(new RRMetadataResponse(userMetadata))
+  override def onResponse(response: ActionResponse): Unit = {
+    if(requestContext.uriPath.isCurrentUserMetadataPath)
+      baseListener.onResponse(new RRMetadataResponse(userMetadata))
+    else
+      baseListener.onResponse(response)
+  }
 
   override def onFailure(e: Exception): Unit = baseListener.onFailure(e)
 
