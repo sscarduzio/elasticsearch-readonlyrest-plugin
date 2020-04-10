@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import org.elasticsearch.action.termvectors.{MultiTermVectorsRequest, TermVectorsRequest}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -30,9 +31,10 @@ import scala.collection.JavaConverters._
 
 class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
                                        esContext: EsContext,
+                                       aclContext: AccessControlStaticContext,
                                        clusterService: RorClusterService,
                                        override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[MultiTermVectorsRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[MultiTermVectorsRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: MultiTermVectorsRequest): Set[IndexName] = {
     request.getRequests.asScala.flatMap(r => IndexName.fromString(r.index())).toSet

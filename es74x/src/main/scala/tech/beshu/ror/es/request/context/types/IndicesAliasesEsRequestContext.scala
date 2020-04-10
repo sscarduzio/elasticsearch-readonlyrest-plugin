@@ -19,6 +19,7 @@ package tech.beshu.ror.es.request.context.types
 import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -30,9 +31,10 @@ import scala.collection.JavaConverters._
 
 class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
                                      esContext: EsContext,
+                                     aclContext: AccessControlStaticContext,
                                      clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[IndicesAliasesRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[IndicesAliasesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: IndicesAliasesRequest): Set[IndexName] = {
     request.getAliasActions.asScala.flatMap(_.indices.asSafeSet.flatMap(IndexName.fromString)).toSet

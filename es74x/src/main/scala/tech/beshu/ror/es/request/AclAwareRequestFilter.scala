@@ -29,6 +29,7 @@ import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotReq
 import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
 import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotRequest
 import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
+import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
@@ -47,6 +48,7 @@ import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -71,11 +73,13 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         handler.handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
       case _ =>
         val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
-        handleEsRestApiRequest(regularRequestHandler, esContext)
+        handleEsRestApiRequest(regularRequestHandler, esContext, engine.context)
     }
   }
 
-  private def handleEsRestApiRequest(regularRequestHandler: RegularRequestHandler, esContext: EsContext) = {
+  private def handleEsRestApiRequest(regularRequestHandler: RegularRequestHandler,
+                                     esContext: EsContext,
+                                     aclContext: AccessControlStaticContext) = {
     esContext.actionRequest match {
       // snapshots
       case request: GetSnapshotsRequest =>
@@ -106,59 +110,65 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new DeleteIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       // indices
       case request: BulkShardRequest =>
-        regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndexRequest =>
-        regularRequestHandler.handle(new IndexEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: MultiGetRequest =>
-        regularRequestHandler.handle(new MultiGetEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new MultiGetEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: SearchRequest =>
-        regularRequestHandler.handle(new SearchEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new SearchEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: MultiSearchRequest =>
-        regularRequestHandler.handle(new MultiSearchEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new MultiSearchEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: MultiTermVectorsRequest =>
-        regularRequestHandler.handle(new MultiTermVectorsEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new MultiTermVectorsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: BulkRequest =>
-        regularRequestHandler.handle(new BulkEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new BulkEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: DeleteRequest =>
-        regularRequestHandler.handle(new DeleteDocumentEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DeleteDocumentEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesAliasesRequest =>
-        regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: GetSettingsRequest =>
-        regularRequestHandler.handle(new GetSettingsEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetSettingsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesStatsRequest =>
-        regularRequestHandler.handle(new IndicesStatsEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndicesStatsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesShardStoresRequest =>
-        regularRequestHandler.handle(new IndicesShardStoresEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndicesShardStoresEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: ClusterStateRequest =>
+        regularRequestHandler.handle(new ClusterStateEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesRequest.Replaceable =>
-        regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ReindexRequest =>
-        regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new ReindexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: CompositeIndicesRequest =>
-        SqlIndicesEsRequestContext.from(request, esContext, clusterService, threadPool) match {
+        SqlIndicesEsRequestContext.from(request, esContext, aclContext, clusterService, threadPool) match {
           case Some(sqlRequest) =>
             regularRequestHandler.handle(sqlRequest)
           case None =>
             logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getSimpleName}")
-            regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, clusterService, threadPool))
+            regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
         }
       // todo: sth here
       // rest
       case _ =>
-        handleSearchTemplateRequest(regularRequestHandler, esContext) orElse
-          handleReflectionBasedIndicesRequest(regularRequestHandler, esContext) getOrElse
+        handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
+          handleReflectionBasedIndicesRequest(regularRequestHandler, esContext, aclContext) getOrElse
           handleGeneralNonIndexOperation(regularRequestHandler, esContext)
     }
   }
 
-  private def handleSearchTemplateRequest(regularRequestHandler: RegularRequestHandler, esContext: EsContext) = {
+  private def handleSearchTemplateRequest(regularRequestHandler: RegularRequestHandler,
+                                          esContext: EsContext,
+                                          aclContext: AccessControlStaticContext) = {
     SearchTemplateEsRequestContext
-      .from(esContext.actionRequest, esContext, clusterService, threadPool)
+      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
       .map(regularRequestHandler.handle(_))
   }
 
-  private def handleReflectionBasedIndicesRequest(regularRequestHandler: RegularRequestHandler, esContext: EsContext) = {
+  private def handleReflectionBasedIndicesRequest(regularRequestHandler: RegularRequestHandler,
+                                                  esContext: EsContext,
+                                                  aclContext: AccessControlStaticContext) = {
     ReflectionBasedIndicesEsRequestContext
-      .from(esContext.actionRequest, esContext, clusterService, threadPool)
+      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
       .map(regularRequestHandler.handle(_))
   }
 

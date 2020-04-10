@@ -16,20 +16,22 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
+import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
 abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                esContext: EsContext,
+                                                               aclContext: AccessControlStaticContext,
                                                                clusterService: RorClusterService,
                                                                override val threadPool: ThreadPool)
   extends BaseEsRequestContext[GeneralIndexRequestBlockContext](esContext, clusterService)
@@ -42,6 +44,21 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     Set.empty,
     indicesOrWildcard(indicesFrom(actionRequest))
   )
+
+  override def modifyWhenIndexNotFound: ModificationResult = {
+    if (aclContext.doesRequirePassword) {
+      val nonExistentIndex = randomNonexistentIndex()
+      if (nonExistentIndex.hasWildcard) {
+        update(actionRequest, NonEmptyList.of(nonExistentIndex))
+        Modified
+      } else {
+        ShouldBeInterrupted
+      }
+    } else {
+      update(actionRequest, NonEmptyList.of(randomNonexistentIndex()))
+      Modified
+    }
+  }
 
   override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
     NonEmptyList.fromList(blockContext.indices.toList) match {
@@ -57,7 +74,14 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   protected def update(request: R, indices: NonEmptyList[IndexName]): ModificationResult
 
-  private def indicesOrWildcard(indices: Set[IndexName]) = {
-    if(indices.nonEmpty) indices else Set(IndexName.wildcard)
+  private def randomNonexistentIndex(): IndexName = {
+    initialBlockContext.indices.headOption match {
+      case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
+      case None => IndexName.randomNonexistentIndex()
+    }
+  }
+
+  protected def indicesOrWildcard(indices: Set[IndexName]) = {
+    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
   }
 }

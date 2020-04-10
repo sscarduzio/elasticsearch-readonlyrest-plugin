@@ -22,6 +22,7 @@ import org.elasticsearch.action.bulk.BulkShardRequest
 import org.elasticsearch.index.Index
 import org.elasticsearch.threadpool.ThreadPool
 import org.reflections.ReflectionUtils
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -34,9 +35,10 @@ import scala.util.{Failure, Success, Try}
 
 class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
                                 esContext: EsContext,
+                                aclContext: AccessControlStaticContext,
                                 clusterService: RorClusterService,
                                 override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[BulkShardRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[BulkShardRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: BulkShardRequest): Set[IndexName] = {
     request.indices().asSafeSet.flatMap(IndexName.fromString)

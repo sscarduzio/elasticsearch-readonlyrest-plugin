@@ -18,6 +18,7 @@ package tech.beshu.ror.es.request.context.types
 
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -27,9 +28,10 @@ import tech.beshu.ror.es.request.context.ModificationResult.Modified
 
 class IndexEsRequestContext(actionRequest: IndexRequest,
                             esContext: EsContext,
+                            aclContext: AccessControlStaticContext,
                             clusterService: RorClusterService,
                             override val threadPool: ThreadPool)
-  extends BaseSingleIndexEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSingleIndexEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indexFrom(request: IndexRequest): IndexName = {
     IndexName

@@ -19,6 +19,7 @@ package tech.beshu.ror.es.request.context.types
 import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -31,9 +32,10 @@ import scala.util.{Failure, Success}
 
 class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                          esContext: EsContext,
+                                         aclContext: AccessControlStaticContext,
                                          clusterService: RorClusterService,
                                          override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   private lazy val sqlIndices = SqlRequestHelper
     .indicesFrom(actionRequest)
@@ -62,10 +64,11 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
 object SqlIndicesEsRequestContext {
   def from(actionRequest: ActionRequest with CompositeIndicesRequest,
            esContext: EsContext,
+           aclContext: AccessControlStaticContext,
            clusterService: RorClusterService,
            threadPool: ThreadPool): Option[SqlIndicesEsRequestContext] = {
     if (esContext.channel.request().path().startsWith("/_sql"))
-      Some(new SqlIndicesEsRequestContext(actionRequest, esContext, clusterService, threadPool))
+      Some(new SqlIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool))
     else
       None
   }

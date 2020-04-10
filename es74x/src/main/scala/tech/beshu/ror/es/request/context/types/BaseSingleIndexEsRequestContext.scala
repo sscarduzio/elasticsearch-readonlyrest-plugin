@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -27,9 +28,10 @@ import tech.beshu.ror.es.request.context.ModificationResult
 
 abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest: R,
                                                                    esContext: EsContext,
+                                                                   aclContext: AccessControlStaticContext,
                                                                    clusterService: RorClusterService,
                                                                    override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[R](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[R](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: R): Set[IndexName] = Set(indexFrom(request))
 
@@ -39,6 +41,7 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
     }
     update(request, indices.head)
   }
+
 
   protected def indexFrom(request: R): IndexName
 

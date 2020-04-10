@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -30,9 +31,10 @@ import scala.collection.JavaConverters._
 
 class BulkEsRequestContext(actionRequest: BulkRequest,
                            esContext: EsContext,
+                           aclContext: AccessControlStaticContext,
                            clusterService: RorClusterService,
                            override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[BulkRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[BulkRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: BulkRequest): Set[IndexName] = {
     request.requests().asScala.map(_.index()).flatMap(IndexName.fromString).toSet

@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, IndicesRequest}
 import org.elasticsearch.action.IndicesRequest.Replaceable
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -29,9 +30,10 @@ import tech.beshu.ror.utils.ScalaOps._
 
 class IndicesReplaceableEsRequestContext(actionRequest: ActionRequest with Replaceable,
                                          esContext: EsContext,
+                                         aclContext: AccessControlStaticContext,
                                          clusterService: RorClusterService,
                                          override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest with Replaceable](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ActionRequest with Replaceable](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: ActionRequest with Replaceable): Set[IndexName] = {
     request.asInstanceOf[IndicesRequest].indices.asSafeSet.flatMap(IndexName.fromString)

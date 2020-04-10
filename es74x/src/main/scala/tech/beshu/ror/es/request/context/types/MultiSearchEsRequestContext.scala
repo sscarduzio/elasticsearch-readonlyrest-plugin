@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.search.MultiSearchRequest
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -31,9 +32,10 @@ import scala.collection.JavaConverters._
 
 class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   esContext: EsContext,
+                                  aclContext: AccessControlStaticContext,
                                   clusterService: RorClusterService,
                                   override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[MultiSearchRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[MultiSearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: MultiSearchRequest): Set[IndexName] = {
     request.requests().asScala.flatMap(_.indices.asSafeSet.flatMap(IndexName.fromString)).toSet

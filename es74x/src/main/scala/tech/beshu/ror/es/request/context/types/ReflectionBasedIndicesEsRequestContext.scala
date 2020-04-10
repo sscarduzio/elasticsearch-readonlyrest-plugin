@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import com.google.common.collect.Sets
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -34,9 +35,10 @@ import scala.collection.JavaConverters._
 class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionRequest,
                                                      indices: Set[IndexName],
                                                      esContext: EsContext,
+                                                     aclContext: AccessControlStaticContext,
                                                      clusterService: RorClusterService,
                                                      override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: ActionRequest): Set[IndexName] = indices
 
@@ -59,10 +61,11 @@ object ReflectionBasedIndicesEsRequestContext {
 
   def from(actionRequest: ActionRequest,
            esContext: EsContext,
+           aclContext: AccessControlStaticContext,
            clusterService: RorClusterService,
            threadPool: ThreadPool): Option[ReflectionBasedIndicesEsRequestContext] = {
     indicesFrom(actionRequest)
-      .map(new ReflectionBasedIndicesEsRequestContext(actionRequest, _, esContext, clusterService, threadPool))
+      .map(new ReflectionBasedIndicesEsRequestContext(actionRequest, _, esContext, aclContext, clusterService, threadPool))
   }
 
   private def indicesFrom(request: ActionRequest) = {

@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -30,9 +31,10 @@ import tech.beshu.ror.utils.ScalaOps._
 
 class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
                                              esContext: EsContext,
+                                             aclContext: AccessControlStaticContext,
                                              clusterService: RorClusterService,
                                              override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: ActionRequest): Set[IndexName] = {
     Option(invokeMethodCached(request, request.getClass, "getRequest"))
@@ -55,10 +57,11 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
 object SearchTemplateEsRequestContext {
   def from(actionRequest: ActionRequest,
            esContext: EsContext,
+           aclContext: AccessControlStaticContext,
            clusterService: RorClusterService,
            threadPool: ThreadPool): Option[SearchTemplateEsRequestContext] = {
     if (actionRequest.getClass.getSimpleName.startsWith("SearchTemplateRequest")) {
-      Some(new SearchTemplateEsRequestContext(actionRequest, esContext, clusterService, threadPool))
+      Some(new SearchTemplateEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool))
     } else {
       None
     }

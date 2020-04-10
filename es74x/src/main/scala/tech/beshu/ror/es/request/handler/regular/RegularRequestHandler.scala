@@ -24,19 +24,19 @@ import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
-import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.ForbiddenResponse
+import tech.beshu.ror.es.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, fromMismatchedCause}
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
+
 import scala.util.{Failure, Success, Try}
 
 class RegularRequestHandler(engine: Engine,
@@ -83,13 +83,16 @@ class RegularRequestHandler(engine: Engine,
                                          blockContext: B): Unit = {
     request.modifyUsing(blockContext) match {
       case ModificationResult.Modified =>
-        val searchListener = createSearchListener(request, blockContext, engine.context)
-        proceed(searchListener)
+        proceed()
       case ModificationResult.ShouldBeInterrupted =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.CannotModify =>
         logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
         onForbidden(NonEmptyList.one(OperationNotAllowed))
+      case CustomResponse(response) =>
+        respond(response)
+      case UpdateResponse(updateFunc) =>
+        proceed(new UpdateResponseListener(updateFunc))
     }
   }
 
@@ -111,47 +114,35 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def handleIndexNotFound(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]): Unit = {
-    def allowRandomNonExistentIndex(nonExistentIndex: IndexName): Unit = {
-      val bc: GeneralIndexRequestBlockContext = request.initialBlockContext
-      val newBlockContext = bc.withIndices(Set(nonExistentIndex))
-      onAllow(request, newBlockContext)
-    }
-
-    // todo: this should be moved to request context
-    if (engine.context.doesRequirePassword) {
-      val nonExistentIndex = randomNonexistentIndex(request)
-      if (nonExistentIndex.hasWildcard) {
-        allowRandomNonExistentIndex(nonExistentIndex)
-      } else {
+    request.modifyWhenIndexNotFound match {
+      case ModificationResult.Modified =>
+        proceed()
+      case ModificationResult.CannotModify =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
+      case ModificationResult.ShouldBeInterrupted =>
+        onForbidden(NonEmptyList.one(OperationNotAllowed))
+      case CustomResponse(response) =>
+        respond(response)
+      case UpdateResponse(updateFunc) =>
+        proceed(new UpdateResponseListener(updateFunc))
+    }
+  }
+
+  private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit =
+    esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, listener)
+
+  private def respond(response: ActionResponse): Unit = {
+    esContext.listener.onResponse(response)
+  }
+
+  private class UpdateResponseListener(update: ActionResponse => ActionResponse) extends ActionListener[ActionResponse] {
+    override def onResponse(response: ActionResponse): Unit = {
+      Try(update(response)) match {
+        case Success(updatedResponse) => esContext.listener.onResponse(updatedResponse)
+        case Failure(ex) => onFailure(new Exception(ex))
       }
-    } else {
-      allowRandomNonExistentIndex(randomNonexistentIndex(request))
     }
-  }
-
-  private def proceed(responseActionListener: ActionListener[ActionResponse]): Unit =
-    esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, responseActionListener)
-
-  private def createSearchListener(requestContext: RequestContext,
-                                   blockContext: BlockContext,
-                                   aclStaticContext: AccessControlStaticContext): ActionListener[ActionResponse] = {
-    Try {
-      new RegularResponseActionListener(esContext.listener, requestContext, blockContext)
-    } fold(
-      e => {
-        logger.error("on allow exception", e)
-        esContext.listener
-      },
-      identity
-    )
-  }
-
-  private def randomNonexistentIndex(requestContext: RequestContext): IndexName = {
-    requestContext.initialBlockContext.indices.headOption match {
-      case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
-      case None => IndexName.randomNonexistentIndex()
-    }
+    override def onFailure(e: Exception): Unit = esContext.listener.onFailure(e)
   }
 }
 
