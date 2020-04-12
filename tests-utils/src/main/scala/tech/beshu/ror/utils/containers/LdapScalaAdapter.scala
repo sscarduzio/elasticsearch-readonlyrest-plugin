@@ -14,22 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+
 package tech.beshu.ror.utils.containers
 
-import monix.eval.Coeval
+import com.dimafeng.testcontainers.SingleContainer
+import org.testcontainers.containers.GenericContainer
 
-object dependencies {
-
-  def ldap(name: String, ldapInitScript: String): DependencyDef = {
-    DependencyDef(
-      name = name,
-      Coeval(new LdapScalaAdapter(JavaLdapContainer.create(ldapInitScript))),
-      originalPort = LdapContainer.defaults.ldap.port)
-  }
-
-  def wiremock(name: String, mappings: String*): DependencyDef = {
-    DependencyDef(name,
-      containerCreator = Coeval(new WireMockScalaAdapter(WireMockContainer.create(mappings: _*))),
-      originalPort = WireMockContainer.WIRE_MOCK_PORT)
-  }
+class LdapScalaAdapter(proxy: JavaLdapContainer) extends SingleContainer[GenericContainer[_]]{
+  override implicit val container: GenericContainer[_] = proxy
 }

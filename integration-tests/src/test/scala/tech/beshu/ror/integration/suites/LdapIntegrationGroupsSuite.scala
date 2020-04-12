@@ -39,7 +39,7 @@ trait LdapIntegrationGroupsSuite
     EsClusterSettings(
       name = "ROR1",
       dependentServicesContainers = List(
-        ldap(name = "LDAP1", ldapInitScript =  "/ldap_integration_group_headers/ldap.ldif")
+        ldap(name = "LDAP1", ldapInitScript = "/ldap_integration_group_headers/ldap.ldif")
       ),
       nodeDataInitializer = LdapIntegrationGroupsSuite.nodeDataInitializer()
     )
