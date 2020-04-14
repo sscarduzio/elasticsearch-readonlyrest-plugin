@@ -47,7 +47,7 @@ class VerifyRepositoryEsRequestContext(actionRequest: VerifyRepositoryRequest,
   override protected def update(request: VerifyRepositoryRequest,
                                 repositories: NonEmptyList[RepositoryName]): ModificationResult = {
     if (repositories.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filter result contains more than one repository. First was taken. Whole set of repositories [${repositories.toList.mkString(",")}]")
+      logger.warn(s"[${id.show}] Filtered result contains more than one repository. First was taken. Whole set of repositories [${repositories.toList.mkString(",")}]")
     }
     request.name(repositories.head.value.value)
     Modified

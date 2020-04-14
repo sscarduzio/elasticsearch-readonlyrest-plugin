@@ -112,7 +112,6 @@ object orders {
     case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2
     case ForbiddenByMismatched.Cause.ImpersonationNotSupported => 3
   }
-  implicit val indexPatternOrder: Order[IndexPattern] = Order.by(_.value)
   implicit val repositoryOrder: Order[RepositoryName] = Order.by(_.value.value)
   implicit val snapshotOrder: Order[SnapshotName] = Order.by(_.value.value)
 }

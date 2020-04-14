@@ -55,7 +55,7 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
         true
       case index :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${id.show}] Filter result contains more than one index. First was taken. Whole set of indices [${remaining.mkString(",")}]")
+          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. Whole set of indices [${remaining.mkString(",")}]")
         }
         request.index(index.value.value)
         false

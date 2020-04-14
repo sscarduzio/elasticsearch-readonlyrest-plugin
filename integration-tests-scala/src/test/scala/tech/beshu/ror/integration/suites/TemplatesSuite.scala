@@ -20,9 +20,6 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.utils.containers.generic.{EsClusterSettings, EsContainerCreator}
-
-import scala.collection.JavaConverters._
-import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
 import tech.beshu.ror.utils.elasticsearch.TemplateManager
 
 trait TemplatesSuite
@@ -309,19 +306,7 @@ trait TemplatesSuite
             }
           }
         }
-        "template applies to allowed index and not allowed index patterns and only allowed index pattern is taken" in {
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
-          val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*", "custom_dev2_index_*"))
-
-          result.responseCode should be (200)
-
-          val user1Template = adminTemplateManager.getTemplate("new_template")
-          user1Template.responseCode should be(200)
-          user1Template.responseJson.obj("new_template").obj("index_patterns").arr.map(_.str).toList should be (
-            "custom_dev1_index_*" :: Nil
-          )
-        }
-        "template applies to generic index pattern, so it'll be narrowed" in {
+        "template applies to generic index pattern" in {
           val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
           val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_*"))
 
@@ -330,7 +315,7 @@ trait TemplatesSuite
           val user1Template = adminTemplateManager.getTemplate("new_template")
           user1Template.responseCode should be(200)
           user1Template.responseJson.obj("new_template").obj("index_patterns").arr.map(_.str).toList should be (
-            "custom_dev1_index_*" :: Nil
+            "custom_*" :: Nil
           )
         }
       }
@@ -666,6 +651,12 @@ trait TemplatesSuite
         "template contains only not allowed index patterns" in {
           val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
           val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_1*", "custom_dev1_index_2*"))
+
+          result.responseCode should be (401)
+        }
+        "template applies to allowed index and not allowed index patterns and only allowed index pattern is taken" in {
+          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
+          val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*", "custom_dev2_index_*"))
 
           result.responseCode should be (401)
         }

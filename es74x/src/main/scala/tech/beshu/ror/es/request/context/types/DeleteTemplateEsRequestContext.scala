@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.request.context.types
 
 import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
+import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
 import tech.beshu.ror.es.RorClusterService
@@ -26,28 +26,25 @@ import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.JavaConverters._
-
-class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
+class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
                                      esContext: EsContext,
                                      clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
   extends BaseSingleTemplateEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def templateFrom(request: PutIndexTemplateRequest): Template = {
+  override protected def templateFrom(request: DeleteIndexTemplateRequest): Template = {
     val templateName = NonEmptyString
       .from(request.name())
       .map(TemplateName.apply)
-      .getOrElse(throw RequestSeemsToBeInvalid[PutIndexTemplateRequest]("PutIndexTemplateRequest template name cannot be empty"))
+      .getOrElse(throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("DeleteIndexTemplateRequest template name cannot be empty"))
 
-    val indexPatterns = UniqueNonEmptyList
-      .fromList(request.patterns().asScala.flatMap(IndexName.fromString).toList)
-      .getOrElse(throw RequestSeemsToBeInvalid[PutIndexTemplateRequest]("PutIndexTemplateRequest is required to have at least one index pattern"))
-
-    Template(templateName, indexPatterns)
+    clusterService.getTemplate(templateName) match {
+      case Some(template) => template
+      case None => Template(templateName, UniqueNonEmptyList.of(IndexName.wildcard))
+    }
   }
 
-  override protected def update(request: PutIndexTemplateRequest, template: Template): ModificationResult =
-    // nothing to modify - if it was filtered, we are good
+  override protected def update(request: DeleteIndexTemplateRequest, template: Template): ModificationResult =
+  // nothing to modify - if it was filtered, we are good
     ModificationResult.Modified
 }

@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{GeneralIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater}
+import cats.data.NonEmptyList
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{GeneralIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -24,8 +25,11 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 // todo: maybe type/specific to not repeat?
 sealed trait BlockContext {
   def requestContext: RequestContext
+
   def userMetadata: UserMetadata
+
   def responseHeaders: Set[Header]
+
   def contextHeaders: Set[Header]
 }
 object BlockContext {
@@ -62,7 +66,7 @@ object BlockContext {
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
                                                override val contextHeaders: Set[Header],
-                                               indices: Set[IndexName])
+                                               templates: Set[Template])
     extends BlockContext
 
   final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
@@ -105,6 +109,12 @@ object BlockContext {
     }
   }
 
+  implicit class TemplateRequestBlockContextUpdaterOps(val blockContext: TemplateRequestBlockContext) extends AnyVal {
+    def withTemplates(templates: Set[Template]): TemplateRequestBlockContext = {
+      TemplateRequestBlockContextUpdater.withTemplates(blockContext, templates)
+    }
+  }
+
   implicit class IndicesFromBlockContext(val blockContext: BlockContext) extends AnyVal {
     def indices: Set[IndexName] = {
       blockContext match {
@@ -112,7 +122,7 @@ object BlockContext {
         case _: GeneralNonIndexRequestBlockContext => Set.empty
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.indices
-        case _: TemplateRequestBlockContext => Set.empty // todo:
+        case _: TemplateRequestBlockContext => Set.empty
         case bc: GeneralIndexRequestBlockContext => bc.indices
       }
     }

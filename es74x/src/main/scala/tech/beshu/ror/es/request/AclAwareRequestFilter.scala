@@ -103,11 +103,11 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new VerifyRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
       // templates
       case request: GetIndexTemplatesRequest =>
-        regularRequestHandler.handle(new GetIndexTemplatesEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new GetTemplatesEsRequestContext(request, esContext, clusterService, threadPool))
       case request: PutIndexTemplateRequest =>
         regularRequestHandler.handle(new CreateTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       case request: DeleteIndexTemplateRequest =>
-        regularRequestHandler.handle(new DeleteIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new DeleteTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       // indices
       case request: BulkShardRequest =>
         regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, aclContext, clusterService, threadPool))

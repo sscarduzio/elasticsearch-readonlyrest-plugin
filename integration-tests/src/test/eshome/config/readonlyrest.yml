@@ -20,6 +20,3 @@ readonlyrest:
     - name: "dev2 indexes"
       indices: ["@{user}_index", "custom_@{user}_index_*"]
       auth_key: dev2:test
-
-    - name: "dev3 - no indices rule"
-      auth_key: dev3:test

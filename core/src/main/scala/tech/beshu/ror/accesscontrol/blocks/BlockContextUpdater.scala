@@ -16,9 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
+import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RepositoryName, SnapshotName, Template}
 
 sealed trait BlockContextUpdater[B <: BlockContext] {
 
@@ -123,7 +124,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[TemplateRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: TemplateRequestBlockContext): TemplateRequestBlockContext =
-      TemplateRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+      TemplateRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, blockContext.templates)
 
     override def withUserMetadata(blockContext: TemplateRequestBlockContext,
                                   userMetadata: UserMetadata): TemplateRequestBlockContext =
@@ -136,6 +137,10 @@ object BlockContextUpdater {
     override def withAddedContextHeader(blockContext: TemplateRequestBlockContext,
                                         header: Header): TemplateRequestBlockContext =
       blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
+
+    def withTemplates(blockContext: TemplateRequestBlockContext,
+                      templates: Set[Template]): TemplateRequestBlockContext =
+      blockContext.copy(templates = templates)
   }
 
   implicit object GeneralIndexRequestBlockContextUpdater

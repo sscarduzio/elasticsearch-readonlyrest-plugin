@@ -37,7 +37,7 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
 
   override protected def update(request: R, indices: NonEmptyList[IndexName]): ModificationResult = {
     if (indices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filter result contains more than one index. First was taken. Whole set of indices [${indices.toList.mkString(",")}]")
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. Whole set of indices [${indices.toList.mkString(",")}]")
     }
     update(request, indices.head)
   }

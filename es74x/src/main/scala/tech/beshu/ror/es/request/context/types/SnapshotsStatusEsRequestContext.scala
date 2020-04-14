@@ -82,7 +82,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filter result contains more than one repository. First was taken. Whole set of repositories [${repositories.mkString(",")}]")
+          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. Whole set of repositories [${repositories.mkString(",")}]")
         }
         Right(repository)
     }

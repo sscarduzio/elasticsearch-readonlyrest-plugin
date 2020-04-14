@@ -24,7 +24,7 @@ import org.elasticsearch.cluster.ClusterState
 import org.elasticsearch.cluster.metadata.MetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.findTemplatesIndicesPatterns
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.narrowAllowedTemplatesIndicesPatterns
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
@@ -66,7 +66,7 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
         val filteredTemplates = oldMetadata
           .templates().valuesIt().asScala.toSet
           .filter { t =>
-            findTemplatesIndicesPatterns(
+            narrowAllowedTemplatesIndicesPatterns(
               t.patterns().asScala.flatMap(NonEmptyString.unapply).map(IndexName.apply).toSet,
               allowedIndices.toList.toSet
             ).nonEmpty

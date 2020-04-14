@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.util.{Base64, Locale}
 
 import cats.Eq
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import cats.implicits._
 import com.comcast.ip4s.interop.cats.HostnameResolver
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{Empty
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.util.Try
 
@@ -288,12 +289,10 @@ object domain {
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
   }
 
-  final case class Template(value: NonEmptyString, patterns: NonEmptySet[IndexPattern])
-
-  final case class IndexPattern(value: NonEmptyString)
-  object IndexPattern {
-    def from(value: String): Option[IndexPattern] =
-      NonEmptyString.from(value).map(new IndexPattern(_)).toOption
+  final case class Template(name: TemplateName, patterns: UniqueNonEmptyList[IndexName])
+  final case class TemplateName(value: NonEmptyString)
+  object TemplateName {
+    implicit val eqTemplateName: Eq[TemplateName] = Eq.fromUniversalEquals
   }
 
   final case class ApiKey(value: NonEmptyString)

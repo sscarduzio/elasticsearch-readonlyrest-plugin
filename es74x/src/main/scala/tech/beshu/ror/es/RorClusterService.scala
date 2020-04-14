@@ -17,17 +17,15 @@
 package tech.beshu.ror.es
 
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
 import tech.beshu.ror.es.RorClusterService._
 
 trait RorClusterService {
 
-  // todo: remove unecessary
   def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid]
-  def allIndices: Set[IndexName]
   def allIndicesAndAliases: Map[IndexName, Set[AliasName]]
-  def findTemplatesOfIndices(indices: Set[IndexName]): Set[IndexName]
-  def getTemplatesWithPatterns: Map[TemplateName, Set[IndexPatten]]
+  def allTemplates: Set[Template]
+  def getTemplate(name: TemplateName): Option[Template]
   def expandIndices(indices: Set[domain.IndexName]): Set[domain.IndexName]
 }
 
@@ -35,6 +33,4 @@ object RorClusterService {
   type IndexOrAlias = IndexName
   type AliasName = IndexName
   type IndexUuid = String
-  type IndexPatten = IndexName
-  type TemplateName = String
 }

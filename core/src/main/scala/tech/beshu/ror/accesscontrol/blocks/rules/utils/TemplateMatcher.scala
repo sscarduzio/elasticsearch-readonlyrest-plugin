@@ -21,17 +21,28 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 
 object TemplateMatcher {
 
-  def findTemplatesIndicesPatterns(templatesPatterns: Set[IndexName],
-                                   allowedIndices: Set[IndexName]): Set[IndexName] = {
-    val filteredPatterns = MatcherWithWildcardsScalaAdapter
-      .create(templatesPatterns)
-      .filter(allowedIndices)
-    if (filteredPatterns.nonEmpty) {
-      filteredPatterns
-    } else {
-      MatcherWithWildcardsScalaAdapter
-        .create(allowedIndices)
-        .filter(templatesPatterns)
-    }
+  // todo: maybe not needed
+  def narrowAllowedTemplatesIndicesPatterns(templatesPatterns: Set[IndexName],
+                                            allowedIndices: Set[IndexName]): Set[IndexName] = {
+    val allowedIndicesMatcher = MatcherWithWildcardsScalaAdapter.create(allowedIndices)
+    templatesPatterns
+      .flatMap { pattern =>
+        val result = MatcherWithWildcardsScalaAdapter
+          .create(Set(pattern))
+          .filter(allowedIndices)
+        if (result.nonEmpty) result
+        else if (allowedIndicesMatcher.`match`(pattern)) Set(pattern)
+        else Set.empty[IndexName]
+      }
   }
+
+  def filterAllowedTemplatesIndicesPatterns(templatesPatterns: Set[IndexName],
+                                            allowedIndices: Set[IndexName]): Set[IndexName] = {
+    val result = new ScalaMatcherWithWildcards(templatesPatterns)
+      .filterWithPatternMatched(allowedIndices)
+      .map(_._2)
+    if (result.isEmpty) new ScalaMatcherWithWildcards(allowedIndices).filter(templatesPatterns)
+    else result
+  }
+
 }
