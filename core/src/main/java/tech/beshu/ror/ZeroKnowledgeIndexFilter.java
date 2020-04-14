@@ -97,7 +97,7 @@ public class ZeroKnowledgeIndexFilter {
       return newIndices;
     }
     else {
-      return null;
+      return indices;
     }
   }
 
