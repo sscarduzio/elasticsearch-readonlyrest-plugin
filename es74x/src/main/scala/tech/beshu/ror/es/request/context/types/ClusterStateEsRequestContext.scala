@@ -17,24 +17,15 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
-import org.elasticsearch.cluster.ClusterState
-import org.elasticsearch.cluster.metadata.MetaData
-import org.elasticsearch.common.collect.ImmutableOpenMap
+import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.narrowAllowedTemplatesIndicesPatterns
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._
-
-import scala.collection.JavaConverters._
 
 class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
                                    esContext: EsContext,
@@ -49,54 +40,8 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
 
   override protected def update(request: ClusterStateRequest,
                                 indices: NonEmptyList[domain.IndexName]): ModificationResult = {
-    uriPath match {
-      case TemplatePath(_) | CatTemplatePath(_) =>
-        ModificationResult.UpdateResponse(updateCatTemplateResponse(indices))
-      case _ =>
-        request.indices(indices.toList.map(_.value.value): _*)
-        Modified
-    }
+
+    request.indices(indices.toList.map(_.value.value): _*)
+    Modified
   }
-
-  private def updateCatTemplateResponse(allowedIndices: NonEmptyList[domain.IndexName])
-                                       (actionResponse: ActionResponse): ActionResponse = {
-    actionResponse match {
-      case response: ClusterStateResponse =>
-        val oldMetadata = response.getState.metaData()
-        val filteredTemplates = oldMetadata
-          .templates().valuesIt().asScala.toSet
-          .filter { t =>
-            narrowAllowedTemplatesIndicesPatterns(
-              t.patterns().asScala.flatMap(NonEmptyString.unapply).map(IndexName.apply).toSet,
-              allowedIndices.toList.toSet
-            ).nonEmpty
-          }
-
-        val newMetadataWithFilteredTemplates = oldMetadata.templates().valuesIt().asScala
-          .foldLeft(new MetaData.Builder(oldMetadata)) {
-            case (acc, elem) => acc.removeTemplate(elem.name())
-          }
-          .templates(
-            ImmutableOpenMap
-              .builder(filteredTemplates.size)
-              .putAll(filteredTemplates.map(t => (t.name(), t)).toMap.asJava)
-              .build()
-          )
-          .build()
-
-        val modifiedClusterState =
-          ClusterState
-            .builder(response.getState)
-            .metaData(newMetadataWithFilteredTemplates)
-            .build()
-
-        new ClusterStateResponse(
-          response.getClusterName,
-          modifiedClusterState,
-          response.isWaitForTimedOut
-        )
-      case response => response
-    }
-  }
-
 }

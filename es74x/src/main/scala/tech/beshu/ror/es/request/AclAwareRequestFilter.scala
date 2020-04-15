@@ -96,7 +96,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: GetRepositoriesRequest =>
         regularRequestHandler.handle(new GetRepositoriesEsRequestContext(request, esContext, clusterService, threadPool))
       case request: PutRepositoryRequest =>
-        regularRequestHandler.handle(new PutRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new CreateRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
       case request: DeleteRepositoryRequest =>
         regularRequestHandler.handle(new DeleteRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
       case request: VerifyRepositoryRequest =>
@@ -134,7 +134,12 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: IndicesShardStoresRequest =>
         regularRequestHandler.handle(new IndicesShardStoresEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ClusterStateRequest =>
-        regularRequestHandler.handle(new ClusterStateEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        TemplateClusterStateEsRequestContext.from(request, esContext, clusterService, threadPool) match {
+          case Some(requestContext) =>
+            regularRequestHandler.handle(requestContext)
+          case None =>
+            regularRequestHandler.handle(new ClusterStateEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        }
       case request: IndicesRequest.Replaceable =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ReindexRequest =>

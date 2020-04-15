@@ -28,9 +28,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.filterAllowedTemplatesIndicesPatterns
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.{filterAllowedTemplateIndexPatterns, narrowAllowedTemplateIndexPatterns}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, ZeroKnowledgeIndexFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, TemplateMatcher, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -40,6 +40,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class IndicesRule(val settings: Settings)
   extends RegularRule with Logging {
@@ -288,7 +289,8 @@ class IndicesRule(val settings: Settings)
       canTemplatesReadOnlyRequestPass(blockContext, resolvedAllowedIndices)
     } else {
       val result = for {
-        _ <- canTemplatesBeOverwritten(blockContext, resolvedAllowedIndices)
+        _ <- canTemplateBeOverwritten(blockContext, resolvedAllowedIndices)
+        _ <- canAddTemplateRequestPass(blockContext, resolvedAllowedIndices)
         _ <- canTemplatesWriteRequestPass(blockContext, resolvedAllowedIndices)
       } yield ()
       result.left.getOrElse(CanPass.No())
@@ -311,15 +313,15 @@ class IndicesRule(val settings: Settings)
       blockContext
         .templates
         .flatMap { template =>
-          val filtered = filterAllowedTemplatesIndicesPatterns(template.patterns.toSet, allowedIndices)
+          val filtered = filterAllowedTemplateIndexPatterns(template.patterns.toSet, allowedIndices)
           if (filtered.nonEmpty) Some(template)
           else None
         }
     }
   }
 
-  private def canTemplatesBeOverwritten(blockContext: TemplateRequestBlockContext,
-                                        allowedIndices: Set[IndexName]): CheckContinuation[Set[Template]] = {
+  private def canTemplateBeOverwritten(blockContext: TemplateRequestBlockContext,
+                                       allowedIndices: Set[IndexName]): CheckContinuation[Set[Template]] = {
     val canAllTemplatesBeModified = blockContext.templates.forall { template =>
       val existingTemplate = blockContext
         .requestContext
@@ -330,8 +332,35 @@ class IndicesRule(val settings: Settings)
         case None => true
       }
     }
-    if(canAllTemplatesBeModified) continue
+    if (canAllTemplatesBeModified) continue
     else stop(CanPass.No())
+  }
+
+  private def canAddTemplateRequestPass(blockContext: TemplateRequestBlockContext,
+                                        allowedIndices: Set[IndexName]): CheckContinuation[Set[Template]] = {
+    if (blockContext.requestContext.action.isPutTemplate) {
+      val modifiedTemplates = blockContext
+        .templates
+        .flatMap { template =>
+          val templatePatterns = template.patterns.toSet
+          val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices)
+          if (narrowedPatterns.map(_._1) == templatePatterns) {
+            UniqueNonEmptyList
+              .fromList(narrowedPatterns.map(_._2).toList)
+              .map(nel => template.copy(patterns = nel))
+          } else {
+            logger.debug("")
+            None
+          }
+        }
+      if (modifiedTemplates.size == blockContext.templates.size) {
+        stop(CanPass.Yes(modifiedTemplates))
+      } else {
+        stop(CanPass.No())
+      }
+    } else {
+      continue
+    }
   }
 
   private def canTemplatesWriteRequestPass(blockContext: TemplateRequestBlockContext,
@@ -348,7 +377,8 @@ class IndicesRule(val settings: Settings)
 
   private def canTemplateBeChanged(template: Template, allowedIndices: Set[IndexName]) = {
     val templatePatterns = template.patterns.toSet
-    filterAllowedTemplatesIndicesPatterns(templatePatterns, allowedIndices) == templatePatterns
+    val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices).map(_._2)
+    narrowedPatterns.intersect(templatePatterns) == templatePatterns
   }
 
   private val matchAll = settings.allowedIndices.exists {
@@ -359,6 +389,7 @@ class IndicesRule(val settings: Settings)
   private type CheckContinuation[T] = Either[CanPass[T], Unit]
   private object IndicesCheckContinuation {
     def stop[T](result: CanPass[T]): CheckContinuation[T] = Left(result)
+
     def continue[T]: CheckContinuation[T] = Right(())
   }
 }

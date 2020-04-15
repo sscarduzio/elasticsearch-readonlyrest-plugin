@@ -19,7 +19,7 @@ abstract class BaseSingleTemplateEsRequestContext[R <: ActionRequest](actionRequ
 
   protected def update(request: R, template: Template): ModificationResult
 
-  override protected def templateFroms(request: R): Set[Template] = Set(templateFrom(request))
+  override protected def templatesFrom(request: R): Set[Template] = Set(templateFrom(request))
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     val templates = blockContext.templates

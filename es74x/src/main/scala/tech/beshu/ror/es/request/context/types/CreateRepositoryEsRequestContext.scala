@@ -28,10 +28,10 @@ import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
 
-class PutRepositoryEsRequestContext(actionRequest: PutRepositoryRequest,
-                                    esContext: EsContext,
-                                    clusterService: RorClusterService,
-                                    override val threadPool: ThreadPool)
+class CreateRepositoryEsRequestContext(actionRequest: PutRepositoryRequest,
+                                       esContext: EsContext,
+                                       clusterService: RorClusterService,
+                                       override val threadPool: ThreadPool)
   extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
   override protected def repositoriesFrom(request: PutRepositoryRequest): Set[RepositoryName] = Set {

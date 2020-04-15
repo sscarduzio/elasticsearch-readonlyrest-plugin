@@ -36,7 +36,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
                                    override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def templateFroms(request: GetIndexTemplatesRequest): Set[Template] = {
+  override protected def templatesFrom(request: GetIndexTemplatesRequest): Set[Template] = {
     val templatesFromRequest = request
       .names().asSafeSet
       .flatMap(templateFrom)

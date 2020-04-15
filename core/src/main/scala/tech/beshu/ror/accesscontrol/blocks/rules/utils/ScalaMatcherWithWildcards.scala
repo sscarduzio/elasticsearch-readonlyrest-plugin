@@ -10,18 +10,18 @@ class ScalaMatcherWithWildcards[PATTERN: StringTNaturalTransformation](patterns:
     .map(p => (p, nt.toAString(p).split("\\*+", -1 /* want empty trailing token if any */).toList))
 
   def filterWithPatternMatched[T: StringTNaturalTransformation](items: Set[T]): Set[(T, PATTERN)] = {
-    items.flatMap(i => `match`(i).map((i, _)))
+    items.flatMap(i => `match`(i))
   }
 
   def filter[T: StringTNaturalTransformation](items: Set[T]): Set[T] = {
     items.flatMap(i => `match`(i).map(_ => i))
   }
 
-  private def `match`[T: StringTNaturalTransformation](item: T): Option[PATTERN] = {
+  def `match`[T: StringTNaturalTransformation](item: T): Option[(T, PATTERN)] = {
     val itemString = implicitly[StringTNaturalTransformation[T]].toAString(item)
     matchers
       .find { case (_, stringPatterns) => matchPattern(stringPatterns, itemString) }
-      .map(_._1)
+      .map(p => (item, p._1))
   }
 
   private def matchPattern(pattern: List[String], line: String): Boolean = {

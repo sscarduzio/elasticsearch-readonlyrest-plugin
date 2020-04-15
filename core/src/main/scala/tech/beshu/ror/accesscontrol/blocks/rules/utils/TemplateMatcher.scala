@@ -21,28 +21,26 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 
 object TemplateMatcher {
 
-  // todo: maybe not needed
-  def narrowAllowedTemplatesIndicesPatterns(templatesPatterns: Set[IndexName],
-                                            allowedIndices: Set[IndexName]): Set[IndexName] = {
-    val allowedIndicesMatcher = MatcherWithWildcardsScalaAdapter.create(allowedIndices)
-    templatesPatterns
-      .flatMap { pattern =>
-        val result = MatcherWithWildcardsScalaAdapter
-          .create(Set(pattern))
-          .filter(allowedIndices)
-        if (result.nonEmpty) result
-        else if (allowedIndicesMatcher.`match`(pattern)) Set(pattern)
-        else Set.empty[IndexName]
-      }
+  type OriginPatternName = IndexName
+  type NarrowedPatternName = IndexName
+
+  def filterAllowedTemplateIndexPatterns(templatePatterns: Set[OriginPatternName],
+                                         allowedIndices: Set[IndexName]): Set[OriginPatternName] = {
+    narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices).map(_._1)
   }
 
-  def filterAllowedTemplatesIndicesPatterns(templatesPatterns: Set[IndexName],
-                                            allowedIndices: Set[IndexName]): Set[IndexName] = {
-    val result = new ScalaMatcherWithWildcards(templatesPatterns)
-      .filterWithPatternMatched(allowedIndices)
-      .map(_._2)
-    if (result.isEmpty) new ScalaMatcherWithWildcards(allowedIndices).filter(templatesPatterns)
-    else result
+  def narrowAllowedTemplateIndexPatterns(templatePatterns: Set[IndexName],
+                                         allowedIndices: Set[IndexName]): Set[(OriginPatternName, NarrowedPatternName)] = {
+    val allowedIndicesMatcher = new ScalaMatcherWithWildcards(allowedIndices)
+    templatePatterns
+      .flatMap { pattern =>
+        val result = new ScalaMatcherWithWildcards(Set(pattern))
+          .filterWithPatternMatched(allowedIndices)
+          .map(_.swap)
+
+        if (result.nonEmpty) result
+        else allowedIndicesMatcher.`match`(pattern).map(_ => (pattern, pattern))
+      }
   }
 
 }

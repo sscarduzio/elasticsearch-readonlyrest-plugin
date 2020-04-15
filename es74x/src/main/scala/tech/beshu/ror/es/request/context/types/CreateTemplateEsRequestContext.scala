@@ -47,7 +47,8 @@ class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
     Template(templateName, indexPatterns)
   }
 
-  override protected def update(request: PutIndexTemplateRequest, template: Template): ModificationResult =
-    // nothing to modify - if it was filtered, we are good
+  override protected def update(request: PutIndexTemplateRequest, template: Template): ModificationResult = {
+    request.patterns(template.patterns.map(_.value.value).toList.asJava)
     ModificationResult.Modified
+  }
 }

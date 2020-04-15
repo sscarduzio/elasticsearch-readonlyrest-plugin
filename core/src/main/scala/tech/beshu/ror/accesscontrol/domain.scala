@@ -31,10 +31,11 @@ import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
+import tech.beshu.ror.accesscontrol.domain.IndexName.from
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.util.Try
 
@@ -229,6 +230,7 @@ object domain {
     def isSnapshot: Boolean = value.contains("/snapshot/")
     def isRepository: Boolean = value.contains("/repository/")
     def isTemplate: Boolean = value.contains("/template/")
+    def isPutTemplate: Boolean = value == "indices:admin/template/put"
   }
   object Action {
     val searchAction = Action("indices:data/read/search")
@@ -292,6 +294,9 @@ object domain {
   final case class Template(name: TemplateName, patterns: UniqueNonEmptyList[IndexName])
   final case class TemplateName(value: NonEmptyString)
   object TemplateName {
+    def fromString(value: String): Option[TemplateName] = {
+      NonEmptyString.from(value).map(TemplateName.apply).toOption
+    }
     implicit val eqTemplateName: Eq[TemplateName] = Eq.fromUniversalEquals
   }
 
