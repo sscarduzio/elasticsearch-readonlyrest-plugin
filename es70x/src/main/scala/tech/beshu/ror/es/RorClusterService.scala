@@ -14,26 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-// todo: fixme
-//include 'es51x'
-//include 'es52x'
-//include 'es53x'
-//include 'es55x'
-//include 'es60x'
-//include 'es61x'
-//include 'es62x'
-//include 'es63x'
-//include 'es66x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es74x-cloud'
-include 'tests-utils'
-include 'integration-tests'
-include 'integration-tests-scala'
+import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
+import tech.beshu.ror.es.RorClusterService._
+
+trait RorClusterService {
+
+  def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid]
+  def allIndicesAndAliases: Map[IndexName, Set[AliasName]]
+  def allTemplates: Set[Template]
+  def getTemplate(name: TemplateName): Option[Template]
+  def expandIndices(indices: Set[domain.IndexName]): Set[domain.IndexName]
+}
+
+object RorClusterService {
+  type IndexOrAlias = IndexName
+  type AliasName = IndexName
+  type IndexUuid = String
+}
