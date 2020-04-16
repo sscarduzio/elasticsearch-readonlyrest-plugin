@@ -14,56 +14,42 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.request.usermetadata
+package tech.beshu.ror.es.request.handler.usermetadata
 
+import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.support.ActionFilterChain
-import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
-import org.elasticsearch.rest.RestChannel
-import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.request.{ForbiddenResponse, RequestInfo, RorNotAvailableResponse}
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.context.EsRequest
+import tech.beshu.ror.es.request.{ForbiddenResponse, RorNotAvailableResponse}
 import tech.beshu.ror.utils.LoggerOps._
-import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.{Failure, Success, Try}
 
 class CurrentUserMetadataRequestHandler(engine: Engine,
-                                        task: Task,
-                                        action: String,
-                                        request: ActionRequest,
-                                        baseListener: ActionListener[ActionResponse],
-                                        chain: ActionFilterChain[ActionRequest, ActionResponse],
-                                        channel: RestChannel,
+                                        esContext: EsContext,
                                         threadPool: ThreadPool)
                                        (implicit scheduler: Scheduler)
   extends Logging {
 
-  def handle(requestInfo: RequestInfo, requestContext: RequestContext): Unit = {
+  def handle(request: RequestContext.Aux[CurrentUserMetadataRequestBlockContext] with EsRequest[CurrentUserMetadataRequestBlockContext]): Task[Unit] = {
     engine.accessControl
-      .handleMetadataRequest(requestContext)
-      .runAsync {
-        case Right(r) =>
-          threadPool.getThreadContext.stashContext.bracket { _ =>
-            commitResult(r.result, requestContext, requestInfo)
-          }
-        case Left(ex) =>
-          baseListener.onFailure(new Exception(ex))
-      }
+      .handleMetadataRequest(request)
+      .map { r => commitResult(r.result, request) }
   }
 
   private def commitResult(result: UserMetadataRequestResult,
-                           requestContext: RequestContext,
-                           requestInfo: RequestInfo): Unit = {
+                           requestContext: RequestContext): Unit = {
     Try {
       result match {
         case UserMetadataRequestResult.Allow(userMetadata, _) =>
-          onAllow(requestContext, requestInfo, userMetadata)
+          onAllow(requestContext, userMetadata)
         case UserMetadataRequestResult.Forbidden =>
           onForbidden()
         case UserMetadataRequestResult.PassedThrough =>
@@ -76,18 +62,15 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     }
   }
 
-  private def onAllow(requestContext: RequestContext,
-                      requestInfo: RequestInfo,
-                      userMetadata: UserMetadata): Unit = {
-    val responseActionListener = new CurrentUserMetadataResponseActionListener(baseListener, userMetadata)
-    chain.proceed(task, action, request, responseActionListener)
+  private def onAllow(requestContext: RequestContext, userMetadata: UserMetadata): Unit = {
+    val responseActionListener = new CurrentUserMetadataResponseActionListener(requestContext, esContext.listener, userMetadata)
+    esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, responseActionListener)
   }
 
   private def onForbidden(): Unit = {
-    channel.sendResponse(ForbiddenResponse.create(channel, Nil, engine.context))
+    esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, Nil, engine.context))
   }
 
   private def onPassThrough(): Unit =
-    channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(channel))
-
+    esContext.channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(esContext.channel))
 }
