@@ -20,14 +20,38 @@ import java.lang.reflect.Modifier
 import java.util.regex.Pattern
 
 import org.elasticsearch.action.CompositeIndicesRequest
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
+import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices
+import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
+import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
+
+sealed trait ExtractedIndices {
+  def indices: Set[String]
+}
+object ExtractedIndices {
+  case object NoIndices extends ExtractedIndices {
+    override def indices: Set[String] = Set.empty
+  }
+  final case class RegularIndices(override val indices: Set[String]) extends ExtractedIndices
+  sealed trait SqlIndices extends ExtractedIndices {
+    def indices: Set[String]
+  }
+  object SqlIndices {
+    final case class SqlTableRelated(tables: List[IndexSqlTable]) extends SqlIndices {
+      override lazy val indices: Set[String] = tables.flatMap(_.indices).toSet
+    }
+    object SqlTableRelated {
+      final case class IndexSqlTable(tableStringInQuery: String, indices: Set[String])
+    }
+    case object SqlNotTableRelated extends SqlIndices {
+      override def indices: Set[String] = Set.empty
+    }
+  }
+}
 
 object SqlRequestHelper {
 
@@ -104,11 +128,12 @@ final class SimpleStatement(val underlyingObject: AnyRef)
   extends Statement {
 
   lazy val indices: SqlIndices = {
-    val tableIdentifiersList = tableIdentifiersFrom {
+    val tableInfoList = tableInfosFrom {
       doPreAnalyze(newPreAnalyzer, underlyingObject)
     }
     SqlIndices.SqlTableRelated {
-      tableIdentifiersList
+      tableInfoList
+        .map(tableIdentifierFrom)
         .map(indicesStringFrom)
         .map { tableString =>
           IndexSqlTable(tableString, splitToIndicesPatterns(tableString))
@@ -128,13 +153,20 @@ final class SimpleStatement(val underlyingObject: AnyRef)
       .invoke(preAnalyzer, statement)
   }
 
-  private def tableIdentifiersFrom(preAnalysis: Any)
-                                  (implicit classLoader: ClassLoader) = {
+  private def tableInfosFrom(preAnalysis: Any)
+                            (implicit classLoader: ClassLoader) = {
     ReflecUtils
       .getFieldOf(preAnalysisClass, Modifier.PUBLIC, "indices")
       .get(preAnalysis)
       .asInstanceOf[java.util.List[AnyRef]]
       .asScala.toList
+  }
+
+  private def tableIdentifierFrom(tableInfo: Any)
+                                 (implicit classLoader: ClassLoader) = {
+    ReflecUtils
+      .getMethodOf(tableInfoClass, Modifier.PUBLIC, "id", 0)
+      .invoke(tableInfo)
   }
 
   private def indicesStringFrom(tableIdentifier: Any)
@@ -150,6 +182,9 @@ final class SimpleStatement(val underlyingObject: AnyRef)
 
   private def preAnalysisClass(implicit classLoader: ClassLoader) =
     classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.PreAnalyzer$PreAnalysis")
+
+  private def tableInfoClass(implicit classLoader: ClassLoader) =
+    classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.TableInfo")
 
   private def tableIdentifierClass(implicit classLoader: ClassLoader) =
     classLoader.loadClass("org.elasticsearch.xpack.sql.plan.TableIdentifier")
