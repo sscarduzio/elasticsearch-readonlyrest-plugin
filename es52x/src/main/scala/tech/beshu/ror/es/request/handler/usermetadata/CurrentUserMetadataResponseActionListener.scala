@@ -14,19 +14,24 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.request.usermetadata
+package tech.beshu.ror.es.request.handler.usermetadata
 
 import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.common.xcontent.{ToXContent, XContentBuilder}
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 
-import scala.collection.JavaConverters._
-
-class CurrentUserMetadataResponseActionListener(baseListener: ActionListener[ActionResponse],
+class CurrentUserMetadataResponseActionListener(requestContext: RequestContext,
+                                                baseListener: ActionListener[ActionResponse],
                                                 userMetadata: UserMetadata)
   extends ActionListener[ActionResponse] {
 
-  override def onResponse(response: ActionResponse): Unit = baseListener.onResponse(new RRMetadataResponse(userMetadata))
+  override def onResponse(response: ActionResponse): Unit = {
+    if(requestContext.uriPath.isCurrentUserMetadataPath)
+      baseListener.onResponse(new RRMetadataResponse(userMetadata))
+    else
+      baseListener.onResponse(response)
+  }
 
   override def onFailure(e: Exception): Unit = baseListener.onFailure(e)
 
