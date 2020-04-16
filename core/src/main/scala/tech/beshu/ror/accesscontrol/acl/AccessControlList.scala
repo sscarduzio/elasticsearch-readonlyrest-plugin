@@ -60,7 +60,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
               case Policy.Allow => RegularRequestResult.Allow(blockContext, block)
               case Policy.Forbid => RegularRequestResult.ForbiddenBy(blockContext, block)
             }
-          case Mismatched(s) if wasRejectedDueToIndexNotFound(history) =>
+          case Mismatched(_) if wasRejectedDueToIndexNotFound(history) =>
             RegularRequestResult.IndexNotFound()
           case Mismatched(_) =>
             RegularRequestResult.ForbiddenByMismatched(

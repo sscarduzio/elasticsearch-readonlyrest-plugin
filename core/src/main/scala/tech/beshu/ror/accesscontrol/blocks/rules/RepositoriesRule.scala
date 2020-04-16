@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RepositoryRequestBlockContext, _}
 import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
@@ -26,12 +26,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeMatchFilterS
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RepositoryName}
+import tech.beshu.ror.accesscontrol.domain.RepositoryName
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.MatcherWithWildcards
-import BlockContext._
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import scala.collection.JavaConverters._
 

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RepositoryName, SnapshotName, Template}

@@ -20,7 +20,6 @@ import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RequestContextOps}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
 final case class UserMetadata private(loggedUser: Option[LoggedUser],
                                       currentGroup: Option[Group],

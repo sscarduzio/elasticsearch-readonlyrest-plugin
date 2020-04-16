@@ -95,7 +95,7 @@ class IndicesRule(val settings: Settings)
             // Don't run locally if only have crossCluster, otherwise you'll resolve the equivalent of "*"
             localIndices
           } else {
-            canPass(blockContext, indicesMatcher, resolvedAllowedIndices) match {
+            canPass(blockContext, indicesMatcher) match {
               case CanPass.No(Some(Reason.IndexNotExist)) =>
                 return Rejected(Cause.IndexNotFound)
               case CanPass.No(_) =>
@@ -115,7 +115,7 @@ class IndicesRule(val settings: Settings)
       }
     }
 
-    canPass(blockContext, indicesMatcher, resolvedAllowedIndices) match {
+    canPass(blockContext, indicesMatcher) match {
       case CanPass.Yes(indices) =>
         Fulfilled(blockContext.withIndices(indices))
       case CanPass.No(Some(Reason.IndexNotExist)) =>
@@ -129,19 +129,17 @@ class IndicesRule(val settings: Settings)
     requestContext.isReadOnlyRequest && List(searchAction, mSearchAction).contains(requestContext.action)
 
   private def canPass(blockContext: GeneralIndexRequestBlockContext,
-                      matcher: IndicesMatcher,
-                      resolvedAllowedIndices: Set[IndexName]): CanPass[Set[IndexName]] = {
-    if (blockContext.requestContext.isReadOnlyRequest) canIndicesReadOnlyRequestPass(blockContext, matcher, resolvedAllowedIndices)
-    else canIndicesWriteRequestPass(blockContext, matcher, resolvedAllowedIndices)
+                      matcher: IndicesMatcher): CanPass[Set[IndexName]] = {
+    if (blockContext.requestContext.isReadOnlyRequest) canIndicesReadOnlyRequestPass(blockContext, matcher)
+    else canIndicesWriteRequestPass(blockContext, matcher)
   }
 
   private def canIndicesReadOnlyRequestPass(blockContext: GeneralIndexRequestBlockContext,
-                                            matcher: IndicesMatcher,
-                                            resolvedAllowedIndices: Set[IndexName]): CanPass[Set[IndexName]] = {
+                                            matcher: IndicesMatcher): CanPass[Set[IndexName]] = {
     val result = for {
       _ <- noneOrAllIndices(blockContext, matcher)
       _ <- allIndicesMatchedByWildcard(blockContext, matcher)
-      _ <- atLeastOneNonWildcardIndexNotExist(blockContext, matcher)
+      _ <- atLeastOneNonWildcardIndexNotExist(blockContext)
       _ <- indicesAliases(blockContext, matcher)
     } yield ()
     result.left.getOrElse(CanPass.No())
@@ -183,8 +181,7 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def atLeastOneNonWildcardIndexNotExist(blockContext: GeneralIndexRequestBlockContext,
-                                                 matcher: IndicesMatcher): CheckContinuation[Set[IndexName]] = {
+  private def atLeastOneNonWildcardIndexNotExist(blockContext: GeneralIndexRequestBlockContext): CheckContinuation[Set[IndexName]] = {
     logger.debug(s"[${blockContext.requestContext.id.show}] Checking if at least one non-wildcard index doesn't exist ...")
     val indices = blockContext.indices
     val real = blockContext.requestContext.allIndicesAndAliases.flatMap(_.all)
@@ -206,7 +203,7 @@ class IndicesRule(val settings: Settings)
     logger.debug(s"[${blockContext.requestContext.id.show}] Checking - indices & aliases ...")
     val allowedRealIndices =
       filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(blockContext, matcher) ++
-        filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured(blockContext, matcher) ++
+        filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured() ++
         filterAssumingThatAliasesAreRequestedAndAliasesAreConfigured(blockContext, matcher) ++
         filterAssumingThatAliasesAreRequestedAndIndicesAreConfigured(blockContext, matcher)
     if (allowedRealIndices.nonEmpty) {
@@ -225,8 +222,7 @@ class IndicesRule(val settings: Settings)
     matcher.filterIndices(requestedIndices)
   }
 
-  private def filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured(blockContext: GeneralIndexRequestBlockContext,
-                                                                           matcher: IndicesMatcher) = {
+  private def filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured() = {
     // eg. alias A1 of index I1 can be defined with filtering, so result of /I1/_search will be different than
     // result of /A1/_search. It means that if indices are requested and aliases are configured, the result of
     // this kind of method will always be empty set.
@@ -254,8 +250,7 @@ class IndicesRule(val settings: Settings)
   }
 
   private def canIndicesWriteRequestPass(blockContext: GeneralIndexRequestBlockContext,
-                                         matcher: IndicesMatcher,
-                                         resolvedAllowedIndices: Set[IndexName]): CanPass[Set[IndexName]] = {
+                                         matcher: IndicesMatcher): CanPass[Set[IndexName]] = {
     val result = for {
       _ <- generalWriteRequest(blockContext, matcher)
     } yield ()

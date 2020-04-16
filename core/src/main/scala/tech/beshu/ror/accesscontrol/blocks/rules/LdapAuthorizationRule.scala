@@ -32,19 +32,18 @@ class LdapAuthorizationRule(val settings: Settings)
   override val name: Rule.Name = LdapAuthorizationRule.name
 
   override protected def authorize[B <: BlockContext](blockContext: B,
-                                                         user: LoggedUser): Task[AuthorizationResult] = {
+                                                      user: LoggedUser): Task[AuthorizationResult] = {
     val requestContext = blockContext.requestContext
     requestContext.currentGroup.toOption match {
       case Some(currentGroup) if !settings.permittedGroups.contains(currentGroup) =>
         Task.now(Unauthorized)
       case Some(_) | None =>
-        authorizeWithLdapGroups(blockContext, requestContext.currentGroup.toOption, user)
+        authorizeWithLdapGroups(requestContext.currentGroup.toOption, user)
     }
   }
 
-  private def authorizeWithLdapGroups[B <: BlockContext](blockContext: B,
-                                                            currentGroup: Option[Group],
-                                                            user: LoggedUser): Task[AuthorizationResult] = {
+  private def authorizeWithLdapGroups(currentGroup: Option[Group],
+                                      user: LoggedUser): Task[AuthorizationResult] = {
     settings
       .ldap
       .groupsOf(user.id)
