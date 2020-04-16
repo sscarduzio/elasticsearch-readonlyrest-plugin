@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.{filterAllowedTemplateIndexPatterns, narrowAllowedTemplateIndexPatterns}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.filterAllowedTemplateIndexPatterns
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, TemplateMatcher, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Action.{mSearchAction, searchAction}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template}
 import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
@@ -148,7 +149,7 @@ class IndicesRule(val settings: Settings)
 
   private def noneOrAllIndices(blockContext: GeneralIndexRequestBlockContext,
                                matcher: IndicesMatcher): CheckContinuation[Set[IndexName]] = {
-    logger.debug("Checking - none or all indices ...")
+    logger.debug(s"[${blockContext.requestContext.id.show}] Checking - none or all indices ...")
     val indices = blockContext.indices
     val allIndicesAndAliases = blockContext.requestContext.allIndicesAndAliases.flatMap(_.all)
     if (allIndicesAndAliases.isEmpty) {
@@ -166,7 +167,7 @@ class IndicesRule(val settings: Settings)
 
   private def allIndicesMatchedByWildcard(blockContext: GeneralIndexRequestBlockContext,
                                           matcher: IndicesMatcher): CheckContinuation[Set[IndexName]] = {
-    logger.debug("Checking if all indices are matched ...")
+    logger.debug(s"[${blockContext.requestContext.id.show}] Checking if all indices are matched ...")
     val indices = blockContext.indices
     indices.toList match {
       case index :: Nil if !index.hasWildcard =>
@@ -184,7 +185,7 @@ class IndicesRule(val settings: Settings)
 
   private def atLeastOneNonWildcardIndexNotExist(blockContext: GeneralIndexRequestBlockContext,
                                                  matcher: IndicesMatcher): CheckContinuation[Set[IndexName]] = {
-    logger.debug("Checking if at least one non-wildcard index doesn't exist ...")
+    logger.debug(s"[${blockContext.requestContext.id.show}] Checking if at least one non-wildcard index doesn't exist ...")
     val indices = blockContext.indices
     val real = blockContext.requestContext.allIndicesAndAliases.flatMap(_.all)
     val nonExistent = indices.foldLeft(Set.empty[IndexName]) {
@@ -202,7 +203,7 @@ class IndicesRule(val settings: Settings)
 
   private def indicesAliases(blockContext: GeneralIndexRequestBlockContext,
                              matcher: IndicesMatcher): CheckContinuation[Set[IndexName]] = {
-    logger.debug("Checking - indices & aliases ...")
+    logger.debug(s"[${blockContext.requestContext.id.show}] Checking - indices & aliases ...")
     val allowedRealIndices =
       filterAssumingThatIndicesAreRequestedAndIndicesAreConfigured(blockContext, matcher) ++
         filterAssumingThatIndicesAreRequestedAndAliasesAreConfigured(blockContext, matcher) ++
@@ -263,16 +264,16 @@ class IndicesRule(val settings: Settings)
 
   private def generalWriteRequest(blockContext: GeneralIndexRequestBlockContext,
                                   matcher: IndicesMatcher): CheckContinuation[Set[IndexName]] = {
-    logger.debug("Checking - write request ...")
+    logger.debug(s"[${blockContext.requestContext.id.show}] Checking - write request ...")
     val indices = blockContext.indices
     // Write requests
     // Handle <no-index> (#TODO LEGACY)
-    logger.debug("Stage 7")
+    logger.debug(s"[${blockContext.requestContext.id.show}] Stage 7")
     if (indices.isEmpty && matcher.contains("<no-index>")) {
       stop(CanPass.Yes(indices))
     } else {
       // Reject write if at least one requested index is not allowed by the rule conf
-      logger.debug("Stage 8")
+      logger.debug(s"[${blockContext.requestContext.id.show}] Stage 8")
       stop {
         indices.find(index => !matcher.`match`(index)) match {
           case Some(_) => CanPass.No()
@@ -308,7 +309,7 @@ class IndicesRule(val settings: Settings)
 
   private def canTemplatesReadOnlyRequestPass(blockContext: TemplateRequestBlockContext,
                                               allowedIndices: Set[IndexName]): CanPass[Set[Template]] = {
-    logger.debug("Checking - template indices patterns...")
+    logger.debug(s"[${blockContext.requestContext.id.show}] Checking - template readonly request indices patterns ...")
     CanPass.Yes {
       blockContext
         .templates
@@ -322,6 +323,7 @@ class IndicesRule(val settings: Settings)
 
   private def canTemplateBeOverwritten(blockContext: TemplateRequestBlockContext,
                                        allowedIndices: Set[IndexName]): CheckContinuation[Set[Template]] = {
+    logger.debug(s"[${blockContext.requestContext.id.show}] Checking - if existing template can be overwritten ...")
     val canAllTemplatesBeModified = blockContext.templates.forall { template =>
       val existingTemplate = blockContext
         .requestContext
@@ -339,17 +341,24 @@ class IndicesRule(val settings: Settings)
   private def canAddTemplateRequestPass(blockContext: TemplateRequestBlockContext,
                                         allowedIndices: Set[IndexName]): CheckContinuation[Set[Template]] = {
     if (blockContext.requestContext.action.isPutTemplate) {
+      logger.debug(s"[${blockContext.requestContext.id.show}] Checking - if template can be added ...")
       val modifiedTemplates = blockContext
         .templates
         .flatMap { template =>
           val templatePatterns = template.patterns.toSet
           val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices)
-          if (narrowedPatterns.map(_._1) == templatePatterns) {
+          val narrowedOriginPatterns = narrowedPatterns.map(_._1)
+          if (narrowedOriginPatterns == templatePatterns) {
             UniqueNonEmptyList
               .fromList(narrowedPatterns.map(_._2).toList)
               .map(nel => template.copy(patterns = nel))
           } else {
-            logger.debug("")
+            logger.debug(
+              s"""[${blockContext.requestContext.id.show}] Template ${template.name.show} cannot be added because
+                 |it requires access to patterns [${templatePatterns.map(_.show).mkString(",")}], but according to this
+                 |rule, there is only access for following ones [${narrowedOriginPatterns.map(_.show).mkString(",")}]
+                 |""".stripMargin
+            )
             None
           }
         }
@@ -365,7 +374,7 @@ class IndicesRule(val settings: Settings)
 
   private def canTemplatesWriteRequestPass(blockContext: TemplateRequestBlockContext,
                                            allowedIndices: Set[IndexName]): CheckContinuation[Set[Template]] = {
-    logger.debug("Checking - write template request...")
+    logger.debug(s"[${blockContext.requestContext.id.show}] Checking - write template request ...")
     val templates = blockContext.templates
     stop {
       templates.find(!canTemplateBeChanged(_, allowedIndices)) match {

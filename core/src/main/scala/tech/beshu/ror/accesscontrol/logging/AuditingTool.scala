@@ -23,6 +23,7 @@ import cats.Show
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header}
@@ -125,7 +126,10 @@ class AuditingTool(settings: Settings,
             case DirectlyLoggedUser(_) => None
             case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
           }
-      override val involvesIndices: Boolean = requestContext.involvesIndices
+      override val involvesIndices: Boolean = blockContext match {
+        case Some(_: GeneralIndexRequestBlockContext | _: TemplateRequestBlockContext | _: SnapshotRequestBlockContext) => true
+        case _ => false
+      }
       override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
       override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
     }

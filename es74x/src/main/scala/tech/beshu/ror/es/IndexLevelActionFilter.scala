@@ -137,21 +137,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
             case Right(_) =>
             case Left(ex) => listener.onFailure(new Exception(ex))
           }
-        // todo:
-//        val requestContext = EsRequestContext
-//          .from(channel, task.getId, action, request, rorEsClusterService, threadPool, remoteClusterService.isCrossClusterSearchEnabled)
-//          .fold(
-//            ex => throw new SecurityPermissionException("Cannot create request context object", ex),
-//            identity
-//          )
-//        requestContext.uriPath match {
-//          case CurrentUserMetadataPath(_) =>
-//            val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-//            handler.handle(requestContext)
-//          case _ =>
-//            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-//            handler.handle(requestContext)
-//        }
       case None =>
         listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
     }

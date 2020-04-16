@@ -71,8 +71,6 @@ trait RequestContext {
 
   def isReadOnlyRequest: Boolean
 
-  def involvesIndices: Boolean
-
   def isCompositeRequest: Boolean
 
   def isAllowedForDLS: Boolean
@@ -152,7 +150,6 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
       }
   }
 
-  // todo:
   def currentGroup: RequestGroup = {
     findHeader(Header.Name.currentGroup) match {
       case None => RequestGroup.`N/A`
@@ -160,7 +157,6 @@ class RequestContextOps(val requestContext: RequestContext) extends AnyVal {
     }
   }
 
-  // todo:
   def isCurrentGroupEligible(groups: UniqueNonEmptyList[Group]): Boolean = {
     currentGroup match {
       case RequestGroup.AGroup(preferredGroup) =>

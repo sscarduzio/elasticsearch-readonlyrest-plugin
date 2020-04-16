@@ -16,20 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{GeneralIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-// todo: maybe type/specific to not repeat?
 sealed trait BlockContext {
   def requestContext: RequestContext
-
   def userMetadata: UserMetadata
-
   def responseHeaders: Set[Header]
-
   def contextHeaders: Set[Header]
 }
 object BlockContext {
@@ -122,7 +117,7 @@ object BlockContext {
         case _: GeneralNonIndexRequestBlockContext => Set.empty
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.indices
-        case _: TemplateRequestBlockContext => Set.empty
+        case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
         case bc: GeneralIndexRequestBlockContext => bc.indices
       }
     }
@@ -146,7 +141,7 @@ object BlockContext {
       blockContext match {
         case _: CurrentUserMetadataRequestBlockContext => Set.empty
         case _: GeneralNonIndexRequestBlockContext => Set.empty
-        case bc: RepositoryRequestBlockContext => Set.empty
+        case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.snapshots
         case _: TemplateRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty

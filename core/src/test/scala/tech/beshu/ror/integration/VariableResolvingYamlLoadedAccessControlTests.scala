@@ -196,8 +196,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
                 val jwtBuilder = Jwts.builder.signWith(secret).setSubject("test").setClaims(claims)
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
-            indices = Set(IndexName("gj1".nonempty)),
-            involvesIndices = true
+            indices = Set(IndexName("gj1".nonempty))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -230,7 +229,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
             indices = Set(IndexName("gj0".nonempty)),
-            involvesIndices = true,
             allIndicesAndAliases = Set(IndexWithAliases(IndexName("gj0".nonempty), Set.empty))
           )
 

@@ -148,21 +148,20 @@ object show {
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val repositoryShow: Show[RepositoryName] = Show.show(_.value.value)
     implicit val snapshotShow: Show[SnapshotName] = Show.show(_.value.value)
+    implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
 
     implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
       Show.show { bc =>
         (showOption("user", bc.userMetadata.loggedUser) ::
           showOption("group", bc.userMetadata.currentGroup) ::
           showTraversable("av_groups", bc.userMetadata.availableGroups) ::
-//          showTraversable("indices", bc.indices) ::
+          showTraversable("indices", bc.indices) ::
           showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
           showTraversable("response_hdr", bc.responseHeaders) ::
           showTraversable("context_hdr", bc.contextHeaders) ::
-          // todo:
-//          showTraversable("repositories", bc.repositories.getOrElse(Set.empty)) ::
-//          showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
+          showTraversable("repositories", bc.repositories) ::
+          showTraversable("snapshots", bc.snapshots) ::
           Nil flatten) mkString ";"
-        // todo: add new indices
       }
 
     private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {

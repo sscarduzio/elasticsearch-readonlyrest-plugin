@@ -297,7 +297,6 @@ class IndicesRuleTests extends WordSpec with MockFactory {
         indices = requestIndices,
         action = Action("indices:data/read/search"),
         isReadOnlyRequest = true,
-        involvesIndices = true,
         allIndicesAndAliases = Set(
           IndexWithAliases(IndexName("test1".nonempty), Set.empty),
           IndexWithAliases(IndexName("test2".nonempty), Set.empty),

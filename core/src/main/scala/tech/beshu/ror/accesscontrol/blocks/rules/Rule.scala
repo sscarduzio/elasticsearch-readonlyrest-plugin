@@ -114,9 +114,8 @@ object Rule {
       requestContext.impersonateAs match {
         case Some(theImpersonatedUserId) => toRuleResult[B] {
           for {
-            // todo: why everywhere B?
             impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, requestContext)
-            _ <- authenticateImpersonator[B](impersonatorDef, blockContext)
+            _ <- authenticateImpersonator(impersonatorDef, blockContext)
             _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId)
           } yield {
             blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, impersonatorDef.id)))

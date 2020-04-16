@@ -90,7 +90,8 @@ object TestsUtils {
                            contextHeaders: Set[Header] = Set.empty,
                            indices: Set[IndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
-                           snapshots: Set[SnapshotName] = Set.empty)
+                           snapshots: Set[SnapshotName] = Set.empty,
+                           templates: Set[Template] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)
       blockContext.userMetadata.currentGroup should be(currentGroup)
@@ -112,8 +113,8 @@ object TestsUtils {
           bc.snapshots should be (snapshots)
           bc.repositories should be (repositories)
           bc.indices should be (indices)
-        case _: TemplateRequestBlockContext =>
-          // todo: impl
+        case bc: TemplateRequestBlockContext =>
+          bc.templates  should be (templates)
         case bc: GeneralIndexRequestBlockContext =>
           bc.indices should be (indices)
       }
