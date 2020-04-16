@@ -31,7 +31,7 @@ object SingletonEsContainer
 
   val singleton = createLocalClusterContainer(EsClusterSettings.basic)
 
-  lazy val adminClient = singleton.nodesContainers.head.adminClient
+  private lazy val adminClient = singleton.nodesContainers.head.adminClient
   private lazy val indexManager = new IndexManagerJ(adminClient)
   private lazy val adminApiManager = new ActionManagerJ(adminClient)
 
@@ -48,8 +48,6 @@ object SingletonEsContainer
       s"""{"settings": "${escapeJava(getResourceContent(rorConfigFileName))}"}"""
     )
     if (!response.isSuccess) throw CouldNotUpdateRorConfigException()
-
-    Thread.sleep(5000)
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer) = {

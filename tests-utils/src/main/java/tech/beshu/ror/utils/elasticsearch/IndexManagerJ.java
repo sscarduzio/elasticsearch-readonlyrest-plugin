@@ -37,9 +37,9 @@ public class IndexManagerJ extends JBaseManager {
   }
 
   public SimpleResponse removeAll() {
-
     return call(createDeleteIndicesRequest(), SimpleResponse::new);
   }
+
   public SimpleResponse remove(String indexName) {
     return call(createDeleteIndex(indexName), GetIndexResult::new);
   }
