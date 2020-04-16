@@ -178,6 +178,24 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           found = Set(IndexName("test-index1".nonempty), IndexName("test-index2".nonempty))
         )
       }
+      "cross cluster index is used together with local index" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("odd:test1*"), indexNameValueFrom("local*")),
+          requestIndices = Set(IndexName("local_index*".nonempty), IndexName("odd:test1_index*".nonempty)),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(
+              IndexWithAliases(IndexName("local_index1".nonempty), Set.empty),
+              IndexWithAliases(IndexName("local_index2".nonempty), Set.empty),
+              IndexWithAliases(IndexName("other".nonempty), Set.empty)
+            )
+          ),
+          found = Set(
+            IndexName("local_index1".nonempty),
+            IndexName("local_index2".nonempty),
+            IndexName("odd:test1_index*".nonempty)
+          )
+        )
+      }
     }
     "not match" when {
       "no index passed, one is configured, no real indices" in {
@@ -297,6 +315,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
         indices = requestIndices,
         action = Action("indices:data/read/search"),
         isReadOnlyRequest = true,
+        hasRemoteClusters = true,
         allIndicesAndAliases = Set(
           IndexWithAliases(IndexName("test1".nonempty), Set.empty),
           IndexWithAliases(IndexName("test2".nonempty), Set.empty),
