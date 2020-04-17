@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.UriPath.CatIndicesPath
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -40,8 +41,16 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
 
   override protected def update(request: ClusterStateRequest,
                                 indices: NonEmptyList[domain.IndexName]): ModificationResult = {
-
     request.indices(indices.toList.map(_.value.value): _*)
     Modified
+  }
+
+  override def modifyWhenIndexNotFound: ModificationResult = {
+    uriPath match {
+      case CatIndicesPath(_) =>
+        update(actionRequest, NonEmptyList.of(randomNonexistentIndex()))
+      case _ =>
+        super.modifyWhenIndexNotFound
+    }
   }
 }

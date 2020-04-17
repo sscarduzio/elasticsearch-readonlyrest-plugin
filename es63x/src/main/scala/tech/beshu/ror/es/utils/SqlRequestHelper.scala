@@ -128,12 +128,11 @@ final class SimpleStatement(val underlyingObject: AnyRef)
   extends Statement {
 
   lazy val indices: SqlIndices = {
-    val tableInfoList = tableInfosFrom {
+    val tableIdentifiersList = tableIdentifiersFrom {
       doPreAnalyze(newPreAnalyzer, underlyingObject)
     }
     SqlIndices.SqlTableRelated {
-      tableInfoList
-        .map(tableIdentifierFrom)
+      tableIdentifiersList
         .map(indicesStringFrom)
         .map { tableString =>
           IndexSqlTable(tableString, splitToIndicesPatterns(tableString))
@@ -153,20 +152,13 @@ final class SimpleStatement(val underlyingObject: AnyRef)
       .invoke(preAnalyzer, statement)
   }
 
-  private def tableInfosFrom(preAnalysis: Any)
-                            (implicit classLoader: ClassLoader) = {
+  private def tableIdentifiersFrom(preAnalysis: Any)
+                                  (implicit classLoader: ClassLoader) = {
     ReflecUtils
       .getFieldOf(preAnalysisClass, Modifier.PUBLIC, "indices")
       .get(preAnalysis)
       .asInstanceOf[java.util.List[AnyRef]]
       .asScala.toList
-  }
-
-  private def tableIdentifierFrom(tableInfo: Any)
-                                 (implicit classLoader: ClassLoader) = {
-    ReflecUtils
-      .getMethodOf(tableInfoClass, Modifier.PUBLIC, "id", 0)
-      .invoke(tableInfo)
   }
 
   private def indicesStringFrom(tableIdentifier: Any)
@@ -182,9 +174,6 @@ final class SimpleStatement(val underlyingObject: AnyRef)
 
   private def preAnalysisClass(implicit classLoader: ClassLoader) =
     classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.PreAnalyzer$PreAnalysis")
-
-  private def tableInfoClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.TableInfo")
 
   private def tableIdentifierClass(implicit classLoader: ClassLoader) =
     classLoader.loadClass("org.elasticsearch.xpack.sql.plan.TableIdentifier")

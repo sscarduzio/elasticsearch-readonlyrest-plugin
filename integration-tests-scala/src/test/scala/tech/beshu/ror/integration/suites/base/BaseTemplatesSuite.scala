@@ -55,7 +55,8 @@ trait BaseTemplatesSuite
     } else if (Version.greaterOrEqualThan(esVersion, 6, 1, 0)) {
       s"""{"index_patterns":[$patternsString],"settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
     } else {
-      s"""{"template":"$patternsString","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
+      val indexPattern = indexPatterns.toList.head
+      s"""{"template":"$indexPattern","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
     }
   }
 

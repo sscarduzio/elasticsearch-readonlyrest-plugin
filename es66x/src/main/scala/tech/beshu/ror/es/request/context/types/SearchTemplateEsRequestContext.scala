@@ -44,7 +44,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
   }
 
   override protected def update(request: ActionRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
-    Option(invokeMethodCached(actionRequest, actionRequest.getClass, "getRequest")) match {
+    Option(invokeMethodCached(request, request.getClass, "getRequest")) match {
       case Some(request: SearchRequest) =>
         request.indices(indices.toList.map(_.value.value): _*)
         Modified

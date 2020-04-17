@@ -76,6 +76,7 @@ class RegularRequestHandler(engine: Engine,
       case Success(_) =>
       case Failure(ex) =>
         logger.errorEx("ACL committing result failure", ex)
+        esContext.listener.onFailure(ex.asInstanceOf[Exception])
     }
   }
 
@@ -142,6 +143,7 @@ class RegularRequestHandler(engine: Engine,
         case Failure(ex) => onFailure(new Exception(ex))
       }
     }
+
     override def onFailure(e: Exception): Unit = esContext.listener.onFailure(e)
   }
 }

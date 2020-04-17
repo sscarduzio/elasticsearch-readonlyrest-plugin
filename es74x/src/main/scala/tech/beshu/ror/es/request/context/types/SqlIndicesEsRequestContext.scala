@@ -39,7 +39,10 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
 
   private lazy val sqlIndices = SqlRequestHelper
     .indicesFrom(actionRequest)
-    .getOrElse(throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.getName}"))
+    .fold(
+      ex => throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.getName}", ex),
+      identity
+    )
 
   override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[IndexName] =
     sqlIndices.indices.flatMap(IndexName.fromString)

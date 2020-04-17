@@ -143,18 +143,9 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // rest
       case _ =>
-        handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
           handleReflectionBasedIndicesRequest(regularRequestHandler, esContext, aclContext) getOrElse
           handleGeneralNonIndexOperation(regularRequestHandler, esContext)
     }
-  }
-
-  private def handleSearchTemplateRequest(regularRequestHandler: RegularRequestHandler,
-                                          esContext: EsContext,
-                                          aclContext: AccessControlStaticContext) = {
-    SearchTemplateEsRequestContext
-      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
-      .map(regularRequestHandler.handle(_))
   }
 
   private def handleReflectionBasedIndicesRequest(regularRequestHandler: RegularRequestHandler,

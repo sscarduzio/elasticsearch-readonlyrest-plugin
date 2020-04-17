@@ -59,6 +59,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
       case Success(_) =>
       case Failure(ex) =>
         logger.errorEx("ACL committing result failure", ex)
+        esContext.listener.onFailure(ex.asInstanceOf[Exception])
     }
   }
 
