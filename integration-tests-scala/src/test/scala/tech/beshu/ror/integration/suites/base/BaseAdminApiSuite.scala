@@ -16,11 +16,14 @@
  */
 package tech.beshu.ror.integration.suites.base
 
+import java.util
+
+import scala.collection.JavaConverters._
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.MultipleContainers
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterEach, WordSpec}
+import org.scalatest.{BeforeAndAfterEach, Entry, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
@@ -79,6 +82,42 @@ trait BaseAdminApiSuite
           result.getResponseCode should be(200)
           result.getResponseJsonMap.get("status") should be("ko")
           result.getResponseJsonMap.get("message") should be("Current settings are already loaded")
+        }
+      }
+      "return info that config lol" when {
+        "in-index config is the same as current one" in {
+          insertInIndexConfig(
+            new DocumentManagerJ(ror2_1Node.adminClient),
+            "/admin_api/readonlyrest.yml"
+          )
+          val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
+          result.getResponseCode should be(200)
+          result.getResponseJsonMap.get("clusterName") should be("test-cluster")
+          result.getResponseJsonMap.get("failures") should be(List().asJava)
+          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
+          val jnode1 = javaResponses.get(0)
+          jnode1 should contain(Entry("type","IndexConfig"))
+          jnode1 should contain(Entry("config",getResourceContent("/admin_api/readonlyrest_index.yml")))
+          val jnode2 = javaResponses.get(1)
+          jnode2 should contain(Entry("type","IndexConfig"))
+          jnode2 should contain(Entry("config",getResourceContent("/admin_api/readonlyrest_index.yml")))
+        }
+        "got timeout" in {
+          insertInIndexConfig(
+            new DocumentManagerJ(ror2_1Node.adminClient),
+            "/admin_api/readonlyrest.yml"
+          )
+          val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load?timeout=1nanos")
+          result.getResponseCode should be(200)
+          result.getResponseJsonMap.get("clusterName") should be("test-cluster")
+          result.getResponseJsonMap.get("failures") should be(List().asJava)
+          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
+          val jnode1 = javaResponses.get(0)
+          jnode1 should contain(Entry("type","IndexConfig"))
+          jnode1 should contain(Entry("config",getResourceContent("/admin_api/readonlyrest_index.yml")))
+          val jnode2 = javaResponses.get(1)
+          jnode2 should contain(Entry("type","IndexConfig"))
+          jnode2 should contain(Entry("config",getResourceContent("/admin_api/readonlyrest_index.yml")))
         }
       }
       "return info that in-index config does not exist" when {
@@ -229,6 +268,16 @@ trait BaseAdminApiSuite
         result.getResponseJsonMap.get("message").asInstanceOf[String] should be {
           getResourceContent("/admin_api/readonlyrest.yml")
         }
+      }
+    }
+  }
+  "provide a method for resolve current app config" which {
+    "return current config" in {
+      val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
+      result.getResponseCode should be(200)
+      result.getResponseJsonMap.get("status") should be("ok")
+      result.getResponseJsonMap.get("message").asInstanceOf[String] should be {
+        getResourceContent("/admin_api/readonlyrest_index.yml")
       }
     }
   }

@@ -93,12 +93,26 @@ class AdminRestApi(rorInstance: RorInstance,
           Ok[ApiCallResult](Failure(error.show))
       }
   }
+  private val provideRorConfigEndpoint = get(provideRorConfigPath.endpointPath) {
+    indexConfigManager
+      .load()
+      .map {
+        case Right(config) =>
+          Ok[ApiCallResult](Success(config.raw))
+        case Left(SpecializedError(error@IndexConfigNotExist)) =>
+          implicit val show = IndexConfigError.show.contramap(identity[IndexConfigNotExist.type])
+          Ok[ApiCallResult](ConfigNotFound(error.show))
+        case Left(error) =>
+          Ok[ApiCallResult](Failure(error.show))
+      }
+  }
 
   private val service = {
     forceReloadRorEndpoint :+:
       updateIndexConfigurationEndpoint :+:
       provideRorFileConfigEndpoint :+:
-      provideRorIndexConfigEndpoint
+      provideRorIndexConfigEndpoint :+:
+      provideRorConfigEndpoint
   }.toServiceAs[Application.Json]
 
   def call(request: AdminRequest): Task[AdminResponse] = {
@@ -154,6 +168,7 @@ object AdminRestApi extends Logging {
   val updateIndexConfigurationPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config" ))
   val provideRorFileConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config", "file"))
   val provideRorIndexConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config"))
+  val provideRorConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config", "load"))
 
   final case class AdminRequest(method: String, uri: String, body: String)
   final case class AdminResponse(result: ApiCallResult)

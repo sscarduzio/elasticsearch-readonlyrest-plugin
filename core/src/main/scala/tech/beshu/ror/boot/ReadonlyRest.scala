@@ -148,7 +148,7 @@ trait ReadonlyRest extends Logging {
   }
 
   private def loadConfig(esConfig: EsConfig, fileConfigLoader: FileConfigLoader, indexConfigManager: IndexConfigManager) = {
-    EitherT(new ComposedConfigLoader(fileConfigLoader, indexConfigManager, esConfig).loadConfig())
+    EitherT(new ComposedConfigLoader(fileConfigLoader, indexConfigManager, esConfig.rorEsLevelSettings).loadConfig())
       .leftMap {
         case File.ParsingError(underlying) =>
           StartingFailure(underlying.show)

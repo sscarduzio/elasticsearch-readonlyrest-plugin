@@ -21,23 +21,24 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError
-import tech.beshu.ror.configuration.{ConfigLoader, EsConfig, RawRorConfig}
+import tech.beshu.ror.configuration.{ConfigLoader, RawRorConfig}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 final class ComposedConfigLoader(fileConfigLoader: ConfigLoader[FileConfigError],
                                  indexConfigManager: ConfigLoader[IndexConfigError],
-                                 esConfig: EsConfig,
+                                 rorEsLevelSettings: RorEsLevelSettings,
                                 ) extends Logging {
 
   import ComposedConfigLoader._
 
   def loadConfig(): Task[Either[LoadedConfig.Error, LoadedConfig]] = {
-    if (esConfig.rorEsLevelSettings.forceLoadRorFromFile) {
+    if (rorEsLevelSettings.forceLoadRorFromFile) {
       loadRorConfigFromFile(fileConfigLoader).map(ComposedConfigLoader.ForcedFile)
         .bimap(identity, identity)
         .value
