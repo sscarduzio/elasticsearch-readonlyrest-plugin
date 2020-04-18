@@ -117,6 +117,8 @@ object RuntimeResolvableVariableCreator extends Logging {
         createHeaderExtractable(headerName, `type`)
       case regexes.currentGroupVar() =>
         Right(`type`.createCurrentGroupExtractable())
+      case regexes.availableGroupsVar() =>
+        Right(`type`.createAvailableGroupsExtractable())
       case other => // backward compatibility - assuming that it's header
         createHeaderExtractable(other, `type`)
     }
@@ -147,6 +149,7 @@ object RuntimeResolvableVariableCreator extends Logging {
     val explicitHeaderVar: Regex = "header:(.*)".r
     val jwtPayloadPathVar: Regex = "jwt:(.*)".r
     val currentGroupVar: Regex = "acl:current_group".r
+    val availableGroupsVar: Regex = "acl:available_groups".r
   }
 
   private sealed trait ExtractableType {
@@ -157,6 +160,7 @@ object RuntimeResolvableVariableCreator extends Logging {
     def createJwtVariableExtractable(jsonPath: JsonPath): TYPE
     def createHeaderVariableExtractable(header: Header.Name): TYPE
     def createCurrentGroupExtractable(): TYPE
+    def createAvailableGroupsExtractable(): TYPE
   }
   private object ExtractableType {
     case object Single extends ExtractableType {
@@ -167,6 +171,7 @@ object RuntimeResolvableVariableCreator extends Logging {
       override def createJwtVariableExtractable(jsonPath: JsonPath): TYPE = SingleExtractable.JwtPayloadVar(jsonPath)
       override def createHeaderVariableExtractable(header: Header.Name): TYPE = SingleExtractable.HeaderVar(header)
       override def createCurrentGroupExtractable(): TYPE = SingleExtractable.CurrentGroupVar
+      override def createAvailableGroupsExtractable(): TYPE = SingleExtractable.AvailableGroupsVar
     }
     case object Multi extends ExtractableType {
       override type TYPE = MultiExtractable
@@ -176,6 +181,7 @@ object RuntimeResolvableVariableCreator extends Logging {
       override def createJwtVariableExtractable(jsonPath: JsonPath): TYPE = MultiExtractable.JwtPayloadVar(jsonPath)
       override def createHeaderVariableExtractable(header: Header.Name): TYPE = MultiExtractable.HeaderVar(header)
       override def createCurrentGroupExtractable(): TYPE = MultiExtractable.CurrentGroupVar
+      override def createAvailableGroupsExtractable(): TYPE = MultiExtractable.AvailableGroupsVar
     }
   }
 

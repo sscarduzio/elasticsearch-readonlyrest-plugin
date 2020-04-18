@@ -22,13 +22,14 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.{BeforeAndAfterAll, Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
+import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -36,13 +37,23 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestContainer with Inside with Eventually {
+class UnboundidLdapAuthorizationServiceTests
+  extends WordSpec
+    with BeforeAndAfterAll
+    with ForAllTestContainer
+    with Inside
+    with Eventually {
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
   override val container: LdapContainer = new LdapContainer("LDAP1", "/test_example.ldif")
+  val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    ldapConnectionPoolProvider.close()
+  }
   "An LdapAuthorizationService" should {
     "has method to provide user groups" which {
       "returns non empty set of groups" when {
@@ -73,6 +84,7 @@ class UnboundidLdapAuthorizationServiceTests extends WordSpec with ForAllTestCon
     UnboundidLdapAuthorizationService
       .create(
         Name("ldap1".nonempty),
+        ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${container.ldapHost}:${container.ldapPort}").get),
           Refined.unsafeApply(10),
