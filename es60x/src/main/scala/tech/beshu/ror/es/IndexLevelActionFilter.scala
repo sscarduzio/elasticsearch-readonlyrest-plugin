@@ -26,7 +26,7 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.component.AbstractComponent
-import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.discovery.zen.PublishClusterStateAction.serializeFullClusterState
 import org.elasticsearch.env.Environment
@@ -48,6 +48,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.language.postfixOps
 
+@Singleton
 class IndexLevelActionFilter(settings: Settings,
                              clusterService: ClusterService,
                              client: NodeClient,
