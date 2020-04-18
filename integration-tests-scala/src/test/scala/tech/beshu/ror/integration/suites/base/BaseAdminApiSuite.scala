@@ -16,19 +16,26 @@
  */
 package tech.beshu.ror.integration.suites.base
 
+import java.io.File
 import java.util
 
 import scala.collection.JavaConverters._
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.MultipleContainers
+import monix.eval.Task
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, Entry, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
+import tech.beshu.ror.utils.containers.ContainerUtils
+import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
+import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
+
+import scala.collection.immutable
 
 trait BaseAdminApiSuite
   extends WordSpec
@@ -85,37 +92,33 @@ trait BaseAdminApiSuite
         }
       }
       "return info that config lol" when {
-        "in-index config is the same as current one2" in {
-          val result = new ActionManagerJ(ror2_1Node.adminClient).actionGet("_readonlyrest/admin/config/load")
-          result.getResponseCode should be(200)
-          result.getResponseJsonMap.get("clusterName") should be("test-cluster")
-          result.getResponseJsonMap.get("failures") should be(List().asJava)
-          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
-          val jnode1 = javaResponses.get(0)
-          jnode1 should contain key "nodeId"
-          jnode1 should contain(Entry("type","IndexConfig"))
-          jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
-          val jnode2 = javaResponses.get(1)
-          jnode2 should contain key "nodeId"
-          jnode2 should contain(Entry("type","IndexConfig"))
-          jnode2.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
-        }
         "in-index config is the same as current one" in {
           val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
           result.getResponseCode should be(200)
-          println(s"fasfasfs: ${result.getResponseJsonMap.asScala}")
           result.getResponseJsonMap.get("clusterName") should be("test-cluster")
-          result.getResponseJsonMap.get("failures") should be(List().asJava)
+          result.getResponseJsonMap.get("failures").asInstanceOf[util.Collection[Nothing]] should have size 1
           val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
           val jnode1 = javaResponses.get(0)
           jnode1 should contain key "nodeId"
           jnode1 should contain(Entry("type","IndexConfig"))
           jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
-          val jnode2 = javaResponses.get(1)
-          jnode2 should contain key "nodeId"
-          jnode2 should contain(Entry("type","IndexConfig"))
-          jnode2.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
         }
+//        "in-index config is the same as current one" in {
+//          val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
+//          result.getResponseCode should be(200)
+//          println(s"fasfasfs: ${result.getResponseJsonMap.asScala}")
+//          result.getResponseJsonMap.get("clusterName") should be("test-cluster")
+//          result.getResponseJsonMap.get("failures") should be(List().asJava)
+//          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
+//          val jnode1 = javaResponses.get(0)
+//          jnode1 should contain key "nodeId"
+//          jnode1 should contain(Entry("type","IndexConfig"))
+//          jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
+//          val jnode2 = javaResponses.get(1)
+//          jnode2 should contain key "nodeId"
+//          jnode2 should contain(Entry("type","IndexConfig"))
+//          jnode2.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
+//        }
         "force timeout" in {
           val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load", Map("timeout" -> "1nanos").asJava)
           result.getResponseCode should be(200)
@@ -318,5 +321,57 @@ trait BaseAdminApiSuite
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
     insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
+  }
+  override def createLocalClusterContainer(esClusterSettings: EsClusterSettings): EsClusterContainer = {
+    if (esClusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("Cluster should have at least one instance")
+    val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, esClusterSettings.numberOfInstances)(_ + 1).toList
+      .map(idx => s"${esClusterSettings.name}_$idx"))
+val rors: List[Task[EsContainer]] = nodeNames.init.map(name => Task(createEsRorContainer(name, nodeNames, esClusterSettings)))
+    val noRor: List[Task[EsContainer]] = List(Task(createEsContainer(nodeNames.last, nodeNames, esClusterSettings)))
+    new EsClusterContainer(
+      NonEmptyList.fromListUnsafe(rors ++ noRor),
+      esClusterSettings.dependentServicesContainers)
+  }
+
+  def createEsContainer(name: String,
+                      nodeNames: NonEmptyList[String],
+                      clusterSettings: EsClusterSettings): EsContainer = {
+    val project = RorPluginGradleProject.fromSystemProperty
+    val esVersion = project.getESVersion
+
+    val containerConfig = EsWithoutRorPluginContainer.Config(
+      nodeName = name,
+      nodes = nodeNames,
+      envs = clusterSettings.rorContainerSpecification.environmentVariables,
+      esVersion = esVersion,
+      xPackSupport = clusterSettings.xPackSupport,
+      customRorIndexName = clusterSettings.customRorIndexName,
+      configHotReloadingEnabled = true,
+      internodeSslEnabled = false,
+      externalSslEnabled = false)
+    EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
+  }
+
+  def createEsRorContainer(name: String,
+                      nodeNames: NonEmptyList[String],
+                      clusterSettings: EsClusterSettings): EsContainer = {
+    val project = RorPluginGradleProject.fromSystemProperty
+    val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
+    val esVersion = project.getESVersion
+    val rorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
+
+    val containerConfig = EsWithRorPluginContainer.Config(
+      nodeName = name,
+      nodes = nodeNames,
+      envs = clusterSettings.rorContainerSpecification.environmentVariables,
+      esVersion = esVersion,
+      rorPluginFile = rorPluginFile,
+      rorConfigFile = rorConfigFile,
+      configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
+      customRorIndexName = clusterSettings.customRorIndexName,
+      internodeSslEnabled = clusterSettings.internodeSslEnabled,
+      xPackSupport = clusterSettings.xPackSupport,
+      externalSslEnabled = true)
+    EsWithRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
   }
 }

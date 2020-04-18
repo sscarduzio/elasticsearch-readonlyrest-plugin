@@ -30,7 +30,7 @@ import tech.beshu.ror.utils.misc.ScalaUtils._
 import scala.language.existentials
 import scala.util.Try
 
-class EsClusterContainer private[containers](esClusterContainers: NonEmptyList[Task[EsContainer]],
+class EsClusterContainer (esClusterContainers: NonEmptyList[Task[EsContainer]],
                                              dependencies: List[DependencyDef]) extends Container {
 
   val nodesContainers: NonEmptyList[EsContainer] = {
