@@ -34,6 +34,7 @@ import scala.runtime.BoxedUnit;
 import scala.util.Either;
 import scala.util.Left$;
 import scala.util.Right$;
+import tech.beshu.ror.accesscontrol.domain;
 import tech.beshu.ror.boot.Ror$;
 import tech.beshu.ror.es.IndexJsonContentManager;
 import tech.beshu.ror.utils.ScalaJavaHelper$;
@@ -52,9 +53,9 @@ public class EsIndexJsonContentProvider implements IndexJsonContentManager {
   }
 
   @Override
-  public Task<Either<ReadError, Map<String, ?>>> sourceOf(String index, String type, String id) {
+  public Task<Either<ReadError, Map<String, ?>>> sourceOf(domain.IndexName index, String type, String id) {
     try {
-      GetResponse response = client.get(client.prepareGet(index, type, id).request()).actionGet();
+      GetResponse response = client.get(client.prepareGet(index.value().toString(), type, id).request()).actionGet();
       Map<String, Object> source = Optional.ofNullable(response.getSourceAsMap()).orElse(Maps.newHashMap());
       return Task$.MODULE$
           .eval((Function0<Either<ReadError, Map<String, ?>>>) () -> Right$.MODULE$.apply(source))
@@ -67,13 +68,13 @@ public class EsIndexJsonContentProvider implements IndexJsonContentManager {
   }
 
   @Override
-  public Task<Either<WriteError, BoxedUnit>> saveContent(String index, String type, String id, Map<String, String> content) {
+  public Task<Either<WriteError, BoxedUnit>> saveContent(domain.IndexName index, String type, String id, Map<String, String> content) {
     CancelablePromise<Either<WriteError, BoxedUnit>> promise = ScalaJavaHelper$.MODULE$.newCancelablePromise();
     client
         .prepareBulk()
         .add(
             client
-                .prepareIndex(index, type, id)
+                .prepareIndex(index.value().toString(), type, id)
                 .setSource(content, XContentType.JSON)
                 .request()
         )

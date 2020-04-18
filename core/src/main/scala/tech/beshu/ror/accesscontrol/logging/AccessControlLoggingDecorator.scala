@@ -86,7 +86,9 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
 
   private def log(responseContext: ResponseContext): Unit = {
     if (isLoggableEntry(responseContext)) {
-      implicit val showHeader:Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
+      implicit val showHeader: Show[Header] =
+        if(logger.delegate.isDebugEnabled()) headerShow
+        else obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
       import tech.beshu.ror.accesscontrol.logging.AccessControlLoggingDecorator.responseContextShow
       logger.info(responseContext.show)
     }

@@ -37,9 +37,11 @@ object EsWithoutRorPluginContainer {
 
   final case class Config(nodeName: String,
                           nodes: NonEmptyList[String],
+                          envs: Map[String, String],
                           esVersion: String,
                           xPackSupport: Boolean,
                           configHotReloadingEnabled: Boolean,
+                          customRorIndexName: Option[String],
                           internodeSslEnabled: Boolean,
                           externalSslEnabled: Boolean) extends EsContainer.Config
 

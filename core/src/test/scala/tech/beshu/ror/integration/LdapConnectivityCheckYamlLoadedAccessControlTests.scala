@@ -19,9 +19,10 @@ package tech.beshu.ror.integration
 import com.dimafeng.testcontainers.ForAllTestContainer
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.{BeforeAndAfterAll, Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
@@ -29,7 +30,11 @@ import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
 import tech.beshu.ror.utils.containers.LdapContainer
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
-  extends WordSpec with BaseYamlLoadedAccessControlTest with ForAllTestContainer with Inside {
+  extends WordSpec
+    with BaseYamlLoadedAccessControlTest
+    with BeforeAndAfterAll
+    with ForAllTestContainer
+    with Inside {
 
   override val container: LdapContainer = new LdapContainer("LDAP1", "/test_example.ldif")
 
@@ -54,6 +59,13 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
        |      search_user_base_DN: "ou=People,dc=example,dc=com"
        |      user_id_attribute: "uid"                                  # default "uid
        |""".stripMargin
+
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    ldapConnectionPoolProvider.close()
+  }
+
+  override protected val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   "An LDAP connectivity check" should {
     "allow to core to start" when {

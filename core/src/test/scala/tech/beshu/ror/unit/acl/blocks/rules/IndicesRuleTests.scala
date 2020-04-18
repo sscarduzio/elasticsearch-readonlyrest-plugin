@@ -21,16 +21,16 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, IndexWithAliases}
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.utils.TestsUtils._
 
 class IndicesRuleTests extends WordSpec with MockFactory {
@@ -178,6 +178,24 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           found = Set(IndexName("test-index1".nonempty), IndexName("test-index2".nonempty))
         )
       }
+      "cross cluster index is used together with local index" in {
+        assertMatchRule(
+          configured = NonEmptySet.of(indexNameValueFrom("odd:test1*"), indexNameValueFrom("local*")),
+          requestIndices = Set(IndexName("local_index*".nonempty), IndexName("odd:test1_index*".nonempty)),
+          modifyRequestContext = _.copy(
+            allIndicesAndAliases = Set(
+              IndexWithAliases(IndexName("local_index1".nonempty), Set.empty),
+              IndexWithAliases(IndexName("local_index2".nonempty), Set.empty),
+              IndexWithAliases(IndexName("other".nonempty), Set.empty)
+            )
+          ),
+          found = Set(
+            IndexName("local_index1".nonempty),
+            IndexName("local_index2".nonempty),
+            IndexName("odd:test1_index*".nonempty)
+          )
+        )
+      }
     }
     "not match" when {
       "no index passed, one is configured, no real indices" in {
@@ -298,6 +316,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
         action = Action("indices:data/read/search"),
         isReadOnlyRequest = true,
         involvesIndices = true,
+        hasRemoteClusters = true,
         allIndicesAndAliases = Set(
           IndexWithAliases(IndexName("test1".nonempty), Set.empty),
           IndexWithAliases(IndexName("test2".nonempty), Set.empty),

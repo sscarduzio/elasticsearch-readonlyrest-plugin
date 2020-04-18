@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
+import tech.beshu.ror.configuration.RorIndexNameConfiguration
 import tech.beshu.ror.providers.{PropertiesProvider, UuidProvider}
 
 import scala.language.{existentials, implicitConversions}
@@ -31,7 +32,8 @@ import scala.language.{existentials, implicitConversions}
 object ruleDecoders {
 
   implicit def ruleDecoderBy(name: Rule.Name,
-                             definitions: DefinitionsPack)
+                             definitions: DefinitionsPack,
+                             rorIndexNameConfiguration: RorIndexNameConfiguration)
                             (implicit clock: Clock,
                              uuidProvider: UuidProvider,
                              propertiesProvider: PropertiesProvider): Option[RuleBaseDecoder[_ <: Rule]] =
@@ -46,7 +48,7 @@ object ruleDecoders {
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
       case HostsRule.name => Some(new HostsRuleDecoder)
       case IndicesRule.name => Some(new IndicesRuleDecoders)
-      case KibanaAccessRule.name => Some(new KibanaAccessRuleDecoder)
+      case KibanaAccessRule.name => Some(new KibanaAccessRuleDecoder(rorIndexNameConfiguration))
       case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
       case KibanaIndexRule.name => Some(new KibanaIndexRuleDecoder)
       case KibanaTemplateIndexRule.name => Some(new KibanaTemplateIndexRuleDecoder)

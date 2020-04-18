@@ -28,6 +28,7 @@ object VariableContext {
   object VariableType {
     trait User extends VariableType
     trait CurrentGroup extends VariableType
+    trait AvailableGroups extends VariableType
     trait Header extends VariableType
     trait Jwt extends VariableType
   }
@@ -98,6 +99,7 @@ object VariableContext {
       variableType match {
         case v: VariableType.User => Some(UsageRequirement.OneOfRuleBeforeMustBeAuthenticationRule(v))
         case _: VariableType.CurrentGroup => None
+        case _: VariableType.AvailableGroups => None
         case _: VariableType.Header => None
         case _: VariableType.Jwt => None
       }

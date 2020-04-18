@@ -16,8 +16,9 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.utils.containers.generic.{CallingEsDirectly, EsWithRorPluginContainerCreator, TargetEsContainer}
+import tech.beshu.ror.utils.containers.generic.EsWithRorPluginContainerCreator
+import tech.beshu.ror.utils.containers.generic.providers.{CallingEsDirectly, MultipleEsTargets}
 
 trait PluginTestSupport extends EsWithRorPluginContainerCreator with CallingEsDirectly {
-  this: TargetEsContainer =>
+  this: MultipleEsTargets =>
 }

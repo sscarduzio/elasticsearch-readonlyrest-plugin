@@ -36,10 +36,12 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
     val containerConfig = EsWithRorPluginContainer.Config(
       nodeName = name,
       nodes = nodeNames,
+      envs = clusterSettings.rorContainerSpecification.environmentVariables,
       esVersion = esVersion,
       rorPluginFile = rorPluginFile,
       rorConfigFile = rorConfigFile,
       configHotReloadingEnabled = clusterSettings.configHotReloadingEnabled,
+      customRorIndexName = clusterSettings.customRorIndexName,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
       xPackSupport = clusterSettings.xPackSupport,
       externalSslEnabled = true)

@@ -58,6 +58,7 @@ public class Constants {
       "indices:admin/aliases/get",
       "indices:admin/ilm/explain",
       "indices:monitor/settings/get",
+      "indices:data/read/xpack/rollup/get/*",
       "indices:monitor/stats"
   );
 

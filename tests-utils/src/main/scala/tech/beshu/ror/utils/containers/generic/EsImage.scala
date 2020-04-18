@@ -22,6 +22,7 @@ import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
 import tech.beshu.ror.utils.containers.DockerfileBuilderOps._
 import tech.beshu.ror.utils.containers.generic.EsContainer.Config
 import tech.beshu.ror.utils.misc.Version
+import scala.collection.JavaConverters._
 
 trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
@@ -41,7 +42,6 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         builder
           .from(baseDockerImage + ":" + esVersion)
-          .env("TEST_VAR", "dev")
 
         copyNecessaryFiles(builder, config)
 
@@ -54,6 +54,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .runWhen(customRorIndexName.isDefined, s"echo 'readonlyrest.settings_index: ${customRorIndexName.get}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
           .user("root")
           .run("chown elasticsearch:elasticsearch config/*")
@@ -82,7 +83,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           if (!configHotReloadingEnabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
         ).mkString(" ")
 
-        builder.user("elasticsearch").env("ES_JAVA_OPTS", javaOpts)
+        builder
+          .user("elasticsearch")
+          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts ) asJava)
 
         install(builder, config)
 
