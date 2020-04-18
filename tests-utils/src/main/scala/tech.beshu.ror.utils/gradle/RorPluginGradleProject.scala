@@ -23,7 +23,6 @@ import java.io.{File => JFile}
 
 import org.gradle.tooling.GradleConnector
 
-import scala.compat.java8.OptionConverters._
 import scala.util.Try
 
 object RorPluginGradleProject {
@@ -52,11 +51,11 @@ class RorPluginGradleProject(val name: String) {
   private val project = esProject(name)
   private val esProjectProperties =
     GradleProperties
-      .create(project).asScala
+      .create(project)
       .getOrElse(throw new IllegalStateException("cannot load '" + name + "' project gradle.properties file"))
   private val rootProjectProperties =
     GradleProperties
-      .create(RorPluginGradleProject.getRootProject).asScala
+      .create(RorPluginGradleProject.getRootProject)
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
   def assemble: Option[JFile] = {

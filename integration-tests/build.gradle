@@ -35,11 +35,7 @@ test {
 
         def mode = project.properties['mode']
         if (mode == 'plugin') {
-            if (project.hasProperty('singleton') && project.properties['singleton'] == 'y') {
-                suite 'tech.beshu.ror.integration.plugin.singleton.*'
-            } else {
-                suite 'tech.beshu.ror.integration.plugin.nonsingleton.*'
-            }
+            suite 'tech.beshu.ror.integration.plugin.*'
         } else if (mode == 'proxy') {
             suite 'tech.beshu.ror.integration.proxy.*'
             /**

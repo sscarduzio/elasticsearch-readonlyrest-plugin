@@ -125,6 +125,10 @@ private class LdapWaitStrategy(name: String,
     Task
       .sequence {
         entries.map { entry =>
+           // fixme: if there is any connection problem during initilization, flatMap is ignored so there is no error message in log.
+           // Retry with the same input stream doesn't help because all data has already been read by LDIFReader -
+           // entries list is empty, initialization finishes with success but part of data from file still has not been added to ldap.
+           // Test continues with corrupted ldap container state and then fails.
           Task(connection.add(new AddRequest(entry.toLDIF: _*)))
             .flatMap {
               case result if result.getResultCode == ResultCode.SUCCESS =>

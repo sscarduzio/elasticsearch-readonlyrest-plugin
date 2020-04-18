@@ -33,7 +33,7 @@ trait SingletonPluginTestSupport extends PluginTestSupport with BeforeAndAfterAl
   override protected def beforeAll(): Unit = {
     super.beforeAll()
 
-    SingletonEsContainer.removeAllIndices()
+    SingletonEsContainer.cleanUpContainer()
     SingletonEsContainer.updateConfig(rorConfigFileName)
     nodeDataInitializer.foreach(SingletonEsContainer.initNode)
   }

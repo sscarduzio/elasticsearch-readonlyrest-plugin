@@ -57,7 +57,12 @@ public class TemplateManagerJ extends JBaseManager {
   }
 
   public JsonResponse deleteTemplate(String name) {
+
     return call(createDeleteTemplateRequest(name), JsonResponse::new);
+  }
+
+  public JsonResponse deleteAllTemplates() {
+    return call(createDeleteAllTemplatesRequest(), JsonResponse::new);
   }
 
   private HttpUriRequest createGetTemplateRequest(String name) {
@@ -74,6 +79,12 @@ public class TemplateManagerJ extends JBaseManager {
 
   private HttpUriRequest createDeleteTemplateRequest(String templateName) {
     HttpDelete request = new HttpDelete(restClient.from("/_template/" + templateName));
+    request.setHeader("timeout", "50s");
+    return request;
+  }
+
+  private HttpUriRequest createDeleteAllTemplatesRequest() {
+    HttpDelete request = new HttpDelete(restClient.from("/_template/*"));
     request.setHeader("timeout", "50s");
     return request;
   }
