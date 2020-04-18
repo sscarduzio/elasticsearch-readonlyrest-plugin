@@ -88,21 +88,21 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
     "handling current user metadata kibana plugin request" should {
       "allow to proceed" when {
         "several blocks are matched" in {
-          val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user1:pass")))
+          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user1:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group3".nonempty)))
             userMetadata.availableGroups should be (UniqueList.of(Group("group3".nonempty), Group("group1".nonempty)))
-            userMetadata.foundKibanaIndex should be (None)
+            userMetadata.kibanaIndex should be (None)
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
             userMetadata.userOrigin should be (None)
           }
         }
         "several blocks are matched and current group is set" in {
-          val request = MockRequestContext.default.copy(
+          val request = MockRequestContext.metadata.copy(
             headers = Set(basicAuthHeader("user4:pass"), header("x-ror-current-group", "group6"))
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
@@ -111,35 +111,35 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group6".nonempty)))
             userMetadata.availableGroups should be (UniqueList.of(Group("group5".nonempty), Group("group6".nonempty)))
-            userMetadata.foundKibanaIndex should be (Some(IndexName("user4_group6_kibana_index".nonempty)))
+            userMetadata.kibanaIndex should be (Some(IndexName("user4_group6_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
             userMetadata.userOrigin should be (None)
           }
         }
         "at least one block is matched" in {
-          val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user2:pass")))
+          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user2:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group2".nonempty)))
             userMetadata.availableGroups should be (UniqueList.of(Group("group2".nonempty)))
-            userMetadata.foundKibanaIndex should be (Some(IndexName("user2_kibana_index".nonempty)))
+            userMetadata.kibanaIndex should be (Some(IndexName("user2_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1".nonempty), KibanaApp("user2_app2".nonempty)))
             userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))
             userMetadata.userOrigin should be (None)
           }
         }
         "block with no available groups collected is matched" in {
-          val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("user3:pass")))
+          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user3:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata, _) =>
             userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3".nonempty))))
             userMetadata.currentGroup should be (None)
             userMetadata.availableGroups should be (UniqueList.empty)
-            userMetadata.foundKibanaIndex should be (Some(IndexName("user3_kibana_index".nonempty)))
+            userMetadata.kibanaIndex should be (Some(IndexName("user3_kibana_index".nonempty)))
             userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user3_app1".nonempty), KibanaApp("user3_app2".nonempty)))
             userMetadata.kibanaAccess should be (None)
             userMetadata.userOrigin should be (None)
@@ -148,13 +148,13 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
       }
       "return forbidden" when {
         "no block is matched" in {
-          val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("userXXX:pass")))
+          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("userXXX:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Forbidden => }
         }
         "current group is set but it doesn't exist on available groups list" in {
-          val request = MockRequestContext.default.copy(
+          val request = MockRequestContext.metadata.copy(
             headers = Set(basicAuthHeader("user4:pass"), header("x-ror-current-group", "group7"))
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
@@ -162,7 +162,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
           inside(result.result) { case Forbidden => }
         }
         "block with no available groups collected is matched and current group is set" in {
-          val request = MockRequestContext.default.copy(
+          val request = MockRequestContext.metadata.copy(
             headers = Set(basicAuthHeader("user3:pass"), header("x-ror-current-group", "group7"))
           )
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()

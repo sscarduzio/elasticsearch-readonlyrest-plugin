@@ -16,15 +16,16 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -57,9 +58,9 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
           assertNotMatchRule(settingsOf(RO), action, Set(IndexName(".kibana".nonempty)))
           assertMatchRule(settingsOf(RW), action, Set(IndexName(".kibana".nonempty))) {
             assertBlockContext(
-              //responseHeaders = Set(Header(Name.kibanaAccess, RW: KibanaAccess)),
               kibanaIndex = Some(IndexName(".kibana".nonempty)),
-              kibanaAccess = Some(RW)
+              kibanaAccess = Some(RW),
+              indices = Set(IndexName(".kibana".nonempty))
             )
           }
         }
@@ -102,7 +103,8 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
           assertMatchRule(settingsOf(RW, IndexName(".custom_kibana".nonempty)), action, Set(IndexName(".custom_kibana".nonempty))) {
             assertBlockContext(
               kibanaIndex = Some(IndexName(".custom_kibana".nonempty)),
-              kibanaAccess = Some(RW)
+              kibanaAccess = Some(RW),
+              indices = Set(IndexName(".custom_kibana".nonempty)),
             )
           }
         }
@@ -195,6 +197,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
           )
         }
       }
+
       assertMatchClusterRule(RW)
       assertMatchClusterRule(RO)
     }
@@ -205,19 +208,21 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
     assertMatchRule(settingsOf(RO, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath)) {
       assertBlockContext(
         kibanaIndex = Some(customKibanaIndex),
-        kibanaAccess = Some(RO)
+        kibanaAccess = Some(RO),
+        indices = Set(customKibanaIndex)
       )
     }
     assertMatchRule(settingsOf(RW, customKibanaIndex), action, Set(customKibanaIndex), Some(uriPath)) {
       assertBlockContext(
         kibanaIndex = Some(customKibanaIndex),
-        kibanaAccess = Some(RW)
+        kibanaAccess = Some(RW),
+        indices = Set(customKibanaIndex)
       )
     }
   }
 
   private def assertMatchRule(settings: KibanaAccessRule.Settings, action: Action, indices: Set[IndexName] = Set.empty, uriPath: Option[UriPath] = None)
-                             (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings)) =
+                             (blockContextAssertion: BlockContext => Unit = defaultOutputBlockContextAssertion(settings, indices)) =
     assertRule(settings, action, indices, uriPath, Some(blockContextAssertion))
 
   private def assertNotMatchRule(settings: KibanaAccessRule.Settings, action: Action, indices: Set[IndexName] = Set.empty, uriPath: Option[UriPath] = None) =
@@ -229,13 +234,13 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
                          uriPath: Option[UriPath] = None,
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new KibanaAccessRule(settings)
-    val requestContext = MockRequestContext(
+    val requestContext = MockRequestContext.indices.copy(
       action = action,
       indices = indices,
       uriPath = uriPath.getOrElse(UriPath(""))
     )
-    val blockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
-    val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)
+    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, Set.empty, indices)
+    val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
         inside(result) { case Fulfilled(outBlockContext) =>
@@ -250,9 +255,14 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
     KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), IndexName.fromUnsafeString(".readonlyrest"))
   }
 
-  private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings): BlockContext => Unit =
+  private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings, indices: Set[IndexName]): BlockContext => Unit =
     (blockContext: BlockContext) => {
-      assertBlockContext(kibanaAccess = Some(settings.access))(blockContext)
+      assertBlockContext(
+        kibanaAccess = Some(settings.access),
+        indices = indices
+      )(
+        blockContext
+      )
     }
 
 }

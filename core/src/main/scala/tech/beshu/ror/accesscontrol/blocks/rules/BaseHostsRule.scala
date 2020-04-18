@@ -34,8 +34,7 @@ import scala.util.Success
 abstract class BaseHostsRule(resolver: HostnameResolver)
   extends RegularRule with Logging {
 
-  protected def checkAllowedAddresses(requestContext: RequestContext,
-                                      blockContext: BlockContext)
+  protected def checkAllowedAddresses(blockContext: BlockContext)
                                      (allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
                                       addressToCheck: Address): Task[Boolean] = {
     allowedAddresses
@@ -47,7 +46,7 @@ abstract class BaseHostsRule(resolver: HostnameResolver)
                 Task.now(true)
               case false =>
                 host
-                  .resolve(requestContext, blockContext).toOption
+                  .resolve(blockContext).toOption
                   .existsM(addresses => addresses.existsM(ipMatchesAddress(_, addressToCheck)))
             }
       }

@@ -22,11 +22,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class MethodsRuleTests extends WordSpec with MockFactory {
 
@@ -64,9 +65,9 @@ class MethodsRuleTests extends WordSpec with MockFactory {
   private def assertRule(configuredMethods: NonEmptySet[Method], requestMethod: Method, isMatched: Boolean) = {
     val rule = new MethodsRule(MethodsRule.Settings(configuredMethods))
     val requestContext = mock[RequestContext]
-    val blockContext = mock[BlockContext]
     (requestContext.method _).expects().returning(requestMethod)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+    rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()
     }

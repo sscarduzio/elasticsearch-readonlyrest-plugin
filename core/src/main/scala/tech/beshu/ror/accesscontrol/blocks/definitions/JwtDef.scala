@@ -20,8 +20,8 @@ import java.security.PublicKey
 
 import cats.{Eq, Show}
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.{ClaimName, AuthorizationTokenDef, Header}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.{Name, SignatureCheckMethod}
+import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, ClaimName}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 
 final case class JwtDef(id: Name,

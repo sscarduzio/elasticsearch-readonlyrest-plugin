@@ -21,8 +21,9 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
@@ -47,12 +48,17 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(baHeader)).twice()
 
-        val blockContext = mock[BlockContext]
-        val newBlockContext = mock[BlockContext]
-        (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id("user".nonempty))).returning(newBlockContext)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
 
         val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(newBlockContext))
+        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
+          GeneralNonIndexRequestBlockContext(
+            requestContext,
+            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("user".nonempty))),
+            Set.empty,
+            Set.empty
+          )
+        ))
       }
     }
     "not match" when {
@@ -66,10 +72,11 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         val requestContext = mock[RequestContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(baHeader)).twice()
-        val blockContext = mock[BlockContext]
+
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
 
         val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }
   }

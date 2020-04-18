@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import org.apache.http.client.methods.{HttpGet, HttpPost}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class IndexManager(client: RestClient)
@@ -63,6 +63,9 @@ class IndexManager(client: RestClient)
     call(createGetSettingsRequest(Set("_all")), new JsonResponse(_))
   }
 
+  def removeAll: SimpleResponse =
+    call(createDeleteIndicesRequest, new SimpleResponse(_))
+
   private def getAliasRequest(indexOpt: Option[String] = None,
                               aliasOpt: Option[String] = None) = {
     val path = indexOpt match {
@@ -94,6 +97,10 @@ class IndexManager(client: RestClient)
 
   private def createGetSettingsRequest(indices: Set[String]) = {
     new HttpGet(client.from(s"${indices.mkString(",")}/_settings"))
+  }
+
+  private def createDeleteIndicesRequest = {
+    new HttpDelete(client.from("/_all"))
   }
 
 }

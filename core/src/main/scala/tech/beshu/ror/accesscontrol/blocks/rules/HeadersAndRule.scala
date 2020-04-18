@@ -16,16 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.HeadersAndRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RegularRule}
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.utils.MatcherWithWildcards
 import tech.beshu.ror.accesscontrol.header.FlatHeader._
+import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 
@@ -37,9 +36,9 @@ class HeadersAndRule(val settings: Settings)
 
   override val name: Rule.Name = HeadersAndRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
-    val headersSubset = requestContext
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+    val headersSubset = blockContext
+      .requestContext
       .headers
       .filter(h => settings.headers.exists(_.name === h.name))
     if (headersSubset.size != settings.headers.length)

@@ -13,14 +13,9 @@ import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.SecurityPermissionException
-import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
-import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, StartingFailure}
-import tech.beshu.ror.es.request.RequestInfo
 import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
-import tech.beshu.ror.es.request.regular.RegularRequestHandler
-import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import tech.beshu.ror.proxy.es.providers.{EsRestClientBasedRorClusterService, ProxyAuditSink, ProxyIndexJsonContentManager}
@@ -77,20 +72,21 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: ProxyRestChannel): Unit = {
-    val requestInfo = new RequestInfo(channel, task.getId, action, request, rorClusterService, threadPool, false)
-    EsRequestContext.from(requestInfo) match {
-      case Success(requestContext) =>
-        requestContext.uriPath match {
-          case CurrentUserMetadataPath(_) =>
-            val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestInfo, requestContext)
-          case _ =>
-            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestInfo, requestContext)
-        }
-      case Failure(ex) =>
-        channel.sendFailureResponse(ex)
-    }
+    // todo: fixme
+//    val requestInfo = new RequestInfo(channel, task.getId, action, request, rorClusterService, threadPool, false)
+//    EsRequestContext.from(requestInfo) match {
+//      case Success(requestContext) =>
+//        requestContext.uriPath match {
+//          case CurrentUserMetadataPath(_) =>
+//            val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
+//            handler.handle(requestInfo, requestContext)
+//          case _ =>
+//            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
+//            handler.handle(requestInfo, requestContext)
+//        }
+//      case Failure(ex) =>
+//        channel.sendFailureResponse(ex)
+//    }
   }
 
 }

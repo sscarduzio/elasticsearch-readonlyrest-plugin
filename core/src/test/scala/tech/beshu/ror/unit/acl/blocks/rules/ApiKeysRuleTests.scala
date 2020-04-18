@@ -24,7 +24,8 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.accesscontrol.domain.ApiKey
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.ApiKeysRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.orders._
@@ -38,24 +39,24 @@ class ApiKeysRuleTests extends WordSpec with MockFactory {
     "match" when {
       "x-api-key header contains defined in settings value" in {
         val requestContext = mock[RequestContext]
-        val blockContext = mock[BlockContext]
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
         (requestContext.headers _).expects().returning(Set(headerFrom("X-Api-Key" -> "1234567890")))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
+        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
       }
     }
 
     "not match" when {
       "x-api-key header contains not defined in settings value" in {
         val requestContext = mock[RequestContext]
-        val blockContext = mock[BlockContext]
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
         (requestContext.headers _).expects().returning(Set(headerFrom("X-Api-Key" -> "x")))
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected())
+        rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
       "x-api-key header is absent" in {
         val requestContext = mock[RequestContext]
-        val blockContext = mock[BlockContext]
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
         (requestContext.headers _).expects().returning(Set.empty)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected())
+        rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
     }
   }

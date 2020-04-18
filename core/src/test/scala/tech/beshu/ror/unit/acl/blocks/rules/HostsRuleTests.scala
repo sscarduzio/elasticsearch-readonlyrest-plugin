@@ -24,7 +24,8 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.blocks.rules.HostsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext}
@@ -94,12 +95,12 @@ class HostsRuleTests extends WordSpec with MockFactory {
       HostsRule.Settings(configuredValues, acceptXForwardedForHeader = false),
       new Ip4sBasedHostnameResolver
     )
-    val requestContext = MockRequestContext(
+    val requestContext = MockRequestContext.metadata.copy(
       remoteAddress = address,
       headers = Set.empty
     )
-    val blockContext = mock[BlockContext]
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+    rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()
     }

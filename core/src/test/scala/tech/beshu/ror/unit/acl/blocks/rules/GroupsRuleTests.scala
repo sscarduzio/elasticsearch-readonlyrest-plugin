@@ -21,23 +21,25 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.{GroupsRule, Rule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests._
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
@@ -163,13 +165,19 @@ class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
                          preferredGroup: Option[Group],
                          blockContextAssertion: Option[BlockContext => Unit]): Unit = {
     val rule = new GroupsRule(settings)
-    val requestContext = MockRequestContext(
-      headers = preferredGroup.map(_.value).map(v => Header(Header.Name.currentGroup, v)).toSet[Header]
+    val requestContext = MockRequestContext.metadata.copy(
+      headers = preferredGroup.map(_.value).map(v => new Header(Header.Name.currentGroup, v)).toSet[Header]
     )
-    val blockContext = loggedUser
-      .map(DirectlyLoggedUser.apply)
-      .foldLeft(RequestContextInitiatedBlockContext.fromRequestContext(requestContext): BlockContext)(_ withLoggedUser _)
-    val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)
+    val blockContext = CurrentUserMetadataRequestBlockContext(
+      requestContext,
+      loggedUser match {
+        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(user))
+        case None => UserMetadata.from(requestContext)
+      },
+      Set.empty,
+      Set.empty
+    )
+    val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
         inside(result) { case Fulfilled(outBlockContext) =>
@@ -196,14 +204,14 @@ object GroupsRuleTests {
   private val alwaysRejectingAuthRule = new AuthenticationRule {
     override protected val impersonators: List[ImpersonatorDef] = Nil
     override val name: Rule.Name = Rule.Name("dummy-rejecting")
-    override def tryToAuthenticate(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] = Task.now(Rejected())
+    override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = Task.now(Rejected())
     override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
   }
 
   private val alwaysThrowingAuthRule = new AuthenticationRule {
     override protected val impersonators: List[ImpersonatorDef] = Nil
     override def name: Rule.Name = Rule.Name("dummy-throwing")
-    override def tryToAuthenticate(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
+    override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
       Task.raiseError(new Exception("Sth went wrong"))
     override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
   }
@@ -211,8 +219,8 @@ object GroupsRuleTests {
   private def alwaysFulfillingAuthRule(user: User.Id) = new AuthenticationRule {
     override protected val impersonators: List[ImpersonatorDef] = Nil
     override def name: Rule.Name = Rule.Name("dummy-fulfilling")
-    override def tryToAuthenticate(requestContext: RequestContext, blockContext: BlockContext): Task[RuleResult] =
-      Task.now(Fulfilled(blockContext.withLoggedUser(DirectlyLoggedUser(user))))
+    override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
+      Task.now(Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
     override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
   }
 }

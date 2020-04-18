@@ -27,10 +27,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.utils._
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -42,10 +41,16 @@ object TestsUtils {
   implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
 
   def basicAuthHeader(value: String): Header =
-    Header(Name(NonEmptyString.unsafeFrom("Authorization")), NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes)))
+    new Header(
+      Name(NonEmptyString.unsafeFrom("Authorization")),
+      NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString(value.getBytes))
+    )
 
   def header(name: String, value: String): Header =
-    Header(Name(NonEmptyString.unsafeFrom(name)), NonEmptyString.unsafeFrom(value))
+    new Header(
+      Name(NonEmptyString.unsafeFrom(name)),
+      NonEmptyString.unsafeFrom(value)
+    )
 
   implicit def scalaFiniteDuration2JavaDuration(duration: FiniteDuration): Duration = Duration.ofMillis(duration.toMillis)
 
@@ -53,12 +58,18 @@ object TestsUtils {
 
     def assertBlockContext(expected: BlockContext,
                            current: BlockContext): Unit = {
-      assertBlockContext(responseHeaders = expected.responseHeaders,
+      assertBlockContext(
+        loggedUser = expected.userMetadata.loggedUser,
+        currentGroup = expected.userMetadata.currentGroup,
+        availableGroups = expected.userMetadata.availableGroups,
+        kibanaIndex = expected.userMetadata.kibanaIndex,
+        kibanaTemplateIndex = expected.userMetadata.kibanaTemplateIndex,
+        hiddenKibanaApps = expected.userMetadata.hiddenKibanaApps,
+        kibanaAccess = expected.userMetadata.kibanaAccess,
+        userOrigin = expected.userMetadata.userOrigin,
+        jwt = expected.userMetadata.jwtToken,
+        responseHeaders = expected.responseHeaders,
         contextHeaders = expected.contextHeaders,
-        kibanaIndex = expected.kibanaIndex,
-        loggedUser = expected.loggedUser,
-        currentGroup = expected.currentGroup,
-        availableGroups = expected.availableGroups,
         indices = expected.indices,
         repositories = expected.repositories,
         snapshots = expected.snapshots) {
@@ -67,32 +78,46 @@ object TestsUtils {
     }
 
     def assertBlockContext(loggedUser: Option[LoggedUser] = None,
-                           jwt: Option[JwtTokenPayload] = None,
                            currentGroup: Option[Group] = None,
                            availableGroups: UniqueList[Group] = UniqueList.empty,
+                           kibanaIndex: Option[IndexName] = None,
+                           kibanaTemplateIndex: Option[IndexName] = None,
+                           hiddenKibanaApps: Set[KibanaApp] = Set.empty,
+                           kibanaAccess: Option[KibanaAccess] = None,
+                           userOrigin: Option[UserOrigin] = None,
+                           jwt: Option[JwtTokenPayload] = None,
                            responseHeaders: Set[Header] = Set.empty,
                            contextHeaders: Set[Header] = Set.empty,
-                           indices: Outcome[Set[IndexName]] = Outcome.NotExist,
-                           repositories: Outcome[Set[IndexName]] = Outcome.NotExist,
-                           snapshots: Outcome[Set[IndexName]] = Outcome.NotExist,
-                           hiddenKibanaApps: Set[KibanaApp] = Set.empty,
-                           userOrigin: Option[UserOrigin] = None,
-                           kibanaAccess: Option[KibanaAccess] = None,
-                           kibanaIndex: Option[IndexName] = None)
+                           indices: Set[IndexName] = Set.empty,
+                           repositories: Set[RepositoryName] = Set.empty,
+                           snapshots: Set[SnapshotName] = Set.empty,
+                           templates: Set[Template] = Set.empty)
                           (blockContext: BlockContext): Unit = {
-      blockContext.loggedUser should be(loggedUser)
-      blockContext.jwt should be (jwt)
-      blockContext.currentGroup should be (currentGroup)
-      blockContext.availableGroups should be (availableGroups)
+      blockContext.userMetadata.loggedUser should be(loggedUser)
+      blockContext.userMetadata.currentGroup should be(currentGroup)
+      blockContext.userMetadata.availableGroups should be(availableGroups)
+      blockContext.userMetadata.kibanaIndex should be(kibanaIndex)
+      blockContext.userMetadata.kibanaTemplateIndex should be(kibanaTemplateIndex)
+      blockContext.userMetadata.hiddenKibanaApps should be(hiddenKibanaApps)
+      blockContext.userMetadata.kibanaAccess should be(kibanaAccess)
+      blockContext.userMetadata.userOrigin should be(userOrigin)
+      blockContext.userMetadata.jwtToken should be(jwt)
       blockContext.responseHeaders should be(responseHeaders)
       blockContext.contextHeaders should be(contextHeaders)
-      blockContext.indices should be(indices)
-      blockContext.repositories should be(repositories)
-      blockContext.snapshots should be(snapshots)
-      blockContext.hiddenKibanaApps should be (hiddenKibanaApps)
-      blockContext.userOrigin should be (userOrigin)
-      blockContext.kibanaAccess should be (kibanaAccess)
-      blockContext.kibanaIndex should be(kibanaIndex)
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext =>
+        case _: GeneralNonIndexRequestBlockContext =>
+        case bc: RepositoryRequestBlockContext =>
+          bc.repositories should be (repositories)
+        case bc: SnapshotRequestBlockContext =>
+          bc.snapshots should be (snapshots)
+          bc.repositories should be (repositories)
+          bc.indices should be (indices)
+        case bc: TemplateRequestBlockContext =>
+          bc.templates  should be (templates)
+        case bc: GeneralIndexRequestBlockContext =>
+          bc.indices should be (indices)
+      }
     }
   }
 
@@ -105,7 +130,7 @@ object TestsUtils {
 
   def headerFrom(nameAndValue: (String, String)): Header = {
     (NonEmptyString.unapply(nameAndValue._1), NonEmptyString.unapply(nameAndValue._2)) match {
-      case (Some(nameNes), Some(valueNes)) => Header(Name(nameNes), valueNes)
+      case (Some(nameNes), Some(valueNes)) => new Header(Name(nameNes), valueNes)
       case _ => throw new IllegalArgumentException(s"Cannot convert ${nameAndValue._1}:${nameAndValue._2} to Header")
     }
   }

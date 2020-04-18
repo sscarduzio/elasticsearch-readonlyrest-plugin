@@ -20,14 +20,38 @@ import java.lang.reflect.Modifier
 import java.util.regex.Pattern
 
 import org.elasticsearch.action.CompositeIndicesRequest
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
-import tech.beshu.ror.accesscontrol.request.RequestInfoShim.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
+import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices
+import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.SqlTableRelated.IndexSqlTable
+import tech.beshu.ror.es.utils.ExtractedIndices.SqlIndices.{SqlNotTableRelated, SqlTableRelated}
 import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 import scala.util.Try
+
+sealed trait ExtractedIndices {
+  def indices: Set[String]
+}
+object ExtractedIndices {
+  case object NoIndices extends ExtractedIndices {
+    override def indices: Set[String] = Set.empty
+  }
+  final case class RegularIndices(override val indices: Set[String]) extends ExtractedIndices
+  sealed trait SqlIndices extends ExtractedIndices {
+    def indices: Set[String]
+  }
+  object SqlIndices {
+    final case class SqlTableRelated(tables: List[IndexSqlTable]) extends SqlIndices {
+      override lazy val indices: Set[String] = tables.flatMap(_.indices).toSet
+    }
+    object SqlTableRelated {
+      final case class IndexSqlTable(tableStringInQuery: String, indices: Set[String])
+    }
+    case object SqlNotTableRelated extends SqlIndices {
+      override def indices: Set[String] = Set.empty
+    }
+  }
+}
 
 object SqlRequestHelper {
 

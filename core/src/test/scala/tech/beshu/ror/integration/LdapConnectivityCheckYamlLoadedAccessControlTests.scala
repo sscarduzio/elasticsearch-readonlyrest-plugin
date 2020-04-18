@@ -70,7 +70,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
   "An LDAP connectivity check" should {
     "allow to core to start" when {
       "HA is enabled and one of LDAP hosts is unavailable" in {
-        val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("cartman:user2")))
+        val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("cartman:user2")))
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
         result.history should have size 1
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>

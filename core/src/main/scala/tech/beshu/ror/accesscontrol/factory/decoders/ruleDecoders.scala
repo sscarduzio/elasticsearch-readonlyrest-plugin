@@ -25,9 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
 import tech.beshu.ror.configuration.RorIndexNameConfiguration
-import tech.beshu.ror.providers.{PropertiesProvider, UuidProvider}
-
-import scala.language.{existentials, implicitConversions}
+import tech.beshu.ror.providers.UuidProvider
 
 object ruleDecoders {
 
@@ -35,8 +33,7 @@ object ruleDecoders {
                              definitions: DefinitionsPack,
                              rorIndexNameConfiguration: RorIndexNameConfiguration)
                             (implicit clock: Clock,
-                             uuidProvider: UuidProvider,
-                             propertiesProvider: PropertiesProvider): Option[RuleBaseDecoder[_ <: Rule]] =
+                             uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] =
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)

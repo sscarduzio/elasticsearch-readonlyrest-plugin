@@ -28,7 +28,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.utils.TestsUtils.scalaFiniteDuration2JavaDuration
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
@@ -84,9 +85,8 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
         implicit val _ = fixedClock
         val rule = new SessionMaxIdleRule(Settings(positive(1 minute)))
         val requestContext = mock[RequestContext]
-        val blockContext = mock[BlockContext]
-        (blockContext.loggedUser _).expects().returning(None)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Rejected())
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
       "ror cookie is expired" in {
         implicit val _ = Clock.fixed(someday.toInstant.plus(15 minutes), someday.getZone)
@@ -139,18 +139,34 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
                         (implicit clock: Clock) = {
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle))
     val requestContext = mock[RequestContext]
-    val blockContext = mock[BlockContext]
-    val newBlockContext = mock[BlockContext]
     val headers = NonEmptyString.unapply(rawCookie) match {
       case Some(cookieHeader) => Set(headerFrom("Cookie" -> cookieHeader.value))
       case None => Set.empty[Header]
     }
     (requestContext.headers _).expects().returning(headers)
-    (blockContext.loggedUser _).expects().returning(loggedUser)
-    if(isMatched) (blockContext.withAddedResponseHeader _).expects(headerFrom("Set-Cookie" -> setRawCookie)).returning(newBlockContext)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
-      if (isMatched) Fulfilled(newBlockContext)
-      else Rejected()
+    val blockContext = CurrentUserMetadataRequestBlockContext(
+      requestContext,
+      loggedUser match {
+        case Some(user) => UserMetadata.empty.withLoggedUser(user)
+        case None => UserMetadata.empty
+      },
+      Set.empty,
+      Set.empty
+    )
+    rule.check(blockContext).runSyncStep shouldBe Right {
+      if (isMatched) {
+        Fulfilled(CurrentUserMetadataRequestBlockContext(
+          requestContext,
+          loggedUser match {
+            case Some(user) => UserMetadata.empty.withLoggedUser(user)
+            case None => UserMetadata.empty
+          },
+          Set(headerFrom("Set-Cookie" -> setRawCookie)),
+          Set.empty
+        ))
+      } else {
+        Rejected()
+      }
     }
   }
 
