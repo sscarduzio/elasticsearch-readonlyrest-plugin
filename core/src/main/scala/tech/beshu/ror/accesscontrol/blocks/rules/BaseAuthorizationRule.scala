@@ -18,31 +18,29 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthorizationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 abstract class BaseAuthorizationRule
   extends AuthorizationRule {
 
-  protected def authorize(requestContext: RequestContext,
-                          blockContext: BlockContext,
-                          user: LoggedUser): Task[AuthorizationResult]
+  protected def authorize[B <: BlockContext](blockContext: B,
+                                                user: LoggedUser): Task[AuthorizationResult]
 
-  override def check(requestContext: RequestContext, blockContext: BlockContext): Task[Rule.RuleResult] = {
-    blockContext.loggedUser match {
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    blockContext.userMetadata.loggedUser match {
       case Some(user) =>
-        authorize(requestContext, blockContext, user)
+        authorize(blockContext, user)
           .map {
             case AuthorizationResult.Unauthorized =>
               Rejected()
             case AuthorizationResult.Authorized(availableGroups) =>
-              Fulfilled(blockContext.withAddedAvailableGroups(availableGroups))
+              Fulfilled(blockContext.withUserMetadata(_.addAvailableGroups(availableGroups)))
           }
       case None =>
         Task.now(Rejected())

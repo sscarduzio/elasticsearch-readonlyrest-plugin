@@ -44,11 +44,9 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResul
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
 import tech.beshu.ror.configuration.{RawRorConfig, RorIndexNameConfiguration}
-import tech.beshu.ror.providers.{EnvVarsProvider, PropertiesProvider, UuidProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.yaml.YamlOps
-
-import scala.language.implicitConversions
 
 final case class CoreSettings(aclEngine: AccessControl,
                               aclStaticContext: AccessControlStaticContext,
@@ -63,7 +61,6 @@ trait CoreFactory {
 
 class RawRorConfigBasedCoreFactory(implicit clock: Clock,
                                    uuidProvider: UuidProvider,
-                                   propertiesProvider: PropertiesProvider,
                                    envVarProvider: EnvVarsProvider)
   extends CoreFactory with Logging {
 

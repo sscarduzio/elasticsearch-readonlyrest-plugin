@@ -20,7 +20,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.BasicAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -37,29 +38,34 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
     "match" when {
       "basic auth header contains configured in rule's settings value" in {
         val requestContext = mock[RequestContext]
-        val blockContext = mock[BlockContext]
-        val modifiedBlockContext = mock[BlockContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:logstash"))).twice()
-        (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id("logstash".nonempty))).returning(modifiedBlockContext)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(modifiedBlockContext))
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
+          GeneralNonIndexRequestBlockContext(
+            requestContext,
+            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("logstash".nonempty))),
+            Set.empty,
+            Set.empty
+          )
+        ))
       }
     }
 
     "not match" when {
       "basic auth header contains not configured in rule's settings value" in {
         val requestContext = mock[RequestContext]
-        val blockContext = mock[BlockContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:nologstash"))).twice()
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "basic auth header is absent" in {
         val requestContext = mock[RequestContext]
-        val blockContext = mock[BlockContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set.empty).twice()
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }
   }

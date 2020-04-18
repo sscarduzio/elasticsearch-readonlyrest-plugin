@@ -22,7 +22,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.XForwardedForRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -98,11 +99,11 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
   private def assertRule(settings: XForwardedForRule.Settings, xForwardedForHeaderValue: String, isMatched: Boolean) = {
     val rule = new XForwardedForRule(settings)
     val requestContext = NonEmptyString.unapply(xForwardedForHeaderValue) match {
-      case Some(header) => MockRequestContext(headers = Set(headerFrom("X-Forwarded-For" -> header.value)))
-      case None => MockRequestContext.default
+      case Some(header) => MockRequestContext.metadata.copy(headers = Set(headerFrom("X-Forwarded-For" -> header.value)))
+      case None => MockRequestContext.indices
     }
-    val blockContext = mock[BlockContext]
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+    rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()
     }

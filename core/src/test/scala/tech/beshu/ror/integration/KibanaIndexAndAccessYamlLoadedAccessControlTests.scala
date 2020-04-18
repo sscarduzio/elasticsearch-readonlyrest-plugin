@@ -44,7 +44,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends WordSpec with Bas
   "An ACL" when {
     "kibana index and kibana access rules are used" should {
       "allow to proceed" in {
-        val request = MockRequestContext.default
+        val request = MockRequestContext.indices
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
 

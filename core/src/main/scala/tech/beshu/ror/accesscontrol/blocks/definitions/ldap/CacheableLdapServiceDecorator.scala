@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.utils.{CacheableAction, CacheableActionWithK
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration.FiniteDuration
-import scala.language.higherKinds
 
 class CacheableLdapAuthenticationServiceDecorator(underlying: LdapAuthenticationService,
                                                   ttl: FiniteDuration Refined Positive)

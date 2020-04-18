@@ -16,22 +16,23 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.accesscontrol.domain.{Group, Header, User}
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.{Group, Header, User}
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
@@ -197,13 +198,19 @@ class ExternalAuthorizationRuleTests
                          preferredGroup: Option[Group],
                          blockContextAssertion: Option[BlockContext => Unit]): Unit = {
     val rule = new ExternalAuthorizationRule(settings)
-    val requestContext = MockRequestContext(
-      headers = preferredGroup.map(_.value).map(v => Header(Header.Name.currentGroup, v)).toSet[Header]
+    val requestContext = MockRequestContext.metadata.copy(
+      headers = preferredGroup.map(_.value).map(v => new Header(Header.Name.currentGroup, v)).toSet[Header]
     )
-    val blockContext = loggedUser
-      .map(DirectlyLoggedUser.apply)
-      .foldLeft(RequestContextInitiatedBlockContext.fromRequestContext(requestContext): BlockContext)(_ withLoggedUser _)
-    val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)
+    val blockContext = CurrentUserMetadataRequestBlockContext(
+      requestContext,
+      loggedUser match {
+        case Some(user) => UserMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(user))
+        case None => UserMetadata.from(requestContext)
+      },
+      Set.empty,
+      Set.empty
+    )
+    val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
         inside(result) { case Fulfilled(outBlockContext) =>

@@ -20,7 +20,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
@@ -35,18 +36,27 @@ class KibanaIndexRuleTests extends WordSpec with MockFactory {
     "always match" should {
       "set kibana index if can be resolved" in {
         val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index")))
-        val requestContext = MockRequestContext.default
-        val blockContext = mock[BlockContext]
-        val newBlockContext = mock[BlockContext]
-        (blockContext.withKibanaIndex _).expects(IndexName("kibana_index".nonempty)).returning(newBlockContext)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext))
+        val requestContext = MockRequestContext.indices
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+          CurrentUserMetadataRequestBlockContext(
+            requestContext,
+            UserMetadata.empty.withKibanaIndex(IndexName("kibana_index".nonempty)),
+            Set.empty,
+            Set.empty)
+        ))
       }
       "not set kibana index if cannot be resolved" in {
         val rule = new KibanaIndexRule(KibanaIndexRule.Settings(indexNameValueFrom("kibana_index_of_@{user}")))
-        val requestContext = MockRequestContext.default
-        val blockContext = mock[BlockContext]
-        (blockContext.loggedUser _).expects().returning(None)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
+        val requestContext = MockRequestContext.indices
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+          CurrentUserMetadataRequestBlockContext(
+            requestContext,
+            UserMetadata.empty,
+            Set.empty,
+            Set.empty)
+        ))
       }
     }
   }

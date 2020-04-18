@@ -30,10 +30,11 @@ import monix.eval.Task
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{RorMetadataInvalidFormat, EmptyAuthorizationValue, InvalidHeaderFormat}
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.util.Try
 
@@ -199,26 +200,26 @@ object domain {
     def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
       HostnameResolver.resolveAll[Task](hostname.value).map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
     }
-  }
 
-  private def parseCidr(value: String) =
-    Cidr.fromString(value).map(Address.Ip.apply)
+    private def parseCidr(value: String) =
+      Cidr.fromString(value).map(Address.Ip.apply)
 
-  private def parseHostname(value: String) =
-    Hostname(value).map(Address.Name.apply)
+    private def parseHostname(value: String) =
+      Hostname(value).map(Address.Name.apply)
 
-  private def parseIpAddress(value: String) =
-    (cutOffZoneIndex _ andThen IpAddress.apply andThen (_.map(createAddressIp))) (value)
+    private def parseIpAddress(value: String) =
+      (cutOffZoneIndex _ andThen IpAddress.apply andThen (_.map(createAddressIp))) (value)
 
-  private def createAddressIp(ip: IpAddress) =
-    Address.Ip(Cidr(ip, 32))
+    private def createAddressIp(ip: IpAddress) =
+      Address.Ip(Cidr(ip, 32))
 
-  private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
+    private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
 
-  private def cutOffZoneIndex(value: String): String = { //https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
-    value match {
-      case ipv6WithLiteralScope(ipv6) => ipv6
-      case noLiteralIp => noLiteralIp
+    private def cutOffZoneIndex(value: String): String = { //https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
+      value match {
+        case ipv6WithLiteralScope(ipv6) => ipv6
+        case noLiteralIp => noLiteralIp
+      }
     }
   }
 
@@ -228,6 +229,7 @@ object domain {
     def isSnapshot: Boolean = value.contains("/snapshot/")
     def isRepository: Boolean = value.contains("/repository/")
     def isTemplate: Boolean = value.contains("/template/")
+    def isPutTemplate: Boolean = value == "indices:admin/template/put"
   }
   object Action {
     val searchAction = Action("indices:data/read/search")
@@ -271,6 +273,30 @@ object domain {
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
     def all: Set[IndexName] = aliases + index
+  }
+
+  final case class RepositoryName(value: NonEmptyString)
+  object RepositoryName {
+    val all: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("_all"))
+    val wildcard: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("*"))
+
+    implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
+  }
+  final case class SnapshotName(value: NonEmptyString)
+  object SnapshotName {
+    val all: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("_all"))
+    val wildcard: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("*"))
+
+    implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+  }
+
+  final case class Template(name: TemplateName, patterns: UniqueNonEmptyList[IndexName])
+  final case class TemplateName(value: NonEmptyString)
+  object TemplateName {
+    def fromString(value: String): Option[TemplateName] = {
+      NonEmptyString.from(value).map(TemplateName.apply).toOption
+    }
+    implicit val eqTemplateName: Eq[TemplateName] = Eq.fromUniversalEquals
   }
 
   final case class ApiKey(value: NonEmptyString)
@@ -361,7 +387,6 @@ object domain {
       }
     }
   }
-
 
   final case class ClaimName(name: JsonPath) {
 

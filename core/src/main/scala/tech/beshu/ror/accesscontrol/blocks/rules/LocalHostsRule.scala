@@ -18,23 +18,21 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.LocalHostsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class LocalHostsRule(val settings: Settings)
   extends BaseHostsRule {
 
   override val name: Rule.Name = LocalHostsRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = {
-    checkAllowedAddresses(requestContext, blockContext)(
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+    checkAllowedAddresses(blockContext)(
       allowedAddresses = settings.allowedAddresses,
-      addressToCheck = requestContext.localAddress
+      addressToCheck = blockContext.requestContext.localAddress
     ).map(condition => RuleResult.fromCondition(blockContext)(condition))
   }
 

@@ -16,243 +16,136 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.{Eval, Foldable, Functor}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
-import tech.beshu.ror.accesscontrol.blocks.RequestContextInitiatedBlockContext.BlockContextData
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{GeneralIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-trait BlockContext {
-
-  def loggedUser: Option[LoggedUser]
-  def withLoggedUser(user: LoggedUser): BlockContext
-
-  def jwt: Option[JwtTokenPayload]
-  def withJwt(token: JwtTokenPayload): BlockContext
-
-  def availableGroups: UniqueList[Group]
-  def currentGroup: Option[Group]
-  def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext
-
+sealed trait BlockContext {
+  def requestContext: RequestContext
+  def userMetadata: UserMetadata
   def responseHeaders: Set[Header]
-  def withAddedResponseHeader(header: Header): BlockContext
-
   def contextHeaders: Set[Header]
-  def withAddedContextHeader(header: Header): BlockContext
-
-  def indices: Outcome[Set[IndexName]]
-  def withIndices(indices: Set[IndexName]): BlockContext
-
-  def repositories: Outcome[Set[IndexName]]
-  def withRepositories(indices: Set[IndexName]): BlockContext
-
-  def snapshots: Outcome[Set[IndexName]]
-  def withSnapshots(indices: Set[IndexName]): BlockContext
-
-  def hiddenKibanaApps: Set[KibanaApp]
-  def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext
-
-  def userOrigin: Option[UserOrigin]
-  def withUserOrigin(origin: UserOrigin): BlockContext
-
-  def kibanaAccess: Option[KibanaAccess]
-  def withKibanaAccess(access: KibanaAccess): BlockContext
-
-  def kibanaIndex: Option[IndexName]
-  def withKibanaIndex(index: IndexName): BlockContext
-
-  def kibanaTemplateIndex: Option[IndexName]
-  def withKibanaTemplateIndex(index: IndexName): BlockContext
-
 }
-
 object BlockContext {
-  sealed trait Outcome[+T] {
-    def getOrElse[S >: T](default: => S): S = this match {
-      case Outcome.Exist(value) => value
-      case Outcome.NotExist => default
-    }
-  }
-  object Outcome {
-    final case class Exist[T](value: T) extends Outcome[T]
-    case object NotExist extends Outcome[Nothing]
 
-    implicit val functor: Functor[Outcome] = new Functor[Outcome] {
-      override def map[A, B](fa: Outcome[A])(f: A => B): Outcome[B] = fa match {
-        case Exist(value) => Exist(f(value))
-        case ne@NotExist => ne
-      }
-    }
-    implicit val foldable: Foldable[Outcome] = new Foldable[Outcome] {
-      override def foldLeft[A, B](fa: Outcome[A], b: B)(f: (B, A) => B): B = {
-        fa match {
-          case Exist(a) => f(b, a)
-          case NotExist => b
-        }
-      }
+  final case class CurrentUserMetadataRequestBlockContext(override val requestContext: RequestContext,
+                                                          override val userMetadata: UserMetadata,
+                                                          override val responseHeaders: Set[Header],
+                                                          override val contextHeaders: Set[Header])
+    extends BlockContext
 
-      override def foldRight[A, B](fa: Outcome[A], lb: Eval[B])(f: (A, Eval[B]) => Eval[B]): Eval[B] = {
-        fa match {
-          case Exist(a) => f(a, lb)
-          case NotExist => lb
-        }
-      }
-    }
-  }
-}
+  final case class GeneralNonIndexRequestBlockContext(override val requestContext: RequestContext,
+                                                      override val userMetadata: UserMetadata,
+                                                      override val responseHeaders: Set[Header],
+                                                      override val contextHeaders: Set[Header])
+    extends BlockContext
 
-object NoOpBlockContext extends BlockContext {
-  override val loggedUser: Option[LoggedUser] = None
-  override def withLoggedUser(user: LoggedUser): BlockContext = this
+  final case class RepositoryRequestBlockContext(override val requestContext: RequestContext,
+                                                 override val userMetadata: UserMetadata,
+                                                 override val responseHeaders: Set[Header],
+                                                 override val contextHeaders: Set[Header],
+                                                 repositories: Set[RepositoryName])
+    extends BlockContext
 
-  override val jwt: Option[JwtTokenPayload] = None
-  override def withJwt(token: JwtTokenPayload): BlockContext = this
+  final case class SnapshotRequestBlockContext(override val requestContext: RequestContext,
+                                               override val userMetadata: UserMetadata,
+                                               override val responseHeaders: Set[Header],
+                                               override val contextHeaders: Set[Header],
+                                               snapshots: Set[SnapshotName],
+                                               repositories: Set[RepositoryName],
+                                               indices: Set[IndexName])
+    extends BlockContext
 
-  override val availableGroups: UniqueList[Group] = UniqueList.empty
-  override def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext = this
-  override val currentGroup: Option[Group] = None
+  final case class TemplateRequestBlockContext(override val requestContext: RequestContext,
+                                               override val userMetadata: UserMetadata,
+                                               override val responseHeaders: Set[Header],
+                                               override val contextHeaders: Set[Header],
+                                               templates: Set[Template])
+    extends BlockContext
 
-  override val responseHeaders: Set[Header] = Set.empty
-  override def withAddedResponseHeader(header: Header): BlockContext = this
+  final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
+                                                   override val userMetadata: UserMetadata,
+                                                   override val responseHeaders: Set[Header],
+                                                   override val contextHeaders: Set[Header],
+                                                   indices: Set[IndexName])
+    extends BlockContext
 
-  override val hiddenKibanaApps: Set[KibanaApp] = Set.empty
-  override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext = this
+  implicit class BlockContextUpdaterOps[B <: BlockContext : BlockContextUpdater](val blockContext: B) {
+    def withUserMetadata(update: UserMetadata => UserMetadata): B =
+      BlockContextUpdater[B].withUserMetadata(blockContext, update(blockContext.userMetadata))
 
-  override val kibanaAccess: Option[KibanaAccess] = None
-  override def withKibanaAccess(access: KibanaAccess): BlockContext = this
+    def withAddedContextHeader(header: Header): B =
+      BlockContextUpdater[B].withAddedContextHeader(blockContext, header)
 
-  override val contextHeaders: Set[Header] = Set.empty
-  override def withAddedContextHeader(header: Header): BlockContext = this
-
-  override val kibanaIndex: Option[IndexName] = None
-  override def withKibanaIndex(index: IndexName): BlockContext = this
-
-  override val kibanaTemplateIndex: Option[IndexName] = None
-  override def withKibanaTemplateIndex(index: IndexName): BlockContext = this
-
-  override val userOrigin: Option[UserOrigin] = None
-  override def withUserOrigin(origin: UserOrigin): BlockContext = this
-
-  override val indices: Outcome[Set[IndexName]] = Outcome.NotExist
-  override def withIndices(indices: Set[IndexName]): BlockContext = this
-
-  override val repositories: Outcome[Set[IndexName]] = Outcome.NotExist
-  override def withRepositories(indices: Set[IndexName]): BlockContext = this
-
-  override val snapshots: Outcome[Set[IndexName]] = Outcome.NotExist
-  override def withSnapshots(indices: Set[IndexName]): BlockContext = this
-}
-
-class RequestContextInitiatedBlockContext private(val data: BlockContextData)
-  extends BlockContext {
-
-  override def loggedUser: Option[LoggedUser] = data.loggedUser
-
-  override def withLoggedUser(user: LoggedUser): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(loggedUser = Some(user)))
-
-  override def availableGroups: UniqueList[Group] = data.availableGroups
-
-  override def withAddedAvailableGroups(groups: UniqueNonEmptyList[Group]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(availableGroups = UniqueList.fromSortedSet(data.availableGroups ++ groups.toUniqueList)))
-
-  override def currentGroup: Option[Group] = data.initialCurrentGroup match {
-    case Some(initialGroup) => Some(initialGroup)
-    case None => availableGroups.headOption
+    def withAddedResponseHeader(header: Header): B =
+      BlockContextUpdater[B].withAddedResponseHeader(blockContext, header)
   }
 
-  override def responseHeaders: Set[Header] = data.responseHeaders.toSet
+  implicit class RepositoryOperationBlockContextUpdaterOps(val blockContext: RepositoryRequestBlockContext) extends AnyVal {
+    def withRepositories(repositories: Set[RepositoryName]): RepositoryRequestBlockContext = {
+      RepositoryRequestBlockContextUpdater.withRepositories(blockContext, repositories)
+    }
+  }
 
-  override def withAddedResponseHeader(header: Header): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(responseHeaders = data.responseHeaders :+ header))
+  implicit class SnapshotOperationBlockContextUpdaterOps(val blockContext: SnapshotRequestBlockContext) extends AnyVal {
+    def withSnapshots(snapshots: Set[SnapshotName]): SnapshotRequestBlockContext = {
+      SnapshotRequestBlockContextUpdater.withSnapshots(blockContext, snapshots)
+    }
 
-  override def hiddenKibanaApps: Set[KibanaApp] = data.hiddenKibanaApps
+    def withRepositories(repositories: Set[RepositoryName]): SnapshotRequestBlockContext = {
+      SnapshotRequestBlockContextUpdater.withRepositories(blockContext, repositories)
+    }
+  }
 
-  override def withHiddenKibanaApps(apps: Set[KibanaApp]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(hiddenKibanaApps = apps))
+  implicit class GeneralIndexRequestBlockContextUpdaterOps(val blockContext: GeneralIndexRequestBlockContext) extends AnyVal {
+    def withIndices(indices: Set[IndexName]): GeneralIndexRequestBlockContext = {
+      GeneralIndexRequestBlockContextUpdater.withIndices(blockContext, indices)
+    }
+  }
 
-  override def kibanaAccess: Option[KibanaAccess] = data.kibanaAccess
+  implicit class TemplateRequestBlockContextUpdaterOps(val blockContext: TemplateRequestBlockContext) extends AnyVal {
+    def withTemplates(templates: Set[Template]): TemplateRequestBlockContext = {
+      TemplateRequestBlockContextUpdater.withTemplates(blockContext, templates)
+    }
+  }
 
-  override def withKibanaAccess(access: KibanaAccess): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(kibanaAccess = Some(access)))
+  implicit class IndicesFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def indices: Set[IndexName] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => Set.empty
+        case _: GeneralNonIndexRequestBlockContext => Set.empty
+        case _: RepositoryRequestBlockContext => Set.empty
+        case bc: SnapshotRequestBlockContext => bc.indices
+        case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
+        case bc: GeneralIndexRequestBlockContext => bc.indices
+      }
+    }
+  }
 
-  override def userOrigin: Option[UserOrigin] = data.userOrigin
+  implicit class RepositoriesFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def repositories: Set[RepositoryName] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => Set.empty
+        case _: GeneralNonIndexRequestBlockContext => Set.empty
+        case bc: RepositoryRequestBlockContext => bc.repositories
+        case bc: SnapshotRequestBlockContext => bc.repositories
+        case _: TemplateRequestBlockContext => Set.empty
+        case _: GeneralIndexRequestBlockContext => Set.empty
+      }
+    }
+  }
 
-  override def withUserOrigin(origin: UserOrigin): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(userOrigin = Some(origin)))
-
-  override def contextHeaders: Set[Header] = data.contextHeaders.toSet
-
-  override def withAddedContextHeader(header: Header): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(contextHeaders = data.contextHeaders :+ header))
-
-  override def kibanaIndex: Option[IndexName] = data.kibanaIndex
-
-  override def withKibanaIndex(index: IndexName): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(kibanaIndex = Some(index)))
-
-  override def kibanaTemplateIndex: Option[IndexName] = data.kibanaTemplateIndex
-
-  override def withKibanaTemplateIndex(index: IndexName): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(kibanaTemplateIndex = Some(index)))
-
-  override def indices: Outcome[Set[IndexName]] = data.indices
-
-  override def withIndices(indices: Set[IndexName]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(indices = Outcome.Exist(indices)))
-
-  override def repositories: Outcome[Set[IndexName]] = data.repositories
-
-  override def withRepositories(repositories: Set[IndexName]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(repositories = Outcome.Exist(repositories)))
-
-  override def snapshots: Outcome[Set[IndexName]] = data.snapshots
-
-  override def withSnapshots(snapshots: Set[IndexName]): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(snapshots = Outcome.Exist(snapshots)))
-
-  override def jwt: Option[JwtTokenPayload] = data.jsonToken
-
-  override def withJwt(token: JwtTokenPayload): BlockContext =
-    new RequestContextInitiatedBlockContext(data.copy(jsonToken = Some(token)))
-}
-
-object RequestContextInitiatedBlockContext {
-
-  final case class BlockContextData(loggedUser: Option[LoggedUser],
-                                    initialCurrentGroup: Option[Group],
-                                    availableGroups: UniqueList[Group],
-                                    hiddenKibanaApps: Set[KibanaApp],
-                                    responseHeaders: Vector[Header],
-                                    contextHeaders: Vector[Header],
-                                    kibanaIndex: Option[IndexName],
-                                    kibanaTemplateIndex: Option[IndexName],
-                                    kibanaAccess: Option[KibanaAccess],
-                                    userOrigin: Option[UserOrigin],
-                                    indices: Outcome[Set[IndexName]],
-                                    repositories: Outcome[Set[IndexName]],
-                                    snapshots: Outcome[Set[IndexName]],
-                                    jsonToken: Option[JwtTokenPayload])
-
-  def fromRequestContext(requestContext: RequestContext): RequestContextInitiatedBlockContext =
-    new RequestContextInitiatedBlockContext(
-      BlockContextData(
-        loggedUser = None,
-        initialCurrentGroup = requestContext.currentGroup.toOption,
-        availableGroups = UniqueList.empty,
-        hiddenKibanaApps = Set.empty,
-        responseHeaders = Vector.empty,
-        contextHeaders = Vector.empty,
-        kibanaIndex = None,
-        kibanaTemplateIndex = None,
-        kibanaAccess = None,
-        userOrigin = None,
-        indices = Outcome.NotExist,
-        repositories = Outcome.NotExist,
-        snapshots = Outcome.NotExist,
-        jsonToken = None
-      )
-    )
+  implicit class SnapshotsFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def snapshots: Set[SnapshotName] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => Set.empty
+        case _: GeneralNonIndexRequestBlockContext => Set.empty
+        case _: RepositoryRequestBlockContext => Set.empty
+        case bc: SnapshotRequestBlockContext => bc.snapshots
+        case _: TemplateRequestBlockContext => Set.empty
+        case _: GeneralIndexRequestBlockContext => Set.empty
+      }
+    }
+  }
 }

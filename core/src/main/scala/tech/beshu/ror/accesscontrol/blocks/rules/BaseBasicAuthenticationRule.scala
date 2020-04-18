@@ -19,13 +19,12 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.BasicAuthenticationRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleResult}
 import tech.beshu.ror.accesscontrol.domain.Credentials
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 
@@ -35,17 +34,17 @@ abstract class BaseBasicAuthenticationRule
 
   protected def authenticateUsing(credentials: Credentials): Task[Boolean]
 
-  override def tryToAuthenticate(requestContext: RequestContext,
-                                 blockContext: BlockContext): Task[RuleResult] =
+  override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
     Task
       .unit
       .flatMap { _ =>
+        val requestContext = blockContext.requestContext
         requestContext.basicAuth.map(_.credentials) match {
           case Some(credentials) =>
             logger.debug(s"Attempting Login as: ${credentials.user.show} rc: ${requestContext.id.show}")
             authenticateUsing(credentials)
               .map {
-                case true => Fulfilled(blockContext.withLoggedUser(DirectlyLoggedUser(credentials.user)))
+                case true => Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(credentials.user))))
                 case false => Rejected()
               }
           case None =>

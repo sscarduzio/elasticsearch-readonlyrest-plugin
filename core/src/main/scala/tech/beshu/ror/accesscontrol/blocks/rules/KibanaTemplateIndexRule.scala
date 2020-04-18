@@ -17,24 +17,22 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaTemplateIndexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RegularRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class KibanaTemplateIndexRule(val settings: Settings)
   extends RegularRule with MatchingAlwaysRule {
 
   override val name: Rule.Name = KibanaTemplateIndexRule.name
 
-  override def process(requestContext: RequestContext,
-                       blockContext: BlockContext): Task[BlockContext] = Task {
+  override def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B] = Task {
     settings
       .kibanaTemplateIndex
-      .resolve(requestContext, blockContext)
-      .map(blockContext.withKibanaTemplateIndex)
+      .resolve(blockContext)
+      .map(index => blockContext.withUserMetadata(_.withKibanaTemplateIndex(index)))
       .getOrElse(blockContext)
   }
 }
