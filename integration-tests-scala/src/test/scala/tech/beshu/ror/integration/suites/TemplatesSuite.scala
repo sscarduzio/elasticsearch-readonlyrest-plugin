@@ -19,12 +19,14 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic.{EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.TemplateManager
 
 trait TemplatesSuite
   extends WordSpec
-    with BaseTemplatesSuite {
+    with BaseTemplatesSuite
+    with ESVersionSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
@@ -225,7 +227,7 @@ trait TemplatesSuite
             }
           }
         }
-        "at least one template index pattern matches user's allowed indices" in {
+        "at least one template index pattern matches user's allowed indices" excludeES (allEs5x) in {
           adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*", "custom_dev2_*"))
           createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
           createIndexWithExampleDoc(adminDocumentManager, "custom_dev2_index_test")
@@ -306,7 +308,7 @@ trait TemplatesSuite
             }
           }
         }
-        "template applies to generic index pattern" in {
+        "template applies to generic index pattern (ES >= 6.0.0)" excludeES (allEs5x) in {
           val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
           val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_*"))
 
@@ -318,9 +320,19 @@ trait TemplatesSuite
             "custom_dev1_index_*" :: Nil
           )
         }
+        "template applies to generic index pattern (ES < 6.0.0)" excludeES (allEs7x, allEs6x) in {
+          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_*"))
+
+          result.responseCode should be (200)
+
+          val user1Template = adminTemplateManager.getTemplate("new_template")
+          user1Template.responseCode should be(200)
+          user1Template.responseJson.obj("new_template").obj("template").str should be ("custom_dev1_index_*")
+        }
       }
       "be allowed to override existing template" which {
-        "belongs to him" in {
+        "belongs to him (ES >= 6.0.0)" excludeES (allEs5x) in {
           val dev1TemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
 
           val insert1Result =
@@ -342,6 +354,25 @@ trait TemplatesSuite
           user1TemplateAfterOverride.responseJson.obj("new_template").obj("index_patterns").arr.map(_.str).toList should be (
             "dev1_index" :: Nil
           )
+        }
+        "belongs to him (ES < 6.0.0)" excludeES (allEs7x, allEs6x) in {
+          val dev1TemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+
+          val insert1Result =
+            dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1*"))
+          insert1Result.responseCode should be (200)
+
+          val user1Template = dev1TemplateManager.getTemplates
+          user1Template.responseCode should be (200)
+          user1Template.responseJson.obj("new_template").obj("template").str should be ("custom_dev1_index_*")
+
+          val insert2Result =
+            dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index*"))
+          insert2Result.responseCode should be (200)
+
+          val user1TemplateAfterOverride = dev1TemplateManager.getTemplates
+          user1TemplateAfterOverride.responseCode should be (200)
+          user1TemplateAfterOverride.responseJson.obj("new_template").obj("template").str should be ("dev1_index")
         }
       }
       "be allowed to remove his template" when {
@@ -425,8 +456,16 @@ trait TemplatesSuite
             }
           }
         }
-        "all indices patterns defined in template are allowed to the user" in {
+        "all indices patterns defined in template are allowed to the user" excludeES (allEs5x) in {
           adminTemplateManager.insertTemplateAndWaitForIndexing("temp", templateExample("custom_dev1_index_*", "dev1_index"))
+
+          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val result = devTemplateManager.deleteTemplate("temp")
+
+          result.responseCode should be (200)
+        }
+        "index pattern defined in template is allowed to the user" in {
+          adminTemplateManager.insertTemplateAndWaitForIndexing("temp", templateExample("custom_dev1_index_*"))
 
           val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
           val result = devTemplateManager.deleteTemplate("temp")
@@ -650,11 +689,11 @@ trait TemplatesSuite
         }
         "template contains only not allowed index patterns" in {
           val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
-          val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_1*", "custom_dev1_index_2*"))
+          val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_1*"))
 
           result.responseCode should be (401)
         }
-        "template applies to allowed index and not allowed index patterns" in {
+        "template applies to allowed index and not allowed index patterns" excludeES (allEs5x) in {
           val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
           val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*", "custom_dev2_index_*"))
 
@@ -754,10 +793,21 @@ trait TemplatesSuite
             }
           }
         }
-        "not all index patterns defined in template are allowed to the user" in {
+        "not all index patterns defined in template are allowed to the user" excludeES (allEs5x) in {
           adminTemplateManager.insertTemplateAndWaitForIndexing(
             "temp",
             templateExample("custom_dev1_index_*", "custom_dev2_index_*")
+          )
+
+          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val result = devTemplateManager.deleteTemplate("temp")
+
+          result.responseCode should be (401)
+        }
+        "index pattern defined in template are allowed to the user" in {
+          adminTemplateManager.insertTemplateAndWaitForIndexing(
+            "temp",
+            templateExample("custom_dev2_index_*")
           )
 
           val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))

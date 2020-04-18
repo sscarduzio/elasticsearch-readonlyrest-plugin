@@ -47,16 +47,20 @@ trait BaseTemplatesSuite
     }
   }
 
-  protected def templateExample(indexPatterns: String*): String = {
+  protected def templateExample(indexPattern: String, otherIndexPatterns: String*): String = {
     val esVersion = rorContainer.esVersion
-    val patternsString = indexPatterns.mkString("\"", "\",\"", "\"")
+    val allIndexPattern = indexPattern :: otherIndexPatterns.toList
+    val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       s"""{"index_patterns":[$patternsString],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
-    } else if (Version.greaterOrEqualThan(esVersion, 6, 1, 0)) {
+    } else if (Version.greaterOrEqualThan(esVersion, 6, 0, 0)) {
       s"""{"index_patterns":[$patternsString],"settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
     } else {
-      val indexPattern = indexPatterns.toList.head
-      s"""{"template":"$indexPattern","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
+      if(otherIndexPatterns.isEmpty) {
+        s"""{"template":"$indexPattern","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
+      } else {
+        throw new IllegalArgumentException("Cannot create template with more than one index pattern for the ES version < 6.0.0")
+      }
     }
   }
 
