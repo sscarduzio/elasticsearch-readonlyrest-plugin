@@ -85,39 +85,49 @@ trait BaseAdminApiSuite
         }
       }
       "return info that config lol" when {
+        "in-index config is the same as current one2" in {
+          val result = new ActionManagerJ(ror2_1Node.adminClient).actionGet("_readonlyrest/admin/config/load")
+          result.getResponseCode should be(200)
+          result.getResponseJsonMap.get("clusterName") should be("test-cluster")
+          result.getResponseJsonMap.get("failures") should be(List().asJava)
+          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
+          val jnode1 = javaResponses.get(0)
+          jnode1 should contain key "nodeId"
+          jnode1 should contain(Entry("type","IndexConfig"))
+          jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
+          val jnode2 = javaResponses.get(1)
+          jnode2 should contain key "nodeId"
+          jnode2 should contain(Entry("type","IndexConfig"))
+          jnode2.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
+        }
         "in-index config is the same as current one" in {
-          insertInIndexConfig(
-            new DocumentManagerJ(ror2_1Node.adminClient),
-            "/admin_api/readonlyrest.yml"
-          )
           val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
           result.getResponseCode should be(200)
+          println(s"fasfasfs: ${result.getResponseJsonMap.asScala}")
           result.getResponseJsonMap.get("clusterName") should be("test-cluster")
           result.getResponseJsonMap.get("failures") should be(List().asJava)
           val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
           val jnode1 = javaResponses.get(0)
+          jnode1 should contain key "nodeId"
           jnode1 should contain(Entry("type","IndexConfig"))
-          jnode1 should contain(Entry("config",getResourceContent("/admin_api/readonlyrest_index.yml")))
+          jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
           val jnode2 = javaResponses.get(1)
+          jnode2 should contain key "nodeId"
           jnode2 should contain(Entry("type","IndexConfig"))
-          jnode2 should contain(Entry("config",getResourceContent("/admin_api/readonlyrest_index.yml")))
+          jnode2.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
         }
-        "got timeout" in {
-          insertInIndexConfig(
-            new DocumentManagerJ(ror2_1Node.adminClient),
-            "/admin_api/readonlyrest.yml"
-          )
-          val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load?timeout=1nanos")
+        "force timeout" in {
+          val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load", Map("timeout" -> "1nanos").asJava)
           result.getResponseCode should be(200)
           result.getResponseJsonMap.get("clusterName") should be("test-cluster")
-          result.getResponseJsonMap.get("failures") should be(List().asJava)
-          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
-          val jnode1 = javaResponses.get(0)
-          jnode1 should contain(Entry("type","IndexConfig"))
-          jnode1 should contain(Entry("config",getResourceContent("/admin_api/readonlyrest_index.yml")))
-          val jnode2 = javaResponses.get(1)
-          jnode2 should contain(Entry("type","IndexConfig"))
-          jnode2 should contain(Entry("config",getResourceContent("/admin_api/readonlyrest_index.yml")))
+          result.getResponseJsonMap.get("responses") should be(List().asJava)
+          val javaResponsesFailures= result.getResponseJsonMap.get("failures").asInstanceOf[util.List[util.Map[String,String]]]
+          val failure1 = javaResponsesFailures.get(0)
+          failure1 should contain key "nodeId"
+          failure1 should contain key "detailedMessage"
+          val failure2 = javaResponsesFailures.get(1)
+          failure2 should contain key "nodeId"
+          failure1 should contain key "detailedMessage"
         }
       }
       "return info that in-index config does not exist" when {

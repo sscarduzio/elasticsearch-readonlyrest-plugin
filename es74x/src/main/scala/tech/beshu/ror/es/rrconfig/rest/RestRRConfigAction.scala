@@ -4,19 +4,19 @@ import java.util.function.Supplier
 
 import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.node.{DiscoveryNode, DiscoveryNodes}
+import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
-import org.elasticsearch.rest.action.RestBuilderListener
 import org.elasticsearch.rest._
+import org.elasticsearch.rest.action.RestBuilderListener
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.es.rrconfig.NodesResponse.{ClusterName, NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.es.rrconfig.{NodeConfigRequest, NodesResponse, RRConfig, RRConfigAction, RRConfigsRequest, RRConfigsResponse, Timeout}
 
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
-import scala.concurrent.duration.FiniteDuration
 import scala.language.postfixOps
 
 @Inject
@@ -48,7 +48,7 @@ class RestRRConfigAction(controller: RestController,
     controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
 }
 object RestRRConfigAction {
-  val defaultTimeout: TimeValue = TimeValue.timeValueMinutes(1) //TODO move from here
+  val defaultTimeout: TimeValue = TimeValue.timeValueMinutes(1) //TODO move out from here
 }
 final class ResponseBuilder(channel: RestChannel) extends RestBuilderListener[RRConfigsResponse](channel) {
   override def buildResponse(response: RRConfigsResponse, builder: XContentBuilder): RestResponse = {
@@ -65,7 +65,7 @@ final class ResponseBuilder(channel: RestChannel) extends RestBuilderListener[RR
   }
 
   private def createNodeError(failedNodeException: FailedNodeException) = {
-    NodeError(NodeId(failedNodeException.nodeId()), failedNodeException.getMessage, this.getClass)
+    NodeError(NodeId(failedNodeException.nodeId()), failedNodeException.getDetailedMessage)
   }
 
 }

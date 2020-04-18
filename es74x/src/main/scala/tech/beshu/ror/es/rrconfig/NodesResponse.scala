@@ -56,17 +56,17 @@ object NodesResponse {
     def toJson: String = nodesResponse.asJson.noSpaces
   }
 
-  private def tupleNodeError(nodeError: NodeError) = (nodeError.nodeId.value, nodeError.message, nodeError.causeClass.getSimpleName)
+  private def tupleNodeError(nodeError: NodeError) = (nodeError.nodeId.value, nodeError.detailedMessage)
   private def tupleNodesResponse(nodesResponse: NodesResponse)= (nodesResponse.clusterName, nodesResponse.responses, nodesResponse.failures)
 
   final case class ClusterName(value: String) extends AnyVal
   final case class NodeId(value: String) extends AnyVal
   final case class NodeResponse(nodeId: NodeId, loadedConfig: Either[LoadedConfig.Error, LoadedConfig])
-  final case class NodeError(nodeId: NodeId, message: String, causeClass:Class[_])
+  final case class NodeError(nodeId: NodeId, detailedMessage: String)
 
   implicit private lazy val encodeClusterName: Encoder[ClusterName] = deriveUnwrappedEncoder
   implicit private lazy val encodeNodeId: Encoder[NodeId] = deriveUnwrappedEncoder
-  implicit private lazy val encodeNodeError: Encoder[NodeError] = Encoder.forProduct3("nodeId", "message", "cause")(tupleNodeError)
+  implicit private lazy val encodeNodeError: Encoder[NodeError] = Encoder.forProduct2("nodeId","detailedMessage")(tupleNodeError)
   implicit private lazy val encodeSymbol: Encoder[Symbol] = Encoder.encodeString.contramap(_.name)
   implicit private lazy val encodeNodesResponse: Encoder[NodesResponse] = Encoder.forProduct3("clusterName", "responses", "failures")(tupleNodesResponse)
 
