@@ -21,22 +21,24 @@ import java.time.format.DateTimeFormatter
 
 import cats.data.{NonEmptyList, NonEmptySet}
 import com.softwaremill.sttp.Method
+import monix.execution.Scheduler.Implicits.global
+import org.json.JSONObject
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.{Block, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
-import tech.beshu.ror.accesscontrol.logging.ResponseContext._
-import tech.beshu.ror.accesscontrol.logging.AuditingTool
-import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
-import tech.beshu.ror.mocks.MockRequestContext
-import monix.execution.Scheduler.Implicits.global
-import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
+import tech.beshu.ror.accesscontrol.logging.AuditingTool
+import tech.beshu.ror.accesscontrol.logging.ResponseContext._
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.es.AuditSink
+import tech.beshu.ror.es.AuditSinkService
+import tech.beshu.ror.mocks.MockRequestContext
 
 class AuditingToolTests extends WordSpec with MockFactory {
   import tech.beshu.ror.utils.TestsUtils.loggingContext
@@ -49,7 +51,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
             DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
             new DefaultAuditLogSerializer
           ),
-          mock[AuditSink]
+          mock[AuditSinkService]
         )
         auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
       }
@@ -59,7 +61,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
             DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
             throwingAuditLogSerializer
           ),
-          mock[AuditSink]
+          mock[AuditSinkService]
         )
         an [IllegalArgumentException] should be thrownBy {
           auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
@@ -68,7 +70,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
     }
     "submit audit entry" when {
       "request was allowed and verbosity level was INFO" in {
-        val auditSink = mock[AuditSink]
+        val auditSink = mock[AuditSinkService]
         (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
 
         val auditingTool = new AuditingTool(
@@ -82,7 +84,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
         auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
       }
       "request was matched by forbidden rule" in {
-        val auditSink = mock[AuditSink]
+        val auditSink = mock[AuditSinkService]
         (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
 
         val auditingTool = new AuditingTool(
@@ -93,7 +95,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
           auditSink
         )
 
-        val requestContext = MockRequestContext.default.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+        val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
         val responseContext = ForbiddenBy(
           requestContext,
           new Block(
@@ -102,14 +104,14 @@ class AuditingToolTests extends WordSpec with MockFactory {
             Block.Verbosity.Info,
             NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
           ),
-          RequestContextInitiatedBlockContext.fromRequestContext(requestContext),
+          GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty),
           Vector.empty
         )
 
         auditingTool.audit(responseContext).runSyncUnsafe()
       }
       "request was forbidden" in {
-        val auditSink = mock[AuditSink]
+        val auditSink = mock[AuditSinkService]
         (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
 
         val auditingTool = new AuditingTool(
@@ -120,13 +122,13 @@ class AuditingToolTests extends WordSpec with MockFactory {
           auditSink
         )
 
-        val requestContext = MockRequestContext.default.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+        val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
         val responseContext = Forbidden(requestContext, Vector.empty)
 
         auditingTool.audit(responseContext).runSyncUnsafe()
       }
       "request was finished with error" in {
-        val auditSink = mock[AuditSink]
+        val auditSink = mock[AuditSinkService]
         (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
 
         val auditingTool = new AuditingTool(
@@ -137,7 +139,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
           auditSink
         )
 
-        val requestContext = MockRequestContext.default.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+        val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
         val responseContext = Errored(requestContext, new Exception("error"))
 
         auditingTool.audit(responseContext).runSyncUnsafe()
@@ -148,7 +150,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
   private val someday = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
 
   private def createAllowedResponseContext(policy: Block.Policy, verbosity: Block.Verbosity) = {
-    val requestContext = MockRequestContext.default.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
+    val requestContext = MockRequestContext.indices.copy(timestamp = someday.toInstant, id = RequestContext.Id("mock-1"))
     AllowedBy(
       requestContext,
       new Block(
@@ -157,7 +159,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
         verbosity,
         NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
       ),
-      RequestContextInitiatedBlockContext.fromRequestContext(requestContext),
+      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty),
       Vector.empty
     )
   }

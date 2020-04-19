@@ -28,6 +28,7 @@ object VariableContext {
   object VariableType {
     trait User extends VariableType
     trait CurrentGroup extends VariableType
+    trait AvailableGroups extends VariableType
     trait Header extends VariableType
     trait Jwt extends VariableType
   }
@@ -52,8 +53,8 @@ object VariableContext {
     implicit val kibanaIndexRule: VariableUsage[KibanaIndexRule] = UsingVariable[KibanaIndexRule](rule => NonEmptyList.one(rule.settings.kibanaIndex))
     implicit val kibanaTemplateIndexRule: VariableUsage[KibanaTemplateIndexRule] = UsingVariable[KibanaTemplateIndexRule](rule => NonEmptyList.one(rule.settings.kibanaTemplateIndex))
     implicit val localHostsRule: VariableUsage[LocalHostsRule] = UsingVariable[LocalHostsRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
-    implicit val repositoriesRule: VariableUsage[RepositoriesRule] = UsingVariable[RepositoriesRule](rule => rule.settings.allowedIndices.toNonEmptyList)
-    implicit val snapshotsRule: VariableUsage[SnapshotsRule] = UsingVariable[SnapshotsRule](rule => rule.settings.allowedIndices.toNonEmptyList)
+    implicit val repositoriesRule: VariableUsage[RepositoriesRule] = UsingVariable[RepositoriesRule](rule => rule.settings.allowedRepositories.toNonEmptyList)
+    implicit val snapshotsRule: VariableUsage[SnapshotsRule] = UsingVariable[SnapshotsRule](rule => rule.settings.allowedSnapshots.toNonEmptyList)
     implicit val uriRegexRule: VariableUsage[UriRegexRule] = UsingVariable[UriRegexRule](rule => rule.settings.uriPatterns.toNonEmptyList)
     implicit val usersRule:  VariableUsage[UsersRule] = UsingVariable[UsersRule](rule => rule.settings.userIds.toNonEmptyList)
     implicit val xForwarderForRule: VariableUsage[XForwardedForRule] = UsingVariable[XForwardedForRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
@@ -98,6 +99,7 @@ object VariableContext {
       variableType match {
         case v: VariableType.User => Some(UsageRequirement.OneOfRuleBeforeMustBeAuthenticationRule(v))
         case _: VariableType.CurrentGroup => None
+        case _: VariableType.AvailableGroups => None
         case _: VariableType.Header => None
         case _: VariableType.Jwt => None
       }

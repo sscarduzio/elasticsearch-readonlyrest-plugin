@@ -31,9 +31,7 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.Optional;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer.create;
 
 /**

@@ -23,19 +23,20 @@ import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError, auditIndexConsts}
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
-import tech.beshu.ror.es.IndexJsonContentManager
-import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
+import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 import tech.beshu.ror.utils.LoggerOps._
 
 import scala.collection.JavaConverters._
 
-class IndexConfigManager(indexContentManager: IndexJsonContentManager)
+class IndexConfigManager(indexContentManager: IndexJsonContentService,
+                         val rorIndexNameConfiguration: RorIndexNameConfiguration)
   extends ConfigLoader[IndexConfigError]
     with Logging {
 
   override def load(): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
     indexContentManager
-      .sourceOf(auditIndexConsts.indexName, auditIndexConsts.typeName, auditIndexConsts.id)
+      .sourceOf(rorIndexNameConfiguration.name, auditIndexConsts.typeName, auditIndexConsts.id)
       .flatMap {
         case Right(source) =>
           source.asScala
@@ -53,7 +54,7 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager)
   def save(config: RawRorConfig): Task[Either[SavingIndexConfigError, Unit]] = {
     indexContentManager
       .saveContent(
-        auditIndexConsts.indexName,
+        rorIndexNameConfiguration.name,
         auditIndexConsts.typeName,
         auditIndexConsts.id,
         Map(auditIndexConsts.settingsKey -> config.raw).asJava
@@ -96,7 +97,6 @@ object IndexConfigManager {
   }
 
   private object auditIndexConsts {
-    val indexName = ".readonlyrest"
     val typeName = "settings"
     val id = "1"
     val settingsKey = "settings"

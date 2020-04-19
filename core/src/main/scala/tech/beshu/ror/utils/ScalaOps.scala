@@ -16,9 +16,12 @@
  */
 package tech.beshu.ror.utils
 
-import cats.Functor
+import java.util.Base64
+
+import cats.{Functor, Order}
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
+import cats.implicits._
 import com.twitter.{util => twitter}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -45,7 +48,15 @@ object ScalaOps {
     private def safeArray = Option(array).getOrElse(Array.empty[T])
   }
 
-  implicit class SetOps[T](val value: T) extends AnyVal {
+  implicit class SetOps[T : Order](value: Set[T]) {
+    def toNonEmptySet: Option[NonEmptySet[T]] = {
+      NonEmptySet.fromSet[T](SortedSet.empty[T] ++ value)
+    }
+    def unsafeToNonEmptySet: NonEmptySet[T] =
+      toNonEmptySet.getOrElse(throw new IllegalArgumentException(s"Cannot convert $value to non empty set"))
+  }
+
+  implicit class ToSetOps[T](val value: T) extends AnyVal {
     def asSafeSet: Set[T] = Option(value).toSet
   }
 
@@ -177,5 +188,27 @@ object ScalaOps {
   implicit class NonEmptySetOps[T](val value: NonEmptySet[T]) extends AnyVal {
     import cats.implicits._
     def widen[S >: T : Ordering]: NonEmptySet[S] = NonEmptySet.fromSetUnsafe(SortedSet.empty[S] ++ value.toList.widen[S].toSet)
+  }
+
+  implicit class StringOps(val value: String) extends AnyVal {
+    def splitByFirst(char: Char): Option[(String, String)] = {
+      value.split(char).toList match {
+        case Nil => None
+        case _ :: Nil => None
+        case one :: _ => Some((one, value.substring(one.length + 1)))
+      }
+    }
+    def splitBy(str: String): (String, Option[String]) = {
+      value.indexOf(str) match {
+        case -1 =>
+          (value, None)
+        case idx =>
+          val endOfStrIndex = idx + str.length
+          (value.substring(0, idx), Some(if(endOfStrIndex < value.length) value.substring(endOfStrIndex) else ""))
+      }
+    }
+    def decodeBase64: Option[String] = {
+      Try(new String(Base64.getDecoder.decode(value), "UTF-8")).toOption
+    }
   }
 }

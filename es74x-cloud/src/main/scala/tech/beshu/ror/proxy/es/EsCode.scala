@@ -4,8 +4,11 @@
 package tech.beshu.ror.proxy.es
 
 import javassist.{ClassPool, CtField, CtNewMethod, Modifier}
+import org.apache.logging.log4j.scala.Logging
 
-object EsCode {
+import scala.util.Try
+
+object EsCode extends Logging {
 
   def improve(): Unit = {
     modifyEsRestNodeClient()
@@ -13,30 +16,41 @@ object EsCode {
   }
 
   private def modifyEsRestNodeClient(): Unit = {
-    val esRestNodeClientClass = ClassPool.getDefault.get("org.elasticsearch.client.support.AbstractClient")
+    Try {
+      val esRestNodeClientClass = ClassPool.getDefault.get("org.elasticsearch.client.support.AbstractClient")
 
-    val oldAdminMethod = esRestNodeClientClass.getDeclaredMethod("admin")
-    esRestNodeClientClass.removeMethod(oldAdminMethod)
+      val oldAdminMethod = esRestNodeClientClass.getDeclaredMethod("admin")
 
-    val adminClientClass = ClassPool.getDefault.get("org.elasticsearch.client.AdminClient")
-    val newAdminField = new CtField(adminClientClass, "rorAdmin", esRestNodeClientClass)
-    esRestNodeClientClass.addField(newAdminField)
+      if (esRestNodeClientClass.isFrozen) {
+        esRestNodeClientClass.defrost()
+      }
 
-    val newAdminMethod = CtNewMethod.make(
-      "public org.elasticsearch.client.AdminClient admin() { return this.rorAdmin; }",
-      esRestNodeClientClass
-    )
-    esRestNodeClientClass.addMethod(newAdminMethod)
+      esRestNodeClientClass.removeMethod(oldAdminMethod)
 
-    esRestNodeClientClass.toClass
+      val adminClientClass = ClassPool.getDefault.get("org.elasticsearch.client.AdminClient")
+      val newAdminField = new CtField(adminClientClass, "rorAdmin", esRestNodeClientClass)
+      esRestNodeClientClass.addField(newAdminField)
+
+      val newAdminMethod = CtNewMethod.make(
+        "public org.elasticsearch.client.AdminClient admin() { return this.rorAdmin; }",
+        esRestNodeClientClass
+      )
+      esRestNodeClientClass.addMethod(newAdminMethod)
+
+      esRestNodeClientClass.toClass
+    }
+      .fold(ex => this.logger.error("Es code modification error", ex), _ => ())
   }
 
   private def modifyIndicesStatsResponse(): Unit = {
-    val esRestNodeClientClass = ClassPool.getDefault.get("org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse")
+    Try {
+      val esRestNodeClientClass = ClassPool.getDefault.get("org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse")
 
-    val constructors = esRestNodeClientClass.getConstructors
-    constructors.foreach(c => c.setModifiers(Modifier.PUBLIC))
+      val constructors = esRestNodeClientClass.getConstructors
+      constructors.foreach(c => c.setModifiers(Modifier.PUBLIC))
 
-    esRestNodeClientClass.toClass
+      esRestNodeClientClass.toClass
+    }
+      .fold(ex => this.logger.error("Es code modification error", ex), _ => ())
   }
 }

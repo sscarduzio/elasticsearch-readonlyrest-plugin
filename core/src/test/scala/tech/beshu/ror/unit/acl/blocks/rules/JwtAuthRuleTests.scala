@@ -31,7 +31,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMeth
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
@@ -60,7 +62,7 @@ class JwtAuthRuleTests
             userClaim = None,
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.signWith(key).setClaims(claims).compact}")
           )
@@ -81,7 +83,7 @@ class JwtAuthRuleTests
             userClaim = None,
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setClaims(claims).signWith(secret).compact}")
           )
@@ -101,7 +103,7 @@ class JwtAuthRuleTests
             userClaim = None,
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer $rawToken")
           )
@@ -122,7 +124,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setClaims(claims).signWith(key).compact}")
           )
@@ -144,7 +146,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
@@ -169,7 +171,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("https://{domain}/claims/roles")))
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
@@ -195,7 +197,7 @@ class JwtAuthRuleTests
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = UniqueList.empty,
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
@@ -224,7 +226,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups")))
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
@@ -254,7 +256,7 @@ class JwtAuthRuleTests
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
@@ -281,7 +283,7 @@ class JwtAuthRuleTests
             userClaim = None,
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name("x-jwt-custom-header".nonempty),
             NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setClaims(claims).signWith(key).compact}")
           )
@@ -302,7 +304,7 @@ class JwtAuthRuleTests
             userClaim = None,
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name("x-jwt-custom-header".nonempty),
             NonEmptyString.unsafeFrom(s"MyPrefix ${Jwts.builder.setClaims(claims).signWith(key).compact}")
           )
@@ -325,7 +327,7 @@ class JwtAuthRuleTests
             userClaim = None,
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setSubject("test").signWith(key2).compact}")
           )
@@ -342,7 +344,7 @@ class JwtAuthRuleTests
             userClaim = None,
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setSubject("test").signWith(secret).compact}")
           )
@@ -358,7 +360,7 @@ class JwtAuthRuleTests
             userClaim = None,
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer $rawToken")
           )
@@ -374,7 +376,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = None
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setSubject("test").signWith(key).compact}")
           )
@@ -390,7 +392,7 @@ class JwtAuthRuleTests
             userClaim = Some(ClaimName(JsonPath.compile("userId"))),
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             NonEmptyString.unsafeFrom(s"Bearer ${Jwts.builder.setSubject("test").signWith(key).compact}")
           )
@@ -407,7 +409,7 @@ class JwtAuthRuleTests
             groupsClaim = Some(ClaimName(JsonPath.compile("tech.beshu.groups.subgroups")))
           ),
           configuredGroups = UniqueList.of(Group("group1".nonempty)),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder
@@ -431,7 +433,7 @@ class JwtAuthRuleTests
             groupsClaim = Some(ClaimName(JsonPath.compile("groups")))
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group4")),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder
@@ -463,9 +465,9 @@ class JwtAuthRuleTests
                          tokenHeader: Header,
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups))
-    val requestContext = MockRequestContext(headers = Set(tokenHeader))
-    val blockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
-    val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)
+    val requestContext = MockRequestContext.metadata.copy(headers = Set(tokenHeader))
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, Set.empty)
+    val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
         inside(result) { case Fulfilled(outBlockContext) =>

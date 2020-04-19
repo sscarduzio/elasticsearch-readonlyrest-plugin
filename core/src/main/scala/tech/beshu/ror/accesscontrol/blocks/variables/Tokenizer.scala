@@ -20,8 +20,6 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 
-import scala.language.postfixOps
-
 object Tokenizer {
 
   def tokenize(text: NonEmptyString): NonEmptyList[Token] = {
@@ -71,7 +69,7 @@ object Tokenizer {
           case '}' =>
             val placeholder = keyword match {
               case None => Token.Placeholder(accumulator, s"$specialChar{$accumulator}")
-              case Some(k@Keyword.Explodable) => Token.ExplodablePlaceholder(accumulator, s"$specialChar${k.name}{$accumulator}")
+              case Some(k: Keyword.Explodable.type) => Token.ExplodablePlaceholder(accumulator, s"$specialChar${k.name}{$accumulator}")
             }
             (tokens :+ placeholder, TokenizerState.ReadingConst(""))
           case other =>

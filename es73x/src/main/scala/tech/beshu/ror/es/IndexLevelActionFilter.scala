@@ -30,17 +30,14 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
-import tech.beshu.ror.SecurityPermissionException
-import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
-import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
-import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider}
-import tech.beshu.ror.es.request.RequestInfo
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
+import tech.beshu.ror.es.request.AclAwareRequestFilter
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
-import tech.beshu.ror.es.request.regular.RegularRequestHandler
-import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.language.postfixOps
 
@@ -53,9 +50,13 @@ class IndexLevelActionFilter(clusterService: ClusterService,
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
+  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  private val aclAwareRequestFilter = new AclAwareRequestFilter(
+    new EsServerBasedRorClusterService(clusterService), threadPool
+  )
 
   private val startingTaskCancellable = Ror
-    .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
+    .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
     .runAsync {
       case Right(Right(instance)) =>
         RorInstanceSupplier.update(instance)
@@ -127,28 +128,19 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             channel: RestChannel): Unit = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
-        val requestInfo = new RequestInfo(channel, task.getId, action, request, clusterService, threadPool, remoteClusterService)
-        val requestContext = requestContextFrom(requestInfo)
-        requestContext.uriPath match {
-          case CurrentUserMetadataPath(_) =>
-            val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestInfo, requestContext)
-          case _ =>
-            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestInfo, requestContext)
-        }
+        aclAwareRequestFilter
+          .handle(
+            engine,
+            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled, engine.context.involvesFilter)
+          )
+          .runAsync {
+            case Right(_) =>
+            case Left(ex) => listener.onFailure(new Exception(ex))
+          }
       case None =>
         listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
     }
   }
-
-  private def requestContextFrom(requestInfo: RequestInfo) =
-    EsRequestContext
-      .from(requestInfo)
-      .fold(
-        ex => throw new SecurityPermissionException("Cannot create request context object", ex),
-        identity
-      )
 }
 
 private sealed trait RorInstanceStartingState

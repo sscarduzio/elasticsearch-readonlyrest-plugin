@@ -99,7 +99,7 @@ private class LdapWaitStrategy(name: String,
         throw ex
       }
       .runSyncUnsafe(defaults.containerStartupTimeout)
-    logger.info(s"LDAP container '$name' stated")
+    logger.info(s"LDAP container '$name' started")
   }
 
   private def ldapInitiate(ldapInitScriptInputStream: InputStream) = {

@@ -21,27 +21,32 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 trait AccessControl {
-  def handleRegularRequest(requestContext: RequestContext): Task[WithHistory[RegularRequestResult]]
-  def handleMetadataRequest(requestContext: RequestContext): Task[WithHistory[UserMetadataRequestResult]]
+  def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]]
+  def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]]
 }
 
 object AccessControl {
 
-  final case class WithHistory[RESULT](history: Vector[History], result: RESULT)
+  final case class WithHistory[RESULT, B <: BlockContext](history: Vector[History[B]], result: RESULT)
   object WithHistory {
-    def withNoHistory[RESULT](handlingResult: RESULT): WithHistory[RESULT] = WithHistory(Vector.empty, handlingResult)
+    def withNoHistory[RESULT, B <: BlockContext](handlingResult: RESULT): WithHistory[RESULT, B] =
+      WithHistory(Vector.empty, handlingResult)
   }
 
-  sealed trait RegularRequestResult
+  sealed trait RegularRequestResult[B <: BlockContext]
   object RegularRequestResult {
-    final case class Allow(blockContext: BlockContext, block: Block) extends RegularRequestResult
-    final case class ForbiddenBy(blockContext: BlockContext, block: Block) extends RegularRequestResult
-    final case class ForbiddenByMismatched(causes: NonEmptySet[Cause]) extends RegularRequestResult
+    final case class Allow[B <: BlockContext](blockContext: B, block: Block)
+      extends RegularRequestResult[B]
+    final case class ForbiddenBy[B <: BlockContext](blockContext: B, block: Block)
+      extends RegularRequestResult[B]
+    final case class ForbiddenByMismatched[B <: BlockContext](causes: NonEmptySet[Cause])
+      extends RegularRequestResult[B]
     case object ForbiddenByMismatched {
       sealed trait Cause
       object Cause {
@@ -50,9 +55,12 @@ object AccessControl {
         case object ImpersonationNotAllowed extends Cause
       }
     }
-    case object IndexNotFound extends RegularRequestResult
-    final case class Failed(ex: Throwable) extends RegularRequestResult
-    case object PassedThrough extends RegularRequestResult
+    final case class IndexNotFound[B <: BlockContext]() // todo; remove B
+      extends RegularRequestResult[B]
+    final case class Failed[B <: BlockContext](ex: Throwable)
+      extends RegularRequestResult[B]
+    final case class PassedThrough[B <: BlockContext]()
+      extends RegularRequestResult[B]
   }
 
   sealed trait UserMetadataRequestResult

@@ -7,8 +7,6 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-  prompt_for_basic_auth: true
-
   access_control_rules:
 
     # ES containter initializer need this rule to configure ES instance after startup
@@ -18,16 +16,12 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "dev1 indexes"
-      indices: ["index1"]
+      indices: ["custom_@{user}_index_*", "@{user}_index"]
       auth_key: dev1:test
 
-    - name: "dev2 aliases"
-      indices: ["index2_alias"]
+    - name: "dev2 indexes"
+      indices: ["@{user}_index", "custom_@{user}_index_*"]
       auth_key: dev2:test
 
-    - name: "dev3 - there is no index of this user"
-      indices: ["index3"]
+    - name: "dev3 - no indices rule"
       auth_key: dev3:test
-
-    - name: "dev4 - no indices rule"
-      auth_key: dev4:test

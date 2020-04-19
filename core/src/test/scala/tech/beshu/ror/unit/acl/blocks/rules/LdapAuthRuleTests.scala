@@ -21,14 +21,15 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils.{AssertionType, BlockContextAssertion, _}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -155,9 +156,9 @@ class LdapAuthRuleTests
                          basicHeader: Option[Header],
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthRule(new LdapAuthenticationRule(authenticationSettings), new LdapAuthorizationRule(authorizationSettings))
-    val requestContext = MockRequestContext.default.copy(headers = basicHeader.toSet)
-    val blockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
-    val result = Try(rule.check(requestContext, blockContext).runSyncUnsafe(1 second))
+    val requestContext = MockRequestContext.indices.copy(headers = basicHeader.toSet)
+    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, Set.empty, Set.empty)
+    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     assertionType match {
       case AssertionType.RuleFulfilled(blockContextAssertion) =>
         inside(result) { case Success(Fulfilled(outBlockContext)) =>

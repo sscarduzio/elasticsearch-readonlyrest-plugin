@@ -19,19 +19,20 @@ package tech.beshu.ror.accesscontrol
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.{Base64, Locale}
 
-import cats.{Eq, Functor}
+import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
-import com.comcast.ip4s.interop.cats.HostnameResolver
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
-import monix.eval.Task
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.util.Try
 
@@ -85,12 +86,62 @@ object domain {
                 (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
     def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
-    implicit val eqHeader: Eq[Header] = Eq.fromUniversalEquals
+    def fromAuthorizationValue(value: NonEmptyString): Either[AuthorizationValueError, NonEmptyList[Header]] = {
+      value.value.splitBy("ror_metadata=") match {
+        case (_, None) =>
+          Right(NonEmptyList.one(new Header(Name.authorization, value)))
+        case (basicAuthStr, Some(rorMetadata)) =>
+          for {
+            authorizationHeader <- createHeaderFromAuthorizationString(basicAuthStr)
+            headersStr <- parseRorMetadataString(rorMetadata)
+            headers <- headersStr.map(headerFrom).traverse(identity)
+          } yield NonEmptyList.of(authorizationHeader, headers: _*)
+      }
+    }
+
+    private def createHeaderFromAuthorizationString(authStr: String) = {
+      val trimmed = authStr.trim
+      val sanitized = if(trimmed.endsWith(",")) trimmed.substring(0, trimmed.length - 1) else trimmed
+      NonEmptyString
+        .from(sanitized)
+        .map(new Header(Name.authorization, _))
+        .left.map(_ => EmptyAuthorizationValue)
+    }
+
+    private def parseRorMetadataString(rorMetadataString: String) = {
+      rorMetadataString.decodeBase64 match {
+        case Some(value) =>
+          Try(ujson.read(value).obj("headers").arr.toList.map(_.str))
+            .toEither.left.map(_ => RorMetadataInvalidFormat(rorMetadataString, "Parsing JSON failed"))
+        case None =>
+          Left(RorMetadataInvalidFormat(rorMetadataString, "Decoding Base64 failed"))
+      }
+
+    }
+
+    private def headerFrom(value: String) = {
+      import tech.beshu.ror.utils.StringWiseSplitter._
+      value
+        .toNonEmptyStringsTuple
+        .bimap(
+          { case Error.CannotSplitUsingColon | Error.TupleMemberCannotBeEmpty => InvalidHeaderFormat(value) },
+          { case (nonEmptyName, nonEmptyValue) => new Header(Name(nonEmptyName), nonEmptyValue) }
+        )
+    }
+
+    sealed trait AuthorizationValueError
+    object AuthorizationValueError {
+      case object EmptyAuthorizationValue extends AuthorizationValueError
+      final case class InvalidHeaderFormat(value: String) extends AuthorizationValueError
+      final case class RorMetadataInvalidFormat(value: String, message: String) extends AuthorizationValueError
+    }
+
+    implicit val eqHeader: Eq[Header] = Eq.by(header => (header.name, header.value.value))
   }
 
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
   final case class BasicAuth private(credentials: Credentials) {
-    def header: Header = Header(
+    def header: Header = new Header(
       Header.Name.authorization,
       NonEmptyString.unsafeFrom(s"Basic ${Base64.getEncoder.encodeToString(s"${credentials.user.value}:${credentials.secret.value}".getBytes(UTF_8))}")
     )
@@ -121,8 +172,8 @@ object domain {
 
     private def fromBase64(base64Value: String) = {
       import tech.beshu.ror.utils.StringWiseSplitter._
-      Try(new String(Base64.getDecoder.decode(base64Value), UTF_8))
-        .toOption
+      base64Value
+        .decodeBase64
         .flatMap(_.toNonEmptyStringsTuple.toOption)
         .map { case (first, second) =>
           BasicAuth(Credentials(User.Id(first), PlainTextSecret(second)))
@@ -143,30 +194,25 @@ object domain {
         parseHostname(value)
     }
 
-    // fixme: (improvements) blocking resolving (shift to another EC)
-    def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
-      HostnameResolver.resolveAll[Task](hostname.value).map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
-    }
-  }
+    private def parseCidr(value: String) =
+      Cidr.fromString(value).map(Address.Ip.apply)
 
-  private def parseCidr(value: String) =
-    Cidr.fromString(value).map(Address.Ip.apply)
+    private def parseHostname(value: String) =
+      Hostname(value).map(Address.Name.apply)
 
-  private def parseHostname(value: String) =
-    Hostname(value).map(Address.Name.apply)
+    private def parseIpAddress(value: String) =
+      (cutOffZoneIndex _ andThen IpAddress.apply andThen (_.map(createAddressIp))) (value)
 
-  private def parseIpAddress(value: String) =
-    (cutOffZoneIndex _ andThen IpAddress.apply andThen (_.map(createAddressIp))) (value)
+    private def createAddressIp(ip: IpAddress) =
+      Address.Ip(Cidr(ip, 32))
 
-  private def createAddressIp(ip: IpAddress) =
-    Address.Ip(Cidr(ip, 32))
+    private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
 
-  private val ipv6WithLiteralScope = raw"""(?i)^(fe80:[a-z0-9:]+)%.*$$""".r
-
-  private def cutOffZoneIndex(value: String): String = { //https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
-    value match {
-      case ipv6WithLiteralScope(ipv6) => ipv6
-      case noLiteralIp => noLiteralIp
+    private def cutOffZoneIndex(value: String): String = { //https://en.wikipedia.org/wiki/IPv6_address#Scoped_literal_IPv6_addresses
+      value match {
+        case ipv6WithLiteralScope(ipv6) => ipv6
+        case noLiteralIp => noLiteralIp
+      }
     }
   }
 
@@ -176,6 +222,7 @@ object domain {
     def isSnapshot: Boolean = value.contains("/snapshot/")
     def isRepository: Boolean = value.contains("/repository/")
     def isTemplate: Boolean = value.contains("/template/")
+    def isPutTemplate: Boolean = value == "indices:admin/template/put"
   }
   object Action {
     val searchAction = Action("indices:data/read/search")
@@ -194,7 +241,6 @@ object domain {
     val all: IndexName = fromUnsafeString("_all")
     val devNullKibana: IndexName = fromUnsafeString(".kibana-devnull")
     val kibana: IndexName = fromUnsafeString(".kibana")
-    val readonlyrest: IndexName = fromUnsafeString(".readonlyrest")
 
     implicit val eqIndexName: Eq[IndexName] = Eq.fromUniversalEquals
 
@@ -220,6 +266,30 @@ object domain {
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
     def all: Set[IndexName] = aliases + index
+  }
+
+  final case class RepositoryName(value: NonEmptyString)
+  object RepositoryName {
+    val all: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("_all"))
+    val wildcard: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("*"))
+
+    implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
+  }
+  final case class SnapshotName(value: NonEmptyString)
+  object SnapshotName {
+    val all: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("_all"))
+    val wildcard: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("*"))
+
+    implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+  }
+
+  final case class Template(name: TemplateName, patterns: UniqueNonEmptyList[IndexName])
+  final case class TemplateName(value: NonEmptyString)
+  object TemplateName {
+    def fromString(value: String): Option[TemplateName] = {
+      NonEmptyString.from(value).map(TemplateName.apply).toOption
+    }
+    implicit val eqTemplateName: Eq[TemplateName] = Eq.fromUniversalEquals
   }
 
   final case class ApiKey(value: NonEmptyString)
@@ -310,7 +380,6 @@ object domain {
       }
     }
   }
-
 
   final case class ClaimName(name: JsonPath) {
 

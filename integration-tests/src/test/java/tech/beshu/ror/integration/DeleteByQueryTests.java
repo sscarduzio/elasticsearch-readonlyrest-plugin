@@ -19,9 +19,9 @@ package tech.beshu.ror.integration;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.elasticsearch.JBaseManager.SimpleResponse;
 import tech.beshu.ror.utils.elasticsearch.DeleteByQueryManagerJ;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
+import tech.beshu.ror.utils.elasticsearch.JBaseManager.SimpleResponse;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
 import java.util.Optional;

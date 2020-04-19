@@ -19,22 +19,21 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.domain.ApiKey
-import tech.beshu.ror.accesscontrol.domain.Header.Name._
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.ApiKeysRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.ApiKey
+import tech.beshu.ror.accesscontrol.domain.Header.Name._
 
 class ApiKeysRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = ApiKeysRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.fromCondition(blockContext) {
-      requestContext
+      blockContext
+        .requestContext
         .headers
         .find(_.name === xApiKeyHeaderName)
         .exists { header => settings.apiKeys.contains(ApiKey(header.value)) }

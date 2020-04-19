@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.SnapshotsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders._
@@ -31,7 +31,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
 
   "A SnapshotsRule" should {
     "be able to be loaded from config" when {
-      "one index is defined" in {
+      "one snapshot is defined" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -40,16 +40,16 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    snapshots: index1
+              |    snapshots: snapshot1
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1".nonempty).nel))
-            rule.settings.allowedIndices should be(indices)
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]] = NonEmptySet.one(AlreadyResolved(SnapshotName("snapshot1".nonempty).nel))
+            rule.settings.allowedSnapshots should be(indices)
           }
         )
       }
-      "index is defined with variable" in {
+      "snapshot is defined with variable" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -59,16 +59,16 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |
               |  - name: test_block1
               |    auth_key: user:pass
-              |    snapshots: "index_@{user}"
+              |    snapshots: "snapshot_@{user}"
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.allowedIndices.length should be (1)
-            rule.settings.allowedIndices.head shouldBe a [ToBeResolved[_]]
+            rule.settings.allowedSnapshots.length should be (1)
+            rule.settings.allowedSnapshots.head shouldBe a [ToBeResolved[_]]
           }
         )
       }
-      "two indexes are defined" in {
+      "two snapshotes are defined" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -77,17 +77,17 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    snapshots: [index1, index2]
+              |    snapshots: [snapshot1, snapshot2]
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] =
-              NonEmptySet.of(AlreadyResolved(IndexName("index1".nonempty).nel), AlreadyResolved(IndexName("index2".nonempty).nel))
-            rule.settings.allowedIndices should be(indices)
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]] =
+              NonEmptySet.of(AlreadyResolved(SnapshotName("snapshot1".nonempty).nel), AlreadyResolved(SnapshotName("snapshot2".nonempty).nel))
+            rule.settings.allowedSnapshots should be(indices)
           }
         )
       }
-      "two indexes are defined, second one with variable" in {
+      "two snapshots are defined, second one with variable" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -97,20 +97,20 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |
               |  - name: test_block1
               |    auth_key: user:pass
-              |    snapshots: [index1, "index_@{user}"]
+              |    snapshots: [snapshot1, "snapshot_@{user}"]
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.allowedIndices.length == 2
+            rule.settings.allowedSnapshots.length == 2
 
-            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1".nonempty).nel))
-            rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
+            rule.settings.allowedSnapshots.head should be(AlreadyResolved(SnapshotName("snapshot1".nonempty).nel))
+            rule.settings.allowedSnapshots.tail.head shouldBe a [ToBeResolved[_]]
           }
         )
       }
     }
     "not be able to be loaded from config" when {
-      "no index is defined" in {
+      "no snapshot is defined" in {
         assertDecodingFailure(
           yaml =
             """
@@ -130,7 +130,7 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
           }
         )
       }
-      "there is '_all' index defined" in {
+      "there is '_all' snapshot defined" in {
         assertDecodingFailure(
           yaml =
             """
@@ -139,18 +139,18 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    snapshots: [index1, _all]
+              |    snapshots: [snapshot1, _all]
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "Setting up a rule (snapshots) that matches all the values is redundant - index _all"
+              "Setting up a rule (snapshots) that matches all the values is redundant - snapshot _all"
             )))
           }
         )
       }
-      "there is '*' index defined" in {
+      "there is '*' snapshot defined" in {
         assertDecodingFailure(
           yaml =
             """
@@ -159,13 +159,13 @@ class SnapshotsRuleSettingsTest extends BaseRuleSettingsDecoderTest[SnapshotsRul
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    snapshots: ["index1", "*", "index2"]
+              |    snapshots: ["snapshot1", "*", "snapshot2"]
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "Setting up a rule (snapshots) that matches all the values is redundant - index *"
+              "Setting up a rule (snapshots) that matches all the values is redundant - snapshot *"
             )))
           }
         )

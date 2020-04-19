@@ -17,14 +17,12 @@
 
 package tech.beshu.ror.integration;
 
+import org.apache.http.Header;
+import org.apache.http.message.BasicHeader;
 import org.junit.ClassRule;
 import org.junit.Test;
 import tech.beshu.ror.utils.assertions.ReadonlyRestedESAssertions;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainer;
-import tech.beshu.ror.utils.containers.ESWithReadonlyRestContainerUtils;
-import tech.beshu.ror.utils.containers.JavaLdapContainer;
-import tech.beshu.ror.utils.containers.MultiContainer;
-import tech.beshu.ror.utils.containers.MultiContainerDependent;
+import tech.beshu.ror.utils.containers.*;
 import tech.beshu.ror.utils.elasticsearch.ElasticsearchTweetsInitializer;
 import tech.beshu.ror.utils.gradle.RorPluginGradleProjectJ;
 
@@ -58,6 +56,16 @@ public class LdapIntegrationGroupsTests {
           httpRequest.addHeader("x-ror-current-group", "group1");
           return null;
         });
+  }
+
+  @Test
+  public void checkCartmanWithGroup1AsCurrentGroupPassedAsValueOfAuthorizationHeader() throws Exception {
+    Header authenticationHeader = new BasicHeader(
+        "Authorization",
+        "Basic Y2FydG1hbjp1c2VyMg==, ror_metadata=eyJoZWFkZXJzIjpbIngtcm9yLWN1cnJlbnQtZ3JvdXA6Z3JvdXAxIiwgImhlYWRlcjE6eHl6Il19"
+    );
+    ReadonlyRestedESAssertions assertions = assertions(multiContainerDependent.getContainer());
+    assertions.assertUserHasAccessToIndex(authenticationHeader, "twitter", response -> null, httpRequest -> null);
   }
 
   @Test

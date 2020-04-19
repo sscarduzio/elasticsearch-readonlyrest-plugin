@@ -48,7 +48,6 @@ import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 object common extends Logging {

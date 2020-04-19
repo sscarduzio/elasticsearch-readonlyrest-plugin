@@ -56,7 +56,7 @@ class AuthKeyYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAc
     "two blocks with auth_keys are configured" should {
       "allow to proceed" when {
         "request is sent in behalf on admin user" taggedAs Tag("es70x") in {
-          val request = MockRequestContext.default.copy(headers = Set(basicAuthHeader("admin:container")))
+          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("admin:container")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, block) =>
@@ -67,8 +67,8 @@ class AuthKeyYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAc
           }
         }
         "request is sent in behalf of admin user, but the authorization token header is lower case string" taggedAs Tag("es63x") in {
-          val request = MockRequestContext.default.copy(headers = Set(
-            Header(
+          val request = MockRequestContext.indices.copy(headers = Set(
+            new Header(
               Name(NonEmptyString.unsafeFrom("authorization")),
               NonEmptyString.unsafeFrom("Basic " + Base64.getEncoder.encodeToString("admin:container".getBytes))
             )

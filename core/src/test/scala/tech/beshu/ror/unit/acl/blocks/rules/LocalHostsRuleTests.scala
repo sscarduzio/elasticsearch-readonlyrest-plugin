@@ -21,7 +21,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.LocalHostsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -29,6 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils._
 
 class LocalHostsRuleTests extends WordSpec with MockFactory {
@@ -71,10 +73,13 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
     assertRule(configuredAddresses, localAddress, isMatched = false)
 
   private def assertRule(configuredAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]], localAddress: Address, isMatched: Boolean) = {
-    val rule = new LocalHostsRule(LocalHostsRule.Settings(configuredAddresses))
-    val blockContext = mock[BlockContext]
-    val requestContext = MockRequestContext(localAddress = localAddress)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right{
+    val rule = new LocalHostsRule(
+      LocalHostsRule.Settings(configuredAddresses),
+      new Ip4sBasedHostnameResolver
+    )
+    val requestContext = MockRequestContext.metadata.copy(localAddress = localAddress)
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+    rule.check(blockContext).runSyncStep shouldBe Right{
       if (isMatched) Fulfilled(blockContext)
       else Rejected()
     }

@@ -12,17 +12,13 @@ import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.SecurityPermissionException
-import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
-import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, StartingFailure}
-import tech.beshu.ror.es.request.RequestInfo
 import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
-import tech.beshu.ror.es.request.regular.RegularRequestHandler
-import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
+import tech.beshu.ror.exceptions.SecurityPermissionException
+import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
-import tech.beshu.ror.proxy.es.providers.{EsRestClientBasedRorClusterService, ProxyAuditSink, ProxyIndexJsonContentManager}
+import tech.beshu.ror.proxy.es.services.{EsRestClientBasedRorClusterService, ProxyAuditSinkService, ProxyIndexJsonContentService}
 
 import scala.util.{Failure, Success, Try}
 
@@ -32,6 +28,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                                          (implicit scheduler: Scheduler)
   extends ActionFilter {
 
+  // todo: unused?
   private val rorClusterService = new EsRestClientBasedRorClusterService(esClient)
 
   override def order(): Int = 0
@@ -76,20 +73,21 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: ProxyRestChannel): Unit = {
-    val requestInfo = new RequestInfo(channel, task.getId, action, request, rorClusterService, threadPool, false)
-    EsRequestContext.from(requestInfo) match {
-      case Success(requestContext) =>
-        requestContext.uriPath match {
-          case CurrentUserMetadataPath(_) =>
-            val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestInfo, requestContext)
-          case _ =>
-            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-            handler.handle(requestInfo, requestContext)
-        }
-      case Failure(ex) =>
-        channel.sendFailureResponse(ex)
-    }
+    // todo: fixme
+//    val requestInfo = new RequestInfo(channel, task.getId, action, request, rorClusterService, threadPool, false)
+//    EsRequestContext.from(requestInfo) match {
+//      case Success(requestContext) =>
+//        requestContext.uriPath match {
+//          case CurrentUserMetadataPath(_) =>
+//            val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
+//            handler.handle(requestInfo, requestContext)
+//          case _ =>
+//            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
+//            handler.handle(requestInfo, requestContext)
+//        }
+//      case Failure(ex) =>
+//        channel.sendFailureResponse(ex)
+//    }
   }
 
 }
@@ -99,9 +97,10 @@ object ProxyIndexLevelActionFilter {
   def create(configFile: Path,
              esClient: RestHighLevelClientAdapter,
              threadPool: ThreadPool)
-            (implicit scheduler: Scheduler): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
+            (implicit scheduler: Scheduler,
+             envVarsProvider: EnvVarsProvider): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
     val result = for {
-      instance <- EitherT(Ror.start(configFile, ProxyAuditSink, ProxyIndexJsonContentManager))
+      instance <- EitherT(Ror.start(configFile, ProxyAuditSinkService, ProxyIndexJsonContentService))
     } yield new ProxyIndexLevelActionFilter(instance, esClient, threadPool)
     result.value
   }

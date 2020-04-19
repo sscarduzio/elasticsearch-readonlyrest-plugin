@@ -20,8 +20,7 @@ import com.google.common.collect.Sets
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.utils.MatcherWithWildcards
-import tech.beshu.ror.ZeroKnowledgeIndexFilter
+import tech.beshu.ror.utils.{MatcherWithWildcards, ZeroKnowledgeIndexFilter}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.TestsUtils.StringOps

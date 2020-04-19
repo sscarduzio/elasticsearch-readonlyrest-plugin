@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
@@ -111,6 +112,8 @@ object orders {
     case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2
     case ForbiddenByMismatched.Cause.ImpersonationNotSupported => 3
   }
+  implicit val repositoryOrder: Order[RepositoryName] = Order.by(_.value.value)
+  implicit val snapshotOrder: Order[SnapshotName] = Order.by(_.value.value)
 }
 
 object show {
@@ -143,18 +146,24 @@ object show {
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
-    implicit def blockContextShow(implicit showHeader:Show[Header]): Show[BlockContext] = Show.show { bc =>
-      (showOption("user", bc.loggedUser) ::
-        showOption("group", bc.currentGroup) ::
-        showTraversable("av_groups", bc.availableGroups) ::
-        showTraversable("indices", bc.indices.getOrElse(Set.empty)) ::
-        showOption("kibana_idx", bc.kibanaIndex) ::
-        showTraversable("response_hdr", bc.responseHeaders) ::
-        showTraversable("context_hdr", bc.contextHeaders) ::
-        showTraversable("repositories", bc.repositories.getOrElse(Set.empty)) ::
-        showTraversable("snapshots", bc.snapshots.getOrElse(Set.empty)) ::
-        Nil flatten) mkString ";"
-    }
+    implicit val repositoryShow: Show[RepositoryName] = Show.show(_.value.value)
+    implicit val snapshotShow: Show[SnapshotName] = Show.show(_.value.value)
+    implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
+
+    implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
+      Show.show { bc =>
+        (showOption("user", bc.userMetadata.loggedUser) ::
+          showOption("group", bc.userMetadata.currentGroup) ::
+          showTraversable("av_groups", bc.userMetadata.availableGroups) ::
+          showTraversable("indices", bc.indices) ::
+          showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
+          showTraversable("response_hdr", bc.responseHeaders) ::
+          showTraversable("context_hdr", bc.contextHeaders) ::
+          showTraversable("repositories", bc.repositories) ::
+          showTraversable("snapshots", bc.snapshots) ::
+          Nil flatten) mkString ";"
+      }
+
     private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
       case KibanaAccess.RO => "ro"
       case KibanaAccess.ROStrict => "ro_strict"
@@ -166,14 +175,15 @@ object show {
       (showOption("user", u.loggedUser) ::
         showOption("curr_group", u.currentGroup) ::
         showTraversable("av_groups", u.availableGroups) ::
-        showOption("kibana_idx", u.foundKibanaIndex) ::
+        showOption("kibana_idx", u.kibanaIndex) ::
         showTraversable("hidden_apps", u.hiddenKibanaApps) ::
         showOption("kibana_access", u.kibanaAccess) ::
         showOption("user_origin", u.userOrigin) ::
         Nil flatten) mkString ";"
     }
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
-    implicit val historyItemShow: Show[HistoryItem] = Show.show { hi =>
+
+    implicit def historyItemShow[B <: BlockContext]: Show[HistoryItem[B]] = Show.show { hi =>
       s"${hi.rule.show}->${
         hi.result match {
           case RuleResult.Fulfilled(_) => "true"
@@ -181,12 +191,15 @@ object show {
         }
       }"
     }
-    implicit def historyShow(implicit headerShow: Show[Header]): Show[History] = Show.show { h =>
-      val resolvedPart = h.blockContext.show.some
-        .filter(!_.isEmpty)
-        .map(context => s", RESOLVED:[$context]").getOrElse("")
-      s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}]$resolvedPart]"""
-    }
+
+    implicit def historyShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[History[B]] =
+      Show.show[History[B]] { h =>
+        val resolvedPart = h.blockContext.show.some
+          .filter(!_.isEmpty)
+          .map(context => s", RESOLVED:[$context]").getOrElse("")
+        s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}]$resolvedPart]"""
+      }
+
     implicit val policyShow: Show[Policy] = Show.show {
       case Allow => "ALLOW"
       case Forbid => "FORBID"
@@ -215,6 +228,7 @@ object show {
     implicit val variableTypeShow: Show[VariableContext.VariableType] = Show.show {
       case _: VariableType.User => "user"
       case _: VariableType.CurrentGroup => "current group"
+      case _: VariableType.AvailableGroups => "available groups"
       case _: VariableType.Header => "header"
       case _: VariableType.Jwt => "JWT"
     }
@@ -223,12 +237,16 @@ object show {
       case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
         s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
     }
+
     def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {
       Show.show[Header] {
         case Header(name, _) if obfuscatedHeaders.exists(_ === name) => s"${name.show}=<OMITTED>"
-        case Header(name, value) => s"${name.show}=${value.value.show}"
+        case header => headerShow.show(header)
       }
     }
+
+    val headerShow: Show[Header] = Show.show { case Header(name, value) => s"${name.show}=${value.value.show}" }
+
     def blockValidationErrorShow(block: Block.Name): Show[BlockValidationError] = Show.show {
       case BlockValidationError.AuthorizationWithoutAuthentication =>
         s"The '${block.show}' block contains an authorization rule, but not an authentication rule. This does not mean anything if you don't also set some authentication rule."
@@ -239,12 +257,20 @@ object show {
       case BlockValidationError.RuleDoesNotMeetRequirement(complianceResult) =>
         s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
     }
-    private def showTraversable[T : Show](name: String, traversable: Traversable[T]) = {
-      if(traversable.isEmpty) None
+
+    private def showTraversable[T: Show](name: String, traversable: Traversable[T]) = {
+      if (traversable.isEmpty) None
       else Some(s"$name=${traversable.map(_.show).mkString(",")}")
     }
-    private def showOption[T : Show](name: String, option: Option[T]) = {
+
+    private def showOption[T: Show](name: String, option: Option[T]) = {
       option.map(v => s"$name=${v.show}")
+    }
+
+    implicit val authorizationValueErrorShow: Show[AuthorizationValueError] = Show.show {
+      case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
+      case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [$value]"
+      case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [$value], reason: [$message]"
     }
   }
 }
@@ -258,11 +284,12 @@ object refined {
 }
 
 object headerValues {
-  implicit def nonEmptyListHeaderValue[T : ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
+  implicit def nonEmptyListHeaderValue[T: ToHeaderValue]: ToHeaderValue[NonEmptyList[T]] = ToHeaderValue { list =>
     implicit val nesShow: Show[NonEmptyString] = Show.show(_.value)
     val tToHeaderValue = implicitly[ToHeaderValue[T]]
     NonEmptyString.unsafeFrom(list.map(tToHeaderValue.toRawValue).mkString_(","))
   }
+
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
   implicit val transientFilterHeaderValue: ToHeaderValue[Filter] = ToHeaderValue { filter =>

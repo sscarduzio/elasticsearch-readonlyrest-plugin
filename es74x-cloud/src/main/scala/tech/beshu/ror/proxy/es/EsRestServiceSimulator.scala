@@ -32,6 +32,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
 import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
@@ -106,12 +107,14 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       new ClusterService(settings, clusterSettings, threadPool)
     )
 
+    val taskManager = new TaskManager(settings, threadPool, Set.empty[String].asJava)
     nodeClient.initialize(
       actions(
         actionModule,
         new ActionFilters(Set[ActionFilter](proxyFilter).asJava),
-        new TaskManager(settings, threadPool, Set.empty[String].asJava)
+        taskManager
       ),
+      taskManager,
       () => "ROR_proxy",
       null
     )
@@ -209,14 +212,15 @@ object EsRestServiceSimulator {
   }
 
   def create(esClient: RestHighLevelClientAdapter,
+             esConfigFile: File,
              threadPool: ThreadPool)
-            (implicit scheduler: Scheduler): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
-    val simulatorEsSettingsFile = File(getClass.getClassLoader.getResource("elasticsearch.yml"))
-    val simulatorEsSettingsFolder = simulatorEsSettingsFile.parent.path
+            (implicit scheduler: Scheduler,
+             envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
+    val simulatorEsSettingsFolder = esConfigFile.parent.path
     val esActionRequestHandler = new EsActionRequestHandler(esClient)
     val result = for {
       filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool))
-    } yield new EsRestServiceSimulator(simulatorEsSettingsFile, filter, esClient, esActionRequestHandler, threadPool)
+    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, esActionRequestHandler, threadPool)
     result.value
   }
 }

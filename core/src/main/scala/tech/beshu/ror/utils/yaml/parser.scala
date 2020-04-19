@@ -81,7 +81,7 @@ object parser {
       case Tag.NULL => Json.Null
       case CustomTag(other) =>
         Json.fromJsonObject(JsonObject.singleton(other.stripPrefix("!"), Json.fromString(node.getValue)))
-      case other => Json.fromString(node.getValue)
+      case _ => Json.fromString(node.getValue)
     }).leftMap {
       err =>
         ParsingFailure(err.getMessage, err)
