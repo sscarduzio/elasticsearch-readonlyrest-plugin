@@ -17,17 +17,26 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ClusterStateManager, RorApiManager}
 
 trait RorDisabledSuite
   extends WordSpec
-    with BasicSingleNodeEsClusterSupport
+    with BaseIntegrationTest
+    with SingleClientSupport
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
+
+  override lazy val targetEs = container.nodesContainers.head
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1"
+    )
+  )
 
   "ROR with `enable: false` in settings" should {
     "pass ES request through" in {

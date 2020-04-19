@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.RorDisabledSuite
 
-class ProxyDisabledTests extends RorDisabledSuite with BasicClusterProxyTestSupport
+class ProxyDisabledTests extends RorDisabledSuite with ProxyTestSupport

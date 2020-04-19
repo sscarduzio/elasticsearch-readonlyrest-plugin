@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.RorDisabledSuite
 
-class PluginDisabledTests extends RorDisabledSuite with SingletonPluginTestSupport
+class PluginDisabledTests extends RorDisabledSuite with PluginTestSupport

@@ -51,7 +51,10 @@ object SingletonEsContainer
       "_readonlyrest/admin/config",
       s"""{"settings": "${escapeJava(getResourceContent(rorConfigFileName))}"}"""
     )
-    if (!response.isSuccess) throw CouldNotUpdateRorConfigException()
+    if (!response.isSuccess) {
+      logger.error(s"Config update failed. Response: ${response.getRawBody}")
+      throw CouldNotUpdateRorConfigException()
+    }
   }
 
   def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
