@@ -13,6 +13,8 @@ import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, StartingFailure}
+import tech.beshu.ror.es.request.AclAwareRequestFilter
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -28,8 +30,9 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                                          (implicit scheduler: Scheduler)
   extends ActionFilter {
 
-  // todo: unused?
-  private val rorClusterService = new EsRestClientBasedRorClusterService(esClient)
+  private val aclAwareRequestFilter = new AclAwareRequestFilter(
+    new EsRestClientBasedRorClusterService(esClient), threadPool
+  )
 
   override def order(): Int = 0
 
@@ -73,21 +76,15 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: ProxyRestChannel): Unit = {
-    // todo: fixme
-//    val requestInfo = new RequestInfo(channel, task.getId, action, request, rorClusterService, threadPool, false)
-//    EsRequestContext.from(requestInfo) match {
-//      case Success(requestContext) =>
-//        requestContext.uriPath match {
-//          case CurrentUserMetadataPath(_) =>
-//            val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-//            handler.handle(requestInfo, requestContext)
-//          case _ =>
-//            val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-//            handler.handle(requestInfo, requestContext)
-//        }
-//      case Failure(ex) =>
-//        channel.sendFailureResponse(ex)
-//    }
+    aclAwareRequestFilter
+      .handle(
+        engine,
+        EsContext(channel, task, action, request, listener, chain, crossClusterSearchEnabled = false, involveFilters = engine.context.involvesFilter)
+      )
+      .runAsync {
+        case Right(_) =>
+        case Left(ex) => channel.sendFailureResponse(ex)
+      }
   }
 
 }

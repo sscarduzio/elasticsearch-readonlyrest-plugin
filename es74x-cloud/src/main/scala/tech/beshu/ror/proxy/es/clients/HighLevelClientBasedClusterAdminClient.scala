@@ -41,7 +41,7 @@ import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.xcontent.XContentType
 import org.elasticsearch.tasks.TaskId
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.proxy.es.{ProxyIndexLevelActionFilter, ProxyThreadRepo}
+import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter
 import tech.beshu.ror.proxy.es.exceptions.NotDefinedForRorProxy
 
 class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapter,

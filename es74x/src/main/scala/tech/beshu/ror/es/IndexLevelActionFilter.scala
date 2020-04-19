@@ -58,7 +58,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   )
 
   private val startingTaskCancellable = Ror
-.start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
+    .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
     .runAsync {
       case Right(Right(instance)) =>
         RorInstanceSupplier.update(instance)
