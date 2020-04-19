@@ -21,8 +21,8 @@ import cats.implicits._
 import io.circe.Decoder
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.configuration.{EsConfigFileLoader, MalformedSettings}
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.configuration.{EsConfigFileLoader, MalformedSettings}
 
 import scala.language.postfixOps
 
@@ -44,7 +44,7 @@ class EsConfigFileLoaderTest extends WordSpec {
     }
     "fail for non existing vairable" in {
       val result = loadFromTempFile[String](""""${WRONG_VARIABLE}"""")
-      result shouldBe a[Left[MalformedSettings,_]]
+      result shouldBe a[Left[MalformedSettings, _]]
       result.left.get.message should include("WRONG_VARIABLE")
     }
   }

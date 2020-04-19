@@ -20,13 +20,13 @@ import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.{BaseSpecializedIndicesRule, SnapshotsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.SnapshotsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.accesscontrol.domain.{Action, IndexName}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.{Action, SnapshotName}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -34,153 +34,152 @@ import tech.beshu.ror.utils.TestsUtils._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class SnapshotsRuleTests
-  extends WordSpec with Inside with BlockContextAssertion {
+class SnapshotsRuleTests extends WordSpec with Inside {
 
   "A SnapshotsRule" should {
     "match" when {
-      "request action doesn't contain 'snapshot'" in {
+      "allowed snapshots set contains *" in {
         assertMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("snapshot1".nonempty).nel)),
-          requestAction = Action("cluster:admin/rradmin/refreshsettings"),
-          requestSnapshots = Set(IndexName("snapshot1".nonempty))
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("*".nonempty).nel)),
+          requestAction = Action("cluster:admin/snapshot/resolve"),
+          requestSnapshots = Set(SnapshotName("snapshot1".nonempty))
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          blockContext => blockContext.snapshots should be (Set(SnapshotName("snapshot1".nonempty)))
         }
       }
-      "allowed indexes set contains *" in {
+      "allowed snapshots set contains _all" in {
         assertMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("*".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("_all".nonempty).nel)),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("snapshot1".nonempty))
+          requestSnapshots = Set(SnapshotName("snapshot1".nonempty))
         ) {
-          blockContext => assertBlockContext()(blockContext)
-        }
-      }
-      "allowed indexes set contains _all" in {
-        assertMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("_all".nonempty).nel)),
-          requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("snapshot1".nonempty))
-        ) {
-          blockContext => assertBlockContext()(blockContext)
+          blockContext => blockContext.snapshots should be (Set(SnapshotName("snapshot1".nonempty)))
         }
       }
       "readonly request with configured simple snapshot" in {
         assertMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("public-asd".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("public-asd".nonempty).nel)),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("public-asd".nonempty)),
+          requestSnapshots = Set(SnapshotName("public-asd".nonempty)),
           readonlyRequest = true
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          blockContext => blockContext.snapshots should be (Set(SnapshotName("public-asd".nonempty)))
         }
       }
       "readonly request with configured snapshot with wildcard" in {
         assertMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("public-*".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("public-*".nonempty).nel)),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("public-asd".nonempty)),
+          requestSnapshots = Set(SnapshotName("public-asd".nonempty)),
           readonlyRequest = true
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          blockContext => blockContext.snapshots should be (Set(SnapshotName("public-asd".nonempty)))
         }
       }
       "write request with configured simple snapshot" in {
         assertMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("public-asd".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("public-asd".nonempty).nel)),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("public-asd".nonempty))
+          requestSnapshots = Set(SnapshotName("public-asd".nonempty))
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          blockContext => blockContext.snapshots should be (Set(SnapshotName("public-asd".nonempty)))
         }
       }
       "write request with configured snapshot with wildcard" in {
         assertMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("public-*".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("public-*".nonempty).nel)),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("public-asd".nonempty))
+          requestSnapshots = Set(SnapshotName("public-asd".nonempty))
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          blockContext => blockContext.snapshots should be (Set(SnapshotName("public-asd".nonempty)))
         }
       }
       "readonly request with configured several snapshots and several snapshots in request" in {
         assertMatchRule(
-          configuredSnapshots = NonEmptySet.of(AlreadyResolved(IndexName("public-*".nonempty).nel), AlreadyResolved(IndexName("n".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.of(
+            AlreadyResolved(SnapshotName("public-*".nonempty).nel),
+            AlreadyResolved(SnapshotName("n".nonempty).nel)
+          ),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("public-asd".nonempty), IndexName("q".nonempty)),
+          requestSnapshots = Set(SnapshotName("public-asd".nonempty), SnapshotName("q".nonempty)),
           readonlyRequest = true
         ) {
-          blockContext =>
-            assertBlockContext(
-              snapshots = Outcome.Exist(Set(IndexName("public-asd".nonempty)))
-            )(blockContext)
+          blockContext => blockContext.snapshots should be (Set(SnapshotName("public-asd".nonempty)))
         }
       }
     }
     "not match" when {
       "request is read only" in {
         assertNotMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("x-*".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("x-*".nonempty).nel)),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("public-asd".nonempty)),
+          requestSnapshots = Set(SnapshotName("public-asd".nonempty)),
           readonlyRequest = true
         )
       }
       "write request with no match" in {
         assertNotMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("public-*".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("public-*".nonempty).nel)),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("x_public-asd".nonempty))
+          requestSnapshots = Set(SnapshotName("x_public-asd".nonempty))
         )
       }
       "write request with configured several snapshots and several snapshots in request" in {
         assertNotMatchRule(
-          configuredSnapshots = NonEmptySet.of(AlreadyResolved(IndexName("public-*".nonempty).nel), AlreadyResolved(IndexName("n".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.of(
+            AlreadyResolved(SnapshotName("public-*".nonempty).nel),
+            AlreadyResolved(SnapshotName("n".nonempty).nel)
+          ),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("public-asd".nonempty), IndexName("q".nonempty))
+          requestSnapshots = Set(SnapshotName("public-asd".nonempty), SnapshotName("q".nonempty))
         )
       }
       "write request forbid" in {
         assertNotMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("x-*".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("x-*".nonempty).nel)),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("public-asd".nonempty), IndexName("q".nonempty))
+          requestSnapshots = Set(SnapshotName("public-asd".nonempty), SnapshotName("q".nonempty))
         )
       }
       "read request forbid" in {
         assertNotMatchRule(
-          configuredSnapshots = NonEmptySet.one(AlreadyResolved(IndexName("x-*".nonempty).nel)),
+          configuredSnapshots = NonEmptySet.one(AlreadyResolved(SnapshotName("x-*".nonempty).nel)),
           requestAction = Action("cluster:admin/snapshot/resolve"),
-          requestSnapshots = Set(IndexName("public-asd".nonempty), IndexName("q".nonempty)),
+          requestSnapshots = Set(SnapshotName("public-asd".nonempty), SnapshotName("q".nonempty)),
           readonlyRequest = true
         )
       }
     }
   }
 
-  private def assertMatchRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  private def assertMatchRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
                               requestAction: Action,
-                              requestSnapshots: Set[IndexName],
+                              requestSnapshots: Set[SnapshotName],
                               readonlyRequest: Boolean = false)
-                             (blockContextAssertion: BlockContext => Unit): Unit =
+                             (blockContextAssertion: SnapshotRequestBlockContext => Unit): Unit =
     assertRule(configuredSnapshots, requestAction, requestSnapshots, readonlyRequest, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  private def assertNotMatchRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
                                  requestAction: Action,
-                                 requestSnapshots: Set[IndexName],
+                                 requestSnapshots: Set[SnapshotName],
                                  readonlyRequest: Boolean = false): Unit =
     assertRule(configuredSnapshots, requestAction, requestSnapshots, readonlyRequest, blockContextAssertion = None)
 
-  private def assertRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  private def assertRule(configuredSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
                          requestAction: Action,
-                         requestSnapshots: Set[IndexName],
+                         requestSnapshots: Set[SnapshotName],
                          readonlyRequest: Boolean,
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new SnapshotsRule(BaseSpecializedIndicesRule.Settings(configuredSnapshots))
-    val requestContext = MockRequestContext(action = requestAction, snapshots = requestSnapshots, isReadOnlyRequest = readonlyRequest)
-    val blockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
-    val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)
+                         blockContextAssertion: Option[SnapshotRequestBlockContext => Unit]) = {
+    val rule = new SnapshotsRule(SnapshotsRule.Settings(configuredSnapshots))
+    val requestContext = MockRequestContext.snapshots.copy(
+      snapshots = requestSnapshots,
+      action = requestAction,
+      isReadOnlyRequest = readonlyRequest
+    )
+    val blockContext = SnapshotRequestBlockContext(
+      requestContext, UserMetadata.empty, Set.empty, Set.empty, requestSnapshots, Set.empty, Set.empty
+    )
+    val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
         inside(result) { case Fulfilled(outBlockContext) =>

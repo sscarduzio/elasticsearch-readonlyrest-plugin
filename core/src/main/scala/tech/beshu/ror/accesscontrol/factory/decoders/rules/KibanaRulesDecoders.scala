@@ -37,7 +37,6 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.configuration.RorIndexNameConfiguration
-import tech.beshu.ror.providers.PropertiesProvider
 
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
@@ -62,7 +61,6 @@ class KibanaTemplateIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
 )
 
 class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorIndexNameConfiguration)
-                             (implicit propertiesProvider: PropertiesProvider)
   extends RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]](
   ruleDecoderCreator = kibanaIndexName =>
     DecoderHelpers

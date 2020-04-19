@@ -20,168 +20,167 @@ import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.{BaseSpecializedIndicesRule, RepositoriesRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
-import tech.beshu.ror.accesscontrol.domain.{Action, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{Action, RepositoryName}
 import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
+import tech.beshu.ror.utils.TestsUtils._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class RepositoriesRuleTests
-  extends WordSpec with Inside with BlockContextAssertion {
+class RepositoriesRuleTests extends WordSpec with Inside {
 
   "A RepositoriesRule" should {
     "match" when {
       "request action doesn't contain 'repository'" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("repository1".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("repository1".nonempty).nel)),
           requestAction = Action("cluster:admin/rradmin/refreshsettings"),
-          requestRepositories = Set(IndexName("repository1".nonempty))
+          requestRepositories = Set(RepositoryName("repository1".nonempty))
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          _.repositories should be(Set(RepositoryName("repository1".nonempty)))
         }
       }
       "allowed indexes set contains *" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("*".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("*".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("repository1".nonempty))
+          requestRepositories = Set(RepositoryName("repository1".nonempty))
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          _.repositories should be(Set(RepositoryName("repository1".nonempty)))
         }
       }
       "allowed indexes set contains _all" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("_all".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("_all".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("repository1".nonempty))
+          requestRepositories = Set(RepositoryName("repository1".nonempty))
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          _.repositories should be(Set(RepositoryName("repository1".nonempty)))
         }
       }
       "readonly request with configured simple repository" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-asd".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("public-asd".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("public-asd".nonempty)),
+          requestRepositories = Set(RepositoryName("public-asd".nonempty)),
           readonlyRequest = true
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          _.repositories should be(Set(RepositoryName("public-asd".nonempty)))
         }
       }
       "readonly request with configured repository with wildcard" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-*".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("public-*".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("public-asd".nonempty)),
+          requestRepositories = Set(RepositoryName("public-asd".nonempty)),
           readonlyRequest = true
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          _.repositories should be(Set(RepositoryName("public-asd".nonempty)))
         }
       }
       "write request with configured simple repository" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-asd".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("public-asd".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("public-asd".nonempty))
+          requestRepositories = Set(RepositoryName("public-asd".nonempty))
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          _.repositories should be(Set(RepositoryName("public-asd".nonempty)))
         }
       }
       "write request with configured repository with wildcard" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-*".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("public-*".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("public-asd".nonempty))
+          requestRepositories = Set(RepositoryName("public-asd".nonempty))
         ) {
-          blockContext => assertBlockContext()(blockContext)
+          _.repositories should be(Set(RepositoryName("public-asd".nonempty)))
         }
       }
       "readonly request with configured several repositorys and several repositorys in request" in {
         assertMatchRule(
-          configuredRepositories = NonEmptySet.of(AlreadyResolved(IndexName("public-*".nonempty).nel), AlreadyResolved(IndexName("n".nonempty).nel)),
+          configuredRepositories = NonEmptySet.of(AlreadyResolved(RepositoryName("public-*".nonempty).nel), AlreadyResolved(RepositoryName("n".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("public-asd".nonempty), IndexName("q".nonempty)),
+          requestRepositories = Set(RepositoryName("public-asd".nonempty), RepositoryName("q".nonempty)),
           readonlyRequest = true
         ) {
-          blockContext =>
-            assertBlockContext(
-              repositories = Outcome.Exist(Set(IndexName("public-asd".nonempty)))
-            )(blockContext)
+          blockContext => blockContext.repositories should be(Set(RepositoryName("public-asd".nonempty)))
         }
       }
     }
     "not match" when {
       "request is read only" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("x-*".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("x-*".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("public-asd".nonempty)),
+          requestRepositories = Set(RepositoryName("public-asd".nonempty)),
           readonlyRequest = true
         )
       }
       "write request with no match" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("public-*".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("public-*".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("x_public-asd".nonempty))
+          requestRepositories = Set(RepositoryName("x_public-asd".nonempty))
         )
       }
       "write request with configured several repositorys and several repositorys in request" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.of(AlreadyResolved(IndexName("public-*".nonempty).nel), AlreadyResolved(IndexName("n".nonempty).nel)),
+          configuredRepositories = NonEmptySet.of(AlreadyResolved(RepositoryName("public-*".nonempty).nel), AlreadyResolved(RepositoryName("n".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("public-asd".nonempty), IndexName("q".nonempty))
+          requestRepositories = Set(RepositoryName("public-asd".nonempty), RepositoryName("q".nonempty))
         )
       }
       "write request forbid" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("x-*".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("x-*".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("public-asd".nonempty), IndexName("q".nonempty))
+          requestRepositories = Set(RepositoryName("public-asd".nonempty), RepositoryName("q".nonempty))
         )
       }
       "read request forbid" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.one(AlreadyResolved(IndexName("x-*".nonempty).nel)),
+          configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("x-*".nonempty).nel)),
           requestAction = Action("cluster:admin/repository/resolve"),
-          requestRepositories = Set(IndexName("public-asd".nonempty), IndexName("q".nonempty)),
+          requestRepositories = Set(RepositoryName("public-asd".nonempty), RepositoryName("q".nonempty)),
           readonlyRequest = true
         )
       }
     }
   }
 
-  private def assertMatchRule(configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  private def assertMatchRule(configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
                               requestAction: Action,
-                              requestRepositories: Set[IndexName],
+                              requestRepositories: Set[RepositoryName],
                               readonlyRequest: Boolean = false)
-                             (blockContextAssertion: BlockContext => Unit): Unit =
+                             (blockContextAssertion: RepositoryRequestBlockContext => Unit): Unit =
     assertRule(configuredRepositories, requestAction, requestRepositories, readonlyRequest, Some(blockContextAssertion))
 
-  private def assertNotMatchRule(configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  private def assertNotMatchRule(configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
                                  requestAction: Action,
-                                 requestRepositories: Set[IndexName],
+                                 requestRepositories: Set[RepositoryName],
                                  readonlyRequest: Boolean = false): Unit =
     assertRule(configuredRepositories, requestAction, requestRepositories, readonlyRequest, blockContextAssertion = None)
 
-  private def assertRule(configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  private def assertRule(configuredRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
                          requestAction: Action,
-                         requestRepositories: Set[IndexName],
+                         requestRepositories: Set[RepositoryName],
                          readonlyRequest: Boolean,
-                         blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new RepositoriesRule(BaseSpecializedIndicesRule.Settings(configuredRepositories))
-    val requestContext = MockRequestContext(action = requestAction, repositories = requestRepositories, isReadOnlyRequest = readonlyRequest)
-    val blockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
-    val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)
+                         blockContextAssertion: Option[RepositoryRequestBlockContext => Unit]) = {
+    val rule = new RepositoriesRule(RepositoriesRule.Settings(configuredRepositories))
+    val requestContext = MockRequestContext.repositories.copy(
+      repositories = requestRepositories,
+      action = requestAction,
+      isReadOnlyRequest = readonlyRequest
+    )
+    val blockContext = RepositoryRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, requestRepositories)
+    val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
         inside(result) { case Fulfilled(outBlockContext) =>

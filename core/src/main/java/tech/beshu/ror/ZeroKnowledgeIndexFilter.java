@@ -47,11 +47,13 @@ public class ZeroKnowledgeIndexFilter {
         return false;
       }
       indicesWriter.accept(modifiedIndices);
+    } else {
+      indicesWriter.accept(indices);
     }
     return true;
   }
 
-  public Set<String> alterIndicesIfNecessary(Set<String> indices, MatcherWithWildcards matcher) {
+  private Set<String> alterIndicesIfNecessary(Set<String> indices, MatcherWithWildcards matcher) {
 
     boolean shouldReplace = false;
 
@@ -97,7 +99,7 @@ public class ZeroKnowledgeIndexFilter {
       return newIndices;
     }
     else {
-      return null;
+      return indices;
     }
   }
 

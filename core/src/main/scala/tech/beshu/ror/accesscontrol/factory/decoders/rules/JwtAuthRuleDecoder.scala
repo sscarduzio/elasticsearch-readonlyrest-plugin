@@ -20,7 +20,7 @@ import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -28,9 +28,8 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.JwtDefinitionsDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.decodeUniqueList
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import DecoderHelpers.decodeUniqueList
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
@@ -51,9 +50,6 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
 )
 
 private object JwtAuthRuleDecoder {
-
-  private implicit val groupsSetDecoder: Decoder[UniqueList[RuntimeSingleResolvableVariable[Group]]] =
-    DecoderHelpers.decodeStringLikeOrUniqueList[RuntimeSingleResolvableVariable[Group]]
 
   private val nameAndGroupsSimpleDecoder: Decoder[(JwtDef.Name, UniqueList[Group])] =
     DecoderHelpers

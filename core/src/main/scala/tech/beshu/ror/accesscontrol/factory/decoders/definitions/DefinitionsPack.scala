@@ -20,8 +20,6 @@ import cats.Show
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 
-import scala.language.higherKinds
-
 final case class DefinitionsPack(proxies: Definitions[ProxyAuth],
                                  users: Definitions[UserDef],
                                  authenticationServices: Definitions[ExternalAuthenticationService],

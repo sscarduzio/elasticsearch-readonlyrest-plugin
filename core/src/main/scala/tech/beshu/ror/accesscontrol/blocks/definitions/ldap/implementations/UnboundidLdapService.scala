@@ -37,7 +37,6 @@ import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
 import scala.util.Try
 
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,

@@ -35,8 +35,6 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common.decoderTupleListDeco
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 import scala.concurrent.duration.FiniteDuration
-import scala.language.implicitConversions
-import scala.util.Try
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath

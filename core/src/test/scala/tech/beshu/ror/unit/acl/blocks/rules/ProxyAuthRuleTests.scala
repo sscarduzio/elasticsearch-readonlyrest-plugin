@@ -21,7 +21,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -82,13 +83,21 @@ class ProxyAuthRuleTests extends WordSpec with MockFactory {
   private def assertRule(settings: ProxyAuthRule.Settings, header: Header, isMatched: Boolean) = {
     val rule = new ProxyAuthRule(settings)
     val requestContext = mock[RequestContext]
-    val blockContext = mock[BlockContext]
-    val newBlockContext = mock[BlockContext]
     (requestContext.headers _).expects().returning(Set(header)).twice()
-    if(isMatched) (blockContext.withLoggedUser _).expects(DirectlyLoggedUser(Id(header.value))).returning(newBlockContext)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
-      if (isMatched) Fulfilled(newBlockContext)
-      else Rejected()
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+    rule.check(blockContext).runSyncStep shouldBe Right {
+      if (isMatched) {
+        Fulfilled(
+          CurrentUserMetadataRequestBlockContext(
+            requestContext,
+            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id(header.value))),
+            Set.empty,
+            Set.empty
+          )
+        )
+      } else {
+        Rejected()
+      }
     }
   }
 }

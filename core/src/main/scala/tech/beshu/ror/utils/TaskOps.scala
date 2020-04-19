@@ -17,8 +17,7 @@
 package tech.beshu.ror.utils
 
 import monix.eval.Task
-
-import scala.language.{implicitConversions, postfixOps}
+import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 
 class TaskOps[T](val task: Task[T]) extends AnyVal {
@@ -26,11 +25,13 @@ class TaskOps[T](val task: Task[T]) extends AnyVal {
   def andThen[U](pf: PartialFunction[Try[T], U]): Task[T] = {
     task
       .map { t =>
-        pf.applyOrElse(Success(t), identity[Success[T]])
+        val success: Try[T] = Success(t)
+        pf.applyOrElse(success, identity[Try[T]])
         t
       }
       .onErrorRecover { case e =>
-        pf.applyOrElse(Failure(e), identity[Failure[Nothing]])
+        val failure: Try[T] = Failure[T](e)
+        pf.applyOrElse(failure, identity[Try[T]])
         throw e
       }
   }

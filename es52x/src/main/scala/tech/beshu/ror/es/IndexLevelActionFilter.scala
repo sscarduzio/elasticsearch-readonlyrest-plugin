@@ -18,12 +18,10 @@ package tech.beshu.ror.es
 
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.Atomic
-import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.component.AbstractComponent
 import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.common.settings.Settings
@@ -31,15 +29,11 @@ import org.elasticsearch.env.Environment
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.SecurityPermissionException
-import tech.beshu.ror.accesscontrol.domain.UriPath.CurrentUserMetadataPath
-import tech.beshu.ror.accesscontrol.request.EsRequestContext
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
-import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider}
-import tech.beshu.ror.es.request.RequestInfo
+import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider, EsServerBasedRorClusterService}
+import tech.beshu.ror.es.request.AclAwareRequestFilter
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
-import tech.beshu.ror.es.request.regular.RegularRequestHandler
-import tech.beshu.ror.es.request.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -64,14 +58,12 @@ class IndexLevelActionFilter(settings: Settings,
     this(settings, clusterService, client, threadPool, env, ())
   }
 
-  private val emptyClusterState = new ClusterStateResponse(
-    ClusterName.CLUSTER_NAME_SETTING.get(settings),
-    ClusterState.EMPTY_STATE
-  )
-
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
   implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  private val aclAwareRequestFilter = new AclAwareRequestFilter(
+    new EsServerBasedRorClusterService(clusterService), threadPool
+  )
 
   private val startingTaskCancellable = doPrivileged {
     Ror
@@ -146,25 +138,16 @@ class IndexLevelActionFilter(settings: Settings,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: RestChannel): Unit = {
-    val requestInfo = new RequestInfo(channel, task.getId, action, request, clusterService, threadPool)
-    val requestContext = requestContextFrom(requestInfo)
-    requestContext.uriPath match {
-      case CurrentUserMetadataPath(_) =>
-        val handler = new CurrentUserMetadataRequestHandler(engine, task, action, request, listener, chain, channel, threadPool)
-        handler.handle(requestInfo, requestContext)
-      case _ =>
-        val handler = new RegularRequestHandler(engine, task, action, request, listener, chain, channel, threadPool, emptyClusterState)
-        handler.handle(requestInfo, requestContext)
-    }
-  }
-
-  private def requestContextFrom(requestInfo: RequestInfo) =
-    EsRequestContext
-      .from(requestInfo)
-      .fold(
-        ex => throw new SecurityPermissionException("Cannot create request context object", ex),
-        identity
+    aclAwareRequestFilter
+      .handle(
+        engine,
+        EsContext(channel, task, action, request, listener, chain, engine.context.involvesFilter)
       )
+      .runAsync {
+        case Right(_) =>
+        case Left(ex) => listener.onFailure(new Exception(ex))
+      }
+  }
 }
 
 private sealed trait RorInstanceStartingState

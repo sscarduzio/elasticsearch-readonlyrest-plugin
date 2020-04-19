@@ -21,7 +21,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.domain.KibanaApp
@@ -38,18 +39,38 @@ class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
       "set kibana app header if user is logged" in {
         val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1".nonempty))))
         val requestContext = mock[RequestContext]
-        val blockContext = mock[BlockContext]
-        val newBlockContext = mock[BlockContext]
-        (blockContext.loggedUser _).expects().returning(Some(DirectlyLoggedUser(Id("user1".nonempty))))
-        (blockContext.withHiddenKibanaApps _).expects(Set(KibanaApp("app1".nonempty))).returning(newBlockContext)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(newBlockContext) )
+        val blockContext = CurrentUserMetadataRequestBlockContext(
+          requestContext,
+          UserMetadata
+            .empty
+            .withLoggedUser(DirectlyLoggedUser(Id("user1".nonempty))),
+          Set.empty,
+          Set.empty
+        )
+        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+          CurrentUserMetadataRequestBlockContext(
+            requestContext,
+            UserMetadata
+              .empty
+              .withLoggedUser(DirectlyLoggedUser(Id("user1".nonempty)))
+              .withHiddenKibanaApps(NonEmptySet.one(KibanaApp("app1".nonempty))),
+            Set.empty,
+            Set.empty
+          )
+        ))
       }
       "not set kibana app header if user is not logged" in {
         val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1".nonempty))))
         val requestContext = mock[RequestContext]
-        val blockContext = mock[BlockContext]
-        (blockContext.loggedUser _).expects().returning(None)
-        rule.check(requestContext, blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+          CurrentUserMetadataRequestBlockContext(
+            requestContext,
+            UserMetadata.empty,
+            Set.empty,
+            Set.empty
+          )
+        ))
       }
     }
   }

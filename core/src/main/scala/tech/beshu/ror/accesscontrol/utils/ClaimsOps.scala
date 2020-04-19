@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.{ClaimSearchResult, CustomCl
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
-import scala.language.{implicitConversions, postfixOps}
+import scala.language.implicitConversions
 import scala.util.Try
 
 class ClaimsOps(val claims: Claims) extends Logging {
@@ -36,7 +36,7 @@ class ClaimsOps(val claims: Claims) extends Logging {
   def headerNameClaim(name: Header.Name): ClaimSearchResult[Header] = {
     Option(claims.get(name.value.value, classOf[String]))
       .flatMap(NonEmptyString.unapply) match {
-      case Some(headerValue) => Found(Header.apply(name, headerValue))
+      case Some(headerValue) => Found(new Header(name, headerValue))
       case None => NotFound
     }
   }

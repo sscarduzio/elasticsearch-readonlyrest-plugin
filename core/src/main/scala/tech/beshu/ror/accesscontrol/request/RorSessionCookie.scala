@@ -24,12 +24,12 @@ import cats.implicits._
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
 import eu.timepit.refined.types.string.NonEmptyString
-import org.apache.logging.log4j.scala.Logging
 import io.circe.parser._
 import io.circe.{Decoder, Encoder}
-import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
-import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.Header.Name.setCookie
+import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
+import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.providers.UuidProvider

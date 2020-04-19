@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders._
@@ -31,7 +31,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
 
   "A RepositoriesRule" should {
     "be able to be loaded from config" when {
-      "one index is defined" in {
+      "one repository is defined" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -40,16 +40,16 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    repositories: index1
+              |    repositories: repository1
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1".nonempty).nel))
-            rule.settings.allowedIndices should be(indices)
+            val repositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]] = NonEmptySet.one(AlreadyResolved(RepositoryName("repository1".nonempty).nel))
+            rule.settings.allowedRepositories should be(repositories)
           }
         )
       }
-      "index is defined with variable" in {
+      "repository is defined with variable" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -59,16 +59,16 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |
               |  - name: test_block1
               |    auth_key: user:pass
-              |    repositories: "index_@{user}"
+              |    repositories: "repository_@{user}"
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.allowedIndices.length should be (1)
-            rule.settings.allowedIndices.head shouldBe a [ToBeResolved[_]]
+            rule.settings.allowedRepositories.length should be (1)
+            rule.settings.allowedRepositories.head shouldBe a [ToBeResolved[_]]
           }
         )
       }
-      "two indexes are defined" in {
+      "two repositoryes are defined" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -77,17 +77,17 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    repositories: [index1, index2]
+              |    repositories: [repository1, repository2]
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] =
-              NonEmptySet.of(AlreadyResolved(IndexName("index1".nonempty).nel), AlreadyResolved(IndexName("index2".nonempty).nel))
-            rule.settings.allowedIndices should be(indices)
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]] =
+              NonEmptySet.of(AlreadyResolved(RepositoryName("repository1".nonempty).nel), AlreadyResolved(RepositoryName("repository2".nonempty).nel))
+            rule.settings.allowedRepositories should be(indices)
           }
         )
       }
-      "two indexes are defined, second one with variable" in {
+      "two repositoryes are defined, second one with variable" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -97,20 +97,20 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |
               |  - name: test_block1
               |    auth_key: user:pass
-              |    repositories: [index1, "index_@{user}"]
+              |    repositories: [repository1, "repository_@{user}"]
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.allowedIndices.length == 2
+            rule.settings.allowedRepositories.length == 2
 
-            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1".nonempty).nel))
-            rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
+            rule.settings.allowedRepositories.head should be(AlreadyResolved(RepositoryName("repository1".nonempty).nel))
+            rule.settings.allowedRepositories.tail.head shouldBe a [ToBeResolved[_]]
           }
         )
       }
     }
     "not be able to be loaded from config" when {
-      "no index is defined" in {
+      "no repository is defined" in {
         assertDecodingFailure(
           yaml =
             """
@@ -130,7 +130,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
           }
         )
       }
-      "there is '_all' index defined" in {
+      "there is '_all' repository defined" in {
         assertDecodingFailure(
           yaml =
             """
@@ -139,18 +139,18 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    repositories: [index1, _all]
+              |    repositories: [repository1, _all]
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "Setting up a rule (repositories) that matches all the values is redundant - index _all"
+              "Setting up a rule (repositories) that matches all the values is redundant - repository _all"
             )))
           }
         )
       }
-      "there is '*' index defined" in {
+      "there is '*' repository defined" in {
         assertDecodingFailure(
           yaml =
             """
@@ -159,13 +159,13 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    repositories: ["index1", "*", "index2"]
+              |    repositories: ["repository1", "*", "repository2"]
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "Setting up a rule (repositories) that matches all the values is redundant - index *"
+              "Setting up a rule (repositories) that matches all the values is redundant - repository *"
             )))
           }
         )

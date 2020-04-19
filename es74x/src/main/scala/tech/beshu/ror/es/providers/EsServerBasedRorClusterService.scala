@@ -16,10 +16,15 @@
  */
 package tech.beshu.ror.es.providers
 
-import org.elasticsearch.cluster.metadata.MetaDataIndexTemplateService
+import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.cluster.service.ClusterService
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
+import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
 
@@ -27,34 +32,49 @@ class EsServerBasedRorClusterService(clusterService: ClusterService) extends Ror
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
-    lookup.get(indexOrAlias).getIndices.asScala.map(_.getIndexUUID).toSet
+    lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
   }
 
-  override def allIndices: Set[IndexName] = clusterService.state.getMetaData.getIndices.keysIt.asScala.toSet
-
-  override def findTemplatesOfIndices(indices: Set[IndexName]): Set[IndexName] = {
-    val metaData = clusterService.state.getMetaData
-    indices
-      .flatMap(index => MetaDataIndexTemplateService.findTemplates(metaData, index).asScala)
-      .map(_.getName)
+  override def expandIndices(indices: Set[IndexName]): Set[IndexName] = {
+    val all = allIndicesAndAliases
+      .flatMap { case (indexName, aliases) => aliases + indexName }
+      .toSet
+    MatcherWithWildcardsScalaAdapter.create(indices).filter(all)
   }
-
-  override def getTemplatesWithPatterns: Map[TemplateName, Set[IndexPatten]] =
-    Option(clusterService.state.getMetaData.templates)
-      .toList
-      .flatMap(t => t.iterator().asScala.map(t => (t.key, t.value.patterns().asScala.toSet)))
-      .toMap
 
   override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
     val indices = clusterService.state.metaData.getIndices
     indices
       .keysIt().asScala
-      .map { index =>
+      .flatMap { index =>
         val indexMetaData = indices.get(index)
-        val indexName = indexMetaData.getIndex.getName
-        val aliases: Set[String] = indexMetaData.getAliases.keysIt.asScala.toSet
-        (indexName, aliases)
+        IndexName
+          .fromString(indexMetaData.getIndex.getName)
+          .map { indexName =>
+            val aliases = indexMetaData.getAliases.keysIt.asScala.toSet.flatMap(IndexName.fromString)
+            (indexName, aliases)
+          }
       }
       .toMap
+  }
+
+  override def allTemplates: Set[Template] = {
+    val templates = clusterService.state.getMetaData.templates()
+    templates
+      .keysIt().asScala
+      .flatMap { templateNameString =>
+        val templateMetaData = templates.get(templateNameString)
+        for {
+          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
+          indexPatterns <- UniqueNonEmptyList.fromList(
+            templateMetaData.patterns().asScala.flatMap(IndexName.fromString).toList
+          )
+        } yield Template(templateName, indexPatterns)
+      }
+      .toSet
+  }
+
+  override def getTemplate(name: TemplateName): Option[Template] = {
+    allTemplates.find(_.name === name)
   }
 }

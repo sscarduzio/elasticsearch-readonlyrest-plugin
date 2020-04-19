@@ -17,11 +17,10 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RegularRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 
 class KibanaIndexRule(val settings: Settings)
@@ -29,12 +28,11 @@ class KibanaIndexRule(val settings: Settings)
 
   override val name: Rule.Name = KibanaIndexRule.name
 
-  override def process(requestContext: RequestContext,
-                       blockContext: BlockContext): Task[BlockContext] = Task {
+  override def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B] = Task {
     settings
       .kibanaIndex
-      .resolve(requestContext, blockContext)
-      .map(blockContext.withKibanaIndex)
+      .resolve(blockContext)
+      .map(index => blockContext.withUserMetadata(_.withKibanaIndex(index)))
       .getOrElse(blockContext)
   }
 }

@@ -18,9 +18,10 @@ package tech.beshu.ror.utils
 
 import java.util.Base64
 
-import cats.Functor
+import cats.{Functor, Order}
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
+import cats.implicits._
 import com.twitter.{util => twitter}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -47,7 +48,15 @@ object ScalaOps {
     private def safeArray = Option(array).getOrElse(Array.empty[T])
   }
 
-  implicit class SetOps[T](val value: T) extends AnyVal {
+  implicit class SetOps[T : Order](value: Set[T]) {
+    def toNonEmptySet: Option[NonEmptySet[T]] = {
+      NonEmptySet.fromSet[T](SortedSet.empty[T] ++ value)
+    }
+    def unsafeToNonEmptySet: NonEmptySet[T] =
+      toNonEmptySet.getOrElse(throw new IllegalArgumentException(s"Cannot convert $value to non empty set"))
+  }
+
+  implicit class ToSetOps[T](val value: T) extends AnyVal {
     def asSafeSet: Set[T] = Option(value).toSet
   }
 

@@ -91,7 +91,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoade
             .signWith(Keys.hmacShaKeyFor("123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456".getBytes))
             .setSubject("test")
             .setClaims(claims)
-          val request = MockRequestContext.default.copy(headers = Set(header("Authorization", s"Bearer ${jwtBuilder.compact}")))
+          val request = MockRequestContext.indices.copy(headers = Set(header("Authorization", s"Bearer ${jwtBuilder.compact}")))
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
