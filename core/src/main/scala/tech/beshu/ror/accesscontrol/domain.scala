@@ -22,11 +22,9 @@ import java.util.{Base64, Locale}
 import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
-import com.comcast.ip4s.interop.cats.HostnameResolver
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
-import monix.eval.Task
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
@@ -194,11 +192,6 @@ object domain {
       parseCidr(value) orElse
         parseIpAddress(value) orElse
         parseHostname(value)
-    }
-
-    // fixme: (improvements) blocking resolving (shift to another EC)
-    def resolve(hostname: Name): Task[Option[NonEmptyList[Ip]]] = {
-      HostnameResolver.resolveAll[Task](hostname.value).map(_.map(_.map(ip => Ip(Cidr(ip, 32)))))
     }
 
     private def parseCidr(value: String) =

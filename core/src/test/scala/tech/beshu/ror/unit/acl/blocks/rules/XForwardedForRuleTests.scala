@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import cats.data.NonEmptySet
+import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -25,12 +25,15 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.XForwardedForRule
+import tech.beshu.ror.accesscontrol.blocks.rules.{HostnameResolver, XForwardedForRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.MockOnce
+import tech.beshu.ror.mocks.MockHostnameResolver.Behaviour.ResolveResult.{ResolvedIps, Unresolvable}
+import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext}
+import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils._
 
 class XForwardedForRuleTests extends WordSpec with MockFactory {
@@ -87,17 +90,55 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
           xForwardedForHeaderValue = ""
         )
       }
+      "cannot resolve hostname" when {
+        "x-forwarded-for header contains unresolvable name and config contains the same name" in {
+          assertNotMatchRule(
+            settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("unresolvable"))),
+            xForwardedForHeaderValue = "unresolvable"
+          )
+        }
+        "only x-forwarded-for header contains unresolvable name" in {
+          assertNotMatchRule(
+            settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("google.com"))),
+            xForwardedForHeaderValue = "unresolvable"
+          )
+        }
+        "only config contains unresolvable name" in {
+          assertNotMatchRule(
+            settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("unresolvable"))),
+            xForwardedForHeaderValue = "google.com"
+          )
+        }
+      }
+      "hostname can be resolved when rule is created but not during request handling" in {
+        val mockedResolver = MockHostnameResolver.create(NonEmptyList.of(
+          MockOnce("es-pub7", Unresolvable),
+          MockOnce("google.com", ResolvedIps("192.168.0.1/24"))
+        ))
+        assertNotMatchRule(
+          settings = XForwardedForRule.Settings(NonEmptySet.of(addressValueFrom("es-pub7"))),
+          xForwardedForHeaderValue = "google.com",
+          hostnameResolver = mockedResolver
+        )
+      }
     }
   }
 
-  private def assertMatchRule(settings: XForwardedForRule.Settings, xForwardedForHeaderValue: String) =
-    assertRule(settings, xForwardedForHeaderValue, isMatched = true)
+  private def assertMatchRule(settings: XForwardedForRule.Settings,
+                              xForwardedForHeaderValue: String,
+                              hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver) =
+    assertRule(settings, xForwardedForHeaderValue, hostnameResolver, isMatched = true)
 
-  private def assertNotMatchRule(settings: XForwardedForRule.Settings, xForwardedForHeaderValue: String) =
-    assertRule(settings, xForwardedForHeaderValue, isMatched = false)
+  private def assertNotMatchRule(settings: XForwardedForRule.Settings,
+                                 xForwardedForHeaderValue: String,
+                                 hostnameResolver: HostnameResolver = new Ip4sBasedHostnameResolver) =
+    assertRule(settings, xForwardedForHeaderValue, hostnameResolver, isMatched = false)
 
-  private def assertRule(settings: XForwardedForRule.Settings, xForwardedForHeaderValue: String, isMatched: Boolean) = {
-    val rule = new XForwardedForRule(settings)
+  private def assertRule(settings: XForwardedForRule.Settings,
+                         xForwardedForHeaderValue: String,
+                         hostnameResolver: HostnameResolver,
+                         isMatched: Boolean) = {
+    val rule = new XForwardedForRule(settings, hostnameResolver)
     val requestContext = NonEmptyString.unapply(xForwardedForHeaderValue) match {
       case Some(header) => MockRequestContext.metadata.copy(headers = Set(headerFrom("X-Forwarded-For" -> header.value)))
       case None => MockRequestContext.indices

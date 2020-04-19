@@ -26,8 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
-class HostsRule(val settings: Settings)
-  extends BaseHostsRule {
+class HostsRule(val settings: Settings,
+                resolver: HostnameResolver)
+  extends BaseHostsRule(resolver) {
 
   override val name: Rule.Name = HostsRule.name
 

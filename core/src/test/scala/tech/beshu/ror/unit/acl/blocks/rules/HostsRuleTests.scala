@@ -28,8 +28,9 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBl
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext}
 import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class HostsRuleTests extends WordSpec with MockFactory {
@@ -90,7 +91,10 @@ class HostsRuleTests extends WordSpec with MockFactory {
     assertRule(configuredHosts, remoteHost, isMatched = false)
 
   private def assertRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[Address]], address: Option[Address], isMatched: Boolean) = {
-    val rule = new HostsRule(HostsRule.Settings(configuredValues, acceptXForwardedForHeader = false))
+    val rule = new HostsRule(
+      HostsRule.Settings(configuredValues, acceptXForwardedForHeader = false),
+      new Ip4sBasedHostnameResolver
+    )
     val requestContext = MockRequestContext.metadata.copy(
       remoteAddress = address,
       headers = Set.empty

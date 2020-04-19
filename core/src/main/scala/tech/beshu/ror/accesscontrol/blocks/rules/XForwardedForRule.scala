@@ -26,8 +26,9 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 
-class XForwardedForRule(val settings: Settings)
-  extends BaseHostsRule {
+class XForwardedForRule(val settings: Settings,
+                        resolver: HostnameResolver)
+  extends BaseHostsRule(resolver) {
 
   override val name: Rule.Name = XForwardedForRule.name
 
