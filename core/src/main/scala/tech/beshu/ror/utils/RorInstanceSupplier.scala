@@ -14,15 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.utils
+package tech.beshu.ror.utils
 
-import java.security.{AccessController, PrivilegedAction}
+import java.util.concurrent.atomic.AtomicReference
+import java.util.function.Supplier
 
-object AccessControllerHelper {
+import tech.beshu.ror.boot.RorInstance
 
-  def doPrivileged[T](action: => T): T = {
-    AccessController.doPrivileged(new PrivilegedAction[T] {
-      override def run(): T = action
-    })
+object RorInstanceSupplier extends Supplier[Option[RorInstance]]{
+  private val rorInstanceAtomicReference = new AtomicReference(Option.empty[RorInstance])
+
+  override def get(): Option[RorInstance] = rorInstanceAtomicReference.get()
+
+  def update(rorInstance: RorInstance): Unit = {
+    rorInstanceAtomicReference.set(Some(rorInstance))
   }
 }

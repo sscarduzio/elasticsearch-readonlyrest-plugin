@@ -43,7 +43,7 @@ import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError}
-import tech.beshu.ror.configuration.{EsConfig, FileConfigLoader, IndexConfigManager, RawRorConfig, RorIndexNameConfiguration}
+import tech.beshu.ror.configuration._
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value
@@ -55,7 +55,7 @@ import scala.util.Success
 
 object Ror extends ReadonlyRest {
 
-  val blockingScheduler: Scheduler= Scheduler.io("blocking-index-content-provider")
+  val blockingScheduler: Scheduler = Scheduler.io("blocking-index-content-provider")
 
   override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   override protected implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
@@ -71,14 +71,17 @@ object Ror extends ReadonlyRest {
 trait ReadonlyRest extends Logging {
 
   protected def coreFactory: CoreFactory
+
   protected def envVarsProvider: EnvVarsProvider
+
   protected implicit def propertiesProvider: PropertiesProvider
+
   protected implicit def clock: Clock
 
   def start(esConfigPath: Path,
             auditSink: AuditSinkService,
             indexContentManager: IndexJsonContentService)
-           (implicit envVarsProvider:EnvVarsProvider): Task[Either[StartingFailure, RorInstance]] = {
+           (implicit envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       fileConfigLoader <- createFileConfigLoader(esConfigPath)
       indexConfigLoader <- createIndexConfigLoader(indexContentManager, esConfigPath)
@@ -99,7 +102,7 @@ trait ReadonlyRest extends Logging {
   }
 
   private def loadEsConfig(esConfigPath: Path)
-                          (implicit envVarsProvider:EnvVarsProvider) = {
+                          (implicit envVarsProvider: EnvVarsProvider) = {
     EitherT {
       EsConfig
         .from(esConfigPath)
@@ -174,6 +177,7 @@ trait ReadonlyRest extends Logging {
             }
       }
     }
+
     logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ...")
     attempt(5)
       .flatMap {
@@ -203,12 +207,17 @@ trait ReadonlyRest extends Logging {
         result
           .right
           .map { coreSettings =>
-            implicit val loggingContext = LoggingContext(coreSettings.aclStaticContext.obfuscatedHeaders)
+            implicit val loggingContext: LoggingContext =
+              LoggingContext(coreSettings.aclStaticContext.obfuscatedHeaders)
             val engine = new Engine(
               accessControl = new AccessControlLoggingDecorator(
-                            underlying = coreSettings.aclEngine,
-                            auditingTool = coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
-                          ), context = coreSettings.aclStaticContext, httpClientsFactory = httpClientsFactory, ldapConnectionPoolProvider)
+                underlying = coreSettings.aclEngine,
+                auditingTool = coreSettings.auditingSettings.map(new AuditingTool(_, auditSink))
+              ),
+              context = coreSettings.aclStaticContext,
+              httpClientsFactory = httpClientsFactory,
+              ldapConnectionPoolProvider
+            )
             engine
           }
           .left
@@ -235,13 +244,13 @@ class RorInstance private(boot: ReadonlyRest,
                           reloadInProgress: Semaphore[Task],
                           indexConfigManager: IndexConfigManager,
                           auditSink: AuditSinkService)
-                          (implicit propertiesProvider: PropertiesProvider)
+                         (implicit propertiesProvider: PropertiesProvider)
   extends Logging {
 
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
   import RorInstance._
 
-  logger.info ("Readonly REST plugin core was loaded ...")
+  logger.info("Readonly REST plugin core was loaded ...")
   mode match {
     case Mode.WithPeriodicIndexCheck =>
       RorProperties.rorIndexSettingReloadInterval match {
@@ -475,7 +484,7 @@ final class Engine(val accessControl: AccessControl,
                    httpClientsFactory: AsyncHttpClientsFactory,
                    ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) {
 
-  private [ror] def shutdown(): Unit = {
+  private[ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()
     ldapConnectionPoolProvider.close().runAsyncAndForget
   }

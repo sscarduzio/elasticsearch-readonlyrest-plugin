@@ -35,9 +35,11 @@ import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse._
-import tech.beshu.ror.es.utils.AccessControllerHelper._
+import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.utils.RorInstanceSupplier
 
 import scala.language.postfixOps
 

@@ -30,10 +30,10 @@ import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.SchedulerPools
 import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RorIndexNameConfiguration}
-import tech.beshu.ror.es.RorInstanceSupplier
+import tech.beshu.ror.utils.RorInstanceSupplier
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.providers.JvmPropertiesProvider
-import tech.beshu.ror.es.utils.AccessControllerHelper._
+import tech.beshu.ror.utils.AccessControllerHelper._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
