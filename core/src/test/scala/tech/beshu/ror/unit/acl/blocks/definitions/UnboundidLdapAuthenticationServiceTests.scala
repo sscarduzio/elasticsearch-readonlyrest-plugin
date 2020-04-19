@@ -19,6 +19,7 @@ package tech.beshu.ror.unit.acl.blocks.definitions
 import cats.data._
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
@@ -103,16 +104,17 @@ class UnboundidLdapAuthenticationServiceTests
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${ldap1Container.ldapHost}:${ldap1Container.ldapPort}").get),
-          Refined.unsafeApply(10),
-          Refined.unsafeApply(5 seconds),
-          Refined.unsafeApply(5 seconds),
+          poolSize = 1,
+          connectionTimeout = Refined.unsafeApply(5 seconds),
+          requestTimeout = Refined.unsafeApply(5 seconds),
           trustAllCerts = false,
           BindRequestUser.CustomUser(
             Dn("cn=admin,dc=example,dc=com".nonempty),
             PlainTextSecret("password".nonempty)
           )
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty)
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
+        global
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
@@ -131,16 +133,17 @@ class UnboundidLdapAuthenticationServiceTests
             ),
             HaMethod.RoundRobin
           ),
-          Refined.unsafeApply(10),
-          Refined.unsafeApply(5 seconds),
-          Refined.unsafeApply(5 seconds),
+          poolSize = 1,
+          connectionTimeout = Refined.unsafeApply(5 seconds),
+          requestTimeout = Refined.unsafeApply(5 seconds),
           trustAllCerts = false,
           BindRequestUser.CustomUser(
             Dn("cn=admin,dc=example,dc=com".nonempty),
             PlainTextSecret("password".nonempty)
           )
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty)
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
+        global
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
