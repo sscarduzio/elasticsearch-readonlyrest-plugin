@@ -14,36 +14,41 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration
+package tech.beshu.ror.integration.suites
 
-import com.dimafeng.testcontainers.ForAllTestContainer
-import org.apache.http.message.BasicHeader
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.utils.containers.ReadonlyRestEsCluster.AdditionalClusterSettings
-import tech.beshu.ror.utils.containers.{ReadonlyRestEsCluster, ReadonlyRestEsClusterContainer}
+import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
 
-class MiscTests extends WordSpec with ForAllTestContainer {
+trait MiscSuite
+  extends WordSpec
+    with BaseIntegrationTest
+    with SingleClientSupport {
+  this: EsContainerCreator =>
 
-  override val container: ReadonlyRestEsClusterContainer = ReadonlyRestEsCluster.createLocalClusterContainer(
-    name = "ROR1",
-    rorConfigFileName = "/misc/readonlyrest.yml",
-    clusterSettings = AdditionalClusterSettings(
+  override implicit val rorConfigFileName = "/misc/readonlyrest.yml"
+
+  override lazy val targetEs = container.nodesContainers.head
+
+  override lazy val container = createLocalClusterContainer(
+    EsClusterSettings(
+      name = "ROR1",
       numberOfInstances = 2
     )
   )
 
   private lazy val userClusterStateManager = new ClusterStateManager(
-    container.nodesContainers.head.client("user1", "pass", new BasicHeader("X-Forwarded-For", "es-pub7"))
+    client = basicAuthClient("user1", "pass"),
+    additionalHeaders = Map("X-Forwarded-For" -> "es-pub7")
   )
 
   "An x_forwarded_for" should {
     "block the request because hostname is not resolvable" in {
       val response = userClusterStateManager.healthCheck()
 
-      response.responseCode should be (401)
+      response.responseCode should be(401)
     }
   }
-
 }

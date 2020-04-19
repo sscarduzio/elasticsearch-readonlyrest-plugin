@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.generic.{EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.TemplateManager
 
 trait TemplatesSuite
@@ -31,17 +31,11 @@ trait TemplatesSuite
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
-  override lazy val rorContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1"
-    )
-  )
-
   "A template API" when {
     "user is dev1" should {
       "see empty list of templates" when {
         "there is none" in {
-          val devTemplateManager = new TemplateManager(client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val templates = devTemplateManager.getTemplates
 
           templates.responseCode should be(200)
@@ -54,7 +48,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplates
 
               templates.responseCode should be(200)
@@ -63,7 +57,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplates
 
               templates.responseCode should be(200)
@@ -74,7 +68,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplates
 
               templates.responseCode should be(200)
@@ -83,7 +77,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplates
 
               templates.responseCode should be(200)
@@ -97,7 +91,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplates
 
               templates.responseCode should be(200)
@@ -107,7 +101,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplates
 
               templates.responseCode should be(200)
@@ -119,7 +113,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplates
 
               templates.responseCode should be(200)
@@ -129,7 +123,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplates
 
               templates.responseCode should be(200)
@@ -144,7 +138,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(200)
@@ -153,7 +147,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(200)
@@ -164,7 +158,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(200)
@@ -173,7 +167,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(200)
@@ -187,7 +181,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(200)
@@ -197,7 +191,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(200)
@@ -209,7 +203,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(200)
@@ -219,7 +213,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(200)
@@ -232,7 +226,7 @@ trait TemplatesSuite
           createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
           createIndexWithExampleDoc(adminDocumentManager, "custom_dev2_index_test")
 
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val templates = devTemplateManager.getTemplate("temp1")
 
           templates.responseCode should be(200)
@@ -243,13 +237,13 @@ trait TemplatesSuite
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*"))
 
               result.responseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index*"))
 
               result.responseCode should be (200)
@@ -257,13 +251,13 @@ trait TemplatesSuite
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
 
               result.responseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
 
               result.responseCode should be (200)
@@ -275,7 +269,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminDocumentManager.createDoc("/custom_dev1_index_test/doc/1", "{\"hello\":\"world\"}")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*"))
 
               result.responseCode should be (200)
@@ -283,7 +277,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminDocumentManager.createDoc("/dev1_index/doc/1", "{\"hello\":\"world\"}")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index*"))
 
               result.responseCode should be (200)
@@ -293,7 +287,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminDocumentManager.createDoc("/custom_dev1_index_test/doc/1", "{\"hello\":\"world\"}")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
 
               result.responseCode should be (200)
@@ -301,7 +295,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminDocumentManager.createDoc("/dev1_index/doc/1", "{\"hello\":\"world\"}")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
 
               result.responseCode should be (200)
@@ -309,7 +303,7 @@ trait TemplatesSuite
           }
         }
         "template applies to generic index pattern (ES >= 6.0.0)" excludeES (allEs5x) in {
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_*"))
 
           result.responseCode should be (200)
@@ -321,7 +315,7 @@ trait TemplatesSuite
           )
         }
         "template applies to generic index pattern (ES < 6.0.0)" excludeES (allEs7x, allEs6x) in {
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_*"))
 
           result.responseCode should be (200)
@@ -333,7 +327,7 @@ trait TemplatesSuite
       }
       "be allowed to override existing template" which {
         "belongs to him (ES >= 6.0.0)" excludeES (allEs5x) in {
-          val dev1TemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val dev1TemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
 
           val insert1Result =
             dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1*"))
@@ -356,7 +350,7 @@ trait TemplatesSuite
           )
         }
         "belongs to him (ES < 6.0.0)" excludeES (allEs7x, allEs6x) in {
-          val dev1TemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val dev1TemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
 
           val insert1Result =
             dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1*"))
@@ -381,7 +375,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_index_*"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.responseCode should be (200)
@@ -389,7 +383,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_index"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.responseCode should be (200)
@@ -399,7 +393,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_index_test"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.responseCode should be (200)
@@ -407,7 +401,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_index"))
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.responseCode should be (200)
@@ -420,7 +414,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_index_*"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.responseCode should be (200)
@@ -429,7 +423,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_index"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.responseCode should be (200)
@@ -440,7 +434,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("custom_dev1_index_test"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.responseCode should be (200)
@@ -449,7 +443,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp_to_remove", templateExample("dev1_index"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev1", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.deleteTemplate("temp_to_remove")
 
               result.responseCode should be (200)
@@ -459,7 +453,7 @@ trait TemplatesSuite
         "all indices patterns defined in template are allowed to the user" excludeES (allEs5x) in {
           adminTemplateManager.insertTemplateAndWaitForIndexing("temp", templateExample("custom_dev1_index_*", "dev1_index"))
 
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val result = devTemplateManager.deleteTemplate("temp")
 
           result.responseCode should be (200)
@@ -467,13 +461,13 @@ trait TemplatesSuite
         "index pattern defined in template is allowed to the user" in {
           adminTemplateManager.insertTemplateAndWaitForIndexing("temp", templateExample("custom_dev1_index_*"))
 
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val result = devTemplateManager.deleteTemplate("temp")
 
           result.responseCode should be (200)
         }
         "he previously added it" in {
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
 
           val addingResult = devTemplateManager.insertTemplate("new_template", templateExample("*"))
           addingResult.responseCode should be (200)
@@ -491,7 +485,7 @@ trait TemplatesSuite
               "rule has index pattern with wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-                val devTemplateManager = new TemplateManager(client("dev2", "test"))
+                val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
                 templates.responseCode should be(200)
@@ -500,7 +494,7 @@ trait TemplatesSuite
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-                val devTemplateManager = new TemplateManager(client("dev2", "test"))
+                val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
                 templates.responseCode should be(200)
@@ -511,7 +505,7 @@ trait TemplatesSuite
               "rule has index pattern with wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-                val devTemplateManager = new TemplateManager(client("dev2", "test"))
+                val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
                 templates.responseCode should be(200)
@@ -520,7 +514,7 @@ trait TemplatesSuite
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-                val devTemplateManager = new TemplateManager(client("dev2", "test"))
+                val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
                 templates.responseCode should be(200)
@@ -534,7 +528,7 @@ trait TemplatesSuite
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
                 createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-                val devTemplateManager = new TemplateManager(client("dev2", "test"))
+                val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
                 templates.responseCode should be(200)
@@ -544,7 +538,7 @@ trait TemplatesSuite
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
                 createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-                val devTemplateManager = new TemplateManager(client("dev2", "test"))
+                val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
                 templates.responseCode should be(200)
@@ -556,7 +550,7 @@ trait TemplatesSuite
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
                 createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-                val devTemplateManager = new TemplateManager(client("dev2", "test"))
+                val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
                 templates.responseCode should be(200)
@@ -566,7 +560,7 @@ trait TemplatesSuite
                 adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
                 createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-                val devTemplateManager = new TemplateManager(client("dev2", "test"))
+                val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
                 val templates = devTemplateManager.getTemplates
 
                 templates.responseCode should be(200)
@@ -582,7 +576,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(404)
@@ -590,7 +584,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(404)
@@ -600,7 +594,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(404)
@@ -608,7 +602,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(404)
@@ -621,7 +615,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(404)
@@ -630,7 +624,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(404)
@@ -641,7 +635,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(404)
@@ -650,7 +644,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val templates = devTemplateManager.getTemplate("temp1")
 
               templates.responseCode should be(404)
@@ -661,13 +655,13 @@ trait TemplatesSuite
       "not be able to create template for foreign index pattern" when {
         "template has index pattern with wildcard" when {
           "rule has index pattern with wildcard" in {
-            val devTemplateManager = new TemplateManager(client("dev2", "test"))
+            val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
             val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_*"))
 
             result.responseCode should be (401)
           }
           "rule has index pattern with no wildcard" in {
-            val devTemplateManager = new TemplateManager(client("dev2", "test"))
+            val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
             val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
 
             result.responseCode should be (401)
@@ -675,26 +669,26 @@ trait TemplatesSuite
         }
         "template has index pattern with no wildcard" when {
           "rule has index pattern with wildcard" in {
-            val devTemplateManager = new TemplateManager(client("dev2", "test"))
+            val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
             val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
 
             result.responseCode should be (401)
           }
           "rule has index pattern with no wildcard" in {
-            val devTemplateManager = new TemplateManager(client("dev2", "test"))
+            val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
             val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
 
             result.responseCode should be (401)
           }
         }
         "template contains only not allowed index patterns" in {
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
           val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_1*"))
 
           result.responseCode should be (401)
         }
         "template applies to allowed index and not allowed index patterns" excludeES (allEs5x) in {
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
           val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*", "custom_dev2_index_*"))
 
           result.responseCode should be (401)
@@ -702,8 +696,8 @@ trait TemplatesSuite
       }
       "not be able to override existing template" which {
         "doesn't belong to him" in {
-          val dev1TemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
-          val dev2TemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev2", "test"))
+          val dev1TemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
+          val dev2TemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
 
           val result1 = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1*"))
           result1.responseCode should be (200)
@@ -718,7 +712,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val result = devTemplateManager.deleteTemplate("temp1")
 
               result.responseCode should be (401)
@@ -726,7 +720,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val result = devTemplateManager.deleteTemplate("temp1")
 
               result.responseCode should be (401)
@@ -736,7 +730,7 @@ trait TemplatesSuite
             "rule has index pattern with wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val result = devTemplateManager.deleteTemplate("temp1")
 
               result.responseCode should be (401)
@@ -744,7 +738,7 @@ trait TemplatesSuite
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val result = devTemplateManager.deleteTemplate("temp1")
 
               result.responseCode should be (401)
@@ -757,7 +751,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val result = devTemplateManager.deleteTemplate("temp1")
 
               result.responseCode should be (401)
@@ -766,7 +760,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val result = devTemplateManager.deleteTemplate("temp1")
 
               result.responseCode should be (401)
@@ -777,7 +771,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val result = devTemplateManager.deleteTemplate("temp1")
 
               result.responseCode should be (401)
@@ -786,7 +780,7 @@ trait TemplatesSuite
               adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-              val devTemplateManager = new TemplateManager(client("dev2", "test"))
+              val devTemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
               val result = devTemplateManager.deleteTemplate("temp1")
 
               result.responseCode should be (401)
@@ -799,7 +793,7 @@ trait TemplatesSuite
             templateExample("custom_dev1_index_*", "custom_dev2_index_*")
           )
 
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val result = devTemplateManager.deleteTemplate("temp")
 
           result.responseCode should be (401)
@@ -810,7 +804,7 @@ trait TemplatesSuite
             templateExample("custom_dev2_index_*")
           )
 
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val result = devTemplateManager.deleteTemplate("temp")
 
           result.responseCode should be (401)
@@ -818,7 +812,7 @@ trait TemplatesSuite
         "index pattern defined in template are too generic" in {
           adminTemplateManager.insertTemplateAndWaitForIndexing("temp", templateExample("*"))
 
-          val devTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.client("dev1", "test"))
+          val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val result = devTemplateManager.deleteTemplate("temp")
 
           result.responseCode should be (401)

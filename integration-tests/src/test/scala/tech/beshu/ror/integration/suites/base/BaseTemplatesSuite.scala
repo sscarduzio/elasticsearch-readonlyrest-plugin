@@ -17,8 +17,8 @@
 package tech.beshu.ror.integration.suites.base
 
 import org.scalatest.{BeforeAndAfterEach, Suite}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.generic._
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, TemplateManager}
 import tech.beshu.ror.utils.misc.Version
 

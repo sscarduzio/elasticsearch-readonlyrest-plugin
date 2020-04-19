@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.containers
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.junit.runner.Description
-import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, IndexManagerJ, SnapshotManager, TemplateManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, IndexManagerJ, SnapshotManager, TemplateManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 object SingletonEsContainer
@@ -33,7 +33,7 @@ object SingletonEsContainer
 
   private lazy val adminClient = singleton.nodesContainers.head.adminClient
   private lazy val indexManager = new IndexManagerJ(adminClient)
-  private lazy val templateManager = new TemplateManagerJ(adminClient)
+  private lazy val templateManager = new TemplateManager(adminClient)
   private lazy val snapshotManager = new SnapshotManager(adminClient)
   private lazy val adminApiManager = new ActionManagerJ(adminClient)
 
