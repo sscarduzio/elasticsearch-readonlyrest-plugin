@@ -58,21 +58,26 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   private def modifyIndicesOf(request: MultiSearchRequest,
                               nelOfIndices: NonEmptyList[IndexName]): ModificationResult = {
+    val expandedFoundIndices = clusterService.expandIndices(nelOfIndices.toList.toSet)
     request.requests().asScala.foreach { sr =>
       if (sr.indices.asSafeSet.isEmpty || sr.indices.asSafeSet.contains("*")) {
         sr.indices(nelOfIndices.toList.map(_.value.value): _*)
       } else {
         // This transforms wildcards and aliases in concrete indices
-        val expandedSrIndices = clusterService.expandIndices(sr.indices().asSafeSet.flatMap(IndexName.fromString))
-        val remaining = expandedSrIndices.intersect(nelOfIndices.toList.toSet)
+        val (clusterIndices, localIndices) =
+          sr.indices().asSafeSet
+            .flatMap(IndexName.fromString)
+            .partition(_.isClusterIndex)
+        val expandedRequestIndices = clusterService.expandIndices(localIndices)
 
-        if (remaining.isEmpty) { // contained just forbidden indices, should return zero results
+        val remaining = expandedRequestIndices.intersect(expandedFoundIndices)
+        val remainingAndClusterIndices = remaining ++ clusterIndices
+
+        if (remainingAndClusterIndices.isEmpty) { // contained just forbidden indices, should return zero results
           sr.source(new SearchSourceBuilder().size(0))
-        } else if (remaining.size == expandedSrIndices.size) { // contained all allowed indices
-          // nothing to do
         } else {
           // some allowed indices were there, restrict query to those
-          sr.indices(remaining.toList.map(_.value.value): _*)
+          sr.indices(remainingAndClusterIndices.toList.map(_.value.value): _*)
         }
       }
     }
