@@ -5,6 +5,8 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
+  enable: false
+
   access_control_rules:
 
     # ES containter initializer need this rule to configure ES instance after startup
@@ -22,5 +24,5 @@ readonlyrest:
       auth_key: dev2:test
 
     - name: "real life case"
-      indices: ["metrics-monitoring*", "etl:etl-*"]
+      indices: ["metrics-monitoring*", "etl:etl*"]
       auth_key: dev3:test

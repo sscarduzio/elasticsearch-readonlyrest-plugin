@@ -1,3 +1,5 @@
 path.repo: "/tmp/lolrepo1"
 node.name: n1_it
 readonlyrest.force_load_from_file: true
+transport.port: 9301
+http.port: 9201
