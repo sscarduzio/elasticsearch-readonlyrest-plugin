@@ -19,17 +19,19 @@ package tech.beshu.ror.utils.containers.generic
 import cats.data.NonEmptyList
 import cats.implicits._
 import com.dimafeng.testcontainers.{Container, GenericContainer}
-import monix.eval.Coeval
+import monix.eval.{Coeval, Task}
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils._
+import monix.execution.Scheduler.Implicits.global
 
 import scala.language.existentials
 import scala.util.Try
 
 class EsClusterContainer private[containers](val nodes: NonEmptyList[EsContainer],
-                                             dependencies: List[DependencyDef]) extends Container {
+                                             dependencies: List[DependencyDef])
+  extends Container {
 
   val depsContainers: List[(DependencyDef, GenericContainer)] =
     dependencies.map(d => (d, d.containerCreator.apply()))
@@ -38,7 +40,11 @@ class EsClusterContainer private[containers](val nodes: NonEmptyList[EsContainer
 
   override def start(): Unit = {
     depsContainers.foreach(_._2.start())
-    nodes.toList.foreach(_.start())
+    Task
+      .gatherUnordered {
+        nodes.toList.map(n => Task(n.start()))
+      }
+      .runSyncUnsafe()
   }
 
   override def stop(): Unit = {
