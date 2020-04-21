@@ -19,73 +19,59 @@ package tech.beshu.ror.utils.containers.generic
 import cats.data.NonEmptyList
 import cats.implicits._
 import com.dimafeng.testcontainers.{Container, GenericContainer}
-import monix.eval.{Coeval, Task}
-import monix.execution.Scheduler.Implicits.global
+import monix.eval.Coeval
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
-import org.junit.runner.Description
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils._
 
 import scala.language.existentials
 import scala.util.Try
 
-class EsClusterContainer private[containers](esClusterContainers: NonEmptyList[Task[EsContainer]],
+class EsClusterContainer private[containers](val nodes: NonEmptyList[EsContainer],
                                              dependencies: List[DependencyDef]) extends Container {
-
-  val nodesContainers: NonEmptyList[EsContainer] = {
-    NonEmptyList.fromListUnsafe(Task.gather(esClusterContainers.toList).runSyncUnsafe())
-  }
 
   val depsContainers: List[(DependencyDef, GenericContainer)] =
     dependencies.map(d => (d, d.containerCreator.apply()))
 
-  val esVersion: String = nodesContainers.head.esVersion
+  val esVersion: String = nodes.head.esVersion
 
-  override def starting()(implicit description: Description): Unit = {
-    Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
-
-    Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
+  override def start(): Unit = {
+    depsContainers.foreach(_._2.start())
+    nodes.toList.foreach(_.start())
   }
 
-  override def finished()(implicit description: Description): Unit =
-    nodesContainers.toList.foreach(_.finished()(description))
-
-  override def succeeded()(implicit description: Description): Unit =
-    nodesContainers.toList.foreach(_.succeeded()(description))
-
-  override def failed(e: Throwable)(implicit description: Description): Unit =
-    nodesContainers.toList.foreach(_.failed(e)(description))
-
+  override def stop(): Unit = {
+    nodes.toList.foreach(_.stop())
+    depsContainers.foreach(_._2.stop())
+  }
 }
 
-class EsRemoteClustersContainer private[containers](val localClusters: NonEmptyList[EsClusterContainer],
-                                                    remoteClustersInitializer: RemoteClustersInitializer)
+class EsRemoteClustersContainer private[containers](val localCluster: EsClusterContainer,
+                                                    remoteClusters: NonEmptyList[EsClusterContainer],
+                                                    remoteClusterSetup: SetupRemoteCluster)
   extends Container {
 
-  override def starting()(implicit description: Description): Unit = {
-    localClusters.map(_.starting()(description))
-    val config = remoteClustersInitializer.remoteClustersConfiguration(localClusters.map(_.nodesContainers.head))
-    localClusters.toList.foreach { container =>
-      remoteClustersInitializer(container.nodesContainers.head, config)
-    }
+  override def start(): Unit = {
+    remoteClusters.toList.foreach(_.start())
+    localCluster.start()
+    remoteClustersInitializer(
+      localCluster,
+      remoteClusterSetup.remoteClustersConfiguration(remoteClusters)
+    )
   }
 
-  override def finished()(implicit description: Description): Unit =
-    localClusters.toList.foreach(_.finished()(description))
+  override def stop(): Unit = {
+    localCluster.stop()
+    remoteClusters.toList.foreach(_.stop())
+  }
 
-  override def succeeded()(implicit description: Description): Unit =
-    localClusters.toList.foreach(_.succeeded()(description))
-
-  override def failed(e: Throwable)(implicit description: Description): Unit =
-    localClusters.toList.foreach(_.failed(e)(description))
-
-  private def remoteClustersInitializer(container: EsContainer,
-                                        remoteClustersConfig: Map[String, NonEmptyList[EsContainer]]): Unit = {
+  private def remoteClustersInitializer(container: EsClusterContainer,
+                                        remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
     def createRemoteClusterSettingsRequest(esClient: RestClient) = {
       val remoteClustersConfigString = remoteClustersConfig
-        .map { case (name, remoteClusterContainers) =>
-          s""""$name": { "seeds": [ ${remoteClusterContainers.toList.map(c => s""""${c.name}:9300"""").mkString(",")} ] }"""
+        .map { case (name, remoteCluster) =>
+          s""""$name": { "seeds": [ ${remoteCluster.nodes.toList.map(c => s""""${c.name}:9300"""").mkString(",")} ] }"""
         }
         .mkString(",\n")
 
@@ -104,7 +90,7 @@ class EsRemoteClustersContainer private[containers](val localClusters: NonEmptyL
       request
     }
 
-    val esClient = container.adminClient
+    val esClient = container.nodes.head.adminClient
     Try(esClient.execute(createRemoteClusterSettingsRequest(esClient))).bracket { response =>
       response.getStatusLine.getStatusCode match {
         case 200 =>
@@ -113,13 +99,12 @@ class EsRemoteClustersContainer private[containers](val localClusters: NonEmptyL
       }
     }
   }
-
 }
 
 final case class ContainerSpecification(environmentVariables: Map[String, String])
 
-trait RemoteClustersInitializer {
-  def remoteClustersConfiguration(localClusterRepresentatives: NonEmptyList[EsContainer]): Map[String, NonEmptyList[EsContainer]]
+trait SetupRemoteCluster {
+  def remoteClustersConfiguration(remoteClusters: NonEmptyList[EsClusterContainer]): Map[String, EsClusterContainer]
 }
 
 final case class EsClusterSettings(name: String,

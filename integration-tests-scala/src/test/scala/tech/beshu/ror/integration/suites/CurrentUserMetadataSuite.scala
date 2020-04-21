@@ -32,7 +32,7 @@ trait CurrentUserMetadataSuite
 
   override implicit val rorConfigFileName = "/current_user_metadata/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

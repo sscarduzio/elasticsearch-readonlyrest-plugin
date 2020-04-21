@@ -40,7 +40,7 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
                                        restClient: Coeval[RestClient],
                                        initializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer)
   extends AbstractWaitStrategy
-  with StrictLogging {
+    with StrictLogging {
 
   override def waitUntilReady(): Unit = {
     implicit val startupThreshold: FiniteDuration = FiniteDuration(startupTimeout.toMillis, TimeUnit.MILLISECONDS)
@@ -54,22 +54,25 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
         identity
       )
     }
-    if(!started) {
+    if (!started) {
       throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]")
     }
     Try(initializer.initialize(esVersion, client))
-      .recover { case ex: Exception =>
-        throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]", ex)
-      }
+      .fold(
+        ex => throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]", ex),
+        identity
+      )
   }
 
   private def retry[A](checkClusterHealthAction: => Boolean)
                       (implicit startupThreshold: FiniteDuration) = {
     val policy: RetryPolicy[Id] = limitRetriesByCumulativeDelay(startupThreshold, constantDelay(2 seconds))
     val predicate = (_: Boolean) == true
+
     def onFailure(failedValue: Boolean, details: RetryDetails): Unit = {
       logger.debug(s"[$containerName] Cluster not ready yet. Retrying ...")
     }
+
     retrying(policy, predicate, onFailure) {
       checkClusterHealthAction
     }

@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils.containers.generic
 
 import cats.data.NonEmptyList
-import monix.eval.Task
 
 trait EsClusterProvider {
   this: EsContainerCreator =>
@@ -28,13 +27,17 @@ trait EsClusterProvider {
       .map(idx => s"${esClusterSettings.name}_$idx"))
 
     new EsClusterContainer(
-      nodeNames.map(name => Task(create(name, nodeNames, esClusterSettings))),
+      nodeNames.map(name => create(name, nodeNames, esClusterSettings)),
       esClusterSettings.dependentServicesContainers)
   }
 
-  def createRemoteClustersContainer(localClustersSettings: NonEmptyList[EsClusterSettings],
-                                    remoteClustersInitializer: RemoteClustersInitializer) = {
-    val startedClusters = localClustersSettings.map(createLocalClusterContainer)
-    new EsRemoteClustersContainer(startedClusters, remoteClustersInitializer)
+  def createRemoteClustersContainer(localClustersSettings: EsClusterSettings,
+                                    remoteClustersSettings: NonEmptyList[EsClusterSettings],
+                                    remoteClusterSetup: SetupRemoteCluster): EsRemoteClustersContainer = {
+    new EsRemoteClustersContainer(
+      createLocalClusterContainer(localClustersSettings),
+      remoteClustersSettings.map(createLocalClusterContainer),
+      remoteClusterSetup
+    )
   }
 }

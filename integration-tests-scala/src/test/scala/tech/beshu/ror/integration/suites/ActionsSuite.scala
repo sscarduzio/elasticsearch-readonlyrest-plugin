@@ -31,7 +31,7 @@ trait ActionsSuite
 
   override implicit val rorConfigFileName = "/actions/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

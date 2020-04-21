@@ -30,7 +30,7 @@ trait ClusterStateSuite
 
   override implicit val rorConfigFileName = "/cluster_state/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

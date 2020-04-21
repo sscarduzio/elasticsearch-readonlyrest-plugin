@@ -49,6 +49,8 @@ abstract class EsContainer(val name: String, val esVersion: String, image: Image
   def port: Integer = container.getMappedPort(9200)
 
   override def client(user: String, password: String): RestClient = new RestClient(sslEnabled, host, port, Optional.of(Tuple.from(user, password)))
+
+  override def start(): Unit = super.start()
 }
 
 object EsContainer extends StrictLogging {

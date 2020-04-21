@@ -29,14 +29,14 @@ trait BaseTemplatesSuite
     with BeforeAndAfterEach {
   this: Suite with EsContainerCreator =>
 
-  override lazy val targetEs = rorContainer.nodesContainers.head
+  override lazy val targetEs = rorContainer.nodes.head
 
   def rorContainer: EsClusterContainer
 
   override lazy val container: Container = rorContainer
 
-  protected lazy val adminTemplateManager = new TemplateManager(rorContainer.nodesContainers.head.adminClient)
-  protected lazy val adminDocumentManager = new DocumentManager(rorContainer.nodesContainers.head.adminClient)
+  protected lazy val adminTemplateManager = new TemplateManager(rorContainer.nodes.head.adminClient)
+  protected lazy val adminDocumentManager = new DocumentManager(rorContainer.nodes.head.adminClient)
 
   protected def createIndexWithExampleDoc(documentManager: DocumentManager, index: String): Unit = {
     val esVersion = rorContainer.esVersion
@@ -83,7 +83,7 @@ trait BaseTemplatesSuite
   }
 
   private def truncateIndices(): Unit = {
-    val indicesManager = new IndexManager(rorContainer.nodesContainers.head.adminClient)
+    val indicesManager = new IndexManager(rorContainer.nodes.head.adminClient)
     if(indicesManager.removeAll.responseCode != 200) {
       throw new IllegalStateException("Admin cannot remove all indices")
     }

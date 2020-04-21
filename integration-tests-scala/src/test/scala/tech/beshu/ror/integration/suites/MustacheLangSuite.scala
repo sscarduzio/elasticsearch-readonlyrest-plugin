@@ -33,7 +33,7 @@ trait MustacheLangSuite
 
   override implicit val rorConfigFileName = "/plugin_indices/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

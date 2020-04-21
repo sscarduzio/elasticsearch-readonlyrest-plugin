@@ -35,20 +35,29 @@ class SearchManager(client: RestClient)
   def search(endpoint: String): SearchResult =
     call(createSearchRequest(endpoint), new SearchResult(_))
 
+  def mSearch(line: String, lines: String*): JsonResponse = {
+    val payload = (lines.toSeq :+ "\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem"}
+    call(createMSearchRequest(payload), new JsonResponse(_))
+  }
+
   def renderTemplate(query: String): JsonResponse =
     call(createRenderTemplateRequest(query), new JsonResponse(_))
 
   private def createSearchRequest(endpoint: String, query: String) = {
     val request = new HttpPost(client.from(endpoint))
-    request.setHeader("timeout", "50s")
     request.addHeader("Content-type", "application/json")
     request.setEntity(new StringEntity(query))
     request
   }
 
   private def createSearchRequest(endpoint: String) = {
-    val request = new HttpGet(client.from(endpoint))
-    request.setHeader("timeout", "50s")
+    new HttpGet(client.from(endpoint))
+  }
+
+  private def createMSearchRequest(payload: String) = {
+    val request = new HttpPost(client.from("/_msearch"))
+    request.addHeader("Content-type", "application/json")
+    request.setEntity(new StringEntity(payload))
     request
   }
 

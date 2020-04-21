@@ -33,7 +33,7 @@ trait BaseIndexApiSuite
 
   protected def notFoundIndexStatusReturned: Int
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

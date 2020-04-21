@@ -31,7 +31,7 @@ trait ClusterStateWithInternodeSslSuite
 
   override implicit val rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

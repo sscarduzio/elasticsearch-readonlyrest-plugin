@@ -25,7 +25,6 @@ import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
-import org.junit.runner.Description
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -104,43 +103,31 @@ class ReadonlyRestEsClusterContainer private[containers](rorClusterContainers: N
 
   val esVersion: String = nodesContainers.head.esVersion
 
-  override def starting()(implicit description: Description): Unit = {
-    Task.gather(depsContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
-
-    Task.gather(nodesContainers.toList.map(s => Task(s.starting()(description)))).runSyncUnsafe()
+  override def start(): Unit = {
+    depsContainers.foreach(_._2.start())
+    nodesContainers.toList.foreach(_.start())
   }
 
-  override def finished()(implicit description: Description): Unit =
-    nodesContainers.toList.foreach(_.finished()(description))
-
-  override def succeeded()(implicit description: Description): Unit =
-    nodesContainers.toList.foreach(_.succeeded()(description))
-
-  override def failed(e: Throwable)(implicit description: Description): Unit =
-    nodesContainers.toList.foreach(_.failed(e)(description))
-
+  override def stop(): Unit = {
+    nodesContainers.toList.foreach(_.stop())
+    depsContainers.foreach(_._2.stop())
+  }
 }
 
 class ReadonlyRestEsRemoteClustersContainer private[containers](val localClusters: NonEmptyList[ReadonlyRestEsClusterContainer],
                                                                 remoteClustersInitializer: RemoteClustersInitializer)
   extends Container {
 
-  override def starting()(implicit description: Description): Unit = {
-    localClusters.map(_.starting()(description))
+  override def start(): Unit = {
+    localClusters.toList.foreach(_.start())
     val config = remoteClustersInitializer.remoteClustersConfiguration(localClusters.map(_.nodesContainers.head))
     localClusters.toList.foreach { container =>
       remoteClustersInitializer(container.nodesContainers.head, config)
     }
   }
 
-  override def finished()(implicit description: Description): Unit =
-    localClusters.toList.foreach(_.finished()(description))
-
-  override def succeeded()(implicit description: Description): Unit =
-    localClusters.toList.foreach(_.succeeded()(description))
-
-  override def failed(e: Throwable)(implicit description: Description): Unit =
-    localClusters.toList.foreach(_.failed(e)(description))
+  override def stop(): Unit =
+    localClusters.toList.foreach(_.stop())
 
   private def remoteClustersInitializer(container: ReadonlyRestEsContainer,
                                         remoteClustersConfig: Map[String, NonEmptyList[ReadonlyRestEsContainer]]): Unit = {
