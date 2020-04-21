@@ -40,6 +40,9 @@ eshome/modules/*
 eshome/config/elasticsearch.keystore
 target/
 
+integration-tests/src/test/eshome2/*
+integration-tests/src/test/eshome2
+
 // Crypto
 *.pem
 *.pkcs8

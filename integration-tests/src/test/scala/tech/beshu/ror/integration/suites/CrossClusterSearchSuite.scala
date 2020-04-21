@@ -63,6 +63,23 @@ trait CrossClusterSearchSuite
       }
     }
   }
+  // todo: fixme
+//  "A cluster msearch for a given index" should {
+//    "return 200 and allow user to its content" when {
+//      "user has permission to do so" excludeES("es51x", "es52x") in {
+//        val user3SearchManager = new SearchManagerJ(client("dev3", "test"))
+//        val result = user3SearchManager.mSearch {
+//          """|{"index":"metrics-monitoring-*"}
+//             |{"query" : {"match_all" : {}}}
+//             |{"index":"etl:etl-usage-*"}
+//             |{"query" : {"match_all" : {}}}
+//           """.stripMargin + "\n"
+//        }
+//        assertEquals(200, result.getResponseCode)
+//        assertEquals(2, result.getMSearchHits.size)
+//      }
+//    }
+//  }
 }
 
 object CrossClusterSearchSuite {
@@ -73,11 +90,18 @@ object CrossClusterSearchSuite {
     documentManager.insertDoc("/test1_index/test/2", "{\"hello\":\"ROR\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/2", "{\"hello\":\"ROR\"}")
+
+    documentManager.insertDoc("/metrics-monitoring-2020-03-26/test/1",  s"""{"metrics":"counter=1"}"""")
+    documentManager.insertDoc("/metrics-monitoring-2020-03-27/test/1",  s"""{"metrics":"counter=1"}"""")
+
+    documentManager.insertDoc("/etl_usage_2020-03-26/test/2", "{\"hello\":\"ROR\"}")
+    documentManager.insertDoc("/etl_usage_2020-03-27/test/2", "{\"hello\":\"ROR\"}")
   }
 
   def remoteClustersInitializer(): RemoteClustersInitializer =
-    (localClusterRepresentatives: NonEmptyList[EsContainer]) => {
-      Map("odd" -> localClusterRepresentatives)
-    }
+    (localClusterRepresentatives: NonEmptyList[EsContainer]) => Map(
+      "odd" -> localClusterRepresentatives,
+      "etl" -> localClusterRepresentatives
+    )
 
 }

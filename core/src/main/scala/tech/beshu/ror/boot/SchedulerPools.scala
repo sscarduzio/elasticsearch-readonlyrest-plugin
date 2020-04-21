@@ -20,5 +20,6 @@ import monix.execution.Scheduler
 
 object SchedulerPools {
 
-  implicit val adminRestApiScheduler: Scheduler = Scheduler.fixedPool("admin-rest-api", 5)
+  implicit val adminRestApiScheduler: Scheduler = Scheduler.fixedPool("admin-rest-api-executor", 5)
+  val ldapUnboundIdBlockingScheduler: Scheduler = Scheduler.io("unboundid-executor")
 }
