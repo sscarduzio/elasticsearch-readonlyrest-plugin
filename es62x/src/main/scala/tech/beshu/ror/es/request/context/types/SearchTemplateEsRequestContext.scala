@@ -25,9 +25,11 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
+
+import scala.util.Try
 
 class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
                                              esContext: EsContext,
@@ -36,20 +38,27 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
                                              override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
+  private lazy val searchRequest = Try(Option(invokeMethodCached(actionRequest, actionRequest.getClass, "getRequest")))
+    .toOption.flatten
+    .flatMap {
+      case req: SearchRequest => Some(req)
+      case _ => None
+    }
+
   override protected def indicesFrom(request: ActionRequest): Set[IndexName] = {
-    Option(invokeMethodCached(request, request.getClass, "getRequest"))
-      .map(_.asInstanceOf[SearchRequest].indices.asSafeSet)
+    searchRequest
+      .map(_.indices.asSafeSet)
       .getOrElse(Set.empty)
       .flatMap(IndexName.fromString)
   }
 
   override protected def update(request: ActionRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
-    Option(invokeMethodCached(request, request.getClass, "getRequest")) match {
-      case Some(request: SearchRequest) =>
-        request.indices(indices.toList.map(_.value.value): _*)
+    searchRequest match {
+      case Some(sr) =>
+        sr.indices(indices.toList.map(_.value.value): _*)
         Modified
-      case Some(_) | None =>
-        ShouldBeInterrupted
+      case None =>
+        Modified
     }
   }
 }
