@@ -16,15 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{GeneralIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{GeneralIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 sealed trait BlockContext {
   def requestContext: RequestContext
+
   def userMetadata: UserMetadata
+
   def responseHeaders: Set[Header]
+
   def contextHeaders: Set[Header]
 }
 object BlockContext {
@@ -71,6 +75,20 @@ object BlockContext {
                                                    indices: Set[IndexName])
     extends BlockContext
 
+  final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
+                                                 override val userMetadata: UserMetadata,
+                                                 override val responseHeaders: Set[Header],
+                                                 override val contextHeaders: Set[Header],
+                                                 indexPacks: List[Indices])
+    extends BlockContext
+  object MultiIndexRequestBlockContext {
+    sealed trait Indices
+    object Indices {
+      final case class Found(indices: Set[IndexName]) extends Indices
+      case object IndexNotExist extends Indices
+    }
+  }
+
   implicit class BlockContextUpdaterOps[B <: BlockContext : BlockContextUpdater](val blockContext: B) {
     def withUserMetadata(update: UserMetadata => UserMetadata): B =
       BlockContextUpdater[B].withUserMetadata(blockContext, update(blockContext.userMetadata))
@@ -104,6 +122,12 @@ object BlockContext {
     }
   }
 
+  implicit class MultiIndexRequestBlockContextUpdaterOps(val blockContext: MultiIndexRequestBlockContext) extends AnyVal {
+    def withIndicesPacks(indexPacks: List[Indices]): MultiIndexRequestBlockContext = {
+      MultiIndexRequestBlockContextUpdater.withIndexPacks(blockContext, indexPacks)
+    }
+  }
+
   implicit class TemplateRequestBlockContextUpdaterOps(val blockContext: TemplateRequestBlockContext) extends AnyVal {
     def withTemplates(templates: Set[Template]): TemplateRequestBlockContext = {
       TemplateRequestBlockContextUpdater.withTemplates(blockContext, templates)
@@ -119,6 +143,13 @@ object BlockContext {
         case bc: SnapshotRequestBlockContext => bc.indices
         case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
         case bc: GeneralIndexRequestBlockContext => bc.indices
+        case bc: MultiIndexRequestBlockContext =>
+          bc.indexPacks
+            .flatMap {
+              case Indices.Found(indices) => indices.toList
+              case Indices.IndexNotExist => Nil
+            }
+            .toSet
       }
     }
   }
@@ -132,6 +163,7 @@ object BlockContext {
         case bc: SnapshotRequestBlockContext => bc.repositories
         case _: TemplateRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
+        case _: MultiIndexRequestBlockContext => Set.empty
       }
     }
   }
@@ -145,6 +177,7 @@ object BlockContext {
         case bc: SnapshotRequestBlockContext => bc.snapshots
         case _: TemplateRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
+        case _: MultiIndexRequestBlockContext => Set.empty
       }
     }
   }

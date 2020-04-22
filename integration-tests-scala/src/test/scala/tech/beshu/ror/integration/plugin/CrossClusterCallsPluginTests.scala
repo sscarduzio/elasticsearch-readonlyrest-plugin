@@ -14,8 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.CrossClusterSearchSuite
+import tech.beshu.ror.integration.suites.CrossClusterCallsSuite
 
-class CrossClusterSearchProxyTests extends CrossClusterSearchSuite with ProxyTestSupport
+class CrossClusterCallsPluginTests extends CrossClusterCallsSuite with PluginTestSupport

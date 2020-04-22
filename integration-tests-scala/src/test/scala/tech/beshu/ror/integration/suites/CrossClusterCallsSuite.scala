@@ -19,14 +19,14 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.Matchers._
 import cats.data.NonEmptyList
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.CrossClusterSearchSuite.{localClusterNodeDataInitializer, remoteClusterNodeDataInitializer, remoteClusterSetup}
+import tech.beshu.ror.integration.suites.CrossClusterCallsSuite.{localClusterNodeDataInitializer, remoteClusterNodeDataInitializer, remoteClusterSetup}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.generic._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait CrossClusterSearchSuite
+trait CrossClusterCallsSuite
   extends WordSpec
     with BaseIntegrationTest
     with SingleClientSupport
@@ -47,6 +47,7 @@ trait CrossClusterSearchSuite
 
   private lazy val user1SearchManager = new SearchManager(client("dev1", "test"))
   private lazy val user2SearchManager = new SearchManager(client("dev2", "test"))
+  private lazy val user3SearchManager = new SearchManager(client("dev3", "test"))
 
   "A cluster search for given index" should {
     "return 200 and allow user to its content" when {
@@ -66,30 +67,63 @@ trait CrossClusterSearchSuite
 
   "A cluster msearch for a given index" should {
     "return 200 and allow user to its content" when {
-      "user has permission to do so" excludeES("es51x", "es52x") in {
-        val user3SearchManager = new SearchManager(client("dev3", "test"))
-        val result = user3SearchManager.mSearch(
-          """{"index":"metrics-*"}""",
-          """{"query" : {"match_all" : {}}}""",
-          """{"index":"etl:etl*"}""",
-          """{"query" : {"match_all" : {}}}"""
-        )
-        result.responseCode should be (200)
-        result.responseJson("responses").arr.size should be (2)
-        val firstQueryResponse = result.responseJson("responses")(0)
-        firstQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be (
-          Set("metrics-monitoring-2020-03-26", "metrics-monitoring-2020-03-27")
-        )
-        val secondQueryResponse = result.responseJson("responses")(1)
-        secondQueryResponse("hits")("hits").arr.map(_("_index").str).toSet should be (
-          Set("etl:etl_usage_2020-03-26", "etl:etl_usage_2020-03-27")
-        )
+      "user has permission to do so" when {
+        "he queries local and remote indices" excludeES("es51x", "es52x") in {
+          val result = user3SearchManager.mSearch(
+            """{"index":"metrics-*"}""",
+            """{"query" : {"match_all" : {}}}""",
+            """{"index":"etl:etl*"}""",
+            """{"query" : {"match_all" : {}}}"""
+          )
+          result.responseCode should be(200)
+          result.responseJson("responses").arr.size should be(2)
+          val firstQueryResponse = result.responseJson("responses")(0)
+          firstQueryResponse("hits")("hits").arr.map(_ ("_index").str).toSet should be(
+            Set("metrics-monitoring-2020-03-26", "metrics-monitoring-2020-03-27")
+          )
+          val secondQueryResponse = result.responseJson("responses")(1)
+          secondQueryResponse("hits")("hits").arr.map(_ ("_index").str).toSet should be(
+            Set("etl:etl_usage_2020-03-26", "etl:etl_usage_2020-03-27")
+          )
+        }
+        "he queries remote indices only" excludeES("es51x", "es52x") in {
+          val result = user3SearchManager.mSearch(
+            """{"index":"etl:etl*"}""",
+            """{"query" : {"match_all" : {}}}"""
+          )
+          result.responseCode should be(200)
+          result.responseJson("responses").arr.size should be(1)
+          val secondQueryResponse = result.responseJson("responses")(0)
+          secondQueryResponse("hits")("hits").arr.map(_ ("_index").str).toSet should be(
+            Set("etl:etl_usage_2020-03-26", "etl:etl_usage_2020-03-27")
+          )
+        }
+      }
+    }
+    "return 401" when {
+      "user has no permission to do so" when {
+        "he queries local and remote indices" excludeES("es51x", "es52x") in {
+          val result = user3SearchManager.mSearch(
+            """{"index":"metrics-etl*"}""",
+            """{"query" : {"match_all" : {}}}""",
+            """{"index":"odd:*"}""",
+            """{"query" : {"match_all" : {}}}"""
+          )
+          result.responseCode should be(401)
+        }
+        "he queries remote indices only" excludeES("es51x", "es52x") in {
+          val result = user3SearchManager.mSearch(
+            """{"index":"odd:*"}""",
+            """{"query" : {"match_all" : {}}}"""
+          )
+          result.responseCode should be(401)
+        }
       }
     }
   }
 }
 
-object CrossClusterSearchSuite {
+object CrossClusterCallsSuite {
 
   def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
