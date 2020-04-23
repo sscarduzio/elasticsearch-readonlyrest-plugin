@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.EnabledAuditingToolsSuite
 
-class EnabledAuditingToolsPluginTests extends EnabledAuditingToolsSuite with SingletonPluginTestSupport
+class EnabledAuditingToolsPluginTests extends EnabledAuditingToolsSuite with PluginTestSupport

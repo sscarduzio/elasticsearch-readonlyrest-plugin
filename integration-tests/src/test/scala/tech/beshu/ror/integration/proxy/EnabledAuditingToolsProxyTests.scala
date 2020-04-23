@@ -18,4 +18,4 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.EnabledAuditingToolsSuite
 
-class EnabledAuditingToolsProxyTests extends EnabledAuditingToolsSuite with BasicClusterProxyTestSupport
+class EnabledAuditingToolsProxyTests extends EnabledAuditingToolsSuite with ProxyTestSupport
