@@ -35,7 +35,7 @@ test {
 
         def mode = project.properties['mode']
         if (mode == 'plugin') {
-            suite 'tech.beshu.ror.integration.plugin.*'
+            suite 'tech.beshu.ror.integration.plugin.*Audit*'
         } else if (mode == 'proxy') {
             suite 'tech.beshu.ror.integration.proxy.*'
             /**

@@ -48,6 +48,9 @@ trait QueryAuditLogSerializerSuite
         response.responseCode shouldBe 200
 
         val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+
+        println(auditEntries)
+
         auditEntries.size shouldBe 1
 
         val firstEntry = auditEntries.get(0)
