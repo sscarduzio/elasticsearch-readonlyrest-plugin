@@ -16,15 +16,22 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import org.apache.http.client.methods.HttpPut
+import org.apache.http.HttpResponse
+import org.apache.http.client.methods.{HttpPut, HttpUriRequest}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.elasticsearch.DocumentManager.MGetResult
+import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
+import ujson.Value
 
 import scala.collection.JavaConverters._
 
 class DocumentManager(restClient: RestClient)
   extends BaseManager(restClient) {
+
+  def mGet(query: JSON): MGetResult = {
+    call(createMGetRequest(query), new MGetResult(_))
+  }
 
   def createDoc(docPath: String, content: JSON): JsonResponse = {
     call(createInsertDocRequest(docPath, content, waitForRefresh = true), new JsonResponse(_))
@@ -46,5 +53,18 @@ class DocumentManager(restClient: RestClient)
     request.addHeader("Content-type", "application/json")
     request.setEntity(new StringEntity(ujson.write(content)))
     request
+  }
+
+  private def createMGetRequest(query: JSON): HttpUriRequest = {
+    val request = new HttpGetWithEntity(restClient.from("_mget"))
+    request.addHeader("Content-type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(query)))
+    request
+  }
+}
+
+object DocumentManager {
+  class MGetResult(response: HttpResponse) extends JsonResponse(response) {
+    lazy val docs: List[Value] = responseJson("docs").arr.toList
   }
 }

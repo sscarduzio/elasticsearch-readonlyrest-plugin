@@ -20,11 +20,11 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import com.dimafeng.testcontainers.{Container, GenericContainer}
 import monix.eval.{Coeval, Task}
+import monix.execution.Scheduler.Implicits.global
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils._
-import monix.execution.Scheduler.Implicits.global
 
 import scala.language.existentials
 import scala.util.Try
@@ -87,8 +87,10 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
         s"""
            |{
            |  "persistent": {
-           |    "search.remote": {
-           |      $remoteClustersConfigString
+           |    "cluster": {
+           |      "remote": {
+           |        $remoteClustersConfigString
+           |      }
            |    }
            |  }
            |}
@@ -97,13 +99,14 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
     }
 
     val esClient = container.nodes.head.adminClient
-    Try(esClient.execute(createRemoteClusterSettingsRequest(esClient))).bracket { response =>
-      response.getStatusLine.getStatusCode match {
-        case 200 =>
-        case _ =>
-          throw new IllegalStateException("Cannot initialize remote cluster settings")
+    Try(esClient.execute(createRemoteClusterSettingsRequest(esClient)))
+      .bracket { response =>
+        response.getStatusLine.getStatusCode match {
+          case 200 =>
+          case _ =>
+            throw new IllegalStateException("Cannot initialize remote cluster settings")
+        }
       }
-    }
   }
 }
 

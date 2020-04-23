@@ -94,7 +94,4 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     initialBlockContext.indices.map(i => IndexName.randomNonexistentIndex(i.value.value))
   }
 
-  protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
-    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
-  }
 }

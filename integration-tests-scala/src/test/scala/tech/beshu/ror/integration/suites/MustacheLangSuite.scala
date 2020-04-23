@@ -59,7 +59,7 @@ trait MustacheLangSuite
         val result = searchManager.search("/test1_index/_search/template", query)
 
         result.responseCode shouldEqual 200
-        result.searchHits.get(0)("_source") should be(ujson.read("""{"hello":"world"}"""))
+        result.searchHits(0)("_source") should be(ujson.read("""{"hello":"world"}"""))
       }
     }
   }

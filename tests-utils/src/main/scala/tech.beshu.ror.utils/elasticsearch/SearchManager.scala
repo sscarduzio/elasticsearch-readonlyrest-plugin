@@ -24,8 +24,6 @@ import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
-import scala.util.Try
-
 class SearchManager(client: RestClient)
   extends BaseManager(client) {
 
@@ -71,6 +69,6 @@ class SearchManager(client: RestClient)
 
 object SearchManager {
   class SearchResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val searchHits: Try[Value] = Try(responseJson("hits")("hits"))
+    lazy val searchHits: List[Value] = responseJson("hits")("hits").arr.toList
   }
 }

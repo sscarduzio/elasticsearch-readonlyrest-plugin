@@ -50,7 +50,7 @@ trait FieldLevelSecuritySuite
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
-        val source = searchJson.get(0)("_source")
+        val source = searchJson(0)("_source")
 
         source should be(ujson.read("""{"dummy2":"true"}"""))
       }
@@ -61,7 +61,7 @@ trait FieldLevelSecuritySuite
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
-        val source = searchJson.get(0)("_source")
+        val source = searchJson(0)("_source")
 
         source should be(ujson.read("""{"dummy2":"true"}"""))
       }
@@ -72,7 +72,7 @@ trait FieldLevelSecuritySuite
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
-        val source = searchJson.get(0)("_source")
+        val source = searchJson(0)("_source")
 
         source should be(ujson.read("""{"dummy":"a1"}"""))
       }
@@ -83,7 +83,7 @@ trait FieldLevelSecuritySuite
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
-        val source = searchJson.get(0)("_source")
+        val source = searchJson(0)("_source")
 
         source should be(ujson.read("""{"dummy":"a1"}"""))
       }
@@ -96,7 +96,7 @@ trait FieldLevelSecuritySuite
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
-        val source = searchJson.get(0)("_source")
+        val source = searchJson(0)("_source")
 
         source should be(ujson.read(
           """
@@ -118,7 +118,7 @@ trait FieldLevelSecuritySuite
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
-        val source = searchJson.get(0)("_source")
+        val source = searchJson(0)("_source")
 
         source should be(ujson.read(
           s"""
@@ -143,7 +143,7 @@ trait FieldLevelSecuritySuite
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
-        val source = searchJson.get(0)("_source")
+        val source = searchJson(0)("_source")
 
         source should be(ujson.read(
           """
@@ -164,7 +164,7 @@ trait FieldLevelSecuritySuite
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
-        val source = searchJson.get(0)("_source")
+        val source = searchJson(0)("_source")
 
         source should be(ujson.read(
           """

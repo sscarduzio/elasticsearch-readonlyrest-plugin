@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.implicits._
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
@@ -58,7 +59,9 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         }
       Modified
     } else {
-      // todo: log error
+      logger.error(
+        s"""[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different
+           |number of inner requests, than altered one. This can be security issue. So, it's better for forbid the request""".stripMargin)
       ShouldBeInterrupted
     }
   }
@@ -73,10 +76,6 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   private def indicesFrom(request: SearchRequest) = {
     val requestIndices = request.indices.asSafeSet.flatMap(IndexName.fromString)
     indicesOrWildcard(requestIndices)
-  }
-
-  protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
-    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
   }
 
   private def updateRequest(request: SearchRequest, indexPack: Indices) = {
