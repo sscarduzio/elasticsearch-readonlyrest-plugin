@@ -22,25 +22,39 @@ import com.unboundid.ldap.sdk._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
+import monix.execution.Scheduler
+import org.apache.logging.log4j.scala.Logging
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.language.implicitConversions
 
-class LdapConnectionPoolOps(connectionPool: LDAPConnectionPool) {
+class LdapConnectionPoolOps(connectionPool: LDAPConnectionPool)
+                           (implicit blockingScheduler: Scheduler)
+  extends Logging {
 
   def process(requestCreator: AsyncSearchResultListener => LDAPRequest,
               timeout: FiniteDuration Refined Positive): Task[Either[SearchResult, List[SearchResultEntry]]] = {
     val searchResultListener = new LdapConnectionPoolOps.UnboundidSearchResultListener
     Task(requestCreator(searchResultListener))
       .map(request => connectionPool.processRequestsAsync((request :: Nil).asJava, timeout.value.toMillis))
-      .flatMap(_ => searchResultListener.result)
+      .flatMap { results =>
+        results.asScala.toList match {
+          case Nil => throw new IllegalStateException("LDAP - expected at least one result")
+          case requestId :: _ =>
+            if(requestId.isCancelled) Task.now(Left(new SearchResult(requestId.get())))
+            else searchResultListener.result
+        }
+      }
+      .executeOn(blockingScheduler)
   }
 }
 
 object LdapConnectionPoolOps {
-  implicit def toOps(connectionPool: LDAPConnectionPool): LdapConnectionPoolOps = new LdapConnectionPoolOps(connectionPool)
+  implicit def toOps(connectionPool: LDAPConnectionPool)
+                    (implicit blockingScheduler: Scheduler): LdapConnectionPoolOps =
+    new LdapConnectionPoolOps(connectionPool)
 
   private class UnboundidSearchResultListener extends com.unboundid.ldap.sdk.AsyncSearchResultListener {
     private val searchResultEntries = new AtomicReference(List.empty[SearchResultEntry])

@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -40,6 +40,8 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import io.jsonwebtoken.impl.DefaultClaims
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthRuleTests
@@ -55,7 +57,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
@@ -78,7 +80,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder.signWith(secret).setClaims(claims)
@@ -102,7 +104,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.empty,
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
@@ -126,7 +128,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder.signWith(key).setClaims(claims)
@@ -153,7 +155,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder
@@ -174,7 +176,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Rsa(pub)
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder
@@ -194,7 +196,7 @@ class RorKbnAuthRuleTests
             RorKbnDef.Name("test".nonempty),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder
@@ -215,7 +217,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(Group("g1".nonempty)),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder
@@ -236,7 +238,7 @@ class RorKbnAuthRuleTests
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group4")),
-          tokenHeader = Header(
+          tokenHeader = new Header(
             Header.Name.authorization,
             {
               val jwtBuilder = Jwts.builder
@@ -268,9 +270,9 @@ class RorKbnAuthRuleTests
                          tokenHeader: Header,
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups))
-    val requestContext = MockRequestContext(headers = Set(tokenHeader))
-    val blockContext = RequestContextInitiatedBlockContext.fromRequestContext(requestContext)
-    val result = rule.check(requestContext, blockContext).runSyncUnsafe(1 second)
+    val requestContext = MockRequestContext.metadata.copy(headers = Set(tokenHeader))
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, Set.empty)
+    val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>
         inside(result) { case Fulfilled(outBlockContext) =>

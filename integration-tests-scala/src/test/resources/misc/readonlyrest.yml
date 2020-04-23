@@ -1,0 +1,17 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: "readonlyrest"
+    key_pass: "readonlyrest"
+
+  access_control_rules:
+    - name: "CONTAINER ADMIN - file"
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"
+
+    - name: "es-pub7 snapshot_ro"
+      x_forwarded_for:
+        - es-pub7
+      type: allow

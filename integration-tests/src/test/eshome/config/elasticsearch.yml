@@ -1,24 +1,3 @@
-#discovery.type: single-node
-#transport.type: local
-#http.type: ssl_netty4
-#transport.type: ror_ssl_internode
 path.repo: "/tmp/lolrepo1"
-#cluster.remote.cluster_one.seeds: 127.0.0.1:9300
 node.name: n1_it
-#cluster.initial_master_nodes: n1_it
-
-#cluster:
-#  remote:
-#    cluster_one:
-#      seeds: 127.0.0.1:9300
-#      transport.ping_schedule: 30s
-
-#discovery.zen.minimum_master_nodes: 1
-#http.type: ssl_netty4
-#node.name: ROR1_1
-#node.master: true
-#network.host: 0.0.0.0
-#discovery.zen.ping.unicast.hosts: ROR1_1
-#cluster.name: test-cluster
-
 readonlyrest.force_load_from_file: true

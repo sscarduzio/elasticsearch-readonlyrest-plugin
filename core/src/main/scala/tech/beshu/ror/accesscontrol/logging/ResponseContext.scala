@@ -20,39 +20,47 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-sealed trait ResponseContext {
-  def requestContext: RequestContext
-}
+sealed trait ResponseContext[B <: BlockContext]
 object ResponseContext {
 
-  final case class AllowedBy(requestContext: RequestContext,
-                             block: Block,
-                             blockContext: BlockContext,
-                             history: Vector[Block.History])
-    extends ResponseContext
+  final case class AllowedBy[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                                block: Block,
+                                                blockContext: B,
+                                                history: Vector[Block.History[B]])
+    extends ResponseContext[B]
 
-  final case class Allow(requestContext: RequestContext,
-                         userMetadata: UserMetadata,
-                         block: Block,
-                         history: Vector[Block.History])
-    extends ResponseContext
+  final case class Allow[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                            userMetadata: UserMetadata,
+                                            block: Block,
+                                            history: Vector[Block.History[B]])
+    extends ResponseContext[B]
 
-  final case class ForbiddenBy(requestContext: RequestContext,
-                               block: Block,
-                               blockContext: BlockContext,
-                               history: Vector[Block.History])
-    extends ResponseContext
+  final case class ForbiddenBy[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                                  block: Block,
+                                                  blockContext: B,
+                                                  history: Vector[Block.History[B]])
+    extends ResponseContext[B]
 
-  final case class Forbidden(requestContext: RequestContext,
-                             history: Vector[Block.History])
-    extends ResponseContext
+  final case class Forbidden[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                                history: Vector[Block.History[B]])
+    extends ResponseContext[B]
 
-  final case class RequestedIndexNotExist(requestContext: RequestContext,
-                                          history: Vector[Block.History])
-    extends ResponseContext
+  final case class RequestedIndexNotExist[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                                             history: Vector[Block.History[B]])
+    extends ResponseContext[B]
 
-  final case class Errored(requestContext: RequestContext,
-                           cause: Throwable)
-    extends ResponseContext
+  final case class Errored[B <: BlockContext](requestContext: RequestContext.Aux[B],
+                                              cause: Throwable)
+    extends ResponseContext[B]
 
+  implicit class RequestContextFromResponseContext[B <: BlockContext](val response: ResponseContext[B]) extends AnyVal {
+    def requestContext: RequestContext.Aux[B] = response match {
+      case AllowedBy(requestContext, _, _, _) => requestContext
+      case Allow(requestContext, _, _, _) => requestContext
+      case ForbiddenBy(requestContext, _, _, _) => requestContext
+      case Forbidden(requestContext, _) => requestContext
+      case RequestedIndexNotExist(requestContext, _) => requestContext
+      case Errored(requestContext, _) => requestContext
+    }
+  }
 }

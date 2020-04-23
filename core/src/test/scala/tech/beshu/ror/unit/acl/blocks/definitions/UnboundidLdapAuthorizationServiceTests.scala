@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.blocks.definitions
 
 import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.concurrent.Eventually
@@ -29,7 +30,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Ldap
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.DefaultGroupSearch
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
-import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -87,9 +87,9 @@ class UnboundidLdapAuthorizationServiceTests
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${container.ldapHost}:${container.ldapPort}").get),
-          Refined.unsafeApply(10),
-          Refined.unsafeApply(5 seconds),
-          Refined.unsafeApply(5 seconds),
+          poolSize = 1,
+          connectionTimeout = Refined.unsafeApply(5 seconds),
+          requestTimeout = Refined.unsafeApply(5 seconds),
           trustAllCerts = false,
           BindRequestUser.CustomUser(
             Dn("cn=admin,dc=example,dc=com".nonempty),
@@ -103,7 +103,8 @@ class UnboundidLdapAuthorizationServiceTests
           "uniqueMember".nonempty,
           "(cn=*)".nonempty,
           groupAttributeIsDN = true
-        ))
+        )),
+        global
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))

@@ -17,15 +17,15 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.ZeroKnowledgeMatchFilter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
 
 import scala.collection.JavaConverters._
 
 class ZeroKnowledgeMatchFilterScalaAdapter {
 
-  def alterIndicesIfNecessary(indices: Set[IndexName], matcher: Matcher): AlterResult = {
+  def alterIndicesIfNecessary(indices: Set[IndexName], matcher: Matcher): AlterResult[IndexName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
       indices.map(_.value.value).asJava,
       matcher.underlying
@@ -34,12 +34,32 @@ class ZeroKnowledgeMatchFilterScalaAdapter {
       case None => AlterResult.NotAltered
     }
   }
+
+  def alterRepositoriesIfNecessary(repositories: Set[RepositoryName], matcher: Matcher): AlterResult[RepositoryName] = {
+    Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
+      repositories.map(_.value.value).asJava,
+      matcher.underlying
+    )) match {
+      case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.map(str => RepositoryName(NonEmptyString.unsafeFrom(str))).toSet)
+      case None => AlterResult.NotAltered
+    }
+  }
+
+  def alterSnapshotsIfNecessary(snapshots: Set[SnapshotName], matcher: Matcher): AlterResult[SnapshotName] = {
+    Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
+      snapshots.map(_.value.value).asJava,
+      matcher.underlying
+    )) match {
+      case Some(alteredSnapshots) => AlterResult.Altered(alteredSnapshots.asScala.map(str => SnapshotName(NonEmptyString.unsafeFrom(str))).toSet)
+      case None => AlterResult.NotAltered
+    }
+  }
 }
 
 object ZeroKnowledgeMatchFilterScalaAdapter {
-  sealed trait AlterResult
+  sealed trait AlterResult[+T]
   object AlterResult {
-    case object NotAltered extends AlterResult
-    final case class Altered(indices: Set[IndexName]) extends AlterResult
+    case object NotAltered extends AlterResult[Nothing]
+    final case class Altered[T](values: Set[T]) extends AlterResult[T]
   }
 }

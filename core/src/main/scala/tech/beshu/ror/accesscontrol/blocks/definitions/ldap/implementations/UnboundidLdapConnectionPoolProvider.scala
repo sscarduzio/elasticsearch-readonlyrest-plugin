@@ -45,7 +45,13 @@ class UnboundidLdapConnectionPoolProvider {
   private def createConnection(connectionConfig: LdapConnectionConfig): Task[LDAPConnectionPool] = retry {
     Task {
       val serverSet = createLdapServerSet(connectionConfig)
-      new LDAPConnectionPool(serverSet, bindRequest(connectionConfig.bindRequestUser), connectionConfig.poolSize.value)
+      val pool = new LDAPConnectionPool(
+        serverSet,
+        bindRequest(connectionConfig.bindRequestUser),
+        connectionConfig.poolSize.value
+      )
+      pool.setMaxConnectionAgeMillis(60000)
+      pool
     }
   }
 }

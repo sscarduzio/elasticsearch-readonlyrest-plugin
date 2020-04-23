@@ -21,13 +21,15 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.{BaseSpecializedIndicesRule, IndicesRule, RepositoriesRule, SnapshotsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.{IndicesRule, RepositoriesRule, SnapshotsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RepositoriesDecodersHelper._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.SnapshotDecodersHelper._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.IndicesDecodersHelper._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
@@ -42,35 +44,95 @@ class IndicesRuleDecoders extends RuleDecoderWithoutAssociatedFields[IndicesRule
 
 class SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
+    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]]
     .toSyncDecoder
-    .emapE { indices =>
-      if(checkIfAlreadyResolvedVariableContains(indices, IndexName.all))
-        Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - index ${IndexName.all.show}")))
-      else if(checkIfAlreadyResolvedVariableContains(indices, IndexName.wildcard))
-        Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - index ${IndexName.wildcard.show}")))
+    .emapE { snapshots =>
+      if(SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.all))
+        Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - snapshot ${SnapshotName.all.show}")))
+      else if(SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.wildcard))
+        Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - snapshot ${SnapshotName.wildcard.show}")))
       else
-        Right(indices)
+        Right(snapshots)
     }
-    .map(indices => RuleWithVariableUsageDefinition.create(new SnapshotsRule(BaseSpecializedIndicesRule.Settings(indices))))
+    .map(indices => RuleWithVariableUsageDefinition.create(new SnapshotsRule(SnapshotsRule.Settings(indices))))
     .decoder
 )
 
 class RepositoriesRuleDecoder extends RuleDecoderWithoutAssociatedFields[RepositoriesRule](
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
+    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]]
     .toSyncDecoder
-    .emapE { indices =>
-      if(checkIfAlreadyResolvedVariableContains(indices, IndexName.all))
-        Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - index ${IndexName.all.show}")))
-      else if(checkIfAlreadyResolvedVariableContains(indices, IndexName.wildcard))
-        Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - index ${IndexName.wildcard.show}")))
+    .emapE { repositories =>
+      if(checkIfAlreadyResolvedRepositoryVariableContains(repositories, RepositoryName.all))
+        Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - repository ${RepositoryName.all.show}")))
+      else if(checkIfAlreadyResolvedRepositoryVariableContains(repositories, RepositoryName.wildcard))
+        Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - repository ${RepositoryName.wildcard.show}")))
       else
-        Right(indices)
+        Right(repositories)
     }
-    .map(indices => RuleWithVariableUsageDefinition.create(new RepositoriesRule(BaseSpecializedIndicesRule.Settings(indices))))
+    .map(repositories => RuleWithVariableUsageDefinition.create(new RepositoriesRule(RepositoriesRule.Settings(repositories))))
     .decoder
 )
+
+private object RepositoriesDecodersHelper {
+  private implicit val indexNameConvertible: Convertible[RepositoryName] = new Convertible[RepositoryName] {
+    override def convert: String => Either[Convertible.ConvertError, RepositoryName] = str =>
+      NonEmptyString
+        .from(str)
+        .map(RepositoryName.apply)
+        .left.map(_ => Convertible.ConvertError("Repository name cannot be empty"))
+  }
+  implicit val repositoryValueDecoder: Decoder[RuntimeMultiResolvableVariable[RepositoryName]] =
+    DecoderHelpers
+      .decodeStringLikeNonEmpty
+      .toSyncDecoder
+      .emapE { str =>
+        RuntimeResolvableVariableCreator
+          .createMultiResolvableVariableFrom[RepositoryName](str)
+          .left.map(error => RulesLevelCreationError(Message(error.show)))
+      }
+      .decoder
+
+  private [rules] def checkIfAlreadyResolvedRepositoryVariableContains(repositoriesVars: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]],
+                                                                       repository: RepositoryName): Boolean = {
+    repositoriesVars
+      .find {
+        case AlreadyResolved(indices) => indices.contains_(repository)
+        case ToBeResolved(_) => false
+      }
+      .isDefined
+  }
+}
+
+private object SnapshotDecodersHelper {
+  private implicit val snapshotNameConvertible: Convertible[SnapshotName] = new Convertible[SnapshotName] {
+    override def convert: String => Either[Convertible.ConvertError, SnapshotName] = str =>
+      NonEmptyString
+        .from(str)
+        .map(SnapshotName.apply)
+        .left.map(_ => Convertible.ConvertError("Snapshot name cannot be empty"))
+  }
+  implicit val snapshotNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[SnapshotName]] =
+    DecoderHelpers
+      .decodeStringLikeNonEmpty
+      .toSyncDecoder
+      .emapE { str =>
+        RuntimeResolvableVariableCreator
+          .createMultiResolvableVariableFrom[SnapshotName](str)
+          .left.map(error => RulesLevelCreationError(Message(error.show)))
+      }
+      .decoder
+
+  private [rules] def checkIfAlreadyResolvedSnapshotVariableContains(snapshotVars: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]],
+                                                                     snapshot: SnapshotName): Boolean = {
+    snapshotVars
+      .find {
+        case AlreadyResolved(snapshots) => snapshots.contains_(snapshot)
+        case ToBeResolved(_) => false
+      }
+      .isDefined
+  }
+}
 
 private object IndicesDecodersHelper {
   private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
@@ -91,8 +153,8 @@ private object IndicesDecodersHelper {
       }
       .decoder
 
-  private [rules] def checkIfAlreadyResolvedVariableContains(indicesVars: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                                                             indexName: IndexName): Boolean = {
+  private [rules] def checkIfAlreadyResolvedIndexVariableContains(indicesVars: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                                                  indexName: IndexName): Boolean = {
     indicesVars
       .find {
         case AlreadyResolved(indices) => indices.contains_(indexName)

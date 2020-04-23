@@ -50,8 +50,8 @@ object BlockValidator {
       .map(_.rule)
       .collect { case a: AuthenticationRule => a}
       .filter {
-        case gr: GroupsRule => false
-        case other => true
+        case _: GroupsRule => false
+        case _ => true
       } match {
       case Nil | _ :: Nil =>
         Validated.Valid(())

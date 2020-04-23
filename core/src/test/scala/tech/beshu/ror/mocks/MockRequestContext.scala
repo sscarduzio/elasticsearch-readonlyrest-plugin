@@ -20,33 +20,121 @@ import java.time.Instant
 
 import com.softwaremill.sttp.Method
 import squants.information.{Bytes, Information}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-final case class MockRequestContext(override val timestamp: Instant = Instant.now(),
-                                    override val taskId: Long = 0L,
-                                    override val id: RequestContext.Id = RequestContext.Id("mock"),
-                                    override val `type`: Type = Type("default-type"),
-                                    override val action: Action = Action("default-action"),
-                                    override val headers: Set[Header] = Set.empty,
-                                    override val remoteAddress: Option[Address] = Address.from("localhost"),
-                                    override val localAddress: Address = Address.from("localhost").get,
-                                    override val method: Method = Method("GET"),
-                                    override val uriPath: UriPath = UriPath.currentUserMetadataPath,
-                                    override val contentLength: Information = Bytes(0),
-                                    override val content: String = "",
-                                    override val indices: Set[IndexName] = Set.empty,
-                                    override val templateIndicesPatterns: Set[IndexName] = Set.empty,
-                                    override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
-                                    override val repositories: Set[IndexName] = Set.empty,
-                                    override val snapshots: Set[IndexName] = Set.empty,
-                                    override val involvesIndices: Boolean = false,
-                                    override val isCompositeRequest: Boolean = false,
-                                    override val isReadOnlyRequest: Boolean = true,
-                                    override val isAllowedForDLS: Boolean = true,
-                                    override val hasRemoteClusters: Boolean = false)
-  extends RequestContext
-
 object MockRequestContext {
-  def default: MockRequestContext = MockRequestContext()
+  def indices: MockGeneralIndexRequestContext = MockGeneralIndexRequestContext(indices = Set.empty)
+  def repositories: MockRepositoriesRequestContext = MockRepositoriesRequestContext(repositories = Set.empty)
+  def snapshots: MockSnapshotsRequestContext = MockSnapshotsRequestContext(snapshots = Set.empty)
+  def metadata: MockUserMetadataRequestContext = MockUserMetadataRequestContext()
+}
+
+final case class MockGeneralIndexRequestContext(override val timestamp: Instant = Instant.now(),
+                                                override val taskId: Long = 0L,
+                                                override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                                override val `type`: Type = Type("default-type"),
+                                                override val action: Action = Action("default-action"),
+                                                override val headers: Set[Header] = Set.empty,
+                                                override val remoteAddress: Option[Address] = Address.from("localhost"),
+                                                override val localAddress: Address = Address.from("localhost").get,
+                                                override val method: Method = Method("GET"),
+                                                override val uriPath: UriPath = UriPath.currentUserMetadataPath,
+                                                override val contentLength: Information = Bytes(0),
+                                                override val content: String = "",
+                                                override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                                override val allTemplates: Set[Template] = Set.empty,
+                                                override val isCompositeRequest: Boolean = false,
+                                                override val isReadOnlyRequest: Boolean = true,
+                                                override val isAllowedForDLS: Boolean = true,
+                                                override val hasRemoteClusters: Boolean = false,
+                                                indices: Set[IndexName])
+  extends RequestContext {
+  override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
+
+  override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
+    this, UserMetadata.from(this), Set.empty, Set.empty, indices
+  )
+}
+
+final case class MockRepositoriesRequestContext(override val timestamp: Instant = Instant.now(),
+                                                override val taskId: Long = 0L,
+                                                override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                                override val `type`: Type = Type("default-type"),
+                                                override val action: Action = Action("default-action"),
+                                                override val headers: Set[Header] = Set.empty,
+                                                override val remoteAddress: Option[Address] = Address.from("localhost"),
+                                                override val localAddress: Address = Address.from("localhost").get,
+                                                override val method: Method = Method("GET"),
+                                                override val uriPath: UriPath = UriPath.currentUserMetadataPath,
+                                                override val contentLength: Information = Bytes(0),
+                                                override val content: String = "",
+                                                override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                                override val allTemplates: Set[Template] = Set.empty,
+                                                override val isCompositeRequest: Boolean = false,
+                                                override val isReadOnlyRequest: Boolean = true,
+                                                override val isAllowedForDLS: Boolean = true,
+                                                override val hasRemoteClusters: Boolean = false,
+                                                repositories: Set[RepositoryName])
+  extends RequestContext {
+  override type BLOCK_CONTEXT = RepositoryRequestBlockContext
+
+  override def initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
+    this, UserMetadata.from(this), Set.empty, Set.empty, repositories
+  )
+}
+
+final case class MockSnapshotsRequestContext(override val timestamp: Instant = Instant.now(),
+                                             override val taskId: Long = 0L,
+                                             override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                             override val `type`: Type = Type("default-type"),
+                                             override val action: Action = Action("default-action"),
+                                             override val headers: Set[Header] = Set.empty,
+                                             override val remoteAddress: Option[Address] = Address.from("localhost"),
+                                             override val localAddress: Address = Address.from("localhost").get,
+                                             override val method: Method = Method("GET"),
+                                             override val uriPath: UriPath = UriPath.currentUserMetadataPath,
+                                             override val contentLength: Information = Bytes(0),
+                                             override val content: String = "",
+                                             override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                             override val allTemplates: Set[Template] = Set.empty,
+                                             override val isCompositeRequest: Boolean = false,
+                                             override val isReadOnlyRequest: Boolean = true,
+                                             override val isAllowedForDLS: Boolean = true,
+                                             override val hasRemoteClusters: Boolean = false,
+                                             snapshots: Set[SnapshotName])
+  extends RequestContext {
+  override type BLOCK_CONTEXT = SnapshotRequestBlockContext
+
+  override def initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
+    this, UserMetadata.from(this), Set.empty, Set.empty, snapshots, Set.empty, Set.empty
+  )
+}
+
+final case class MockUserMetadataRequestContext(override val timestamp: Instant = Instant.now(),
+                                                override val taskId: Long = 0L,
+                                                override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                                override val `type`: Type = Type("default-type"),
+                                                override val action: Action = Action("default-action"),
+                                                override val headers: Set[Header] = Set.empty,
+                                                override val remoteAddress: Option[Address] = Address.from("localhost"),
+                                                override val localAddress: Address = Address.from("localhost").get,
+                                                override val method: Method = Method("GET"),
+                                                override val uriPath: UriPath = UriPath.currentUserMetadataPath,
+                                                override val contentLength: Information = Bytes(0),
+                                                override val content: String = "",
+                                                override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                                override val allTemplates: Set[Template] = Set.empty,
+                                                override val isCompositeRequest: Boolean = false,
+                                                override val isReadOnlyRequest: Boolean = true,
+                                                override val isAllowedForDLS: Boolean = true,
+                                                override val hasRemoteClusters: Boolean = false)
+  extends RequestContext {
+  override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
+
+  override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
+    this, UserMetadata.empty, Set.empty, Set.empty
+  )
 }

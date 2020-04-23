@@ -64,18 +64,18 @@ class GroupsWithProxyAuthAccessControlTests extends WordSpec with BaseYamlLoaded
     "proxy auth is used together with groups" should {
       "allow to proceed" when {
         "proxy auth user is correct one" in {
-          val request = MockRequestContext.default.copy(headers = Set(header("X-Auth-Token", "user1-proxy-id")))
+          val request = MockRequestContext.indices.copy(headers = Set(header("X-Auth-Token", "user1-proxy-id")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
           inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id".nonempty))))
-            blockContext.availableGroups should be(UniqueList.of(Group("group1".nonempty)))
+            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id".nonempty))))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1".nonempty)))
           }
         }
       }
       "not allow to proceed" when {
         "proxy auth user is unknown" in {
-          val request = MockRequestContext.default.copy(headers = Set(header("X-Auth-Token", "user1-invalid")))
+          val request = MockRequestContext.indices.copy(headers = Set(header("X-Auth-Token", "user1-invalid")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
           inside(result.result) { case ForbiddenByMismatched(causes) =>

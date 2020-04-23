@@ -24,7 +24,9 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationService
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, RequestContextInitiatedBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
@@ -125,13 +127,15 @@ class LdapAuthorizationRuleTests
                          preferredGroup: Option[Group],
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthorizationRule(settings)
-    val requestContext = MockRequestContext(
-      headers = preferredGroup.map(_.value).map(v => Header(Header.Name.currentGroup, v)).toSet[Header]
+    val requestContext = MockRequestContext.metadata.copy(
+      headers = preferredGroup.map(_.value).map(v => new Header(Header.Name.currentGroup, v)).toSet[Header]
     )
     val blockContext = loggedUser
       .map(DirectlyLoggedUser.apply)
-      .foldLeft(RequestContextInitiatedBlockContext.fromRequestContext(requestContext): BlockContext)(_ withLoggedUser _)
-    val result = Try(rule.check(requestContext, blockContext).runSyncUnsafe(1 second))
+      .foldLeft(CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, Set.empty)) {
+        case (bc, user) => bc.withUserMetadata(_.withLoggedUser(user))
+      }
+    val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     assertionType match {
       case AssertionType.RuleFulfilled(blockContextAssertion) =>
         inside(result) { case Success(Fulfilled(outBlockContext)) =>

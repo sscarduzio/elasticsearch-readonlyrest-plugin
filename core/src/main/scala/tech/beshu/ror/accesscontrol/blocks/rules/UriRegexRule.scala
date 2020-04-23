@@ -20,10 +20,10 @@ import java.util.regex.Pattern
 
 import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 class UriRegexRule(val settings: Settings)
@@ -31,21 +31,19 @@ class UriRegexRule(val settings: Settings)
 
   override val name: Rule.Name = UriRegexRule.name
 
-  override def check(requestContext: RequestContext,
-                     blockContext: BlockContext): Task[RuleResult] = Task {
+  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.fromCondition(blockContext) {
       settings
         .uriPatterns
-        .exists(variableMatchingRequestedUri(requestContext, blockContext))
+        .exists(variableMatchingRequestedUri(blockContext))
     }
   }
 
-  private def variableMatchingRequestedUri(requestContext: RequestContext,
-                                           blockContext: BlockContext)
-                                          (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
+  private def variableMatchingRequestedUri[B <: BlockContext : BlockContextUpdater](blockContext: B)
+                                                                                   (patternVariable: RuntimeMultiResolvableVariable[Pattern]): Boolean =
     patternVariable
-      .resolve(requestContext, blockContext)
-      .exists(matchingResolvedPattern(requestContext))
+      .resolve(blockContext)
+      .exists(matchingResolvedPattern(blockContext.requestContext))
 
   private def matchingResolvedPattern(requestContext: RequestContext)
                                      (patterns: NonEmptyList[Pattern]): Boolean =

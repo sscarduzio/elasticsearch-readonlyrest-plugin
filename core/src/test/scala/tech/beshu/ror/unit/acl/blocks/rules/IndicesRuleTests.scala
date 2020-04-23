@@ -21,8 +21,8 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.Outcome
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, IndexWithAliases}
 import tech.beshu.ror.accesscontrol.orders.indexOrder
-import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.mocks.{MockGeneralIndexRequestContext, MockRequestContext}
 import tech.beshu.ror.utils.TestsUtils._
 
 class IndicesRuleTests extends WordSpec with MockFactory {
@@ -295,27 +295,26 @@ class IndicesRuleTests extends WordSpec with MockFactory {
 
   private def assertMatchRule(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                               requestIndices: Set[IndexName],
-                              modifyRequestContext: MockRequestContext => MockRequestContext = identity,
+                              modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
                               found: Set[IndexName] = Set.empty) =
-    assertRule(configured, requestIndices, isMatched = true, modifyRequestContext, Outcome.Exist(found))
+    assertRule(configured, requestIndices, isMatched = true, modifyRequestContext, found)
 
   private def assertNotMatchRule(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                                  requestIndices: Set[IndexName],
-                                 modifyRequestContext: MockRequestContext => MockRequestContext = identity) =
-    assertRule(configured, requestIndices, isMatched = false, modifyRequestContext, Outcome.NotExist)
+                                 modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity) =
+    assertRule(configured, requestIndices, isMatched = false, modifyRequestContext, Set.empty)
 
   private def assertRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                          requestIndices: Set[IndexName],
                          isMatched: Boolean,
-                         modifyRequestContext: MockRequestContext => MockRequestContext,
-                         found: Outcome[Set[IndexName]]) = {
+                         modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext,
+                         found: Set[IndexName]) = {
     val rule = new IndicesRule(IndicesRule.Settings(configuredValues))
-    val requestContext = modifyRequestContext apply MockRequestContext.default
+    val requestContext = modifyRequestContext apply MockRequestContext.indices
       .copy(
         indices = requestIndices,
         action = Action("indices:data/read/search"),
         isReadOnlyRequest = true,
-        involvesIndices = true,
         hasRemoteClusters = true,
         allIndicesAndAliases = Set(
           IndexWithAliases(IndexName("test1".nonempty), Set.empty),
@@ -325,17 +324,21 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           IndexWithAliases(IndexName("test5".nonempty), Set.empty)
         )
       )
-    val blockContext = mock[BlockContext]
-    val returnedBlock = found match {
-      case Outcome.Exist(foundIndices) =>
-        val newBlock = mock[BlockContext]
-        (blockContext.withIndices _).expects(foundIndices).returning(newBlock)
-        newBlock
-      case Outcome.NotExist =>
-        blockContext
-    }
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
-      if (isMatched) Fulfilled(returnedBlock)
+    val blockContext = GeneralIndexRequestBlockContext(
+      requestContext,
+      UserMetadata.from(requestContext),
+      Set.empty,
+      Set.empty,
+      requestIndices
+    )
+    rule.check(blockContext).runSyncStep shouldBe Right {
+      if (isMatched) Fulfilled(GeneralIndexRequestBlockContext(
+        requestContext,
+        UserMetadata.from(requestContext),
+        Set.empty,
+        Set.empty,
+        found
+      ))
       else Rejected(Some(Cause.IndexNotFound))
     }
   }

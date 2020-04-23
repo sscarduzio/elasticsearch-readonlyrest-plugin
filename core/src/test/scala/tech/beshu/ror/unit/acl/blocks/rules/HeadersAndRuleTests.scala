@@ -21,7 +21,8 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.HeadersAndRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -123,9 +124,9 @@ class HeadersAndRuleTests extends WordSpec with MockFactory {
   private def assertRule(configuredHeaders: NonEmptySet[Header], requestHeaders: Set[Header], isMatched: Boolean) = {
     val rule = new HeadersAndRule(HeadersAndRule.Settings(configuredHeaders))
     val requestContext = mock[RequestContext]
-    val blockContext = mock[BlockContext]
     (requestContext.headers _).expects().returning(requestHeaders)
-    rule.check(requestContext, blockContext).runSyncStep shouldBe Right {
+    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+    rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()
     }

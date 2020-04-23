@@ -38,8 +38,6 @@ import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexCon
 import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.utils.ScalaOps._
 
-import scala.language.{implicitConversions, postfixOps}
-
 class AdminRestApi(rorInstance: RorInstance,
                    indexConfigManager: IndexConfigManager,
                    fileConfigLoader: FileConfigLoader)
@@ -86,7 +84,7 @@ class AdminRestApi(rorInstance: RorInstance,
       .map {
         case Right(config) =>
           Ok[ApiCallResult](Success(config.raw))
-        case Left(SpecializedError(error@IndexConfigNotExist)) =>
+        case Left(SpecializedError(error: IndexConfigNotExist.type)) =>
           implicit val show = IndexConfigError.show.contramap(identity[IndexConfigNotExist.type])
           Ok[ApiCallResult](ConfigNotFound(error.show))
         case Left(error) =>

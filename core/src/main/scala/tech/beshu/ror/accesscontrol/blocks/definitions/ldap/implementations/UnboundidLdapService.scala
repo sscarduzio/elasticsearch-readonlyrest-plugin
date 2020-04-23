@@ -25,6 +25,7 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod}
@@ -37,13 +38,13 @@ import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
 import scala.util.Try
 
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
                                                  connectionPool: LDAPConnectionPool,
                                                  userSearchFiler: UserSearchFilterConfig,
                                                  requestTimeout: FiniteDuration Refined Positive)
+                                                (implicit blockingScheduler: Scheduler)
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, requestTimeout)
     with LdapAuthenticationService {
 
@@ -74,9 +75,11 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
 
 object UnboundidLdapAuthenticationService {
   def create(id: LdapService#Id,
-             poolProvider:UnboundidLdapConnectionPoolProvider,
+             poolProvider: UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
-             userSearchFiler: UserSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
+             userSearchFiler: UserSearchFilterConfig,
+             blockingScheduler: Scheduler): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
+    implicit val blockingSchedulerImplicit: Scheduler = blockingScheduler
     (for {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
@@ -89,6 +92,7 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
                                                 groupsSearchFilter: UserGroupsSearchFilterConfig,
                                                 userSearchFiler: UserSearchFilterConfig,
                                                 requestTimeout: FiniteDuration Refined Positive)
+                                               (implicit blockingScheduler: Scheduler)
   extends BaseUnboundidLdapService(connectionPool, userSearchFiler, requestTimeout)
     with LdapAuthorizationService {
 
@@ -207,10 +211,12 @@ class UnboundidLdapAuthorizationService private(override val id: LdapService#Id,
 
 object UnboundidLdapAuthorizationService {
   def create(id: LdapService#Id,
-             poolProvider:UnboundidLdapConnectionPoolProvider,
+             poolProvider: UnboundidLdapConnectionPoolProvider,
              connectionConfig: LdapConnectionConfig,
              userSearchFiler: UserSearchFilterConfig,
-             userGroupsSearchFilter: UserGroupsSearchFilterConfig): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
+             userGroupsSearchFilter: UserGroupsSearchFilterConfig,
+             blockingScheduler: Scheduler): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
+    implicit val blockingSchedulerImplicit: Scheduler = blockingScheduler
     (for {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
@@ -221,6 +227,7 @@ object UnboundidLdapAuthorizationService {
 abstract class BaseUnboundidLdapService(connectionPool: LDAPConnectionPool,
                                         userSearchFiler: UserSearchFilterConfig,
                                         requestTimeout: FiniteDuration Refined Positive)
+                                       (implicit blockingScheduler: Scheduler)
   extends LdapUserService with Logging {
 
   override def ldapUserBy(userId: User.Id): Task[Option[LdapUser]] = {
@@ -268,9 +275,11 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
 
 object LdapConnectionConfig {
 
-  final case class LdapHost private (url: UrlWithAuthority) {
+  final case class LdapHost private(url: UrlWithAuthority) {
     def isSecure: Boolean = url.schemeOption.contains(LdapHost.ldapsSchema)
+
     def host: String = url.host.value
+
     def port: Int = url.port.getOrElse(LdapHost.defaultPort)
   }
   object LdapHost {
@@ -283,8 +292,8 @@ object LdapConnectionConfig {
         .orElse(Try(UrlWithAuthority.parse(s"""//$value""")))
         .toOption
         .flatMap { url =>
-          if(url.path.nonEmpty) None
-          else if(!url.schemeOption.forall(Set(ldapSchema, ldapsSchema).contains)) None
+          if (url.path.nonEmpty) None
+          else if (!url.schemeOption.forall(Set(ldapSchema, ldapsSchema).contains)) None
           else Some(LdapHost(url))
         }
     }
