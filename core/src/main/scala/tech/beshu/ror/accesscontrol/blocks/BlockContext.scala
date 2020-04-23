@@ -85,7 +85,7 @@ object BlockContext {
     sealed trait Indices
     object Indices {
       final case class Found(indices: Set[IndexName]) extends Indices
-      case object IndexNotExist extends Indices
+      case object NotFound extends Indices
     }
   }
 
@@ -147,7 +147,7 @@ object BlockContext {
           bc.indexPacks
             .flatMap {
               case Indices.Found(indices) => indices.toList
-              case Indices.IndexNotExist => Nil
+              case Indices.NotFound => Nil
             }
             .toSet
       }

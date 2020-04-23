@@ -97,11 +97,11 @@ class IndicesRule(val settings: Settings)
             )
             result match {
               case ProcessResult.Ok(narrowedIndices) => Right(currentList :+ Indices.Found(narrowedIndices))
-              case ProcessResult.Failed(Some(Cause.IndexNotFound)) => Right(currentList :+ Indices.IndexNotExist)
+              case ProcessResult.Failed(Some(Cause.IndexNotFound)) => Right(currentList :+ Indices.NotFound)
               case ProcessResult.Failed(cause) => Left(cause)
             }
-          case Indices.IndexNotExist =>
-            Right(currentList :+ Indices.IndexNotExist)
+          case Indices.NotFound =>
+            Right(currentList :+ Indices.NotFound)
         }
         case (result@Left(_), _) =>
           result

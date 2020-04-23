@@ -83,7 +83,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     indexPack match {
       case Indices.Found(indices) =>
         updateRequestWithIndices(request, indices)
-      case Indices.IndexNotExist =>
+      case Indices.NotFound =>
         updateRequestWithNonExistingIndex(request)
     }
   }
