@@ -18,9 +18,7 @@ package tech.beshu.ror.utils.elasticsearch;
 
 import com.google.common.collect.Sets;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.*;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.util.List;
@@ -46,6 +44,14 @@ public class IndexManagerJ extends JBaseManager {
     return call(createDeleteIndex(indexName), GetIndexResult::new);
   }
 
+  public SimpleResponse close(String indexName) {
+    return call(createCloseIndex(indexName), SimpleResponse::new);
+  }
+
+  public SimpleResponse create(String indexName) {
+    return call(createCreateIndicesRequest(indexName), SimpleResponse::new);
+  }
+
   private HttpUriRequest createGetIndexRequest(String indexName) {
     return new HttpGet(restClient.from("/" + indexName));
   }
@@ -54,8 +60,16 @@ public class IndexManagerJ extends JBaseManager {
     return new HttpDelete(restClient.from("/" + indexName));
   }
 
+  private HttpUriRequest createCloseIndex(String indexName) {
+    return new HttpPost(restClient.from("/" + indexName + "/_close"));
+  }
+
   private HttpUriRequest createDeleteIndicesRequest() {
     return new HttpDelete(restClient.from("/_all"));
+  }
+
+  private HttpUriRequest createCreateIndicesRequest(String indexName) {
+    return new HttpPut(restClient.from("/" + indexName));
   }
 
   public static class GetIndexResult extends JsonResponse {

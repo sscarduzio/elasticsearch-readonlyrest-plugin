@@ -1,0 +1,49 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  prompt_for_basic_auth: false
+
+  # (De)activate plugin
+  enable: true
+
+  # HTTP response body in case of forbidden request.
+  # If this is null or omitted, the name of the first violated access control rule is returned (useful for debugging!)
+  response_if_req_forbidden: <h1>Forbidden</h1>
+
+  # Default policy is to forbid everything, so let's define a whitelist
+  access_control_rules:
+
+  # ES containter initializer need this rule to configure ES instance after startup
+  - name: "CONTAINER ADMIN"
+    type: allow
+    auth_key: admin:container
+
+  - name: "::Tweets::"
+    type: allow
+    methods: GET
+    indices: ["twitter"]
+    external_authentication: "ext1"
+
+  - name: "::Facebook posts::"
+    type: allow
+    methods: GET
+    indices: ["facebook"]
+    external_authentication:
+      service: "ext2"
+      cache_ttl_in_sec: 60
+
+  external_authentication_service_configs:
+
+  - name: "ext1"
+    authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth1"
+    success_status_code: 200
+    cache_ttl_in_sec: 60
+
+  - name: "ext2"
+    authentication_endpoint: "http://{EXT2_HOST}:{EXT2_PORT}/auth2"
+    success_status_code: 204
+    cache_ttl_in_sec: 60

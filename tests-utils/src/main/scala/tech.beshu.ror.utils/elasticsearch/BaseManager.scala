@@ -46,7 +46,10 @@ object BaseManager {
 
   type JSON = Value
 
+  final case class SimpleHeader(name: String, value: String)
+
   class SimpleResponse private[elasticsearch](response: HttpResponse) {
+    val headers: List[SimpleHeader] = response.getAllHeaders.map(h => SimpleHeader(h.getName, h.getValue)).toList
     val responseCode: Int = response.getStatusLine.getStatusCode
     val isSuccess: Boolean = responseCode / 100 == 2
     val isForbidden: Boolean = responseCode == 401

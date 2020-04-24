@@ -27,6 +27,7 @@ import com.unboundid.ldap.sdk.ResultCode;
 import com.unboundid.ldif.LDIFReader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.testcontainers.containers.Network;
 import tech.beshu.ror.utils.misc.Tuple;
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException;
 import org.testcontainers.containers.GenericContainer;
@@ -70,6 +71,7 @@ public class JavaLdapContainer extends GenericContainer<JavaLdapContainer> {
                 .env("LDAP_ADMIN_PASSWORD", LDAP_ADMIN_PASSWORD)
                 .build()));
     return container
+        .withNetwork(Network.SHARED)
         .withExposedPorts(LDAP_PORT)
         .waitingFor(
             container.ldapWaitStrategy(ldapInitScriptFile)
