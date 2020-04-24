@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpPut, HttpUriRequest}
+import org.apache.http.client.methods.{HttpPost, HttpPut, HttpUriRequest}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.MGetResult
@@ -44,6 +44,11 @@ class DocumentManager(restClient: RestClient)
     }
   }
 
+  def bulk(line: String, lines: String*): JsonResponse = {
+    val payload = (lines.toSeq :+ "\n\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem" }
+    call(createBulkRequest(payload), new JsonResponse(_))
+  }
+
   private def createInsertDocRequest(docPath: String, content: JSON, waitForRefresh: Boolean) = {
     val queryParams =
       if (waitForRefresh) Map("refresh" -> "wait_for")
@@ -59,6 +64,13 @@ class DocumentManager(restClient: RestClient)
     val request = new HttpGetWithEntity(restClient.from("_mget"))
     request.addHeader("Content-type", "application/json")
     request.setEntity(new StringEntity(ujson.write(query)))
+    request
+  }
+
+  private def createBulkRequest(payload: String): HttpUriRequest = {
+    val request = new HttpPost(restClient.from("_bulk"))
+    request.addHeader("Content-type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(payload)))
     request
   }
 }
