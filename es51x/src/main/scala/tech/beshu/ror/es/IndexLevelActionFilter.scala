@@ -22,7 +22,7 @@ import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
-import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
 import org.elasticsearch.rest.RestChannel
@@ -39,6 +39,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.language.postfixOps
 
+@Singleton
 class IndexLevelActionFilter(settings: Settings,
                              clusterService: ClusterService,
                              client: NodeClient,

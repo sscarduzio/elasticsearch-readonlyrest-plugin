@@ -1,0 +1,100 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container
+
+    - name: "::KIBANA-SRV::"
+      auth_key: kibana:kibana
+      verbosity: error
+
+    - name: "::LOGSTASH::"
+      auth_key: logstash:logstash
+      actions: ["cluster:monitor/main","indices:admin/types/exists","indices:data/read/*","indices:data/write/*","indices:admin/template/*","indices:admin/create"]
+      indices: ["negotiation-*", "trade-*", "transation-*", "logstash-*"]
+      verbosity: error
+
+    - name: "Admin Tenancy"
+      groups: ["Admins"]
+      kibana_access: admin
+      kibana_index: ".kibana"
+      verbosity: error
+
+    - name: "Template Tenancy"
+      groups: ["Template"]
+      kibana_access: admin
+      kibana_index: ".kibana_template"
+      verbosity: error
+
+    - name: "011-data"
+      external_authentication: "ExternalAuthService"
+      groups_provider_authorization:
+        user_groups_provider: "ExternalGroupService"
+        groups: ["011"]
+      indices: ["negotiation-*", "trade-*", "transation-*"]
+      filter: '{"bool": { "must": { "match": { "firmid": "011" }}}}'
+      kibana_access: rw
+      kibana_index: ".kibana_@{user}"
+      kibana_hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+    - name: "011"
+      external_authentication: "ExternalAuthService"
+      groups_provider_authorization:
+        user_groups_provider: "ExternalGroupService"
+        groups: ["011"]
+      kibana_access: rw
+      kibana_index: ".kibana_@{user}"
+      kibana_hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+
+    - name: "013-data"
+      external_authentication: "ExternalAuthService"
+      groups_provider_authorization:
+        user_groups_provider: "ExternalGroupService"
+        groups: ["013"]
+      indices: ["negotiation-*", "trade-*", "transation-*"]
+      filter: '{"bool": { "must": { "match": { "firmid": "013" }}}}'
+      kibana_access: rw
+      kibana_index: ".kibana_@{user}"
+      kibana_hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+
+    - name: "013"
+      external_authentication: "ExternalAuthService"
+      groups_provider_authorization:
+        user_groups_provider: "ExternalGroupService"
+        groups: ["013"]
+      kibana_access: rw
+      kibana_index: ".kibana_@{user}"
+      kibana_hide_apps: ["readonlyrest_kbn", "kibana:dev_tools", "kibana:management"]
+      #verbosity: error
+
+  external_authentication_service_configs:
+    - name: "ExternalAuthService"
+      authentication_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/auth"
+      success_status_code: 200
+      cache_ttl_in_sec: 1
+      validate: false # SSL certificate validation (default to true)
+
+  user_groups_providers:
+    - name: "ExternalGroupService"
+      groups_endpoint: "http://{EXT1_HOST}:{EXT1_PORT}/groups"
+      auth_token_name: "token"
+      auth_token_passed_as: QUERY_PARAM                        # HEADER OR QUERY_PARAM
+      response_groups_json_path: "$..groups[?(@.name)].name"   # see: <https://github.com/json-path/JsonPath>
+      cache_ttl_in_sec: 1
+      http_connection_settings:
+        connection_timeout_in_sec: 5                           # default 2
+        socket_timeout_in_sec: 3                               # default 5
+        connection_request_timeout_in_sec: 3                   # default 5
+        connection_pool_size: 10
+
+  users:
+    - username: admin
+      auth_key: admin:admin
+      groups: ["Admins", "Template"] # can hop between two tenancies with top-left drop-down menu

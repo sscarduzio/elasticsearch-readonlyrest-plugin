@@ -25,7 +25,8 @@ import ujson.{Arr, Value}
 
 import scala.collection.JavaConverters._
 
-class ClusterStateManager(client: RestClient)
+class ClusterStateManager(client: RestClient,
+                          override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
   def healthCheck(): SimpleResponse = {
