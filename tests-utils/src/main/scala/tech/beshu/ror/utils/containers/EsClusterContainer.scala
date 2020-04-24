@@ -154,6 +154,3 @@ object EsClusterSettings {
 }
 
 final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]], originalPort: Int)
-
-
-
