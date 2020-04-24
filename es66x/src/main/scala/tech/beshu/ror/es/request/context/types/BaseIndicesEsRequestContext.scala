@@ -87,7 +87,4 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     }
   }
 
-  protected def indicesOrWildcard(indices: Set[IndexName]) = {
-    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
-  }
 }

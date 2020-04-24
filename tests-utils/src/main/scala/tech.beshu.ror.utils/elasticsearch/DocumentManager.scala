@@ -45,7 +45,7 @@ class DocumentManager(restClient: RestClient)
   }
 
   def bulk(line: String, lines: String*): JsonResponse = {
-    val payload = (lines.toSeq :+ "\n\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem" }
+    val payload = (lines.toSeq :+ "\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem" }
     call(createBulkRequest(payload), new JsonResponse(_))
   }
 
@@ -70,7 +70,7 @@ class DocumentManager(restClient: RestClient)
   private def createBulkRequest(payload: String): HttpUriRequest = {
     val request = new HttpPost(restClient.from("_bulk"))
     request.addHeader("Content-type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(payload)))
+    request.setEntity(new StringEntity(payload))
     request
   }
 }

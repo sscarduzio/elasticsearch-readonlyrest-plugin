@@ -16,16 +16,18 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.NonEmptyList
-import org.elasticsearch.action.search.MultiSearchRequest
-import org.elasticsearch.search.builder.SearchSourceBuilder
+import cats.implicits._
+import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
@@ -35,53 +37,69 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   aclContext: AccessControlStaticContext,
                                   clusterService: RorClusterService,
                                   override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[MultiSearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext, clusterService)
+    with EsRequest[MultiIndexRequestBlockContext] {
 
-  override protected def indicesFrom(request: MultiSearchRequest): Set[IndexName] = {
-    request.requests().asScala.flatMap(_.indices.asSafeSet.flatMap(IndexName.fromString)).toSet
-  }
+  override lazy val initialBlockContext: MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+    this,
+    UserMetadata.from(this),
+    Set.empty,
+    Set.empty,
+    indexPacksFrom(actionRequest)
+  )
 
-  override protected def update(request: MultiSearchRequest,
-                                indices: NonEmptyList[IndexName]): ModificationResult = {
-    optionallyDisableCaching()
-    modifyIndicesOf(request, indices)
-  }
-
-  // Cache disabling for this request is crucial for document level security to work.
-  // Otherwise we'd get an answer from the cache some times and would not be filtered
-  private def optionallyDisableCaching(): Unit = {
-    if (esContext.involveFilters) {
-      logger.debug("ACL involves filters, will disable request cache for MultiSearchRequest")
-      actionRequest.requests().asScala.foreach(_.requestCache(false))
-    }
-  }
-
-  private def modifyIndicesOf(request: MultiSearchRequest,
-                              nelOfIndices: NonEmptyList[IndexName]): ModificationResult = {
-    val expandedFoundIndices = clusterService.expandIndices(nelOfIndices.toList.toSet)
-    request.requests().asScala.foreach { sr =>
-      if (sr.indices.asSafeSet.isEmpty || sr.indices.asSafeSet.contains("*")) {
-        sr.indices(nelOfIndices.toList.map(_.value.value): _*)
-      } else {
-        // This transforms wildcards and aliases in concrete indices
-        val (clusterIndices, localIndices) =
-          sr.indices().asSafeSet
-            .flatMap(IndexName.fromString)
-            .partition(_.isClusterIndex)
-        val expandedRequestIndices = clusterService.expandIndices(localIndices)
-
-        val remaining = expandedRequestIndices.intersect(expandedFoundIndices)
-        val remainingAndClusterIndices = remaining ++ clusterIndices
-
-        if (remainingAndClusterIndices.isEmpty) { // contained just forbidden indices, should return zero results
-          sr.source(new SearchSourceBuilder().size(0))
-        } else {
-          // some allowed indices were there, restrict query to those
-          sr.indices(remainingAndClusterIndices.toList.map(_.value.value): _*)
+  override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
+    val modifiedPacksOfIndices = blockContext.indexPacks
+    val requests = actionRequest.requests().asScala.toList
+    if (requests.size == modifiedPacksOfIndices.size) {
+      requests
+        .zip(modifiedPacksOfIndices)
+        .foreach { case (request, pack) =>
+          updateRequest(request, pack)
         }
-      }
+      Modified
+    } else {
+      logger.error(
+        s"""[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different
+           |number of inner requests, than altered one. This can be security issue. So, it's better for forbid the request""".stripMargin)
+      ShouldBeInterrupted
     }
-    if (request.requests().asScala.isEmpty) ShouldBeInterrupted
-    else Modified
+  }
+
+  private def indexPacksFrom(request: MultiSearchRequest): List[Indices] = {
+    request
+      .requests().asScala
+      .map { request => Indices.Found(indicesFrom(request)) }
+      .toList
+  }
+
+  private def indicesFrom(request: SearchRequest) = {
+    val requestIndices = request.indices.asSafeSet.flatMap(IndexName.fromString)
+    indicesOrWildcard(requestIndices)
+  }
+
+  private def updateRequest(request: SearchRequest, indexPack: Indices) = {
+    indexPack match {
+      case Indices.Found(indices) =>
+        updateRequestWithIndices(request, indices)
+      case Indices.NotFound =>
+        updateRequestWithNonExistingIndex(request)
+    }
+  }
+
+  private def updateRequestWithIndices(request: SearchRequest, indices: Set[IndexName]) = {
+    indices.toList match {
+      case Nil => updateRequestWithNonExistingIndex(request)
+      case nonEmptyIndicesList => request.indices(nonEmptyIndicesList.map(_.value.value): _*)
+    }
+  }
+
+  private def updateRequestWithNonExistingIndex(request: SearchRequest): Unit = {
+    val originRequestIndices = indicesFrom(request).toList
+    val notExistingIndex = originRequestIndices.find(_.hasWildcard) orElse originRequestIndices.headOption match {
+      case Some(index) => IndexName.randomNonexistentIndex(index.value.value)
+      case None => IndexName.randomNonexistentIndex()
+    }
+    request.indices(notExistingIndex.value.value)
   }
 }
