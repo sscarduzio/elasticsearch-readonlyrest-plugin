@@ -80,7 +80,7 @@ trait DocumentApiSuite
           result.docs.size should be (2)
           result.docs(0)("_index").str should be ("index1_fst")
           result.docs(0)("found").bool should be (true)
-          result.docs(1)("_index").str should be ("index2_fst")
+          result.docs(1)("_index").str should startWith ("index2_fst")
           result.docs(1)("error")("type").str should be ("index_not_found_exception")
         }
       }
