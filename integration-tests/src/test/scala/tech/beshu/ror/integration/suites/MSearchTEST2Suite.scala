@@ -29,22 +29,22 @@ trait MSearchTEST2Suite
     with Matchers {
   this: EsContainerCreator =>
 
-  private val msearchBodyNoMatch =
-    """{"index":["perfmon_logstash-apacheaccess*"]}
-      |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
-      |""".stripMargin
+  private val msearchBodyNoMatch = Seq(
+    """{"index":["perfmon_logstash-apacheaccess*"]}""",
+    """{"query":{"bool":{"must_not":[{"match_all":{}}]}}}"""
+  )
 
-  private val msearchBroken =
-    """{"index":["perfmon_endpoint_requests"]}
-      |{"query":{"query_string":{"analyze_wildcard":true,"query":"*"}},"size":0}
-      |""".stripMargin
+  private val msearchBroken = Seq(
+    """{"index":["perfmon_endpoint_requests"]}""",
+    """{"query":{"query_string":{"analyze_wildcard":true,"query":"*"}},"size":0}"""
+  )
 
-  private val msearchBodyEmptyIndex =
-    """{"index":["empty_index"],"ignore_unavailable":true,"preference":1506497937939}
-      |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
-      |""".stripMargin
+  private val msearchBodyEmptyIndex = Seq(
+    """{"index":["empty_index"],"ignore_unavailable":true,"preference":1506497937939}""",
+    """{"query":{"bool":{"must_not":[{"match_all":{}}]}}}"""
+  )
 
-  private val msearchBodyCombo = msearchBodyNoMatch + msearchBroken + msearchBodyEmptyIndex
+  private val msearchBodyCombo = msearchBodyNoMatch ++ msearchBroken ++ msearchBodyEmptyIndex
 
   override implicit val rorConfigFileName = "/msearch_test2/readonlyrest.yml"
 
@@ -53,7 +53,7 @@ trait MSearchTEST2Suite
   "test274_2" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
 
-    val response = searchManager.mSearch(msearchBodyNoMatch)
+    val response = searchManager.mSearchUnsafe(msearchBodyNoMatch: _*)
 
     response.responseCode shouldBe 200
     response.responses.size shouldBe 1
@@ -63,7 +63,7 @@ trait MSearchTEST2Suite
   "test274_2_broken" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
 
-    val response = searchManager.mSearch(msearchBroken)
+    val response = searchManager.mSearchUnsafe(msearchBroken: _*)
 
     response.responseCode shouldBe 200
     response.responses.size shouldBe 1
@@ -73,7 +73,7 @@ trait MSearchTEST2Suite
   "test274_2_empty_index" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
 
-    val response = searchManager.mSearch(msearchBodyEmptyIndex)
+    val response = searchManager.mSearchUnsafe(msearchBodyEmptyIndex: _*)
 
     response.responseCode shouldBe 200
     response.responses.size shouldBe 1
@@ -83,7 +83,7 @@ trait MSearchTEST2Suite
   "test274_2_combo" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
 
-    val response = searchManager.mSearch(msearchBodyCombo)
+    val response = searchManager.mSearchUnsafe(msearchBodyCombo: _*)
 
     response.responseCode shouldBe 200
     response.responses.size shouldBe 3

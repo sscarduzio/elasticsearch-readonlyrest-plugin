@@ -26,6 +26,7 @@ import org.apache.http.entity.StringEntity
 import org.testcontainers.containers.GenericContainer
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils._
+import tech.beshu.ror.utils.misc.Version
 
 import scala.collection.immutable.Seq
 import scala.language.existentials
@@ -107,24 +108,39 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
     def createRemoteClusterSettingsRequest(esClient: RestClient) = {
       val remoteClustersConfigString = remoteClustersConfig
         .map { case (name, remoteCluster) =>
-          s""""$name": { "seeds": [ ${remoteCluster.nodes.toList.map(c => s""""${c.name}:9300"""").mkString(",")} ] }"""
+          s""""$name": { "seeds": [ ${remoteCluster.nodes.map(c => s""""${c.name}:9300"""").mkString(",")} ] }"""
         }
         .mkString(",\n")
 
       val request = new HttpPut(esClient.from("_cluster/settings"))
       request.setHeader("Content-Type", "application/json")
       request.setEntity(new StringEntity(
-        s"""
-           |{
-           |  "persistent": {
-           |    "cluster": {
-           |      "remote": {
-           |        $remoteClustersConfigString
-           |      }
-           |    }
-           |  }
-           |}
-          """.stripMargin))
+        if (Version.greaterOrEqualThan(container.nodes.head.esVersion, 6, 5, 0)) {
+          s"""
+             |{
+             |  "persistent": {
+             |    "cluster": {
+             |      "remote": {
+             |        $remoteClustersConfigString
+             |      }
+             |    }
+             |  }
+             |}
+          """.stripMargin
+        } else {
+          s"""
+             |{
+             |  "persistent": {
+             |    "search": {
+             |      "remote": {
+             |        $remoteClustersConfigString
+             |      }
+             |    }
+             |  }
+             |}
+          """.stripMargin
+        }
+      ))
       request
     }
 

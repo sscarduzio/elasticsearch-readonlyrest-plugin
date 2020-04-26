@@ -49,6 +49,13 @@ class DocumentManager(restClient: RestClient)
     call(createBulkRequest(payload), new JsonResponse(_))
   }
 
+  def bulkUnsafe(lines: String*): JsonResponse = {
+    lines.toList match {
+      case Nil => throw new IllegalArgumentException("At least one line should be passed to _bulk query")
+      case head :: rest => bulk(head, rest: _*)
+    }
+  }
+
   private def createInsertDocRequest(docPath: String, content: JSON, waitForRefresh: Boolean) = {
     val queryParams =
       if (waitForRefresh) Map("refresh" -> "wait_for")

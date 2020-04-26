@@ -23,7 +23,7 @@ import tech.beshu.ror.integration.suites.CrossClusterCallsSuite.{localClusterNod
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait CrossClusterCallsSuite
@@ -55,7 +55,6 @@ trait CrossClusterCallsSuite
         "he queries local and remote indices" excludeES("es51x", "es52x") in {
           val result = user3SearchManager.search("/etl:etl*,metrics*/_search")
           result.responseCode should be(200)
-          result.searchHits.size should be(4)
           result.searchHits.map(i => i("_index").str).toSet should be(
             Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27", "etl:etl_usage_2020-03-26", "etl:etl_usage_2020-03-27")
           )
@@ -72,12 +71,12 @@ trait CrossClusterCallsSuite
         "he queries local and remote indices patterns" excludeES("es51x", "es52x") in {
           val result = user2SearchManager.search("/etl:etl*,metrics*/_search")
           result.responseCode should be(200)
-          result.searchHits.size should be (0)
+          result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
         }
         "he queries remote indices patterns only" excludeES("es51x", "es52x") in {
           val result = user2SearchManager.search("/etl:etl*/_search")
           result.responseCode should be(200)
-          result.searchHits.size should be (0)
+          result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
         }
       }
     }
@@ -199,20 +198,20 @@ trait CrossClusterCallsSuite
 object CrossClusterCallsSuite {
 
   def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/metrics_monitoring_2020-03-26/test/1",  s"""{"metrics":"counter=1"}""")
-    documentManager.insertDoc("/metrics_monitoring_2020-03-27/test/1",  s"""{"metrics":"counter=1"}""")
+    val documentManager = new DocumentManager(adminRestClient)
+    documentManager.createDoc("/metrics_monitoring_2020-03-26/test/1",  s"""{"metrics":"counter=1"}""")
+    documentManager.createDoc("/metrics_monitoring_2020-03-27/test/1",  s"""{"metrics":"counter=1"}""")
   }
 
   def remoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/test1_index/test/1", """{"hello":"world"}""")
-    documentManager.insertDoc("/test1_index/test/2", """{"hello":"world"}""")
-    documentManager.insertDoc("/test2_index/test/1", """{"hello":"world"}""")
-    documentManager.insertDoc("/test2_index/test/2", """{"hello":"world"}""")
+    val documentManager = new DocumentManager(adminRestClient)
+    documentManager.createDoc("/test1_index/test/1", """{"hello":"world"}""")
+    documentManager.createDoc("/test1_index/test/2", """{"hello":"world"}""")
+    documentManager.createDoc("/test2_index/test/1", """{"hello":"world"}""")
+    documentManager.createDoc("/test2_index/test/2", """{"hello":"world"}""")
 
-    documentManager.insertDoc("/etl_usage_2020-03-26/test/2", """{"hello":"ROR"}""")
-    documentManager.insertDoc("/etl_usage_2020-03-27/test/2", """{"hello":"ROR"}""")
+    documentManager.createDoc("/etl_usage_2020-03-26/test/2", """{"hello":"ROR"}""")
+    documentManager.createDoc("/etl_usage_2020-03-27/test/2", """{"hello":"ROR"}""")
   }
 
   def remoteClusterSetup(): SetupRemoteCluster = (remoteClusters: NonEmptyList[EsClusterContainer]) => {

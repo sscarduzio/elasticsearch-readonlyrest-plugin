@@ -23,6 +23,7 @@ import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.Version
 
 trait DocumentApiSuite
   extends WordSpec
@@ -104,33 +105,44 @@ trait DocumentApiSuite
     "_bulk API is used" should {
       "allow to create all requests indices" when {
         "user has access to all of them" in {
-          val result = dev1documentManager.bulk(
-            """{ "create" : { "_index" : "index1_2020-01-01", "_id" : "1" } }""",
-            """{ "message" : "hello" }""",
-            """{ "create" : { "_index" : "index1_2020-01-02", "_id" : "1" } }""",
-            """{ "message" : "hello" }"""
+          val result = dev1documentManager.bulkUnsafe(
+            bulkCreateIndexDoEntry("index1_2020-01-01", 1) ++
+              bulkCreateIndexDoEntry("index1_2020-01-02", 1): _*
           )
 
-          result.responseCode should be (200)
+          result.responseCode should be(200)
           val items = result.responseJson("items").arr.toVector
-          items(0)("create")("status").num should be (201)
-          items(0)("create")("_index").str should be ("index1_2020-01-01")
-          items(1)("create")("status").num should be (201)
-          items(1)("create")("_index").str should be ("index1_2020-01-02")
+          items(0)("create")("status").num should be(201)
+          items(0)("create")("_index").str should be("index1_2020-01-01")
+          items(1)("create")("status").num should be(201)
+          items(1)("create")("_index").str should be("index1_2020-01-02")
         }
       }
       "not allow to create indices" when {
         "even one index is forbidden" in {
-          val result = dev1documentManager.bulk(
-            """{ "create" : { "_index" : "index1_2020-01-01", "_id" : "1" } }""",
-            """{ "message" : "hello" }""",
-            """{ "create" : { "_index" : "index2_2020-01-01", "_id" : "1" } }""",
-            """{ "message" : "hello" }"""
+          val result = dev1documentManager.bulkUnsafe(
+            bulkCreateIndexDoEntry("index1_2020-01-01", 1) ++
+              bulkCreateIndexDoEntry("index2_2020-01-01", 1): _*
           )
 
-          result.responseCode should be (401)
+          result.responseCode should be(401)
         }
       }
+    }
+  }
+
+  private def bulkCreateIndexDoEntry(index: String, docId: Int) = {
+    val esVersion = esTargets.head.esVersion
+    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+      Seq(
+        s"""{ "create" : { "_index" : "$index", "_id" : "$docId" } }""",
+        """{ "message" : "hello" }"""
+      )
+    } else {
+      Seq(
+        s"""{ "create" : { "_index" : "$index", "_type" : "_doc", "_id" : "$docId" } }""",
+        """{ "message" : "hello" }"""
+      )
     }
   }
 }

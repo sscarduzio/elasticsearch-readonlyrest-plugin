@@ -23,6 +23,7 @@ import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
 import tech.beshu.ror.utils.elasticsearch.SearchManager.{MSearchResult, SearchResult}
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
+
 import scala.util.Try
 
 class SearchManager(client: RestClient,
@@ -34,6 +35,13 @@ class SearchManager(client: RestClient,
 
   def search(endpoint: String): SearchResult =
     call(createSearchRequest(endpoint), new SearchResult(_))
+
+  def mSearchUnsafe(lines: String*): MSearchResult = {
+    lines.toList match {
+      case Nil => throw new IllegalArgumentException("At least one line should be passed to mSearch query")
+      case head :: rest => mSearch(head, rest: _*)
+    }
+  }
 
   def mSearch(line: String, lines: String*): MSearchResult = {
     val payload = (lines.toSeq :+ "\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem" }

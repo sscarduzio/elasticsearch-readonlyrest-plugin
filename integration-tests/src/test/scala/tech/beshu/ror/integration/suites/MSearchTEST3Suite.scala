@@ -29,10 +29,10 @@ trait MSearchTEST3Suite
     with Matchers {
   this: EsContainerCreator =>
 
-  private val msearchBodyTryMatchBoth =
-    """{"index":["monit_private*"]}
-      |{"version":true,"size":0,"query":{"match_all":{}}}
-      |""".stripMargin
+  private val msearchBodyTryMatchBoth = Seq(
+    """{"index":["monit_private*"]}""",
+    """{"version":true,"size":0,"query":{"match_all":{}}}"""
+  )
 
   override implicit val rorConfigFileName = "/msearch_test3/readonlyrest.yml"
 
@@ -44,7 +44,7 @@ trait MSearchTEST3Suite
       additionalHeaders = Map("X-Forwarded-For" -> "elastic.co")
     )
 
-    val response = searchManager.mSearch(msearchBodyTryMatchBoth)
+    val response = searchManager.mSearchUnsafe(msearchBodyTryMatchBoth: _*)
 
     response.responseCode shouldBe 200
     response.responses.size shouldBe 1
