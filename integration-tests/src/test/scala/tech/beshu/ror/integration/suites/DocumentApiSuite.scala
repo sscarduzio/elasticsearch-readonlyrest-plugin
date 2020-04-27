@@ -36,7 +36,7 @@ trait DocumentApiSuite
 
   override lazy val targetEs: EsContainer = container.nodes.head
 
-  private lazy val dev1documentManager = new DocumentManager(basicAuthClient("dev1", "test"))
+  private lazy val dev1documentManager = new DocumentManager(basicAuthClient("dev1", "test"), targetEs.esVersion)
 
   override lazy val container: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
@@ -149,12 +149,12 @@ trait DocumentApiSuite
 
 object DocumentApiSuite {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient)
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-    documentManager.createDoc("/index1_fst/test/1", ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("/index1_snd/test/1", ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("/index2_fst/test/1", ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("/index2_snd/test/1", ujson.read("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("index1_fst", ujson.read("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("index1_snd", ujson.read("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("index2_fst", ujson.read("""{"hello":"world"}"""))
+    documentManager.createFirstDoc("index2_snd", ujson.read("""{"hello":"world"}"""))
   }
 }

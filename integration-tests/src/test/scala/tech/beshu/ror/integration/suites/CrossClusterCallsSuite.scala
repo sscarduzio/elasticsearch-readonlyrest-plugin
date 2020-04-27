@@ -197,21 +197,21 @@ trait CrossClusterCallsSuite
 
 object CrossClusterCallsSuite {
 
-  def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient)
-    documentManager.createDoc("/metrics_monitoring_2020-03-26/_doc/1", ujson.read("""{"counter1":"100"}"""))
-    documentManager.createDoc("/metrics_monitoring_2020-03-27/_doc/1",  ujson.read("""{"counter1":"50"}"""))
+  def localClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager.createFirstDoc("metrics_monitoring_2020-03-26", ujson.read("""{"counter1":"100"}"""))
+    documentManager.createFirstDoc("metrics_monitoring_2020-03-27",  ujson.read("""{"counter1":"50"}"""))
   }
 
-  def remoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient)
-    documentManager.createDoc("/test1_index/_doc/1", ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("/test1_index/_doc/2", ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("/test2_index/_doc/1", ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("/test2_index/_doc/2", ujson.read("""{"hello":"world"}"""))
+  def remoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
+    documentManager.createDoc("test1_index", 2, ujson.read("""{"hello":"world"}"""))
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
+    documentManager.createDoc("test2_index", 2, ujson.read("""{"hello":"world"}"""))
 
-    documentManager.createDoc("/etl_usage_2020-03-26/_doc/2", ujson.read("""{"hello":"ROR"}"""))
-    documentManager.createDoc("/etl_usage_2020-03-27/_doc/2", ujson.read("""{"hello":"ROR"}"""))
+    documentManager.createDoc("etl_usage_2020-03-26", 1, ujson.read("""{"hello":"ROR"}"""))
+    documentManager.createDoc("etl_usage_2020-03-27", 1, ujson.read("""{"hello":"ROR"}"""))
   }
 
   def remoteClusterSetup(): SetupRemoteCluster = (remoteClusters: NonEmptyList[EsClusterContainer]) => {

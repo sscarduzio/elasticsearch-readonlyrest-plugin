@@ -30,15 +30,10 @@ trait BaseTemplatesSuite
   def rorContainer: EsClusterContainer
 
   protected lazy val adminTemplateManager = new TemplateManager(adminClient)
-  protected lazy val adminDocumentManager = new DocumentManager(adminClient)
+  protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
   protected def createIndexWithExampleDoc(documentManager: DocumentManager, index: String): Unit = {
-    val esVersion = rorContainer.esVersion
-    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-      adminDocumentManager.createDoc(s"/$index/_doc/1", "{\"hello\":\"world\"}")
-    } else {
-      adminDocumentManager.createDoc(s"/$index/doc/1", "{\"hello\":\"world\"}")
-    }
+    adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}"""))
   }
 
   protected def templateExample(indexPattern: String, otherIndexPatterns: String*): String = {

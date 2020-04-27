@@ -22,26 +22,24 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.MGetResult
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
+import tech.beshu.ror.utils.misc.Version
 import ujson.Value
 
 import scala.collection.JavaConverters._
 
-class DocumentManager(restClient: RestClient)
+class DocumentManager(restClient: RestClient, esVersion: String)
   extends BaseManager(restClient) {
 
   def mGet(query: JSON): MGetResult = {
     call(createMGetRequest(query), new MGetResult(_))
   }
 
-  def createDoc(docPath: String, content: JSON): JsonResponse = {
-    call(createInsertDocRequest(docPath, content, waitForRefresh = true), new JsonResponse(_))
+  def createFirstDoc(index: String, content: JSON): JsonResponse = {
+    call(createInsertDocRequest(createDocPathWithDefaultType(index, 1), content, waitForRefresh = true), new JsonResponse(_))
   }
 
-  def createDocAndAssert(docPath: String, content: JSON): Unit = {
-    val createDocResult = createDoc(docPath, content)
-    if(!createDocResult.isSuccess || createDocResult.responseJson("result").str != "created") {
-      throw new IllegalStateException(s"Cannot create document '$docPath'; returned: ${createDocResult.body}")
-    }
+  def createDoc(index: String, id: Int, content: JSON): JsonResponse = {
+    call(createInsertDocRequest(createDocPathWithDefaultType(index, id), content, waitForRefresh = true), new JsonResponse(_))
   }
 
   def bulk(line: String, lines: String*): JsonResponse = {
@@ -53,6 +51,24 @@ class DocumentManager(restClient: RestClient)
     lines.toList match {
       case Nil => throw new IllegalArgumentException("At least one line should be passed to _bulk query")
       case head :: rest => bulk(head, rest: _*)
+    }
+  }
+
+  private def createDocPath(index: String, `type`: String, id: Int) = {
+    if(Version.greaterOrEqualThan(esVersion, 6, 0, 0)) s"/$index/_doc/$id"
+    else s"""/$index/${`type`}/$id"""
+  }
+
+  private def createDocPathWithDefaultType(index: String, id: Int) = createDocPath(index, "doc", id)
+
+  def createDocAndAssert(index: String, `type`: String, id: Int, content: JSON): Unit = {
+    val docPath = createDocPath(index, `type`, id)
+    val createDocResult = call(
+      createInsertDocRequest(createDocPathWithDefaultType(index, id), content, waitForRefresh = true),
+      new JsonResponse(_)
+    )
+    if(!createDocResult.isSuccess || createDocResult.responseJson("result").str != "created") {
+      throw new IllegalStateException(s"Cannot create document '$docPath'; returned: ${createDocResult.body}")
     }
   }
 

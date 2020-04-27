@@ -468,31 +468,31 @@ trait SqlApiSuite
 
 object SqlApiSuite {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient)
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient)
     configureBookstore(documentManager, indexManager)
     configureLibrary(documentManager)
   }
 
   private def configureBookstore(documentManager: DocumentManager, indexManager: IndexManager): Unit = {
-    documentManager.createDocAndAssert("/bookstore/stock/1", ujson.read(
+    documentManager.createDocAndAssert("bookstore", "stock", 1, ujson.read(
       s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "price": 100}"""
     ))
-    documentManager.createDocAndAssert("/bookstore/stock/2", ujson.read(
+    documentManager.createDocAndAssert("bookstore", "stock", 2, ujson.read(
       s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "price": 200}"""
     ))
-    documentManager.createDocAndAssert("/bookstore/stock/3", ujson.read(
+    documentManager.createDocAndAssert("bookstore", "stock", 3, ujson.read(
       s"""{"name": "Dune", "author": "Frank Herbert", "release_date": "1965-06-01", "price": 50}"""
     ))
     indexManager.createAliasAndAssert("bookstore", "bookshop")
   }
 
   private def configureLibrary(documentManager: DocumentManager): Unit = {
-    documentManager.createDocAndAssert("/library/book/1", ujson.read(
+    documentManager.createDocAndAssert("library", "book", 1, ujson.read(
       s"""{"name": "Leviathan Wakes", "author": "James S.A. Corey", "release_date": "2011-06-02", "internal_id": 1}"""
     ))
-    documentManager.createDocAndAssert("/library/book/2", ujson.read(
+    documentManager.createDocAndAssert("library", "book", 2, ujson.read(
       s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "internal_id": 2}"""
     ))
   }
