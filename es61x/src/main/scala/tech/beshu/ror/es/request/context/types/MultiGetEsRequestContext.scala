@@ -99,7 +99,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private def updateItemWithNonExistingIndex(item: MultiGetRequest.Item): Unit = {
     val originRequestIndices = indicesFrom(item).toList
-    val notExistingIndex = originRequestIndices.find(_.hasWildcard) orElse originRequestIndices.headOption match {
+    val notExistingIndex = originRequestIndices.find(i => i.hasWildcard && !i.isClusterIndex) orElse originRequestIndices.headOption match {
       case Some(index) => IndexName.randomNonexistentIndex(index.value.value)
       case None => IndexName.randomNonexistentIndex()
     }

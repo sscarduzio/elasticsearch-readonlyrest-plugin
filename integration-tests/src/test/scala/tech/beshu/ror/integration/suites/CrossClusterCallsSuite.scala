@@ -82,7 +82,7 @@ trait CrossClusterCallsSuite
     }
     "return 404" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices" excludeES(allEs5x, allEs6x) in {
+        "he queries local and remote indices" excludeES("es51x", "es52x") in {
           val result = user2SearchManager.search("/etl:etl_usage_2020-03-26,metrics_monitoring_2020-03-26/_search")
           result.responseCode should be(404)
         }

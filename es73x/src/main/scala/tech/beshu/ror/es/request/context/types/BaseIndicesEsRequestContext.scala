@@ -79,8 +79,9 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   protected def update(request: R, indices: NonEmptyList[IndexName]): ModificationResult
 
-  private def randomNonexistentIndex(): IndexName = {
-    val someIndexFromRequest = initialBlockContext.indices.find(_.hasWildcard) orElse initialBlockContext.indices.headOption
+  protected def randomNonexistentIndex(): IndexName = {
+    val localIndices = initialBlockContext.indices.filterNot(_.isClusterIndex)
+    val someIndexFromRequest = localIndices.find(_.hasWildcard) orElse localIndices.headOption
     someIndexFromRequest match {
       case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
       case None => IndexName.randomNonexistentIndex()

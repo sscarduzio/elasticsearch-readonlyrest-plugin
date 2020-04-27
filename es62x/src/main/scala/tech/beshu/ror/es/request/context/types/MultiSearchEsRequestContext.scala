@@ -96,7 +96,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   private def updateRequestWithNonExistingIndex(request: SearchRequest): Unit = {
     val originRequestIndices = indicesFrom(request).toList
-    val notExistingIndex = originRequestIndices.find(_.hasWildcard) orElse originRequestIndices.headOption match {
+    val notExistingIndex = originRequestIndices.find(i => i.hasWildcard && !i.isClusterIndex) orElse originRequestIndices.headOption match {
       case Some(index) => IndexName.randomNonexistentIndex(index.value.value)
       case None => IndexName.randomNonexistentIndex()
     }
