@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
+import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 trait MiscSuite
   extends WordSpec
@@ -39,10 +39,10 @@ trait MiscSuite
     )
   )
 
-  private lazy val userClusterStateManager = new ClusterStateManager(
+  private lazy val userClusterStateManager = new ClusterManager(
     client = basicAuthClient("user1", "pass"),
-    additionalHeaders = Map("X-Forwarded-For" -> "es-pub7")
-  )
+    additionalHeaders = Map("X-Forwarded-For" -> "es-pub7"),
+    esVersion = targetEs.esVersion)
 
   "An x_forwarded_for" should {
     "block the request because hostname is not resolvable" in {

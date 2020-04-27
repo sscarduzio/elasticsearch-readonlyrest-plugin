@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
+import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 trait ClusterStateSuite
   extends WordSpec
@@ -29,7 +29,7 @@ trait ClusterStateSuite
 
   override implicit val rorConfigFileName = "/cluster_state/readonlyrest.yml"
 
-  private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
+  private lazy val adminClusterStateManager = new ClusterManager(adminClient, esVersion = targetEs.esVersion)
 
   "/_cat/state should work as expected" in {
     val response = adminClusterStateManager.healthCheck()

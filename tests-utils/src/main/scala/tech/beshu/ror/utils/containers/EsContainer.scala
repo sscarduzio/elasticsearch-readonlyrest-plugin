@@ -77,6 +77,7 @@ object EsContainer extends StrictLogging {
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     esContainer.container.addExposedPort(9200)
+    esContainer.container.addExposedPort(9300)
     esContainer.container.setWaitStrategy(
       new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, Coeval(esContainer.adminClient), initializer)
         .withStartupTimeout(3 minutes)

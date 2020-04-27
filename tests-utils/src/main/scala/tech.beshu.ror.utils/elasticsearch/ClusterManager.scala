@@ -17,16 +17,19 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.HttpGet
+import org.apache.http.client.methods.{HttpGet, HttpPut}
+import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager.CatResponse
+import tech.beshu.ror.utils.elasticsearch.ClusterManager.CatResponse
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.Version
 import ujson.{Arr, Value}
 
 import scala.collection.JavaConverters._
 
-class ClusterStateManager(client: RestClient,
-                          override val additionalHeaders: Map[String, String] = Map.empty)
+class ClusterManager(client: RestClient,
+                     override val additionalHeaders: Map[String, String] = Map.empty,
+                     esVersion: String)
   extends BaseManager(client) {
 
   def healthCheck(): SimpleResponse = {
@@ -49,6 +52,10 @@ class ClusterStateManager(client: RestClient,
     call(createCatIndicesRequest(Some(index)), new CatResponse(_))
   }
 
+  def configureRemoteClusters(remoteClusters: Map[String, List[String]]): SimpleResponse = {
+    call(createAddCLusterSettingsRequest(remoteClusters), new SimpleResponse(_))
+  }
+
   private def createCatTemplatesRequest(index: Option[String]) = {
     new HttpGet(client.from(
       s"/_cat/templates${index.map(i => s"/$i").getOrElse("")}",
@@ -62,9 +69,48 @@ class ClusterStateManager(client: RestClient,
       Map("format" -> "json", "s" -> "index:asc").asJava
     ))
   }
+
+  private def createAddCLusterSettingsRequest(remoteClusters: Map[String, List[String]]) = {
+    val remoteClustersConfigString = remoteClusters
+      .map { case (name, seeds) =>
+        s""""$name": { "seeds": [ ${seeds.mkString(",")} ] }"""
+      }
+      .mkString(",\n")
+
+    val request = new HttpPut(client.from("_cluster/settings"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      if (Version.greaterOrEqualThan(esVersion, 6, 5, 0)) {
+        s"""
+           |{
+           |  "persistent": {
+           |    "cluster": {
+           |      "remote": {
+           |        $remoteClustersConfigString
+           |      }
+           |    }
+           |  }
+           |}
+          """.stripMargin
+      } else {
+        s"""
+           |{
+           |  "persistent": {
+           |    "search": {
+           |      "remote": {
+           |        $remoteClustersConfigString
+           |      }
+           |    }
+           |  }
+           |}
+          """.stripMargin
+      }
+    ))
+    request
+  }
 }
 
-object ClusterStateManager {
+object ClusterManager {
 
   final class CatResponse(response: HttpResponse)
     extends JsonResponse(response) {

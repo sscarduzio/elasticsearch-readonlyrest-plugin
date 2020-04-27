@@ -17,20 +17,14 @@
 package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import com.dimafeng.testcontainers.{Container, SingleContainer}
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
-import org.apache.http.client.methods.HttpPut
-import org.apache.http.entity.StringEntity
 import org.testcontainers.containers.GenericContainer
-import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.ScalaUtils._
-import tech.beshu.ror.utils.misc.Version
+import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 import scala.collection.immutable.Seq
 import scala.language.existentials
-import scala.util.Try
 
 class EsClusterContainer private[containers](val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
                                              dependencies: List[DependencyDef])
@@ -105,54 +99,16 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
 
   private def remoteClustersInitializer(container: EsClusterContainer,
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
-    def createRemoteClusterSettingsRequest(esClient: RestClient) = {
-      val remoteClustersConfigString = remoteClustersConfig
-        .map { case (name, remoteCluster) =>
-          s""""$name": { "seeds": [ ${remoteCluster.nodes.map(c => s""""${c.name}:9300"""").mkString(",")} ] }"""
-        }
-        .mkString(",\n")
+    val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
+    val result = clusterManager.configureRemoteClusters(
+      remoteClustersConfig.mapValues(_.nodes.map(c => s""""${c.name}:9300""""))
+    )
 
-      val request = new HttpPut(esClient.from("_cluster/settings"))
-      request.setHeader("Content-Type", "application/json")
-      request.setEntity(new StringEntity(
-        if (Version.greaterOrEqualThan(container.nodes.head.esVersion, 6, 5, 0)) {
-          s"""
-             |{
-             |  "persistent": {
-             |    "cluster": {
-             |      "remote": {
-             |        $remoteClustersConfigString
-             |      }
-             |    }
-             |  }
-             |}
-          """.stripMargin
-        } else {
-          s"""
-             |{
-             |  "persistent": {
-             |    "search": {
-             |      "remote": {
-             |        $remoteClustersConfigString
-             |      }
-             |    }
-             |  }
-             |}
-          """.stripMargin
-        }
-      ))
-      request
+    result.responseCode match {
+      case 200 =>
+      case other =>
+        throw new IllegalStateException(s"Cannot initialize remote cluster settings - response code: $other")
     }
-
-    val esClient = container.nodes.head.adminClient
-    Try(esClient.execute(createRemoteClusterSettingsRequest(esClient)))
-      .bracket { response =>
-        response.getStatusLine.getStatusCode match {
-          case 200 =>
-          case _ =>
-            throw new IllegalStateException("Cannot initialize remote cluster settings")
-        }
-      }
   }
 }
 
