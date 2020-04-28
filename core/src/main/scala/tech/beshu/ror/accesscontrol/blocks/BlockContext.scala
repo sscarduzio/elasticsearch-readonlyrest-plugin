@@ -190,7 +190,7 @@ object BlockContext {
     }
 
     def nonExistingIndicesFromInitialIndices(): Set[IndexName] = {
-      blockContext.indices.map(i => IndexName.randomNonexistentIndex2(i.value.value))
+      blockContext.indices.map(i => IndexName.randomNonexistentIndex(i.value.value))
     }
   }
 }
