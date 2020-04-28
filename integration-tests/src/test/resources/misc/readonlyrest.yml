@@ -15,3 +15,12 @@ readonlyrest:
       x_forwarded_for:
         - es-pub7
       type: allow
+
+    - name: "Access for data of selected users"
+      filter: '{"bool": { "must": { "terms": { "user_id": [@{jwt:user_id_list}] }}}}'
+      jwt_auth: "jwt1"
+
+  jwt:
+    - name: jwt1
+      signature_key: "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
+      user_claim: user
