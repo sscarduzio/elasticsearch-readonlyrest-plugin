@@ -32,7 +32,7 @@ trait EnabledAuditingToolsSuite
 
   override implicit val rorConfigFileName = "/enabled_auditing_tools/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

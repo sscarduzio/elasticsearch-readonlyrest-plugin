@@ -5,7 +5,7 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-  enable: false
+  prompt_for_basic_auth: true
 
   access_control_rules:
 
@@ -15,14 +15,10 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "test1"
-      indices: ["test1_index", "odd:test1_index"]
+    - name: "dev1 indexes"
+      indices: ["index1*"]
       auth_key: dev1:test
 
-    - name: "test2"
-      indices: ["test2_index", "even:test1_index"]
+    - name: "dev2 indices"
+      indices: ["index2*"]
       auth_key: dev2:test
-
-    - name: "real life case"
-      indices: ["metrics-monitoring*", "etl:etl*"]
-      auth_key: dev3:test

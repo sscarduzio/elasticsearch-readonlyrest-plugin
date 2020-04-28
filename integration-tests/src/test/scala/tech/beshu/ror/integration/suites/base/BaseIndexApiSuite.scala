@@ -341,14 +341,14 @@ trait BaseIndexApiSuite
 
 object BaseIndexApiSuite {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient)
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient)
 
-    documentManager.createDoc("/index1/test/1", ujson.read("""{"hello":"world"}"""))
+    documentManager.createDoc("index1", 1, ujson.read("""{"hello":"world"}"""))
     indexManager.createAliasOf("index1", "index1_alias")
 
-    documentManager.createDoc("/index2/test/1", ujson.read("""{"hello":"world"}"""))
+    documentManager.createDoc("index2", 1, ujson.read("""{"hello":"world"}"""))
     indexManager.createAliasOf("index2", "index2_alias")
   }
 }

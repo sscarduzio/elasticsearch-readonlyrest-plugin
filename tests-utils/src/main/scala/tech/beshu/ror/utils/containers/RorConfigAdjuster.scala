@@ -18,7 +18,6 @@ package tech.beshu.ror.utils.containers
 
 import better.files.File
 import tech.beshu.ror.utils.containers.ContainerOps._
-import tech.beshu.ror.utils.containers.EsClusterContainer.{StartedClusterDependencies, StartedDependency}
 object RorConfigAdjuster {
 
   private val hostPlaceholder = "HOST"

@@ -33,7 +33,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
 
   override implicit val rorConfigFileName = "/rev_proxy_groups_provider/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

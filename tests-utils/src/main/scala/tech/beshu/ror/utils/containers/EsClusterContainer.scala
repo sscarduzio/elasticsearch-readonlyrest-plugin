@@ -17,126 +17,105 @@
 package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import com.dimafeng.testcontainers.{Container, SingleContainer}
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
-import org.apache.http.client.methods.HttpPut
-import org.apache.http.entity.StringEntity
-import org.junit.runner.Description
 import org.testcontainers.containers.GenericContainer
-import tech.beshu.ror.utils.containers.EsClusterContainer.{StartedClusterDependencies, StartedDependency}
-import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.ScalaUtils._
+import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
+import scala.collection.immutable.Seq
 import scala.language.existentials
-import scala.util.Try
 
-class EsClusterContainer private[containers](esClusterContainersCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
-                                             dependencies: List[DependencyDef]) extends Container {
-
-  private var clusterDependencies = StartedClusterDependencies(List.empty)
-  private var createdContainers = List.empty[EsContainer]
-
-  def esVersion: String = nodesContainers.head.esVersion
-
-  def nodesContainers: NonEmptyList[EsContainer] = NonEmptyList.fromListUnsafe(createdContainers)
-
-  def startedClusterDependencies: StartedClusterDependencies = clusterDependencies
-
-  override def starting()(implicit description: Description): Unit = {
-    val createdDependenciesContainers = dependencies.map(d => (d.name, d.containerCreator.apply(), d.originalPort))
-    //starting dependencies...
-    Task.gather(createdDependenciesContainers.map(s => Task(s._2.starting()(description)))).runSyncUnsafe()
-
-    val justStartedClusterDependencies = StartedClusterDependencies(createdDependenciesContainers
-      .map { case (name, container, port) => StartedDependency(name, container, port)})
-    clusterDependencies = justStartedClusterDependencies
-
-    val justCreatedContainers = esClusterContainersCreators.toList.map(creator => creator(justStartedClusterDependencies))
-    createdContainers = justCreatedContainers
-
-    //starting es containers...
-    Task.gather(justCreatedContainers.map(s => Task(s.starting()(description)))).runSyncUnsafe()
-  }
-
-  override def finished()(implicit description: Description): Unit =
-    nodesContainers.toList.foreach(_.finished()(description))
-
-  override def succeeded()(implicit description: Description): Unit =
-    nodesContainers.toList.foreach(_.succeeded()(description))
-
-  override def failed(e: Throwable)(implicit description: Description): Unit =
-    nodesContainers.toList.foreach(_.failed(e)(description))
-
-}
-
-object EsClusterContainer {
-  final case class StartedDependency(name: String, container: SingleContainer[GenericContainer[_]], originalPort: Int)
-  final case class StartedClusterDependencies(values: List[StartedDependency])
-}
-
-class EsRemoteClustersContainer private[containers](val localClusters: NonEmptyList[EsClusterContainer],
-                                                    remoteClustersInitializer: RemoteClustersInitializer)
+class EsClusterContainer private[containers](val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
+                                             dependencies: List[DependencyDef])
   extends Container {
 
-  override def starting()(implicit description: Description): Unit = {
-    localClusters.map(_.starting()(description))
-    val config = remoteClustersInitializer.remoteClustersConfiguration(localClusters.map(_.nodesContainers.head))
-    localClusters.toList.foreach { container =>
-      remoteClustersInitializer(container.nodesContainers.head, config)
-    }
+  private val depsContainers: Seq[(DependencyDef, SingleContainer[GenericContainer[_]])] =
+    dependencies.map(d => (d, d.containerCreator.apply()))
+
+  private var clusterNodes = List.empty[EsContainer]
+
+  def nodes: List[EsContainer] = this.clusterNodes
+
+  def esVersion: String = nodes.headOption match {
+    case Some(head) => head.esVersion
+    case None => throw new IllegalStateException("Nodes of cluster have not started yet. Cannot determine ES version.")
   }
 
-  override def finished()(implicit description: Description): Unit =
-    localClusters.toList.foreach(_.finished()(description))
+  override def start(): Unit = {
+    val startedDependencies = startDependencies()
+    clusterNodes = startClusterNodes(startedDependencies)
+  }
 
-  override def succeeded()(implicit description: Description): Unit =
-    localClusters.toList.foreach(_.succeeded()(description))
+  override def stop(): Unit = {
+    clusterNodes.foreach(_.stop())
+    depsContainers.foreach(_._2.stop())
+  }
 
-  override def failed(e: Throwable)(implicit description: Description): Unit =
-    localClusters.toList.foreach(_.failed(e)(description))
-
-  private def remoteClustersInitializer(container: EsContainer,
-                                        remoteClustersConfig: Map[String, NonEmptyList[EsContainer]]): Unit = {
-    def createRemoteClusterSettingsRequest(esClient: RestClient) = {
-      val remoteClustersConfigString = remoteClustersConfig
-        .map { case (name, remoteClusterContainers) =>
-          s""""$name": { "seeds": [ ${remoteClusterContainers.toList.map(c => s""""${c.name}:9300"""").mkString(",")} ] }"""
+  private def startDependencies() = {
+    startContainersAsynchronously(depsContainers.map(_._2))
+    StartedClusterDependencies {
+      depsContainers
+        .map { case (dependencyDef, container) =>
+          StartedDependency(dependencyDef.name, container, dependencyDef.originalPort)
         }
-        .mkString(",\n")
-
-      val request = new HttpPut(esClient.from("_cluster/settings"))
-      request.setHeader("Content-Type", "application/json")
-      request.setEntity(new StringEntity(
-        s"""
-           |{
-           |  "persistent": {
-           |    "search.remote": {
-           |      $remoteClustersConfigString
-           |    }
-           |  }
-           |}
-          """.stripMargin))
-      request
-    }
-
-    val esClient = container.adminClient
-    Try(esClient.execute(createRemoteClusterSettingsRequest(esClient))).bracket { response =>
-      response.getStatusLine.getStatusCode match {
-        case 200 =>
-        case _ =>
-          throw new IllegalStateException("Cannot initialize remote cluster settings")
-      }
+        .toList
     }
   }
 
+  private def startClusterNodes(dependencies: StartedClusterDependencies) = {
+    val nodes = nodeCreators.toList.map(creator => creator(dependencies))
+    startContainersAsynchronously(nodes)
+    nodes
+  }
+
+  private def startContainersAsynchronously(containers: Iterable[SingleContainer[_]]): Unit = {
+    Task
+      .gatherUnordered {
+        containers.map(c => Task(c.start()))
+      }
+      .runSyncUnsafe()
+  }
+}
+
+class EsRemoteClustersContainer private[containers](val localCluster: EsClusterContainer,
+                                                    remoteClusters: NonEmptyList[EsClusterContainer],
+                                                    remoteClusterSetup: SetupRemoteCluster)
+  extends Container {
+
+  override def start(): Unit = {
+    remoteClusters.toList.foreach(_.start())
+    localCluster.start()
+    remoteClustersInitializer(
+      localCluster,
+      remoteClusterSetup.remoteClustersConfiguration(remoteClusters)
+    )
+  }
+
+  override def stop(): Unit = {
+    localCluster.stop()
+    remoteClusters.toList.foreach(_.stop())
+  }
+
+  private def remoteClustersInitializer(container: EsClusterContainer,
+                                        remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
+    val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
+    val result = clusterManager.configureRemoteClusters(
+      remoteClustersConfig.mapValues(_.nodes.map(c => s""""${c.name}:9300""""))
+    )
+
+    result.responseCode match {
+      case 200 =>
+      case other =>
+        throw new IllegalStateException(s"Cannot initialize remote cluster settings - response code: $other")
+    }
+  }
 }
 
 final case class ContainerSpecification(environmentVariables: Map[String, String])
 
-trait RemoteClustersInitializer {
-  def remoteClustersConfiguration(localClusterRepresentatives: NonEmptyList[EsContainer]): Map[String, NonEmptyList[EsContainer]]
+trait SetupRemoteCluster {
+  def remoteClustersConfiguration(remoteClusters: NonEmptyList[EsClusterContainer]): Map[String, EsClusterContainer]
 }
 
 final case class EsClusterSettings(name: String,

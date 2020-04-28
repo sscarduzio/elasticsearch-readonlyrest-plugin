@@ -39,6 +39,7 @@ eshome/*.log
 eshome/modules/*
 eshome/config/elasticsearch.keystore
 target/
+eshome2/*
 
 integration-tests/src/test/eshome2/*
 integration-tests/src/test/eshome2

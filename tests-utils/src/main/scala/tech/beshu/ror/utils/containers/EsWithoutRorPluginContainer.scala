@@ -19,15 +19,13 @@ package tech.beshu.ror.utils.containers
 import cats.data.NonEmptyList
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
-import tech.beshu.ror.utils.containers.EsClusterContainer.StartedClusterDependencies
 
 import scala.language.postfixOps
 
 class EsWithoutRorPluginContainer(name: String,
                                   esVersion: String,
-                                  startedClusterDependencies: StartedClusterDependencies,
                                   image: ImageFromDockerfile)
-  extends EsContainer(name, esVersion, startedClusterDependencies, image)
+  extends EsContainer(name, esVersion, image)
   with StrictLogging {
 
   logger.info(s"[$name] Creating ES without ROR plugin installed container ...")
@@ -48,12 +46,10 @@ object EsWithoutRorPluginContainer {
                           externalSslEnabled: Boolean) extends EsContainer.Config
 
   def create(config: EsWithoutRorPluginContainer.Config,
-             initializer: ElasticsearchNodeDataInitializer,
-             startedClusterDependencies: StartedClusterDependencies) = {
+             initializer: ElasticsearchNodeDataInitializer): EsContainer = {
     val esContainer = new EsWithoutRorPluginContainer(
       config.nodeName,
       config.esVersion,
-      startedClusterDependencies,
       ESWithoutRorPluginImage.create(config)
     )
     EsContainer.init(esContainer, config, initializer)

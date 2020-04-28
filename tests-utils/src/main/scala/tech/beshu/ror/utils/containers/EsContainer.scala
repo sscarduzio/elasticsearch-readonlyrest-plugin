@@ -26,7 +26,6 @@ import monix.eval.Coeval
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
-import tech.beshu.ror.utils.containers.EsClusterContainer.StartedClusterDependencies
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
@@ -38,7 +37,6 @@ import scala.language.postfixOps
 
 abstract class EsContainer(val name: String,
                            val esVersion: String,
-                           val startedClusterDependencies: StartedClusterDependencies,
                            image: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
     with ClientProvider
@@ -79,6 +77,7 @@ object EsContainer extends StrictLogging {
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     esContainer.container.addExposedPort(9200)
+    esContainer.container.addExposedPort(9300)
     esContainer.container.setWaitStrategy(
       new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, Coeval(esContainer.adminClient), initializer)
         .withStartupTimeout(3 minutes)

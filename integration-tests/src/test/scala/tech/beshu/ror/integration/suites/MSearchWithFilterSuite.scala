@@ -38,10 +38,10 @@ trait MSearchWithFilterSuite
 
   override def nodeDataInitializer = Some(MSearchWithFilterSuite.nodeDataInitializer())
 
-  private val matchAllIndicesQuery =
-    """{"index":"*"}
-      |{"query" : {"match_all" : {}}}
-      |""".stripMargin
+  private val matchAllIndicesQuery = Seq(
+    """{"index":"*"}""",
+    """{"query" : {"match_all" : {}}}"""
+  )
 
   private lazy val adminSearchManager = new SearchManager(adminClient)
   private lazy val user1SearchManager = new SearchManager(basicAuthClient("test1", "dev"))
@@ -50,11 +50,11 @@ trait MSearchWithFilterSuite
   "userShouldOnlySeeFacebookPostsFilterTest" in {
     waitUntilAllIndexed()
 
-    val searchResult1 = user1SearchManager.msearch(matchAllIndicesQuery)
-    val searchResult2 = user1SearchManager.msearch(matchAllIndicesQuery)
-    val searchResult3 = user2SearchManager.msearch(matchAllIndicesQuery)
-    val searchResult4 = user2SearchManager.msearch(matchAllIndicesQuery)
-    val searchResult5 = user1SearchManager.msearch(matchAllIndicesQuery)
+    val searchResult1 = user1SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
+    val searchResult2 = user1SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
+    val searchResult3 = user2SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
+    val searchResult4 = user2SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
+    val searchResult5 = user1SearchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
 
     assertSearchResult("facebook", searchResult1)
     assertSearchResult("facebook", searchResult2)
@@ -80,7 +80,9 @@ trait MSearchWithFilterSuite
       .withMaxRetries(20)
       .withDelay(Duration.ofMillis(500))
       .withMaxDuration(Duration.ofSeconds(10))
-    Failsafe.`with`[MSearchResult, RetryPolicy[MSearchResult]](retryPolicy).get(() => adminSearchManager.msearch(matchAllIndicesQuery))
+    Failsafe
+      .`with`[MSearchResult, RetryPolicy[MSearchResult]](retryPolicy)
+      .get(() => adminSearchManager.mSearchUnsafe(matchAllIndicesQuery: _*))
   }
 
   private def resultsContainsLessElementsThan(): BiPredicate[MSearchResult, Throwable] =

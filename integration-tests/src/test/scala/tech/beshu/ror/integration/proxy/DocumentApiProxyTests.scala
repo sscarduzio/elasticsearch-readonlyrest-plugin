@@ -14,19 +14,8 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers
+package tech.beshu.ror.integration.proxy
 
-import cats.data.NonEmptyList
-import com.dimafeng.testcontainers.SingleContainer
-import org.testcontainers.containers.GenericContainer
+import tech.beshu.ror.integration.suites.DocumentApiSuite
 
-trait EsContainerCreator {
-
-  def create(name: String,
-             nodeNames: NonEmptyList[String],
-             clusterSettings: EsClusterSettings,
-             startedClusterDependencies: StartedClusterDependencies): EsContainer
-}
-
-final case class StartedDependency(name: String, container: SingleContainer[GenericContainer[_]], originalPort: Int)
-final case class StartedClusterDependencies(values: List[StartedDependency])
+class DocumentApiProxyTests extends DocumentApiSuite with ProxyTestSupport

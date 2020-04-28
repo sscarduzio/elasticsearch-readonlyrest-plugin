@@ -33,7 +33,7 @@ trait LdapIntegrationFirstOptionSuite
 
   override implicit val rorConfigFileName = "/ldap_integration_1st/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

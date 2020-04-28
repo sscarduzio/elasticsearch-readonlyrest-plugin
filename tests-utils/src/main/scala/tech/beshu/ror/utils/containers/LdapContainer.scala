@@ -51,9 +51,10 @@ class LdapContainer(name: String, ldapInitScript: String)
 
   def ldapHost: String = this.containerIpAddress
 
-  def stop(): Unit = {
+  override def stop(): Unit = {
     this.container.stop()
   }
+
 }
 
 object LdapContainer {

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.utils.elasticsearch;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -25,7 +24,6 @@ import tech.beshu.ror.utils.httpclient.RestClient;
 import tech.beshu.ror.utils.misc.HttpResponseHelper;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -55,9 +53,11 @@ public abstract class JBaseManager {
   public static class SimpleResponse {
 
     private final Integer responseCode;
+    private final String body;
 
     SimpleResponse(HttpResponse response) {
       this.responseCode = response.getStatusLine().getStatusCode();
+      this.body = stringBodyFrom(response);
     }
 
     public int getResponseCode() {
@@ -67,37 +67,15 @@ public abstract class JBaseManager {
     public boolean isSuccess() {
       return getResponseCode() / 100 == 2;
     }
-  }
 
-  public static class TextLinesResponse extends SimpleResponse {
-
-    private final List<String> results;
-    private final String body;
-
-    TextLinesResponse(HttpResponse response) {
-      super(response);
-      this.body = stringBodyFrom(response);
-      this.results = isSuccess()
-          ? linesFrom(body)
-          : Lists.newArrayList();
-    }
-
-    public List<String> getResults() {
-      return results;
-    }
-
-    private List<String> linesFrom(String body) {
-      String[] lines = body.split(System.getProperty("line.separator"));
-      if(lines.length == 0) return Lists.newArrayList();
-      else if (lines.length == 1 && lines[0].isEmpty()) return Lists.newArrayList();
-      else return Lists.newArrayList(lines);
+    public String getBody() {
+      return body;
     }
   }
 
   public static class JsonResponse extends SimpleResponse {
 
     private final Map<String, Object> responseJson;
-    private final String body;
 
     JsonResponse(HttpResponse response) {
       this(response, false);
@@ -105,9 +83,8 @@ public abstract class JBaseManager {
 
     JsonResponse(HttpResponse response, Boolean withJsonError) {
       super(response);
-      this.body = stringBodyFrom(response);
       this.responseJson = isSuccess() || withJsonError
-          ? HttpResponseHelper.deserializeJsonBody(body)
+          ? HttpResponseHelper.deserializeJsonBody(getBody())
           : Maps.newHashMap();
     }
 
@@ -115,6 +92,6 @@ public abstract class JBaseManager {
       return responseJson;
     }
 
-    public String getRawBody() { return body; }
+    public String getRawBody() { return getBody(); }
   }
 }
