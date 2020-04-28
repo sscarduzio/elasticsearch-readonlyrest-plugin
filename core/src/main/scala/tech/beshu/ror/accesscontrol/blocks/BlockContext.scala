@@ -181,4 +181,16 @@ object BlockContext {
       }
     }
   }
+
+  implicit class RandomIndexBasedOnBlockContextIndices(val blockContext: GeneralIndexRequestBlockContext) extends AnyVal {
+
+    def randomNonexistentIndex(): IndexName = {
+      import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
+      blockContext.indices.toList.randomNonexistentIndex()
+    }
+
+    def nonExistingIndicesFromInitialIndices(): Set[IndexName] = {
+      blockContext.indices.map(i => IndexName.randomNonexistentIndex2(i.value.value))
+    }
+  }
 }

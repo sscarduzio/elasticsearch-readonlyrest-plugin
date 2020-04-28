@@ -49,7 +49,7 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
   override def modifyWhenIndexNotFound: ModificationResult = {
     uriPath match {
       case CatIndicesPath(_) =>
-        update(actionRequest, NonEmptyList.of(randomNonexistentIndex()))
+        update(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()))
       case _ =>
         super.modifyWhenIndexNotFound
     }

@@ -248,7 +248,7 @@ object domain {
 
     def fromUnsafeString(value: String): IndexName = from(NonEmptyString.unsafeFrom(value))
 
-    def randomNonexistentIndex(prefix: String = ""): IndexName = from {
+    def randomNonexistentIndex2(prefix: String = ""): IndexName = from {
       NonEmptyString.unsafeFrom {
         val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${randomAlphanumeric(10)}"
         if(prefix.contains("*")) s"$nonexistentIndex*"

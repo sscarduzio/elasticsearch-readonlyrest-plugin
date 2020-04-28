@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -59,9 +60,8 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         }
       Modified
     } else {
-      logger.error(
-        s"""[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different
-           |number of inner requests, than altered one. This can be security issue. So, it's better for forbid the request""".stripMargin)
+      logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
+        s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
       ShouldBeInterrupted
     }
   }
@@ -96,10 +96,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   private def updateRequestWithNonExistingIndex(request: SearchRequest): Unit = {
     val originRequestIndices = indicesFrom(request).toList
-    val notExistingIndex = originRequestIndices.find(i => i.hasWildcard && !i.isClusterIndex) orElse originRequestIndices.headOption match {
-      case Some(index) => IndexName.randomNonexistentIndex(index.value.value)
-      case None => IndexName.randomNonexistentIndex()
-    }
+    val notExistingIndex = originRequestIndices.randomNonexistentIndex()
     request.indices(notExistingIndex.value.value)
   }
 }

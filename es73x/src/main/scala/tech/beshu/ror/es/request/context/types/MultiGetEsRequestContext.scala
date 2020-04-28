@@ -30,6 +30,7 @@ import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeI
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
 import scala.collection.JavaConverters._
+import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 
 class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                esContext: EsContext,
@@ -99,10 +100,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private def updateItemWithNonExistingIndex(item: MultiGetRequest.Item): Unit = {
     val originRequestIndices = indicesFrom(item).toList
-    val notExistingIndex = originRequestIndices.find(i => i.hasWildcard && !i.isClusterIndex) orElse originRequestIndices.headOption match {
-      case Some(index) => IndexName.randomNonexistentIndex(index.value.value)
-      case None => IndexName.randomNonexistentIndex()
-    }
+    val notExistingIndex = originRequestIndices.randomNonexistentIndex()
     item.index(notExistingIndex.value.value)
   }
 }
