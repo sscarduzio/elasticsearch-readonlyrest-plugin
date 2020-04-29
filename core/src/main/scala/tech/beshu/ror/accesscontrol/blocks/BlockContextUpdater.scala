@@ -16,15 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.{Header, IndexName, RepositoryName, SnapshotName, Template}
+import tech.beshu.ror.accesscontrol.domain._
 
 sealed trait BlockContextUpdater[B <: BlockContext] {
 
   def emptyBlockContext(blockContext: B): B
+
   def withUserMetadata(blockContext: B, userMetadata: UserMetadata): B
+
   def withAddedResponseHeader(blockContext: B, header: Header): B
+
   def withAddedContextHeader(blockContext: B, header: Header): B
 }
 
@@ -164,6 +168,29 @@ object BlockContextUpdater {
                     indices: Set[IndexName]): GeneralIndexRequestBlockContext =
       blockContext.copy(indices = indices)
 
+  }
+
+  implicit object MultiIndexRequestBlockContextUpdater
+    extends BlockContextUpdater[MultiIndexRequestBlockContext] {
+
+    override def emptyBlockContext(blockContext: MultiIndexRequestBlockContext): MultiIndexRequestBlockContext =
+      MultiIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty)
+
+    override def withUserMetadata(blockContext: MultiIndexRequestBlockContext,
+                                  userMetadata: UserMetadata): MultiIndexRequestBlockContext =
+      blockContext.copy(userMetadata = userMetadata)
+
+    override def withAddedResponseHeader(blockContext: MultiIndexRequestBlockContext,
+                                         header: Header): MultiIndexRequestBlockContext =
+      blockContext.copy(responseHeaders = blockContext.responseHeaders + header)
+
+    override def withAddedContextHeader(blockContext: MultiIndexRequestBlockContext,
+                                        header: Header): MultiIndexRequestBlockContext =
+      blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
+
+    def withIndexPacks(blockContext: MultiIndexRequestBlockContext,
+                       indexPacks: List[Indices]): MultiIndexRequestBlockContext =
+      blockContext.copy(indexPacks = indexPacks)
   }
 }
 

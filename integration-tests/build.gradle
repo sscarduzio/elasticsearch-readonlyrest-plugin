@@ -7,17 +7,12 @@ buildscript {
     }
     dependencies {
         classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
+        classpath 'gradle.plugin.com.github.maiflai:gradle-scalatest:0.23'
     }
 }
 
-subprojects {
-    tasks.withType(Test) {
-        maxParallelForks = 2
-    }
-}
-
-apply plugin: 'java'
 apply plugin: 'scala'
+apply plugin: 'com.github.maiflai.scalatest'
 apply plugin: "com.github.hierynomus.license"
 
 repositories {
@@ -29,10 +24,34 @@ repositories {
 
 test {
     systemProperty "project.dir", rootProject.projectDir
-    enabled = project.hasProperty('esModule')
+    enabled = project.hasProperty('esModule') && project.hasProperty('mode')
     if (enabled) {
         def module = project.properties['esModule']
         systemProperty "esModule", module
+
+        tags {
+            exclude 'tech.beshu.tags.ExcludeESModule.' + module
+        }
+
+        def mode = project.properties['mode']
+        if (mode == 'plugin') {
+            suite 'tech.beshu.ror.integration.plugin.*'
+        } else if (mode == 'proxy') {
+            suite 'tech.beshu.ror.integration.proxy.*'
+            /**
+             * Current proxy implementation uses:
+             * val threadPool: ThreadPool = new ThreadPool(Settings.EMPTY)
+             *
+             * With enabled assertions following fails:
+             *
+             * assert Node.NODE_NAME_SETTING.exists(settings)
+             *
+             * in org.elasticsearch.threadpool.ThreadPool.java
+             */
+            enableAssertions(false)
+        } else {
+            throw new Exception("Invalid mode: '$mode'! Allowed 'proxy' or 'plugin'")
+        }
     }
     outputs.upToDateWhen { false }
 
@@ -41,15 +60,20 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
+
+    maxParallelForks = 1
 }
 
 dependencies {
     testCompile project(':tests-utils')
-    
+    testCompile project(':es74x-cloud')
+
     testCompile group: 'io.jsonwebtoken',               name: 'jjwt',                       version: '0.9.1'
     testCompile group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
     testCompile group: 'ch.qos.logback',                name: 'logback-core',               version: '1.2.3'
+    testRuntime group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
     testCompile group: 'org.scala-lang',                name: 'scala-library',              version: '2.12.4'
+    testCompile group: 'org.scalatest',                 name: 'scalatest_2.12',             version: '3.0.8'
 
 }
 

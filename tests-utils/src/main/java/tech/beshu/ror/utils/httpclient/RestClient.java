@@ -105,7 +105,7 @@ public class RestClient {
       builder = HttpClientBuilder.create();
     }
 
-    int timeout = 30;
+    int timeout = 100;
     builder
       .setRetryHandler(new StandardHttpRequestRetryHandler(3, true))
       .setDefaultHeaders(Lists.newArrayList(headers))

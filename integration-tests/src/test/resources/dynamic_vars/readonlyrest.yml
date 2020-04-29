@@ -1,0 +1,22 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+  - name: "CONTAINER ADMIN"
+    type: allow
+    auth_key: admin:container
+
+  - name: "Kibana at user 1"
+    type: allow
+    auth_key: simone:${TEST_VAR}
+    indices: [".kibana_@{user}"]
+
+  - name: "Kibana at user 2"
+    type: allow
+    auth_key: pablo:${TEST_VAR}
+    indices: [".kibana_simone"]

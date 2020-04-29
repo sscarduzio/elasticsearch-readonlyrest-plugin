@@ -1,0 +1,18 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+    - name: "CONTAINER ADMIN"
+      type: allow
+      auth_key: admin:container
+
+    - name: "::BAD HOST::"
+      accept_x-forwarded-for_header: true
+      hosts: ["wontresolve"]
+      indices: ["empty_index"]
+      kibana_access: rw
