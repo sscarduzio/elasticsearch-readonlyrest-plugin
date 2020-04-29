@@ -187,4 +187,4 @@ object AclAwareRequestFilter {
 }
 
 final case class RequestSeemsToBeInvalid[T: ClassTag](message: String)
-  extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].getClass.getSimpleName}' cannot be handled; [msg: $message]")
+  extends IllegalStateException(s"Request '${implicitly[ClassTag[T]].runtimeClass.getSimpleName}' cannot be handled; [msg: $message]")
