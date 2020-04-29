@@ -14,15 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.rrconfig
+package tech.beshu.ror.configuration.loader.distribuated
 
-import org.elasticsearch.action.ActionType
-import org.elasticsearch.common.io.stream.Writeable
+import tech.beshu.ror.configuration.loader.LoadedConfig
 
-class RRConfigAction extends ActionType[RRConfigsResponse](RRConfigAction.name, RRConfigAction.reader)
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
-object RRConfigAction {
-  val name = "cluster:admin/rrconfig/config"
-  val instance = new RRConfigAction
-  val reader: Writeable.Reader[RRConfigsResponse] = new RRConfigsResponse(_)
+final case class NodeConfig(loadedConfig: Either[LoadedConfig.Error, LoadedConfig[String]])
+final case class Timeout(nanos: Long) extends AnyVal
+final case class NodeConfigRequest(timeout: Timeout)
+object NodeConfigRequest {
+  val defaultTimeout: Timeout = Timeout(nanos = (1 minute).toNanos)
 }

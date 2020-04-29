@@ -170,7 +170,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |""".stripMargin)
         val acl = createCore(config)
         val headers = acl.right.get.aclStaticContext.obfuscatedHeaders
-        headers shouldBe 'empty
+        headers shouldBe empty
       }
       "the section exists, and obfuscated header is defined" in {
         val config = rorConfigFromUnsafe(

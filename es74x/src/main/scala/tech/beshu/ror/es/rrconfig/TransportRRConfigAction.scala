@@ -1,8 +1,23 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 package tech.beshu.ror.es.rrconfig
 
 import java.util
 
-import monix.eval.Task
 import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.action.support.ActionFilters
 import org.elasticsearch.action.support.nodes.TransportNodesAction
@@ -12,8 +27,9 @@ import org.elasticsearch.common.io.stream.{StreamInput, Writeable}
 import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
+import tech.beshu.ror.configuration.loader.ComposedConfigLoaderFactory
+import tech.beshu.ror.configuration.loader.distribuated.{NodeConfig, Timeout}
 import tech.beshu.ror.es.providers.EsIndexJsonContentProvider
-import tech.beshu.ror.es.rrconfig
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.concurrent.duration._
@@ -46,7 +62,6 @@ class TransportRRConfigAction(actionName: String,
   import monix.execution.Scheduler.Implicits.global
 
   implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  private val loader = new ConfigLoader(env, indexContentProvider)
 
   @Inject
   def this(actionName: String,
@@ -66,14 +81,13 @@ class TransportRRConfigAction(actionName: String,
       env,
       indexContentProvider,
       new RRConfigsRequest(_),
-      new rrconfig.RRConfigRequest(_),
+      new RRConfigRequest(_),
       ThreadPool.Names.GENERIC,
       classOf[RRConfig],
       ()
     )
 
   override def newResponse(request: RRConfigsRequest, responses: util.List[RRConfig], failures: util.List[FailedNodeException]): RRConfigsResponse = {
-    println(s"new response $request, $responses, $failures")
     new RRConfigsResponse(clusterService.getClusterName, responses, failures)
   }
 
@@ -83,15 +97,20 @@ class TransportRRConfigAction(actionName: String,
   override def newNodeResponse(in: StreamInput): RRConfig =
     new RRConfig(in)
 
+  private def loadConfig() =
+    new ComposedConfigLoaderFactory(env.configFile(), indexContentProvider)
+      .load()
+      .map(_.map(_.map(_.raw)))
+
   override def nodeOperation(request: RRConfigRequest): RRConfig = {
     val nodeRequest = request.getNodeConfigRequest
     val nodeResponse =
-      loader.load()
-//        .delayExecution(1 second)
-//        .timeoutTo(nodeRequest.timeout.nanos nanos, Task.pure(Left(LoadedConfig.Timeout)))
-        .runSyncUnsafe(nodeRequest.timeout.nanos nanos)
+      loadConfig()
+        .runSyncUnsafe(toFiniteDuration(nodeRequest.timeout))
     new RRConfig(clusterService.localNode(), NodeConfig(nodeResponse))
   }
+
+  private def toFiniteDuration(timeout: Timeout): FiniteDuration = timeout.nanos nanos
 
 }
 

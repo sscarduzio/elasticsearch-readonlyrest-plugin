@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.adminapi
 
+import cats.Show
 import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import com.twitter.finagle.http.Status.Successful
@@ -32,7 +33,7 @@ import tech.beshu.ror.boot.RorInstance
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.SpecializedError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
 import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RawRorConfig}
@@ -91,26 +92,12 @@ class AdminRestApi(rorInstance: RorInstance,
           Ok[ApiCallResult](Failure(error.show))
       }
   }
-  private val provideRorConfigEndpoint = get(provideRorConfigPath.endpointPath) {
-    indexConfigManager
-      .load()
-      .map {
-        case Right(config) =>
-          Ok[ApiCallResult](Success(config.raw))
-        case Left(SpecializedError(error@IndexConfigNotExist)) =>
-          implicit val show = IndexConfigError.show.contramap(identity[IndexConfigNotExist.type])
-          Ok[ApiCallResult](ConfigNotFound(error.show))
-        case Left(error) =>
-          Ok[ApiCallResult](Failure(error.show))
-      }
-  }
 
   private val service = {
     forceReloadRorEndpoint :+:
       updateIndexConfigurationEndpoint :+:
       provideRorFileConfigEndpoint :+:
-      provideRorIndexConfigEndpoint :+:
-      provideRorConfigEndpoint
+      provideRorIndexConfigEndpoint
   }.toServiceAs[Application.Json]
 
   def call(request: AdminRequest): Task[AdminResponse] = {

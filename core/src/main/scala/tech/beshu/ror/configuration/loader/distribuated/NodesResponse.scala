@@ -1,4 +1,20 @@
-package tech.beshu.ror.es.rrconfig
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+package tech.beshu.ror.configuration.loader.distribuated
 
 import cats.implicits._
 import io.circe.generic.extras.semiauto.deriveUnwrappedEncoder
@@ -6,8 +22,9 @@ import io.circe.generic.semiauto
 import io.circe.syntax._
 import io.circe.{Encoder, Json, JsonObject}
 import shapeless.{Inl, Inr}
-import tech.beshu.ror.es.rrconfig.LoadedConfig.FileRecoveredConfig.Cause
-import tech.beshu.ror.es.rrconfig.NodesResponse.{ClusterName, NodeError, NodeResponse}
+import tech.beshu.ror.configuration.loader.{LoadedConfig, Path}
+import tech.beshu.ror.configuration.loader.LoadedConfig.FileRecoveredConfig.Cause
+import tech.beshu.ror.configuration.loader.distribuated.NodesResponse.{ClusterName, NodeError, NodeResponse}
 
 final case class NodesResponse(clusterName: ClusterName, responses: List[NodeResponse], failures: List[NodeError])
 object NodesResponse {
@@ -26,7 +43,7 @@ object NodesResponse {
       case LoadedConfig.IndexParsingError(message) => ResponseConfigJson('IndexParsingError, message = message.some)
     }
 
-    private def createResponseJson(loadedConfig: LoadedConfig) = {
+    private def createResponseJson(loadedConfig: LoadedConfig[String]) = {
       loadedConfig match {
         case LoadedConfig.FileRecoveredConfig(value, cause) => createFileRecoveredResponse(value, cause)
         case LoadedConfig.ForcedFileConfig(value) => ResponseConfigJson('ForcedFileConfig, config = value.some)
@@ -61,7 +78,7 @@ object NodesResponse {
 
   final case class ClusterName(value: String) extends AnyVal
   final case class NodeId(value: String) extends AnyVal
-  final case class NodeResponse(nodeId: NodeId, loadedConfig: Either[LoadedConfig.Error, LoadedConfig])
+  final case class NodeResponse(nodeId: NodeId, loadedConfig: Either[LoadedConfig.Error, LoadedConfig[String]])
   final case class NodeError(nodeId: NodeId, detailedMessage: String)
 
   implicit private lazy val encodeClusterName: Encoder[ClusterName] = deriveUnwrappedEncoder

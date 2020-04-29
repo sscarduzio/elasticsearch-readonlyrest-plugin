@@ -19,10 +19,11 @@ package tech.beshu.ror.configuration
 import cats.Show
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError, auditIndexConsts}
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
+import tech.beshu.ror.configuration.loader.ConfigLoader
 import tech.beshu.ror.es.IndexJsonContentManager
 import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 import tech.beshu.ror.utils.LoggerOps._

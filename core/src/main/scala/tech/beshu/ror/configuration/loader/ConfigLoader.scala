@@ -14,12 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.configuration.loader
 
 import cats.Show
 import monix.eval.Task
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 
 trait ConfigLoader[SPECIALIZED_ERROR] {
 

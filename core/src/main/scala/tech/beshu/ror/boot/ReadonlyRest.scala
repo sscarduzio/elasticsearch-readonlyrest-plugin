@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.boot
 
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
 import java.time.Clock
 
 import cats.data.EitherT
@@ -36,23 +36,18 @@ import tech.beshu.ror.accesscontrol.factory.consts.RorProperties.RefreshInterval
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
-import tech.beshu.ror.boot.ComposedConfigLoader.{File, Index}
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError._
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
-import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
-import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
-import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
-import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError}
+import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration._
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
+import tech.beshu.ror.configuration.loader.{ComposedConfigLoaderFactory, LoadedConfig}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value
-import tech.beshu.ror.utils.TaskOps._
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
-import scala.util.Success
+import scala.language.{implicitConversions, postfixOps}
 
 object Ror extends ReadonlyRest {
 
@@ -82,15 +77,34 @@ trait ReadonlyRest extends Logging {
             indexContentManager: IndexJsonContentManager)
            (implicit envVarsProvider:EnvVarsProvider): Task[Either[StartingFailure, RorInstance]] = {
     (for {
-      fileConfigLoader <- createFileConfigLoader(esConfigPath)
-      indexConfigLoader <- createIndexConfigLoader(indexContentManager, esConfigPath)
       esConfig <- loadEsConfig(esConfigPath)
-      instance <- startRor(esConfig, fileConfigLoader, indexConfigLoader, auditSink)
+      loadedConfig <- loadConfig(esConfigPath, indexContentManager)
+      indexConfigLoader <- createIndexConfigLoader(indexContentManager, esConfigPath)
+      instance <- startRor(esConfig, loadedConfig, indexConfigLoader, auditSink)
     } yield instance).value
   }
-
-  private def createFileConfigLoader(esConfigPath: Path) = {
-    EitherT.pure[Task, StartingFailure](FileConfigLoader.create(esConfigPath))
+  private def loadConfig(esConfigPath: Path,
+                         indexContentManager: IndexJsonContentManager)
+                        (implicit envVarsProvider: EnvVarsProvider)= {
+    EitherT(new ComposedConfigLoaderFactory(esConfigPath, indexContentManager).load())
+      .leftMap(convertError)
+  }
+  private def convertError(error: LoadedConfig.Error) = {
+    error match {
+      case LoadedConfig.FileParsingError(message) =>
+        StartingFailure(message)
+      case LoadedConfig.FileNotExist(path) =>
+        StartingFailure(s"Cannot find settings file: ${path.value}")
+      case LoadedConfig.EsFileNotExist(path) =>
+        StartingFailure(s"Cannot find elasticsearch settings file: [${path.value}]")
+      case LoadedConfig.EsFileMalformed(path, message) =>
+        StartingFailure(s"Settings file is malformed: [${path.value}], $message")
+      case LoadedConfig.EsIndexConfigurationMalformed(message) =>
+        StartingFailure(message)
+      case LoadedConfig.IndexParsingError(message) =>
+        logger.error(show"Loading ReadonlyREST settings from index failed: $message")
+        StartingFailure(message)
+    }
   }
 
   private def createIndexConfigLoader(indexContentManager: IndexJsonContentManager, esConfigPath: Path) = {
@@ -114,105 +128,28 @@ trait ReadonlyRest extends Logging {
     }
   }
 
-
   private def startRor(esConfig: EsConfig,
-                       fileConfigLoader: FileConfigLoader,
+                        loadedConfig: LoadedConfig[RawRorConfig],
                        indexConfigManager: IndexConfigManager,
                        auditSink: AuditSink) = {
 
     for {
-      loadedConfig <- loadConfig(esConfig, fileConfigLoader, indexConfigManager)
-      engine <- EitherT(loadRorCore(getConfig(loadedConfig), esConfig.rorIndex, auditSink))
+      engine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex, auditSink))
       rorInstance <- createRorInstance(indexConfigManager, auditSink, engine, loadedConfig)
     } yield rorInstance
   }
 
-  private def createRorInstance(indexConfigManager: IndexConfigManager, auditSink: AuditSink, engine: Engine, loadedConfig: ComposedConfigLoader.LoadedConfig) = {
+  private def createRorInstance(indexConfigManager: IndexConfigManager, auditSink: AuditSink, engine: Engine, loadedConfig: LoadedConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       loadedConfig match {
-        case ComposedConfigLoader.FileRecoveredIndex(config, error) =>
+        case LoadedConfig.FileRecoveredConfig(config, cause) =>
           RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
-        case Index(config) =>
+        case LoadedConfig.ForcedFileConfig(config) =>
+          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
+        case LoadedConfig.IndexConfig(config) =>
           RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
-        case ComposedConfigLoader.ForcedFile(config) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
       }
     }
-  }
-
-  private def getConfig(loadedConfig: ComposedConfigLoader.LoadedConfig): RawRorConfig = loadedConfig match {
-    case ComposedConfigLoader.FileRecoveredIndex(config, error) => config
-    case Index(config) => config
-    case ComposedConfigLoader.ForcedFile(config) => config
-  }
-
-  private def loadConfig(esConfig: EsConfig, fileConfigLoader: FileConfigLoader, indexConfigManager: IndexConfigManager) = {
-    EitherT(new ComposedConfigLoader(fileConfigLoader, indexConfigManager, esConfig.rorEsLevelSettings).loadConfig())
-      .leftMap {
-        case File.ParsingError(underlying) =>
-          StartingFailure(underlying.show)
-        case File.FileNotExist(file) =>
-          StartingFailure(s"Cannot find settings file: ${file.pathAsString}")
-        case Index.ParsingError(underlying) =>
-          logger.error(show"Loading ReadonlyREST settings from index failed: $underlying")
-          StartingFailure(underlying.show)
-      }
-  }
-  private def loadRorConfigFromFile(fileConfigLoader: FileConfigLoader) = {
-    logger.info(s"Loading ReadonlyREST settings from file: ${fileConfigLoader.rawConfigFile.pathAsString}")
-    fileConfigLoader
-      .load()
-      .map {
-        case Right(config) =>
-          Right(config)
-        case Left(error@ParsingError(_)) =>
-          Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error)))
-        case Left(error@SpecializedError(_)) =>
-          Left(StartingFailure(ConfigLoaderError.show[FileConfigError].show(error)))
-      }
-      .andThen {
-        case Success(Left(error)) =>
-          logger.error(s"Loading ReadonlyREST from file failed: ${error.message}")
-      }
-  }
-
-  private[ror] def loadRorConfigFromIndex(indexConfigManager: IndexConfigManager,
-                                          noIndexFallback: => Task[Either[StartingFailure, RawRorConfig]]) = {
-    def attempt(attemptsLeft: Int,
-                startingFailure: Option[ConfigLoaderError[IndexConfigError]] = None): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
-      val executionDelay = startingFailure match {
-        case None => 1 second
-        case Some(_) => 5 seconds
-      }
-      startingFailure match {
-        case Some(failure) if attemptsLeft <= 0 =>
-          Task.now(Left(failure))
-        case None | Some(_) =>
-          indexConfigManager
-            .load()
-            .delayExecution(executionDelay)
-            .flatMap {
-              case Right(success) => Task.now(Right(success))
-              case Left(failure) => attempt(attemptsLeft - 1, Some(failure))
-            }
-      }
-    }
-    logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ...")
-    attempt(5)
-      .flatMap {
-        case Right(config) =>
-          Task.now(Right(config))
-        case Left(error@ParsingError(_)) =>
-          val failure = StartingFailure(ConfigLoaderError.show[IndexConfigError].show(error))
-          logger.error(s"Loading ReadonlyREST settings from index failed: ${failure.message}")
-          lift(failure)
-        case Left(SpecializedError(IndexConfigNotExist)) =>
-          logger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
-          noIndexFallback
-        case Left(SpecializedError(IndexConfigUnknownStructure)) =>
-          logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
-          noIndexFallback
-      }
   }
 
   private[ror] def loadRorCore(config: RawRorConfig,
@@ -249,7 +186,6 @@ trait ReadonlyRest extends Logging {
       }
   }
 
-  private def lift(sf: StartingFailure) = Task.now(Left(sf))
 }
 
 class RorInstance private(boot: ReadonlyRest,

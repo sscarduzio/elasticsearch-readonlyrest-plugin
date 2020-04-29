@@ -1,3 +1,19 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 package tech.beshu.ror.es.rrconfig;
 
 import org.elasticsearch.action.FailedNodeException;
@@ -5,17 +21,12 @@ import org.elasticsearch.action.support.nodes.BaseNodesResponse;
 import org.elasticsearch.cluster.ClusterName;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import org.elasticsearch.common.xcontent.ToXContentObject;
-import org.elasticsearch.common.xcontent.XContentBuilder;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class RRConfigsResponse
-        extends BaseNodesResponse<RRConfig>
-        implements ToXContentObject {
+        extends BaseNodesResponse<RRConfig>{
     protected RRConfigsResponse(StreamInput in) throws IOException {
         super(in);
     }
@@ -27,20 +38,11 @@ public class RRConfigsResponse
     @Override
     protected List<RRConfig> readNodesFrom(StreamInput in) throws IOException {
         return in.readList(RRConfig::new);
-
     }
 
     @Override
     protected void writeNodesTo(StreamOutput out, List<RRConfig> nodes) throws IOException {
         out.writeList(nodes);
-    }
-
-    @Override
-    public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-        Map<String, String> m = new HashMap<>();
-        m.put("ko", getNodes().toString());
-        builder.value(m);
-        return builder;
     }
 
 }

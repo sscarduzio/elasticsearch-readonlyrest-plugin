@@ -14,15 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.rrconfig
+package tech.beshu.ror.configuration.loader
 
-import org.elasticsearch.action.ActionType
-import org.elasticsearch.common.io.stream.Writeable
+import io.circe.Codec
+import io.circe.generic.extras.semiauto.deriveUnwrappedCodec
+import io.circe.generic.semiauto
+import io.circe.shapes._
+package object distribuated {
 
-class RRConfigAction extends ActionType[RRConfigsResponse](RRConfigAction.name, RRConfigAction.reader)
+  import io.circe.generic.auto._
 
-object RRConfigAction {
-  val name = "cluster:admin/rrconfig/config"
-  val instance = new RRConfigAction
-  val reader: Writeable.Reader[RRConfigsResponse] = new RRConfigsResponse(_)
+  implicit lazy val codecLoadedConfigError: Codec[LoadedConfig.Error] = semiauto.deriveCodec
+  implicit lazy val codecLoadedConfig: Codec[LoadedConfig[String]] = semiauto.deriveCodec
+  implicit lazy val codecNodeConfigRequest: Codec[NodeConfigRequest] = semiauto.deriveCodec
+  implicit lazy val codecPath: Codec[Path] = deriveUnwrappedCodec
+
 }

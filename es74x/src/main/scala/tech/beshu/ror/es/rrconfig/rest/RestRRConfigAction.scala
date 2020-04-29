@@ -1,21 +1,33 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 package tech.beshu.ror.es.rrconfig.rest
 
 import java.util.function.Supplier
 
-import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.unit.TimeValue
-import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
-import org.elasticsearch.rest.action.RestBuilderListener
 import tech.beshu.ror.adminapi.AdminRestApi
-import tech.beshu.ror.es.rrconfig.NodesResponse.{ClusterName, NodeError, NodeId, NodeResponse}
-import tech.beshu.ror.es.rrconfig.{NodeConfigRequest, NodesResponse, RRConfig, RRConfigAction, RRConfigsRequest, RRConfigsResponse, Timeout}
+import tech.beshu.ror.configuration.loader.distribuated.{NodeConfigRequest, Timeout}
+import tech.beshu.ror.es.rrconfig.{RRConfigAction, RRConfigsRequest}
 
-import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
 
@@ -48,24 +60,6 @@ class RestRRConfigAction(controller: RestController,
     controller.registerHandler(RestRequest.Method.valueOf(method), path, this)
 }
 object RestRRConfigAction {
-  val defaultTimeout: TimeValue = TimeValue.timeValueMinutes(1) //TODO move out from here
-}
-final class ResponseBuilder(channel: RestChannel) extends RestBuilderListener[RRConfigsResponse](channel) {
-  override def buildResponse(response: RRConfigsResponse, builder: XContentBuilder): RestResponse = {
-    val nodeResponse = createNodesResponse(response)
-    new BytesRestResponse(RestStatus.OK, nodeResponse.toJson)
-  }
-
-  private def createNodesResponse(response: RRConfigsResponse) = {
-    NodesResponse(ClusterName(response.getClusterName.value()), response.getNodes.asScala.toList.map(createNodeResponse), response.failures().asScala.toList.map(createNodeError))
-  }
-
-  private def createNodeResponse(config: RRConfig) = {
-    NodeResponse(NodeId(config.getNode.getId), config.getNodeConfig.loadedConfig)
-  }
-
-  private def createNodeError(failedNodeException: FailedNodeException) = {
-    NodeError(NodeId(failedNodeException.nodeId()), failedNodeException.getDetailedMessage)
-  }
-
+  private val defaultTimeout: TimeValue = toTimeValue(NodeConfigRequest.defaultTimeout)
+  private def toTimeValue(timeout: Timeout):TimeValue = TimeValue.timeValueNanos(timeout.nanos)
 }
