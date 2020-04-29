@@ -52,6 +52,9 @@ class TemplateManager(client: RestClient)
   def deleteTemplate(name: String): JsonResponse =
     call(createDeleteTemplateRequest(name), new JsonResponse(_))
 
+  def deleteAllTemplates(): JsonResponse =
+    call(createDeleteAllTemplatesRequest(), new JsonResponse(_))
+
   private def createGetTemplateRequest(name: String) = {
     val request = new HttpGet(client.from("/_template/" + name))
     request.setHeader("timeout", "50s")
@@ -66,6 +69,12 @@ class TemplateManager(client: RestClient)
 
   private def createDeleteTemplateRequest(templateName: String) = {
     val request = new HttpDelete(client.from("/_template/" + templateName))
+    request.setHeader("timeout", "50s")
+    request
+  }
+
+  private def createDeleteAllTemplatesRequest() = {
+    val request = new HttpDelete(client.from("/_template/*"))
     request.setHeader("timeout", "50s")
     request
   }

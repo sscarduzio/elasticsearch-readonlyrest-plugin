@@ -89,20 +89,6 @@ class ReadonlyRestPlugin(s: Settings,
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
 
-  private var ilaf: IndexLevelActionFilter = _
-
-  override def createComponents(client: Client,
-                                clusterService: ClusterService,
-                                threadPool: ThreadPool,
-                                resourceWatcherService: ResourceWatcherService,
-                                scriptService: ScriptService,
-                                xContentRegistry: NamedXContentRegistry): util.Collection[AnyRef] = {
-    doPrivileged {
-      ilaf = new IndexLevelActionFilter(s, clusterService, client.asInstanceOf[NodeClient], threadPool, environment)
-    }
-    List.empty[AnyRef].asJava
-  }
-
   override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
     List[Class[_ <: LifecycleComponent]](classOf[TransportServiceInterceptor]).asJava
   }
@@ -155,10 +141,6 @@ class ReadonlyRestPlugin(s: Settings,
       )
       .toMap
       .asJava
-  }
-
-  override def close(): Unit = {
-    ilaf.stop()
   }
 
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
