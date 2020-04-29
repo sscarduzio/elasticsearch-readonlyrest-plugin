@@ -5,7 +5,7 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-  prompt_for_basic_auth: false
+  prompt_for_basic_auth: true
 
   access_control_rules:
 
@@ -15,14 +15,22 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "test1"
-      indices: ["test1_index", "odd:test1_index"]
+    - name: "dev1 indexes"
+      indices: ["index1*"]
       auth_key: dev1:test
 
-    - name: "test2"
-      indices: ["test2_index", "even:test1_index"]
+    - name: "dev2 indices"
+      indices: ["index2*"]
       auth_key: dev2:test
 
-    - name: "real life case"
-      indices: ["metrics_monitoring*", "etl:etl_*"]
-      auth_key: dev3:test
+    - name: "filtertest example"
+      indices: ["filtertest"]
+      filter: '{"bool": { "must": { "terms": { "user_id": [@{jwt:user_id_list}] }}}}'
+      jwt_auth: "jwt3"
+
+  jwt:
+
+    - name: jwt3
+      signature_algo: "RSA"
+      signature_key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr28z/VXGJq+fQNQENs0NPjcbJPh/w/ytVpFGa9lVtLaRXc3XFJ1UnaGxR+i+zv+qET4feOKQFGldHjchbpHAijdRm/lqf3aB+GH8PfhdTRYZIGSXhFRV2FcMdj3OMi24GoIDOLLtc7PJ2briwdR2qcss+TTCJ/x9q0ztiZoZlT3JGdqb3Ck5cTPSeSDMOi9e0zdbTVXAMW2YgE+3E7uGzxX9p+Cgb1CNAPepHIdD7WKWCWLcAOE0PgWqEZBVGhrnMxKUOeRzE8GA5rUPOGJI02vTYNs6dXd+oTwNa8qYV0lSx4Y3s+jKRGEFNDIelIrYt3hdXeNrtIXluEwHGp/KzwIDAQAB"
+      user_claim: "userId"

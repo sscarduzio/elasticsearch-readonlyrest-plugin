@@ -55,7 +55,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(customRorIndexName.isDefined, s"echo 'readonlyrest.settings_index: ${customRorIndexName.get}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-//          .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties") //todo: fixme
+          .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
           .applyTo(builder)
           .user("root")
 

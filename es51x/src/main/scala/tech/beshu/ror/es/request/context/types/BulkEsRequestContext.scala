@@ -18,9 +18,13 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.elasticsearch.action.{ActionRequest, IndicesRequest}
+import org.elasticsearch.action.IndicesRequest
 import org.elasticsearch.action.IndicesRequest.Replaceable
 import org.elasticsearch.action.bulk.BulkRequest
+import org.elasticsearch.action.delete.DeleteRequest
+import org.elasticsearch.action.index.IndexRequest
+import org.elasticsearch.action.termvectors.TermVectorsRequest
+import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
@@ -53,7 +57,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
 
   override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
-    val requests = actionRequest.requests().asScala.toList
+    val requests = actionRequest.subRequests().asScala.toList
     if (requests.size == modifiedPacksOfIndices.size) {
       requests
         .zip(modifiedPacksOfIndices)
@@ -70,21 +74,17 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
 
   private def indexPacksFrom(request: BulkRequest): List[Indices] = {
     request
-      .requests().asScala
+      .subRequests().asScala
       .map { r => Indices.Found(indicesFrom(r)) }
       .toList
   }
 
-  private def indicesFrom(request: ActionRequest): Set[domain.IndexName] = {
-    request match {
-      case r: IndicesRequest =>
-        val requestIndices = r.indices.flatMap(IndexName.fromString).toSet
-        indicesOrWildcard(requestIndices)
-      case unknown => throw new RequestSeemsToBeInvalid[BulkRequest](s"Cannot update indices of request ${unknown.getClass.getName}")
-    }
+  private def indicesFrom(request: IndicesRequest): Set[domain.IndexName] = {
+    val requestIndices = request.indices.flatMap(IndexName.fromString).toSet
+    indicesOrWildcard(requestIndices)
   }
 
-  private def updateRequest(request: ActionRequest, indexPack: Indices): ModificationResult = {
+  private def updateRequest(request: IndicesRequest, indexPack: Indices): ModificationResult = {
     indexPack match {
       case Indices.Found(indices) =>
         NonEmptyList.fromList(indices.toList) match {
@@ -101,12 +101,16 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     }
   }
 
-  private def updateRequestWithIndices(request: ActionRequest, indices: NonEmptyList[IndexName]) = {
+  private def updateRequestWithIndices(request: IndicesRequest, indices: NonEmptyList[IndexName]) = {
     if (indices.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. Whole set of indices [${indices.toList.mkString(",")}]")
     }
     request match {
       case r: Replaceable => r.indices(indices.head.value.value)
+      case r: IndexRequest => r.index(indices.head.value.value)
+      case r: DeleteRequest => r.index(indices.head.value.value)
+      case r: UpdateRequest => r.index(indices.head.value.value)
+      case r: TermVectorsRequest => r.index(indices.head.value.value)
       case unknown => throw new RequestSeemsToBeInvalid[BulkRequest](s"Cannot update indices of request ${unknown.getClass.getName}")
     }
   }
