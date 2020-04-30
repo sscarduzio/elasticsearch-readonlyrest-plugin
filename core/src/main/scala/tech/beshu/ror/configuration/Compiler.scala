@@ -20,35 +20,68 @@ import cats.data.EitherT
 import cats.implicits._
 import cats.~>
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import shapeless.{Inl, Inr}
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.configuration.ConfigLoading.LoadA
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.LoadedConfig
+import tech.beshu.ror.configuration.loader.LoadedConfig.FileRecoveredConfig.Cause
 import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig, IndexParsingError}
 import tech.beshu.ror.es.IndexJsonContentManager
 
-import scala.language.implicitConversions
+import concurrent.duration._
+import scala.language.{implicitConversions, postfixOps}
 
-object Compiler {
+object Compiler extends Logging {
   def create(indexContentManager: IndexJsonContentManager): (LoadA ~> Task) = new (LoadA ~> Task) {
     override def apply[A](fa: LoadA[A]): Task[A] = fa match {
       case ConfigLoading.ForceLoadFromFile(path) =>
+        logger.info(s"Loading ReadonlyREST settings from file: $path")
         EitherT(FileConfigLoader.create(path).load())
           .bimap(convertFileError, ForcedFileConfig(_))
-          .value
+          .leftMap { error =>
+            logger.error(s"Loading ReadonlyREST from file failed: ${error}")
+            error
+          }.value
       case ConfigLoading.RecoverIndexWithFile(path, loadingFromIndexCause) =>
+        logger.info(s"Loading ReadonlyREST settings from file: $path, due to error $loadingFromIndexCause")
         EitherT(FileConfigLoader.create(path).load())
           .bimap(convertRecoveredFileError(loadingFromIndexCause), FileRecoveredConfig(_, loadingFromIndexCause))
+          .leftMap { error =>
+            logger.error(s"Loading ReadonlyREST from file failed: ${error}")
+            error
+          }
           .value
       case ConfigLoading.LoadFromIndex(index) =>
-        val indexConf = RorIndexNameConfiguration(index)
-        EitherT(new IndexConfigManager(indexContentManager, indexConf).load())
+        logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ...")
+        loadFromIndex(indexContentManager, index)
           .bimap(convertIndexError, IndexConfig(_))
-          .value
+          .leftMap { error =>
+            logIndexLoadingError(error)
+            error
+          }.value
     }
+  }
+
+  private def logIndexLoadingError[A](error: Cause): Unit = {
+    error match {
+      case Inl(FileRecoveredConfig.IndexNotExist) =>
+        logger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
+      case Inr(Inl(FileRecoveredConfig.IndexUnknownStructure)) =>
+        logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
+      case Inr(Inr(Inl(IndexParsingError(message)))) =>
+        logger.error(s"Loading ReadonlyREST settings from index failed: $message")
+      case Inr(Inr(Inr(_))) => throw new IllegalStateException("couldn't happen")
+    }
+  }
+
+  private def loadFromIndex[A](indexContentManager: IndexJsonContentManager, index: domain.IndexName) = {
+    val indexConf = RorIndexNameConfiguration(index)
+    EitherT(new IndexConfigManager(indexContentManager, indexConf).load().delayExecution(5 second))
   }
 
   private def convertRecoveredFileError(cause: FileRecoveredConfig.Cause)

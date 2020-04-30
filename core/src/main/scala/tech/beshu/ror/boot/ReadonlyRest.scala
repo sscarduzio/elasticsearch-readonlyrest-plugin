@@ -102,7 +102,6 @@ trait ReadonlyRest extends Logging {
       case LoadedConfig.EsIndexConfigurationMalformed(message) =>
         StartingFailure(message)
       case LoadedConfig.IndexParsingError(message) =>
-        logger.error(show"Loading ReadonlyREST settings from index failed: $message")
         StartingFailure(message)
     }
   }
