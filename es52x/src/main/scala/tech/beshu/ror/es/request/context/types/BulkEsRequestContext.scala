@@ -21,6 +21,10 @@ import cats.implicits._
 import org.elasticsearch.action.{ActionRequest, IndicesRequest}
 import org.elasticsearch.action.IndicesRequest.Replaceable
 import org.elasticsearch.action.bulk.BulkRequest
+import org.elasticsearch.action.delete.DeleteRequest
+import org.elasticsearch.action.index.IndexRequest
+import org.elasticsearch.action.termvectors.TermVectorsRequest
+import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
@@ -107,6 +111,10 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     }
     request match {
       case r: Replaceable => r.indices(indices.head.value.value)
+      case r: IndexRequest => r.index(indices.head.value.value)
+      case r: DeleteRequest => r.index(indices.head.value.value)
+      case r: UpdateRequest => r.index(indices.head.value.value)
+      case r: TermVectorsRequest => r.index(indices.head.value.value)
       case unknown => throw new RequestSeemsToBeInvalid[BulkRequest](s"Cannot update indices of request ${unknown.getClass.getName}")
     }
   }

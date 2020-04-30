@@ -106,8 +106,8 @@ trait DocumentApiSuite
       "allow to create all requests indices" when {
         "user has access to all of them" in {
           val result = dev1documentManager.bulkUnsafe(
-            bulkCreateIndexDoEntry("index1_2020-01-01", 1) ++
-              bulkCreateIndexDoEntry("index1_2020-01-02", 1): _*
+            bulkCreateIndexDocEntry("index1_2020-01-01", 1) ++
+              bulkCreateIndexDocEntry("index1_2020-01-02", 1): _*
           )
 
           result.responseCode should be(200)
@@ -121,8 +121,8 @@ trait DocumentApiSuite
       "not allow to create indices" when {
         "even one index is forbidden" in {
           val result = dev1documentManager.bulkUnsafe(
-            bulkCreateIndexDoEntry("index1_2020-01-01", 1) ++
-              bulkCreateIndexDoEntry("index2_2020-01-01", 1): _*
+            bulkCreateIndexDocEntry("index1_2020-01-01", 1) ++
+              bulkCreateIndexDocEntry("index2_2020-01-01", 1): _*
           )
 
           result.responseCode should be(401)
@@ -131,7 +131,7 @@ trait DocumentApiSuite
     }
   }
 
-  private def bulkCreateIndexDoEntry(index: String, docId: Int) = {
+  private def bulkCreateIndexDocEntry(index: String, docId: Int) = {
     val esVersion = esTargets.head.esVersion
     if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       Seq(
@@ -140,7 +140,7 @@ trait DocumentApiSuite
       )
     } else {
       Seq(
-        s"""{ "create" : { "_index" : "$index", "_type" : "_doc", "_id" : "$docId" } }""",
+        s"""{ "create" : { "_index" : "$index", "_type" : "doc", "_id" : "$docId" } }""",
         """{ "message" : "hello" }"""
       )
     }

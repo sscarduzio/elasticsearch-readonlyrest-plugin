@@ -23,9 +23,12 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import com.typesafe.scalalogging.StrictLogging
 import monix.eval.Coeval
+import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
 import org.testcontainers.containers.{GenericContainer, Network}
 import org.testcontainers.images.builder.ImageFromDockerfile
+import tech.beshu.ror.utils.containers.EsContainer.Credentials
+import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, None, Token}
 import tech.beshu.ror.utils.containers.providers.ClientProvider
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.finiteDurationToJavaDuration
@@ -50,8 +53,9 @@ abstract class EsContainer(val name: String,
 
   def port: Integer = container.getMappedPort(9200)
 
-  override def client(credentials: Option[(String, String)]): RestClient = credentials match {
-    case Some((user, password)) => new RestClient(sslEnabled, host, port, Optional.of(Tuple.from(user, password)))
+  override def client(credentials: Credentials): RestClient = credentials match {
+    case BasicAuth(user, password) => new RestClient(sslEnabled, host, port, Optional.of(Tuple.from(user, password)))
+    case Token(token) => new RestClient(sslEnabled, "localhost", port, Optional.empty[Tuple[String, String]](), new BasicHeader("Authorization", token))
     case None => new RestClient(sslEnabled, host, port, Optional.empty[Tuple[String, String]]())
   }
 }
@@ -85,5 +89,12 @@ object EsContainer extends StrictLogging {
     esContainer.container.setNetwork(Network.SHARED)
     esContainer.container.setNetworkAliases((config.nodeName :: Nil).asJava)
     esContainer
+  }
+
+  sealed trait Credentials
+  object Credentials {
+    final case class BasicAuth(user: String, password: String) extends Credentials
+    final case class Token(token: String) extends Credentials
+    case object None extends Credentials
   }
 }
