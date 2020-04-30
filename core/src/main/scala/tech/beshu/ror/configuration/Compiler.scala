@@ -16,25 +16,24 @@
  */
 package tech.beshu.ror.configuration
 
-import java.nio.file.Paths
-
 import cats.data.EitherT
 import cats.implicits._
 import cats.~>
 import monix.eval.Task
+import shapeless.{Inl, Inr}
+import tech.beshu.ror.configuration.ConfigLoading.LoadA
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
-import tech.beshu.ror.configuration.ConfigLoading.LoadA
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{LoadedConfig, Path}
+import tech.beshu.ror.configuration.loader.LoadedConfig
+import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig, IndexParsingError}
 import tech.beshu.ror.es.IndexJsonContentManager
 
 import scala.language.implicitConversions
 
-object Compiler{
-  def create(indexContentManager: IndexJsonContentManager): (LoadA~>Task) = new (LoadA~>Task) {
+object Compiler {
+  def create(indexContentManager: IndexJsonContentManager): (LoadA ~> Task) = new (LoadA ~> Task) {
     override def apply[A](fa: LoadA[A]): Task[A] = fa match {
       case ConfigLoading.ForceLoadFromFile(path) =>
         EitherT(FileConfigLoader.create(path).load())
@@ -42,13 +41,23 @@ object Compiler{
           .value
       case ConfigLoading.RecoverIndexWithFile(path, loadingFromIndexCause) =>
         EitherT(FileConfigLoader.create(path).load())
-          .bimap(convertFileError, FileRecoveredConfig(_, loadingFromIndexCause))
+          .bimap(convertRecoveredFileError(loadingFromIndexCause), FileRecoveredConfig(_, loadingFromIndexCause))
           .value
       case ConfigLoading.LoadFromIndex(index) =>
         val indexConf = RorIndexNameConfiguration(index)
         EitherT(new IndexConfigManager(indexContentManager, indexConf).load())
           .bimap(convertIndexError, IndexConfig(_))
           .value
+    }
+  }
+
+  private def convertRecoveredFileError(cause: FileRecoveredConfig.Cause)
+                                       (error: ConfigLoaderError[FileConfigError]): LoadedConfig.Error = {
+    cause match {
+      case Inl(FileRecoveredConfig.IndexNotExist)
+           | Inr(Inl(FileRecoveredConfig.IndexUnknownStructure)) => convertFileError(error)
+      case Inr(Inr(Inl(err@IndexParsingError(_)))) => err
+      case Inr(Inr(Inr(_))) => throw new IllegalStateException("couldn't happen")
     }
   }
 
@@ -60,10 +69,11 @@ object Compiler{
       case SpecializedError(FileConfigError.FileNotExist(file)) => LoadedConfig.FileNotExist(file.path)
     }
   }
+
   private def convertIndexError(error: ConfigLoaderError[IndexConfigManager.IndexConfigError]): FileRecoveredConfig.Cause =
     error match {
-      case ParsingError(error) =>  FileRecoveredConfig.indexParsingError(LoadedConfig.IndexParsingError(error.show))
-      case SpecializedError(IndexConfigError.IndexConfigNotExist) =>  FileRecoveredConfig.indexNotExist
+      case ParsingError(error) => FileRecoveredConfig.indexParsingError(LoadedConfig.IndexParsingError(error.show))
+      case SpecializedError(IndexConfigError.IndexConfigNotExist) => FileRecoveredConfig.indexNotExist
       case SpecializedError(IndexConfigError.IndexConfigUnknownStructure) => FileRecoveredConfig.indexUnknownStructure
     }
 
