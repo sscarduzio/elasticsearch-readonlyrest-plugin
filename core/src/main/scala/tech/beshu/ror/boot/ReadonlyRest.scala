@@ -41,7 +41,7 @@ import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
-import tech.beshu.ror.configuration.loader.{ComposedConfigLoaderFactory, LoadedConfig}
+import tech.beshu.ror.configuration.loader.{ComposedConfigLoader, LoadedConfig}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value
@@ -86,7 +86,7 @@ trait ReadonlyRest extends Logging {
   private def loadConfig(esConfigPath: Path,
                          indexContentManager: IndexJsonContentManager)
                         (implicit envVarsProvider: EnvVarsProvider)= {
-    EitherT(new ComposedConfigLoaderFactory(esConfigPath, indexContentManager).load())
+    EitherT(new ComposedConfigLoader(esConfigPath, indexContentManager).load())
       .leftMap(convertError)
   }
   private def convertError(error: LoadedConfig.Error) = {

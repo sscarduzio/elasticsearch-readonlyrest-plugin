@@ -18,20 +18,10 @@ package tech.beshu.ror.configuration.loader
 
 import shapeless._
 
+import scala.language.implicitConversions
+
 sealed trait LoadedConfig[A]
 object LoadedConfig {
-  implicit class Ops[A](fa: LoadedConfig[A]) {
-    lazy val value: A = fa match {
-      case FileRecoveredConfig(value, _) => value
-      case ForcedFileConfig(value) => value
-      case IndexConfig(value) => value
-    }
-    def map[B](f: A => B): LoadedConfig[B] = fa match {
-      case FileRecoveredConfig(value, cause) => FileRecoveredConfig(f(value), cause)
-      case ForcedFileConfig(value) => ForcedFileConfig(f(value))
-      case IndexConfig(value) => IndexConfig(f(value))
-    }
-  }
   sealed trait Error
   final case class FileRecoveredConfig[A](value: A, cause: FileRecoveredConfig.Cause) extends LoadedConfig[A]
   object FileRecoveredConfig {
@@ -52,6 +42,3 @@ object LoadedConfig {
   final case class IndexParsingError(message: String) extends LoadedConfig.Error
 }
 final case class Path(value: String) extends AnyVal
-
-
-

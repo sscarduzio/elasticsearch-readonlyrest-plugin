@@ -21,57 +21,57 @@ import io.circe.Json
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.configuration.LLoader.LoadA
+import tech.beshu.ror.configuration.ConfigLoading.LoadA
 import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.Path
+import tech.beshu.ror.configuration.loader.{ComposedConfigLoader, Path}
 
 import scala.language.existentials
 
-class LLoaderTest extends WordSpec {
-  import LLoaderTest._
+class ComposedConfigLoaderTest extends WordSpec {
+  import ComposedConfigLoaderTest._
   "Free monad interpreter" should {
     "load forced file" in {
       val steps = List(
-        (LLoader.ForceLoadFromFile(filePath), Right(ForcedFileConfig(rawRorConfig))),
+        (ConfigLoading.ForceLoadFromFile(filePath), Right(ForcedFileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LLoader.program(isLoadingFromFileForced = true, filePath, indexName, indexLoadingAttempts = 0)
+      val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = true, filePath, indexName, indexLoadingAttempts = 0)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, ForcedFileConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
     }
     "load successfully from index" in {
       val steps = List(
-        (LLoader.LoadFromIndex(indexName), Right(IndexConfig(rawRorConfig))),
+        (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LLoader.program(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 0)
+      val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 0)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
     }
     "load successfully from index, after failure" in {
       val steps = List(
-        (LLoader.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (LLoader.LoadFromIndex(indexName), Right(IndexConfig(rawRorConfig))),
+        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LLoader.program(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
+      val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
     }
     "fail loading from index, and fallback to file" in {
       val steps = List(
-        (LLoader.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (LLoader.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (LLoader.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (LLoader.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (LLoader.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexUnknownStructure)),
-        (LLoader.RecoverIndexWithFile(filePath, FileRecoveredConfig.indexUnknownStructure), Right(FileRecoveredConfig(rawRorConfig, FileRecoveredConfig.indexUnknownStructure))),
+        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexUnknownStructure)),
+        (ConfigLoading.RecoverIndexWithFile(filePath, FileRecoveredConfig.indexUnknownStructure), Right(FileRecoveredConfig(rawRorConfig, FileRecoveredConfig.indexUnknownStructure))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LLoader.program(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
+      val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, FileRecoveredConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -79,7 +79,7 @@ class LLoaderTest extends WordSpec {
     }
   }
 }
-object LLoaderTest {
+object ComposedConfigLoaderTest {
   import eu.timepit.refined.auto._
   private val filePath = Path("unused_file_path")
   private val rawRorConfig = RawRorConfig(Json.False, "forced file config")

@@ -91,33 +91,33 @@ trait BaseAdminApiSuite
         }
       }
       "return info that config lol" when {
-        "in-index config is the same as current one" in {
-          val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
-          result.getResponseCode should be(200)
-          result.getResponseJsonMap.get("clusterName") should be("test-cluster")
-          result.getResponseJsonMap.get("failures").asInstanceOf[util.Collection[Nothing]] should have size 1
-          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
-          val jnode1 = javaResponses.get(0)
-          jnode1 should contain key "nodeId"
-          jnode1 should contain(Entry("type","IndexConfig"))
-          jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
-        }
 //        "in-index config is the same as current one" in {
 //          val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
 //          result.getResponseCode should be(200)
-//          println(s"fasfasfs: ${result.getResponseJsonMap.asScala}")
-//          result.getResponseJsonMap.get("clusterName") should be("test-cluster")
-//          result.getResponseJsonMap.get("failures") should be(List().asJava)
+//          result.getResponseJsonMap.get("clusterName") should be("ROR1")
+//          result.getResponseJsonMap.get("failures").asInstanceOf[util.Collection[Nothing]] should have size 1
 //          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
 //          val jnode1 = javaResponses.get(0)
 //          jnode1 should contain key "nodeId"
 //          jnode1 should contain(Entry("type","IndexConfig"))
 //          jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
-//          val jnode2 = javaResponses.get(1)
-//          jnode2 should contain key "nodeId"
-//          jnode2 should contain(Entry("type","IndexConfig"))
-//          jnode2.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
 //        }
+        "in-index config is the same as current one" in {
+          val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
+          result.getResponseCode should be(200)
+          println(s"fasfasfs: ${result.getResponseJsonMap.asScala}")
+          result.getResponseJsonMap.get("clusterName") should be("ROR1")
+          result.getResponseJsonMap.get("failures") should be(List().asJava)
+          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
+          val jnode1 = javaResponses.get(0)
+          jnode1 should contain key "nodeId"
+          jnode1 should contain(Entry("type","IndexConfig"))
+          jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
+          val jnode2 = javaResponses.get(1)
+          jnode2 should contain key "nodeId"
+          jnode2 should contain(Entry("type","IndexConfig"))
+          jnode2.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
+        }
         "force timeout" in {
           val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load", Map("timeout" -> "1nanos").asJava)
           result.getResponseCode should be(200)
@@ -321,5 +321,5 @@ trait BaseAdminApiSuite
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
     insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
   }
- 
+
 }

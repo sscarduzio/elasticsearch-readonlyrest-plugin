@@ -27,7 +27,7 @@ import org.elasticsearch.common.io.stream.{StreamInput, Writeable}
 import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.configuration.loader.ComposedConfigLoaderFactory
+import tech.beshu.ror.configuration.loader.ComposedConfigLoader
 import tech.beshu.ror.configuration.loader.distribuated.{NodeConfig, Timeout}
 import tech.beshu.ror.es.providers.EsIndexJsonContentProvider
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -98,7 +98,7 @@ class TransportRRConfigAction(actionName: String,
     new RRConfig(in)
 
   private def loadConfig() =
-    new ComposedConfigLoaderFactory(env.configFile(), indexContentProvider)
+    new ComposedConfigLoader(env.configFile(), indexContentProvider)
       .load()
       .map(_.map(_.map(_.raw)))
 
