@@ -16,26 +16,21 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import java.io.File
 import java.util
 
-import scala.collection.JavaConverters._
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.MultipleContainers
-import monix.eval.Task
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, Entry, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
-import tech.beshu.ror.utils.containers.ContainerUtils
-import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
-import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
-import scala.collection.immutable
+import scala.collection.JavaConverters._
+
 
 trait BaseAdminApiSuite
   extends WordSpec
@@ -90,40 +85,28 @@ trait BaseAdminApiSuite
           result.getResponseJsonMap.get("message") should be("Current settings are already loaded")
         }
       }
-      "return info that config lol" when {
-//        "in-index config is the same as current one" in {
-//          val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
-//          result.getResponseCode should be(200)
-//          result.getResponseJsonMap.get("clusterName") should be("ROR1")
-//          result.getResponseJsonMap.get("failures").asInstanceOf[util.Collection[Nothing]] should have size 1
-//          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
-//          val jnode1 = javaResponses.get(0)
-//          jnode1 should contain key "nodeId"
-//          jnode1 should contain(Entry("type","IndexConfig"))
-//          jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
-//        }
-        "in-index config is the same as current one" in {
+      "fetch config all nodes" when {
+        "found two configs from index" in {
           val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
           result.getResponseCode should be(200)
-          println(s"fasfasfs: ${result.getResponseJsonMap.asScala}")
           result.getResponseJsonMap.get("clusterName") should be("ROR1")
           result.getResponseJsonMap.get("failures") should be(List().asJava)
-          val javaResponses= result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String,String]]]
+          val javaResponses = result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String, String]]]
           val jnode1 = javaResponses.get(0)
           jnode1 should contain key "nodeId"
-          jnode1 should contain(Entry("type","IndexConfig"))
+          jnode1 should contain(Entry("type", "IndexConfig"))
           jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
           val jnode2 = javaResponses.get(1)
           jnode2 should contain key "nodeId"
-          jnode2 should contain(Entry("type","IndexConfig"))
+          jnode2 should contain(Entry("type", "IndexConfig"))
           jnode2.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
         }
         "force timeout" in {
           val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load", Map("timeout" -> "1nanos").asJava)
           result.getResponseCode should be(200)
-          result.getResponseJsonMap.get("clusterName") should be("test-cluster")
+          result.getResponseJsonMap.get("clusterName") should be("ROR1")
           result.getResponseJsonMap.get("responses") should be(List().asJava)
-          val javaResponsesFailures= result.getResponseJsonMap.get("failures").asInstanceOf[util.List[util.Map[String,String]]]
+          val javaResponsesFailures = result.getResponseJsonMap.get("failures").asInstanceOf[util.List[util.Map[String, String]]]
           val failure1 = javaResponsesFailures.get(0)
           failure1 should contain key "nodeId"
           failure1 should contain key "detailedMessage"
@@ -283,16 +266,6 @@ trait BaseAdminApiSuite
       }
     }
   }
-  "provide a method for resolve current app config" which {
-    "return current config" in {
-      val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
-      result.getResponseCode should be(200)
-      result.getResponseJsonMap.get("status") should be("ok")
-      result.getResponseJsonMap.get("message").asInstanceOf[String] should be {
-        getResourceContent("/admin_api/readonlyrest_index.yml")
-      }
-    }
-  }
 
   override protected def beforeEach(): Unit = {
     // back to configuration loaded on container start
@@ -321,5 +294,4 @@ trait BaseAdminApiSuite
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
     insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
   }
-
 }
