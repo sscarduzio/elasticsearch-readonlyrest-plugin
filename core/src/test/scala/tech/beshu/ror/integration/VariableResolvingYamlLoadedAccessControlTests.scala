@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.TestsUtils
+import tech.beshu.ror.utils.{FilterTransient, TestsUtils}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -68,6 +68,12 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
        |     type: allow
        |     groups: ["g$${sys_group_2}"]
        |
+       |   - name: "Variables usage in filter"
+       |     type: allow
+       |     filter: '{"bool": { "must": { "terms": { "user_id": [@{jwt:user_id_list}] }}}}'
+       |     jwt_auth: "jwt3"
+       |     users: ["user5"]
+       |
        |   - name: "Group name from jwt variable (array)"
        |     type: allow
        |     jwt_auth:
@@ -98,6 +104,12 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
        |    groups_claim: "tech.beshu.mainGroup"
        |
        |  - name: jwt2
+       |    signature_algo: "RSA"
+       |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
+       |    user_claim: "userId"
+       |    groups_claim: "tech.beshu.mainGroupsString"
+       |
+       |  - name: jwt3
        |    signature_algo: "RSA"
        |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
        |    user_claim: "userId"
@@ -201,7 +213,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 5
+          result.history should have size 6
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable (array)"))
             blockContext.userMetadata should be(
@@ -234,7 +246,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
-          result.history should have size 6
+          result.history should have size 7
           inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
             block.name should be(Block.Name("Group name from jwt variable"))
             blockContext.userMetadata should be(
@@ -246,6 +258,43 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
             blockContext.indices should be(Set(IndexName("gj0".nonempty)))
             blockContext.contextHeaders should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
+          }
+        }
+        "JWT variable in filter query is used" in {
+          val claims = new DefaultClaims(Map[String, AnyRef](
+            "sub" -> "test",
+            "userId" -> "user5",
+            "user_id_list" -> List("alice", "bob").asJava
+          ).asJava)
+          val request = MockRequestContext.indices.copy(
+            headers = Set(new Header(
+              Header.Name.authorization,
+              {
+                val jwtBuilder = Jwts.builder.signWith(secret).setSubject("test").setClaims(claims)
+                NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
+              })),
+            indices = Set.empty,
+            allIndicesAndAliases = Set.empty
+          )
+
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+
+          result.history should have size 5
+          inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
+            block.name should be(Block.Name("Variables usage in filter"))
+            blockContext.userMetadata should be(
+              UserMetadata
+                .from(request)
+                .withLoggedUser(DirectlyLoggedUser(User.Id("user5".nonempty)))
+                .withJwtToken(JwtTokenPayload(claims))
+            )
+            blockContext.indices should be(Set.empty)
+            blockContext.responseHeaders should be(Set.empty)
+            blockContext.contextHeaders.size should be(1)
+            blockContext.contextHeaders.head.name should be (Header.Name.transientFilter)
+            FilterTransient.deserialize(blockContext.contextHeaders.head.value.value).getFilter should be (
+              """{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}"""
+            )
           }
         }
       }

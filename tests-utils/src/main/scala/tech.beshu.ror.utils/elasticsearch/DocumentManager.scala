@@ -55,11 +55,13 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   private def createDocPath(index: String, `type`: String, id: Int) = {
-    if(Version.greaterOrEqualThan(esVersion, 6, 0, 0)) s"/$index/_doc/$id"
-    else s"""/$index/${`type`}/$id"""
+    s"""/$index/${`type`}/$id"""
   }
 
-  private def createDocPathWithDefaultType(index: String, id: Int) = createDocPath(index, "doc", id)
+  private def createDocPathWithDefaultType(index: String, id: Int) = {
+    if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) createDocPath(index, "_doc", id)
+    else createDocPath(index, "doc", id)
+  }
 
   def createDocAndAssert(index: String, `type`: String, id: Int, content: JSON): Unit = {
     val docPath = createDocPath(index, `type`, id)
