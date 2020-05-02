@@ -18,6 +18,7 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.implicits._
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
+import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext

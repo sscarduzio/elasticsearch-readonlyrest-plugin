@@ -76,11 +76,10 @@ trait FilterRuleSuite
       "msearch api is used" in {
         retry(times = 3) {
           val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
-          val matchAllIndicesQuery =
-            """{"index":"*"}
-              |{"query" : {"match_all" : {}}}
-              |""".stripMargin
-          val result = searchManager.msearch(matchAllIndicesQuery)
+          val matchAllIndicesQuery = Seq(
+            """{"index":"*"}""",
+            """{"query" : {"match_all" : {}}}""")
+          val result = searchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
 
           result.responseCode shouldBe 200
           result.responses.size shouldBe 1
