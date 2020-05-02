@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
+import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
 
 trait EsClusterProvider {
   this: EsContainerCreator =>
@@ -25,11 +26,23 @@ trait EsClusterProvider {
     if (esClusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("Cluster should have at least one instance")
     val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, esClusterSettings.numberOfInstances)(_ + 1).toList
       .map(idx => s"${esClusterSettings.name}_$idx"))
+    val nodesData = nodeNames.map(name => ClusterNodeData(name, this, esClusterSettings))
+    createLocalClusterContainers(nodesData)
+  }
 
+  def createLocalClusterContainers(nodesData: ClusterNodeData, nodesDataArgs: ClusterNodeData*): EsClusterContainer =
+    createLocalClusterContainers(NonEmptyList.of(nodesData, nodesDataArgs: _*))
+
+  def createLocalClusterContainers(nodesData: NonEmptyList[ClusterNodeData]): EsClusterContainer = {
+    val nodeNames = nodesData.map(_.name)
     new EsClusterContainer(
-      nodeNames.map(name => create(name, nodeNames, esClusterSettings, _)),
-      esClusterSettings.dependentServicesContainers
+      nodesData.map(createNode(nodeNames, _)),
+      nodesData.head.settings.dependentServicesContainers
     )
+  }
+
+  private def createNode(nodeNames: NonEmptyList[String], nodeData: ClusterNodeData) = {
+    nodeData.esContainerCreator.create(nodeData.name, nodeNames, nodeData.settings, _)
   }
 
   def createRemoteClustersContainer(localClustersSettings: EsClusterSettings,
@@ -41,4 +54,7 @@ trait EsClusterProvider {
       remoteClusterSetup
     )
   }
+}
+object EsClusterProvider {
+  final case class ClusterNodeData(name: String, esContainerCreator: EsContainerCreator, settings: EsClusterSettings)
 }

@@ -57,3 +57,4 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
     EsWithRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
   }
 }
+object EsWithRorPluginContainerCreator extends EsWithRorPluginContainerCreator
