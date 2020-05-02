@@ -31,7 +31,7 @@ trait DynamicVariablesSuite
 
   override implicit val rorConfigFileName = "/dynamic_vars/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

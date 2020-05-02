@@ -27,26 +27,26 @@ object SingletonEsContainer
     with EsWithRorPluginContainerCreator
     with StrictLogging {
 
-  private implicit val description = Description.EMPTY
+  private implicit val description: Description = Description.EMPTY
 
-  val singleton = createLocalClusterContainer(EsClusterSettings.basic)
+  val singleton: EsClusterContainer = createLocalClusterContainer(EsClusterSettings.basic)
 
-  private lazy val adminClient = singleton.nodesContainers.head.adminClient
+  private lazy val adminClient = singleton.nodes.head.adminClient
   private lazy val indexManager = new IndexManager(adminClient)
   private lazy val templateManager = new TemplateManager(adminClient)
   private lazy val snapshotManager = new SnapshotManager(adminClient)
   private lazy val adminApiManager = new ActionManager(adminClient)
 
   logger.info("Starting singleton es container...")
-  singleton.starting()
+  singleton.start()
 
-  def cleanUpContainer() = {
+  def cleanUpContainer(): Unit = {
     indexManager.removeAll
     templateManager.deleteAllTemplates()
     snapshotManager.deleteAllSnapshots()
   }
 
-  def updateConfig(rorConfigFileName: String) = {
+  def updateConfig(rorConfigFileName: String): Unit = {
     val response = adminApiManager.actionPost(
       "_readonlyrest/admin/config",
       s"""{"settings": "${escapeJava(getResourceContent(rorConfigFileName))}"}"""
@@ -57,7 +57,7 @@ object SingletonEsContainer
     }
   }
 
-  def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer) = {
+  def initNode(nodeDataInitializer: ElasticsearchNodeDataInitializer): Unit = {
     nodeDataInitializer.initialize(singleton.esVersion, adminClient)
   }
 

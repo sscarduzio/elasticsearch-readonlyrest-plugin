@@ -52,15 +52,18 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   override def modifyWhenIndexNotFound: ModificationResult = {
     if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = randomNonexistentIndex()
+      val nonExistentIndex = initialBlockContext.randomNonexistentIndex()
       if (nonExistentIndex.hasWildcard) {
-        update(actionRequest, NonEmptyList.of(nonExistentIndex))
+        val nonExistingIndices = NonEmptyList
+          .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
+          .getOrElse(NonEmptyList.of(nonExistentIndex))
+        update(actionRequest, nonExistingIndices)
         Modified
       } else {
         ShouldBeInterrupted
       }
     } else {
-      update(actionRequest, NonEmptyList.of(randomNonexistentIndex()))
+      update(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()))
       Modified
     }
   }
@@ -79,14 +82,4 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   protected def update(request: R, indices: NonEmptyList[IndexName]): ModificationResult
 
-  private def randomNonexistentIndex(): IndexName = {
-    initialBlockContext.indices.headOption match {
-      case Some(indexName) => IndexName.randomNonexistentIndex(indexName.value.value)
-      case None => IndexName.randomNonexistentIndex()
-    }
-  }
-
-  protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
-    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
-  }
 }

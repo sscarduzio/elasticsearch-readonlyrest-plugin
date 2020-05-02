@@ -267,7 +267,7 @@ trait TemplatesSuite
         "there is an index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminDocumentManager.createDoc("/custom_dev1_index_test/doc/1", "{\"hello\":\"world\"}")
+              adminDocumentManager.createFirstDoc("custom_dev1_index_test", ujson.read("""{"hello":"world"}"""))
 
               val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*"))
@@ -275,7 +275,7 @@ trait TemplatesSuite
               result.responseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
-              adminDocumentManager.createDoc("/dev1_index/doc/1", "{\"hello\":\"world\"}")
+              adminDocumentManager.createFirstDoc("dev1_index", ujson.read("""{"hello":"world"}"""))
 
               val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index*"))
@@ -285,7 +285,7 @@ trait TemplatesSuite
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminDocumentManager.createDoc("/custom_dev1_index_test/doc/1", "{\"hello\":\"world\"}")
+              adminDocumentManager.createFirstDoc("custom_dev1_index_test", ujson.read("""{"hello":"world"}"""))
 
               val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test"))
@@ -293,7 +293,7 @@ trait TemplatesSuite
               result.responseCode should be (200)
             }
             "rule has index pattern with no wildcard" in {
-              adminDocumentManager.createDoc("/dev1_index/doc/1", "{\"hello\":\"world\"}")
+              adminDocumentManager.createFirstDoc("dev1_index", ujson.read("""{"hello":"world"}"""))
 
               val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
               val result = devTemplateManager.insertTemplate("new_template", templateExample("dev1_index"))

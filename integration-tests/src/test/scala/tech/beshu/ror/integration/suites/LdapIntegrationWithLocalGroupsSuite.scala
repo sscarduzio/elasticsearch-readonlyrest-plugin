@@ -33,7 +33,7 @@ trait LdapIntegrationWithLocalGroupsSuite
 
   override implicit val rorConfigFileName = "/ldap_separate_authc_authz_mixed_local/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

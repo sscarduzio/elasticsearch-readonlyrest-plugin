@@ -20,7 +20,6 @@ import java.io.File
 
 import better.files._
 import cats.data.NonEmptyList
-import tech.beshu.ror.utils.containers.EsClusterContainer.StartedClusterDependencies
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
@@ -54,6 +53,7 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
       xPackSupport = clusterSettings.xPackSupport,
       externalSslEnabled = true)
-    EsWithRorPluginContainer.create(containerConfig, startedClusterDependencies, clusterSettings.nodeDataInitializer)
+
+    EsWithRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
   }
 }

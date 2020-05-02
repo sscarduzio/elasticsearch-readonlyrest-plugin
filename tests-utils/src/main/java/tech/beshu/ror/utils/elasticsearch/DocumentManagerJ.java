@@ -68,7 +68,9 @@ public class DocumentManagerJ extends JBaseManager {
 
   private void makeInsertCall(String docPath, String content, boolean waitForRefresh) {
     SimpleResponse response = call(createInsertDocRequest(docPath, content, waitForRefresh), SimpleResponse::new);
-    if(!response.isSuccess()) throw new IllegalStateException("Cannot insert document");
+    if(!response.isSuccess()) {
+      throw new IllegalStateException("Cannot insert document. Response code: " + response.getResponseCode() + ", body: " + response.getBody());
+    }
   }
 
   private HttpPut createInsertDocRequest(String docPath, String content, boolean waitForRefresh) {

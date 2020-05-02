@@ -6,7 +6,7 @@
         </encoder>
     </appender>
 
-    <logger name="org.testcontainers" level="INFO"/>
+    <logger name="org.testcontainers" level="DEBUG"/>
     <logger name="com.github.dockerjava" level="WARN"/>
 
     <root level="INFO">

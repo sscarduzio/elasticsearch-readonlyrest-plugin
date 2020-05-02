@@ -20,7 +20,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
+import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 trait UriRegexRuleSuite
   extends WordSpec
@@ -61,7 +61,7 @@ trait UriRegexRuleSuite
   private def assertRuleDoesNotMatchForUser(name: String): Unit = assertHealthCheckStatus(401, name)
 
   private def assertHealthCheckStatus(status: Int, name: String): Unit = {
-    val manager = new ClusterStateManager(basicAuthClient(name, "pass"))
+    val manager = new ClusterManager(basicAuthClient(name, "pass"), esVersion = targetEs.esVersion)
     val result = manager.healthCheck()
     assertEquals(status, result.responseCode)
   }

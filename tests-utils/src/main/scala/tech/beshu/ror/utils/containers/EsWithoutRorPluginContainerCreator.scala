@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.utils.containers.EsClusterContainer.StartedClusterDependencies
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
@@ -40,6 +39,7 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
       configHotReloadingEnabled = true,
       internodeSslEnabled = false,
       externalSslEnabled = false)
-    EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer, startedClusterDependencies)
+
+    EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
   }
 }

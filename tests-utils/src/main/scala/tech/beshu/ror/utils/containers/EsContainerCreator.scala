@@ -17,7 +17,8 @@
 package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.utils.containers.EsClusterContainer.StartedClusterDependencies
+import com.dimafeng.testcontainers.SingleContainer
+import org.testcontainers.containers.GenericContainer
 
 trait EsContainerCreator {
 
@@ -27,3 +28,5 @@ trait EsContainerCreator {
              startedClusterDependencies: StartedClusterDependencies): EsContainer
 }
 
+final case class StartedDependency(name: String, container: SingleContainer[GenericContainer[_]], originalPort: Int)
+final case class StartedClusterDependencies(values: List[StartedDependency])

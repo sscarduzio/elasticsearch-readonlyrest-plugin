@@ -28,7 +28,7 @@ trait PluginTestSupport extends EsWithRorPluginContainerCreator with CallingEsDi
 trait SingletonPluginTestSupport extends PluginTestSupport with BeforeAndAfterAll {
   this: Suite with BasicSingleNodeEsClusterSupport =>
 
-  override lazy val targetEs: EsContainer = SingletonEsContainer.singleton.nodesContainers.head
+  override lazy val targetEs: EsContainer = SingletonEsContainer.singleton.nodes.head
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()

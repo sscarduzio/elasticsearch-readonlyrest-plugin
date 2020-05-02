@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ContainerSpecification, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.ClusterStateManager
+import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 trait ClusterStateWithInternodeSslSuite
   extends WordSpec
@@ -31,7 +31,7 @@ trait ClusterStateWithInternodeSslSuite
 
   override implicit val rorConfigFileName = "/cluster_state_internode_ssl/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(
@@ -42,7 +42,7 @@ trait ClusterStateWithInternodeSslSuite
     )
   )
 
-  private lazy val adminClusterStateManager = new ClusterStateManager(adminClient)
+  private lazy val adminClusterStateManager = new ClusterManager(adminClient, esVersion = targetEs.esVersion)
 
   "Health check" should {
     "be successful" when {

@@ -24,7 +24,6 @@ import tech.beshu.ror.utils.elasticsearch.SearchManager.{MSearchResult, SearchRe
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
-import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 class SearchManager(client: RestClient,
@@ -37,30 +36,36 @@ class SearchManager(client: RestClient,
   def search(endpoint: String): SearchResult =
     call(createSearchRequest(endpoint), new SearchResult(_))
 
-  def msearch(query: String): MSearchResult =
-    call(createMSearchRequest(query), new MSearchResult(_))
+  def mSearchUnsafe(lines: String*): MSearchResult = {
+    lines.toList match {
+      case Nil => throw new IllegalArgumentException("At least one line should be passed to mSearch query")
+      case head :: rest => mSearch(head, rest: _*)
+    }
+  }
+
+  def mSearch(line: String, lines: String*): MSearchResult = {
+    val payload = (lines.toSeq :+ "\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem" }
+    call(createMSearchRequest(payload), new MSearchResult(_))
+  }
 
   def renderTemplate(query: String): JsonResponse =
     call(createRenderTemplateRequest(query), new JsonResponse(_))
 
-  private def createMSearchRequest(query: String) = {
-    val request = new HttpPost(client.from("/_msearch"))
-    request.addHeader("Content-type", "application/json")
-    request.setEntity(new StringEntity(query))
-    request
-  }
-
   private def createSearchRequest(endpoint: String, query: String) = {
     val request = new HttpPost(client.from(endpoint))
-    request.setHeader("timeout", "50s")
     request.addHeader("Content-type", "application/json")
     request.setEntity(new StringEntity(query))
     request
   }
 
   private def createSearchRequest(endpoint: String) = {
-    val request = new HttpGet(client.from(endpoint))
-    request.setHeader("timeout", "50s")
+    new HttpGet(client.from(endpoint))
+  }
+
+  private def createMSearchRequest(payload: String) = {
+    val request = new HttpPost(client.from("/_msearch"))
+    request.addHeader("Content-type", "application/json")
+    request.setEntity(new StringEntity(payload))
     request
   }
 
@@ -74,23 +79,25 @@ class SearchManager(client: RestClient,
 
 object SearchManager {
 
-  implicit class SearchResultOps (val hits: ArrayBuffer[Value]) extends AnyVal {
-    def removeRorSettings() = hits.filter(hit => hit("_index").str != ".readonlyrest")
+  implicit class SearchResultOps(val hits: Traversable[Value]) extends AnyVal {
+    def removeRorSettings(): Vector[Value] = hits.filter(hit => hit("_index").str != ".readonlyrest").toVector
   }
 
   class SearchResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val searchHitsWithSettings = responseJson("hits")("hits")
-    lazy val searchHits = searchHitsWithSettings.arr.removeRorSettings()
+    lazy val searchHitsWithSettings: Value = responseJson("hits")("hits")
+    lazy val searchHits: List[Value] = searchHitsWithSettings.arr.removeRorSettings().toList
 
     def hit(idx: Int) = searchHits(idx)("_source")
   }
 
   class MSearchResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val responses = responseJson("responses").arr
+    lazy val responses: Vector[Value] = responseJson("responses").arr.toVector
 
-    def searchHitsForResponseWithSettings(responseIdx: Int) = responses(responseIdx)("hits")("hits").arr
+    def searchHitsForResponseWithSettings(responseIdx: Int): Vector[Value] =
+      responses(responseIdx)("hits")("hits").arr.toVector
 
-    def searchHitsForResponse(responseIdx: Int) = searchHitsForResponseWithSettings(responseIdx).removeRorSettings()
+    def searchHitsForResponse(responseIdx: Int): Vector[Value] =
+      searchHitsForResponseWithSettings(responseIdx).removeRorSettings()
 
     def totalHitsForResponse(responseIdx: Int): Int =
       Try(responses(responseIdx)("hits")("total")("value").num.toInt)

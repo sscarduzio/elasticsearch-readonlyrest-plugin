@@ -17,18 +17,22 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
+import cats.implicits._
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.support.replication.ReplicatedWriteRequest
 import org.elasticsearch.action.support.single.instance.InstanceShardOperationRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
-import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
 import scala.collection.JavaConverters._
 
@@ -37,42 +41,72 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
                            aclContext: AccessControlStaticContext,
                            clusterService: RorClusterService,
                            override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[BulkRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext, clusterService)
+    with EsRequest[MultiIndexRequestBlockContext] {
 
-  override protected def indicesFrom(request: BulkRequest): Set[IndexName] = {
-    request.requests().asScala.map(_.index()).flatMap(IndexName.fromString).toSet
-  }
+  override lazy val initialBlockContext: MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+    this,
+    UserMetadata.from(this),
+    Set.empty,
+    Set.empty,
+    indexPacksFrom(actionRequest)
+  )
 
-  override protected def update(request: BulkRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
-    request.requests().removeIf { request: DocWriteRequest[_] => removeOrAlter(request, indices) }
-    if(request.requests().asScala.isEmpty) ShouldBeInterrupted
-    else Modified
-  }
-
-  private def removeOrAlter(request: DocWriteRequest[_], filteredIndices: NonEmptyList[IndexName]) = {
-    val expandedIndicesOfRequest = clusterService.expandIndices(IndexName.fromString(request.index()).toSet)
-    val remaining = expandedIndicesOfRequest.intersect(filteredIndices.toList.toSet).toList
-    remaining match {
-      case Nil =>
-        true
-      case one :: Nil =>
-        updateIndexOf(request, one)
-        false
-      case one :: _ =>
-        updateIndexOf(request, one)
-        logger.warn(
-          s"""[$taskId] One of requests from BulkOperation contains more than one index after expanding and intersect.
-             |Picking first from [${remaining.mkString(",")}]"""".stripMargin
-        )
-        false
+  override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
+    val modifiedPacksOfIndices = blockContext.indexPacks
+    val requests = actionRequest.requests().asScala.toList
+    if (requests.size == modifiedPacksOfIndices.size) {
+      requests
+        .zip(modifiedPacksOfIndices)
+        .foldLeft(Modified: ModificationResult) {
+          case (Modified, (request, pack)) => updateRequest(request, pack)
+          case (_, _) => ShouldBeInterrupted
+        }
+    } else {
+      logger.error(s"[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different " +
+        s"number of requests, than altered one. This can be security issue. So, it's better for forbid the request")
+      ShouldBeInterrupted
     }
   }
 
-  private def updateIndexOf(request: DocWriteRequest[_], index: IndexName) = {
+  private def indexPacksFrom(request: BulkRequest): List[Indices] = {
+    request
+      .requests().asScala
+      .map { r => Indices.Found(indicesFrom(r)) }
+      .toList
+  }
+
+  private def indicesFrom(request: DocWriteRequest[_]): Set[domain.IndexName] = {
+    val requestIndices = request.indices.flatMap(IndexName.fromString).toSet
+    indicesOrWildcard(requestIndices)
+  }
+
+  private def updateRequest(request: DocWriteRequest[_], indexPack: Indices): ModificationResult = {
+    indexPack match {
+      case Indices.Found(indices) =>
+        NonEmptyList.fromList(indices.toList) match {
+          case Some(nel) =>
+            updateRequestWithIndices(request, nel)
+            Modified
+          case None =>
+            logger.error(s"[${id.show}] Cannot alter MultiGetRequest request, because empty list of indices was found")
+            ShouldBeInterrupted
+        }
+      case Indices.NotFound =>
+        logger.error(s"[${id.show}] Cannot alter MultiGetRequest request, because no allowed indices were found")
+        ShouldBeInterrupted
+    }
+  }
+
+  private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[IndexName]) = {
+    if (indices.tail.nonEmpty) {
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. Whole set of indices [${indices.toList.mkString(",")}]")
+    }
     request match {
-      case r: InstanceShardOperationRequest[_] => r.index(index.value.value)
-      case r: ReplicatedWriteRequest[_] => r.index(index.value.value)
+      case r: InstanceShardOperationRequest[_] => r.index(indices.head.value.value)
+      case r: ReplicatedWriteRequest[_] => r.index(indices.head.value.value)
       case unknown => throw new RequestSeemsToBeInvalid[BulkRequest](s"Cannot update indices of request ${unknown.getClass.getName}")
     }
   }
+
 }

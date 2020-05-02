@@ -35,7 +35,7 @@ trait DuplicatedResponseHeadersIssueSuite
 
   override implicit val rorConfigFileName = "/duplicated_response_headers_issue/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodesContainers.head
+  override lazy val targetEs = container.nodes.head
 
   override lazy val container = createLocalClusterContainer(
     EsClusterSettings(

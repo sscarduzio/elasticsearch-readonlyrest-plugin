@@ -16,6 +16,6 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.CrossClusterSearchSuite
+import tech.beshu.ror.integration.suites.CrossClusterCallsSuite
 
-class CrossClusterSearchPluginTests extends CrossClusterSearchSuite with PluginTestSupport
+class CrossClusterCallsPluginTests extends CrossClusterCallsSuite with PluginTestSupport

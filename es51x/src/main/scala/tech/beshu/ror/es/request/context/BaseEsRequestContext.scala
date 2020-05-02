@@ -140,4 +140,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   }
 
   override val hasRemoteClusters: Boolean = false
+
+  protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
+    if (indices.nonEmpty) indices else Set(IndexName.wildcard)
+  }
 }

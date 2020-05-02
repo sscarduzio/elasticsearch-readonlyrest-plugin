@@ -29,22 +29,22 @@ trait MSearchTEST1Suite
     with Matchers {
   this: EsContainerCreator =>
 
-  val msearchBodyNotExists =
-    """{"index":["perfmon_index_does_not_exist"],"ignore_unavailable":true,"preference":1506497937939}
-      |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
-      |""".stripMargin
+  val msearchBodyNotExists = Seq(
+    """{"index":["perfmon_index_does_not_exist"],"ignore_unavailable":true,"preference":1506497937939}""",
+    """{"query":{"bool":{"must_not":[{"match_all":{}}]}}}"""
+  )
 
-  val msearchBodyQueryWorks =
-    """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
-      |{"query":{"match_all":{}}, "size":0}
-      |""".stripMargin
+  val msearchBodyQueryWorks = Seq(
+    """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}""",
+    """{"query":{"match_all":{}}, "size":0}"""
+  )
 
-  val msearchBodyEmptyIndex =
-    """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}
-      |{"query":{"bool":{"must_not":[{"match_all":{}}]}}}
-      |""".stripMargin
+  val msearchBodyEmptyIndex = Seq(
+    """{"index":[".kibana"],"ignore_unavailable":true,"preference":1506497937939}""",
+    """{"query":{"bool":{"must_not":[{"match_all":{}}]}}}"""
+  )
 
-  val msearchBodyCombo = msearchBodyNotExists + msearchBodyQueryWorks + msearchBodyEmptyIndex
+  val msearchBodyCombo = msearchBodyNotExists ++ msearchBodyQueryWorks ++ msearchBodyEmptyIndex
 
   override implicit val rorConfigFileName = "/msearch_test1/readonlyrest.yml"
 
@@ -53,15 +53,16 @@ trait MSearchTEST1Suite
   "test274_1_notexist" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
 
-    val response = searchManager.msearch(msearchBodyNotExists)
+    val response = searchManager.mSearchUnsafe(msearchBodyNotExists: _*)
 
-    response.responseCode shouldBe 401
+    response.responseCode shouldBe 200
+    response.searchHitsForResponse(0) should be (Vector.empty)
   }
 
   "test274_1_queryworks" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
 
-    val response = searchManager.msearch(msearchBodyQueryWorks)
+    val response = searchManager.mSearchUnsafe(msearchBodyQueryWorks: _*)
 
     response.responseCode shouldBe 200
     response.responses.size shouldBe 1
@@ -71,7 +72,7 @@ trait MSearchTEST1Suite
   "test274_1_empty_index" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
 
-    val response = searchManager.msearch(msearchBodyEmptyIndex)
+    val response = searchManager.mSearchUnsafe(msearchBodyEmptyIndex: _*)
 
     response.responseCode shouldBe 200
     response.responses.size shouldBe 1
@@ -81,7 +82,7 @@ trait MSearchTEST1Suite
   "test274_1_all" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
 
-    val response = searchManager.msearch(msearchBodyCombo)
+    val response = searchManager.mSearchUnsafe(msearchBodyCombo: _*)
 
     response.responseCode shouldBe 200
     response.responses.size shouldBe 3
