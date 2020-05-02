@@ -17,11 +17,14 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.search.MultiSearchRequest
+import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
+import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import org.elasticsearch.search.builder.SearchSourceBuilder
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.utils.FilterUtils
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -44,7 +47,40 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   override protected def update(request: MultiSearchRequest,
                                 indices: NonEmptyList[IndexName]): ModificationResult = {
     optionallyDisableCaching()
+    modifyQueriesOf(request)
     modifyIndicesOf(request, indices)
+  }
+
+  private def modifyQueriesOf(multiSearchRequest: MultiSearchRequest) = {
+    multiSearchRequest.requests()
+      .forEach(modifyQueryOf)
+  }
+
+  private def modifyQueryOf(request: SearchRequest) = {
+    Option(threadPool.getThreadContext.getHeader(Constants.FILTER_TRANSIENT)) match {
+      case Some(definedFilter) =>
+        val filterQuery = createFilterQuery(definedFilter)
+        val modifiedQuery = provideNewQueryWithAppliedFilter(request, filterQuery)
+        request.source().query(modifiedQuery)
+      case None =>
+        logger.debug(s"Header: '${Constants.FIELDS_TRANSIENT}' not found in threadContext. No filter applied to query.")
+    }
+  }
+
+  private def provideNewQueryWithAppliedFilter(request: SearchRequest, filterQuery: QueryBuilder) = {
+    Option(request.source().query()) match {
+      case Some(requestedQuery) =>
+        QueryBuilders.boolQuery()
+          .must(requestedQuery)
+          .filter(filterQuery)
+      case None =>
+        QueryBuilders.constantScoreQuery(filterQuery)
+    }
+  }
+
+  private def createFilterQuery(definedFilter: String) = {
+    val filterQuery = FilterUtils.filterFromHeaderValue(definedFilter)
+    QueryBuilders.wrapperQuery(filterQuery)
   }
 
   // Cache disabling for this request is crucial for document level security to work.
