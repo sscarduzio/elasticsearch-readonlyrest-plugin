@@ -18,13 +18,11 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import org.elasticsearch.action.search.SearchRequest
-import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.utils.FilterUtils
 import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.dlsfls.SearchQueryDecorator
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
@@ -43,42 +41,15 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
 
   override protected def update(request: SearchRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
     optionallyDisableCaching()
-    modifyQueryOf(request)
+    SearchQueryDecorator.applyFilterToQuery(request, threadPool)
     request.indices(indices.toList.map(_.value.value): _*)
     Modified
-  }
-
-  private def modifyQueryOf(request: SearchRequest) = {
-    Option(threadPool.getThreadContext.getHeader(Constants.FILTER_TRANSIENT)) match {
-      case Some(definedFilter) =>
-        val filterQuery = createFilterQuery(definedFilter)
-        val modifiedQuery = provideNewQueryWithAppliedFilter(request, filterQuery)
-        request.source().query(modifiedQuery)
-      case None =>
-        logger.debug(s"Header: '${Constants.FIELDS_TRANSIENT}' not found in threadContext. No filter applied to query.")
-    }
-  }
-
-  private def provideNewQueryWithAppliedFilter(request: SearchRequest, filterQuery: QueryBuilder) = {
-    Option(request.source().query()) match {
-      case Some(requestedQuery) =>
-        QueryBuilders.boolQuery()
-          .must(requestedQuery)
-          .filter(filterQuery)
-      case None =>
-        QueryBuilders.constantScoreQuery(filterQuery)
-    }
-  }
-
-  private def createFilterQuery(definedFilter: String) = {
-    val filterQuery = FilterUtils.filterFromHeaderValue(definedFilter)
-    QueryBuilders.wrapperQuery(filterQuery)
   }
 
   // Cache disabling for this request is crucial for document level security to work.
   // Otherwise we'd get an answer from the cache some times and would not be filtered
   private def optionallyDisableCaching(): Unit = {
-    if(esContext.involveFilters) {
+    if (esContext.involveFilters) {
       logger.debug("ACL involves filters, will disable request cache for SearchRequest")
       actionRequest.requestCache(false)
     }

@@ -18,23 +18,21 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.implicits._
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
-import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.utils.FilterUtils
+import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.dlsfls.SearchQueryDecorator
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 
 class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   esContext: EsContext,
@@ -55,12 +53,12 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
     val requests = actionRequest.requests().asScala.toList
-    modifyQueriesOf(actionRequest)
     if (requests.size == modifiedPacksOfIndices.size) {
       requests
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
           updateRequest(request, pack)
+          SearchQueryDecorator.applyFilterToQuery(request, threadPool)
         }
       Modified
     } else {
@@ -102,37 +100,5 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     val originRequestIndices = indicesFrom(request).toList
     val notExistingIndex = originRequestIndices.randomNonexistentIndex()
     request.indices(notExistingIndex.value.value)
-  }
-
-  private def modifyQueriesOf(multiSearchRequest: MultiSearchRequest) = {
-    multiSearchRequest.requests()
-      .forEach(modifyQueryOf)
-  }
-
-  private def modifyQueryOf(request: SearchRequest) = {
-    Option(threadPool.getThreadContext.getHeader(Constants.FILTER_TRANSIENT)) match {
-      case Some(definedFilter) =>
-        val filterQuery = createFilterQuery(definedFilter)
-        val modifiedQuery = provideNewQueryWithAppliedFilter(request, filterQuery)
-        request.source().query(modifiedQuery)
-      case None =>
-        logger.debug(s"Header: '${Constants.FIELDS_TRANSIENT}' not found in threadContext. No filter applied to query.")
-    }
-  }
-
-  private def provideNewQueryWithAppliedFilter(request: SearchRequest, filterQuery: QueryBuilder) = {
-    Option(request.source().query()) match {
-      case Some(requestedQuery) =>
-        QueryBuilders.boolQuery()
-          .must(requestedQuery)
-          .filter(filterQuery)
-      case None =>
-        QueryBuilders.constantScoreQuery(filterQuery)
-    }
-  }
-
-  private def createFilterQuery(definedFilter: String) = {
-    val filterQuery = FilterUtils.filterFromHeaderValue(definedFilter)
-    QueryBuilders.wrapperQuery(filterQuery)
   }
 }
