@@ -54,8 +54,7 @@ trait FilterRuleSuite
             result.responseCode shouldBe 200
             result.searchHits.size shouldBe 1
 
-            result.hit(0)("db_name").str shouldBe "db_user1"
-            result.hit(0)("code").num shouldBe 1
+            result.head shouldBe ujson.read("""{"db_name":"db_user1", "code": 1}""")
           }
         }
         "there is no query in request body" in {
@@ -65,11 +64,10 @@ trait FilterRuleSuite
 
             result.responseCode shouldBe 200
             result.searchHits.size shouldBe 2
+            result.docIds should contain allOf("1", "2")
 
-            result.hit(0)("db_name").str shouldBe "db_user1"
-            result.hit(0)("code").num shouldBe 1
-            result.hit(1)("db_name").str shouldBe "db_user1"
-            result.hit(1)("code").num shouldBe 2
+            result.id("1") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1}""")
+            result.id("2") shouldBe ujson.read("""{"db_name":"db_user1", "code": 2}""")
           }
         }
       }

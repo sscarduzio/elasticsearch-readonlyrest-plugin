@@ -120,6 +120,10 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List(Constants.FILTER_TRANSIENT, Constants.FIELDS_TRANSIENT).asJava
   }
 
+  override def onIndexModule(indexModule: IndexModule): Unit = {
+    indexModule.setReaderWrapper(RoleIndexSearcherWrapper.instance)
+  }
+
   override def getSettings: util.List[Setting[_]] = {
     List[Setting[_]](Setting.groupSetting("readonlyrest.", Setting.Property.Dynamic, Setting.Property.NodeScope)).asJava
   }
