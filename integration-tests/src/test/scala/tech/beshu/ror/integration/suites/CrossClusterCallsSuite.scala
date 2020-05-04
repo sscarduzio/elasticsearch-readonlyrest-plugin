@@ -197,7 +197,7 @@ trait CrossClusterCallsSuite
   "A _field_caps for a given index" should {
     "return 200 and allow user to see its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" excludeES("es51x", "es52x") in {
+        "he queries local and remote indices" excludeES("es51x", "es52x", "es53x") in {
           val result = user3SearchManager.fieldCaps(
             indices = List("metrics*", "etl:etl*"),
             fields = List("counter1", "usage")
@@ -205,7 +205,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.fields.keys.toSet should be (Set("counter1", "usage"))
         }
-        "he queries remote indices only" excludeES("es51x", "es52x") in {
+        "he queries remote indices only" excludeES("es51x", "es52x", "es53x") in {
           val result = user3SearchManager.fieldCaps(
             indices = List("etl:etl*"),
             fields = List("counter1", "usage")
@@ -215,7 +215,7 @@ trait CrossClusterCallsSuite
         }
       }
       "user has permission to do only one request" when {
-        "both requests contain index patterns" excludeES("es51x", "es52x") in {
+        "both requests contain index patterns" excludeES("es51x", "es52x", "es53x") in {
           val result = user3SearchManager.fieldCaps(
             indices = List("test1*", "etl:etl*"),
             fields = List("hello", "usage")
@@ -223,7 +223,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.fields.keys.toSet should be (Set("usage"))
         }
-        "both requests contain full name indices" excludeES("es51x", "es52x") in {
+        "both requests contain full name indices" excludeES("es51x", "es52x", "es53x") in {
           val result = user3SearchManager.fieldCaps(
             indices = List("test1", "etl:etl_usage_2020-03-26"),
             fields = List("hello", "usage")
