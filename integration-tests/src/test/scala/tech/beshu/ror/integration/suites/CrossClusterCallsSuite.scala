@@ -235,7 +235,7 @@ trait CrossClusterCallsSuite
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns" excludeES("es51x", "es52x") in {
+        "he queries local and remote indices patterns" excludeES("es51x", "es52x", "es53x") in {
           val result = user3SearchManager.fieldCaps(
             indices = List("metrics_etl*", "odd:*"),
             fields = List("hello", "usage", "counter1")
@@ -243,7 +243,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.fields.keys.toSet should be (Set.empty)
         }
-        "he queries remote indices only" excludeES("es51x", "es52x") in {
+        "he queries remote indices only" excludeES("es51x", "es52x", "es53x") in {
           val result = user3SearchManager.fieldCaps(
             indices = List("odd:*"),
             fields = List("hello", "usage", "counter1")
