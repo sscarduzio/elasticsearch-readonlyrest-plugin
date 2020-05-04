@@ -51,7 +51,9 @@ compileScala {
 }
 
 dependencies {
-    compile project(path: ':core')
+    compile(project(path: ':core')) {
+        exclude module: 'log4j-slf4j-impl'
+    }
 
     compile 'org.elasticsearch:elasticsearch:' + esVersion
     compile 'org.elasticsearch.plugin:transport-netty4-client:' + esVersion

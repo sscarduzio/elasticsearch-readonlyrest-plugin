@@ -190,7 +190,9 @@ object BlockContext {
     }
 
     def nonExistingIndicesFromInitialIndices(): Set[IndexName] = {
-      blockContext.indices.map(i => IndexName.randomNonexistentIndex(i.value.value))
+      blockContext.indices.map(i => IndexName.randomNonexistentIndex(
+        i.value.value.replace(":", "_") // we don't want to call remote cluster
+      ))
     }
   }
 }

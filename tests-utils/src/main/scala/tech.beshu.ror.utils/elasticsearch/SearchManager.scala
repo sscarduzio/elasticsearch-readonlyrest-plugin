@@ -20,10 +20,11 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
-import tech.beshu.ror.utils.elasticsearch.SearchManager.{MSearchResult, SearchResult}
+import tech.beshu.ror.utils.elasticsearch.SearchManager.{FieldCapsResult, MSearchResult, SearchResult}
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
+import scala.collection.JavaConverters._
 import scala.util.Try
 
 class SearchManager(client: RestClient,
@@ -46,6 +47,10 @@ class SearchManager(client: RestClient,
   def mSearch(line: String, lines: String*): MSearchResult = {
     val payload = (lines.toSeq :+ "\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem" }
     call(createMSearchRequest(payload), new MSearchResult(_))
+  }
+
+  def fieldCaps(indices: List[String], fields: List[String]): FieldCapsResult = {
+    call(createFieldCapsRequest(indices.mkString(","), fields.mkString(",")), new FieldCapsResult(_))
   }
 
   def renderTemplate(query: String): JsonResponse =
@@ -75,6 +80,10 @@ class SearchManager(client: RestClient,
     request.setEntity(new StringEntity(query))
     request
   }
+
+  private def createFieldCapsRequest(indicesStr: String, fieldsStr: String) = {
+    new HttpGet(client.from(s"/$indicesStr/_field_caps", Map("fields" -> fieldsStr).asJava))
+  }
 }
 
 object SearchManager {
@@ -100,5 +109,10 @@ object SearchManager {
     def totalHitsForResponse(responseIdx: Int): Int =
       Try(responses(responseIdx)("hits")("total")("value").num.toInt)
         .getOrElse(responses(responseIdx)("hits")("total").num.toInt)
+  }
+
+  class FieldCapsResult(response: HttpResponse) extends JsonResponse(response) {
+    lazy val indices: Vector[String] = responseJson("indices").arr.map(_.str).toVector
+    lazy val fields: Map[String, Value] = responseJson("fields").obj.toMap
   }
 }
