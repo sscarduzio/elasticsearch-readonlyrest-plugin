@@ -227,6 +227,7 @@ object domain {
   object Action {
     val searchAction = Action("indices:data/read/search")
     val mSearchAction = Action("indices:data/read/msearch")
+    val fieldCapsAction = Action("indices:data/read/field_caps")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }

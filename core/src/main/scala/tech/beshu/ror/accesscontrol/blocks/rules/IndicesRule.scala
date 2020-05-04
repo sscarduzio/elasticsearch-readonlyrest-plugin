@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherW
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Action.{mSearchAction, searchAction}
+import tech.beshu.ror.accesscontrol.domain.Action.{mSearchAction, searchAction, fieldCapsAction}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -141,9 +141,9 @@ class IndicesRule(val settings: Settings)
           } else {
             canPass(requestContext, indices, indicesMatcher) match {
               case CanPass.No(Some(Reason.IndexNotExist)) =>
-                return ProcessResult.Failed(Some(Cause.IndexNotFound))
+                Set.empty[IndexName]
               case CanPass.No(_) =>
-                return ProcessResult.Failed(None)
+                Set.empty[IndexName]
               case CanPass.Yes(narrowedIndices) =>
                 narrowedIndices
             }
@@ -170,7 +170,7 @@ class IndicesRule(val settings: Settings)
   }
 
   private def isSearchAction(requestContext: RequestContext): Boolean =
-    requestContext.isReadOnlyRequest && List(searchAction, mSearchAction).contains(requestContext.action)
+    requestContext.isReadOnlyRequest && List(searchAction, mSearchAction, fieldCapsAction).contains(requestContext.action)
 
   private def canPass(requestContext: RequestContext,
                       indices: Set[IndexName],
