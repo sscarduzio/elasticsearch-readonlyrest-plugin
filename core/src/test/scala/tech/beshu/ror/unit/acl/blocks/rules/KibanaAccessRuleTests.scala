@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW}
+import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, StringOps}
@@ -37,7 +37,25 @@ import scala.language.postfixOps
 
 class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssertion {
 
+  val UNRESTRICTED_ACTIONS: Set[String] = Set(
+    "indices:admin/create", 
+    "cluster:admin/ingest/pipeline/put", 
+    "indices:data/write/bulk",
+    "cluster:admin/ilm/put",
+    "cluster:admin/data_frame/update",
+    "indices:admin/shrink",
+    "indices:admin/flush",
+    "indices:admin/freeze"
+  )
+
+
   "A KibanaAccessRule" when {
+    "Unrestricted actions are passed" in {
+      UNRESTRICTED_ACTIONS.map(Action.apply).foreach { action =>
+        assertMatchRule(settingsOf(Unrestricted), action)()
+        assertNotMatchRule(settingsOf(RO), action)
+      }
+    }
     "RO action is passed" in {
       Constants.RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
         assertMatchRule(settingsOf(ROStrict), action)()
