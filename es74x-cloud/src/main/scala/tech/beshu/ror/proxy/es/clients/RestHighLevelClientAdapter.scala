@@ -13,6 +13,7 @@ import org.elasticsearch.action.admin.indices.mapping.get.{GetMappingsRequest =>
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsResponse}
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
+import org.elasticsearch.action.delete.{DeleteRequest, DeleteResponse}
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.support.DefaultShardOperationFailedException
@@ -62,6 +63,10 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def get(request: GetRequest): Task[GetResponse] = {
     executeAsync(client.get(request, RequestOptions.DEFAULT))
+  }
+
+  def delete(request: DeleteRequest): Task[DeleteResponse] = {
+    executeAsync(client.delete(request, RequestOptions.DEFAULT))
   }
 
   def getIndex(request: AdminGetIndexRequest): Task[AdminGetIndexResponse] = {

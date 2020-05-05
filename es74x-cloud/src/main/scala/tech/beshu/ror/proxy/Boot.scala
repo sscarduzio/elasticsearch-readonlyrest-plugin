@@ -6,12 +6,10 @@ package tech.beshu.ror.proxy
 import better.files.File
 import cats.effect.{ExitCode, IO, IOApp, Resource}
 import cats.implicits._
+import monix.execution.atomic.AtomicBoolean
 import org.apache.logging.log4j.scala.Logging
 
-object Boot
-  extends IOApp
-    with RorProxy
-    with Logging {
+object Boot extends RorProxyApp {
 
   //TODO: load from real config
   override val config: RorProxy.Config = RorProxy.Config(
@@ -20,6 +18,16 @@ object Boot
     esConfigFile = File(getClass.getClassLoader.getResource("elasticsearch.yml"))
   )
 
+}
+
+trait RorProxyApp extends IOApp
+  with RorProxy
+  with Logging {
+
+  private val isStarted = AtomicBoolean(false)
+
+  def isAppStarted(): Boolean = isStarted.get()
+
   override def run(args: List[String]): IO[ExitCode] = {
     start
       .flatMap {
@@ -27,7 +35,12 @@ object Boot
           val proxyApp = Resource.make(IO(closeHandler))(handler =>
             IO.suspend(handler())
           )
-          proxyApp.use(_ => IO.never).as(ExitCode.Success)
+          proxyApp
+            .use { _ =>
+              isStarted.set(true)
+              IO.never
+            }
+            .as(ExitCode.Success)
         case Left(startingFailure) =>
           val errorMessage = s"Cannot start ReadonlyREST proxy: ${startingFailure.message}"
           startingFailure.throwable match {

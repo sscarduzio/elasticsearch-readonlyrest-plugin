@@ -60,5 +60,9 @@ object BaseManager {
   class JsonResponse(response: HttpResponse) extends SimpleResponse(response) {
     val body: String = stringBodyFrom(response)
     val responseJson: JSON = ujson.read(body)
+
+    def force(): Unit = {
+      if(!isSuccess) throw new IllegalStateException(s"Expected success but got HTTP $responseCode, body: $body")
+    }
   }
 }

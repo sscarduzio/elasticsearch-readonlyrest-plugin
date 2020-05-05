@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpPost, HttpPut, HttpUriRequest}
+import org.apache.http.client.methods.{HttpDelete, HttpPost, HttpPut, HttpUriRequest}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.MGetResult
@@ -40,6 +40,10 @@ class DocumentManager(restClient: RestClient, esVersion: String)
 
   def createDoc(index: String, id: Int, content: JSON): JsonResponse = {
     call(createInsertDocRequest(createDocPathWithDefaultType(index, id), content, waitForRefresh = true), new JsonResponse(_))
+  }
+
+  def deleteDoc(index: String, id: Int): JsonResponse = {
+    call(createDeleteDocRequest(createDocPathWithDefaultType(index, id), waitForRefresh = true), new JsonResponse(_))
   }
 
   def bulk(line: String, lines: String*): JsonResponse = {
@@ -75,14 +79,20 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   private def createInsertDocRequest(docPath: String, content: JSON, waitForRefresh: Boolean) = {
-    val queryParams =
-      if (waitForRefresh) Map("refresh" -> "wait_for")
-      else Map.empty[String, String]
-    val request = new HttpPut(restClient.from(docPath, queryParams.asJava))
+    val request = new HttpPut(restClient.from(docPath, waitForRefreshParam(waitForRefresh).asJava))
     request.setHeader("timeout", "50s")
     request.addHeader("Content-type", "application/json")
     request.setEntity(new StringEntity(ujson.write(content)))
     request
+  }
+
+  private def createDeleteDocRequest(docPath: String, waitForRefresh: Boolean) = {
+    new HttpDelete(restClient.from(docPath, waitForRefreshParam(waitForRefresh).asJava))
+  }
+
+  private def waitForRefreshParam(waitForRefresh: Boolean) = {
+    if (waitForRefresh) Map("refresh" -> "wait_for")
+    else Map.empty[String, String]
   }
 
   private def createMGetRequest(query: JSON): HttpUriRequest = {
