@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.Constants
+import tech.beshu.ror.Constants.{ADMIN_ACTIONS, RO_ACTIONS, RW_ACTIONS, CLUSTER_ACTIONS}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -37,40 +37,28 @@ import scala.language.postfixOps
 
 class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssertion {
 
-  val UNRESTRICTED_ACTIONS: Set[String] = Set(
-    "indices:admin/create", 
-    "cluster:admin/ingest/pipeline/put", 
-    "indices:data/write/bulk",
-    "cluster:admin/ilm/put",
-    "cluster:admin/data_frame/update",
-    "indices:admin/shrink",
-    "indices:admin/flush",
-    "indices:admin/freeze"
-  )
-
-
   "A KibanaAccessRule" when {
-    "Unrestricted actions are passed" in {
-      UNRESTRICTED_ACTIONS.map(Action.apply).foreach { action =>
+    "All and any actions are passed when Unrestricted access" in {
+      val anyActions = Set("xyz") ++ asScalaSet(ADMIN_ACTIONS) ++ asScalaSet(RW_ACTIONS) ++ asScalaSet(RO_ACTIONS) ++ asScalaSet(CLUSTER_ACTIONS)
+      anyActions.map(Action.apply).foreach { action =>
         assertMatchRule(settingsOf(Unrestricted), action)()
-        assertNotMatchRule(settingsOf(RO), action)
       }
     }
     "RO action is passed" in {
-      Constants.RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
+      RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
         assertMatchRule(settingsOf(ROStrict), action)()
         assertMatchRule(settingsOf(RO), action)()
         assertMatchRule(settingsOf(RW), action)()
       }
     }
     "CLUSTER action is passed" in {
-      Constants.CLUSTER_ACTIONS.asScala.map(Action.apply).foreach { action =>
+      CLUSTER_ACTIONS.asScala.map(Action.apply).foreach { action =>
         assertMatchRule(settingsOf(RO), action)()
         assertMatchRule(settingsOf(RW), action)()
       }
     }
     "RW action is passed" in {
-      Constants.RW_ACTIONS.asScala.map(str => Action(str.replace("*", "_")))
+      RW_ACTIONS.asScala.map(str => Action(str.replace("*", "_")))
         .foreach { action =>
           assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName(".kibana".nonempty)))
           assertNotMatchRule(settingsOf(RO), action, Set(IndexName(".kibana".nonempty)))
@@ -84,14 +72,14 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
         }
     }
     "RO action is passed with other indices" in {
-      Constants.RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
+      RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
         assertMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx".nonempty)))()
         assertMatchRule(settingsOf(RO), action, Set(IndexName("xxx".nonempty)))()
         assertMatchRule(settingsOf(RW), action, Set(IndexName("xxx".nonempty)))()
       }
     }
     "RW action is passed with other indices" in {
-      Constants.RW_ACTIONS.asScala.map(Action.apply)
+      RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
           assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx".nonempty)))
           assertNotMatchRule(settingsOf(RO), action, Set(IndexName("xxx".nonempty)))
@@ -99,14 +87,14 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
         }
     }
     "RO action is passed with mixed indices" in {
-      Constants.RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
+      RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
         assertMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))()
         assertMatchRule(settingsOf(RO), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))()
         assertMatchRule(settingsOf(RW), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))()
       }
     }
     "RW action is passed with mixed indices" in {
-      Constants.RW_ACTIONS.asScala.map(Action.apply)
+      RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
           assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))
           assertNotMatchRule(settingsOf(RO), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))
@@ -114,7 +102,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
         }
     }
     "RW action is passed with custom kibana index" in {
-      Constants.RW_ACTIONS.asScala.map(Action.apply)
+      RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
           assertNotMatchRule(settingsOf(ROStrict, IndexName(".custom_kibana".nonempty)), action, Set(IndexName(".custom_kibana".nonempty)))
           assertNotMatchRule(settingsOf(RO, IndexName(".custom_kibana".nonempty)), action, Set(IndexName(".custom_kibana".nonempty)))
