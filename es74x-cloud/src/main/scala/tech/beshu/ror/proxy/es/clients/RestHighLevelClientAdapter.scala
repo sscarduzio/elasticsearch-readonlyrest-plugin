@@ -9,21 +9,23 @@ import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthResponse}
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest => AdminGetIndexRequest, GetIndexResponse => AdminGetIndexResponse}
-import org.elasticsearch.action.admin.indices.mapping.get.{GetMappingsRequest => AdminGetMappingsRequest, GetMappingsResponse => AdminGetMappingsResponse}
+import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse.FieldMappingMetaData
+import org.elasticsearch.action.admin.indices.mapping.get.{GetFieldMappingsRequest => AdminGetFieldMappingsRequest, GetFieldMappingsResponse => AdminGetFieldMappingsResponse, GetMappingsRequest => AdminGetMappingsRequest, GetMappingsResponse => AdminGetMappingsResponse}
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsResponse}
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
 import org.elasticsearch.action.delete.{DeleteRequest, DeleteResponse}
+import org.elasticsearch.action.fieldcaps.{FieldCapabilitiesRequest, FieldCapabilitiesResponse}
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
-import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
+import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
 import org.elasticsearch.action.support.DefaultShardOperationFailedException
 import org.elasticsearch.client.core.CountRequest
-import org.elasticsearch.client.indices.{GetIndexRequest, GetIndexResponse, GetIndexTemplatesRequest, GetMappingsRequest}
+import org.elasticsearch.client.indices._
 import org.elasticsearch.client.{GetAliasesResponse, RequestOptions, RestHighLevelClient}
 import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.compress.CompressedXContent
-import org.joor.Reflect.onClass
+import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.proxy.es.exceptions.RorProxyException
 
 import scala.collection.JavaConverters._
@@ -33,20 +35,60 @@ import scala.collection.JavaConverters._
 class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def getMappings(request: AdminGetMappingsRequest): Task[AdminGetMappingsResponse] = {
-    executeAsync(client.indices().getMapping(new GetMappingsRequest(), RequestOptions.DEFAULT))
+    val regularRequest = new GetMappingsRequest()
+      .indices(request.indices(): _*)
+      .local(request.local())
+    executeAsync(client.indices().getMapping(regularRequest, RequestOptions.DEFAULT))
       .map { response =>
-        val mappings = ImmutableOpenMap.builder().putAll(response.mappings()).build()
-        new AdminGetMappingsResponse(
-          ImmutableOpenMap
-            .builder()
-            .fPut("test", mappings) // todo: dummy key`
-            .build()
-        )
+        val newMap = ImmutableOpenMap
+          .builder()
+          .putAll {
+            response
+              .mappings().asScala
+              .map { case (key, value) =>
+                val mappingsMap = ImmutableOpenMap
+                  .builder()
+                  .fPut("mappings", value)
+                  .build()
+                (key, mappingsMap)
+              }
+              .asJava
+          }
+          .build()
+        new AdminGetMappingsResponse(newMap)
+      }
+  }
+
+  def getFieldMappings(request: AdminGetFieldMappingsRequest): Task[AdminGetFieldMappingsResponse] = {
+    val regularRequest = new GetFieldMappingsRequest()
+      .fields(request.fields(): _*)
+      .indices(request.indices(): _*)
+      .local(request.local())
+      .indicesOptions(request.indicesOptions())
+    executeAsync(client.indices().getFieldMapping(regularRequest, RequestOptions.DEFAULT))
+      .map { response =>
+        val newMap = response
+          .mappings().asScala
+          .map { case (key, value) =>
+            val newValue = value.asScala
+              .map { case (innerKey, data) =>
+                (innerKey, new FieldMappingMetaData(data.fullName(), on(data).call("getSource").get()))
+              }
+            (key, Map("mappings" -> newValue.asJava).asJava)
+          }
+          .asJava
+        onClass(classOf[AdminGetFieldMappingsResponse])
+          .create(newMap)
+          .get[AdminGetFieldMappingsResponse]()
       }
   }
 
   def search(request: SearchRequest): Task[SearchResponse] = {
     executeAsync(client.search(request, RequestOptions.DEFAULT))
+  }
+
+  def mSearch(request: MultiSearchRequest): Task[MultiSearchResponse] = {
+    executeAsync(client.msearch(request, RequestOptions.DEFAULT))
   }
 
   def health(request: ClusterHealthRequest): Task[ClusterHealthResponse] = {
@@ -122,11 +164,16 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
       }
   }
 
+  def fieldCapabilities(request: FieldCapabilitiesRequest): Task[FieldCapabilitiesResponse] = {
+    executeAsync(client.fieldCaps(request, RequestOptions.DEFAULT))
+  }
+
   private def executeAsync[T](action: => T): Task[T] = {
     Task(action)
-      .onErrorRecoverWith { case ex =>
-        Task.raiseError(RorProxyException.wrap(ex))
-      }
+    // todo: do we need it?
+//      .onErrorRecoverWith { case ex =>
+//        Task.raiseError(RorProxyException.wrap(ex))
+//      }
   }
 }
 

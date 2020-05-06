@@ -35,7 +35,7 @@ class ScriptManager(client: RestClient)
   private def createStoreRequest(endpoint: String, query: String) = {
     val request = new HttpPost(client.from(endpoint))
     request.setHeader("timeout", "50s")
-    request.addHeader("Content-type", "application/json")
+    request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(query))
     request
   }

@@ -21,11 +21,11 @@ import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, Settings, SettingsFilter}
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.common.util.set.Sets
-import org.elasticsearch.common.xcontent.{DeprecationHandler, NamedXContentRegistry, StatusToXContentObject, ToXContent, ToXContentObject, XContentFactory, XContentType}
+import org.elasticsearch.common.xcontent._
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
-import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestController, RestHandler, RestRequest, RestResponse, RestStatus}
+import org.elasticsearch.rest._
 import org.elasticsearch.tasks
 import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
@@ -40,6 +40,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 class EsRestServiceSimulator(simulatorEsSettings: File,

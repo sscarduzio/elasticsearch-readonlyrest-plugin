@@ -50,7 +50,7 @@ public class ActionManagerJ extends JBaseManager {
   private HttpUriRequest createPostActionRequest(String action, String payload) {
     try {
       HttpPost request = new HttpPost(restClient.from("/" + action));
-      request.addHeader("Content-type", "application/json");
+      request.addHeader("Content-Type", "application/json");
       request.setEntity(new StringEntity(payload));
       return request;
     } catch (UnsupportedEncodingException e) {

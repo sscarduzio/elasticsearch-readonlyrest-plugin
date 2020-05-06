@@ -4,6 +4,7 @@
 package tech.beshu.ror.proxy.es
 
 import monix.eval.Task
+import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.common.io.stream.BytesStreamOutput
 import org.elasticsearch.common.xcontent.{XContentBuilder, XContentFactory, XContentType}
 import org.elasticsearch.rest._
@@ -47,6 +48,7 @@ class ProxyRestChannel(restRequest: RestRequest) extends RestChannel {
 
   def failureResponseFrom(exception: Throwable): BytesRestResponse = {
     exception match {
+      case ex: ElasticsearchException => new BytesRestResponse(this, ex)
       case ex: Exception => new ProxyRestChannel.FailureResponse(this, ex)
       case throwable => new ProxyRestChannel.FailureResponse(this, new Exception(throwable))
     }

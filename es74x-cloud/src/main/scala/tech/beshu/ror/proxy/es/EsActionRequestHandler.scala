@@ -6,8 +6,9 @@ package tech.beshu.ror.proxy.es
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.elasticsearch.action.delete.DeleteRequest
+import org.elasticsearch.action.fieldcaps.FieldCapabilitiesRequest
 import org.elasticsearch.action.get.GetRequest
-import org.elasticsearch.action.search.SearchRequest
+import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.common.xcontent.ToXContentObject
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
@@ -26,9 +27,11 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter)
 
   // todo: extend it
   private def tryToHandle: PartialFunction[ActionRequest, Task[ActionResponse with ToXContentObject]] = {
-    case sr: SearchRequest => esClient.search(sr)
-    case gr: GetRequest => esClient.get(gr)
-    case dr: DeleteRequest => esClient.delete(dr)
+    case request: GetRequest => esClient.get(request)
+    case request: DeleteRequest => esClient.delete(request)
+    case request: SearchRequest => esClient.search(request)
+    case request: MultiSearchRequest => esClient.mSearch(request)
+    case request: FieldCapabilitiesRequest => esClient.fieldCapabilities(request)
     case other => Task(throw new IllegalStateException(s"not implemented: ${other.getClass.getSimpleName}")) // todo:
   }
 

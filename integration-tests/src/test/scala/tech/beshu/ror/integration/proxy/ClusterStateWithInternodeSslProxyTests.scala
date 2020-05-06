@@ -18,4 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ClusterStateWithInternodeSslSuite
 
-class ClusterStateWithInternodeSslProxyTests extends ClusterStateWithInternodeSslSuite with ProxyTestSupport
+// todo: enable when RORDEV-146 is ready
+//class ClusterStateWithInternodeSslProxyTests extends ClusterStateWithInternodeSslSuite with ProxyTestSupport

@@ -81,7 +81,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   private def createInsertDocRequest(docPath: String, content: JSON, waitForRefresh: Boolean) = {
     val request = new HttpPut(restClient.from(docPath, waitForRefreshParam(waitForRefresh).asJava))
     request.setHeader("timeout", "50s")
-    request.addHeader("Content-type", "application/json")
+    request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(content)))
     request
   }
@@ -97,14 +97,14 @@ class DocumentManager(restClient: RestClient, esVersion: String)
 
   private def createMGetRequest(query: JSON): HttpUriRequest = {
     val request = new HttpGetWithEntity(restClient.from("_mget"))
-    request.addHeader("Content-type", "application/json")
+    request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(query)))
     request
   }
 
   private def createBulkRequest(payload: String): HttpUriRequest = {
     val request = new HttpPost(restClient.from("_bulk"))
-    request.addHeader("Content-type", "application/json")
+    request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(payload))
     request
   }

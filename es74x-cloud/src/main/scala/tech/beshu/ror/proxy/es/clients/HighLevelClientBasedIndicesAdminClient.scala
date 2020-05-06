@@ -161,7 +161,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def prepareGetMappings(indices: String*): GetMappingsRequestBuilder = throw NotDefinedForRorProxy
 
-  override def getFieldMappings(request: GetFieldMappingsRequest, listener: ActionListener[GetFieldMappingsResponse]): Unit = throw NotDefinedForRorProxy
+  override def getFieldMappings(request: GetFieldMappingsRequest, listener: ActionListener[GetFieldMappingsResponse]): Unit = {
+    execute(GetFieldMappingsAction.INSTANCE.name(), request, listener) {
+      esClient.getFieldMappings(request)
+    }
+  }
 
   override def prepareGetFieldMappings(indices: String*): GetFieldMappingsRequestBuilder = throw NotDefinedForRorProxy
 

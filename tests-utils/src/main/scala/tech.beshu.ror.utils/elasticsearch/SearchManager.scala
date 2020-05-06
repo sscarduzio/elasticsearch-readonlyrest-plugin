@@ -58,7 +58,7 @@ class SearchManager(client: RestClient,
 
   private def createSearchRequest(endpoint: String, query: String) = {
     val request = new HttpPost(client.from(endpoint))
-    request.addHeader("Content-type", "application/json")
+    request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(query))
     request
   }
@@ -69,14 +69,14 @@ class SearchManager(client: RestClient,
 
   private def createMSearchRequest(payload: String) = {
     val request = new HttpPost(client.from("/_msearch"))
-    request.addHeader("Content-type", "application/json")
+    request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(payload))
     request
   }
 
   private def createRenderTemplateRequest(query: String) = {
     val request = new HttpGetWithEntity(client.from("_render/template"))
-    request.addHeader("Content-type", "application/json")
+    request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(query))
     request
   }

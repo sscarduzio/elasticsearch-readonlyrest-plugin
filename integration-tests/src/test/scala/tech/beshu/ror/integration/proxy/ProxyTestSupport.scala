@@ -49,7 +49,7 @@ trait ProxyTestSupport
       .map {
         case (esContainer, index) => launchProxy(esContainer, index)
       }
-    Task(launchedProxies.forall(_.isAppStarted()))
+    Task(launchedProxies.forall(_.isAppStarted))
       .restartUntil(started => started)
       .runSyncUnsafe(timeout = 1 minute)
   }

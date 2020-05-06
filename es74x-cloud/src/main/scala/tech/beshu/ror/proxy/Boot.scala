@@ -26,7 +26,7 @@ trait RorProxyApp extends IOApp
 
   private val isStarted = AtomicBoolean(false)
 
-  def isAppStarted(): Boolean = isStarted.get()
+  def isAppStarted: Boolean = isStarted.get()
 
   override def run(args: List[String]): IO[ExitCode] = {
     start

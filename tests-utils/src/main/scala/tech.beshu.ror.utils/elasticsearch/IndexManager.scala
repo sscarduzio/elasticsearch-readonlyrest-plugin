@@ -90,7 +90,7 @@ class IndexManager(client: RestClient,
 
   private def createAliasRequest(index: String, alias: String) = {
     val request = new HttpPost(client.from("_aliases"))
-    request.addHeader("Content-type", "application/json")
+    request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
       s"""{"actions":[{"add":{"index":"$index","alias":"$alias"}}]}""".stripMargin))
     request

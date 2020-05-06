@@ -8,7 +8,7 @@ import cats.data.EitherT
 import cats.effect.{ContextShift, IO}
 import com.twitter.finagle.Http
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.schedulers.SchedulerService
 import org.apache.http.HttpHost
 import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
@@ -23,6 +23,7 @@ import tech.beshu.ror.utils.ScalaOps.{twitterFutureToIo, _}
 
 trait RorProxy  {
 
+  implicit val mainScheduler: SchedulerService = monix.execution.Scheduler.cached("ror-proxy", 10, 20)
   implicit protected def contextShift: ContextShift[IO]
 
   def config: RorProxy.Config

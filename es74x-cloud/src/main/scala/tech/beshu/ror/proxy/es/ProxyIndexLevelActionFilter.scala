@@ -79,7 +79,7 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
     aclAwareRequestFilter
       .handle(
         engine,
-        EsContext(channel, task, action, request, listener, chain, crossClusterSearchEnabled = false, involveFilters = engine.context.involvesFilter)
+        EsContext(channel, task, action, request, listener, chain, crossClusterSearchEnabled = true, involveFilters = engine.context.involvesFilter)
       )
       .runAsync {
         case Right(_) =>

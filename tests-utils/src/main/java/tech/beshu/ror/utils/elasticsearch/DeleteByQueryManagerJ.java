@@ -35,7 +35,7 @@ public class DeleteByQueryManagerJ extends JBaseManager {
   private HttpPost createDeleteByQueryRequest(String indexName, String query) {
     try {
       HttpPost request = new HttpPost(restClient.from("/" + indexName + "/_delete_by_query"));
-      request.addHeader("Content-type", "application/json");
+      request.addHeader("Content-Type", "application/json");
       request.setEntity(new StringEntity(query));
       return request;
     } catch (UnsupportedEncodingException e) {

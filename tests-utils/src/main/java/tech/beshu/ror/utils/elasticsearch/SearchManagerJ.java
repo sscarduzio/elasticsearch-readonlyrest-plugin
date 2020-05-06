@@ -58,7 +58,7 @@ public class SearchManagerJ extends JBaseManager {
   private HttpPost createMSearchRequest(String query) {
     try {
       HttpPost request = new HttpPost(restClient.from("/_msearch"));
-      request.addHeader("Content-type", "application/json");
+      request.addHeader("Content-Type", "application/json");
       request.setEntity(new StringEntity(query));
       return request;
     } catch (UnsupportedEncodingException e) {
