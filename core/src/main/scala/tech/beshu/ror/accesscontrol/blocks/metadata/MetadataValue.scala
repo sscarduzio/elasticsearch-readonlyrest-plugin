@@ -87,5 +87,6 @@ object MetadataValue {
     case KibanaAccess.ROStrict => "ro_strict"
     case KibanaAccess.RW => "rw"
     case KibanaAccess.Admin => "admin"
+    case KibanaAccess.Unrestricted => "unrestricted"
   }
 }
