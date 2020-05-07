@@ -18,7 +18,6 @@ import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 class EsActionRequestHandler(esClient: RestHighLevelClientAdapter)
                             (implicit scheduler: Scheduler) {
 
-
   def handle(request: ActionRequest): Task[HandlingResult] = {
     tryToHandle
       .andThen(_.map[HandlingResult](Handled))
@@ -34,7 +33,6 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter)
     case request: FieldCapabilitiesRequest => esClient.fieldCapabilities(request)
     case other => Task(throw new IllegalStateException(s"not implemented: ${other.getClass.getSimpleName}")) // todo:
   }
-
 }
 
 object EsActionRequestHandler {

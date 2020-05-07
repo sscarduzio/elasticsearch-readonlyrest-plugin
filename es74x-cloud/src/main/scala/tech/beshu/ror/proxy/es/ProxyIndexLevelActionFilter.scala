@@ -21,6 +21,7 @@ import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import tech.beshu.ror.proxy.es.services.{EsRestClientBasedRorClusterService, ProxyAuditSinkService, ProxyIndexJsonContentService}
+import tech.beshu.ror.utils.RorInstanceSupplier
 
 import scala.util.{Failure, Success, Try}
 
@@ -98,6 +99,7 @@ object ProxyIndexLevelActionFilter {
              envVarsProvider: EnvVarsProvider): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
     val result = for {
       instance <- EitherT(Ror.start(configFile, ProxyAuditSinkService, ProxyIndexJsonContentService))
+      _ = RorInstanceSupplier.update(instance)
     } yield new ProxyIndexLevelActionFilter(instance, esClient, threadPool)
     result.value
   }

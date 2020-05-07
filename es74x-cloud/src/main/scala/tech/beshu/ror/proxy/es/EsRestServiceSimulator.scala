@@ -31,11 +31,14 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
+import tech.beshu.ror.es.rradmin._
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
+import tech.beshu.ror.proxy.es.services.ProxyIndexJsonContentService
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
 
@@ -47,6 +50,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                              proxyFilter: ProxyIndexLevelActionFilter,
                              esClient: RestHighLevelClientAdapter,
                              esActionRequestHandler: EsActionRequestHandler,
+                             rrAdminActionHandler: RRAdminActionHandler,
                              threadPool: ThreadPool)
                             (implicit scheduler: Scheduler)
   extends Logging {
@@ -150,21 +154,32 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       override def doExecute(task: tasks.Task, request: R, listener: ActionListener[RR]): Unit = {
         ProxyThreadRepo.getRestChannel match {
           case Some(proxyRestChannel) =>
-            esActionRequestHandler
-              .handle(request)
-              .runAsyncF {
-                case Right(HandlingResult.Handled(response: StatusToXContentObject)) =>
-                  sendResponseThroughChannel(proxyRestChannel, response)
-                case Right(HandlingResult.Handled(response)) =>
-                  sendResponseThroughChannel(proxyRestChannel, response)
-                case Right(HandlingResult.PassItThrough) => proxyRestChannel.passThrough()
-                case Left(ex) => proxyRestChannel.sendFailureResponse(ex)
-              }
+            (request, listener) match {
+              case (req: RRAdminRequest, resp: ActionListener[RRAdminResponse]) =>
+                rrAdminActionHandler.handle(req, resp)
+              case _ =>
+                handleEsAction(request, listener, proxyRestChannel)
+            }
           case None =>
             EsRestServiceSimulator.this.logger.warn(s"Request $request won't be executed")
         }
       }
     }
+
+  private def handleEsAction[R <: ActionRequest, RR <: ActionResponse](request: R,
+                                                                       listener: ActionListener[RR],
+                                                                       proxyRestChannel: ProxyRestChannel) = {
+    esActionRequestHandler
+      .handle(request)
+      .runAsyncF {
+        case Right(HandlingResult.Handled(response: StatusToXContentObject)) =>
+          sendResponseThroughChannel(proxyRestChannel, response)
+        case Right(HandlingResult.Handled(response)) =>
+          sendResponseThroughChannel(proxyRestChannel, response)
+        case Right(HandlingResult.PassItThrough) => proxyRestChannel.passThrough()
+        case Left(ex) => proxyRestChannel.sendFailureResponse(ex)
+      }
+  }
 
   private def sendResponseThroughChannel(proxyRestChannel: ProxyRestChannel,
                                          response: ToXContentObject): Unit = {
@@ -184,6 +199,12 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
 
   private class RORActionPlugin extends ActionPlugin {
 
+    override def getActions: util.List[ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
+      List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
+        new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction])
+      ).asJava
+    }
+
     override def getRestHandlers(settings: Settings,
                                  restController: RestController,
                                  clusterSettings: ClusterSettings,
@@ -191,7 +212,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                  settingsFilter: SettingsFilter,
                                  indexNameExpressionResolver: IndexNameExpressionResolver,
                                  nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
-      super.getRestHandlers(settings, restController, clusterSettings, indexScopedSettings, settingsFilter, indexNameExpressionResolver, nodesInCluster)
+      List[RestHandler](new RestRRAdminAction(restController)).asJava
     }
 
     override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
@@ -218,10 +239,11 @@ object EsRestServiceSimulator {
             (implicit scheduler: Scheduler,
              envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFolder = esConfigFile.parent.path
+    val rrAdminActionHandler = new RRAdminActionHandler(ProxyIndexJsonContentService, simulatorEsSettingsFolder)
     val esActionRequestHandler = new EsActionRequestHandler(esClient)
     val result = for {
       filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool))
-    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, esActionRequestHandler, threadPool)
+    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, esActionRequestHandler, rrAdminActionHandler, threadPool)
     result.value
   }
 }

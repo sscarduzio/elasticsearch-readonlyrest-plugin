@@ -26,7 +26,7 @@ import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.compress.CompressedXContent
 import org.joor.Reflect.{on, onClass}
-import tech.beshu.ror.proxy.es.exceptions.RorProxyException
+import tech.beshu.ror.proxy.es.exceptions._
 
 import scala.collection.JavaConverters._
 
@@ -89,6 +89,21 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def mSearch(request: MultiSearchRequest): Task[MultiSearchResponse] = {
     executeAsync(client.msearch(request, RequestOptions.DEFAULT))
+      .map { response =>
+        val modifiedItems = response
+          .getResponses
+          .map { item =>
+            Option(item.getFailure) match {
+              case Some(ex) => ex
+                .toIndexNotFoundException
+                .map(new MultiSearchResponse.Item(item.getResponse, _))
+                .getOrElse(item)
+              case None =>
+                item
+            }
+          }
+        new MultiSearchResponse(modifiedItems, response.getTook.millis())
+      }
   }
 
   def health(request: ClusterHealthRequest): Task[ClusterHealthResponse] = {
@@ -168,12 +183,6 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.fieldCaps(request, RequestOptions.DEFAULT))
   }
 
-  private def executeAsync[T](action: => T): Task[T] = {
-    Task(action)
-    // todo: do we need it?
-//      .onErrorRecoverWith { case ex =>
-//        Task.raiseError(RorProxyException.wrap(ex))
-//      }
-  }
+  private def executeAsync[T](action: => T): Task[T] = Task(action)
 }
 
