@@ -40,8 +40,8 @@ object RoleIndexSearcherWrapper extends Logging {
       override def apply(indexService: IndexService): CheckedFunction[DirectoryReader, DirectoryReader, IOException] = {
         val threadContext: ThreadContext = indexService.getThreadPool.getThreadContext
         reader: DirectoryReader =>
-          val result = prepareDocumentFieldReader(threadContext)
-          result.run(reader).get._2
+          prepareDocumentFieldReader(threadContext)
+            .run(reader).get._2
       }
 
       private def prepareDocumentFieldReader(threadContext: ThreadContext): StateT[Try, DirectoryReader, DirectoryReader] = {

@@ -49,7 +49,8 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     UserMetadata.from(this),
     Set.empty,
     Set.empty,
-    indexPacksFrom(actionRequest)
+    indexPacksFrom(actionRequest),
+    None
   )
 
   override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {

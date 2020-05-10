@@ -14,21 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.dlsfls
+package tech.beshu.ror.es.request
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
-import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.utils.FilterUtils
+import tech.beshu.ror.accesscontrol.domain.Filter
 
 object SearchQueryDecorator extends Logging {
 
-  def applyFilterToQuery(request: SearchRequest, threadPool: ThreadPool) = {
-    Option(threadPool.getThreadContext.getHeader(Constants.FILTER_TRANSIENT)) match {
+  def applyFilterToQuery(request: SearchRequest, filter: Option[Filter]) = {
+    filter match {
       case Some(definedFilter) =>
-        val filterQuery = createFilterQuery(definedFilter)
+        val filterQuery = QueryBuilders.wrapperQuery(definedFilter.value.value)
         val modifiedQuery = provideNewQueryWithAppliedFilter(request, filterQuery)
         request.source().query(modifiedQuery)
       case None =>
@@ -45,10 +44,5 @@ object SearchQueryDecorator extends Logging {
       case None =>
         QueryBuilders.constantScoreQuery(filterQuery)
     }
-  }
-
-  private def createFilterQuery(definedFilter: String) = {
-    val filterQuery = FilterUtils.filterFromHeaderValue(definedFilter)
-    QueryBuilders.wrapperQuery(filterQuery)
   }
 }

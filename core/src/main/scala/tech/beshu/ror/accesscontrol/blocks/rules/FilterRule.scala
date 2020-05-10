@@ -18,15 +18,14 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{Filter, Header}
-import tech.beshu.ror.accesscontrol.headerValues.transientFilterHeaderValue
+import tech.beshu.ror.accesscontrol.domain.Filter
 
 /**
   * Document level security (DLS) rule.
@@ -44,7 +43,15 @@ class FilterRule(val settings: Settings)
         case Left(_: Unresolvable) =>
           Rejected()
         case Right(filter) =>
-          Fulfilled(blockContext.withAddedContextHeader(Header(Name.transientFilter, filter)))
+          BlockContextUpdater[B] match {
+            case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
+            case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+            case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
+            case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
+            case updater@GeneralIndexRequestBlockContextUpdater => Fulfilled(updater.withFilter(blockContext, filter))
+            case updater@MultiIndexRequestBlockContextUpdater => Fulfilled(updater.withFilter(blockContext, filter))
+            case TemplateRequestBlockContextUpdater => Fulfilled(blockContext)
+          }
       }
     }
   }

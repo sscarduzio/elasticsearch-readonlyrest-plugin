@@ -150,7 +150,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[GeneralIndexRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: GeneralIndexRequestBlockContext): GeneralIndexRequestBlockContext =
-      GeneralIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+      GeneralIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
 
     override def withUserMetadata(blockContext: GeneralIndexRequestBlockContext,
                                   userMetadata: UserMetadata): GeneralIndexRequestBlockContext =
@@ -168,13 +168,16 @@ object BlockContextUpdater {
                     indices: Set[IndexName]): GeneralIndexRequestBlockContext =
       blockContext.copy(indices = indices)
 
+    def withFilter(blockContext: GeneralIndexRequestBlockContext,
+                   filter: Filter): GeneralIndexRequestBlockContext =
+      blockContext.copy(filter = Some(filter))
   }
 
   implicit object MultiIndexRequestBlockContextUpdater
     extends BlockContextUpdater[MultiIndexRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: MultiIndexRequestBlockContext): MultiIndexRequestBlockContext =
-      MultiIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty)
+      MultiIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty, None)
 
     override def withUserMetadata(blockContext: MultiIndexRequestBlockContext,
                                   userMetadata: UserMetadata): MultiIndexRequestBlockContext =
@@ -191,6 +194,10 @@ object BlockContextUpdater {
     def withIndexPacks(blockContext: MultiIndexRequestBlockContext,
                        indexPacks: List[Indices]): MultiIndexRequestBlockContext =
       blockContext.copy(indexPacks = indexPacks)
+
+    def withFilter(blockContext: MultiIndexRequestBlockContext,
+                   filter: Filter): MultiIndexRequestBlockContext =
+      blockContext.copy(filter = Some(filter))
   }
 }
 

@@ -32,6 +32,7 @@ import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
+import tech.beshu.ror.es.request.SearchQueryDecorator
 
 class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   esContext: EsContext,
@@ -46,7 +47,8 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     UserMetadata.from(this),
     Set.empty,
     Set.empty,
-    indexPacksFrom(actionRequest)
+    indexPacksFrom(actionRequest),
+    None
   )
 
   override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
@@ -57,6 +59,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
           updateRequest(request, pack)
+          SearchQueryDecorator.applyFilterToQuery(request, blockContext.filter)
         }
       Modified
     } else {
