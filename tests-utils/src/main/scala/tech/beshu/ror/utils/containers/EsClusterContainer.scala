@@ -34,8 +34,10 @@ class EsClusterContainer private[containers](val nodeCreators: NonEmptyList[Star
     dependencies.map(d => (d, d.containerCreator.apply()))
 
   private var clusterNodes = List.empty[EsContainer]
+  private var aStartedDependencies = StartedClusterDependencies(Nil)
 
   def nodes: List[EsContainer] = this.clusterNodes
+  def startedDependencies: StartedClusterDependencies = aStartedDependencies
 
   def esVersion: String = nodes.headOption match {
     case Some(head) => head.esVersion
@@ -43,8 +45,8 @@ class EsClusterContainer private[containers](val nodeCreators: NonEmptyList[Star
   }
 
   override def start(): Unit = {
-    val startedDependencies = startDependencies()
-    clusterNodes = startClusterNodes(startedDependencies)
+    aStartedDependencies = startDependencies()
+    clusterNodes = startClusterNodes(aStartedDependencies)
   }
 
   override def stop(): Unit = {

@@ -15,6 +15,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action._
 import org.elasticsearch.action.support.{ActionFilter, ActionFilters, TransportAction}
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.cluster.ClusterState
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.cluster.service.ClusterService
@@ -22,6 +23,7 @@ import org.elasticsearch.common.settings.{ClusterSettings, IndexScopedSettings, 
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.common.util.set.Sets
 import org.elasticsearch.common.xcontent._
+import org.elasticsearch.index.reindex.ReindexPlugin
 import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
@@ -31,8 +33,8 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
-import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin._
+import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
@@ -97,6 +99,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
   private def createActionModule(settings: Settings) = {
     val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), proxyFilter, esClient, settings, threadPool)
     val clusterSettings = new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS, Sets.newHashSet())
+    val clusterService = new ClusterService(settings, clusterSettings, threadPool)
+    clusterService.getClusterApplierService.setInitialState(ClusterState.EMPTY_STATE)
     val actionModule = new ActionModule(
       false,
       settings,
@@ -105,11 +109,11 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       clusterSettings,
       new SettingsFilter(List.empty.asJava),
       threadPool,
-      List[ActionPlugin](new RORActionPlugin()).asJava,
+      plugins().asJava,
       nodeClient,
       new NoneCircuitBreakerService(),
       new UsageService(),
-      new ClusterService(settings, clusterSettings, threadPool)
+      clusterService
     )
 
     val taskManager = new TaskManager(settings, threadPool, Set.empty[String].asJava)
@@ -127,6 +131,11 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     actionModule.initRestHandlers(() => DiscoveryNodes.EMPTY_NODES)
     actionModule
   }
+
+  private def plugins() = List[ActionPlugin](
+    new RORActionPlugin(),
+    new ReindexPlugin()
+  )
 
   private def actions(actionModule: ActionModule,
                       afs: ActionFilters,
@@ -182,11 +191,23 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
   }
 
   private def sendResponseThroughChannel(proxyRestChannel: ProxyRestChannel,
-                                         response: ToXContentObject): Unit = {
+                                         response: ToXContent): Unit = {
     proxyRestChannel.sendResponse(new BytesRestResponse(
       RestStatus.OK,
-      response.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
+      builderFrom(response, proxyRestChannel)
     ))
+  }
+
+  private def builderFrom(response: ToXContent, proxyRestChannel: ProxyRestChannel) = {
+    response match {
+      case r: ToXContentObject =>
+        r.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
+      case r: ToXContentFragment =>
+        val builder = proxyRestChannel.newBuilder()
+        builder.startObject()
+        r.toXContent(builder, ToXContent.EMPTY_PARAMS)
+        builder.endObject()
+    }
   }
 
   private def sendResponseThroughChannel(proxyRestChannel: ProxyRestChannel,
@@ -212,7 +233,9 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                  settingsFilter: SettingsFilter,
                                  indexNameExpressionResolver: IndexNameExpressionResolver,
                                  nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
-      List[RestHandler](new RestRRAdminAction(restController)).asJava
+      List[RestHandler](
+        new RestRRAdminAction(restController)
+      ).asJava
     }
 
     override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {

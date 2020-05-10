@@ -14,9 +14,11 @@ import org.elasticsearch.action.admin.indices.mapping.get.{GetFieldMappingsReque
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsResponse}
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
+import org.elasticsearch.action.bulk.{BulkRequest, BulkResponse}
 import org.elasticsearch.action.delete.{DeleteRequest, DeleteResponse}
 import org.elasticsearch.action.fieldcaps.{FieldCapabilitiesRequest, FieldCapabilitiesResponse}
-import org.elasticsearch.action.get.{GetRequest, GetResponse}
+import org.elasticsearch.action.get.{GetRequest, GetResponse, MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
+import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
 import org.elasticsearch.action.support.DefaultShardOperationFailedException
 import org.elasticsearch.client.core.CountRequest
@@ -25,6 +27,7 @@ import org.elasticsearch.client.{GetAliasesResponse, RequestOptions, RestHighLev
 import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.compress.CompressedXContent
+import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryRequest}
 import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.proxy.es.exceptions._
 
@@ -33,6 +36,10 @@ import scala.collection.JavaConverters._
 // todo: neat response handling when ES is not available (client throws connection error or times out)
 // todo: use client async api
 class RestHighLevelClientAdapter(client: RestHighLevelClient) {
+
+  def index(request: IndexRequest): Task[IndexResponse] = {
+    executeAsync(client.index(request, RequestOptions.DEFAULT))
+  }
 
   def getMappings(request: AdminGetMappingsRequest): Task[AdminGetMappingsResponse] = {
     val regularRequest = new GetMappingsRequest()
@@ -122,8 +129,35 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.get(request, RequestOptions.DEFAULT))
   }
 
+  def mGet(request: MultiGetRequest): Task[MultiGetResponse] = {
+    executeAsync(client.mget(request, RequestOptions.DEFAULT))
+      .map { response =>
+        val modifiedItems = response
+          .getResponses
+          .map { item =>
+            Option(item.getFailure) match {
+              case Some(failure) => failure
+                .getFailure
+                .toIndexNotFoundException
+                .map(ex => new MultiGetItemResponse(
+                  item.getResponse,
+                  new MultiGetResponse.Failure(failure.getIndex, item.getType, item.getId, ex)
+                ))
+                .getOrElse(item)
+              case None =>
+                item
+            }
+          }
+        new MultiGetResponse(modifiedItems)
+      }
+  }
+
   def delete(request: DeleteRequest): Task[DeleteResponse] = {
     executeAsync(client.delete(request, RequestOptions.DEFAULT))
+  }
+
+  def bulk(request: BulkRequest): Task[BulkResponse] = {
+    executeAsync(client.bulk(request, RequestOptions.DEFAULT))
   }
 
   def getIndex(request: AdminGetIndexRequest): Task[AdminGetIndexResponse] = {
@@ -181,6 +215,10 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def fieldCapabilities(request: FieldCapabilitiesRequest): Task[FieldCapabilitiesResponse] = {
     executeAsync(client.fieldCaps(request, RequestOptions.DEFAULT))
+  }
+
+  def deleteByQuery(request: DeleteByQueryRequest): Task[BulkByScrollResponse] = {
+    executeAsync(client.deleteByQuery(request, RequestOptions.DEFAULT))
   }
 
   private def executeAsync[T](action: => T): Task[T] = Task(action)
