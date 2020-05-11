@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.utils
 
 import better.files._
 import cats.data.NonEmptyList
@@ -24,6 +24,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.apache.logging.log4j.scala.Logging
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.providers.{EnvVarProvider, EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.proxy.{RorProxy, RorProxyApp}
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
@@ -45,9 +46,18 @@ trait ProxyTestSupport
 
   override def afterStart(): Unit = {
     super.afterStart()
-    val dependencies = container match {
-      case c: EsClusterContainer => c.startedDependencies
-      case _ => StartedClusterDependencies(Nil)
+    implicit val (dependencies, provider) = container match {
+      case c: EsClusterContainer =>
+        (
+          c.startedDependencies,
+          new EnvVarsProvider {
+            override def getEnv(name: EnvVarProvider.EnvVarName): Option[String] = {
+              c.rorContainerSpecification.environmentVariables.get(name.value.value)
+            }
+          }
+        )
+      case _ =>
+        (StartedClusterDependencies(Nil), OsEnvVarsProvider)
     }
     launchedProxies = esTargets
       .zipWithIndex
@@ -68,7 +78,8 @@ trait ProxyTestSupport
     //      .unsafeRunSync()
   }
 
-  private def launchProxy(esContainer: EsContainer, appIndex: Int, startedDependencies: StartedClusterDependencies) = {
+  private def launchProxy(esContainer: EsContainer, appIndex: Int, startedDependencies: StartedClusterDependencies)
+                         (implicit provider: EnvVarsProvider) = {
     val proxyPort = appIndex + 5000
     this.logger.info(s"Starting proxy instance listening on port: $proxyPort, target ES node: ${esContainer.name}")
     val testProxyApp = createApp(proxyPort, esContainer, startedDependencies)
@@ -81,7 +92,8 @@ trait ProxyTestSupport
   //TODO: Create proxy instance dynamically based on 'esModule' property. Now it's fixed on es74-cloud
   private def createApp(port: Int,
                         targetEsContainer: EsContainer,
-                        startedDependencies: StartedClusterDependencies): RorProxyApp = new RorProxyApp {
+                        startedDependencies: StartedClusterDependencies)
+                       (implicit provider: EnvVarsProvider): RorProxyApp = new RorProxyApp {
     private val rawRorConfig = ContainerUtils.getResourceFile(rorConfigFileName)
     private val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
       rawRorConfig.toScala,
@@ -90,6 +102,8 @@ trait ProxyTestSupport
     )
 
     System.setProperty("com.readonlyrest.settings.file.path", adjustedRorConfig.toJava.getAbsolutePath)
+
+    override implicit def envVarsProvider: EnvVarsProvider = provider
 
     override def config: RorProxy.Config = RorProxy.Config(
       targetEsNode = s"http://${targetEsContainer.host}:${targetEsContainer.port}",

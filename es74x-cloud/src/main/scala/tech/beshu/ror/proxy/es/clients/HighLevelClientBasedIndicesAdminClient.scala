@@ -12,7 +12,7 @@ import org.elasticsearch.action.admin.indices.analyze.{AnalyzeAction, AnalyzeReq
 import org.elasticsearch.action.admin.indices.cache.clear.{ClearIndicesCacheRequest, ClearIndicesCacheRequestBuilder, ClearIndicesCacheResponse}
 import org.elasticsearch.action.admin.indices.close.{CloseIndexRequest, CloseIndexRequestBuilder, CloseIndexResponse}
 import org.elasticsearch.action.admin.indices.create.{CreateIndexRequest, CreateIndexRequestBuilder, CreateIndexResponse}
-import org.elasticsearch.action.admin.indices.delete.{DeleteIndexRequest, DeleteIndexRequestBuilder}
+import org.elasticsearch.action.admin.indices.delete.{DeleteIndexAction, DeleteIndexRequest, DeleteIndexRequestBuilder}
 import org.elasticsearch.action.admin.indices.exists.indices.{IndicesExistsRequest, IndicesExistsRequestBuilder, IndicesExistsResponse}
 import org.elasticsearch.action.admin.indices.exists.types.{TypesExistsRequest, TypesExistsRequestBuilder, TypesExistsResponse}
 import org.elasticsearch.action.admin.indices.flush._
@@ -99,7 +99,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def delete(request: DeleteIndexRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def delete(request: DeleteIndexRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def delete(request: DeleteIndexRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(DeleteIndexAction.INSTANCE.name(), request, listener) {
+      esClient.deleteIndex(request)
+    }
+  }
 
   override def prepareDelete(indices: String*): DeleteIndexRequestBuilder = throw NotDefinedForRorProxy
 

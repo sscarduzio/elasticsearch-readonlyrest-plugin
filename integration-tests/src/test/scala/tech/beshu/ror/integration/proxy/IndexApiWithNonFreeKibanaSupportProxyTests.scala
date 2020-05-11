@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.IndexApiWithNonFreeKibanaSupportSuite
+import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
 
 class IndexApiWithNonFreeKibanaSupportProxyTests extends IndexApiWithNonFreeKibanaSupportSuite with BasicClusterProxyTestSupport

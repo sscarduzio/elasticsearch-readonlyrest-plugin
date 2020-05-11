@@ -27,6 +27,7 @@ trait EsClusterProvider {
       .map(idx => s"${esClusterSettings.name}_$idx"))
 
     new EsClusterContainer(
+      esClusterSettings.rorContainerSpecification,
       nodeNames.map(name => create(name, nodeNames, esClusterSettings, _)),
       esClusterSettings.dependentServicesContainers
     )

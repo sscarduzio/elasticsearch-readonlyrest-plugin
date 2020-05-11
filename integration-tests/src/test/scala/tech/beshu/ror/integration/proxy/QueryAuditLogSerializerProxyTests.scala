@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.QueryAuditLogSerializerSuite
+import tech.beshu.ror.integration.utils.ProxyTestSupport
 
 class QueryAuditLogSerializerProxyTests extends QueryAuditLogSerializerSuite with ProxyTestSupport

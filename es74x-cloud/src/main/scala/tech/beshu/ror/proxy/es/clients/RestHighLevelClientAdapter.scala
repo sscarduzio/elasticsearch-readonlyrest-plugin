@@ -8,6 +8,7 @@ import java.util
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthResponse}
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest => AdminGetIndexRequest, GetIndexResponse => AdminGetIndexResponse}
 import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse.FieldMappingMetaData
 import org.elasticsearch.action.admin.indices.mapping.get.{GetFieldMappingsRequest => AdminGetFieldMappingsRequest, GetFieldMappingsResponse => AdminGetFieldMappingsResponse, GetMappingsRequest => AdminGetMappingsRequest, GetMappingsResponse => AdminGetMappingsResponse}
@@ -21,6 +22,7 @@ import org.elasticsearch.action.get.{GetRequest, GetResponse, MultiGetItemRespon
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
 import org.elasticsearch.action.support.DefaultShardOperationFailedException
+import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.core.CountRequest
 import org.elasticsearch.client.indices._
 import org.elasticsearch.client.{GetAliasesResponse, RequestOptions, RestHighLevelClient}
@@ -37,8 +39,12 @@ import scala.collection.JavaConverters._
 // todo: use client async api
 class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
-  def index(request: IndexRequest): Task[IndexResponse] = {
+  def getIndex(request: IndexRequest): Task[IndexResponse] = {
     executeAsync(client.index(request, RequestOptions.DEFAULT))
+  }
+
+  def deleteIndex(request: DeleteIndexRequest): Task[AcknowledgedResponse] = {
+    executeAsync(client.indices().delete(request, RequestOptions.DEFAULT))
   }
 
   def getMappings(request: AdminGetMappingsRequest): Task[AdminGetMappingsResponse] = {
@@ -123,6 +129,20 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def getAlias(request: GetAliasesRequest): Task[GetAliasesResponse] = {
     executeAsync(client.indices().getAlias(request, RequestOptions.DEFAULT))
+      .map { response =>
+        Option(response.getException) match {
+          case Some(ex) => ex
+            .toIndexNotFoundException
+            .map { ex =>
+              onClass(classOf[GetAliasesResponse])
+                .create(response.status(), ex)
+                .get[GetAliasesResponse]()
+            }
+            .getOrElse(response)
+          case None =>
+            response
+        }
+      }
   }
 
   def get(request: GetRequest): Task[GetResponse] = {

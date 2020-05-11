@@ -29,7 +29,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter)
 
   // todo: extend it
   private def tryToHandle: PartialFunction[ActionRequest, Task[ActionResponse with ToXContent]] = {
-    case request: IndexRequest => esClient.index(request)
+    case request: IndexRequest => esClient.getIndex(request)
     case request: GetRequest => esClient.get(request)
     case request: MultiGetRequest => esClient.mGet(request)
     case request: DeleteRequest => esClient.delete(request)

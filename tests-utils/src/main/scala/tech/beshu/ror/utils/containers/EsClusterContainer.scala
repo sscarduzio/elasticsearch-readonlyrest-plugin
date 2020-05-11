@@ -26,7 +26,8 @@ import tech.beshu.ror.utils.elasticsearch.ClusterManager
 import scala.collection.immutable.Seq
 import scala.language.existentials
 
-class EsClusterContainer private[containers](val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
+class EsClusterContainer private[containers](val rorContainerSpecification: ContainerSpecification,
+                                             val nodeCreators: NonEmptyList[StartedClusterDependencies => EsContainer],
                                              dependencies: List[DependencyDef])
   extends Container {
 

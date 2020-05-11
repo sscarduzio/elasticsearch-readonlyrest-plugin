@@ -53,15 +53,14 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Success
 
-object Ror extends ReadonlyRest {
+class Ror(override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
+          override val propertiesProvider: PropertiesProvider = JvmPropertiesProvider)
+  extends ReadonlyRest {
 
   val blockingScheduler: Scheduler = Scheduler.io("blocking-index-content-provider")
-
-  override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  override protected implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
   override protected implicit val clock: Clock = Clock.systemUTC()
 
-  override protected val coreFactory: CoreFactory = {
+  override protected lazy val coreFactory: CoreFactory = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val envVarsProviderImplicit: EnvVarsProvider = envVarsProvider
     new RawRorConfigBasedCoreFactory
@@ -72,7 +71,7 @@ trait ReadonlyRest extends Logging {
 
   protected def coreFactory: CoreFactory
 
-  protected def envVarsProvider: EnvVarsProvider
+  protected implicit def envVarsProvider: EnvVarsProvider
 
   protected implicit def propertiesProvider: PropertiesProvider
 

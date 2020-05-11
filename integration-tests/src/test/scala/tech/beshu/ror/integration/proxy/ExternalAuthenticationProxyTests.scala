@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ExternalAuthenticationSuite
+import tech.beshu.ror.integration.utils.ProxyTestSupport
 
 class ExternalAuthenticationProxyTests extends ExternalAuthenticationSuite with ProxyTestSupport

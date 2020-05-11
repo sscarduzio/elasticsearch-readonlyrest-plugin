@@ -98,7 +98,10 @@ object ProxyIndexLevelActionFilter {
             (implicit scheduler: Scheduler,
              envVarsProvider: EnvVarsProvider): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
     val result = for {
-      instance <- EitherT(Ror.start(configFile, ProxyAuditSinkService, ProxyIndexJsonContentService))
+      instance <- EitherT(
+        new Ror(envVarsProvider = envVarsProvider)
+          .start(configFile, ProxyAuditSinkService, ProxyIndexJsonContentService)
+      )
       _ = RorInstanceSupplier.update(instance)
     } yield new ProxyIndexLevelActionFilter(instance, esClient, threadPool)
     result.value

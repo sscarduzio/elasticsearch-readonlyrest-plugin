@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.LdapIntegrationFirstOptionSuite
+import tech.beshu.ror.integration.utils.ProxyTestSupport
 
 class LdapIntegrationFirstOptionProxyTests extends LdapIntegrationFirstOptionSuite with ProxyTestSupport

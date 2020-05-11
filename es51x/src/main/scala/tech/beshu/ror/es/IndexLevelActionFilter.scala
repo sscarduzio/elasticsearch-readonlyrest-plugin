@@ -67,7 +67,7 @@ class IndexLevelActionFilter(settings: Settings,
   )
 
   private val startingTaskCancellable = doPrivileged {
-    Ror
+    new Ror()
       .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
       .runAsync {
         case Right(Right(instance)) =>

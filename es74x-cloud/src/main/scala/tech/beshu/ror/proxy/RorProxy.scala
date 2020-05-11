@@ -25,6 +25,7 @@ trait RorProxy  {
 
   implicit val mainScheduler: SchedulerService = monix.execution.Scheduler.cached("ror-proxy", 10, 20)
   implicit protected def contextShift: ContextShift[IO]
+  implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   def config: RorProxy.Config
 
@@ -38,7 +39,6 @@ trait RorProxy  {
   private def runServer: IO[Either[StartingFailure, CloseHandler]] = {
     val threadPool: ThreadPool = new ThreadPool(Settings.EMPTY)
     val esClient = createEsHighLevelClient()
-    implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
     val result = for {
       simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), config.esConfigFile, threadPool))
       server = Http.server.serve(s":${config.proxyPort}", new ProxyRestInterceptorService(simulator))
