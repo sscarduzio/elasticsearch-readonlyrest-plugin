@@ -63,7 +63,9 @@ dependencies {
     compile           group: 'org.jooq',                        name: 'joor-java-8',                            version: '0.9.12'
     compile           group: 'org.apache.logging.log4j',        name: 'log4j-core',                             version: '2.11.0'
 
+    // todo: clean up
     compile group: 'org.codelibs.elasticsearch.module', name: 'reindex', version: '7.6.2'
+    compile group: 'org.codelibs.elasticsearch.module', name: 'lang-mustache', version: '7.6.2'
 
 }
 

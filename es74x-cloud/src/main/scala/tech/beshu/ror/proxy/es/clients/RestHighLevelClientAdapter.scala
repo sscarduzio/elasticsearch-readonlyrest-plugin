@@ -7,6 +7,7 @@ import java.util
 
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthResponse}
+import org.elasticsearch.action.admin.cluster.storedscripts.{DeleteStoredScriptRequest, GetStoredScriptRequest, GetStoredScriptResponse, PutStoredScriptRequest}
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest => AdminGetIndexRequest, GetIndexResponse => AdminGetIndexResponse}
@@ -14,22 +15,28 @@ import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsRespon
 import org.elasticsearch.action.admin.indices.mapping.get.{GetFieldMappingsRequest => AdminGetFieldMappingsRequest, GetFieldMappingsResponse => AdminGetFieldMappingsResponse, GetMappingsRequest => AdminGetMappingsRequest, GetMappingsResponse => AdminGetMappingsResponse}
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsResponse}
+import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
+import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.action.bulk.{BulkRequest, BulkResponse}
 import org.elasticsearch.action.delete.{DeleteRequest, DeleteResponse}
 import org.elasticsearch.action.fieldcaps.{FieldCapabilitiesRequest, FieldCapabilitiesResponse}
-import org.elasticsearch.action.get.{GetRequest, GetResponse, MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
+import org.elasticsearch.action.get._
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
+import org.elasticsearch.action.main.{MainRequest, MainResponse}
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
 import org.elasticsearch.action.support.DefaultShardOperationFailedException
 import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.core.CountRequest
 import org.elasticsearch.client.indices._
 import org.elasticsearch.client.{GetAliasesResponse, RequestOptions, RestHighLevelClient}
+import org.elasticsearch.cluster.ClusterName
 import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.compress.CompressedXContent
-import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryRequest}
+import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryRequest, ReindexRequest, UpdateByQueryRequest}
+import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearchTemplateResponse, SearchTemplateRequest, SearchTemplateResponse}
+import org.elasticsearch.{Build, ElasticsearchStatusException, Version}
 import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.proxy.es.exceptions._
 
@@ -38,6 +45,19 @@ import scala.collection.JavaConverters._
 // todo: neat response handling when ES is not available (client throws connection error or times out)
 // todo: use client async api
 class RestHighLevelClientAdapter(client: RestHighLevelClient) {
+
+  def main(request: MainRequest): Task[MainResponse] = {
+    executeAsync(client.info(RequestOptions.DEFAULT))
+      .map { response =>
+        new MainResponse(
+          response.getNodeName,
+          Version.CURRENT,
+          new ClusterName(response.getClusterName),
+          response.getClusterUuid,
+          Build.CURRENT
+        )
+      }
+  }
 
   def getIndex(request: IndexRequest): Task[IndexResponse] = {
     executeAsync(client.index(request, RequestOptions.DEFAULT))
@@ -189,7 +209,10 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def getTemplate(request: AdminGetIndexTemplatesRequest): Task[AdminGetIndexTemplatesResponse] = {
-    val r = new GetIndexTemplatesRequest(Option(request.names()).map(_.toList).getOrElse(Nil).asJava)
+    val r = Option(request.names()) match {
+      case Some(names) => new GetIndexTemplatesRequest(names: _*)
+      case None => new GetIndexTemplatesRequest()
+    }
     executeAsync(client.indices().getIndexTemplate(r, RequestOptions.DEFAULT))
       .map { response =>
         val metadataList = response
@@ -203,10 +226,9 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
               metadata.settings(),
               Option(metadata.mappings()) match {
                 case Some(mappings) =>
-                  ImmutableOpenMap
-                    .builder(mappings.getSourceAsMap.size())
-                    .putAll(mappings.getSourceAsMap.asScala.mapValues(_.asInstanceOf[CompressedXContent]).asJava)
-                    .build()
+                  val builder = ImmutableOpenMap.builder[String, CompressedXContent]()
+                  builder.put(mappings.`type`(), mappings.source())
+                  builder.build()
                 case None =>
                   ImmutableOpenMap.builder().build()
               },
@@ -215,6 +237,17 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
           }
         new AdminGetIndexTemplatesResponse(metadataList.asJava)
       }
+      .onErrorRecover { case ex: ElasticsearchStatusException if ex.status().getStatus == 404 =>
+        new AdminGetIndexTemplatesResponse(List.empty[IndexTemplateMetaData].asJava)
+      }
+  }
+
+  def putTemplate(request: PutIndexTemplateRequest): Task[AcknowledgedResponse] = {
+    executeAsync(client.indices().putTemplate(request, RequestOptions.DEFAULT))
+  }
+
+  def deleteTemplate(request: DeleteIndexTemplateRequest): Task[AcknowledgedResponse] = {
+    executeAsync(client.indices().deleteTemplate(request, RequestOptions.DEFAULT))
   }
 
   def stats(request: IndicesStatsRequest): Task[IndicesStatsResponse] = {
@@ -239,6 +272,34 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def deleteByQuery(request: DeleteByQueryRequest): Task[BulkByScrollResponse] = {
     executeAsync(client.deleteByQuery(request, RequestOptions.DEFAULT))
+  }
+
+  def updateByQuery(request: UpdateByQueryRequest): Task[BulkByScrollResponse] = {
+    executeAsync(client.updateByQuery(request, RequestOptions.DEFAULT))
+  }
+
+  def putScript(request: PutStoredScriptRequest): Task[AcknowledgedResponse] = {
+    executeAsync(client.putScript(request, RequestOptions.DEFAULT))
+  }
+
+  def getScript(request: GetStoredScriptRequest): Task[GetStoredScriptResponse] = {
+    executeAsync(client.getScript(request, RequestOptions.DEFAULT))
+  }
+
+  def deleteScript(request: DeleteStoredScriptRequest): Task[AcknowledgedResponse] = {
+    executeAsync(client.deleteScript(request, RequestOptions.DEFAULT))
+  }
+
+  def searchTemplate(request: SearchTemplateRequest): Task[SearchTemplateResponse] = {
+    executeAsync(client.searchTemplate(request, RequestOptions.DEFAULT))
+  }
+
+  def mSearchTemplate(request: MultiSearchTemplateRequest): Task[MultiSearchTemplateResponse] = {
+    executeAsync(client.msearchTemplate(request, RequestOptions.DEFAULT))
+  }
+
+  def reindex(request: ReindexRequest): Task[BulkByScrollResponse] = {
+    executeAsync(client.reindex(request, RequestOptions.DEFAULT))
   }
 
   private def executeAsync[T](action: => T): Task[T] = Task(action)

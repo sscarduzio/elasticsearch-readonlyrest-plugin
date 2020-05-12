@@ -16,8 +16,7 @@
  */
 package tech.beshu.ror.integration.proxy
 
-import tech.beshu.ror.integration.suites.QueryAuditLogSerializerSuite
-import tech.beshu.ror.integration.utils.ProxyTestSupport
+import tech.beshu.ror.integration.suites.MSearchTEST1Suite
+import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
 
-// todo: enable it when audit is ready for proxy
-//class QueryAuditLogSerializerProxyTests extends QueryAuditLogSerializerSuite with ProxyTestSupport
+class MSearchTEST1ProxyTests extends MSearchTEST1Suite with BasicClusterProxyTestSupport

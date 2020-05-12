@@ -31,7 +31,7 @@ trait LocalGroupsSuite
     with Matchers {
   this: EsContainerCreator =>
 
-  private val matchingEndpoint = "/_nodes/local"
+  private val matchingEndpoint = "/_cluster/state"
 
   override implicit val rorConfigFileName = "/local_groups/readonlyrest.yml"
 

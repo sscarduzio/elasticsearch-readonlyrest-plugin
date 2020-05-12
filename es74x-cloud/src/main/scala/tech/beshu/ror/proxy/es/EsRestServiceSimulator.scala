@@ -28,6 +28,7 @@ import org.elasticsearch.indices.breaker.NoneCircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.rest._
+import org.elasticsearch.script.mustache.MustachePlugin
 import org.elasticsearch.tasks
 import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
@@ -51,7 +52,6 @@ import scala.util.{Failure, Success, Try}
 class EsRestServiceSimulator(simulatorEsSettings: File,
                              proxyFilter: ProxyIndexLevelActionFilter,
                              esClient: RestHighLevelClientAdapter,
-                             esActionRequestHandler: EsActionRequestHandler,
                              rrAdminActionHandler: RRAdminActionHandler,
                              threadPool: ThreadPool)
                             (implicit scheduler: Scheduler)
@@ -117,11 +117,13 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     )
 
     val taskManager = new TaskManager(settings, threadPool, Set.empty[String].asJava)
+    val esActionRequestHandler = new EsActionRequestHandler(esClient, clusterService)
     nodeClient.initialize(
       actions(
         actionModule,
         new ActionFilters(Set[ActionFilter](proxyFilter).asJava),
-        taskManager
+        taskManager,
+        esActionRequestHandler
       ),
       taskManager,
       () => "ROR_proxy",
@@ -134,19 +136,21 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
 
   private def plugins() = List[ActionPlugin](
     new RORActionPlugin(),
-    new ReindexPlugin()
+    new ReindexPlugin(),
+    new MustachePlugin()
   )
 
   private def actions(actionModule: ActionModule,
                       afs: ActionFilters,
-                      tm: TaskManager): util.Map[ActionType[_ <: ActionResponse], TransportAction[_ <: ActionRequest, _ <: ActionResponse]] = {
+                      tm: TaskManager,
+                      esActionRequestHandler: EsActionRequestHandler): util.Map[ActionType[_ <: ActionResponse], TransportAction[_ <: ActionRequest, _ <: ActionResponse]] = {
     val map: util.HashMap[ActionType[_ <: ActionResponse], TransportAction[_ <: ActionRequest, _ <: ActionResponse]] = Maps.newHashMap()
     actionModule
       .getActions.asScala
       .foreach { case (_, action) =>
         map.put(
           actionTypeOf(action),
-          transportAction[ActionRequest, ActionResponse](action.getAction.name(), afs, tm)
+          transportAction[ActionRequest, ActionResponse](esActionRequestHandler, action.getAction.name(), afs, tm)
         )
       }
     map
@@ -156,7 +160,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     actionHandler.getAction
   }
 
-  private def transportAction[R <: ActionRequest, RR <: ActionResponse](actionName: String,
+  private def transportAction[R <: ActionRequest, RR <: ActionResponse](esActionRequestHandler: EsActionRequestHandler,
+                                                                        actionName: String,
                                                                         actionFilters: ActionFilters,
                                                                         taskManager: TaskManager): TransportAction[_ <: ActionRequest, _ <: ActionResponse] =
     new TransportAction[R, RR](actionName, actionFilters, taskManager) {
@@ -167,7 +172,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
               case (req: RRAdminRequest, resp: ActionListener[RRAdminResponse]) =>
                 rrAdminActionHandler.handle(req, resp)
               case _ =>
-                handleEsAction(request, listener, proxyRestChannel)
+                handleEsAction(esActionRequestHandler, request, listener, proxyRestChannel)
             }
           case None =>
             EsRestServiceSimulator.this.logger.warn(s"Request $request won't be executed")
@@ -175,7 +180,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       }
     }
 
-  private def handleEsAction[R <: ActionRequest, RR <: ActionResponse](request: R,
+  private def handleEsAction[R <: ActionRequest, RR <: ActionResponse](esActionRequestHandler: EsActionRequestHandler,
+                                                                       request: R,
                                                                        listener: ActionListener[RR],
                                                                        proxyRestChannel: ProxyRestChannel) = {
     esActionRequestHandler
@@ -263,10 +269,9 @@ object EsRestServiceSimulator {
              envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFolder = esConfigFile.parent.path
     val rrAdminActionHandler = new RRAdminActionHandler(ProxyIndexJsonContentService, simulatorEsSettingsFolder)
-    val esActionRequestHandler = new EsActionRequestHandler(esClient)
     val result = for {
       filter <- EitherT(ProxyIndexLevelActionFilter.create(simulatorEsSettingsFolder, esClient, threadPool))
-    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, esActionRequestHandler, rrAdminActionHandler, threadPool)
+    } yield new EsRestServiceSimulator(esConfigFile, filter, esClient, rrAdminActionHandler, threadPool)
     result.value
   }
 }

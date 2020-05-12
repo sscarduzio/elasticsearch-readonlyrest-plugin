@@ -49,12 +49,13 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
                                             (implicit override val scheduler: Scheduler)
   extends ClusterAdminClient with ProxyFilterable {
 
+  // todo: health doesn't work properly
   override def health(request: ClusterHealthRequest): ActionFuture[ClusterHealthResponse] =
     throw NotDefinedForRorProxy
 
   override def health(request: ClusterHealthRequest, listener: ActionListener[ClusterHealthResponse]): Unit = {
     execute(ClusterHealthAction.INSTANCE.name(), request, listener) {
-      esClient.health(request)
+      esClient.health
     }
   }
 
@@ -63,7 +64,7 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
   override def state(request: ClusterStateRequest): ActionFuture[ClusterStateResponse] = throw NotDefinedForRorProxy
 
   override def state(request: ClusterStateRequest, listener: ActionListener[ClusterStateResponse]): Unit = {
-    execute(ClusterStateAction.INSTANCE.name(), request, listener) {
+    execute(ClusterStateAction.INSTANCE.name(), request, listener) { _ =>
       // todo: implement properly
       Task.now(new ClusterStateResponse(
         ClusterName.DEFAULT,
@@ -91,7 +92,7 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def nodesInfo(request: NodesInfoRequest): ActionFuture[NodesInfoResponse] = throw NotDefinedForRorProxy
 
-  override def nodesInfo(request: NodesInfoRequest, listener: ActionListener[NodesInfoResponse]): Unit = passThrough()
+  override def nodesInfo(request: NodesInfoRequest, listener: ActionListener[NodesInfoResponse]): Unit = throw NotDefinedForRorProxy
 
   override def prepareNodesInfo(nodesIds: String*): NodesInfoRequestBuilder = throw NotDefinedForRorProxy
 
@@ -249,7 +250,11 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def preparePutStoredScript(): PutStoredScriptRequestBuilder = throw NotDefinedForRorProxy
 
-  override def deleteStoredScript(request: DeleteStoredScriptRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def deleteStoredScript(request: DeleteStoredScriptRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(DeleteStoredScriptAction.INSTANCE.name(), request, listener) {
+      esClient.deleteScript
+    }
+  }
 
   override def deleteStoredScript(request: DeleteStoredScriptRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
@@ -257,7 +262,11 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def prepareDeleteStoredScript(id: String): DeleteStoredScriptRequestBuilder = throw NotDefinedForRorProxy
 
-  override def putStoredScript(request: PutStoredScriptRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def putStoredScript(request: PutStoredScriptRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(PutStoredScriptAction.INSTANCE.name(), request, listener) {
+      esClient.putScript
+    }
+  }
 
   override def putStoredScript(request: PutStoredScriptRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
@@ -265,7 +274,11 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def prepareGetStoredScript(id: String): GetStoredScriptRequestBuilder = throw NotDefinedForRorProxy
 
-  override def getStoredScript(request: GetStoredScriptRequest, listener: ActionListener[GetStoredScriptResponse]): Unit = throw NotDefinedForRorProxy
+  override def getStoredScript(request: GetStoredScriptRequest, listener: ActionListener[GetStoredScriptResponse]): Unit = {
+    execute(GetStoredScriptAction.INSTANCE.name(), request, listener) {
+      esClient.getScript
+    }
+  }
 
   override def getStoredScript(request: GetStoredScriptRequest): ActionFuture[GetStoredScriptResponse] = throw NotDefinedForRorProxy
 

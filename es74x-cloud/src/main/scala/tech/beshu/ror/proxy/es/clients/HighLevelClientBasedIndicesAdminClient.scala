@@ -30,9 +30,9 @@ import org.elasticsearch.action.admin.indices.settings.put.{UpdateSettingsReques
 import org.elasticsearch.action.admin.indices.shards.{IndicesShardStoreRequestBuilder, IndicesShardStoresRequest, IndicesShardStoresResponse}
 import org.elasticsearch.action.admin.indices.shrink.{ResizeRequest, ResizeRequestBuilder, ResizeResponse}
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsAction, IndicesStatsRequest, IndicesStatsRequestBuilder, IndicesStatsResponse}
-import org.elasticsearch.action.admin.indices.template.delete.{DeleteIndexTemplateRequest, DeleteIndexTemplateRequestBuilder}
+import org.elasticsearch.action.admin.indices.template.delete.{DeleteIndexTemplateAction, DeleteIndexTemplateRequest, DeleteIndexTemplateRequestBuilder}
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesAction, GetIndexTemplatesRequest, GetIndexTemplatesRequestBuilder, GetIndexTemplatesResponse}
-import org.elasticsearch.action.admin.indices.template.put.{PutIndexTemplateRequest, PutIndexTemplateRequestBuilder}
+import org.elasticsearch.action.admin.indices.template.put.{PutIndexTemplateAction, PutIndexTemplateRequest, PutIndexTemplateRequestBuilder}
 import org.elasticsearch.action.admin.indices.upgrade.get.{UpgradeStatusRequest, UpgradeStatusRequestBuilder, UpgradeStatusResponse}
 import org.elasticsearch.action.admin.indices.upgrade.post.{UpgradeRequest, UpgradeRequestBuilder, UpgradeResponse}
 import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryRequest, ValidateQueryRequestBuilder, ValidateQueryResponse}
@@ -67,7 +67,7 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def stats(request: IndicesStatsRequest, listener: ActionListener[IndicesStatsResponse]): Unit = {
     execute(IndicesStatsAction.INSTANCE.name(), request, listener) {
-      esClient.stats(request)
+      esClient.stats
     }
   }
 
@@ -101,7 +101,7 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def delete(request: DeleteIndexRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
     execute(DeleteIndexAction.INSTANCE.name(), request, listener) {
-      esClient.deleteIndex(request)
+      esClient.deleteIndex
     }
   }
 
@@ -157,7 +157,7 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def getMappings(request: GetMappingsRequest, listener: ActionListener[GetMappingsResponse]): Unit = {
     execute(GetMappingsAction.INSTANCE.name(), request, listener) {
-      esClient.getMappings(request)
+      esClient.getMappings
     }
   }
 
@@ -167,7 +167,7 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def getFieldMappings(request: GetFieldMappingsRequest, listener: ActionListener[GetFieldMappingsResponse]): Unit = {
     execute(GetFieldMappingsAction.INSTANCE.name(), request, listener) {
-      esClient.getFieldMappings(request)
+      esClient.getFieldMappings
     }
   }
 
@@ -190,9 +190,9 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
   override def getAliases(request: GetAliasesRequest): ActionFuture[GetAliasesResponse] = throw NotDefinedForRorProxy
 
   override def getAliases(request: GetAliasesRequest, listener: ActionListener[GetAliasesResponse]): Unit = {
-    execute(GetAliasesAction.INSTANCE.name(), request, listener) {
+    execute(GetAliasesAction.INSTANCE.name(), request, listener) { r =>
       esClient
-        .getAlias(request)
+        .getAlias(r)
         .map { resp =>
           Option(resp.getException) match {
             case Some(ex) => throw ex
@@ -219,7 +219,7 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def getIndex(request: GetIndexRequest, listener: ActionListener[GetIndexResponse]): Unit = {
     execute(GetIndexAction.INSTANCE.name(), request, listener) {
-      esClient.getIndex(request)
+      esClient.getIndex
     }
   }
 
@@ -249,13 +249,21 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def putTemplate(request: PutIndexTemplateRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def putTemplate(request: PutIndexTemplateRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def putTemplate(request: PutIndexTemplateRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(PutIndexTemplateAction.INSTANCE.name(), request, listener) {
+      esClient.putTemplate
+    }
+  }
 
   override def preparePutTemplate(name: String): PutIndexTemplateRequestBuilder = throw NotDefinedForRorProxy
 
   override def deleteTemplate(request: DeleteIndexTemplateRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def deleteTemplate(request: DeleteIndexTemplateRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def deleteTemplate(request: DeleteIndexTemplateRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(DeleteIndexTemplateAction.INSTANCE.name(), request, listener) {
+      esClient.deleteTemplate
+    }
+  }
 
   override def prepareDeleteTemplate(name: String): DeleteIndexTemplateRequestBuilder = throw NotDefinedForRorProxy
 
@@ -264,7 +272,7 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
   override def getTemplates(request: GetIndexTemplatesRequest,
                             listener: ActionListener[GetIndexTemplatesResponse]): Unit = {
     execute(GetIndexTemplatesAction.INSTANCE.name(), request, listener) {
-      esClient.getTemplate(request)
+      esClient.getTemplate
     }
   }
 
@@ -278,7 +286,7 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def getSettings(request: GetSettingsRequest, listener: ActionListener[GetSettingsResponse]): Unit = {
     execute(GetSettingsAction.INSTANCE.name(), request, listener) {
-      esClient.getSettings(request)
+      esClient.getSettings
     }
   }
 
