@@ -7,35 +7,35 @@ import monix.execution.Scheduler
 import org.elasticsearch.action._
 import org.elasticsearch.action.admin.indices.alias.exists.{AliasesExistRequestBuilder, AliasesExistResponse}
 import org.elasticsearch.action.admin.indices.alias.get.{GetAliasesAction, GetAliasesRequest, GetAliasesRequestBuilder, GetAliasesResponse}
-import org.elasticsearch.action.admin.indices.alias.{IndicesAliasesRequest, IndicesAliasesRequestBuilder}
+import org.elasticsearch.action.admin.indices.alias.{IndicesAliasesAction, IndicesAliasesRequest, IndicesAliasesRequestBuilder}
 import org.elasticsearch.action.admin.indices.analyze.{AnalyzeAction, AnalyzeRequestBuilder}
-import org.elasticsearch.action.admin.indices.cache.clear.{ClearIndicesCacheRequest, ClearIndicesCacheRequestBuilder, ClearIndicesCacheResponse}
-import org.elasticsearch.action.admin.indices.close.{CloseIndexRequest, CloseIndexRequestBuilder, CloseIndexResponse}
+import org.elasticsearch.action.admin.indices.cache.clear.{ClearIndicesCacheAction, ClearIndicesCacheRequest, ClearIndicesCacheRequestBuilder, ClearIndicesCacheResponse}
+import org.elasticsearch.action.admin.indices.close.{CloseIndexAction, CloseIndexRequest, CloseIndexRequestBuilder, CloseIndexResponse}
 import org.elasticsearch.action.admin.indices.create.{CreateIndexRequest, CreateIndexRequestBuilder, CreateIndexResponse}
 import org.elasticsearch.action.admin.indices.delete.{DeleteIndexAction, DeleteIndexRequest, DeleteIndexRequestBuilder}
-import org.elasticsearch.action.admin.indices.exists.indices.{IndicesExistsRequest, IndicesExistsRequestBuilder, IndicesExistsResponse}
+import org.elasticsearch.action.admin.indices.exists.indices.{IndicesExistsAction, IndicesExistsRequest, IndicesExistsRequestBuilder, IndicesExistsResponse}
 import org.elasticsearch.action.admin.indices.exists.types.{TypesExistsRequest, TypesExistsRequestBuilder, TypesExistsResponse}
 import org.elasticsearch.action.admin.indices.flush._
-import org.elasticsearch.action.admin.indices.forcemerge.{ForceMergeRequest, ForceMergeRequestBuilder, ForceMergeResponse}
+import org.elasticsearch.action.admin.indices.forcemerge.{ForceMergeAction, ForceMergeRequest, ForceMergeRequestBuilder, ForceMergeResponse}
 import org.elasticsearch.action.admin.indices.get.{GetIndexAction, GetIndexRequest, GetIndexRequestBuilder, GetIndexResponse}
 import org.elasticsearch.action.admin.indices.mapping.get._
-import org.elasticsearch.action.admin.indices.mapping.put.{PutMappingRequest, PutMappingRequestBuilder}
-import org.elasticsearch.action.admin.indices.open.{OpenIndexRequest, OpenIndexRequestBuilder, OpenIndexResponse}
+import org.elasticsearch.action.admin.indices.mapping.put.{PutMappingAction, PutMappingRequest, PutMappingRequestBuilder}
+import org.elasticsearch.action.admin.indices.open.{OpenIndexAction, OpenIndexRequest, OpenIndexRequestBuilder, OpenIndexResponse}
 import org.elasticsearch.action.admin.indices.recovery.{RecoveryRequest, RecoveryRequestBuilder, RecoveryResponse}
-import org.elasticsearch.action.admin.indices.refresh.{RefreshRequest, RefreshRequestBuilder, RefreshResponse}
-import org.elasticsearch.action.admin.indices.rollover.{RolloverRequest, RolloverRequestBuilder, RolloverResponse}
+import org.elasticsearch.action.admin.indices.refresh.{RefreshAction, RefreshRequest, RefreshRequestBuilder, RefreshResponse}
+import org.elasticsearch.action.admin.indices.rollover.{RolloverAction, RolloverRequest, RolloverRequestBuilder, RolloverResponse}
 import org.elasticsearch.action.admin.indices.segments.{IndicesSegmentResponse, IndicesSegmentsRequest, IndicesSegmentsRequestBuilder}
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsAction, GetSettingsRequest, GetSettingsRequestBuilder, GetSettingsResponse}
-import org.elasticsearch.action.admin.indices.settings.put.{UpdateSettingsRequest, UpdateSettingsRequestBuilder}
+import org.elasticsearch.action.admin.indices.settings.put.{UpdateSettingsAction, UpdateSettingsRequest, UpdateSettingsRequestBuilder}
 import org.elasticsearch.action.admin.indices.shards.{IndicesShardStoreRequestBuilder, IndicesShardStoresRequest, IndicesShardStoresResponse}
-import org.elasticsearch.action.admin.indices.shrink.{ResizeRequest, ResizeRequestBuilder, ResizeResponse}
+import org.elasticsearch.action.admin.indices.shrink.{ResizeAction, ResizeRequest, ResizeRequestBuilder, ResizeResponse}
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsAction, IndicesStatsRequest, IndicesStatsRequestBuilder, IndicesStatsResponse}
 import org.elasticsearch.action.admin.indices.template.delete.{DeleteIndexTemplateAction, DeleteIndexTemplateRequest, DeleteIndexTemplateRequestBuilder}
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesAction, GetIndexTemplatesRequest, GetIndexTemplatesRequestBuilder, GetIndexTemplatesResponse}
 import org.elasticsearch.action.admin.indices.template.put.{PutIndexTemplateAction, PutIndexTemplateRequest, PutIndexTemplateRequestBuilder}
 import org.elasticsearch.action.admin.indices.upgrade.get.{UpgradeStatusRequest, UpgradeStatusRequestBuilder, UpgradeStatusResponse}
 import org.elasticsearch.action.admin.indices.upgrade.post.{UpgradeRequest, UpgradeRequestBuilder, UpgradeResponse}
-import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryRequest, ValidateQueryRequestBuilder, ValidateQueryResponse}
+import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryAction, ValidateQueryRequest, ValidateQueryRequestBuilder, ValidateQueryResponse}
 import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.IndicesAdminClient
 import org.elasticsearch.cluster.metadata.AliasMetaData
@@ -53,7 +53,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def exists(request: IndicesExistsRequest): ActionFuture[IndicesExistsResponse] = throw NotDefinedForRorProxy
 
-  override def exists(request: IndicesExistsRequest, listener: ActionListener[IndicesExistsResponse]): Unit = throw NotDefinedForRorProxy
+  override def exists(request: IndicesExistsRequest, listener: ActionListener[IndicesExistsResponse]): Unit = {
+    execute(IndicesExistsAction.INSTANCE.name(), request, listener) {
+      esClient.indicesExists
+    }
+  }
 
   override def prepareExists(indices: String*): IndicesExistsRequestBuilder = throw NotDefinedForRorProxy
 
@@ -109,25 +113,41 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def close(request: CloseIndexRequest): ActionFuture[CloseIndexResponse] = throw NotDefinedForRorProxy
 
-  override def close(request: CloseIndexRequest, listener: ActionListener[CloseIndexResponse]): Unit = throw NotDefinedForRorProxy
+  override def close(request: CloseIndexRequest, listener: ActionListener[CloseIndexResponse]): Unit = {
+    execute(CloseIndexAction.INSTANCE.name(), request, listener) {
+      esClient.closeIndex
+    }
+  }
 
   override def prepareClose(indices: String*): CloseIndexRequestBuilder = throw NotDefinedForRorProxy
 
   override def open(request: OpenIndexRequest): ActionFuture[OpenIndexResponse] = throw NotDefinedForRorProxy
 
-  override def open(request: OpenIndexRequest, listener: ActionListener[OpenIndexResponse]): Unit = throw NotDefinedForRorProxy
+  override def open(request: OpenIndexRequest, listener: ActionListener[OpenIndexResponse]): Unit = {
+    execute(OpenIndexAction.INSTANCE.name(), request, listener) {
+      esClient.openIndex
+    }
+  }
 
   override def prepareOpen(indices: String*): OpenIndexRequestBuilder = throw NotDefinedForRorProxy
 
   override def refresh(request: RefreshRequest): ActionFuture[RefreshResponse] = throw NotDefinedForRorProxy
 
-  override def refresh(request: RefreshRequest, listener: ActionListener[RefreshResponse]): Unit = throw NotDefinedForRorProxy
+  override def refresh(request: RefreshRequest, listener: ActionListener[RefreshResponse]): Unit = {
+    execute(RefreshAction.INSTANCE.name(), request, listener) {
+      esClient.refresh
+    }
+  }
 
   override def prepareRefresh(indices: String*): RefreshRequestBuilder = throw NotDefinedForRorProxy
 
   override def flush(request: FlushRequest): ActionFuture[FlushResponse] = throw NotDefinedForRorProxy
 
-  override def flush(request: FlushRequest, listener: ActionListener[FlushResponse]): Unit = throw NotDefinedForRorProxy
+  override def flush(request: FlushRequest, listener: ActionListener[FlushResponse]): Unit = {
+    execute(FlushAction.INSTANCE.name(), request, listener) {
+      esClient.flush
+    }
+  }
 
   override def prepareFlush(indices: String*): FlushRequestBuilder = throw NotDefinedForRorProxy
 
@@ -139,7 +159,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def forceMerge(request: ForceMergeRequest): ActionFuture[ForceMergeResponse] = throw NotDefinedForRorProxy
 
-  override def forceMerge(request: ForceMergeRequest, listener: ActionListener[ForceMergeResponse]): Unit = throw NotDefinedForRorProxy
+  override def forceMerge(request: ForceMergeRequest, listener: ActionListener[ForceMergeResponse]): Unit = {
+    execute(ForceMergeAction.INSTANCE.name(), request, listener) {
+      esClient.forceMerge
+    }
+  }
 
   override def prepareForceMerge(indices: String*): ForceMergeRequestBuilder = throw NotDefinedForRorProxy
 
@@ -165,25 +189,33 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def prepareGetMappings(indices: String*): GetMappingsRequestBuilder = throw NotDefinedForRorProxy
 
+  override def prepareGetFieldMappings(indices: String*): GetFieldMappingsRequestBuilder = throw NotDefinedForRorProxy
+
   override def getFieldMappings(request: GetFieldMappingsRequest, listener: ActionListener[GetFieldMappingsResponse]): Unit = {
     execute(GetFieldMappingsAction.INSTANCE.name(), request, listener) {
       esClient.getFieldMappings
     }
   }
 
-  override def prepareGetFieldMappings(indices: String*): GetFieldMappingsRequestBuilder = throw NotDefinedForRorProxy
-
   override def getFieldMappings(request: GetFieldMappingsRequest): ActionFuture[GetFieldMappingsResponse] = throw NotDefinedForRorProxy
 
   override def putMapping(request: PutMappingRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def putMapping(request: PutMappingRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def putMapping(request: PutMappingRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(PutMappingAction.INSTANCE.name(), request, listener) {
+      esClient.putMappings
+    }
+  }
 
   override def preparePutMapping(indices: String*): PutMappingRequestBuilder = throw NotDefinedForRorProxy
 
   override def aliases(request: IndicesAliasesRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def aliases(request: IndicesAliasesRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def aliases(request: IndicesAliasesRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(IndicesAliasesAction.INSTANCE.name(), request, listener) {
+      esClient.updateAliases
+    }
+  }
 
   override def prepareAliases(): IndicesAliasesRequestBuilder = throw NotDefinedForRorProxy
 
@@ -213,7 +245,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def aliasesExist(request: GetAliasesRequest): ActionFuture[AliasesExistResponse] = throw NotDefinedForRorProxy
 
-  override def aliasesExist(request: GetAliasesRequest, listener: ActionListener[AliasesExistResponse]): Unit = throw NotDefinedForRorProxy
+  override def aliasesExist(request: GetAliasesRequest, listener: ActionListener[AliasesExistResponse]): Unit = {
+    execute(GetAliasesAction.INSTANCE.name(), request, listener) {
+      esClient.aliasesExist
+    }
+  }
 
   override def getIndex(request: GetIndexRequest): ActionFuture[GetIndexResponse] = throw NotDefinedForRorProxy
 
@@ -227,19 +263,31 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def clearCache(request: ClearIndicesCacheRequest): ActionFuture[ClearIndicesCacheResponse] = throw NotDefinedForRorProxy
 
-  override def clearCache(request: ClearIndicesCacheRequest, listener: ActionListener[ClearIndicesCacheResponse]): Unit = throw NotDefinedForRorProxy
+  override def clearCache(request: ClearIndicesCacheRequest, listener: ActionListener[ClearIndicesCacheResponse]): Unit = {
+    execute(ClearIndicesCacheAction.INSTANCE.name(), request, listener) {
+      esClient.clearCache
+    }
+  }
 
   override def prepareClearCache(indices: String*): ClearIndicesCacheRequestBuilder = throw NotDefinedForRorProxy
 
   override def updateSettings(request: UpdateSettingsRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def updateSettings(request: UpdateSettingsRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def updateSettings(request: UpdateSettingsRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(UpdateSettingsAction.INSTANCE.name(), request, listener) {
+      esClient.updateSettings
+    }
+  }
 
   override def prepareUpdateSettings(indices: String*): UpdateSettingsRequestBuilder = throw NotDefinedForRorProxy
 
   override def analyze(request: AnalyzeAction.Request): ActionFuture[AnalyzeAction.Response] = throw NotDefinedForRorProxy
 
-  override def analyze(request: AnalyzeAction.Request, listener: ActionListener[AnalyzeAction.Response]): Unit = throw NotDefinedForRorProxy
+  override def analyze(request: AnalyzeAction.Request, listener: ActionListener[AnalyzeAction.Response]): Unit = {
+    execute(AnalyzeAction.INSTANCE.name(), request, listener) {
+      esClient.analyze
+    }
+  }
 
   override def prepareAnalyze(index: String, text: String): AnalyzeRequestBuilder = throw NotDefinedForRorProxy
 
@@ -280,7 +328,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def validateQuery(request: ValidateQueryRequest): ActionFuture[ValidateQueryResponse] = throw NotDefinedForRorProxy
 
-  override def validateQuery(request: ValidateQueryRequest, listener: ActionListener[ValidateQueryResponse]): Unit = throw NotDefinedForRorProxy
+  override def validateQuery(request: ValidateQueryRequest, listener: ActionListener[ValidateQueryResponse]): Unit = {
+    execute(ValidateQueryAction.INSTANCE.name(), request, listener) {
+      esClient.validateQuery
+    }
+  }
 
   override def prepareValidateQuery(indices: String*): ValidateQueryRequestBuilder = throw NotDefinedForRorProxy
 
@@ -298,17 +350,30 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def resizeIndex(request: ResizeRequest): ActionFuture[ResizeResponse] = throw NotDefinedForRorProxy
 
-  override def resizeIndex(request: ResizeRequest, listener: ActionListener[ResizeResponse]): Unit = throw NotDefinedForRorProxy
+  override def resizeIndex(request: ResizeRequest, listener: ActionListener[ResizeResponse]): Unit = {
+    execute(ResizeAction.INSTANCE.name(), request, listener) {
+      esClient.resizeIndex
+    }
+  }
 
   override def prepareRolloverIndex(sourceAlias: String): RolloverRequestBuilder = throw NotDefinedForRorProxy
 
   override def rolloversIndex(request: RolloverRequest): ActionFuture[RolloverResponse] = throw NotDefinedForRorProxy
 
-  override def rolloverIndex(request: RolloverRequest, listener: ActionListener[RolloverResponse]): Unit = throw NotDefinedForRorProxy
+  override def rolloverIndex(request: RolloverRequest, listener: ActionListener[RolloverResponse]): Unit = {
+    execute(RolloverAction.INSTANCE.name(), request, listener) {
+      esClient.rolloverIndex
+    }
+  }
 
-  override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response], request: Request): ActionFuture[Response] = throw NotDefinedForRorProxy
+  override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response],
+                                                                             request: Request): ActionFuture[Response] =
+    throw NotDefinedForRorProxy
 
-  override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response], request: Request, listener: ActionListener[Response]): Unit = throw NotDefinedForRorProxy
+  override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response],
+                                                                             request: Request,
+                                                                             listener: ActionListener[Response]): Unit =
+    throw NotDefinedForRorProxy
 
   override def threadPool(): ThreadPool = throw NotDefinedForRorProxy
 
