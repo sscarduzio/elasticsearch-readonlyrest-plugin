@@ -150,19 +150,31 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def putRepository(request: PutRepositoryRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def putRepository(request: PutRepositoryRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def putRepository(request: PutRepositoryRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(PutRepositoryAction.INSTANCE.name(), request, listener) {
+      esClient.putRepository
+    }
+  }
 
   override def preparePutRepository(name: String): PutRepositoryRequestBuilder = throw NotDefinedForRorProxy
 
   override def deleteRepository(request: DeleteRepositoryRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def deleteRepository(request: DeleteRepositoryRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def deleteRepository(request: DeleteRepositoryRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(DeleteRepositoryAction.INSTANCE.name(), request, listener) {
+      esClient.deleteRepository
+    }
+  }
 
   override def prepareDeleteRepository(name: String): DeleteRepositoryRequestBuilder = throw NotDefinedForRorProxy
 
   override def getRepositories(request: GetRepositoriesRequest): ActionFuture[GetRepositoriesResponse] = throw NotDefinedForRorProxy
 
-  override def getRepositories(request: GetRepositoriesRequest, listener: ActionListener[GetRepositoriesResponse]): Unit = throw NotDefinedForRorProxy
+  override def getRepositories(request: GetRepositoriesRequest, listener: ActionListener[GetRepositoriesResponse]): Unit = {
+    execute(GetRepositoriesAction.INSTANCE.name(), request, listener) {
+      esClient.getRepositories
+    }
+  }
 
   override def prepareGetRepositories(name: String*): GetRepositoriesRequestBuilder = throw NotDefinedForRorProxy
 
@@ -170,35 +182,59 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def cleanupRepository(repository: CleanupRepositoryRequest): ActionFuture[CleanupRepositoryResponse] = throw NotDefinedForRorProxy
 
-  override def cleanupRepository(repository: CleanupRepositoryRequest, listener: ActionListener[CleanupRepositoryResponse]): Unit = throw NotDefinedForRorProxy
+  override def cleanupRepository(request: CleanupRepositoryRequest, listener: ActionListener[CleanupRepositoryResponse]): Unit = {
+    execute(CleanupRepositoryAction.INSTANCE.name(), request, listener) {
+      esClient.cleanupRepository
+    }
+  }
 
   override def verifyRepository(request: VerifyRepositoryRequest): ActionFuture[VerifyRepositoryResponse] = throw NotDefinedForRorProxy
 
-  override def verifyRepository(request: VerifyRepositoryRequest, listener: ActionListener[VerifyRepositoryResponse]): Unit = throw NotDefinedForRorProxy
+  override def verifyRepository(request: VerifyRepositoryRequest, listener: ActionListener[VerifyRepositoryResponse]): Unit = {
+    execute(VerifyRepositoryAction.INSTANCE.name(), request, listener) {
+      esClient.verifyRepository
+    }
+  }
 
   override def prepareVerifyRepository(name: String): VerifyRepositoryRequestBuilder = throw NotDefinedForRorProxy
 
   override def createSnapshot(request: CreateSnapshotRequest): ActionFuture[CreateSnapshotResponse] = throw NotDefinedForRorProxy
 
-  override def createSnapshot(request: CreateSnapshotRequest, listener: ActionListener[CreateSnapshotResponse]): Unit = throw NotDefinedForRorProxy
+  override def createSnapshot(request: CreateSnapshotRequest, listener: ActionListener[CreateSnapshotResponse]): Unit = {
+    execute(CreateSnapshotAction.INSTANCE.name(), request, listener) {
+      esClient.createSnapshot
+    }
+  }
 
   override def prepareCreateSnapshot(repository: String, name: String): CreateSnapshotRequestBuilder = throw NotDefinedForRorProxy
 
   override def getSnapshots(request: GetSnapshotsRequest): ActionFuture[GetSnapshotsResponse] = throw NotDefinedForRorProxy
 
-  override def getSnapshots(request: GetSnapshotsRequest, listener: ActionListener[GetSnapshotsResponse]): Unit = throw NotDefinedForRorProxy
+  override def getSnapshots(request: GetSnapshotsRequest, listener: ActionListener[GetSnapshotsResponse]): Unit = {
+    execute(GetSnapshotsAction.INSTANCE.name(), request, listener) {
+      esClient.getSnapshots
+    }
+  }
 
   override def prepareGetSnapshots(repository: String): GetSnapshotsRequestBuilder = throw NotDefinedForRorProxy
 
   override def deleteSnapshot(request: DeleteSnapshotRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
 
-  override def deleteSnapshot(request: DeleteSnapshotRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def deleteSnapshot(request: DeleteSnapshotRequest, listener: ActionListener[AcknowledgedResponse]): Unit = {
+    execute(DeleteSnapshotAction.INSTANCE.name(), request, listener) {
+      esClient.deleteSnapshot
+    }
+  }
 
   override def prepareDeleteSnapshot(repository: String, snapshot: String): DeleteSnapshotRequestBuilder = throw NotDefinedForRorProxy
 
   override def restoreSnapshot(request: RestoreSnapshotRequest): ActionFuture[RestoreSnapshotResponse] = throw NotDefinedForRorProxy
 
-  override def restoreSnapshot(request: RestoreSnapshotRequest, listener: ActionListener[RestoreSnapshotResponse]): Unit = throw NotDefinedForRorProxy
+  override def restoreSnapshot(request: RestoreSnapshotRequest, listener: ActionListener[RestoreSnapshotResponse]): Unit = {
+    execute(RestoreSnapshotAction.INSTANCE.name(), request, listener) {
+      esClient.restoreSnapshot
+    }
+  }
 
   override def prepareRestoreSnapshot(repository: String, snapshot: String): RestoreSnapshotRequestBuilder = throw NotDefinedForRorProxy
 
@@ -210,7 +246,11 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def snapshotsStatus(request: SnapshotsStatusRequest): ActionFuture[SnapshotsStatusResponse] = throw NotDefinedForRorProxy
 
-  override def snapshotsStatus(request: SnapshotsStatusRequest, listener: ActionListener[SnapshotsStatusResponse]): Unit = throw NotDefinedForRorProxy
+  override def snapshotsStatus(request: SnapshotsStatusRequest, listener: ActionListener[SnapshotsStatusResponse]): Unit = {
+    execute(SnapshotsStatusAction.INSTANCE.name(), request, listener) {
+      esClient.snapshotsStatus
+    }
+  }
 
   override def prepareSnapshotStatus(repository: String): SnapshotsStatusRequestBuilder = throw NotDefinedForRorProxy
 

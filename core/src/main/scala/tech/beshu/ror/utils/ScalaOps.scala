@@ -210,5 +210,8 @@ object ScalaOps {
     def decodeBase64: Option[String] = {
       Try(new String(Base64.getDecoder.decode(value), "UTF-8")).toOption
     }
+    def safeNonEmpty: Option[NonEmptyString] = {
+      Option(value).flatMap(NonEmptyString.unapply)
+    }
   }
 }

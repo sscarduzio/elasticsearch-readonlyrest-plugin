@@ -47,6 +47,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
     case request: SearchTemplateRequest => esClient.searchTemplate(request)
     case request: MultiSearchTemplateRequest => esClient.mSearchTemplate(request)
     case request: ReindexRequest => esClient.reindex(request)
+      //todo: snapshots
     case other => Task(throw new IllegalStateException(s"not implemented: ${other.getClass.getSimpleName}")) // todo:
   }
 }

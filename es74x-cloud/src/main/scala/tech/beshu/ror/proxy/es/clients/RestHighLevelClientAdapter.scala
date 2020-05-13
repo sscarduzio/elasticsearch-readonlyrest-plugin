@@ -7,6 +7,16 @@ import java.util
 
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthResponse}
+import org.elasticsearch.action.admin.cluster.repositories.cleanup.{CleanupRepositoryRequest, CleanupRepositoryResponse}
+import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
+import org.elasticsearch.action.admin.cluster.repositories.get.{GetRepositoriesRequest, GetRepositoriesResponse}
+import org.elasticsearch.action.admin.cluster.repositories.put.PutRepositoryRequest
+import org.elasticsearch.action.admin.cluster.repositories.verify.{VerifyRepositoryRequest, VerifyRepositoryResponse}
+import org.elasticsearch.action.admin.cluster.snapshots.create.{CreateSnapshotRequest, CreateSnapshotResponse}
+import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
+import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
+import org.elasticsearch.action.admin.cluster.snapshots.restore.{RestoreSnapshotRequest, RestoreSnapshotResponse}
+import org.elasticsearch.action.admin.cluster.snapshots.status.{SnapshotsStatusRequest, SnapshotsStatusResponse}
 import org.elasticsearch.action.admin.cluster.storedscripts.{DeleteStoredScriptRequest, GetStoredScriptRequest, GetStoredScriptResponse, PutStoredScriptRequest}
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.action.admin.indices.alias.exists.AliasesExistResponse
@@ -201,10 +211,8 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
           .getResponses
           .map { item =>
             Option(item.getFailure) match {
-              case Some(ex) => ex
-                .toIndexNotFoundException
-                .map(new MultiSearchResponse.Item(item.getResponse, _))
-                .getOrElse(item)
+              case Some(ex) =>
+                new MultiSearchResponse.Item(item.getResponse, ex.toSpecializedException)
               case None =>
                 item
             }
@@ -225,14 +233,10 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.indices().getAlias(request, RequestOptions.DEFAULT))
       .map { response =>
         Option(response.getException) match {
-          case Some(ex) => ex
-            .toIndexNotFoundException
-            .map { ex =>
-              onClass(classOf[GetAliasesResponse])
-                .create(response.status(), ex)
-                .get[GetAliasesResponse]()
-            }
-            .getOrElse(response)
+          case Some(ex) =>
+            onClass(classOf[GetAliasesResponse])
+              .create(response.status(), ex.toSpecializedException)
+              .get[GetAliasesResponse]()
           case None =>
             response
         }
@@ -259,14 +263,11 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
           .getResponses
           .map { item =>
             Option(item.getFailure) match {
-              case Some(failure) => failure
-                .getFailure
-                .toIndexNotFoundException
-                .map(ex => new MultiGetItemResponse(
+              case Some(failure) =>
+                new MultiGetItemResponse(
                   item.getResponse,
-                  new MultiGetResponse.Failure(failure.getIndex, item.getType, item.getId, ex)
-                ))
-                .getOrElse(item)
+                  new MultiGetResponse.Failure(failure.getIndex, item.getType, item.getId, failure.getFailure.toSpecializedException)
+                )
               case None =>
                 item
             }
@@ -291,7 +292,7 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.indices().get(request, RequestOptions.DEFAULT))
   }
 
-  def clearCache(request: ClearIndicesCacheRequest): Task[ClearIndicesCacheResponse] ={
+  def clearCache(request: ClearIndicesCacheRequest): Task[ClearIndicesCacheResponse] = {
     executeAsync(client.indices().clearCache(request, RequestOptions.DEFAULT))
   }
 
@@ -396,42 +397,42 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   def analyze(request: AnalyzeAction.Request): Task[AnalyzeAction.Response] = {
     // todo:
     ???
-//    val r = Option(request.analyzer()) match {
-//      case Some(analyzer) => new AnalyzeRequest(
-//        request.index(),
-//        analyzer,
-//        request.normalizer(),
-//        request.field(),
-//        request.text(): _*
-//      )
-//      case None => new AnalyzeRequest(
-//        request.index(),
-//        request.tokenizer(),
-//        request.charFilters(),
-//        request.tokenFilters(),
-//        request.text(): _*
-//      )
-//    }
-//    executeAsync(client.indices().analyze(r, RequestOptions.DEFAULT))
-//      .map { response =>
-//        new AnalyzeAction.Response(
-//          response.getTokens.asScala
-//            .map(t => new AnalyzeAction.AnalyzeToken(t.getTerm, t.getPosition, t.getStartOffset, t.getEndOffset, t.getPositionLength, t.getType, t.getAttributes))
-//            .asJava,
-//          Option(response.detail().analyzer()) match {
-//            case Some(analyzer) =>
-//              new AnalyzeAction.DetailAnalyzeResponse(
-//                new AnalyzeAction.AnalyzeTokenList(
-//                  analyzer.getName,
-//                  analyzer.getTokens.map(t => new AnalyzeAction.AnalyzeToken(t.getTerm, t.getPosition, t.getStartOffset, t.getEndOffset, t.getPositionLength, t.getType, t.getAttributes))
-//                )
-//              )
-//            case None =>
-//              null // todo: please finish it
-//          }
-//
-//        )
-//      }
+    //    val r = Option(request.analyzer()) match {
+    //      case Some(analyzer) => new AnalyzeRequest(
+    //        request.index(),
+    //        analyzer,
+    //        request.normalizer(),
+    //        request.field(),
+    //        request.text(): _*
+    //      )
+    //      case None => new AnalyzeRequest(
+    //        request.index(),
+    //        request.tokenizer(),
+    //        request.charFilters(),
+    //        request.tokenFilters(),
+    //        request.text(): _*
+    //      )
+    //    }
+    //    executeAsync(client.indices().analyze(r, RequestOptions.DEFAULT))
+    //      .map { response =>
+    //        new AnalyzeAction.Response(
+    //          response.getTokens.asScala
+    //            .map(t => new AnalyzeAction.AnalyzeToken(t.getTerm, t.getPosition, t.getStartOffset, t.getEndOffset, t.getPositionLength, t.getType, t.getAttributes))
+    //            .asJava,
+    //          Option(response.detail().analyzer()) match {
+    //            case Some(analyzer) =>
+    //              new AnalyzeAction.DetailAnalyzeResponse(
+    //                new AnalyzeAction.AnalyzeTokenList(
+    //                  analyzer.getName,
+    //                  analyzer.getTokens.map(t => new AnalyzeAction.AnalyzeToken(t.getTerm, t.getPosition, t.getStartOffset, t.getEndOffset, t.getPositionLength, t.getType, t.getAttributes))
+    //                )
+    //              )
+    //            case None =>
+    //              null // todo: please finish it
+    //          }
+    //
+    //        )
+    //      }
   }
 
   def validateQuery(request: ValidateQueryRequest): Task[ValidateQueryResponse] = {
@@ -446,6 +447,49 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.indices().rollover(request, RequestOptions.DEFAULT))
   }
 
-  private def executeAsync[T](action: => T): Task[T] = Task(action)
+  def getSnapshots(request: GetSnapshotsRequest): Task[GetSnapshotsResponse] = {
+    executeAsync(client.snapshot().get(request, RequestOptions.DEFAULT))
+  }
+
+  def createSnapshot(request: CreateSnapshotRequest): Task[CreateSnapshotResponse] = {
+    executeAsync(client.snapshot().create(request, RequestOptions.DEFAULT))
+  }
+
+  def deleteSnapshot(request: DeleteSnapshotRequest): Task[AcknowledgedResponse] = {
+    executeAsync(client.snapshot().delete(request, RequestOptions.DEFAULT))
+  }
+
+  def restoreSnapshot(request: RestoreSnapshotRequest): Task[RestoreSnapshotResponse] = {
+    executeAsync(client.snapshot().restore(request, RequestOptions.DEFAULT))
+  }
+
+  def snapshotsStatus(request: SnapshotsStatusRequest): Task[SnapshotsStatusResponse] = {
+    executeAsync(client.snapshot().status(request, RequestOptions.DEFAULT))
+  }
+
+  def getRepositories(request: GetRepositoriesRequest): Task[GetRepositoriesResponse] = {
+    executeAsync(client.snapshot().getRepository(request, RequestOptions.DEFAULT))
+  }
+
+  def putRepository(request: PutRepositoryRequest): Task[AcknowledgedResponse] = {
+    executeAsync(client.snapshot().createRepository(request, RequestOptions.DEFAULT))
+  }
+
+  def deleteRepository(request: DeleteRepositoryRequest): Task[AcknowledgedResponse] = {
+    executeAsync(client.snapshot().deleteRepository(request, RequestOptions.DEFAULT))
+  }
+
+  def verifyRepository(request: VerifyRepositoryRequest): Task[VerifyRepositoryResponse] = {
+    executeAsync(client.snapshot().verifyRepository(request, RequestOptions.DEFAULT))
+  }
+
+  def cleanupRepository(request: CleanupRepositoryRequest): Task[CleanupRepositoryResponse] = {
+    executeAsync(client.snapshot().cleanupRepository(request, RequestOptions.DEFAULT))
+  }
+
+  private def executeAsync[T](action: => T): Task[T] =
+    Task(action).onErrorRecover { case ex: ElasticsearchStatusException =>
+      throw ex.toSpecializedException
+    }
 }
 
