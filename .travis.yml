@@ -25,6 +25,7 @@ env:
   matrix:
   - ROR_TASK="license"
   - ROR_TASK="unit"
+  - ROR_TASK="integration_es77x"
   - ROR_TASK="integration_es74x"
   - ROR_TASK="integration_es73x"
   - ROR_TASK="integration_es72x"
