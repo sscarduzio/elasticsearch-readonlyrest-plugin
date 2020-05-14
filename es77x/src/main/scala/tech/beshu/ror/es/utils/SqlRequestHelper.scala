@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.utils
 
 import java.lang.reflect.Modifier
+import java.time.ZoneId
 import java.util.regex.Pattern
 
 import org.elasticsearch.action.CompositeIndicesRequest
@@ -109,8 +110,8 @@ final class SqlParser(implicit classLoader: ClassLoader) {
 
   def createStatement(query: String, params: AnyRef): Statement = {
     val statement = ReflecUtils
-      .getMethodOf(aClass, Modifier.PUBLIC, "createStatement", 2)
-      .invoke(underlyingObject, query, params)
+      .getMethodOf(aClass, Modifier.PUBLIC, "createStatement", 3)
+      .invoke(underlyingObject, query, params, ZoneId.systemDefault())
     if (Command.isClassOf(statement)) new Command(statement)
     else new SimpleStatement(statement)
   }
@@ -187,7 +188,7 @@ final class SimpleStatement(val underlyingObject: AnyRef)
     classLoader.loadClass("org.elasticsearch.xpack.sql.analysis.analyzer.TableInfo")
 
   private def tableIdentifierClass(implicit classLoader: ClassLoader) =
-    classLoader.loadClass("org.elasticsearch.xpack.sql.plan.TableIdentifier")
+    classLoader.loadClass("org.elasticsearch.xpack.ql.plan.TableIdentifier")
 }
 
 final class Command(val underlyingObject: Any)
