@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{GeneralIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -76,6 +76,22 @@ object BlockContext {
                                                    filter: Option[Filter])
     extends BlockContext
 
+  final case class SimpleSearchRequestBlockContext(override val requestContext: RequestContext,
+                                                   override val userMetadata: UserMetadata,
+                                                   override val responseHeaders: Set[Header],
+                                                   override val contextHeaders: Set[Header],
+                                                   indices: Set[IndexName],
+                                                   filter: Option[Filter])
+    extends BlockContext
+
+  final case class MultiSearchRequestBlockContext(override val requestContext: RequestContext,
+                                                  override val userMetadata: UserMetadata,
+                                                  override val responseHeaders: Set[Header],
+                                                  override val contextHeaders: Set[Header],
+                                                  indexPacks: List[Indices],
+                                                  filter: Option[Filter])
+    extends BlockContext
+
   final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
@@ -88,6 +104,66 @@ object BlockContext {
     object Indices {
       final case class Found(indices: Set[IndexName]) extends Indices
       case object NotFound extends Indices
+    }
+  }
+
+  trait HasIndices[B <: BlockContext] {
+    def indices(blockContext: B): Set[IndexName]
+  }
+  object HasIndices {
+
+    def apply[B <: BlockContext](implicit ev: HasIndices[B]) = ev
+
+    implicit val indicesFromSimpleSearchBlockContext = new HasIndices[SimpleSearchRequestBlockContext] {
+      override def indices(blockContext: SimpleSearchRequestBlockContext): Set[IndexName] = blockContext.indices
+    }
+
+    implicit val indicesFromGeneralIndexBlockContext = new HasIndices[GeneralIndexRequestBlockContext] {
+      override def indices(blockContext: GeneralIndexRequestBlockContext): Set[IndexName] = blockContext.indices
+    }
+
+    implicit class Ops[B <: BlockContext : HasIndices](blockContext: B) {
+      def indices = HasIndices[B].indices(blockContext)
+    }
+  }
+
+  trait HasIndexPacks[B <: BlockContext] {
+    def indexPacks(blockContext: B): List[Indices]
+  }
+  object HasIndexPacks {
+
+    def apply[B <: BlockContext](implicit ev: HasIndexPacks[B]) = ev
+
+    implicit val indexPacksFromMultiSearchBlockContext = new HasIndexPacks[MultiSearchRequestBlockContext] {
+      override def indexPacks(blockContext: MultiSearchRequestBlockContext): List[Indices] = blockContext.indexPacks
+    }
+
+    implicit val indexPacksFromMultiIndexBlockContext = new HasIndexPacks[MultiIndexRequestBlockContext] {
+      override def indexPacks(blockContext: MultiIndexRequestBlockContext): List[Indices] = blockContext.indexPacks
+    }
+
+    implicit class Ops[B <: BlockContext : HasIndexPacks](blockContext: B) {
+      def indexPacks = HasIndexPacks[B].indexPacks(blockContext)
+    }
+  }
+
+  trait HasFilter[B <: BlockContext] {
+    def filter(blockContext: B): Option[Filter]
+  }
+  object HasFilter {
+
+    def apply[B <: BlockContext](implicit ev: HasFilter[B]) = ev
+
+    implicit val filterFromMultiSearchBlockContext = new HasFilter[MultiSearchRequestBlockContext] {
+      override def filter(blockContext: MultiSearchRequestBlockContext): Option[Filter] = blockContext.filter
+    }
+
+    implicit val filterFromMultiIndexBlockContext = new HasFilter[SimpleSearchRequestBlockContext] {
+      override def filter(blockContext: SimpleSearchRequestBlockContext): Option[Filter] = blockContext.filter
+    }
+
+    implicit class Ops[B <: BlockContext : HasFilter](blockContext: B) {
+      def filter = HasFilter[B].filter(blockContext)
     }
   }
 
@@ -118,15 +194,21 @@ object BlockContext {
     }
   }
 
-  implicit class GeneralIndexRequestBlockContextUpdaterOps(val blockContext: GeneralIndexRequestBlockContext) extends AnyVal {
-    def withIndices(indices: Set[IndexName]): GeneralIndexRequestBlockContext = {
-      GeneralIndexRequestBlockContextUpdater.withIndices(blockContext, indices)
+  implicit class BlockContextWithIndicesUpdaterOps[B <: BlockContext: BlockContextWithIndicesUpdater](blockContext: B) {
+    def withIndices(indices: Set[IndexName]): B = {
+      BlockContextWithIndicesUpdater[B].withIndices(blockContext, indices)
     }
   }
 
-  implicit class MultiIndexRequestBlockContextUpdaterOps(val blockContext: MultiIndexRequestBlockContext) extends AnyVal {
-    def withIndicesPacks(indexPacks: List[Indices]): MultiIndexRequestBlockContext = {
-      MultiIndexRequestBlockContextUpdater.withIndexPacks(blockContext, indexPacks)
+  implicit class BlockContextWithIndexPacksUpdaterOps[B <: BlockContext: BlockContextWithIndexPacksUpdater](blockContext: B) {
+    def withIndicesPacks(indexPacks: List[Indices]): B = {
+      BlockContextWithIndexPacksUpdater[B].withIndexPacks(blockContext, indexPacks)
+    }
+  }
+
+  implicit class BlockContextWithFilterUpdaterOps[B <: BlockContext: BlockContextWithFilterUpdater](blockContext: B) {
+    def withFilter(filter: Filter): B = {
+      BlockContextWithFilterUpdater[B].withFilter(blockContext, filter)
     }
   }
 
@@ -145,7 +227,15 @@ object BlockContext {
         case bc: SnapshotRequestBlockContext => bc.indices
         case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
         case bc: GeneralIndexRequestBlockContext => bc.indices
+        case bc: SimpleSearchRequestBlockContext => bc.indices
         case bc: MultiIndexRequestBlockContext =>
+          bc.indexPacks
+            .flatMap {
+              case Indices.Found(indices) => indices.toList
+              case Indices.NotFound => Nil
+            }
+            .toSet
+        case bc: MultiSearchRequestBlockContext =>
           bc.indexPacks
             .flatMap {
               case Indices.Found(indices) => indices.toList
@@ -166,6 +256,8 @@ object BlockContext {
         case _: TemplateRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
+        case _: SimpleSearchRequestBlockContext => Set.empty
+        case _: MultiSearchRequestBlockContext => Set.empty
       }
     }
   }
@@ -180,11 +272,28 @@ object BlockContext {
         case _: TemplateRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
+        case _: SimpleSearchRequestBlockContext => Set.empty
+        case _: MultiSearchRequestBlockContext => Set.empty
       }
     }
   }
 
   implicit class RandomIndexBasedOnBlockContextIndices(val blockContext: GeneralIndexRequestBlockContext) extends AnyVal {
+
+    def randomNonexistentIndex(): IndexName = {
+      import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
+      blockContext.indices.toList.randomNonexistentIndex()
+    }
+
+    def nonExistingIndicesFromInitialIndices(): Set[IndexName] = {
+      blockContext.indices.map(i => IndexName.randomNonexistentIndex(
+        i.value.value.replace(":", "_") // we don't want to call remote cluster
+      ))
+    }
+  }
+
+  //copy from above
+  implicit class RandomIndexBasedOnBlockContextIndices2(val blockContext: SimpleSearchRequestBlockContext) extends AnyVal {
 
     def randomNonexistentIndex(): IndexName = {
       import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
