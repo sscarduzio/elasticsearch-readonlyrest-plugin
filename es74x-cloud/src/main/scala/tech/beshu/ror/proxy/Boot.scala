@@ -15,7 +15,7 @@ object Boot extends RorProxyApp {
   override val config: RorProxy.Config = RorProxy.Config(
     targetEsNode = "http://localhost:9200",
     proxyPort = 5000,
-    esConfigFile = File(getClass.getClassLoader.getResource("elasticsearch.yml"))
+    esConfigFile = File("elasticsearch.yml")
   )
 
 }

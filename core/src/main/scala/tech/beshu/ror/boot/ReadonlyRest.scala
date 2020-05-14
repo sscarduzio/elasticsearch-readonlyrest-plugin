@@ -57,7 +57,6 @@ class Ror(override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
           override val propertiesProvider: PropertiesProvider = JvmPropertiesProvider)
   extends ReadonlyRest {
 
-  val blockingScheduler: Scheduler = Scheduler.io("blocking-index-content-provider")
   override protected implicit val clock: Clock = Clock.systemUTC()
 
   override protected lazy val coreFactory: CoreFactory = {
@@ -65,6 +64,10 @@ class Ror(override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
     implicit val envVarsProviderImplicit: EnvVarsProvider = envVarsProvider
     new RawRorConfigBasedCoreFactory
   }
+}
+
+object Ror {
+  val blockingScheduler: Scheduler = Scheduler.io("blocking-index-content-provider")
 }
 
 trait ReadonlyRest extends Logging {

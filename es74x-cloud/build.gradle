@@ -53,19 +53,20 @@ compileScala {
 
 configurations {
     wagon // todo: to remove?
+    distJars {
+        extendsFrom runtime
+    }
 }
 
 dependencies {
-    compile project(path: ':es74x')
+    compile  project(path: ':es74x')
 
-    compile           group: 'org.elasticsearch.client',        name: 'elasticsearch-rest-high-level-client',   version: esVersion
-    compile           group: 'org.javassist',                   name: 'javassist',                              version: '3.26.0-GA'
-    compile           group: 'org.jooq',                        name: 'joor-java-8',                            version: '0.9.12'
-    compile           group: 'org.apache.logging.log4j',        name: 'log4j-core',                             version: '2.11.0'
-
-    // todo: clean up
-    compile group: 'org.codelibs.elasticsearch.module', name: 'reindex', version: '7.6.2'
-    compile group: 'org.codelibs.elasticsearch.module', name: 'lang-mustache', version: '7.6.2'
+    compile  group: 'org.elasticsearch.client',             name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    compile  group: 'org.javassist',                        name: 'javassist',                              version: '3.26.0-GA'
+    compile  group: 'org.jooq',                             name: 'joor-java-8',                            version: '0.9.12'
+    compile  group: 'org.codelibs.elasticsearch.module',    name: 'lang-mustache',                          version: esVersion
+    compile  group: 'org.apache.logging.log4j',             name: 'log4j-core',                             version: '2.11.0'
+    compile  group: 'org.codelibs.elasticsearch.module',    name: 'reindex',                                version: esVersion
 
 }
 
@@ -107,9 +108,9 @@ task rorproxy(type: Jar, dependsOn: [cleanOldData]) {
     manifest {
         attributes  'Implementation-Title': 'ReadonlyREST ES Proxy',
                     'Implementation-Version': project.properties['pluginVersion'],
-                    'Main-Class': 'tech.beshu.ror.es.proxy.Boot'
+                    'Main-Class': 'tech.beshu.ror.proxy.Boot'
     }
     baseName = project.name + '-all'
-    from { configurations.proxyMode.collect { it.isDirectory() ? it : zipTree(it) } }
+    from { configurations.distJars.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }
