@@ -13,7 +13,7 @@ jdk:
 branches:
   except:
   - "/^v[0-9].*es/"
-script: bin/build.sh || ci/upload-report.sh
+script: bin/build.sh || (ci/upload-report.sh && exit 1)
 deploy:
   provider: script
   script: ci/ci-deploy.sh
