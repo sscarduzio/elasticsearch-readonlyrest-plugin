@@ -11,7 +11,7 @@ import org.elasticsearch.action.admin.indices.alias.{IndicesAliasesAction, Indic
 import org.elasticsearch.action.admin.indices.analyze.{AnalyzeAction, AnalyzeRequestBuilder}
 import org.elasticsearch.action.admin.indices.cache.clear.{ClearIndicesCacheAction, ClearIndicesCacheRequest, ClearIndicesCacheRequestBuilder, ClearIndicesCacheResponse}
 import org.elasticsearch.action.admin.indices.close.{CloseIndexAction, CloseIndexRequest, CloseIndexRequestBuilder, CloseIndexResponse}
-import org.elasticsearch.action.admin.indices.create.{CreateIndexRequest, CreateIndexRequestBuilder, CreateIndexResponse}
+import org.elasticsearch.action.admin.indices.create.{CreateIndexAction, CreateIndexRequest, CreateIndexRequestBuilder, CreateIndexResponse}
 import org.elasticsearch.action.admin.indices.delete.{DeleteIndexAction, DeleteIndexRequest, DeleteIndexRequestBuilder}
 import org.elasticsearch.action.admin.indices.exists.indices.{IndicesExistsAction, IndicesExistsRequest, IndicesExistsRequestBuilder, IndicesExistsResponse}
 import org.elasticsearch.action.admin.indices.exists.types.{TypesExistsRequest, TypesExistsRequestBuilder, TypesExistsResponse}
@@ -97,7 +97,11 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def create(request: CreateIndexRequest): ActionFuture[CreateIndexResponse] = throw NotDefinedForRorProxy
 
-  override def create(request: CreateIndexRequest, listener: ActionListener[CreateIndexResponse]): Unit = throw NotDefinedForRorProxy
+  override def create(request: CreateIndexRequest, listener: ActionListener[CreateIndexResponse]): Unit = {
+    execute(CreateIndexAction.INSTANCE.name(), request, listener) {
+      esClient.createIndex
+    }
+  }
 
   override def prepareCreate(index: String): CreateIndexRequestBuilder = throw NotDefinedForRorProxy
 

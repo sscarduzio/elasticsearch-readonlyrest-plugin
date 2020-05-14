@@ -3,10 +3,10 @@
  */
 package tech.beshu.ror.proxy.es.clients
 
-import java.util
-
 import monix.eval.Task
+import org.elasticsearch.ElasticsearchStatusException
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthResponse}
+import org.elasticsearch.action.admin.cluster.remote.{RemoteInfoResponse, RemoteInfoRequest => AdminRemoteInfoRequest}
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.{CleanupRepositoryRequest, CleanupRepositoryResponse}
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
 import org.elasticsearch.action.admin.cluster.repositories.get.{GetRepositoriesRequest, GetRepositoriesResponse}
@@ -24,12 +24,12 @@ import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction
 import org.elasticsearch.action.admin.indices.cache.clear.{ClearIndicesCacheRequest, ClearIndicesCacheResponse}
 import org.elasticsearch.action.admin.indices.close.{CloseIndexRequest => AdminCloseIndexRequest, CloseIndexResponse => AdminCloseIndexResponse}
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.action.admin.indices.exists.indices.{IndicesExistsRequest, IndicesExistsResponse}
 import org.elasticsearch.action.admin.indices.flush.{FlushRequest, FlushResponse}
 import org.elasticsearch.action.admin.indices.forcemerge.{ForceMergeRequest, ForceMergeResponse}
 import org.elasticsearch.action.admin.indices.get.{GetIndexRequest => AdminGetIndexRequest, GetIndexResponse => AdminGetIndexResponse}
-import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse.FieldMappingMetaData
 import org.elasticsearch.action.admin.indices.mapping.get.{GetFieldMappingsRequest => AdminGetFieldMappingsRequest, GetFieldMappingsResponse => AdminGetFieldMappingsResponse, GetMappingsRequest => AdminGetMappingsRequest, GetMappingsResponse => AdminGetMappingsResponse}
 import org.elasticsearch.action.admin.indices.mapping.put.{PutMappingRequest => AdminPutMappingRequest}
 import org.elasticsearch.action.admin.indices.open.{OpenIndexRequest, OpenIndexResponse}
@@ -37,13 +37,13 @@ import org.elasticsearch.action.admin.indices.refresh.{RefreshRequest, RefreshRe
 import org.elasticsearch.action.admin.indices.rollover.{RolloverRequest, RolloverResponse}
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest
-import org.elasticsearch.action.admin.indices.shrink
 import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsResponse}
 import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryRequest, ValidateQueryResponse}
+import org.elasticsearch.action.admin.indices.{create, shrink}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkResponse}
 import org.elasticsearch.action.delete.{DeleteRequest, DeleteResponse}
 import org.elasticsearch.action.fieldcaps.{FieldCapabilitiesRequest, FieldCapabilitiesResponse}
@@ -51,20 +51,14 @@ import org.elasticsearch.action.get._
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.action.main.{MainRequest, MainResponse}
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
-import org.elasticsearch.action.support.DefaultShardOperationFailedException
 import org.elasticsearch.action.support.master.AcknowledgedResponse
+import org.elasticsearch.client.cluster.RemoteInfoRequest
 import org.elasticsearch.client.core.CountRequest
 import org.elasticsearch.client.indices._
 import org.elasticsearch.client.{GetAliasesResponse, RequestOptions, RestHighLevelClient}
-import org.elasticsearch.cluster.ClusterName
 import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
-import org.elasticsearch.common.collect.ImmutableOpenMap
-import org.elasticsearch.common.compress.CompressedXContent
-import org.elasticsearch.index.Index
 import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryRequest, ReindexRequest, UpdateByQueryRequest}
 import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearchTemplateResponse, SearchTemplateRequest, SearchTemplateResponse}
-import org.elasticsearch.{Build, ElasticsearchStatusException, Version}
-import org.joor.Reflect.{on, onClass}
 import tech.beshu.ror.proxy.es.exceptions._
 
 import scala.collection.JavaConverters._
@@ -74,20 +68,17 @@ import scala.collection.JavaConverters._
 class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def main(request: MainRequest): Task[MainResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.Info._
     executeAsync(client.info(RequestOptions.DEFAULT))
-      .map { response =>
-        new MainResponse(
-          response.getNodeName,
-          Version.CURRENT,
-          new ClusterName(response.getClusterName),
-          response.getClusterUuid,
-          Build.CURRENT
-        )
-      }
+      .map(_.toMainResponse)
   }
 
   def getIndex(request: IndexRequest): Task[IndexResponse] = {
     executeAsync(client.index(request, RequestOptions.DEFAULT))
+  }
+
+  def createIndex(request: CreateIndexRequest): Task[create.CreateIndexResponse] = {
+    executeAsync(client.indices().create(request, RequestOptions.DEFAULT))
   }
 
   def deleteIndex(request: DeleteIndexRequest): Task[AcknowledgedResponse] = {
@@ -95,35 +86,9 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def closeIndex(request: AdminCloseIndexRequest): Task[AdminCloseIndexResponse] = {
-    executeAsync(client.indices().close(new CloseIndexRequest(request.indices(): _*), RequestOptions.DEFAULT))
-      .map { response =>
-        new AdminCloseIndexResponse(
-          response.isAcknowledged,
-          response.isShardsAcknowledged,
-          response
-            .getIndices.asScala
-            .map { result =>
-              val index = new Index(result.getIndex, "")
-              Option(result.getException) match {
-                case Some(ex) =>
-                  new AdminCloseIndexResponse.IndexResult(index, ex)
-                case None =>
-                  new AdminCloseIndexResponse.IndexResult(
-                    index,
-                    result.getShards.map { sr =>
-                      new AdminCloseIndexResponse.ShardResult(
-                        sr.getId,
-                        sr.getFailures.map { f =>
-                          new AdminCloseIndexResponse.ShardResult.Failure(f.index(), f.shardId(), f.getCause, f.getNodeId)
-                        }
-                      )
-                    }
-                  )
-              }
-            }
-            .asJava
-        )
-      }
+    import tech.beshu.ror.proxy.es.clients.actions.CloseIndex._
+    executeAsync(client.indices().close(request.toCloseIndexRequest, RequestOptions.DEFAULT))
+      .map(_.toCloseAdminResponse)
   }
 
   def openIndex(request: OpenIndexRequest): Task[OpenIndexResponse] = {
@@ -148,52 +113,15 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def getMappings(request: AdminGetMappingsRequest): Task[AdminGetMappingsResponse] = {
-    val regularRequest = new GetMappingsRequest()
-      .indices(request.indices(): _*)
-      .local(request.local())
-    executeAsync(client.indices().getMapping(regularRequest, RequestOptions.DEFAULT))
-      .map { response =>
-        val newMap = ImmutableOpenMap
-          .builder()
-          .putAll {
-            response
-              .mappings().asScala
-              .map { case (key, value) =>
-                val mappingsMap = ImmutableOpenMap
-                  .builder()
-                  .fPut("mappings", value)
-                  .build()
-                (key, mappingsMap)
-              }
-              .asJava
-          }
-          .build()
-        new AdminGetMappingsResponse(newMap)
-      }
+    import tech.beshu.ror.proxy.es.clients.actions.GetMappings._
+    executeAsync(client.indices().getMapping(request.toGetMappingsRequest, RequestOptions.DEFAULT))
+      .map(_.toGetMappingsResponse)
   }
 
   def getFieldMappings(request: AdminGetFieldMappingsRequest): Task[AdminGetFieldMappingsResponse] = {
-    val regularRequest = new GetFieldMappingsRequest()
-      .fields(request.fields(): _*)
-      .indices(request.indices(): _*)
-      .local(request.local())
-      .indicesOptions(request.indicesOptions())
-    executeAsync(client.indices().getFieldMapping(regularRequest, RequestOptions.DEFAULT))
-      .map { response =>
-        val newMap = response
-          .mappings().asScala
-          .map { case (key, value) =>
-            val newValue = value.asScala
-              .map { case (innerKey, data) =>
-                (innerKey, new FieldMappingMetaData(data.fullName(), on(data).call("getSource").get()))
-              }
-            (key, Map("mappings" -> newValue.asJava).asJava)
-          }
-          .asJava
-        onClass(classOf[AdminGetFieldMappingsResponse])
-          .create(newMap)
-          .get[AdminGetFieldMappingsResponse]()
-      }
+    import tech.beshu.ror.proxy.es.clients.actions.GetFieldMappings._
+    executeAsync(client.indices().getFieldMapping(request.toGetFieldMappingsRequest, RequestOptions.DEFAULT))
+      .map(_.toGetFieldMappingsResponse)
   }
 
   def putMappings(request: AdminPutMappingRequest): Task[AcknowledgedResponse] = {
@@ -205,20 +133,9 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def mSearch(request: MultiSearchRequest): Task[MultiSearchResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.MSearch._
     executeAsync(client.msearch(request, RequestOptions.DEFAULT))
-      .map { response =>
-        val modifiedItems = response
-          .getResponses
-          .map { item =>
-            Option(item.getFailure) match {
-              case Some(ex) =>
-                new MultiSearchResponse.Item(item.getResponse, ex.toSpecializedException)
-              case None =>
-                item
-            }
-          }
-        new MultiSearchResponse(modifiedItems, response.getTook.millis())
-      }
+      .map(_.toResponseWithSpecializedException)
   }
 
   def health(request: ClusterHealthRequest): Task[ClusterHealthResponse] = {
@@ -230,17 +147,9 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def getAlias(request: GetAliasesRequest): Task[GetAliasesResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.GetAliases._
     executeAsync(client.indices().getAlias(request, RequestOptions.DEFAULT))
-      .map { response =>
-        Option(response.getException) match {
-          case Some(ex) =>
-            onClass(classOf[GetAliasesResponse])
-              .create(response.status(), ex.toSpecializedException)
-              .get[GetAliasesResponse]()
-          case None =>
-            response
-        }
-      }
+      .map(_.toResponseWithSpecializedException)
   }
 
   def aliasesExist(request: GetAliasesRequest): Task[AliasesExistResponse] = {
@@ -257,23 +166,9 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def mGet(request: MultiGetRequest): Task[MultiGetResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.MultiGet._
     executeAsync(client.mget(request, RequestOptions.DEFAULT))
-      .map { response =>
-        val modifiedItems = response
-          .getResponses
-          .map { item =>
-            Option(item.getFailure) match {
-              case Some(failure) =>
-                new MultiGetItemResponse(
-                  item.getResponse,
-                  new MultiGetResponse.Failure(failure.getIndex, item.getType, item.getId, failure.getFailure.toSpecializedException)
-                )
-              case None =>
-                item
-            }
-          }
-        new MultiGetResponse(modifiedItems)
-      }
+      .map(_.toResponseWithSpecializedException)
   }
 
   def delete(request: DeleteRequest): Task[DeleteResponse] = {
@@ -297,34 +192,9 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def getTemplate(request: AdminGetIndexTemplatesRequest): Task[AdminGetIndexTemplatesResponse] = {
-    val r = Option(request.names()) match {
-      case Some(names) => new GetIndexTemplatesRequest(names: _*)
-      case None => new GetIndexTemplatesRequest()
-    }
-    executeAsync(client.indices().getIndexTemplate(r, RequestOptions.DEFAULT))
-      .map { response =>
-        val metadataList = response
-          .getIndexTemplates.asScala
-          .map { metadata =>
-            new IndexTemplateMetaData(
-              metadata.name(),
-              metadata.order(),
-              metadata.version(),
-              metadata.patterns(),
-              metadata.settings(),
-              Option(metadata.mappings()) match {
-                case Some(mappings) =>
-                  val builder = ImmutableOpenMap.builder[String, CompressedXContent]()
-                  builder.put(mappings.`type`(), mappings.source())
-                  builder.build()
-                case None =>
-                  ImmutableOpenMap.builder().build()
-              },
-              metadata.aliases()
-            )
-          }
-        new AdminGetIndexTemplatesResponse(metadataList.asJava)
-      }
+    import tech.beshu.ror.proxy.es.clients.actions.GetTemplate._
+    executeAsync(client.indices().getIndexTemplate(request.toGetTemplateRequest, RequestOptions.DEFAULT))
+      .map(_.toGetTemplateResponse)
       .onErrorRecover { case ex: ElasticsearchStatusException if ex.status().getStatus == 404 =>
         new AdminGetIndexTemplatesResponse(List.empty[IndexTemplateMetaData].asJava)
       }
@@ -339,19 +209,9 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def stats(request: IndicesStatsRequest): Task[IndicesStatsResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.IndicesStats._
     executeAsync(client.count(new CountRequest(), RequestOptions.DEFAULT))
-      .map { resp =>
-        // todo: better implementation needed
-        onClass(classOf[IndicesStatsResponse])
-          .create(
-            new Array[org.elasticsearch.action.admin.indices.stats.ShardStats](0),
-            new Integer(resp.getTotalShards),
-            resp.getSuccessfulShards.asInstanceOf[Integer],
-            resp.getFailedShards.asInstanceOf[Integer],
-            new util.ArrayList[DefaultShardOperationFailedException]()
-          )
-          .get[IndicesStatsResponse]()
-      }
+      .map(_.toIndicesStatsResponse)
   }
 
   def fieldCapabilities(request: FieldCapabilitiesRequest): Task[FieldCapabilitiesResponse] = {
@@ -395,44 +255,9 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def analyze(request: AnalyzeAction.Request): Task[AnalyzeAction.Response] = {
-    // todo:
-    ???
-    //    val r = Option(request.analyzer()) match {
-    //      case Some(analyzer) => new AnalyzeRequest(
-    //        request.index(),
-    //        analyzer,
-    //        request.normalizer(),
-    //        request.field(),
-    //        request.text(): _*
-    //      )
-    //      case None => new AnalyzeRequest(
-    //        request.index(),
-    //        request.tokenizer(),
-    //        request.charFilters(),
-    //        request.tokenFilters(),
-    //        request.text(): _*
-    //      )
-    //    }
-    //    executeAsync(client.indices().analyze(r, RequestOptions.DEFAULT))
-    //      .map { response =>
-    //        new AnalyzeAction.Response(
-    //          response.getTokens.asScala
-    //            .map(t => new AnalyzeAction.AnalyzeToken(t.getTerm, t.getPosition, t.getStartOffset, t.getEndOffset, t.getPositionLength, t.getType, t.getAttributes))
-    //            .asJava,
-    //          Option(response.detail().analyzer()) match {
-    //            case Some(analyzer) =>
-    //              new AnalyzeAction.DetailAnalyzeResponse(
-    //                new AnalyzeAction.AnalyzeTokenList(
-    //                  analyzer.getName,
-    //                  analyzer.getTokens.map(t => new AnalyzeAction.AnalyzeToken(t.getTerm, t.getPosition, t.getStartOffset, t.getEndOffset, t.getPositionLength, t.getType, t.getAttributes))
-    //                )
-    //              )
-    //            case None =>
-    //              null // todo: please finish it
-    //          }
-    //
-    //        )
-    //      }
+    import tech.beshu.ror.proxy.es.clients.actions.Analyze._
+    executeAsync(client.indices().analyze(request.toAnalyzeRequest, RequestOptions.DEFAULT))
+      .map(_.toAnalyzeResponse)
   }
 
   def validateQuery(request: ValidateQueryRequest): Task[ValidateQueryResponse] = {
@@ -485,6 +310,12 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def cleanupRepository(request: CleanupRepositoryRequest): Task[CleanupRepositoryResponse] = {
     executeAsync(client.snapshot().cleanupRepository(request, RequestOptions.DEFAULT))
+  }
+
+  def remoteInfo(request: AdminRemoteInfoRequest): Task[RemoteInfoResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.RemoteInfo._
+    executeAsync(client.cluster().remoteInfo(new RemoteInfoRequest(), RequestOptions.DEFAULT))
+      .map(_.toRemoteInfoResponse)
   }
 
   private def executeAsync[T](action: => T): Task[T] =

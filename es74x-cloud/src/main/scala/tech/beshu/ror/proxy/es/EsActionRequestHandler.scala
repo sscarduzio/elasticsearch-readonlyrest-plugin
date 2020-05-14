@@ -5,6 +5,7 @@ package tech.beshu.ror.proxy.es
 
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.elasticsearch.action.admin.cluster.remote.RemoteInfoRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.fieldcaps.FieldCapabilitiesRequest
@@ -34,6 +35,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
   // todo: extend it
   private def tryToHandle: PartialFunction[ActionRequest, Task[ActionResponse with ToXContent]] = {
     case request: MainRequest => esClient.main(request)
+    case request: RemoteInfoRequest => esClient.remoteInfo(request)
     case request: IndexRequest => esClient.getIndex(request)
     case request: GetRequest => esClient.get(request)
     case request: MultiGetRequest => esClient.mGet(request)
