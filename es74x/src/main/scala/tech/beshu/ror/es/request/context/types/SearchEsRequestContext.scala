@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.SearchQueryDecorator
+import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
@@ -88,8 +88,9 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
   private def update(request: SearchRequest,
                      indices: NonEmptyList[IndexName],
                      filter: Option[Filter]): ModificationResult = {
-    SearchQueryDecorator.applyFilterToQuery(request, filter)
-    request.indices(indices.toList.map(_.value.value): _*)
+    request
+      .applyFilterToQuery(filter)
+      .indices(indices.toList.map(_.value.value): _*)
     Modified
   }
 }

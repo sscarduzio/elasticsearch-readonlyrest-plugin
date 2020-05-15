@@ -11,7 +11,17 @@ readonlyrest:
       type: "allow"
       auth_key: "admin:container"
 
-    - name: "user"
+    - name: "user1 with variable in filter"
       auth_key: "user1:pass"
       indices: ["test1_index"]
       filter: '{"query_string":{"query":"db_name:db_@{user}"}}'
+
+    - name: "user2 with wildcard"
+      auth_key: "user2:pass"
+      indices: ["test1_index"]
+      filter: '{"wildcard":{"db_name":"db*2"}}'
+
+    - name: "user3 with malformed filter query"
+      auth_key: "user3:pass"
+      indices: ["test1_index"]
+      filter: '{"query_string":malformedquery}'

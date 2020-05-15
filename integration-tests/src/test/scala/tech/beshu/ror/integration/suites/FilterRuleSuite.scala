@@ -20,10 +20,9 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
-import tech.beshu.ror.utils.misc.Version
 
 trait FilterRuleSuite
   extends WordSpec
@@ -70,6 +69,17 @@ trait FilterRuleSuite
             result.id("2") shouldBe ujson.read("""{"db_name":"db_user1", "code": 2}""")
           }
         }
+        "wildcard in filter query is used" in {
+          retry(times = 3) {
+            val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
+            val result = searchManager.search("/test1_index/_search")
+
+            result.responseCode shouldBe 200
+            result.searchHits.size shouldBe 1
+
+            result.head shouldBe ujson.read("""{"db_name":"db_user2", "code": 1}""")
+          }
+        }
       }
       "msearch api is used" in {
         retry(times = 3) {
@@ -85,24 +95,25 @@ trait FilterRuleSuite
         }
       }
     }
+    "return error" when {
+      "filter query is malformed" in {
+        val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
+        val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}}""")
+
+        result.responseCode shouldBe 400
+      }
+    }
   }
 }
 
 object FilterRuleSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-      add3Docs(adminRestClient, "test1_index", "_doc")
-    } else {
-      add3Docs(adminRestClient, "test1_index", "doc")
-    }
-  }
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-  private def add3Docs(adminRestClient: RestClient, index: String, `type`: String): Unit = {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/1", s"""{"db_name":"db_user1", "code": 1}""")
-    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/2", s"""{"db_name":"db_user1", "code": 2}""")
-    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/3", s"""{"db_name":"db_user2", "code": 1}""")
-    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/4", s"""{"db_name":"db_user3", "code": 2}""")
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1}"""))
+    documentManager.createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2}"""))
+    documentManager.createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1}"""))
+    documentManager.createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2}"""))
   }
 }
