@@ -1,7 +1,6 @@
 #!/bin/bash
 
 . ci/ci-lib.sh
-ROR_TASK="ew77x_integration"
 UNIT_TEST_REPORT=$(find . | grep report | grep -v integration | grep index.html)
 INT_TEST_REPORT=$(find . | grep report | grep integration | grep index.html)
 
