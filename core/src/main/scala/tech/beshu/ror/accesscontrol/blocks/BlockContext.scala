@@ -72,8 +72,7 @@ object BlockContext {
                                                    override val userMetadata: UserMetadata,
                                                    override val responseHeaders: Set[Header],
                                                    override val contextHeaders: Set[Header],
-                                                   indices: Set[IndexName],
-                                                   filter: Option[Filter])
+                                                   indices: Set[IndexName])
     extends BlockContext
 
   final case class SimpleSearchRequestBlockContext(override val requestContext: RequestContext,
@@ -96,8 +95,7 @@ object BlockContext {
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
                                                  override val contextHeaders: Set[Header],
-                                                 indexPacks: List[Indices],
-                                                 filter: Option[Filter])
+                                                 indexPacks: List[Indices])
     extends BlockContext
   object MultiIndexRequestBlockContext {
     sealed trait Indices

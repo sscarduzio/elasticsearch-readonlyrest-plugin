@@ -150,7 +150,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[GeneralIndexRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: GeneralIndexRequestBlockContext): GeneralIndexRequestBlockContext =
-      GeneralIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+      GeneralIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
 
     override def withUserMetadata(blockContext: GeneralIndexRequestBlockContext,
                                   userMetadata: UserMetadata): GeneralIndexRequestBlockContext =
@@ -169,7 +169,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[MultiIndexRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: MultiIndexRequestBlockContext): MultiIndexRequestBlockContext =
-      MultiIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty, None)
+      MultiIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty)
 
     override def withUserMetadata(blockContext: MultiIndexRequestBlockContext,
                                   userMetadata: UserMetadata): MultiIndexRequestBlockContext =

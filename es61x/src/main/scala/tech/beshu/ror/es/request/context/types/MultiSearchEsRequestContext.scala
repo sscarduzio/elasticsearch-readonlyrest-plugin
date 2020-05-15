@@ -20,8 +20,8 @@ import cats.implicits._
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiSearchRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
@@ -39,10 +39,10 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   aclContext: AccessControlStaticContext,
                                   clusterService: RorClusterService,
                                   override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext, clusterService)
-    with EsRequest[MultiIndexRequestBlockContext] {
+  extends BaseEsRequestContext[MultiSearchRequestBlockContext](esContext, clusterService)
+    with EsRequest[MultiSearchRequestBlockContext] {
 
-  override lazy val initialBlockContext: MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+  override lazy val initialBlockContext: MultiSearchRequestBlockContext = MultiSearchRequestBlockContext(
     this,
     UserMetadata.from(this),
     Set.empty,
@@ -51,7 +51,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     None
   )
 
-  override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
+  override protected def modifyRequest(blockContext: MultiSearchRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
     val requests = actionRequest.requests().asScala.toList
     if (requests.size == modifiedPacksOfIndices.size) {

@@ -27,7 +27,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, MultiSearchRequestBlockContext, RepositoryRequestBlockContext, SimpleSearchRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
@@ -118,6 +118,10 @@ object TestsUtils {
         case bc: GeneralIndexRequestBlockContext =>
           bc.indices should be (indices)
         case bc: MultiIndexRequestBlockContext =>
+          bc.indices should be (indices)
+        case bc: SimpleSearchRequestBlockContext =>
+          bc.indices should be (indices)
+        case bc: MultiSearchRequestBlockContext =>
           bc.indices should be (indices)
       }
     }
