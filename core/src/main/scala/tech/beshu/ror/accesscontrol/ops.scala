@@ -48,7 +48,6 @@ import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.utils.FilterTransient
 import upickle.default
 
 import scala.collection.SortedSet
@@ -293,9 +292,6 @@ object headerValues {
 
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
-  implicit val transientFilterHeaderValue: ToHeaderValue[Filter] = ToHeaderValue { filter =>
-    NonEmptyString.unsafeFrom(FilterTransient.createFromFilter(filter.value.value).serialize())
-  }
   implicit val transientFieldsToHeaderValue: ToHeaderValue[NonEmptySet[DocumentField]] = ToHeaderValue { filters =>
     implicit val nesW: default.Writer[NonEmptyString] = default.StringWriter.comap(_.value)
     implicit val documentFieldW: default.Writer[DocumentField] = default.Writer.merge(

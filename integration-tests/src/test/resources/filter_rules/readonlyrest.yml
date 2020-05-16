@@ -25,3 +25,8 @@ readonlyrest:
       auth_key: "user3:pass"
       indices: ["test1_index"]
       filter: '{"query_string":malformedquery}'
+
+    - name: "user4"
+      auth_key: "user4:pass"
+      indices: ["test1_index"]
+      filter: '{"match_all": {"query": {}}}'

@@ -184,22 +184,22 @@ object BlockContextUpdater {
       blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
   }
 
-  implicit object SimpleSearchRequestBlockContextUpdater
-    extends BlockContextUpdater[SimpleSearchRequestBlockContext] {
+  implicit object SearchRequestBlockContextUpdater
+    extends BlockContextUpdater[SearchRequestBlockContext] {
 
-    override def emptyBlockContext(blockContext: SimpleSearchRequestBlockContext): SimpleSearchRequestBlockContext =
-      SimpleSearchRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+    override def emptyBlockContext(blockContext: SearchRequestBlockContext): SearchRequestBlockContext =
+      SearchRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
 
-    override def withUserMetadata(blockContext: SimpleSearchRequestBlockContext,
-                                  userMetadata: UserMetadata): SimpleSearchRequestBlockContext =
+    override def withUserMetadata(blockContext: SearchRequestBlockContext,
+                                  userMetadata: UserMetadata): SearchRequestBlockContext =
       blockContext.copy(userMetadata = userMetadata)
 
-    override def withAddedResponseHeader(blockContext: SimpleSearchRequestBlockContext,
-                                         header: Header): SimpleSearchRequestBlockContext =
+    override def withAddedResponseHeader(blockContext: SearchRequestBlockContext,
+                                         header: Header): SearchRequestBlockContext =
       blockContext.copy(responseHeaders = blockContext.responseHeaders + header)
 
-    override def withAddedContextHeader(blockContext: SimpleSearchRequestBlockContext,
-                                        header: Header): SimpleSearchRequestBlockContext =
+    override def withAddedContextHeader(blockContext: SearchRequestBlockContext,
+                                        header: Header): SearchRequestBlockContext =
       blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
   }
 
@@ -231,15 +231,15 @@ abstract class BlockContextWithIndicesUpdater[B <: BlockContext: HasIndices] {
 object BlockContextWithIndicesUpdater {
   def apply[B <: BlockContext](implicit ev: BlockContextWithIndicesUpdater[B]) = ev
 
-  implicit object SimpleSearchRequestIndicesBlockContextUpdater
-    extends BlockContextWithIndicesUpdater[SimpleSearchRequestBlockContext] {
+  implicit object SearchRequestBlockContextWithIndicesUpdater
+    extends BlockContextWithIndicesUpdater[SearchRequestBlockContext] {
 
-    def withIndices(blockContext: SimpleSearchRequestBlockContext,
-                    indices: Set[IndexName]): SimpleSearchRequestBlockContext =
+    def withIndices(blockContext: SearchRequestBlockContext,
+                    indices: Set[IndexName]): SearchRequestBlockContext =
       blockContext.copy(indices = indices)
   }
 
-  implicit object GeneralIndexRequestIndicesBlockContextUpdater
+  implicit object GeneralIndexRequestBlockContextWithIndicesUpdater
     extends BlockContextWithIndicesUpdater[GeneralIndexRequestBlockContext] {
 
     def withIndices(blockContext: GeneralIndexRequestBlockContext,
@@ -256,7 +256,7 @@ abstract class BlockContextWithIndexPacksUpdater[B <: BlockContext : HasIndexPac
 object BlockContextWithIndexPacksUpdater {
   def apply[B <: BlockContext](implicit ev: BlockContextWithIndexPacksUpdater[B]) = ev
 
-  implicit object MultiSearchRequestBlockContextUpdater
+  implicit object MultiSearchRequestBlockContextWithIndexPacksUpdater
     extends BlockContextWithIndexPacksUpdater[MultiSearchRequestBlockContext] {
 
     def withIndexPacks(blockContext: MultiSearchRequestBlockContext,
@@ -264,7 +264,7 @@ object BlockContextWithIndexPacksUpdater {
       blockContext.copy(indexPacks = indexPacks)
   }
 
-  implicit object MultiIndexRequestBlockContextUpdater
+  implicit object MultiIndexRequestBlockContextWithIndexPacksUpdater
     extends BlockContextWithIndexPacksUpdater[MultiIndexRequestBlockContext] {
 
     def withIndexPacks(blockContext: MultiIndexRequestBlockContext,
@@ -281,7 +281,7 @@ abstract class BlockContextWithFilterUpdater[B <: BlockContext : HasFilter] {
 object BlockContextWithFilterUpdater {
   def apply[B <: BlockContext](implicit ev: BlockContextWithFilterUpdater[B]) = ev
 
-  implicit object MultiSearchRequestBlockContextUpdater
+  implicit object MultiSearchRequestBlockContextWithFilterUpdater
     extends BlockContextWithFilterUpdater[MultiSearchRequestBlockContext] {
 
     def withFilter(blockContext: MultiSearchRequestBlockContext,
@@ -289,11 +289,11 @@ object BlockContextWithFilterUpdater {
       blockContext.copy(filter = Some(filter))
   }
 
-  implicit object SimpleSearchRequestBlockContextUpdater
-    extends BlockContextWithFilterUpdater[SimpleSearchRequestBlockContext] {
+  implicit object SearchRequestBlockContextWithFilterUpdater
+    extends BlockContextWithFilterUpdater[SearchRequestBlockContext] {
 
-    def withFilter(blockContext: SimpleSearchRequestBlockContext,
-                   filter: Filter): SimpleSearchRequestBlockContext =
+    def withFilter(blockContext: SearchRequestBlockContext,
+                   filter: Filter): SearchRequestBlockContext =
       blockContext.copy(filter = Some(filter))
   }
 }

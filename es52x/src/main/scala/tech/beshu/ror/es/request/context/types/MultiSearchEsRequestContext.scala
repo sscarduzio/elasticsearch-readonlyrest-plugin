@@ -23,11 +23,11 @@ import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiSearchRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.SearchQueryDecorator
+import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
@@ -58,8 +58,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       requests
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
-          updateRequest(request, pack)
-          SearchQueryDecorator.applyFilterToQuery(request, blockContext.filter)
+          updateRequest(request, pack, blockContext.filter)
         }
       Modified
     } else {
@@ -81,13 +80,16 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     indicesOrWildcard(requestIndices)
   }
 
-  private def updateRequest(request: SearchRequest, indexPack: Indices) = {
+  private def updateRequest(request: SearchRequest,
+                            indexPack: Indices,
+                            filter: Option[Filter]) = {
     indexPack match {
       case Indices.Found(indices) =>
         updateRequestWithIndices(request, indices)
       case Indices.NotFound =>
         updateRequestWithNonExistingIndex(request)
     }
+    request.applyFilterToQuery(filter)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[IndexName]) = {

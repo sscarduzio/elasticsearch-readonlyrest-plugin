@@ -19,30 +19,33 @@ package tech.beshu.ror.es.request
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.Filter
 
-object SearchQueryDecorator extends Logging {
+object SearchRequestOps extends Logging {
 
-  def applyFilterToQuery(request: SearchRequest, filter: Option[Filter]) = {
-    filter match {
-      case Some(definedFilter) =>
-        val filterQuery = QueryBuilders.wrapperQuery(definedFilter.value.value)
-        val modifiedQuery = provideNewQueryWithAppliedFilter(request, filterQuery)
-        request.source().query(modifiedQuery)
-      case None =>
-        logger.debug(s"Header: '${Constants.FIELDS_TRANSIENT}' not found in threadContext. No filter applied to query.")
+  implicit class FilterOps(val request: SearchRequest) extends AnyVal {
+
+    def applyFilterToQuery(filter: Option[Filter]): SearchRequest = {
+      filter match {
+        case Some(definedFilter) =>
+          val filterQuery = QueryBuilders.wrapperQuery(definedFilter.value.value)
+          val modifiedQuery = provideNewQueryWithAppliedFilter(request, filterQuery)
+          request.source().query(modifiedQuery)
+        case None =>
+          logger.debug(s"No filter applied to query.")
+      }
+      request
     }
-  }
 
-  private def provideNewQueryWithAppliedFilter(request: SearchRequest, filterQuery: QueryBuilder) = {
-    Option(request.source().query()) match {
-      case Some(requestedQuery) =>
-        QueryBuilders.boolQuery()
-          .must(requestedQuery)
-          .filter(filterQuery)
-      case None =>
-        QueryBuilders.constantScoreQuery(filterQuery)
+    private def provideNewQueryWithAppliedFilter(request: SearchRequest, filterQuery: QueryBuilder) = {
+      Option(request.source().query()) match {
+        case Some(requestedQuery) =>
+          QueryBuilders.boolQuery()
+            .must(requestedQuery)
+            .filter(filterQuery)
+        case None =>
+          QueryBuilders.constantScoreQuery(filterQuery)
+      }
     }
   }
 }

@@ -22,8 +22,8 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, HasIndexPacks, MultiIndexRequestBlockContext, MultiSearchRequestBlockContext, SimpleSearchRequestBlockContext, TemplateRequestBlockContext}
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, MultiSearchRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SimpleSearchRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, HasIndexPacks, MultiIndexRequestBlockContext, MultiSearchRequestBlockContext, SearchRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, MultiSearchRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SearchRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.IndexNotFound
@@ -65,7 +65,7 @@ class IndicesRule(val settings: Settings)
         case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
         case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
         case GeneralIndexRequestBlockContextUpdater => processIndicesRequest(blockContext: GeneralIndexRequestBlockContext)
-        case SimpleSearchRequestBlockContextUpdater => processIndicesRequest(blockContext: SimpleSearchRequestBlockContext)
+        case SearchRequestBlockContextUpdater => processIndicesRequest(blockContext: SearchRequestBlockContext)
         case MultiIndexRequestBlockContextUpdater => processIndicesPacks(blockContext: MultiIndexRequestBlockContext)
         case MultiSearchRequestBlockContextUpdater => processIndicesPacks(blockContext: MultiSearchRequestBlockContext)
         case TemplateRequestBlockContextUpdater => processTemplateRequest(blockContext)

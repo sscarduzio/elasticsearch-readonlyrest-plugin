@@ -23,6 +23,7 @@ import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClus
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
+import tech.beshu.ror.utils.misc.Version
 
 trait FilterRuleSuite
   extends WordSpec
@@ -95,12 +96,48 @@ trait FilterRuleSuite
         }
       }
     }
-    "return error" when {
-      "filter query is malformed" in {
-        val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
-        val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}}""")
+    "not allow request" when {
+      "request is not read only" in {
+        val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+        val result = documentManager.createDoc("test1_index", 5, ujson.read("""{"db_name":"db_user4", "code": 2}"""))
 
-        result.responseCode shouldBe 400
+        result.responseCode shouldBe 401
+      }
+      "search request has 'profile' option" in {
+        val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+        val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}, "profile": true}""")
+
+        result.responseCode shouldBe 401
+      }
+      "search request has suggestions" in {
+        val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+        val query =
+          """|{
+             |"query": { "term": { "code": 1 }},
+             |"suggest": {
+             |  "my-suggest-1" : {
+             |    "text" : "something",
+             |    "term" : {
+             |      "field" : "db_name"
+             |    }
+             |  }
+             | }
+             |}""".stripMargin
+        val result = searchManager.search("/test1_index/_search", query)
+
+        result.responseCode shouldBe 401
+      }
+      "return error" when {
+        "filter query is malformed" in {
+          val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
+          val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}}""")
+
+          if (Version.greaterOrEqualThan(targetEs.esVersion, 7, 6, 0)) {
+            result.responseCode shouldBe 400
+          } else {
+            result.responseCode shouldBe 500
+          }
+        }
       }
     }
   }

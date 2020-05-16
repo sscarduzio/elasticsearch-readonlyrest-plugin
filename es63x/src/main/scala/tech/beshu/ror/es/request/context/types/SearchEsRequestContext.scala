@@ -21,12 +21,12 @@ import cats.implicits._
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.SimpleSearchRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.SearchRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.SearchQueryDecorator
+import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
@@ -36,10 +36,10 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                              aclContext: AccessControlStaticContext,
                              clusterService: RorClusterService,
                              override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[SimpleSearchRequestBlockContext](esContext, clusterService)
-    with EsRequest[SimpleSearchRequestBlockContext] {
+  extends BaseEsRequestContext[SearchRequestBlockContext](esContext, clusterService)
+    with EsRequest[SearchRequestBlockContext] {
 
-  override val initialBlockContext: SimpleSearchRequestBlockContext = SimpleSearchRequestBlockContext(
+  override val initialBlockContext: SearchRequestBlockContext = SearchRequestBlockContext(
     this,
     UserMetadata.from(this),
     Set.empty,
@@ -68,7 +68,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
     }
   }
 
-  override protected def modifyRequest(blockContext: SimpleSearchRequestBlockContext): ModificationResult = {
+  override protected def modifyRequest(blockContext: SearchRequestBlockContext): ModificationResult = {
     NonEmptyList.fromList(blockContext.indices.toList) match {
       case Some(indices) =>
         update(actionRequest, indices, blockContext.filter)
@@ -84,7 +84,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
   private def update(request: SearchRequest,
                      indices: NonEmptyList[IndexName],
                      filter: Option[Filter]): ModificationResult = {
-    SearchQueryDecorator.applyFilterToQuery(request, filter)
+    request.applyFilterToQuery(filter)
     request.indices(indices.toList.map(_.value.value): _*)
     Modified
   }

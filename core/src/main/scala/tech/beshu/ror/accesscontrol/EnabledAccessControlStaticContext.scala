@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.rules.{FieldsRule, FilterRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.Header
 
@@ -38,15 +38,11 @@ class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
 
   val involvesFilter: Boolean = {
     blocks
-      .find(_
-        .rules
-        .collect {
-          case _: FilterRule => true
-          case _: FieldsRule => true
-        }
-        .nonEmpty
-      )
-      .isDefined
+      .flatMap(_.rules)
+      .exists {
+        case _: FieldsRule => true
+        case _ => false
+      }
   }
 
   val doesRequirePassword: Boolean = {

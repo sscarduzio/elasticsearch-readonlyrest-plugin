@@ -75,12 +75,12 @@ object BlockContext {
                                                    indices: Set[IndexName])
     extends BlockContext
 
-  final case class SimpleSearchRequestBlockContext(override val requestContext: RequestContext,
-                                                   override val userMetadata: UserMetadata,
-                                                   override val responseHeaders: Set[Header],
-                                                   override val contextHeaders: Set[Header],
-                                                   indices: Set[IndexName],
-                                                   filter: Option[Filter])
+  final case class SearchRequestBlockContext(override val requestContext: RequestContext,
+                                             override val userMetadata: UserMetadata,
+                                             override val responseHeaders: Set[Header],
+                                             override val contextHeaders: Set[Header],
+                                             indices: Set[IndexName],
+                                             filter: Option[Filter])
     extends BlockContext
 
   final case class MultiSearchRequestBlockContext(override val requestContext: RequestContext,
@@ -110,10 +110,10 @@ object BlockContext {
   }
   object HasIndices {
 
-    def apply[B <: BlockContext](implicit ev: HasIndices[B]) = ev
+    def apply[B <: BlockContext](implicit instance: HasIndices[B]) = instance
 
-    implicit val indicesFromSimpleSearchBlockContext = new HasIndices[SimpleSearchRequestBlockContext] {
-      override def indices(blockContext: SimpleSearchRequestBlockContext): Set[IndexName] = blockContext.indices
+    implicit val indicesFromSearchBlockContext = new HasIndices[SearchRequestBlockContext] {
+      override def indices(blockContext: SearchRequestBlockContext): Set[IndexName] = blockContext.indices
     }
 
     implicit val indicesFromGeneralIndexBlockContext = new HasIndices[GeneralIndexRequestBlockContext] {
@@ -130,7 +130,7 @@ object BlockContext {
   }
   object HasIndexPacks {
 
-    def apply[B <: BlockContext](implicit ev: HasIndexPacks[B]) = ev
+    def apply[B <: BlockContext](implicit instance: HasIndexPacks[B]) = instance
 
     implicit val indexPacksFromMultiSearchBlockContext = new HasIndexPacks[MultiSearchRequestBlockContext] {
       override def indexPacks(blockContext: MultiSearchRequestBlockContext): List[Indices] = blockContext.indexPacks
@@ -150,14 +150,14 @@ object BlockContext {
   }
   object HasFilter {
 
-    def apply[B <: BlockContext](implicit ev: HasFilter[B]) = ev
+    def apply[B <: BlockContext](implicit instance: HasFilter[B]) = instance
 
     implicit val filterFromMultiSearchBlockContext = new HasFilter[MultiSearchRequestBlockContext] {
       override def filter(blockContext: MultiSearchRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
-    implicit val filterFromMultiIndexBlockContext = new HasFilter[SimpleSearchRequestBlockContext] {
-      override def filter(blockContext: SimpleSearchRequestBlockContext): Option[Filter] = blockContext.filter
+    implicit val filterFromSearchRequestBlockContext = new HasFilter[SearchRequestBlockContext] {
+      override def filter(blockContext: SearchRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
     implicit class Ops[B <: BlockContext : HasFilter](blockContext: B) {
@@ -225,7 +225,7 @@ object BlockContext {
         case bc: SnapshotRequestBlockContext => bc.indices
         case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
         case bc: GeneralIndexRequestBlockContext => bc.indices
-        case bc: SimpleSearchRequestBlockContext => bc.indices
+        case bc: SearchRequestBlockContext => bc.indices
         case bc: MultiIndexRequestBlockContext =>
           bc.indexPacks
             .flatMap {
@@ -254,7 +254,7 @@ object BlockContext {
         case _: TemplateRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
-        case _: SimpleSearchRequestBlockContext => Set.empty
+        case _: SearchRequestBlockContext => Set.empty
         case _: MultiSearchRequestBlockContext => Set.empty
       }
     }
@@ -270,36 +270,21 @@ object BlockContext {
         case _: TemplateRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
-        case _: SimpleSearchRequestBlockContext => Set.empty
+        case _: SearchRequestBlockContext => Set.empty
         case _: MultiSearchRequestBlockContext => Set.empty
       }
     }
   }
 
-  implicit class RandomIndexBasedOnBlockContextIndices(val blockContext: GeneralIndexRequestBlockContext) extends AnyVal {
+  implicit class RandomIndexBasedOnBlockContextIndices[B <: BlockContext: HasIndices](blockContext: B) {
 
     def randomNonexistentIndex(): IndexName = {
       import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
-      blockContext.indices.toList.randomNonexistentIndex()
+      HasIndices[B].indices(blockContext).toList.randomNonexistentIndex()
     }
 
     def nonExistingIndicesFromInitialIndices(): Set[IndexName] = {
-      blockContext.indices.map(i => IndexName.randomNonexistentIndex(
-        i.value.value.replace(":", "_") // we don't want to call remote cluster
-      ))
-    }
-  }
-
-  //copy from above
-  implicit class RandomIndexBasedOnBlockContextIndices2(val blockContext: SimpleSearchRequestBlockContext) extends AnyVal {
-
-    def randomNonexistentIndex(): IndexName = {
-      import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
-      blockContext.indices.toList.randomNonexistentIndex()
-    }
-
-    def nonExistingIndicesFromInitialIndices(): Set[IndexName] = {
-      blockContext.indices.map(i => IndexName.randomNonexistentIndex(
+      HasIndices[B].indices(blockContext).map(i => IndexName.randomNonexistentIndex(
         i.value.value.replace(":", "_") // we don't want to call remote cluster
       ))
     }

@@ -22,7 +22,7 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{MultiSearchRequestBlockContext, SimpleSearchRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{MultiSearchRequestBlockContext, SearchRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
@@ -38,16 +38,16 @@ import tech.beshu.ror.utils.TestsUtils._
 class FilterRuleTests extends WordSpec with MockFactory {
 
   "A FilterRuleTests" should {
-    "match and set transient filter" when {
+    "match and set filter" when {
       "filter value is const" when {
-        "single search request block context is used" in {
+        "search request block context is used" in {
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
           val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-          val blockContext = SimpleSearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+          val blockContext = SearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
 
           rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-            BlockContext.SimpleSearchRequestBlockContext(
+            BlockContext.SearchRequestBlockContext(
               requestContext,
               UserMetadata.empty,
               Set.empty,
@@ -79,7 +79,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-        val blockContext = SimpleSearchRequestBlockContext(
+        val blockContext = SearchRequestBlockContext(
           requestContext,
           UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob".nonempty))),
           Set.empty,
@@ -89,7 +89,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         )
 
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-          SimpleSearchRequestBlockContext(
+          SearchRequestBlockContext(
             requestContext,
             UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob".nonempty))),
             Set.empty,
@@ -105,7 +105,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-        val blockContext = SimpleSearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+        val blockContext = SearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
@@ -113,7 +113,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isAllowedForDLS = false)
-        val blockContext = SimpleSearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+        val blockContext = SearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }

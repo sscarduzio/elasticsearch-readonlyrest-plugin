@@ -101,6 +101,7 @@ class RegularRequestHandler(engine: Engine,
     esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, causes.toList, engine.context))
   }
 
+  //TODO handle SearchRequestBlockContext - copy 'GeneralIndexRequestBlockContextUpdater' case?
   private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     BlockContextUpdater[B] match {
       case GeneralIndexRequestBlockContextUpdater =>
