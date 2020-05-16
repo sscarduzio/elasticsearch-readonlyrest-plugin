@@ -28,7 +28,7 @@ import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.configuration.loader.ComposedConfigLoader
-import tech.beshu.ror.configuration.loader.distribuated.{NodeConfig, Timeout}
+import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, Timeout}
 import tech.beshu.ror.es.providers.EsIndexJsonContentProvider
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 

@@ -17,6 +17,7 @@
 package tech.beshu.ror.configuration.loader
 
 import shapeless._
+import tech.beshu.ror.accesscontrol.domain.IndexName
 
 import scala.language.implicitConversions
 
@@ -33,7 +34,7 @@ object LoadedConfig {
     def indexParsingError(indexParsingError: IndexParsingError): Cause = Coproduct[Cause](indexParsingError)
   }
   final case class ForcedFileConfig[A](value: A) extends LoadedConfig[A]
-  final case class IndexConfig[A](value: A) extends LoadedConfig[A]
+  final case class IndexConfig[A](indexName: IndexName, value: A) extends LoadedConfig[A]
   final case class FileParsingError(message: String) extends LoadedConfig.Error
   final case class FileNotExist(path: Path) extends LoadedConfig.Error
   final case class EsFileNotExist(path: Path) extends LoadedConfig.Error

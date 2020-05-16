@@ -14,19 +14,26 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader.distribuated
+package tech.beshu.ror.configuration.loader.distributed
 
-object NodeConfigRequestSerializer {
+import io.circe.Codec
+import tech.beshu.ror.configuration.loader.LoadedConfig
 
-  import io.circe.generic.auto._
+object NodeConfigSerializer {
+
   import io.circe.parser
   import io.circe.syntax._
 
-  def show(nodeConfigRequest: NodeConfigRequest): String = {
-    nodeConfigRequest.asJson.noSpaces
+  implicit private val codecNodeConfig: Codec[NodeConfig] = {
+    val codec = Codec.codecForEither[LoadedConfig.Error, LoadedConfig[String]]("error", "config")
+    Codec.from(codec.map(NodeConfig), codec.contramap(_.loadedConfig))
   }
 
-  def parse(str: String): NodeConfigRequest = {
-    parser.decode[NodeConfigRequest](str).toTry.get
+  def show(nodeConfig: NodeConfig): String = {
+    nodeConfig.asJson.noSpaces
+  }
+
+  def parse(str: String): NodeConfig = {
+    parser.decode[NodeConfig](str).toTry.get
   }
 }

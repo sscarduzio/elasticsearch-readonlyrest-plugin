@@ -19,8 +19,8 @@ package tech.beshu.ror.es.rrconfig;
 import org.elasticsearch.action.support.nodes.BaseNodeRequest;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import tech.beshu.ror.configuration.loader.distribuated.NodeConfigRequest;
-import tech.beshu.ror.configuration.loader.distribuated.NodeConfigRequestSerializer;
+import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest;
+import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequestSerializer;
 
 import java.io.IOException;
 

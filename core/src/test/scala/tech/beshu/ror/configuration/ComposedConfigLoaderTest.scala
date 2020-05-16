@@ -42,7 +42,7 @@ class ComposedConfigLoaderTest extends WordSpec {
     }
     "load successfully from index" in {
       val steps = List(
-        (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(rawRorConfig))),
+        (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
       val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 0)
@@ -53,7 +53,7 @@ class ComposedConfigLoaderTest extends WordSpec {
     "load successfully from index, after failure" in {
       val steps = List(
         (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(rawRorConfig))),
+        (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
       val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)

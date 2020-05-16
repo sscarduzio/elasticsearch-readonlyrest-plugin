@@ -20,14 +20,13 @@ import java.util
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.MultipleContainers
-import org.apache.commons.lang.StringEscapeUtils.escapeJava
-import org.scalatest.Matchers.{be, contain, _}
+import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, Entry, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
+import tech.beshu.ror.integration.utils.IndexConfigInitializer
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
-import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.elasticsearch.ActionManagerJ
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 final class LoadClusterConfigsDifferentIndicesTest
@@ -39,6 +38,7 @@ final class LoadClusterConfigsDifferentIndicesTest
 
   override implicit val rorConfigFileName = "/two_nodes_two_config_indices/readonlyrest.yml"
   private val readonlyrestIndexName: String = ".readonlyrest"
+  private val otherConfigIndexName = ".readonlyrest2"
   private lazy val ror1_1Node = rorWithIndexConfig.nodes.head
   private lazy val ror1_2Node = rorWithIndexConfig.nodes.tail.head
 
@@ -52,40 +52,28 @@ final class LoadClusterConfigsDifferentIndicesTest
   )
   private val rorNode2: ClusterNodeData = ClusterNodeData("ror2", EsWithRorPluginContainerCreator, EsClusterSettings(
     name = "ROR1",
-    nodeDataInitializer = new IndexConfigInitializer(".readonlyrest2", "/two_nodes_two_config_indices/readonlyrest_index2.yml"),
-    customRorIndexName = Some(".readonlyrest2")
+    nodeDataInitializer = new IndexConfigInitializer(otherConfigIndexName, "/two_nodes_two_config_indices/readonlyrest_index2.yml"),
+    customRorIndexName = Some(otherConfigIndexName)
   )(rorConfigFileName)
   )
   private lazy val rorWithIndexConfig = createLocalClusterContainers(rorNode1, rorNode2)
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)
 
-  "in-index config is the same as current one" in {
+  "return two configs from two indices" in {
     val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
     result.getResponseCode should be(200)
     result.getResponseJsonMap.get("clusterName") should be("ROR1")
-    result.getResponseJsonMap.get("failures").asInstanceOf[util.Collection[Nothing]] should have size 1
+    result.getResponseJsonMap.get("failures").asInstanceOf[util.Collection[Nothing]] should have size 0
     val javaResponses = result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String, String]]]
     val jnode1 = javaResponses.get(0)
     jnode1 should contain key "nodeId"
     jnode1 should contain(Entry("type", "IndexConfig"))
-    jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
-  }
-
-}
-final class IndexConfigInitializer(readonlyrestIndexName: String, resourceFilePath: String)
-  extends ElasticsearchNodeDataInitializer {
-
-  private def insertInIndexConfig(documentManager: DocumentManagerJ, resourceFilePath: String): Unit = {
-    documentManager.insertDocAndWaitForRefresh(
-      s"/$readonlyrestIndexName/settings/1",
-      s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}"""
-    )
-  }
-
-  override def initialize(esVersion: String, adminRestClient: RestClient): Unit = {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
-    insertInIndexConfig(documentManager, resourceFilePath)
+    jnode1 should contain(Entry("indexName", readonlyrestIndexName))
+    jnode1.get("config") should be(getResourceContent("/two_nodes_two_config_indices/readonlyrest_index1.yml"))
+    val jnode2 = javaResponses.get(1)
+    jnode2 should contain key "nodeId"
+    jnode2 should contain(Entry("type", "IndexConfig"))
+    jnode2 should contain(Entry("indexName", otherConfigIndexName))
+    jnode2.get("config") should be(getResourceContent("/two_nodes_two_config_indices/readonlyrest_index2.yml"))
   }
 }

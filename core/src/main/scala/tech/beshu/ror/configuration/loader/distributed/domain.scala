@@ -14,19 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader.distribuated
+package tech.beshu.ror.configuration.loader.distributed
 
-object NodeConfigSerializer {
+import tech.beshu.ror.configuration.loader.LoadedConfig
 
-  import io.circe.generic.auto._
-  import io.circe.parser
-  import io.circe.syntax._
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
-  def show(nodeConfig: NodeConfig): String = {
-    nodeConfig.asJson.noSpaces
-  }
-
-  def parse(str: String): NodeConfig = {
-    parser.decode[NodeConfig](str).toTry.get
-  }
+final case class NodeConfig(loadedConfig: Either[LoadedConfig.Error, LoadedConfig[String]])
+final case class Timeout(nanos: Long) extends AnyVal
+final case class NodeConfigRequest(timeout: Timeout)
+object NodeConfigRequest {
+  val defaultTimeout: Timeout = Timeout(nanos = (1 minute).toNanos)
 }

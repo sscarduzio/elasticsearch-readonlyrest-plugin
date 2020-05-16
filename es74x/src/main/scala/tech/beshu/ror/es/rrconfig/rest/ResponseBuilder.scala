@@ -20,8 +20,8 @@ import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.action.RestBuilderListener
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestResponse, RestStatus}
-import tech.beshu.ror.configuration.loader.distribuated.NodesResponse
-import tech.beshu.ror.configuration.loader.distribuated.NodesResponse.{ClusterName, NodeError, NodeId, NodeResponse}
+import tech.beshu.ror.configuration.loader.distributed.NodesResponse
+import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{ClusterName, NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.es.rrconfig.{RRConfig, RRConfigsResponse}
 
 import scala.collection.JavaConverters._
@@ -33,7 +33,7 @@ final class ResponseBuilder(channel: RestChannel) extends RestBuilderListener[RR
   }
 
   private def createNodesResponse(response: RRConfigsResponse) =
-    NodesResponse(
+    NodesResponse.create(
       clusterName = ClusterName(response.getClusterName.value()),
       responses = response.getNodes.asScala.toList.map(createNodeResponse),
       failures = response.failures().asScala.toList.map(createNodeError),

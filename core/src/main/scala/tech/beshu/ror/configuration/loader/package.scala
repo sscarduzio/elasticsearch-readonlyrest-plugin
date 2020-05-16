@@ -28,13 +28,13 @@ package object loader {
     lazy val value: A = fa match {
       case FileRecoveredConfig(value, _) => value
       case ForcedFileConfig(value) => value
-      case IndexConfig(value) => value
+      case IndexConfig(_, value) => value
     }
 
     def map[B](f: A => B): LoadedConfig[B] = fa match {
       case FileRecoveredConfig(value, cause) => FileRecoveredConfig(f(value), cause)
       case ForcedFileConfig(value) => ForcedFileConfig(f(value))
-      case IndexConfig(value) => IndexConfig(f(value))
+      case IndexConfig(indexName, value) => IndexConfig(indexName, f(value))
     }
   }
 }

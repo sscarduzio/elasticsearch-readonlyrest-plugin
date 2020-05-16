@@ -59,7 +59,7 @@ object Compiler extends Logging {
       case ConfigLoading.LoadFromIndex(index) =>
         logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ...")
         loadFromIndex(indexContentManager, index)
-          .bimap(convertIndexError, IndexConfig(_))
+          .bimap(convertIndexError, IndexConfig(index, _))
           .leftMap { error =>
             logIndexLoadingError(error)
             error
