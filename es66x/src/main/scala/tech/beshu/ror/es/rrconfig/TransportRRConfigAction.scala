@@ -1,0 +1,120 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+package tech.beshu.ror.es.rrconfig
+
+import java.util
+
+import org.elasticsearch.action.FailedNodeException
+import org.elasticsearch.action.support.ActionFilters
+import org.elasticsearch.action.support.nodes.TransportNodesAction
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
+import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.common.inject.Inject
+import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.env.Environment
+import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.transport.TransportService
+import tech.beshu.ror.configuration.loader.ComposedConfigLoader
+import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, Timeout}
+import tech.beshu.ror.es.providers.EsIndexJsonContentProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
+class TransportRRConfigAction(setting: Settings,
+                              actionName: String,
+                              threadPool: ThreadPool,
+                              clusterService: ClusterService,
+                              transportService: TransportService,
+                              actionFilters: ActionFilters,
+                              env: Environment,
+                              indexContentProvider: EsIndexJsonContentProvider,
+                              nodeExecutor: String,
+                              indexNameExpressionResolver: IndexNameExpressionResolver,
+                              nodeResponseClass: Class[RRConfig],
+                              constructorDiscriminator: Unit)
+  extends TransportNodesAction[RRConfigsRequest, RRConfigsResponse, RRConfigRequest, RRConfig](
+    setting,
+    actionName,
+    threadPool,
+    clusterService,
+    transportService,
+    actionFilters,
+    indexNameExpressionResolver,
+    () => new RRConfigsRequest(),
+    () => new RRConfigRequest(),
+    nodeExecutor,
+    nodeResponseClass
+  ) {
+
+  import monix.execution.Scheduler.Implicits.global
+
+  implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+
+  @Inject
+  def this(setting: Settings,
+           actionName: String,
+           threadPool: ThreadPool,
+           clusterService: ClusterService,
+           transportService: TransportService,
+           actionFilters: ActionFilters,
+           env: Environment,
+           indexContentProvider: EsIndexJsonContentProvider,
+           indexNameExpressionResolver: IndexNameExpressionResolver,
+          ) =
+    this(
+      setting,
+      RRConfigAction.name,
+      threadPool,
+      clusterService,
+      transportService,
+      actionFilters,
+      env,
+      indexContentProvider,
+      ThreadPool.Names.GENERIC,
+      indexNameExpressionResolver,
+      classOf[RRConfig],
+      ()
+    )
+
+  override def newResponse(request: RRConfigsRequest, responses: util.List[RRConfig], failures: util.List[FailedNodeException]): RRConfigsResponse = {
+    new RRConfigsResponse(clusterService.getClusterName, responses, failures)
+  }
+
+  private def loadConfig() =
+    new ComposedConfigLoader(env.configFile(), indexContentProvider)
+      .load()
+      .map(_.map(_.map(_.raw)))
+
+  override def nodeOperation(request: RRConfigRequest): RRConfig = {
+    val nodeRequest = request.getNodeConfigRequest
+    val nodeResponse =
+      loadConfig()
+        .runSyncUnsafe(toFiniteDuration(nodeRequest.timeout))
+    new RRConfig(clusterService.localNode(), NodeConfig(nodeResponse))
+  }
+
+  private def toFiniteDuration(timeout: Timeout): FiniteDuration = timeout.nanos nanos
+
+  override def newNodeResponse(): RRConfig = new RRConfig()
+
+  override def newNodeRequest(nodeId: String, request: RRConfigsRequest): RRConfigRequest = new RRConfigRequest(nodeId, request.getNodeConfigRequest)
+}
+
+
+

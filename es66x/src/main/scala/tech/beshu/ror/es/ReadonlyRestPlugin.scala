@@ -28,10 +28,10 @@ import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.component.LifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
@@ -59,6 +59,8 @@ import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
+import tech.beshu.ror.es.rrconfig.rest.RestRRConfigAction
+import tech.beshu.ror.es.rrconfig.{RRConfigAction, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -93,6 +95,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
+  private val emptyClusterState = new ClusterStateResponse(
+    ClusterName.CLUSTER_NAME_SETTING.get(s), ClusterState.EMPTY_STATE,serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length,false
+  )
 
   private var ilaf: IndexLevelActionFilter = _
 
@@ -106,16 +111,17 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 nodeEnvironment: NodeEnvironment,
                                 namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
     doPrivileged {
-      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier,emptyClusterState)
+      ilaf = new IndexLevelActionFilter(
+        clusterService,
+        client.asInstanceOf[NodeClient],
+        threadPool,
+        environment,
+        TransportServiceInterceptor.remoteClusterServiceSupplier,
+        emptyClusterState
+      )
     }
     List.empty[AnyRef].asJava
   }
-  private def emptyClusterState=
-    new ClusterStateResponse(
-      ClusterName.CLUSTER_NAME_SETTING.get(s),
-      ClusterState.EMPTY_STATE,
-      serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length,
-      false)
 
   override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
     List[Class[_ <: LifecycleComponent]](classOf[TransportServiceInterceptor]).asJava
@@ -179,7 +185,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
-      new ActionHandler(RRAdminAction.instance, classOf[TransportRRAdminAction])
+      new ActionHandler(RRAdminAction.instance, classOf[TransportRRAdminAction]),
+      new ActionHandler(RRConfigAction.instance, classOf[TransportRRConfigAction]),
     ).asJava
   }
 
@@ -191,7 +198,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
     List[RestHandler](
-      new RestRRAdminAction(settings, restController)
+      new RestRRAdminAction(settings, restController),
+      new RestRRConfigAction(settings, restController, nodesInCluster),
     ).asJava
   }
 
