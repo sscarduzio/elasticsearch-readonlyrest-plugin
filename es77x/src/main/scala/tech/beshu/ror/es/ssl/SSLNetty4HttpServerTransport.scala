@@ -42,8 +42,7 @@ class SSLNetty4HttpServerTransport(settings: Settings,
                                    xContentRegistry: NamedXContentRegistry,
                                    dispatcher: HttpServerTransport.Dispatcher,
                                    ssl: ExternalSslConfiguration,
-                                   clusterSettings: ClusterSettings
-                                  )
+                                   clusterSettings: ClusterSettings)
   extends Netty4HttpServerTransport(settings, networkService, bigArrays, threadPool, xContentRegistry, dispatcher, clusterSettings)
     with Logging {
 

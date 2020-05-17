@@ -34,7 +34,7 @@ import RestRequest.Method._
 class RestRRAdminAction(controller: RestController)
   extends BaseRestHandler with RestHandler {
 
-  override def routes() = List(
+  override def routes(): util.List[Route] = List(
     new Route(POST, AdminRestApi.forceReloadRorPath.endpointString),
     new Route(GET, AdminRestApi.provideRorIndexConfigPath.endpointString),
     new Route(POST, AdminRestApi.updateIndexConfigurationPath.endpointString),
@@ -46,9 +46,5 @@ class RestRRAdminAction(controller: RestController)
 
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
     client.execute(new RRAdminActionType, new RRAdminRequest(request), new RestToXContentListener[RRAdminResponse](channel))
-  }
-  
-  private def register(method: String, path: String): Unit = {
-    controller.registerHandler( this)
   }
 }

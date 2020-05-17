@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.es.providers
 
-import java.util.function.BiConsumer
-
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
 import org.elasticsearch.action.index.IndexRequest
@@ -42,7 +40,7 @@ class EsAuditSink(client: Client) extends AuditSink with Logging {
       .build
 
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
-    bulkProcessor.add(new IndexRequest(indexName).source(jsonRecord, XContentType.JSON))
+    bulkProcessor.add(new IndexRequest(indexName, "ror_audit_evt", documentId).source(jsonRecord, XContentType.JSON))
   }
 
   private class AuditSinkBulkProcessorListener extends BulkProcessor.Listener {

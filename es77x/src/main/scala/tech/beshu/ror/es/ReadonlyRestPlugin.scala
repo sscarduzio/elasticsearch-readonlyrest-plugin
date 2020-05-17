@@ -137,8 +137,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                  xContentRegistry: NamedXContentRegistry,
                                  networkService: NetworkService,
                                  dispatcher: HttpServerTransport.Dispatcher,
-                                 clusterSettings: ClusterSettings
-                                ): util.Map[String, Supplier[HttpServerTransport]] = {
+                                 clusterSettings: ClusterSettings): util.Map[String, Supplier[HttpServerTransport]] = {
     sslConfig
       .externalSsl
       .map(ssl =>
