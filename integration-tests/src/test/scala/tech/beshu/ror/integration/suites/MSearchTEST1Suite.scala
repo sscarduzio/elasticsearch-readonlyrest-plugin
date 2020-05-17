@@ -50,14 +50,13 @@ trait MSearchTEST1Suite
 
   override def nodeDataInitializer = Some(MSearchTEST1Suite.nodeDataInitializer())
 
-//  "test274_1_notexist" in {
-//    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
-//
-//    val response = searchManager.mSearchUnsafe(msearchBodyNotExists: _*)
-//
-//    response.responseCode shouldBe 200
-//    response.searchHitsForResponse(0) should be (Vector.empty)
-//  }
+  "test274_1_notexist" in {
+    val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
+
+    val response = searchManager.mSearchUnsafe(msearchBodyNotExists: _*)
+
+    response.searchHitsForResponse(0) should be (Vector.empty)
+  }
 
   "test274_1_queryworks" in {
     val searchManager = new SearchManager(basicAuthClient("kibana", "kibana"))
