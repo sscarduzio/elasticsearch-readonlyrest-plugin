@@ -1,3 +1,6 @@
+/*
+ *     Beshu Limited all rights reserved
+ */
 package tech.beshu.ror.proxy.es.clients.actions
 
 import org.elasticsearch.action.admin.cluster.remote.{RemoteInfoResponse => AdminRemoteInfoResponse}

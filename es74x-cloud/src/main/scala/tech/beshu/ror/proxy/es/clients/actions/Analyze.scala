@@ -1,3 +1,6 @@
+/*
+ *     Beshu Limited all rights reserved
+ */
 package tech.beshu.ror.proxy.es.clients.actions
 
 import org.elasticsearch.action.admin.indices.analyze.AnalyzeAction.{AnalyzeToken => AdminAnalyzeToken, AnalyzeTokenList => AdminAnalyzeTokenList, CharFilteredText => AdminCharFilteredText, DetailAnalyzeResponse => AdminDetailAnalyzeResponse, Request => AdminAnalyzeRequest, Response => AdminAnalyzeResponse}
