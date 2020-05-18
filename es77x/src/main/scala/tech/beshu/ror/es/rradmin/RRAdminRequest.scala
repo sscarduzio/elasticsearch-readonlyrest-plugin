@@ -14,25 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.rradmin
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es51x'
-include 'es52x'
-include 'es53x'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es66x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es74x-cloud'
-include 'tests-utils'
-include 'integration-tests'
+import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.rest.RestRequest
+import tech.beshu.ror.adminapi.AdminRestApi
+
+class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
+
+  def this(request: RestRequest) = {
+    this(AdminRestApi.AdminRequest(request.method.name, request.path, request.content.utf8ToString))
+  }
+
+  def this() = {
+    this(null: AdminRestApi.AdminRequest)
+  }
+
+  val getAdminRequest: AdminRestApi.AdminRequest = request
+
+  override def validate() = null
+}
