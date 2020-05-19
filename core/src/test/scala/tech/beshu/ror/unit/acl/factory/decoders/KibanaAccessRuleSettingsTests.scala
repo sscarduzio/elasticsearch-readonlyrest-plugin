@@ -101,6 +101,24 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
           }
         )
       }
+      "unrestricted access is defined" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    kibana_access: unrestricted
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.access should be(KibanaAccess.Unrestricted)
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
+          }
+        )
+      }
       "some access is defined with changed default kibana index" in {
         assertDecodingSuccess(
           yaml =
