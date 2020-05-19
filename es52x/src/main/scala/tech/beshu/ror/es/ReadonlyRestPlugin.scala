@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es
 
+import java.nio.file.Path
 import java.util
 import java.util.Collections
 import java.util.function.{Supplier, UnaryOperator}
@@ -30,8 +31,8 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings._
-import org.elasticsearch.common.util.BigArrays
 import org.elasticsearch.common.util.concurrent.ThreadContext
+import org.elasticsearch.common.util.BigArrays
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.env.Environment
 import org.elasticsearch.http.HttpServerTransport
@@ -45,9 +46,10 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
 import tech.beshu.ror.Constants
 import tech.beshu.ror.configuration.RorSsl
-import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
+import tech.beshu.ror.es.rrconfig.{RRConfigAction, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -56,18 +58,13 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class ReadonlyRestPlugin(s: Settings,
-                         ignore: Unit) // hack!!!
+@Inject
+class ReadonlyRestPlugin(s: Settings, p: Path)
   extends Plugin
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
     with NetworkPlugin {
-
-  @Inject
-  def this(s: Settings) = {
-    this(s, ())
-  }
 
   LogBuildInfoMessage()
 
@@ -121,9 +118,7 @@ class ReadonlyRestPlugin(s: Settings,
       .interNodeSsl
       .map(ssl =>
         "ror_ssl_internode" -> new Supplier[Transport] {
-          override def get(): Transport = new SSLNetty4InternodeServerTransport(
-            settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl
-          )
+          override def get(): Transport = new SSLNetty4InternodeServerTransport(settings, threadPool, networkService, bigArrays, namedWriteableRegistry, circuitBreakerService, ssl)
         }
       )
       .toMap
@@ -132,7 +127,8 @@ class ReadonlyRestPlugin(s: Settings,
 
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
-      new ActionHandler(RRAdminAction.instance, classOf[TransportRRAdminAction])
+      new ActionHandler(RRAdminAction.instance, classOf[TransportRRAdminAction]),
+      new ActionHandler(RRConfigAction.instance, classOf[TransportRRConfigAction]),
     ).asJava
   }
 
