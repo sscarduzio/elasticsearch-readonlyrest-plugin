@@ -181,7 +181,7 @@ object AclAwareRequestFilter {
                              listener: ActionListener[ActionResponse],
                              chain: ActionFilterChain[ActionRequest, ActionResponse],
                              remoteClusterService: RemoteClusterService,
-                             involveFilters: Boolean) {
+                             involveFields: Boolean) {
 
     lazy val crossClusterSearchEnabled: Boolean = ReflecUtils
       .invokeMethod(remoteClusterService, classOf[RemoteClusterService], "isCrossClusterSearchEnabled")

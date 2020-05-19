@@ -85,8 +85,19 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
   private def update(request: SearchRequest,
                      indices: NonEmptyList[IndexName],
                      filter: Option[Filter]): ModificationResult = {
-    request.applyFilterToQuery(filter)
-    request.indices(indices.toList.map(_.value.value): _*)
+    optionallyDisableCaching()
+    request
+      .applyFilterToQuery(filter)
+      .indices(indices.toList.map(_.value.value): _*)
     Modified
+  }
+
+  //TODO cache is now disabled only when 'fields' rule is used.
+  //Remove after 'fields' rule improvements.
+  private def optionallyDisableCaching(): Unit = {
+    if (esContext.involvesFields) {
+      logger.debug("ACL involves fields, will disable request cache for SearchRequest")
+      actionRequest.requestCache(false)
+    }
   }
 }
