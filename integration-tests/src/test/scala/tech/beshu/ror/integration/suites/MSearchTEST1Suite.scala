@@ -55,7 +55,6 @@ trait MSearchTEST1Suite
 
     val response = searchManager.mSearchUnsafe(msearchBodyNotExists: _*)
 
-    response.responseCode shouldBe 200
     response.searchHitsForResponse(0) should be (Vector.empty)
   }
 
