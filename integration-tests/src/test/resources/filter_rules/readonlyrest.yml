@@ -21,12 +21,12 @@ readonlyrest:
       indices: ["test1_index"]
       filter: '{"wildcard":{"db_name":"db*2"}}'
 
-    - name: "user3 with malformed filter query"
+    - name: "user3 with prefix"
       auth_key: "user3:pass"
       indices: ["test1_index"]
-      filter: '{"query_string":malformedquery}'
+      filter: '{"prefix":{"status":"w"}}'
 
-    - name: "user4"
+    - name: "user4 with malformed filter query"
       auth_key: "user4:pass"
       indices: ["test1_index"]
-      filter: '{"match_all": {"query": {}}}'
+      filter: '{"query_string":malformedquery}'
