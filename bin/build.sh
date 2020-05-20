@@ -17,6 +17,11 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
     ./gradlew --stacktrace test ror
 fi
 
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es77x" ]]; then
+    echo ">>> es77x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es77x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es74x" ]]; then
     echo ">>> es74x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es74x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
@@ -90,6 +95,9 @@ fi
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
+
+    #es77
+    ./gradlew --stacktrace es77x:ror '-PesVersion=7.7.0'
 
     #es74
     ./gradlew --stacktrace es74x:ror '-PesVersion=7.4.0'

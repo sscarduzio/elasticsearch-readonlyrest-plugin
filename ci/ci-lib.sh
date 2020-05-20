@@ -46,7 +46,12 @@ EOM
     S3_PATH="$2"
 
     # s3cli -c config.json  put <path/to/file> <remote-blob>
-    $S3CLI  -c $CONF_FILE   put $LOCAL_FILE   $S3_PATH
+    RES=$($S3CLI  -c $CONF_FILE   put $LOCAL_FILE   $S3_PATH || echo fail)
 
+    if [[ $RES != "fail" ]]; then
+      echo ">> uploaded $S3_PATH"
+    else
+      echo ">> could not upload to $S3_PATH"
+    fi
     rm $CONF_FILE
 }
