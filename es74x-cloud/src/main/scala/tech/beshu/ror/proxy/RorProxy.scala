@@ -7,6 +7,7 @@ import better.files.File
 import cats.data.EitherT
 import cats.effect.{ContextShift, IO}
 import com.twitter.finagle.Http
+import io.lemonlabs.uri.Uri
 import monix.eval.Task
 import monix.execution.schedulers.SchedulerService
 import org.apache.http.HttpHost
@@ -27,21 +28,19 @@ trait RorProxy  {
   implicit protected def contextShift: ContextShift[IO]
   implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
-  def config: RorProxy.Config
-
-  def start: IO[Either[StartingFailure, CloseHandler]] = {
+  def start(config: RorProxy.Config): IO[Either[StartingFailure, CloseHandler]] = {
     for {
       _ <- IO(EsCode.improve())
-      startingResult <- runServer
+      startingResult <- runServer(config)
     } yield startingResult
   }
 
-  private def runServer: IO[Either[StartingFailure, CloseHandler]] = {
+  private def runServer(config: RorProxy.Config): IO[Either[StartingFailure, CloseHandler]] = {
     val threadPool: ThreadPool = new ThreadPool(Settings.EMPTY)
-    val esClient = createEsHighLevelClient()
+    val esClient = createEsHighLevelClient(config)
     val result = for {
       simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), config.esConfigFile, threadPool))
-      server = Http.server.serve(s":${config.proxyPort}", new ProxyRestInterceptorService(simulator))
+      server = Http.server.serve(s":${config.proxyPort}", new ProxyRestInterceptorService(simulator, config.targetEsNode))
     } yield () =>
       for {
         _ <- twitterFutureToIo(server.close())
@@ -52,8 +51,8 @@ trait RorProxy  {
     result.value
   }
 
-  private def createEsHighLevelClient() = {
-    new RestHighLevelClient(RestClient.builder(HttpHost.create(config.targetEsNode)))
+  private def createEsHighLevelClient(config: RorProxy.Config) = {
+    new RestHighLevelClient(RestClient.builder(HttpHost.create(config.targetEsNode.toString())))
   }
 }
 
@@ -61,7 +60,7 @@ object RorProxy {
   type CloseHandler = () => IO[Unit]
   type ProxyAppWithCloseHandler = (RorProxy, RorProxy.CloseHandler)
 
-  final case class Config(targetEsNode: String,
+  final case class Config(targetEsNode: Uri,
                           proxyPort: Int,
                           esConfigFile: File)
 

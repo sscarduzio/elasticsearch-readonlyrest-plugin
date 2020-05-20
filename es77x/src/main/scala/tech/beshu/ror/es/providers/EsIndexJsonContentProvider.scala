@@ -29,15 +29,15 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.boot.Ror
-import tech.beshu.ror.es.IndexJsonContentManager
-import tech.beshu.ror.es.IndexJsonContentManager._
+import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.es.IndexJsonContentService._
 
 import scala.concurrent.Promise
 import scala.util.{Failure, Success, Try}
 
 class EsIndexJsonContentProvider(client: NodeClient,
                                  ignore: Unit) // hack!
-  extends IndexJsonContentManager {
+  extends IndexJsonContentService {
 
   @Inject
   def this(client: NodeClient) {

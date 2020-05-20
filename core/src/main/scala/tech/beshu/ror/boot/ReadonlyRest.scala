@@ -22,6 +22,8 @@ import java.time.Clock
 import cats.data.EitherT
 import cats.effect.Resource
 import cats.implicits._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -31,8 +33,6 @@ import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
-import tech.beshu.ror.accesscontrol.factory.consts.RorProperties
-import tech.beshu.ror.accesscontrol.factory.consts.RorProperties.RefreshInterval
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
@@ -43,7 +43,8 @@ import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError._
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError}
-import tech.beshu.ror.configuration._
+import tech.beshu.ror.configuration.RorProperties.RefreshInterval
+import tech.beshu.ror.configuration.{RorProperties, _}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value
@@ -256,12 +257,10 @@ class RorInstance private(boot: ReadonlyRest,
   mode match {
     case Mode.WithPeriodicIndexCheck =>
       RorProperties.rorIndexSettingReloadInterval match {
-        case Some(RefreshInterval.Disabled) =>
+        case RefreshInterval.Disabled =>
           logger.info(s"[CLUSTERWIDE SETTINGS] Scheduling in-index settings check disabled")
-        case Some(RefreshInterval.Enabled(interval)) =>
+        case RefreshInterval.Enabled(interval) =>
           scheduleIndexConfigChecking(interval)
-        case None =>
-          scheduleIndexConfigChecking(RorInstance.indexConfigCheckingSchedulerDelay)
       }
     case Mode.NoPeriodicIndexCheck => Cancelable.empty
   }
@@ -303,9 +302,9 @@ class RorInstance private(boot: ReadonlyRest,
     }
   }
 
-  private def scheduleIndexConfigChecking(interval: FiniteDuration): Cancelable = {
+  private def scheduleIndexConfigChecking(interval: FiniteDuration Refined Positive): Cancelable = {
     logger.debug(s"[CLUSTERWIDE SETTINGS] Scheduling next in-index settings check within $interval")
-    scheduler.scheduleOnce(interval) {
+    scheduler.scheduleOnce(interval.value) {
       logger.debug("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST config from index ...")
       tryEngineReload()
         .runAsync {
@@ -475,7 +474,6 @@ object RorInstance {
     case object NoPeriodicIndexCheck extends Mode
   }
 
-  private val indexConfigCheckingSchedulerDelay = 5 second
   private val delayOfOldEngineShutdown = 10 seconds
 }
 

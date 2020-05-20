@@ -54,6 +54,6 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       xPackSupport = clusterSettings.xPackSupport,
       externalSslEnabled = true)
 
-    EsWithRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer)
+    EsWithRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer, startedClusterDependencies)
   }
 }

@@ -56,7 +56,7 @@ import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeSe
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
-import tech.beshu.ror.buildinfo.LogBuildInfoMessage
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -71,7 +71,7 @@ class ReadonlyRestPlugin(s: Settings,
     with IngestPlugin
     with NetworkPlugin {
 
-  LogBuildInfoMessage()
+  LogPluginBuildInfoMessage()
 
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor

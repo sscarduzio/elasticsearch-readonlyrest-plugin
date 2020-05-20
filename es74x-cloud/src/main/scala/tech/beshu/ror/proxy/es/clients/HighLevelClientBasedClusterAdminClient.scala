@@ -49,7 +49,6 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
                                             (implicit override val scheduler: Scheduler)
   extends ClusterAdminClient with ProxyFilterable {
 
-  // todo: health doesn't work properly
   override def health(request: ClusterHealthRequest): ActionFuture[ClusterHealthResponse] =
     throw NotDefinedForRorProxy
 

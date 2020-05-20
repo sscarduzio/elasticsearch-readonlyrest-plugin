@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.DeleteByQuerySuite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
 class DeleteByQueryPluginTests extends DeleteByQuerySuite with SingletonPluginTestSupport

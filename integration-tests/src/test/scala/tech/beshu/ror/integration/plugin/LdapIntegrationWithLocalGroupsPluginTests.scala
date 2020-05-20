@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.LdapIntegrationWithLocalGroupsSuite
+import tech.beshu.ror.integration.utils.PluginTestSupport
 
 class LdapIntegrationWithLocalGroupsPluginTests extends LdapIntegrationWithLocalGroupsSuite with PluginTestSupport

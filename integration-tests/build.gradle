@@ -55,20 +55,20 @@ test {
     }
     outputs.upToDateWhen { false }
 
-    testLogging {
-        showStandardStreams = true
-        exceptionFormat = 'full'
-        events "standardOut", "started", "passed", "skipped", "failed"
-    }
+//    testLogging {
+//        showStandardStreams = true
+//        exceptionFormat = 'full'
+//        events "standardOut", "started", "passed", "skipped", "failed"
+//    }
 
     maxParallelForks = 1
 }
 
 dependencies {
     testCompile project(':tests-utils')
-    testCompile project(':es74x-cloud')
 
     testCompile group: 'io.jsonwebtoken',               name: 'jjwt',                       version: '0.9.1'
+    testCompile group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
     testRuntime group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
     testCompile group: 'org.scala-lang',                name: 'scala-library',              version: '2.12.4'
     testCompile group: 'org.scalatest',                 name: 'scalatest_2.12',             version: '3.0.8'

@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.FiltersDocLevelSecuritySuite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
 class FiltersDocLevelSecurityPluginTests extends FiltersDocLevelSecuritySuite with SingletonPluginTestSupport

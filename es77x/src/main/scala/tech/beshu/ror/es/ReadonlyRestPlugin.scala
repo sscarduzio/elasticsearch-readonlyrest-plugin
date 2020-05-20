@@ -52,6 +52,7 @@ import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminActionType, TransportRRAdminAction}
@@ -73,7 +74,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with IngestPlugin
     with NetworkPlugin {
 
-  LogBuildInfoMessage()
+  LogPluginBuildInfoMessage()
 
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
   // ES uses Netty underlying and Finch also uses it under the hood. Seems that ES has reimplemented own available processor

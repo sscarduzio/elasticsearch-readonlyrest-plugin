@@ -40,6 +40,7 @@ import scala.language.postfixOps
 
 abstract class EsContainer(val name: String,
                            val esVersion: String,
+                           val startedClusterDependencies: StartedClusterDependencies,
                            image: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
     with ClientProvider

@@ -24,8 +24,9 @@ import scala.language.postfixOps
 
 class EsWithoutRorPluginContainer(name: String,
                                   esVersion: String,
+                                  startedClusterDependencies: StartedClusterDependencies,
                                   image: ImageFromDockerfile)
-  extends EsContainer(name, esVersion, image)
+  extends EsContainer(name, esVersion, startedClusterDependencies, image)
   with StrictLogging {
 
   logger.info(s"[$name] Creating ES without ROR plugin installed container ...")
@@ -46,10 +47,12 @@ object EsWithoutRorPluginContainer {
                           externalSslEnabled: Boolean) extends EsContainer.Config
 
   def create(config: EsWithoutRorPluginContainer.Config,
-             initializer: ElasticsearchNodeDataInitializer): EsContainer = {
+             initializer: ElasticsearchNodeDataInitializer,
+             startedClusterDependencies: StartedClusterDependencies): EsContainer = {
     val esContainer = new EsWithoutRorPluginContainer(
       config.nodeName,
       config.esVersion,
+      startedClusterDependencies,
       ESWithoutRorPluginImage.create(config)
     )
     EsContainer.init(esContainer, config, initializer)

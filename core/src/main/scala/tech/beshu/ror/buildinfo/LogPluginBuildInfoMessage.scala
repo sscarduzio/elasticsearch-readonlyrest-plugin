@@ -20,17 +20,21 @@ import org.apache.logging.log4j.scala.Logging
 
 import scala.util.{Failure, Success}
 
-trait LogBuildInfoMessage extends Logging {
+trait LogPluginBuildInfoMessage extends Logging {
+  private val buildInfo = BuildInfoReader.create()
+
   def logBuildInfoMessage(): Unit = {
-    BuildInfoReader.create() match {
-      case Success(buildInfo) => logger.info(createLogMessage(buildInfo))
+    buildInfo match {
+      case Success(bf) => logger.info(createLogMessage(bf))
       case Failure(_) => logger.error("Cannot find build info file. No info about ReadonlyREST version.")
     }
   }
+
   def createLogMessage(buildInfo: BuildInfo): String =
     s"Starting ReadonlyREST plugin v${buildInfo.pluginVersion} on ES v${buildInfo.esVersion}"
 
 }
-object LogBuildInfoMessage extends LogBuildInfoMessage {
+
+object LogPluginBuildInfoMessage extends LogPluginBuildInfoMessage {
   def apply(): Unit = logBuildInfoMessage()
 }

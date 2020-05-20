@@ -17,37 +17,14 @@ package tech.beshu.ror.utils.gradle
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-import java.nio.file.Paths
-import better.files._
 import java.io.{File => JFile}
 
 import org.gradle.tooling.GradleConnector
 
 import scala.util.Try
 
-object RorPluginGradleProject {
-  def fromSystemProperty: RorPluginGradleProject =
-    Option(System.getProperty("esModule"))
-      .map(new RorPluginGradleProject(_))
-      .getOrElse(throw new IllegalStateException("No 'esModule' system property set"))
+class RorProxyGradleProject(val moduleName: String) {
 
-  def getRootProject: JFile = {
-    Option(System.getProperty("project.dir"))
-      .map(projectDir => Paths.get(projectDir).toFile)
-      .getOrElse(new JFile("."))
-  }
-
-  def availableEsModules: List[String] =
-    RorPluginGradleProject
-      .getRootProject.toScala
-      .children
-      .filter { f => f.isDirectory }
-      .map(_.name)
-      .filter(_.matches("^es\\d\\dx$"))
-      .toList
-}
-
-class RorPluginGradleProject(val moduleName: String) {
   private val project = esProject(moduleName)
   private val esProjectProperties =
     GradleProperties
@@ -59,18 +36,18 @@ class RorPluginGradleProject(val moduleName: String) {
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
   def assemble: Option[JFile] = {
-    runTask(moduleName + ":ror")
-    val plugin = new JFile(project, "build/distributions/" + pluginName)
-    if (!plugin.exists) None
-    else Some(plugin)
+    runTask(moduleName + ":rorproxy")
+    val proxyJar = new JFile(project, "build/libs/" + proxyName)
+    if (!proxyJar.exists) None
+    else Some(proxyJar)
   }
 
   def getESVersion: String = esProjectProperties.getProperty("esVersion")
 
   private def esProject(esProjectName: String) = new JFile(RorPluginGradleProject.getRootProject, esProjectName)
 
-  private def pluginName =
-    s"${rootProjectProperties.getProperty("pluginName")}-${rootProjectProperties.getProperty("pluginVersion")}_es$getESVersion.zip"
+  private def proxyName =
+    s"${rootProjectProperties.getProperty("pluginName")}-proxy-${rootProjectProperties.getProperty("pluginVersion")}_es$getESVersion.jar"
 
   private def runTask(task: String): Unit = {
     val connector = GradleConnector.newConnector.forProjectDirectory(RorPluginGradleProject.getRootProject)

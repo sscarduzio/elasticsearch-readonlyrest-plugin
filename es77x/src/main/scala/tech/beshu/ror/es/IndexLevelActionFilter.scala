@@ -55,21 +55,22 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     new EsServerBasedRorClusterService(clusterService), threadPool
   )
 
-  private val startingTaskCancellable = Ror
-.start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
-    .runAsync {
-      case Right(Right(instance)) =>
-        RorInstanceSupplier.update(instance)
-        rorInstanceState.set(RorInstanceStartingState.Started(instance))
-      case Right(Left(failure)) =>
-        val startingFailureException = StartingFailureException.from(failure)
-        logger.error("ROR starting failure:", startingFailureException)
-        rorInstanceState.set(RorInstanceStartingState.NotStarted(startingFailureException))
-      case Left(ex) =>
-        val startingFailureException = StartingFailureException.from(ex)
-        logger.error("ROR starting failure:", startingFailureException)
-        rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
-    }
+  private val startingTaskCancellable =
+    new Ror()
+      .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
+      .runAsync {
+        case Right(Right(instance)) =>
+          RorInstanceSupplier.update(instance)
+          rorInstanceState.set(RorInstanceStartingState.Started(instance))
+        case Right(Left(failure)) =>
+          val startingFailureException = StartingFailureException.from(failure)
+          logger.error("ROR starting failure:", startingFailureException)
+          rorInstanceState.set(RorInstanceStartingState.NotStarted(startingFailureException))
+        case Left(ex) =>
+          val startingFailureException = StartingFailureException.from(ex)
+          logger.error("ROR starting failure:", startingFailureException)
+          rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
+      }
 
   override def order(): Int = 0
 
