@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.configuration
 
+import java.util.concurrent.TimeUnit
+
 import better.files.File
 import cats.Show
 import cats.implicits._
@@ -24,14 +26,10 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.Json
-import io.lemonlabs.uri.Uri
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.factory.decoders.common.positiveFiniteDurationDecoder
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.accesscontrol.show.logs._
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -115,10 +113,13 @@ object RorProperties extends Logging {
   }
 
   private def toRefreshInterval(value: String): Try[RefreshInterval] = Try {
-    positiveFiniteDurationDecoder.decodeJson(Json.fromString(value)) match {
-      case Right(interval) if interval.value.toSeconds == 0 => RefreshInterval.Disabled
-      case Right(interval) => RefreshInterval.Enabled(interval)
-      case Left(_) => throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
+    Try(Integer.valueOf(value)) match {
+      case Success(interval) if interval == 0 =>
+        RefreshInterval.Disabled
+      case Success(interval) if interval > 0 =>
+        RefreshInterval.Enabled(refineV[Positive](FiniteDuration(interval.toLong, TimeUnit.SECONDS)).right.get)
+      case Failure(_) =>
+        throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
     }
   }
 
