@@ -53,7 +53,7 @@ trait RorProxyApp extends IOApp
   private def config() = {
     RorProperties.rorProxyConfigFile // ensure that ROR config is provided for proxy
     RorProxy.Config(
-      targetEsNode = RorProperties.rorProxyTargetEsAddress,
+      esAddress = s"${RorProperties.rorProxyEsHost}:${RorProperties.rorProxyEsPort}",
       proxyPort = RorProperties.rorProxyPort,
       esConfigFile = createElasticsearchYamlFileInTempDict()
     )
@@ -72,7 +72,7 @@ trait RorProxyApp extends IOApp
       }
   }
 
-  private def createTempFileWithContent(tempDir: File, tempFileName: String, content: String) = {
+  private def createTempFileWithContent(tempDir: File, tempFileName: String, content: String): File = {
     val tempFile = tempDir / tempFileName
     if(tempFile.exists) tempFile.delete()
     tempFile

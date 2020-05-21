@@ -63,7 +63,8 @@ object RorProxyInstance extends LazyLogging {
     val proc = os
       .proc("java",
         s"-Dcom.readonlyrest.settings.file.path=${rorConfig.pathAsString}",
-        s"-Dcom.readonlyrest.proxy.targetEsAddress=$esHost:$esPort",
+        s"-Dcom.readonlyrest.proxy.es.host=$esHost",
+        s"-Dcom.readonlyrest.proxy.es.port=$esPort",
         s"-Dcom.readonlyrest.proxy.port=$proxyPort",
         s"-Dio.netty.tryReflectionSetAccessible=true",
         s"-Xdebug", "-Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n",

@@ -26,7 +26,7 @@ class ProxyRestInterceptorService(simulator: EsRestServiceSimulator,
                                  (implicit scheduler: Scheduler)
   extends Service[Request, Response] {
 
-  private val client: Service[Request, Response] = Http.newService(config.targetEsNode.toString())
+  private val client: Service[Request, Response] = Http.newService(config.esAddress.toString())
 
   private val namedXContentRegistry = new NamedXContentRegistry(
     new SearchModule(Settings.EMPTY, false, List.empty.asJava).getNamedXContents

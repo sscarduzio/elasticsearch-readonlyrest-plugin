@@ -52,7 +52,7 @@ trait RorProxy  {
   }
 
   private def createEsHighLevelClient(config: RorProxy.Config) = {
-    new RestHighLevelClient(RestClient.builder(HttpHost.create(config.targetEsNode.toString())))
+    new RestHighLevelClient(RestClient.builder(HttpHost.create(config.esAddress.toString())))
   }
 }
 
@@ -60,7 +60,7 @@ object RorProxy {
   type CloseHandler = () => IO[Unit]
   type ProxyAppWithCloseHandler = (RorProxy, RorProxy.CloseHandler)
 
-  final case class Config(targetEsNode: Uri,
+  final case class Config(esAddress: String,
                           proxyPort: Int,
                           esConfigFile: File)
 

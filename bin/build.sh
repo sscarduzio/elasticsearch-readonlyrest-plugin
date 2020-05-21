@@ -17,7 +17,6 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
     ./gradlew --stacktrace test ror
 fi
 
-
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
     echo ">>> proxy => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
