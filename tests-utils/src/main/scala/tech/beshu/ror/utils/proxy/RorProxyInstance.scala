@@ -51,7 +51,7 @@ object RorProxyInstance extends LazyLogging {
   }
 
   private def buildProxyJar() = {
-    val proxyProject = new RorProxyGradleProject("es74x-cloud")
+    val proxyProject = new RorProxyGradleProject("proxy")
     proxyProject.assemble.getOrElse(throw new ContainerCreationException("Proxy file assembly failed")).toScala
   }
 
