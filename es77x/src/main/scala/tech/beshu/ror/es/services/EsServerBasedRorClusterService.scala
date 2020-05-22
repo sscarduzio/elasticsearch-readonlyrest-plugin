@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.providers
+package tech.beshu.ror.es.services
 
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -33,13 +33,6 @@ class EsServerBasedRorClusterService(clusterService: ClusterService) extends Ror
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
     lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
-  }
-
-  override def expandIndices(indices: Set[IndexName]): Set[IndexName] = {
-    val all = allIndicesAndAliases
-      .flatMap { case (indexName, aliases) => aliases + indexName }
-      .toSet
-    MatcherWithWildcardsScalaAdapter.create(indices).filter(all)
   }
 
   override def allIndicesAndAliases: Map[IndexName, Set[AliasName]] = {
@@ -72,9 +65,5 @@ class EsServerBasedRorClusterService(clusterService: ClusterService) extends Ror
         } yield Template(templateName, indexPatterns)
       }
       .toSet
-  }
-
-  override def getTemplate(name: TemplateName): Option[Template] = {
-    allTemplates.find(_.name === name)
   }
 }

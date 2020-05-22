@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.providers
+package tech.beshu.ror.es.services
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.bulk.{BackoffPolicy, BulkProcessor, BulkRequest, BulkResponse}
@@ -27,7 +27,7 @@ import tech.beshu.ror.Constants.{AUDIT_SINK_MAX_ITEMS, AUDIT_SINK_MAX_KB, AUDIT_
 import tech.beshu.ror.es.AuditSinkService
 
 @Inject
-class EsAuditSink(client: Client) extends AuditSinkService with Logging {
+class EsAuditSinkService(client: Client) extends AuditSinkService with Logging {
 
   private val bulkProcessor =
     BulkProcessor

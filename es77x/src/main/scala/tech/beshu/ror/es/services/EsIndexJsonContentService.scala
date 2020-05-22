@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.providers
+package tech.beshu.ror.es.services
 
 import java.util
 
@@ -35,8 +35,8 @@ import tech.beshu.ror.es.IndexJsonContentService._
 import scala.concurrent.Promise
 import scala.util.{Failure, Success, Try}
 
-class EsIndexJsonContentProvider(client: NodeClient,
-                                 ignore: Unit) // hack!
+class EsIndexJsonContentService(client: NodeClient,
+                                ignore: Unit) // hack!
   extends IndexJsonContentService {
 
   @Inject
