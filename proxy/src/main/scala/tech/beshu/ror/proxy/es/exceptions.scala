@@ -35,6 +35,11 @@ object exceptions {
 
     def toSpecializedException: ElasticsearchException = {
       exception.getMessage match {
+        case exceptionTypeCaptureRegex(aType@"index_not_found_exception", reason) =>
+          new ElasticsearchException(reason) {
+            override def status(): RestStatus = RestStatus.NOT_FOUND
+            override def getExceptionName: String = aType
+          }
         case exceptionTypeCaptureRegex(aType, reason) =>
           new ElasticsearchException(reason) {
             override def status(): RestStatus = exception.status()

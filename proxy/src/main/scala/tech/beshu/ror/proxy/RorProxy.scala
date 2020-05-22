@@ -15,6 +15,7 @@ import monix.execution.schedulers.SchedulerService
 import org.apache.http.HttpHost
 import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
+import org.apache.http.message.BasicHeader
 import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
