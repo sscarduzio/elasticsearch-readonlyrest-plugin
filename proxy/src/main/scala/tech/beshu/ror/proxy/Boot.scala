@@ -53,8 +53,9 @@ trait RorProxyApp extends IOApp
   private def config() = {
     RorProperties.rorProxyConfigFile // ensure that ROR config is provided for proxy
     RorProxy.Config(
-      esAddress = s"${RorProperties.rorProxyEsHost}:${RorProperties.rorProxyEsPort}",
       proxyPort = RorProperties.rorProxyPort,
+      esHost = RorProperties.rorProxyEsHost,
+      esPort = RorProperties.rorProxyEsPort,
       esConfigFile = createElasticsearchYamlFileInTempDict()
     )
   }
