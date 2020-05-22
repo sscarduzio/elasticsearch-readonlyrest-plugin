@@ -32,7 +32,7 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentProviderService, EsServerBasedRorClusterService}
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
@@ -60,7 +60,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   )
 
   private val startingTaskCancellable = new Ror()
-      .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentProviderService(client))
+      .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
     .runAsync {
       case Right(Right(instance)) =>
         RorInstanceSupplier.update(instance)

@@ -31,7 +31,7 @@ import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.SchedulerPools
 import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RorIndexNameConfiguration}
 import tech.beshu.ror.utils.RorInstanceSupplier
-import tech.beshu.ror.es.services.EsIndexJsonContentProviderService
+import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.providers.JvmPropertiesProvider
 
@@ -44,7 +44,7 @@ class TransportRRAdminAction(settings: Settings,
                              actionFilters: ActionFilters,
                              indexNameExpressionResolver: IndexNameExpressionResolver,
                              env: Environment,
-                             indexContentProvider: EsIndexJsonContentProviderService,
+                             indexContentProvider: EsIndexJsonContentService,
                              ignore: Unit) // hack!
   extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
     settings, RRAdminAction.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAdminRequest
@@ -57,7 +57,7 @@ class TransportRRAdminAction(settings: Settings,
            indexNameExpressionResolver: IndexNameExpressionResolver,
            actionFilters: ActionFilters,
            env: Environment,
-           indexContentProvider: EsIndexJsonContentProviderService) {
+           indexContentProvider: EsIndexJsonContentService) {
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, env, indexContentProvider, ())
   }
 

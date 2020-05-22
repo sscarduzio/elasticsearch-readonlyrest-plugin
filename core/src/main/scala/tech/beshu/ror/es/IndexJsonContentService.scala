@@ -35,5 +35,5 @@ object IndexJsonContentService {
   case object CannotReachContentSource extends ReadError
 
   sealed trait WriteError
-  final case class CannotWriteToIndex(throwable: Throwable) extends WriteError
+  case object CannotWriteToIndex extends WriteError
 }
