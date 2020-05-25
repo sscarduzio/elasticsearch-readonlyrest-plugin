@@ -27,14 +27,14 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, SearchRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.{FilterTransient, TestsUtils}
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -266,7 +266,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
             "userId" -> "user5",
             "user_id_list" -> List("alice", "bob").asJava
           ).asJava)
-          val request = MockRequestContext.indices.copy(
+          val request = MockRequestContext.search.copy(
             headers = Set(new Header(
               Header.Name.authorization,
               {
@@ -280,7 +280,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 5
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: GeneralIndexRequestBlockContext, block) =>
+          inside(result.result) { case RegularRequestResult.Allow(blockContext: SearchRequestBlockContext, block) =>
             block.name should be(Block.Name("Variables usage in filter"))
             blockContext.userMetadata should be(
               UserMetadata
@@ -290,11 +290,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
             )
             blockContext.indices should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
-            blockContext.contextHeaders.size should be(1)
-            blockContext.contextHeaders.head.name should be (Header.Name.transientFilter)
-            FilterTransient.deserialize(blockContext.contextHeaders.head.value.value).getFilter should be (
-              """{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}"""
-            )
+            blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}""".nonempty)))
           }
         }
       }

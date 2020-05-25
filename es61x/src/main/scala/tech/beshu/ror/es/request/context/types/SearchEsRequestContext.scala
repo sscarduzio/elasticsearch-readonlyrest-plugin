@@ -17,14 +17,18 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
+import cats.implicits._
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.SearchRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.Modified
+import tech.beshu.ror.es.request.SearchRequestOps._
+import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
 
 class SearchEsRequestContext(actionRequest: SearchRequest,
@@ -32,23 +36,67 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                              aclContext: AccessControlStaticContext,
                              clusterService: RorClusterService,
                              override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseEsRequestContext[SearchRequestBlockContext](esContext, clusterService)
+    with EsRequest[SearchRequestBlockContext] {
 
-  override protected def indicesFrom(request: SearchRequest): Set[IndexName] = {
+  override val initialBlockContext: SearchRequestBlockContext = SearchRequestBlockContext(
+    this,
+    UserMetadata.from(this),
+    Set.empty,
+    Set.empty,
+    {
+      import tech.beshu.ror.accesscontrol.show.logs._
+      val indices = indicesOrWildcard(indicesFrom(actionRequest))
+      logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
+      indices
+    },
+    None
+  )
+
+  override def modifyWhenIndexNotFound: ModificationResult = {
+    if (aclContext.doesRequirePassword) {
+      val nonExistentIndex = initialBlockContext.randomNonexistentIndex()
+      if (nonExistentIndex.hasWildcard) {
+        update(actionRequest, NonEmptyList.of(nonExistentIndex), initialBlockContext.filter)
+        Modified
+      } else {
+        ShouldBeInterrupted
+      }
+    } else {
+      update(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()), initialBlockContext.filter)
+      Modified
+    }
+  }
+
+  override protected def modifyRequest(blockContext: SearchRequestBlockContext): ModificationResult = {
+    NonEmptyList.fromList(blockContext.indices.toList) match {
+      case Some(indices) =>
+        update(actionRequest, indices, blockContext.filter)
+      case None =>
+        logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
+        ShouldBeInterrupted
+    }
+  }
+
+  private def indicesFrom(request: SearchRequest): Set[IndexName] = {
     request.indices.asSafeSet.flatMap(IndexName.fromString)
   }
 
-  override protected def update(request: SearchRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
+  private def update(request: SearchRequest,
+                     indices: NonEmptyList[IndexName],
+                     filter: Option[Filter]): ModificationResult = {
     optionallyDisableCaching()
-    request.indices(indices.toList.map(_.value.value): _*)
+    request
+      .applyFilterToQuery(filter)
+      .indices(indices.toList.map(_.value.value): _*)
     Modified
   }
 
-  // Cache disabling for this request is crucial for document level security to work.
-  // Otherwise we'd get an answer from the cache some times and would not be filtered
+  //TODO cache is now disabled only when 'fields' rule is used.
+  //Remove after 'fields' rule improvements.
   private def optionallyDisableCaching(): Unit = {
-    if(esContext.involveFilters) {
-      logger.debug("ACL involves filters, will disable request cache for SearchRequest")
+    if (esContext.involvesFields) {
+      logger.debug("ACL involves fields, will disable request cache for SearchRequest")
       actionRequest.requestCache(false)
     }
   }

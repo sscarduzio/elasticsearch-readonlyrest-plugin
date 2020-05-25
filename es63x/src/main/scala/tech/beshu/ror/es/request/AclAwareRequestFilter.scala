@@ -191,7 +191,7 @@ object AclAwareRequestFilter {
                              listener: ActionListener[ActionResponse],
                              chain: ActionFilterChain[ActionRequest, ActionResponse],
                              crossClusterSearchEnabled: Boolean,
-                             involveFilters: Boolean)
+                             involvesFields: Boolean)
 }
 
 final case class RequestSeemsToBeInvalid[T: ClassTag](message: String)

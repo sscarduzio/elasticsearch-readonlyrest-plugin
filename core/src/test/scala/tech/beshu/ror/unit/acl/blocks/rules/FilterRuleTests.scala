@@ -16,11 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{MultiSearchRequestBlockContext, SearchRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
@@ -36,39 +38,64 @@ import tech.beshu.ror.utils.TestsUtils._
 class FilterRuleTests extends WordSpec with MockFactory {
 
   "A FilterRuleTests" should {
-    "match and set transient filter" when {
-      "filter value is const" in {
-        val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
-        val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
-        val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+    "match and set filter" when {
+      "filter value is const" when {
+        "search request block context is used" in {
+          val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
+          val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
+          val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
+          val blockContext = SearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
 
-        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-          GeneralNonIndexRequestBlockContext(
-            requestContext,
-            UserMetadata.empty,
-            Set.empty,
-            Set(headerFrom("_filter" -> "rO0ABXNyACR0ZWNoLmJlc2h1LnJvci51dGlscy5GaWx0ZXJUcmFuc2llbnSE82rPUgVsWwIAAUwAB19maWx0ZXJ0ABJMamF2YS9sYW5nL1N0cmluZzt4cHQAN3siYm9vbCI6eyJtdXN0IjpbeyJ0ZXJtIjp7IkNvdW50cnkiOnsidmFsdWUiOiJVSyJ9fX1dfX0="))
-          )
-        ))
+          rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+            BlockContext.SearchRequestBlockContext(
+              requestContext,
+              UserMetadata.empty,
+              Set.empty,
+              Set.empty,
+              Set.empty,
+              Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}")))
+            )
+          ))
+        }
+        "multi search request block context is used" in {
+          val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
+          val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
+          val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
+          val blockContext = MultiSearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty, None)
+
+          rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
+            BlockContext.MultiSearchRequestBlockContext(
+              requestContext,
+              UserMetadata.empty,
+              Set.empty,
+              Set.empty,
+              List.empty,
+              Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}")))
+            )
+          ))
+        }
       }
       "filter value can be resolved" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-        val blockContext = GeneralNonIndexRequestBlockContext(
+        val blockContext = SearchRequestBlockContext(
           requestContext,
           UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob".nonempty))),
           Set.empty,
-          Set.empty
+          Set.empty,
+          Set.empty,
+          None
         )
 
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-          GeneralNonIndexRequestBlockContext(
+          SearchRequestBlockContext(
             requestContext,
             UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob".nonempty))),
             Set.empty,
-            Set(headerFrom("_filter" -> "rO0ABXNyACR0ZWNoLmJlc2h1LnJvci51dGlscy5GaWx0ZXJUcmFuc2llbnSE82rPUgVsWwIAAUwAB19maWx0ZXJ0ABJMamF2YS9sYW5nL1N0cmluZzt4cHQANXsiYm9vbCI6eyJtdXN0IjpbeyJ0ZXJtIjp7IlVzZXIiOnsidmFsdWUiOiJib2IifX19XX19"))
+            Set.empty,
+            Set.empty,
+            Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"bob\"}}}]}}")))
           )
         ))
       }
@@ -78,7 +105,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        val blockContext = SearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
@@ -86,7 +113,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isAllowedForDLS = false)
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        val blockContext = SearchRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }

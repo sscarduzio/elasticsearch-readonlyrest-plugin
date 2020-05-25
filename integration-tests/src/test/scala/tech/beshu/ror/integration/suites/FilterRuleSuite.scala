@@ -16,14 +16,11 @@
  */
 package tech.beshu.ror.integration.suites
 
-import java.util.{Map => JMap}
-
-import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
 import tech.beshu.ror.utils.misc.Version
@@ -46,25 +43,111 @@ trait FilterRuleSuite
     )
   )
 
-  private lazy val searchManager = new SearchManagerJ(basicAuthClient("user1", "pass"))
-
   "A filter rule" should {
     "show only doc according to defined filter" when {
-      "search api is used" in {
-        retry(times = 3) {
-          val result = searchManager.search("/test1_index/_search")
-          assertEquals(200, result.getResponseCode)
-          result.getSearchHits.size() should be(1)
-          result.getSearchHits.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be("db_user1")
+      "search api is used" when {
+        "custom query in request body is sent" in {
+          retry(times = 3) {
+            val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+            val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}}""")
+
+            result.responseCode shouldBe 200
+            result.searchHits.size shouldBe 1
+
+            result.head shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
+          }
+        }
+        "there is no query in request body" in {
+          retry(times = 3) {
+            val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+            val result = searchManager.search("/test1_index/_search")
+
+            result.responseCode shouldBe 200
+            result.searchHits.size shouldBe 2
+            result.docIds should contain allOf("1", "2")
+
+            result.id("1") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
+            result.id("2") shouldBe ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}""")
+          }
+        }
+        "wildcard in filter query is used" in {
+          retry(times = 3) {
+            val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
+            val result = searchManager.search("/test1_index/_search")
+
+            result.responseCode shouldBe 200
+            result.searchHits.size shouldBe 1
+
+            result.head shouldBe ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}""")
+          }
+        }
+        "prefix in filter query is used" in {
+          retry(times = 3) {
+            val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
+            val result = searchManager.search("/test1_index/_search")
+
+            result.responseCode shouldBe 200
+            result.searchHits.size shouldBe 1
+
+            result.head shouldBe ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}""")
+          }
         }
       }
       "msearch api is used" in {
         retry(times = 3) {
-          val matchAllIndicesQuery = "{\"index\":\"*\"}\n" + "{\"query\" : {\"match_all\" : {}}}\n"
-          val result = searchManager.mSearch(matchAllIndicesQuery)
-          assertEquals(200, result.getResponseCode)
-          result.getMSearchHits.size() should be(1)
-          result.getMSearchHits.get(0).get("_source").asInstanceOf[JMap[String, String]].get("db_name") should be("db_user1")
+          val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+          val matchAllIndicesQuery = Seq(
+            """{"index":"*"}""",
+            """{"query" : {"match_all" : {}}}""")
+          val result = searchManager.mSearchUnsafe(matchAllIndicesQuery: _*)
+
+          result.responseCode shouldBe 200
+          result.responses.size shouldBe 1
+          result.searchHitsForResponse(0).size shouldBe 2
+        }
+      }
+    }
+    "not allow request" when {
+      "request is not read only" in {
+        val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+        val result = documentManager.createDoc("test1_index", 5, ujson.read("""{"db_name":"db_user4", "code": 2}"""))
+
+        result.responseCode shouldBe 401
+      }
+      "search request has 'profile' option" in {
+        val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+        val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}, "profile": true}""")
+
+        result.responseCode shouldBe 401
+      }
+      "search request has suggestions" in {
+        val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+        val query =
+          """|{
+             |"query": { "term": { "code": 1 }},
+             |"suggest": {
+             |  "my-suggest-1" : {
+             |    "text" : "something",
+             |    "term" : {
+             |      "field" : "db_name"
+             |    }
+             |  }
+             | }
+             |}""".stripMargin
+        val result = searchManager.search("/test1_index/_search", query)
+
+        result.responseCode shouldBe 401
+      }
+      "return error" when {
+        "filter query is malformed" in {
+          val searchManager = new SearchManager(basicAuthClient("user4", "pass"))
+          val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}}""")
+
+          if (Version.greaterOrEqualThan(targetEs.esVersion, 7, 6, 0)) {
+            result.responseCode shouldBe 400
+          } else {
+            result.responseCode shouldBe 500
+          }
         }
       }
     }
@@ -74,17 +157,11 @@ trait FilterRuleSuite
 object FilterRuleSuite {
 
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-      add3Docs(adminRestClient, "test1_index", "_doc")
-    } else {
-      add3Docs(adminRestClient, "test1_index", "doc")
-    }
-  }
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-  private def add3Docs(adminRestClient: RestClient, index: String, `type`: String): Unit = {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/1", s"""{"db_name":"db_user1"}""")
-    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/2", s"""{"db_name":"db_user2"}""")
-    documentManager.insertDocAndWaitForRefresh(s"/$index/${`type`}/3", s"""{"db_name":"db_user3"}""")
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}"""))
+    documentManager.createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
+    documentManager.createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}"""))
+    documentManager.createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}"""))
   }
 }
