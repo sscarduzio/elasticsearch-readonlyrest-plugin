@@ -58,7 +58,13 @@ trait ProxyTestSupport
       RorConfigAdjuster.Mode.Proxy
     )
     val instance = RorProxyInstance
-      .start(proxyPort, adjustedRorConfig, esTargets.head.containerIpAddress, esTargets.head.port)
+      .start(
+        proxyPort,
+        adjustedRorConfig,
+        esTargets.head.containerIpAddress,
+        esTargets.head.port,
+        esContainer.esClusterSettings.rorContainerSpecification.environmentVariables
+      )
       .runSyncUnsafe()
     instance
   }

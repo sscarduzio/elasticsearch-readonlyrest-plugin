@@ -41,9 +41,13 @@ class RorProxyInstance private(val port: Int, proxyProcess: SubProcess)
 
 object RorProxyInstance extends LazyLogging {
 
-  def start(proxyPort: Int, rorConfig: File, esHost: String, esPort: Int): Task[RorProxyInstance] = {
+  def start(proxyPort: Int,
+            rorConfig: File,
+            esHost: String,
+            esPort: Int,
+            environmentVariables: Map[String, String]): Task[RorProxyInstance] = {
     logger.info(s"Starting proxy instance listening on port: $proxyPort, target ES node: $esHost:$esPort")
-    runProxyProcess(buildProxyJar(), rorConfig, proxyPort, esHost, esPort)
+    runProxyProcess(buildProxyJar(), rorConfig, proxyPort, esHost, esPort, environmentVariables)
       .map { instance =>
         waitForProxyStart(proxyPort)
         instance
@@ -59,7 +63,8 @@ object RorProxyInstance extends LazyLogging {
                               rorConfig: File,
                               proxyPort: Int,
                               esHost: String,
-                              esPort: Int) = Task {
+                              esPort: Int,
+                              environmentVariables: Map[String, String]) = Task {
     val proc = os
       .proc("java",
         s"-Dcom.readonlyrest.settings.file.path=${rorConfig.pathAsString}",
@@ -69,7 +74,10 @@ object RorProxyInstance extends LazyLogging {
         s"-Dio.netty.tryReflectionSetAccessible=true",
         s"-Xdebug", "-Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n",
         s"-jar", proxyJar.pathAsString)
-      .spawn(stdout = os.Inherit)
+      .spawn(
+        stdout = os.Inherit,
+        env = environmentVariables
+      )
     new RorProxyInstance(proxyPort, proc)
   }
 

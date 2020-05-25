@@ -40,6 +40,6 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
       internodeSslEnabled = false,
       externalSslEnabled = false)
 
-    EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer, startedClusterDependencies)
+    EsWithoutRorPluginContainer.create(containerConfig, clusterSettings.nodeDataInitializer, startedClusterDependencies, clusterSettings)
   }
 }
