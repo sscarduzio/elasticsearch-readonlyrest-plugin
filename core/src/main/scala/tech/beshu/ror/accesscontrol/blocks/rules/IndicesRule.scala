@@ -21,8 +21,8 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, MultiIndexRequestBlockContext, TemplateRequestBlockContext}
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, HasIndexPacks, MultiIndexRequestBlockContext, MultiSearchRequestBlockContext, SearchRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, MultiSearchRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SearchRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.IndexNotFound
@@ -34,8 +34,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterS
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, TemplateMatcher, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Action.{mSearchAction, searchAction, fieldCapsAction}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
+import tech.beshu.ror.accesscontrol.domain.Action.{fieldCapsAction, mSearchAction, searchAction}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -64,14 +64,16 @@ class IndicesRule(val settings: Settings)
         case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
         case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
         case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
-        case GeneralIndexRequestBlockContextUpdater => processIndicesRequest(blockContext)
-        case MultiIndexRequestBlockContextUpdater => processIndicesPacks(blockContext)
+        case GeneralIndexRequestBlockContextUpdater => processIndicesRequest(blockContext: GeneralIndexRequestBlockContext)
+        case SearchRequestBlockContextUpdater => processIndicesRequest(blockContext: SearchRequestBlockContext)
+        case MultiIndexRequestBlockContextUpdater => processIndicesPacks(blockContext: MultiIndexRequestBlockContext)
+        case MultiSearchRequestBlockContextUpdater => processIndicesPacks(blockContext: MultiSearchRequestBlockContext)
         case TemplateRequestBlockContextUpdater => processTemplateRequest(blockContext)
       }
     }
   }
 
-  private def processIndicesRequest(blockContext: GeneralIndexRequestBlockContext): RuleResult[GeneralIndexRequestBlockContext] = {
+  private def processIndicesRequest[B <: BlockContext: BlockContextWithIndicesUpdater](blockContext: B): RuleResult[B] = {
     val result = processIndices(
       blockContext.requestContext,
       resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet,
@@ -83,7 +85,9 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def processIndicesPacks(blockContext: MultiIndexRequestBlockContext): RuleResult[MultiIndexRequestBlockContext] = {
+  private def processIndicesPacks[B <: BlockContext: BlockContextWithIndexPacksUpdater: HasIndexPacks](blockContext: B): RuleResult[B] = {
+    import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks._
+
     val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
     val result = blockContext
       .indexPacks

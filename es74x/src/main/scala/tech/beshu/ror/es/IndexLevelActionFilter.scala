@@ -133,7 +133,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         aclAwareRequestFilter
           .handle(
             engine,
-            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled, engine.context.involvesFilter)
+            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled, engine.context.involvesFields)
           )
           .runAsync {
             case Right(_) =>

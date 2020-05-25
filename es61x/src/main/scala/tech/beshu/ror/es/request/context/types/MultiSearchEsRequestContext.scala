@@ -20,13 +20,14 @@ import cats.implicits._
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiSearchRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
@@ -38,25 +39,26 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   aclContext: AccessControlStaticContext,
                                   clusterService: RorClusterService,
                                   override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[MultiIndexRequestBlockContext](esContext, clusterService)
-    with EsRequest[MultiIndexRequestBlockContext] {
+  extends BaseEsRequestContext[MultiSearchRequestBlockContext](esContext, clusterService)
+    with EsRequest[MultiSearchRequestBlockContext] {
 
-  override lazy val initialBlockContext: MultiIndexRequestBlockContext = MultiIndexRequestBlockContext(
+  override lazy val initialBlockContext: MultiSearchRequestBlockContext = MultiSearchRequestBlockContext(
     this,
     UserMetadata.from(this),
     Set.empty,
     Set.empty,
-    indexPacksFrom(actionRequest)
+    indexPacksFrom(actionRequest),
+    None
   )
 
-  override protected def modifyRequest(blockContext: MultiIndexRequestBlockContext): ModificationResult = {
+  override protected def modifyRequest(blockContext: MultiSearchRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
     val requests = actionRequest.requests().asScala.toList
     if (requests.size == modifiedPacksOfIndices.size) {
       requests
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
-          updateRequest(request, pack)
+          updateRequest(request, pack, blockContext.filter)
         }
       Modified
     } else {
@@ -78,13 +80,16 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     indicesOrWildcard(requestIndices)
   }
 
-  private def updateRequest(request: SearchRequest, indexPack: Indices) = {
+  private def updateRequest(request: SearchRequest,
+                            indexPack: Indices,
+                            filter: Option[Filter]) = {
     indexPack match {
       case Indices.Found(indices) =>
         updateRequestWithIndices(request, indices)
       case Indices.NotFound =>
         updateRequestWithNonExistingIndex(request)
     }
+    request.applyFilterToQuery(filter)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[IndexName]) = {

@@ -75,7 +75,6 @@ object domain {
       val authorization = Name(NonEmptyString.unsafeFrom("Authorization"))
       val rorUser = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ROR))
       val kibanaAccess = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_ACCESS))
-      val transientFilter = Name(NonEmptyString.unsafeFrom(Constants.FILTER_TRANSIENT))
       val impersonateAs = Name(NonEmptyString.unsafeFrom("impersonate_as"))
 
       implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))

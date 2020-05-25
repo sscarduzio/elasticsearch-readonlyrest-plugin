@@ -163,11 +163,6 @@ object BlockContextUpdater {
     override def withAddedContextHeader(blockContext: GeneralIndexRequestBlockContext,
                                         header: Header): GeneralIndexRequestBlockContext =
       blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
-
-    def withIndices(blockContext: GeneralIndexRequestBlockContext,
-                    indices: Set[IndexName]): GeneralIndexRequestBlockContext =
-      blockContext.copy(indices = indices)
-
   }
 
   implicit object MultiIndexRequestBlockContextUpdater
@@ -187,6 +182,90 @@ object BlockContextUpdater {
     override def withAddedContextHeader(blockContext: MultiIndexRequestBlockContext,
                                         header: Header): MultiIndexRequestBlockContext =
       blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
+  }
+
+  implicit object SearchRequestBlockContextUpdater
+    extends BlockContextUpdater[SearchRequestBlockContext] {
+
+    override def emptyBlockContext(blockContext: SearchRequestBlockContext): SearchRequestBlockContext =
+      SearchRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+
+    override def withUserMetadata(blockContext: SearchRequestBlockContext,
+                                  userMetadata: UserMetadata): SearchRequestBlockContext =
+      blockContext.copy(userMetadata = userMetadata)
+
+    override def withAddedResponseHeader(blockContext: SearchRequestBlockContext,
+                                         header: Header): SearchRequestBlockContext =
+      blockContext.copy(responseHeaders = blockContext.responseHeaders + header)
+
+    override def withAddedContextHeader(blockContext: SearchRequestBlockContext,
+                                        header: Header): SearchRequestBlockContext =
+      blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
+  }
+
+  implicit object MultiSearchRequestBlockContextUpdater
+    extends BlockContextUpdater[MultiSearchRequestBlockContext] {
+
+    override def emptyBlockContext(blockContext: MultiSearchRequestBlockContext): MultiSearchRequestBlockContext =
+      MultiSearchRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty, None)
+
+    override def withUserMetadata(blockContext: MultiSearchRequestBlockContext,
+                                  userMetadata: UserMetadata): MultiSearchRequestBlockContext =
+      blockContext.copy(userMetadata = userMetadata)
+
+    override def withAddedResponseHeader(blockContext: MultiSearchRequestBlockContext,
+                                         header: Header): MultiSearchRequestBlockContext =
+      blockContext.copy(responseHeaders = blockContext.responseHeaders + header)
+
+    override def withAddedContextHeader(blockContext: MultiSearchRequestBlockContext,
+                                        header: Header): MultiSearchRequestBlockContext =
+      blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
+  }
+}
+
+abstract class BlockContextWithIndicesUpdater[B <: BlockContext: HasIndices] {
+
+  def withIndices(blockContext: B, indices: Set[IndexName]): B
+}
+
+object BlockContextWithIndicesUpdater {
+  def apply[B <: BlockContext](implicit ev: BlockContextWithIndicesUpdater[B]) = ev
+
+  implicit object SearchRequestBlockContextWithIndicesUpdater
+    extends BlockContextWithIndicesUpdater[SearchRequestBlockContext] {
+
+    def withIndices(blockContext: SearchRequestBlockContext,
+                    indices: Set[IndexName]): SearchRequestBlockContext =
+      blockContext.copy(indices = indices)
+  }
+
+  implicit object GeneralIndexRequestBlockContextWithIndicesUpdater
+    extends BlockContextWithIndicesUpdater[GeneralIndexRequestBlockContext] {
+
+    def withIndices(blockContext: GeneralIndexRequestBlockContext,
+                    indices: Set[IndexName]): GeneralIndexRequestBlockContext =
+      blockContext.copy(indices = indices)
+  }
+}
+
+abstract class BlockContextWithIndexPacksUpdater[B <: BlockContext : HasIndexPacks] {
+
+  def withIndexPacks(blockContext: B, indexPacks: List[Indices]): B
+}
+
+object BlockContextWithIndexPacksUpdater {
+  def apply[B <: BlockContext](implicit ev: BlockContextWithIndexPacksUpdater[B]) = ev
+
+  implicit object MultiSearchRequestBlockContextWithIndexPacksUpdater
+    extends BlockContextWithIndexPacksUpdater[MultiSearchRequestBlockContext] {
+
+    def withIndexPacks(blockContext: MultiSearchRequestBlockContext,
+                       indexPacks: List[Indices]): MultiSearchRequestBlockContext =
+      blockContext.copy(indexPacks = indexPacks)
+  }
+
+  implicit object MultiIndexRequestBlockContextWithIndexPacksUpdater
+    extends BlockContextWithIndexPacksUpdater[MultiIndexRequestBlockContext] {
 
     def withIndexPacks(blockContext: MultiIndexRequestBlockContext,
                        indexPacks: List[Indices]): MultiIndexRequestBlockContext =
@@ -194,4 +273,27 @@ object BlockContextUpdater {
   }
 }
 
+abstract class BlockContextWithFilterUpdater[B <: BlockContext : HasFilter] {
 
+  def withFilter(blockContext: B, filter: Filter): B
+}
+
+object BlockContextWithFilterUpdater {
+  def apply[B <: BlockContext](implicit ev: BlockContextWithFilterUpdater[B]) = ev
+
+  implicit object MultiSearchRequestBlockContextWithFilterUpdater
+    extends BlockContextWithFilterUpdater[MultiSearchRequestBlockContext] {
+
+    def withFilter(blockContext: MultiSearchRequestBlockContext,
+                   filter: Filter): MultiSearchRequestBlockContext =
+      blockContext.copy(filter = Some(filter))
+  }
+
+  implicit object SearchRequestBlockContextWithFilterUpdater
+    extends BlockContextWithFilterUpdater[SearchRequestBlockContext] {
+
+    def withFilter(blockContext: SearchRequestBlockContext,
+                   filter: Filter): SearchRequestBlockContext =
+      blockContext.copy(filter = Some(filter))
+  }
+}

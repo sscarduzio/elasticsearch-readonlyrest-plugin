@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.FilterRuleSuite
+import tech.beshu.ror.integration.utils.ProxyTestSupport
 
-// todo: enable when proxy supports filter rule
-//class FilterRuleProxyTests extends FilterRuleSuite with ProxyTestSupport
+class FilterRuleProxyTests extends FilterRuleSuite with ProxyTestSupport

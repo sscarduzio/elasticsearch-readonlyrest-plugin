@@ -95,6 +95,11 @@ object SearchManager {
   class SearchResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val searchHitsWithSettings: Value = responseJson("hits")("hits")
     lazy val searchHits: List[Value] = searchHitsWithSettings.arr.removeRorSettings().toList
+    lazy val docIds: List[String] = searchHits.map(_("_id").str)
+
+    def hit(idx: Int) = searchHits(idx)("_source")
+    def head = hit(0)
+    def id(docId: String) = searchHits.find(_("_id").str == docId).get("_source")
   }
 
   class MSearchResult(response: HttpResponse) extends JsonResponse(response) {
