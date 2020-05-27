@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.es.rrconfig
 
-import org.elasticsearch.common.io.stream.{StreamInput, Writeable}
+import org.elasticsearch.action.ActionType
+import org.elasticsearch.common.io.stream.Writeable
 
-object RRConfigReader extends Writeable.Reader[RRConfig] {
-  override def read(in: StreamInput): RRConfig = {
-    val response = new RRConfig
-    response.readFrom(in)
-    response
-  }
+class RRConfigAction extends ActionType[RRConfigsResponse](RRConfigAction.name, RRConfigAction.reader)
+
+object RRConfigAction {
+  val name = "cluster:admin/rrconfig/config"
+  val instance = new RRConfigAction
+  val reader: Writeable.Reader[RRConfigsResponse] = new RRConfigsResponse(_)
 }
