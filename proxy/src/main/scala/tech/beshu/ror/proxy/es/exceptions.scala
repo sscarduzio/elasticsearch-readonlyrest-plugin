@@ -3,8 +3,15 @@
  */
 package tech.beshu.ror.proxy.es
 
+import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
+
+import org.elasticsearch.client.ResponseException
+import org.elasticsearch.common.io.Streams
 import org.elasticsearch.rest.RestStatus
 import org.elasticsearch.{ElasticsearchException, ElasticsearchSecurityException}
+
+import scala.util.Try
 
 object exceptions {
 
@@ -47,6 +54,25 @@ object exceptions {
           }
         case _ =>
           exception
+      }
+    }
+  }
+
+  implicit class SpecializedResponseExceptionOps(val exception: ResponseException) {
+    def toSpecializedException: ElasticsearchException = {
+      Try {
+        val responseJson = ujson.read(Streams.copyToString(
+          new InputStreamReader(exception.getResponse.getEntity.getContent, StandardCharsets.UTF_8)
+        ))
+        val exceptionJson = responseJson("error")("root_cause")(0)
+        val `type` = exceptionJson("type").str
+        val reason = exceptionJson("reason").str
+        new ElasticsearchException(reason) {
+          override def status(): RestStatus = RestStatus.fromCode(exception.getResponse.getStatusLine.getStatusCode)
+          override def getExceptionName: String = `type`
+        }
+      } getOrElse {
+        throw exception
       }
     }
   }

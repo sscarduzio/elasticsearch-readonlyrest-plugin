@@ -15,7 +15,6 @@ import monix.execution.schedulers.SchedulerService
 import org.apache.http.HttpHost
 import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
-import org.apache.http.message.BasicHeader
 import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
@@ -64,19 +63,20 @@ trait RorProxy {
         new HttpHost(config.esHost, config.esPort, "https"),
         new HttpHost(config.esHost, config.esPort, "http")
       )
-      .setHttpClientConfigCallback((httpClientBuilder: HttpAsyncClientBuilder) => {
-        // todo: at the moment there is no hostname verification and all certs are considered as trusted
-        val trustAllCerts = new X509TrustManager() {
-          override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
-          override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
-          override def getAcceptedIssuers: Array[X509Certificate] = null
+      .setHttpClientConfigCallback(
+        (httpClientBuilder: HttpAsyncClientBuilder) => {
+          // todo: at the moment there is no hostname verification and all certs are considered as trusted
+          val trustAllCerts = new X509TrustManager() {
+            override def checkClientTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
+            override def checkServerTrusted(x509Certificates: Array[X509Certificate], s: String): Unit = ()
+            override def getAcceptedIssuers: Array[X509Certificate] = null
+          }
+          val sslContext = SSLContext.getInstance("TLS")
+          sslContext.init(null, Array(trustAllCerts), null)
+          httpClientBuilder
+            .setSSLContext(sslContext)
+            .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
         }
-        val sslContext = SSLContext.getInstance("TLS")
-        sslContext.init(null, Array(trustAllCerts), null)
-        httpClientBuilder
-          .setSSLContext(sslContext)
-          .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
-      }
       )
   )
 }

@@ -5,6 +5,7 @@ package tech.beshu.ror.proxy.es
 
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.apache.http.HttpHost
 import org.elasticsearch.action.admin.cluster.remote.RemoteInfoRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.delete.DeleteRequest
@@ -14,6 +15,7 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.main.MainRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
+import org.elasticsearch.client.{Request, RestClient}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.xcontent.ToXContent
 import org.elasticsearch.index.reindex.{DeleteByQueryRequest, ReindexRequest, UpdateByQueryRequest}
@@ -21,6 +23,7 @@ import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, SearchTemp
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult.{Handled, PassItThrough}
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
+import tech.beshu.ror.proxy.es.rest.{GenericRequest, GenericResponse}
 
 class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
                              clusterService: ClusterService)
@@ -32,7 +35,6 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
       .applyOrElse(request, (_: ActionRequest) => Task.now(PassItThrough)) // todo: pass through is not safe here
   }
 
-  // todo: extend it
   private def tryToHandle: PartialFunction[ActionRequest, Task[ActionResponse with ToXContent]] = {
     case request: MainRequest => esClient.main(request)
     case request: RemoteInfoRequest => esClient.remoteInfo(request)
@@ -49,6 +51,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
     case request: SearchTemplateRequest => esClient.searchTemplate(request)
     case request: MultiSearchTemplateRequest => esClient.mSearchTemplate(request)
     case request: ReindexRequest => esClient.reindex(request)
+    case request: GenericRequest => esClient.generic(request)
     case other => Task(throw new IllegalStateException(s"not implemented: ${other.getClass.getSimpleName}")) // todo:
   }
 }

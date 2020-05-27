@@ -41,6 +41,7 @@ import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
+import tech.beshu.ror.proxy.es.rest.{GenericAction, RestGenericRequestAction, TransportGenericAction}
 import tech.beshu.ror.proxy.es.services.ProxyIndexJsonContentService
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
@@ -57,6 +58,16 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                             (implicit scheduler: Scheduler)
   extends Logging {
 
+  private val settings = Settings.fromXContent(
+    XContentFactory
+      .xContent(XContentType.JSON)
+      .createParser(
+        NamedXContentRegistry.EMPTY,
+        DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
+        simulatorEsSettings.contentAsString
+      )
+  )
+  private val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), proxyFilter, esClient, settings, threadPool)
   private val actionModule: ActionModule = configureSimulator()
 
   def processRequest(request: RestRequest): Task[ProcessingResult] = {
@@ -84,20 +95,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
   def stop(): Task[Unit] = proxyFilter.stop()
 
   private def configureSimulator() = {
-    val settings = Settings.fromXContent(
-      XContentFactory
-        .xContent(XContentType.JSON)
-        .createParser(
-          NamedXContentRegistry.EMPTY,
-          DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-          simulatorEsSettings.contentAsString
-        )
-    )
     createActionModule(settings)
   }
 
   private def createActionModule(settings: Settings) = {
-    val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), proxyFilter, esClient, settings, threadPool)
     val clusterSettings = new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS, Sets.newHashSet())
     val clusterService = new ClusterService(settings, clusterSettings, threadPool)
     clusterService.getClusterApplierService.setInitialState(ClusterState.EMPTY_STATE)
@@ -228,7 +229,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
 
     override def getActions: util.List[ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
       List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
-        new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction])
+        new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
+        new ActionHandler(GenericAction.INSTANCE, classOf[TransportGenericAction])
       ).asJava
     }
 
@@ -240,7 +242,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                  indexNameExpressionResolver: IndexNameExpressionResolver,
                                  nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
       List[RestHandler](
-        new RestRRAdminAction(restController)
+        new RestRRAdminAction(restController),
+        new RestGenericRequestAction(restController, nodeClient)
       ).asJava
     }
 
