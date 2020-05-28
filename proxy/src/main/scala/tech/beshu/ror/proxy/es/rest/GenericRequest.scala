@@ -1,3 +1,6 @@
+/*
+ *     Beshu Limited all rights reserved
+ */
 package tech.beshu.ror.proxy.es.rest
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
