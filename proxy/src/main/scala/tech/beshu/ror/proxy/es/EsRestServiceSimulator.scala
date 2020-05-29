@@ -30,7 +30,7 @@ import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.rest._
 import org.elasticsearch.script.mustache.MustachePlugin
 import org.elasticsearch.tasks
-import org.elasticsearch.tasks.TaskManager
+import org.elasticsearch.tasks.{Task => EsTask, TaskManager}
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
@@ -49,6 +49,7 @@ import tech.beshu.ror.utils.TaskOps._
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
+import org.joor.Reflect._
 
 class EsRestServiceSimulator(simulatorEsSettings: File,
                              proxyFilter: ProxyIndexLevelActionFilter,
@@ -100,22 +101,37 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
 
   private def createActionModule(settings: Settings) = {
     val clusterSettings = new ClusterSettings(settings, ClusterSettings.BUILT_IN_CLUSTER_SETTINGS, Sets.newHashSet())
+    val circuitBreakerService = new NoneCircuitBreakerService()
+    val usageService = new UsageService()
+    val rorPlugin = new RORActionPlugin
     val clusterService = new ClusterService(settings, clusterSettings, threadPool)
     clusterService.getClusterApplierService.setInitialState(ClusterState.EMPTY_STATE)
+    val allPlugins = supportedPlugins(rorPlugin)
     val actionModule = new ActionModule(
-      false,
+      true,
       settings,
       new IndexNameExpressionResolver(),
       IndexScopedSettings.DEFAULT_SCOPED_SETTINGS,
       clusterSettings,
       new SettingsFilter(List.empty.asJava),
       threadPool,
-      plugins().asJava,
+      allPlugins.asJava,
       nodeClient,
-      new NoneCircuitBreakerService(),
-      new UsageService(),
+      circuitBreakerService,
+      usageService,
       clusterService
     )
+    val headers = new RestHeaderDefinition(EsTask.X_OPAQUE_ID, false) :: allPlugins.flatMap(_.getRestHeaders.asScala.toList)
+    val proxyRestController = new ProxyRestControllerDecorator(
+      new RestController(
+        headers.toSet.asJava,
+        rorPlugin.getRestHandlerWrapper(threadPool.getThreadContext),
+        nodeClient,
+        circuitBreakerService,
+        usageService
+      )
+    )
+    on(actionModule).set("restController", proxyRestController)
 
     val taskManager = new TaskManager(settings, threadPool, Set.empty[String].asJava)
     val esActionRequestHandler = new EsActionRequestHandler(esClient, clusterService)
@@ -132,11 +148,12 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     )
 
     actionModule.initRestHandlers(() => DiscoveryNodes.EMPTY_NODES)
+    proxyRestController.flushRegistrations()
     actionModule
   }
 
-  private def plugins() = List[ActionPlugin](
-    new RORActionPlugin(),
+  private def supportedPlugins(rorPlugin: RORActionPlugin) = List[ActionPlugin](
+    rorPlugin,
     new ReindexPlugin(),
     new MustachePlugin()
   )
@@ -243,7 +260,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                  nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
       List[RestHandler](
         new RestRRAdminAction(restController),
-        new RestGenericRequestAction(restController, nodeClient)
+        new RestGenericRequestAction(restController.asInstanceOf[ProxyRestControllerDecorator], nodeClient)
       ).asJava
     }
 

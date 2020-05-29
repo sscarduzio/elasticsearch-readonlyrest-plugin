@@ -7,13 +7,17 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST, PUT}
 import org.elasticsearch.rest.action.RestToXContentListener
 import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestController, RestRequest}
+import tech.beshu.ror.proxy.es.ProxyRestControllerDecorator
 import tech.beshu.ror.proxy.es.clients.EsRestNodeClient
 
-class RestGenericRequestAction(controller: RestController,
+// todo: improve this class (we'd like to use wildcard in path instead of full path)
+class RestGenericRequestAction(controller: ProxyRestControllerDecorator,
                                client: EsRestNodeClient)
   extends BaseRestHandler {
 
-  // xpack actions
+  controller.setGenericRequestAction(this)
+
+  // xpack
   controller.registerHandler(GET, "/_xpack", this)
   controller.registerHandler(GET, "/_security/_authenticate", this)
   controller.registerHandler(POST, "/_security/delegate_pki", this)
