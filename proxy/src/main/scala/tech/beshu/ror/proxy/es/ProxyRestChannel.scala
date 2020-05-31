@@ -5,8 +5,6 @@ package tech.beshu.ror.proxy.es
 
 import monix.eval.Task
 import org.elasticsearch.ElasticsearchException
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.xcontent.{XContentBuilder, XContentFactory, XContentType}
 import org.elasticsearch.rest._
 
 import scala.concurrent.Promise
@@ -18,31 +16,7 @@ class ProxyRestChannel(restRequest: RestRequest)
   private val resultPromise = Promise[EsRestServiceSimulator.ProcessingResult]()
 
   def result: Task[EsRestServiceSimulator.ProcessingResult] = Task.fromFuture(resultPromise.future)
-//
-//  override def newBuilder(): XContentBuilder =
-//    XContentBuilder.builder(XContentFactory.xContent(XContentType.JSON))
-//
-//  override def newErrorBuilder(): XContentBuilder = newBuilder()
-//
-//  override def newBuilder(xContentType: XContentType,
-//                          useFiltering: Boolean): XContentBuilder =
-//    XContentBuilder.builder(XContentFactory.xContent(xContentType))
-//
-//  override def newBuilder(xContentType: XContentType,
-//                          responseContentType: XContentType,
-//                          useFiltering: Boolean): XContentBuilder =
-//    XContentBuilder.builder(XContentFactory.xContent(xContentType))
-//
-//  override def bytesOutput(): BytesStreamOutput = new BytesStreamOutput()
-//
-//  override def request(): RestRequest = restRequest
-//
-//  override def detailedErrorsEnabled(): Boolean = true
-//
-//  override def sendResponse(response: RestResponse): Unit = {
-//    resultPromise.trySuccess(EsRestServiceSimulator.ProcessingResult.Response(response))
-//  }
-//
+
   def sendFailureResponse(exception: Throwable): Unit = {
     sendResponse(failureResponseFrom(exception))
   }
