@@ -26,7 +26,7 @@ class ProxyRestInterceptorService(simulator: EsRestServiceSimulator,
                                  (implicit scheduler: Scheduler)
   extends Service[Request, Response] {
 
-  private val client: Service[Request, Response] = Http.newService(config.esAddress.toString())
+  private val client: Service[Request, Response] = Http.newService(config.esAddress.toString)
 
   private val namedXContentRegistry = new NamedXContentRegistry(
     new SearchModule(Settings.EMPTY, false, List.empty.asJava).getNamedXContents
@@ -49,12 +49,23 @@ class ProxyRestInterceptorService(simulator: EsRestServiceSimulator,
     CreateEsHttpChannel.dummyHttpChannel(config.proxyPort)
   )
 
-  private def fromEsResponse(version: Version, response: EsRestResponse): Response =
-    Response(
+  private def fromEsResponse(version: Version, response: EsRestResponse): Response = {
+    val httpResponse = Response(
       version,
       Status.fromCode(response.status().getStatus),
       InputStreamReader(response.content().streamInput())
     )
+    response
+      .getHeaders.asScala
+      .foreach { case (name, values) =>
+        values.asScala.foreach(value =>
+          httpResponse.headerMap.add(name, value))
+      }
+    httpResponse
+      .contentLength(response.content().length())
+      .contentType_=(response.contentType())
+    httpResponse
+  }
 
   private def esHttpRequestFrom(request: Request) = CreateEsHttpRequest.from(request)
 }
