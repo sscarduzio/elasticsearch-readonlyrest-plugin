@@ -268,6 +268,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       restHandler: RestHandler =>
         (request: RestRequest, channel: RestChannel, client: NodeClient) => {
           ThreadRepo.setRestChannel(channel)
+          request.params().asScala.foreach { case (name, _) => request.param(name) } // todo: consuming all params (find a better way)
           restHandler.handleRequest(request, channel, client)
         }
     }

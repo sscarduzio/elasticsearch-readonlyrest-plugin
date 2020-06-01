@@ -80,6 +80,9 @@ class RestGenericRequestAction(controller: ProxyRestControllerDecorator,
   controller.registerHandler(PUT, "/_security/user/{username}/_enable", this)
   controller.registerHandler(POST, "/_security/user/{username}/_disable", this)
   controller.registerHandler(PUT, "/_security/user/{username}/_disable", this)
+  // monitoring
+  controller.registerHandler(POST, "/_monitoring/bulk", this)
+  controller.registerHandler(PUT, "/_monitoring/bulk", this)
 
   override val getName: String = "generic_request_action"
 
