@@ -6,7 +6,7 @@ package tech.beshu.ror.proxy.es.rest
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.rest.RestRequest.Method.{DELETE, GET, POST, PUT}
 import org.elasticsearch.rest.action.RestToXContentListener
-import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestController, RestRequest}
+import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestRequest}
 import tech.beshu.ror.proxy.es.ProxyRestControllerDecorator
 import tech.beshu.ror.proxy.es.clients.EsRestNodeClient
 

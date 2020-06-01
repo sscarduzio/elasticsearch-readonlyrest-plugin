@@ -5,7 +5,7 @@ package tech.beshu.ror.proxy.es
 
 import java.util
 
-import com.twitter.finagle.http.{Method, Request, Version}
+import com.twitter.finagle.http.{Fields, Method, Request, Version}
 import io.lemonlabs.uri.config.UriConfig
 import io.lemonlabs.uri.{AbsolutePath, RelativeUrl, UrlPath}
 import io.netty.handler.codec.http.HttpHeaderNames
@@ -15,6 +15,7 @@ import org.elasticsearch.http.{HttpRequest => EsHttpRequest, HttpResponse => EsH
 import org.elasticsearch.rest.{RestRequest, RestStatus}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 object CreateEsHttpRequest {
 
@@ -41,6 +42,17 @@ object CreateEsHttpRequest {
       }
     }
 
+    private lazy val requestHeaders: Map[String, List[String]] = {
+      headers
+        .map {
+          case (key, values) if key.toLowerCase == Fields.ContentType.toLowerCase =>
+            // ES requires case sensitive Content-Type header name
+            (Fields.ContentType, values)
+          case (key, values) =>
+            (key, values)
+        }
+    }
+
     override def method(): RestRequest.Method = request.method match {
       case Method.Get => RestRequest.Method.GET
       case Method.Post => RestRequest.Method.POST
@@ -59,7 +71,7 @@ object CreateEsHttpRequest {
     override def content(): BytesReference = new BytesArray(request.contentString.getBytes)
 
     override def getHeaders: util.Map[String, util.List[String]] =
-      headers.mapValues(_.asJava).asJava
+      requestHeaders.mapValues(_.asJava).asJava
 
     override def strictCookies(): util.List[String] = {
       val cookies = request
@@ -82,20 +94,34 @@ object CreateEsHttpRequest {
     }
 
     override def removeHeader(header: String): EsHttpRequest = {
-      from(request, headers - header)
+      val newHeaders = requestHeaders.filterKeys(key => key.toLowerCase != header.toLowerCase)
+      from(request, newHeaders)
     }
 
     override def createResponse(status: RestStatus, content: BytesReference): EsHttpResponse =
-      new EsHttpResponse {
-        override def addHeader(name: String, value: String): Unit = ()
-
-        override def containsHeader(name: String): Boolean = false
-      }
+      new EsProxyHttpResponse(status, content, mutable.Map.empty)
 
     override def release(): Unit = ()
 
-    override def releaseAndCopy(): EsHttpRequest = from(request, headers)
+    override def releaseAndCopy(): EsHttpRequest = from(request, requestHeaders)
 
     private def slashOrEmpty(urlPath: UrlPath) = urlPath == UrlPath.slash || urlPath == AbsolutePath(Vector(""))
+  }
+
+  private class EsProxyHttpResponse(status: RestStatus,
+                                    content: BytesReference,
+                                    headers: mutable.Map[String, List[String]])
+    extends EsHttpResponse {
+
+    override def addHeader(name: String, value: String): Unit = {
+      headers.get(name) match {
+        case None => headers.put(name, value :: Nil)
+        case Some(values) => headers.put(name, value :: values)
+      }
+    }
+
+    override def containsHeader(name: String): Boolean = {
+      headers.exists { case (headerName, _) => headerName == name}
+    }
   }
 }

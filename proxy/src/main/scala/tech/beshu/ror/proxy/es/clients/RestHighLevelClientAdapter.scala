@@ -4,7 +4,7 @@
 package tech.beshu.ror.proxy.es.clients
 
 import monix.eval.Task
-import org.apache.http.entity.InputStreamEntity
+import org.apache.http.entity.{ContentType, InputStreamEntity}
 import org.elasticsearch.ElasticsearchStatusException
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthResponse}
 import org.elasticsearch.action.admin.cluster.remote.{RemoteInfoResponse, RemoteInfoRequest => AdminRemoteInfoRequest}
@@ -341,12 +341,18 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   private def clientRequestFrom(restRequest: RestRequest) = {
     val clientRequest = new Request(restRequest.method().toString, restRequest.path())
-    clientRequest.setEntity(new InputStreamEntity(restRequest.content().streamInput()))
     restRequest
       .params().asScala
       .foreach { case (name, value) =>
         clientRequest.addParameter(name, value)
       }
+    val entity = Option(restRequest.header("Content-Type")) match {
+      case Some(contentType) =>
+        new InputStreamEntity(restRequest.content().streamInput(), ContentType.parse(contentType))
+      case None =>
+        new InputStreamEntity(restRequest.content().streamInput())
+    }
+    clientRequest.setEntity(entity)
     clientRequest
   }
 }
