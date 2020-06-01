@@ -51,7 +51,7 @@ import org.elasticsearch.action.fieldcaps.{FieldCapabilitiesRequest, FieldCapabi
 import org.elasticsearch.action.get._
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.action.main.{MainRequest, MainResponse}
-import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
+import org.elasticsearch.action.search.{ClearScrollRequest, ClearScrollResponse, MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
 import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.cluster.RemoteInfoRequest
 import org.elasticsearch.client.core.CountRequest
@@ -329,6 +329,10 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     import tech.beshu.ror.proxy.es.clients.actions.RemoteInfo._
     executeAsync(client.cluster().remoteInfo(new RemoteInfoRequest(), RequestOptions.DEFAULT))
       .map(_.toRemoteInfoResponse)
+  }
+
+  def clearScroll(request: ClearScrollRequest): Task[ClearScrollResponse] = {
+    executeAsync(client.clearScroll(request, RequestOptions.DEFAULT))
   }
 
   private def executeAsync[T](action: => T): Task[T] =
