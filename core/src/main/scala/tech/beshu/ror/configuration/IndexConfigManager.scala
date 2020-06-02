@@ -35,7 +35,7 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager,
 
   override def load(): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
     indexContentManager
-      .sourceOf(rorIndexNameConfiguration.name, auditIndexConst.typeName, auditIndexConst.id)
+      .sourceOf(rorIndexNameConfiguration.name, auditIndexConst.id)
       .flatMap {
         case Right(source) =>
           source.asScala
@@ -54,7 +54,6 @@ class IndexConfigManager(indexContentManager: IndexJsonContentManager,
     indexContentManager
       .saveContent(
         rorIndexNameConfiguration.name,
-        auditIndexConst.typeName,
         auditIndexConst.id,
         Map(auditIndexConst.settingsKey -> config.raw).asJava
       )
@@ -92,7 +91,6 @@ object IndexConfigManager {
   }
 
   private object auditIndexConst {
-    val typeName = "settings"
     val id = "1"
     val settingsKey = "settings"
   }

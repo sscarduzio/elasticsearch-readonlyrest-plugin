@@ -13,12 +13,10 @@ import tech.beshu.ror.es.IndexJsonContentManager
 object ProxyIndexJsonContentManager extends IndexJsonContentManager {
 
   override def sourceOf(index: IndexName,
-                        `type`: String,
                         id: String): Task[Either[IndexJsonContentManager.ReadError, util.Map[String, _]]] =
     Task.now(Left(IndexJsonContentManager.CannotReachContentSource))
 
   override def saveContent(index: IndexName,
-                           `type`: String,
                            id: String,
                            content: util.Map[String, String]): Task[Either[IndexJsonContentManager.WriteError, Unit]] =
     Task.now(Right(()))
