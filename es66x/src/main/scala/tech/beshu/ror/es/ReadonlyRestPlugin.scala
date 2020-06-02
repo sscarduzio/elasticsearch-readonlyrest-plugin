@@ -126,7 +126,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   override def getTaskHeaders: util.Collection[String] = {
-    List(Constants.FILTER_TRANSIENT, Constants.FIELDS_TRANSIENT).asJava
+    List(Constants.FIELDS_TRANSIENT).asJava
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
