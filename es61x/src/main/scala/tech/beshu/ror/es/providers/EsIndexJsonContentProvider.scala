@@ -82,6 +82,7 @@ class EsIndexJsonContentProvider(client: NodeClient,
         client
           .prepareIndex()
           .setIndex(index.value.value)
+          .setType("settings")
           .setId(id)
           .setSource(content, XContentType.JSON)
           .setRefreshPolicy(RefreshPolicy.WAIT_UNTIL)

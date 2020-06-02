@@ -256,6 +256,7 @@ trait BaseAdminApiSuite
   private def insertInIndexConfig(documentManager: DocumentManager, resourceFilePath: String): Unit = {
     documentManager.createDoc(
       readonlyrestIndexName,
+      "settings",
       id = 1,
       ujson.read(s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}""")
     )

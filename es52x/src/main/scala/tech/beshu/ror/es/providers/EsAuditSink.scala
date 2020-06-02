@@ -43,6 +43,7 @@ class EsAuditSink(client: Client) extends AuditSink with Logging {
     bulkProcessor.add(
       new IndexRequest(indexName)
         .id(documentId)
+        .`type`("ror_audit_evt")
         .contentType(XContentType.JSON)
         .source(jsonRecord)
     )

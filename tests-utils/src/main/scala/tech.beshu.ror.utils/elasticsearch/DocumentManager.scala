@@ -42,6 +42,10 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     call(createInsertDocRequest(createDocPathWithDefaultType(index, id), content, waitForRefresh = true), new JsonResponse(_))
   }
 
+  def createDoc(index: String, `type`: String, id: Int, content: JSON): JsonResponse = {
+    call(createInsertDocRequest(createDocPathWithDefaultType(index, id, Some(`type`)), content, waitForRefresh = true), new JsonResponse(_))
+  }
+
   def bulk(line: String, lines: String*): JsonResponse = {
     val payload = (lines.toSeq :+ "\n").foldLeft(line) { case (acc, elem) => s"$acc\n$elem" }
     call(createBulkRequest(payload), new JsonResponse(_))
@@ -58,15 +62,15 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     s"""/$index/${`type`}/$id"""
   }
 
-  private def createDocPathWithDefaultType(index: String, id: Int) = {
+  private def createDocPathWithDefaultType(index: String, id: Int, fallbackType: Option[String] = None) = {
     if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) createDocPath(index, "_doc", id)
-    else createDocPath(index, "doc", id)
+    else createDocPath(index, fallbackType.getOrElse("doc"), id)
   }
 
   def createDocAndAssert(index: String, `type`: String, id: Int, content: JSON): Unit = {
-    val docPath = createDocPath(index, `type`, id)
+    val docPath = createDocPathWithDefaultType(index, id, Some(`type`))
     val createDocResult = call(
-      createInsertDocRequest(createDocPathWithDefaultType(index, id), content, waitForRefresh = true),
+      createInsertDocRequest(docPath, content, waitForRefresh = true),
       new JsonResponse(_)
     )
     if(!createDocResult.isSuccess || createDocResult.responseJson("result").str != "created") {
