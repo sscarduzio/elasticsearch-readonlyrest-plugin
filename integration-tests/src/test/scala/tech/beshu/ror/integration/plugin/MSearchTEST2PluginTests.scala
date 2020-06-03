@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.MSearchTEST2Suite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
 class MSearchTEST2PluginTests extends MSearchTEST2Suite with SingletonPluginTestSupport

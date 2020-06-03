@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.LdapIntegrationGroupsSuite
+import tech.beshu.ror.integration.utils.ProxyTestSupport
 
 class LdapIntegrationGroupsProxyTests extends LdapIntegrationGroupsSuite with ProxyTestSupport

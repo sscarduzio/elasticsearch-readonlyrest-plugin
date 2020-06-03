@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Suite
 import tech.beshu.ror.utils.containers.providers._
-import tech.beshu.ror.utils.containers.{EsClusterProvider, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{EsClusterProvider, EsContainerCreator}
 
 object support {
 

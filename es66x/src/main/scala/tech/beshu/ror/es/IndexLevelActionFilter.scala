@@ -32,13 +32,15 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
-import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider, EsServerBasedRorClusterService}
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
-import tech.beshu.ror.es.utils.AccessControllerHelper._
+import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.utils.RorInstanceSupplier
 
 import scala.language.postfixOps
 
@@ -57,8 +59,8 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     new EsServerBasedRorClusterService(clusterService), threadPool
   )
 
-  private val startingTaskCancellable = Ror
-    .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
+  private val startingTaskCancellable = new Ror()
+      .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
     .runAsync {
       case Right(Right(instance)) =>
         RorInstanceSupplier.update(instance)

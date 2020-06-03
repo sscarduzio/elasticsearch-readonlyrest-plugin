@@ -23,12 +23,11 @@ import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError, auditIndexConst}
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
-import tech.beshu.ror.es.IndexJsonContentManager
-import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
-
 import scala.collection.JavaConverters._
+import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 
-class IndexConfigManager(indexContentManager: IndexJsonContentManager,
+class IndexConfigManager(indexContentManager: IndexJsonContentService,
                          val rorIndexNameConfiguration: RorIndexNameConfiguration)
   extends ConfigLoader[IndexConfigError]
     with Logging {

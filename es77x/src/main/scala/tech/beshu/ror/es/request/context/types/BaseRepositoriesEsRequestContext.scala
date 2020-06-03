@@ -39,7 +39,7 @@ abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionReques
     UserMetadata.from(this),
     Set.empty,
     Set.empty,
-    repositoriesFrom(actionRequest)
+    repositoriesOrWildcard(repositoriesFrom(actionRequest))
   )
 
   override protected def modifyRequest(blockContext: RepositoryRequestBlockContext): ModificationResult = {

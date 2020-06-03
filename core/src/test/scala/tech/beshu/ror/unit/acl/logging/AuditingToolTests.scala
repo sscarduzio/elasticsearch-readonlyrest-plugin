@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditResponseContext}
-import tech.beshu.ror.es.AuditSink
+import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 
 class AuditingToolTests extends WordSpec with MockFactory {
@@ -51,7 +51,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
             DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
             new DefaultAuditLogSerializer
           ),
-          mock[AuditSink]
+          mock[AuditSinkService]
         )
         auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Error)).runSyncUnsafe()
       }
@@ -61,7 +61,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
             DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
             throwingAuditLogSerializer
           ),
-          mock[AuditSink]
+          mock[AuditSinkService]
         )
         an [IllegalArgumentException] should be thrownBy {
           auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
@@ -70,7 +70,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
     }
     "submit audit entry" when {
       "request was allowed and verbosity level was INFO" in {
-        val auditSink = mock[AuditSink]
+        val auditSink = mock[AuditSinkService]
         (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
 
         val auditingTool = new AuditingTool(
@@ -84,7 +84,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
         auditingTool.audit(createAllowedResponseContext(Policy.Allow, Verbosity.Info)).runSyncUnsafe()
       }
       "request was matched by forbidden rule" in {
-        val auditSink = mock[AuditSink]
+        val auditSink = mock[AuditSinkService]
         (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
 
         val auditingTool = new AuditingTool(
@@ -111,7 +111,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
         auditingTool.audit(responseContext).runSyncUnsafe()
       }
       "request was forbidden" in {
-        val auditSink = mock[AuditSink]
+        val auditSink = mock[AuditSinkService]
         (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
 
         val auditingTool = new AuditingTool(
@@ -128,7 +128,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
         auditingTool.audit(responseContext).runSyncUnsafe()
       }
       "request was finished with error" in {
-        val auditSink = mock[AuditSink]
+        val auditSink = mock[AuditSinkService]
         (auditSink.submit _).expects("test_2018-12-31", "mock-1", *).returning(())
 
         val auditingTool = new AuditingTool(

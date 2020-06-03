@@ -28,9 +28,9 @@ import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.SchedulerPools
 import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RorIndexNameConfiguration}
-import tech.beshu.ror.es.RorInstanceSupplier
-import tech.beshu.ror.es.providers.EsIndexJsonContentProvider
-import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.RorInstanceSupplier
+import tech.beshu.ror.es.services.EsIndexJsonContentService
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.providers.JvmPropertiesProvider
 
 import scala.concurrent.duration._
@@ -39,7 +39,7 @@ import scala.language.postfixOps
 class TransportRRAdminAction(transportService: TransportService,
                              actionFilters: ActionFilters,
                              env: Environment,
-                             indexContentProvider: EsIndexJsonContentProvider,
+                             indexContentProvider: EsIndexJsonContentService,
                              ignore: Unit) // hack!
   extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
     RRAdminAction.name, transportService, actionFilters, () => new RRAdminRequest
@@ -49,7 +49,7 @@ class TransportRRAdminAction(transportService: TransportService,
   def this(transportService: TransportService,
            actionFilters: ActionFilters,
            env: Environment,
-           indexContentProvider: EsIndexJsonContentProvider) {
+           indexContentProvider: EsIndexJsonContentService) {
     this(transportService, actionFilters, env, indexContentProvider, ())
   }
 

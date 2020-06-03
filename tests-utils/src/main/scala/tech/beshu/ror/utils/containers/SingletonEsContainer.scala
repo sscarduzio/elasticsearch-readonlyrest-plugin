@@ -19,7 +19,7 @@ package tech.beshu.ror.utils.containers
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.junit.runner.Description
-import tech.beshu.ror.utils.elasticsearch.{ActionManager, IndexManager, SnapshotManager, TemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, IndexManager, SnapshotManager, TemplateManager}
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 object SingletonEsContainer
@@ -35,7 +35,7 @@ object SingletonEsContainer
   private lazy val indexManager = new IndexManager(adminClient)
   private lazy val templateManager = new TemplateManager(adminClient)
   private lazy val snapshotManager = new SnapshotManager(adminClient)
-  private lazy val adminApiManager = new ActionManager(adminClient)
+  private lazy val adminApiManager = new ActionManagerJ(adminClient)
 
   logger.info("Starting singleton es container...")
   singleton.start()
@@ -52,7 +52,7 @@ object SingletonEsContainer
       s"""{"settings": "${escapeJava(getResourceContent(rorConfigFileName))}"}"""
     )
     if (!response.isSuccess) {
-      logger.error(s"Config update failed. Response: ${response.body}")
+      logger.error(s"Config update failed. Response: ${response.getBody}")
       throw CouldNotUpdateRorConfigException()
     }
   }

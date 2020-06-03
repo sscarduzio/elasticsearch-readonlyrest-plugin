@@ -35,8 +35,9 @@ import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext, 
 import tech.beshu.ror.boot.ReadonlyRest
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeyPass, KeystorePassword, TruststorePassword}
 import tech.beshu.ror.configuration.{MalformedSettings, RawRorConfig, RorSsl}
-import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound, WriteError}
-import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
+import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, ContentNotFound, WriteError}
+import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
+import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{StringOps, getResourceContent, getResourcePath, rorConfigFromResource}
@@ -54,7 +55,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
   "A ReadonlyREST core" should {
     "be loaded from file" when {
       "index is not available but file config is provided" in {
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         (mockedIndexJsonContentManager.sourceOf _)
           .expects(IndexName(".readonlyrest".nonempty), "1")
           .repeated(5)
@@ -65,7 +66,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath("/boot_tests/no_index_config_file_config_provided/"),
-            mock[AuditSink],
+            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -83,8 +84,8 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath("/boot_tests/forced_file_loading/"),
-            mock[AuditSink],
-            mock[IndexJsonContentManager]
+            mock[AuditSinkService],
+            mock[IndexJsonContentService]
           )
           .runSyncUnsafe()
 
@@ -98,7 +99,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val resourcesPath = "/boot_tests/index_config_available_file_config_provided/"
         val indexConfigFile = "readonlyrest_index.yml"
 
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
         val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
@@ -106,7 +107,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSink],
+            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -121,7 +122,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val resourcesPath = "/boot_tests/index_config_available_file_config_not_provided/"
         val indexConfigFile = "readonlyrest_index.yml"
 
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
         val coreFactory = mockCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
@@ -129,7 +130,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSink],
+            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -147,7 +148,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val initialIndexConfigFile = "readonlyrest_initial.yml"
         val newIndexConfigFile = "readonlyrest_first.yml"
 
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + initialIndexConfigFile)
 
         val coreFactory = mock[CoreFactory]
@@ -158,7 +159,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSink],
+            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -182,7 +183,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val firstNewIndexConfigFile = "readonlyrest_first.yml"
         val secondNewIndexConfigFile = "readonlyrest_second.yml"
 
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + initialIndexConfigFile)
 
         val coreFactory = mock[CoreFactory]
@@ -201,7 +202,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(coreFactory, refreshInterval = Some(0 seconds))
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSink],
+            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -238,7 +239,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       val originIndexConfigFile = "readonlyrest.yml"
       val updatedIndexConfigFile = "updated_readonlyrest.yml"
 
-      val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+      val mockedIndexJsonContentManager = mock[IndexJsonContentService]
       mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + originIndexConfigFile)
       mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + updatedIndexConfigFile)
 
@@ -249,7 +250,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       val result = readonlyRestBoot(coreFactory)
         .start(
           getResourcePath(resourcesPath),
-          mock[AuditSink],
+          mock[AuditSinkService],
           mockedIndexJsonContentManager
         )
         .runSyncUnsafe()
@@ -270,8 +271,8 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(mock[CoreFactory])
           .start(
             getResourcePath("/boot_tests/forced_file_loading_malformed_config/"),
-            mock[AuditSink],
-            mock[IndexJsonContentManager]
+            mock[AuditSinkService],
+            mock[IndexJsonContentService]
           )
           .runSyncUnsafe()
 
@@ -285,8 +286,8 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath("/boot_tests/forced_file_loading_bad_config/"),
-            mock[AuditSink],
-            mock[IndexJsonContentManager]
+            mock[AuditSinkService],
+            mock[IndexJsonContentService]
           )
           .runSyncUnsafe()
 
@@ -295,7 +296,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         }
       }
       "index config doesn't exist and file config is malformed" in {
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         (mockedIndexJsonContentManager.sourceOf _)
           .expects(IndexName(".readonlyrest".nonempty), "1")
           .repeated(5)
@@ -304,7 +305,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(mock[CoreFactory])
           .start(
             getResourcePath("/boot_tests/index_config_not_exists_malformed_file_config/"),
-            mock[AuditSink],
+            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -314,7 +315,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         }
       }
       "index config doesn't exist and file config cannot be loaded" in {
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         (mockedIndexJsonContentManager.sourceOf _)
           .expects(IndexName(".readonlyrest".nonempty), "1")
           .repeated(5)
@@ -325,7 +326,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath("/boot_tests/index_config_not_exists_bad_file_config/"),
-            mock[AuditSink],
+            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -338,13 +339,13 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val resourcesPath = "/boot_tests/malformed_index_config/"
         val indexConfigFile = "readonlyrest_index.yml"
 
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile, repeatedCount = 5)
 
         val result = readonlyRestBoot(mock[CoreFactory])
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSink],
+            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -357,7 +358,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val resourcesPath = "/boot_tests/bad_index_config/"
         val indexConfigFile = "readonlyrest_index.yml"
 
-        val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
+        val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
         val coreFactory = mockFailedCoreFactory(mock[CoreFactory], resourcesPath + indexConfigFile)
@@ -365,7 +366,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val result = readonlyRestBoot(coreFactory)
           .start(
             getResourcePath(resourcesPath),
-            mock[AuditSink],
+            mock[AuditSinkService],
             mockedIndexJsonContentManager
           )
           .runSyncUnsafe()
@@ -509,7 +510,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     }
   }
 
-  private def mockIndexJsonContentManagerSourceOfCall(mockedManager: IndexJsonContentManager,
+  private def mockIndexJsonContentManagerSourceOfCall(mockedManager: IndexJsonContentService,
                                                       resourceFileName: String,
                                                       repeatedCount: Int = 1) = {
     (mockedManager.sourceOf _)
@@ -521,7 +522,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
     mockedManager
   }
 
-  private def mockIndexJsonContentManagerSaveCall(mockedManager: IndexJsonContentManager,
+  private def mockIndexJsonContentManagerSaveCall(mockedManager: IndexJsonContentService,
                                                   resourceFileName: String,
                                                   saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(()))) = {
     (mockedManager.saveContent _)

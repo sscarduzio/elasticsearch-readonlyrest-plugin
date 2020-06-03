@@ -18,7 +18,7 @@ package tech.beshu.ror.es.request
 
 import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestStatus}
-import tech.beshu.ror.es.utils.ErrorContentBuilderHelper.createErrorResponse
+import tech.beshu.ror.es.utils.ContentBuilderHelper.createErrorResponse
 
 class RorNotAvailableResponse private(status: RestStatus, builder: XContentBuilder)
   extends BytesRestResponse(status, builder)

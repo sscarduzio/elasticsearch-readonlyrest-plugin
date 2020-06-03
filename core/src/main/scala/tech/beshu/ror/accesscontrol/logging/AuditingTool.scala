@@ -32,10 +32,10 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
-import tech.beshu.ror.es.AuditSink
+import tech.beshu.ror.es.AuditSinkService
 
 class AuditingTool(settings: Settings,
-                   auditSink: AuditSink)
+                   auditSink: AuditSinkService)
                   (implicit clock: Clock,
                    loggingContext: LoggingContext) {
 

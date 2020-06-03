@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.LdapIntegrationFirstOptionSuite
+import tech.beshu.ror.integration.utils.PluginTestSupport
 
 class LdapIntegrationFirstOptionPluginTests extends LdapIntegrationFirstOptionSuite with PluginTestSupport

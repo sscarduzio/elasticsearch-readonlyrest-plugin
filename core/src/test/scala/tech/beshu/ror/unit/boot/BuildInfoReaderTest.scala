@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.boot
 
 import org.scalatest.WordSpec
-import tech.beshu.ror.es.BuildInfoReader
+import tech.beshu.ror.buildinfo.BuildInfoReader
 
 class BuildInfoReaderTest extends WordSpec {
 

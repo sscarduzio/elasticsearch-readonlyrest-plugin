@@ -51,6 +51,7 @@ import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -69,7 +70,7 @@ class ReadonlyRestPlugin(s: Settings,
     this(s, ())
   }
 
-  LogBuildInfoMessage()
+  LogPluginBuildInfoMessage()
 
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
 

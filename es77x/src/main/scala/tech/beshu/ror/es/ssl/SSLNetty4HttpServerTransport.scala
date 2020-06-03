@@ -30,7 +30,7 @@ import org.elasticsearch.http.netty4.Netty4HttpServerTransport
 import org.elasticsearch.http.{HttpChannel, HttpServerTransport}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.configuration.SslConfiguration.ExternalSslConfiguration
-import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.SSLCertParser
 
 import scala.collection.JavaConverters._

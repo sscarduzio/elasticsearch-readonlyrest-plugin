@@ -17,9 +17,9 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.ZeroKnowledgeMatchFilter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
+import tech.beshu.ror.utils.ZeroKnowledgeMatchFilter
 
 import scala.collection.JavaConverters._
 

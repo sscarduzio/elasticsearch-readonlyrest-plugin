@@ -23,6 +23,7 @@ import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import cats.{Order, Show}
 import com.softwaremill.sttp.{Method, Uri}
+import io.lemonlabs.uri.{Uri => LemonUri}
 import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
@@ -129,6 +130,7 @@ object show {
     implicit val methodShow: Show[Method] = Show.show(_.m)
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
+    implicit val lemonUriShow: Show[LemonUri] = Show.show(_.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val documentFieldShow: Show[DocumentField] = Show.show {
       case f: ADocumentField => f.value.value

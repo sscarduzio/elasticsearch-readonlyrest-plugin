@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
+import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 import scala.collection.JavaConverters._
 

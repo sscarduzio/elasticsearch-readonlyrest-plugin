@@ -26,8 +26,10 @@ import scala.language.postfixOps
 
 class EsWithRorPluginContainer private(name: String,
                                        esVersion: String,
+                                       startedClusterDependencies: StartedClusterDependencies,
+                                       esClusterSettings: EsClusterSettings,
                                        image: ImageFromDockerfile)
-  extends EsContainer(name, esVersion, image)
+  extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
     with StrictLogging {
   logger.info(s"[$name] Creating ES with ROR plugin installed container ...")
 
@@ -50,10 +52,14 @@ object EsWithRorPluginContainer {
                           externalSslEnabled: Boolean) extends EsContainer.Config
 
   def create(config: EsWithRorPluginContainer.Config,
-             initializer: ElasticsearchNodeDataInitializer): EsContainer = {
+             initializer: ElasticsearchNodeDataInitializer,
+             startedClusterDependencies: StartedClusterDependencies,
+             esClusterSettings: EsClusterSettings): EsContainer = {
     val rorContainer = new EsWithRorPluginContainer(
       config.nodeName,
       config.esVersion,
+      startedClusterDependencies,
+      esClusterSettings,
       ESWithRorPluginImage.create(config)
     )
     EsContainer.init(rorContainer, config, initializer)

@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.RorKbnAuthSuite
+import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
 
 class RorKbnAuthProxyTests extends RorKbnAuthSuite with BasicClusterProxyTestSupport

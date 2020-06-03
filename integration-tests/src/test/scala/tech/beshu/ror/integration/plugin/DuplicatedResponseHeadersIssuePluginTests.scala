@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite
+import tech.beshu.ror.integration.utils.PluginTestSupport
 
 class DuplicatedResponseHeadersIssuePluginTests extends DuplicatedResponseHeadersIssueSuite with PluginTestSupport

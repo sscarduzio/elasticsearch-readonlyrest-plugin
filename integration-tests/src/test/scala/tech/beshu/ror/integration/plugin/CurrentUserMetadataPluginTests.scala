@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.CurrentUserMetadataSuite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
 class CurrentUserMetadataPluginTests extends CurrentUserMetadataSuite with SingletonPluginTestSupport

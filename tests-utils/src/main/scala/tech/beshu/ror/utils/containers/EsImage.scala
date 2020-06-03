@@ -23,6 +23,7 @@ import tech.beshu.ror.utils.containers.EsContainer.Config
 import tech.beshu.ror.utils.misc.Version
 
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 
 trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 

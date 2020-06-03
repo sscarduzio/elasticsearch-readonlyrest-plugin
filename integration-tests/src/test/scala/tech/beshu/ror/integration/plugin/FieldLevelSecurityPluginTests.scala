@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.FieldLevelSecuritySuite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
 class FieldLevelSecurityPluginTests extends FieldLevelSecuritySuite with SingletonPluginTestSupport

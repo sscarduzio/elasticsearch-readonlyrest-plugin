@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.IndexApiWithNonFreeKibanaSupportSuite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
 class IndexApiWithNonFreeKibanaSupportPluginTests extends IndexApiWithNonFreeKibanaSupportSuite with SingletonPluginTestSupport
