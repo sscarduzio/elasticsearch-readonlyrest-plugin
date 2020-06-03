@@ -41,7 +41,9 @@ class EsAuditSinkService(client: Client) extends AuditSinkService with Logging {
 
   override def submit(indexName: String, documentId: String, jsonRecord: String): Unit = {
     bulkProcessor.add(
-      new IndexRequest(indexName, "ror_audit_evt", documentId)
+      new IndexRequest(indexName)
+        .id(documentId)
+        .`type`("ror_audit_evt")
         .contentType(XContentType.JSON)
         .source(jsonRecord)
     )
