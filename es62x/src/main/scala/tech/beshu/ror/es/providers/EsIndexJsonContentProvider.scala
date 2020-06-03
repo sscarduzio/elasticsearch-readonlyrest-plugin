@@ -45,37 +45,45 @@ class EsIndexJsonContentProvider(client: NodeClient,
   }
 
   override def sourceOf(index: domain.IndexName,
-                        `type`: String,
-                        id: String): Task[Either[ReadError, util.Map[String, AnyRef]]] = Task(
-    client
-      .get(client.prepareGet(index.value.value, `type`, id).request())
-      .actionGet()
-  )
-    .map { response =>
-      Option(response.getSourceAsMap) match {
-        case Some(map) =>
-          Right(map)
-        case None =>
-          logger.warn(s"Document ${index.show}/${`type`}/$id _source is not available. Assuming it's empty")
-          Right(Maps.newHashMap[String, AnyRef]())
+                        id: String): Task[Either[ReadError, util.Map[String, AnyRef]]] = {
+    Task(
+      client
+        .get(
+          client
+            .prepareGet()
+            .setIndex(index.value.value)
+            .setId(id)
+            .request()
+        )
+        .actionGet())
+      .map { response =>
+        Option(response.getSourceAsMap) match {
+          case Some(map) =>
+            Right(map)
+          case None =>
+            logger.warn(s"Document [${index.show} ID=$id] _source is not available. Assuming it's empty")
+            Right(Maps.newHashMap[String, AnyRef]())
+        }
       }
-    }
-    .executeOn(Ror.blockingScheduler)
-    .onErrorRecover {
-      case _: ResourceNotFoundException => Left(ContentNotFound)
-      case ex =>
-        logger.error(s"Cannot get source of document ${index.show}/${`type`}/$id", ex)
-        Left(CannotReachContentSource)
-    }
+      .executeOn(Ror.blockingScheduler)
+      .onErrorRecover {
+        case _: ResourceNotFoundException => Left(ContentNotFound)
+        case ex =>
+          logger.error(s"Cannot get source of document [${index.show} ID=$id]", ex)
+          Left(CannotReachContentSource)
+      }
+  }
 
   override def saveContent(index: domain.IndexName,
-                           `type`: String,
                            id: String,
                            content: util.Map[String, String]): Task[Either[WriteError, Unit]] = Task(
     client
       .index(
         client
-          .prepareIndex(index.value.value, `type`, id)
+          .prepareIndex()
+          .setIndex(index.value.value)
+          .setType("settings")
+          .setId(id)
           .setSource(content, XContentType.JSON)
           .setRefreshPolicy(RefreshPolicy.WAIT_UNTIL)
           .request()
@@ -87,14 +95,14 @@ class EsIndexJsonContentProvider(client: NodeClient,
         case status if status / 100 == 2 =>
           Right(())
         case status =>
-          logger.error(s"Cannot write to document ${index.show}/${`type`}/$id. Unexpected response: HTTP $status, response: ${response.toString}")
+          logger.error(s"Cannot write to document [${index.show} ID=$id]. Unexpected response: HTTP $status, response: ${response.toString}")
           Left(CannotWriteToIndex)
       }
     }
     .executeOn(Ror.blockingScheduler)
     .onErrorRecover {
       case ex =>
-        logger.error(s"Cannot write to document ${index.show}/${`type`}/$id", ex)
+        logger.error(s"Cannot write to document [${index.show} ID=$id]", ex)
         Left(CannotWriteToIndex)
     }
 }

@@ -27,7 +27,6 @@ import org.scalatest.Matchers._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -38,7 +37,6 @@ import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, 
 import tech.beshu.ror.configuration.{MalformedSettings, RawRorConfig, RorSsl}
 import tech.beshu.ror.es.IndexJsonContentManager.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSink, IndexJsonContentManager}
-import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{StringOps, getResourceContent, getResourcePath, rorConfigFromResource}
@@ -58,7 +56,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       "index is not available but file config is provided" in {
         val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
         (mockedIndexJsonContentManager.sourceOf _)
-          .expects(IndexName(".readonlyrest".nonempty), "settings", "1")
+          .expects(IndexName(".readonlyrest".nonempty), "1")
           .repeated(5)
           .returns(Task.now(Left(CannotReachContentSource)))
 
@@ -299,7 +297,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       "index config doesn't exist and file config is malformed" in {
         val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
         (mockedIndexJsonContentManager.sourceOf _)
-          .expects(IndexName(".readonlyrest".nonempty), "settings", "1")
+          .expects(IndexName(".readonlyrest".nonempty), "1")
           .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
@@ -318,7 +316,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       "index config doesn't exist and file config cannot be loaded" in {
         val mockedIndexJsonContentManager = mock[IndexJsonContentManager]
         (mockedIndexJsonContentManager.sourceOf _)
-          .expects(IndexName(".readonlyrest".nonempty), "settings", "1")
+          .expects(IndexName(".readonlyrest".nonempty), "1")
           .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
@@ -515,7 +513,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
                                                       resourceFileName: String,
                                                       repeatedCount: Int = 1) = {
     (mockedManager.sourceOf _)
-      .expects(IndexName(".readonlyrest".nonempty), "settings", "1")
+      .expects(IndexName(".readonlyrest".nonempty), "1")
       .repeated(repeatedCount)
       .returns(Task.now(Right(
         Map("settings" -> getResourceContent(resourceFileName).asInstanceOf[Any]).asJava
@@ -527,7 +525,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
                                                   resourceFileName: String,
                                                   saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(()))) = {
     (mockedManager.saveContent _)
-      .expects(IndexName(".readonlyrest".nonempty), "settings", "1", Map("settings" -> getResourceContent(resourceFileName)).asJava)
+      .expects(IndexName(".readonlyrest".nonempty), "1", Map("settings" -> getResourceContent(resourceFileName)).asJava)
       .once()
       .returns(saveResult)
     mockedManager

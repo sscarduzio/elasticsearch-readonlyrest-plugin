@@ -23,7 +23,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ, IndexManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManager, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
@@ -53,7 +53,7 @@ trait BaseAdminApiSuite
       "is going to reload ROR core" when {
         "in-index config is newer than current one" in {
           insertInIndexConfig(
-            new DocumentManagerJ(ror2_1Node.adminClient),
+            new DocumentManager(ror2_1Node.adminClient, ror2_1Node.esVersion),
             "/admin_api/readonlyrest_index.yml"
           )
 
@@ -68,7 +68,7 @@ trait BaseAdminApiSuite
       "return info that config is up to date" when {
         "in-index config is the same as current one" in {
           insertInIndexConfig(
-            new DocumentManagerJ(ror2_1Node.adminClient),
+            new DocumentManager(ror2_1Node.adminClient, ror2_1Node.esVersion),
             "/admin_api/readonlyrest.yml"
           )
 
@@ -93,7 +93,7 @@ trait BaseAdminApiSuite
       "return info that cannot reload config" when {
         "config cannot be reloaded (eg. because LDAP is not achievable)" in {
           insertInIndexConfig(
-            new DocumentManagerJ(ror2_1Node.adminClient),
+            new DocumentManager(ror2_1Node.adminClient, ror2_1Node.esVersion),
             "/admin_api/readonlyrest_with_ldap.yml"
           )
 
@@ -246,17 +246,19 @@ trait BaseAdminApiSuite
     )
   }
 
-  private def insertInIndexConfig(documentManager: DocumentManagerJ, resourceFilePath: String): Unit = {
-    documentManager.insertDocAndWaitForRefresh(
-      s"/$readonlyrestIndexName/settings/1",
-      s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}"""
-    )
+  protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
+    insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
   }
 
-  protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
-    insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
+  private def insertInIndexConfig(documentManager: DocumentManager, resourceFilePath: String): Unit = {
+    documentManager.createDoc(
+      readonlyrestIndexName,
+      "settings",
+      id = 1,
+      ujson.read(s"""{"settings": "${escapeJava(getResourceContent(resourceFilePath))}"}""")
+    )
   }
 }
