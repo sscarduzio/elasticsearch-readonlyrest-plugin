@@ -63,7 +63,7 @@ import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryReque
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearchTemplateResponse, SearchTemplateRequest, SearchTemplateResponse}
 import tech.beshu.ror.proxy.es.exceptions._
-import tech.beshu.ror.proxy.es.rest.{GenericRequest, GenericResponse}
+import tech.beshu.ror.proxy.es.genericaction.{GenericRequest, GenericResponse}
 
 import scala.collection.JavaConverters._
 

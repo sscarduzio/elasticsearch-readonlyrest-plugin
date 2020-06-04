@@ -32,10 +32,10 @@ trait ProxyFilterable {
     }
   }
 
-  protected def execute[REQ <: ActionRequest, RESP <: ActionResponse](action: String,
-                                                                      request: REQ,
-                                                                      listener: ActionListener[RESP])
-                                                                     (handler: REQ => Task[RESP]): Unit = {
+  def execute[REQ <: ActionRequest, RESP <: ActionResponse](action: String,
+                                                            request: REQ,
+                                                            listener: ActionListener[RESP])
+                                                           (handler: REQ => Task[RESP]): Unit = {
     val task = createNewTask(request, action)
     proxyFilter.apply(
       task,
