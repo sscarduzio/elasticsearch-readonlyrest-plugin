@@ -72,6 +72,7 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorIndexNameConfigurati
       case "rw" => Right(KibanaAccess.RW)
       case "ro_strict" => Right(KibanaAccess.ROStrict)
       case "admin" => Right(KibanaAccess.Admin)
+      case "unrestricted" => Right(KibanaAccess.Unrestricted)
       case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
       .map(KibanaAccessRule.Settings(_, kibanaIndexName, rorIndexNameConfiguration.name))
