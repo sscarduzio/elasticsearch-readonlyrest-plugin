@@ -22,16 +22,14 @@ import better.files.File
 import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.factory.consts.RorProperties
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError.FileNotExist
 import tech.beshu.ror.configuration.loader.ConfigLoader
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.providers.{JvmPropertiesProvider, PropertiesProvider}
 
-class FileConfigLoader(esConfigFolderPath: Path,
+class FileConfigLoader(esConfigFile: File,
                        propertiesProvider: PropertiesProvider)
   extends ConfigLoader[FileConfigError] {
 
@@ -39,7 +37,7 @@ class FileConfigLoader(esConfigFolderPath: Path,
     implicit val _ = propertiesProvider
     RorProperties.rorConfigCustomFile match {
       case Some(customRorFile) => customRorFile
-      case None => File(s"${esConfigFolderPath.toAbsolutePath}/readonlyrest.yml")
+      case None => File(s"${esConfigFile.path.toAbsolutePath}/readonlyrest.yml")
     }
   }
 

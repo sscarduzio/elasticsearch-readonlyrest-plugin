@@ -18,19 +18,18 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{MultiSearchRequestBlockContext, SearchRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{Filter, Header}
-import tech.beshu.ror.accesscontrol.headerValues.transientFilterHeaderValue
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFilterUpdater}
+import tech.beshu.ror.accesscontrol.domain.Filter
 
 /**
-  * Document level security (DLS) rule.
-  */
+ * Document level security (DLS) rule.
+ */
 class FilterRule(val settings: Settings)
   extends RegularRule with Logging {
 
@@ -44,9 +43,19 @@ class FilterRule(val settings: Settings)
         case Left(_: Unresolvable) =>
           Rejected()
         case Right(filter) =>
-          Fulfilled(blockContext.withAddedContextHeader(Header(Name.transientFilter, filter)))
+          blockContext match {
+            case bc: SearchRequestBlockContext => Fulfilled(addFilter(bc: SearchRequestBlockContext, filter).asInstanceOf[B])
+            case bc: MultiSearchRequestBlockContext => Fulfilled(addFilter(bc: MultiSearchRequestBlockContext, filter).asInstanceOf[B])
+            case _ => Fulfilled(blockContext)
+
+          }
       }
     }
+  }
+
+  private def addFilter[B <: BlockContext : BlockContextWithFilterUpdater](blockContext: B,
+                                                                           filter: Filter) = {
+    blockContext.withFilter(filter)
   }
 }
 
@@ -54,4 +63,5 @@ object FilterRule {
   val name = Rule.Name("filter")
 
   final case class Settings(filter: RuntimeSingleResolvableVariable[Filter])
+
 }

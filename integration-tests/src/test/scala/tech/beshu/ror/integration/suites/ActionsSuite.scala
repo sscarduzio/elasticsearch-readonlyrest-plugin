@@ -20,7 +20,7 @@ import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
+import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ActionsSuite
@@ -32,17 +32,17 @@ trait ActionsSuite
 
   override def nodeDataInitializer = Some(ActionsSuite.nodeDataInitializer())
 
-  private lazy val actionManager = new ActionManagerJ(basicAuthClient("any", "whatever"))
+  private lazy val actionManager = new DocumentManager(basicAuthClient("any", "whatever"), targetEs.esVersion)
 
   "A actions rule" should {
     "work for delete request" which {
       "forbid deleting from test1_index" in {
-        val result = actionManager.actionDelete("test1_index/test/1")
-        assertEquals(401, result.getResponseCode)
+        val result = actionManager.deleteDoc("test1_index", 1)
+        assertEquals(401, result.responseCode)
       }
       "allow deleting from test2_index" in {
-        val result = actionManager.actionDelete("test2_index/test/1")
-        assertEquals(200, result.getResponseCode)
+        val result = actionManager.deleteDoc("test2_index", 1)
+        assertEquals(200, result.responseCode)
       }
     }
   }
@@ -50,9 +50,9 @@ trait ActionsSuite
 
 object ActionsSuite {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
   }
 }

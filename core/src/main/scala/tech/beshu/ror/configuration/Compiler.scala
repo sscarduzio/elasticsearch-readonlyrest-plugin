@@ -31,13 +31,13 @@ import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{Parsi
 import tech.beshu.ror.configuration.loader.LoadedConfig
 import tech.beshu.ror.configuration.loader.LoadedConfig.FileRecoveredConfig.Cause
 import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig, IndexParsingError}
-import tech.beshu.ror.es.IndexJsonContentManager
+import tech.beshu.ror.es.IndexJsonContentService
 
 import concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
 object Compiler extends Logging {
-  def create(indexContentManager: IndexJsonContentManager): (LoadA ~> Task) = new (LoadA ~> Task) {
+  def create(indexContentManager: IndexJsonContentService): (LoadA ~> Task) = new (LoadA ~> Task) {
     override def apply[A](fa: LoadA[A]): Task[A] = fa match {
       case ConfigLoading.ForceLoadFromFile(path) =>
         logger.info(s"Loading ReadonlyREST settings from file: $path")
@@ -79,7 +79,7 @@ object Compiler extends Logging {
     }
   }
 
-  private def loadFromIndex[A](indexContentManager: IndexJsonContentManager, index: domain.IndexName) = {
+  private def loadFromIndex[A](indexContentManager: IndexJsonContentService, index: domain.IndexName) = {
     val indexConf = RorIndexNameConfiguration(index)
     EitherT(new IndexConfigManager(indexContentManager, indexConf).load().delayExecution(5 second))
   }

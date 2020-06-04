@@ -29,13 +29,15 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
-import tech.beshu.ror.es.providers.{EsAuditSink, EsIndexJsonContentProvider, EsServerBasedRorClusterService}
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
-import tech.beshu.ror.es.utils.AccessControllerHelper._
+import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.es.utils.{IndexLevelActionFilterJavaHelper, ThreadRepo}
+import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.utils.RorInstanceSupplier
 
 import scala.language.postfixOps
 
@@ -65,8 +67,8 @@ class IndexLevelActionFilter(settings: Settings,
   )
 
   private val startingTaskCancellable = doPrivileged {
-    Ror
-      .start(env.configFile, new EsAuditSink(client), new EsIndexJsonContentProvider(client))
+    new Ror()
+      .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
       .runAsync {
         case Right(Right(instance)) =>
           RorInstanceSupplier.update(instance)
@@ -140,7 +142,7 @@ class IndexLevelActionFilter(settings: Settings,
     aclAwareRequestFilter
       .handle(
         engine,
-        EsContext(channel, task, action, request, listener, chain, engine.context.involvesFilter)
+        EsContext(channel, task, action, request, listener, chain, engine.context.involvesFields)
       )
       .runAsync {
         case Right(_) =>

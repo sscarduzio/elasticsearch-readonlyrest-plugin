@@ -49,6 +49,7 @@ import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.rrconfig.{RRConfigAction, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -62,7 +63,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with IngestPlugin
     with NetworkPlugin {
 
-  LogBuildInfoMessage()
+  LogPluginBuildInfoMessage()
 
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
 

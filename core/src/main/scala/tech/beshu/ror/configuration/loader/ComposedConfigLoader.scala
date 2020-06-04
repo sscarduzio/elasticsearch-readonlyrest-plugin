@@ -25,14 +25,14 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.configuration.ConfigLoading._
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.loader.LoadedConfig.{EsFileMalformed, EsIndexConfigurationMalformed}
-import tech.beshu.ror.configuration.{Compiler, EsConfig, RawRorConfig, RorIndexNameConfiguration}
-import tech.beshu.ror.es.IndexJsonContentManager
+import tech.beshu.ror.configuration.{Compiler, EsConfig, IndexConfigManager, RawRorConfig, RorIndexNameConfiguration}
+import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.providers.EnvVarsProvider
 
 import scala.language.implicitConversions
 
 final class ComposedConfigLoader(esConfigPath: java.nio.file.Path,
-                                 indexContentManager: IndexJsonContentManager)
+                                 indexContentManager: IndexJsonContentService)
                                 (implicit envVarsProvider: EnvVarsProvider) {
 
   private type ErrorOr[A] = EitherT[Task, LoadedConfig.Error, A]

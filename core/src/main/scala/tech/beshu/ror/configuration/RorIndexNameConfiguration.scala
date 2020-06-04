@@ -33,6 +33,7 @@ final case class RorIndexNameConfiguration(name: IndexName)
 object RorIndexNameConfiguration extends Logging {
 
   private val defaultIndexName = IndexName.fromUnsafeString(".readonlyrest")
+
   def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {
     load(File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath))
   }

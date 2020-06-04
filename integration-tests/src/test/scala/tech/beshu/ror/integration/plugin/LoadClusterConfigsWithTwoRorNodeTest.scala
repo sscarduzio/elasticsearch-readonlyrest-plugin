@@ -17,13 +17,14 @@
 package tech.beshu.ror.integration.plugin
 
 import java.util
+
 import scala.collection.JavaConverters._
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.MultipleContainers
 import org.scalatest.Matchers.{be, contain, _}
 import org.scalatest.{BeforeAndAfterEach, Entry, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
-import tech.beshu.ror.integration.utils.IndexConfigInitializer
+import tech.beshu.ror.integration.utils.{IndexConfigInitializer, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.ActionManagerJ

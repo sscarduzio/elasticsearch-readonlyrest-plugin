@@ -33,7 +33,7 @@ trait ClosedIndicesSuite
 
   override def nodeDataInitializer = Some(ClosedIndicesSuite.nodeDataInitializer())
 
-  //fixme: we use admin client here so 'CONTAINER ADMIN' block is matched. We need to match 'Getter' block
+  // we use admin client here so 'CONTAINER ADMIN' block is matched. We need to match 'Getter' block
   private lazy val searchManager = new SearchManager(adminClient, additionalHeaders = Map("x-api-key" -> "g"))
 
   "A search request" should {

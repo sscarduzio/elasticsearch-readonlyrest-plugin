@@ -18,4 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.AdminApiWithCustomRorIndexSuite
 
-class AdminApiWithCustomRorIndexProxyTests extends AdminApiWithCustomRorIndexSuite with ProxyTestSupport
+// todo: enable when RORDEV-144 is ready
+//class AdminApiWithCustomRorIndexProxyTests extends AdminApiWithCustomRorIndexSuite with ProxyTestSupport

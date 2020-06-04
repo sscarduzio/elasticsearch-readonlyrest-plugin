@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.LdapAuthenticationLocalAuthorizationSuite
+import tech.beshu.ror.integration.utils.PluginTestSupport
 
 class LdapAuthenticationLocalAuthorizationPluginTests extends LdapAuthenticationLocalAuthorizationSuite with PluginTestSupport

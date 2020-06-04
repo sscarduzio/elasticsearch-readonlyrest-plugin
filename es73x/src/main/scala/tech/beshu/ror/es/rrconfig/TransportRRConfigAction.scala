@@ -28,7 +28,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.configuration.loader.ComposedConfigLoader
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, Timeout}
-import tech.beshu.ror.es.providers.EsIndexJsonContentProvider
+import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 
 import scala.concurrent.duration._
@@ -40,7 +40,7 @@ class TransportRRConfigAction(actionName: String,
                               transportService: TransportService,
                               actionFilters: ActionFilters,
                               env: Environment,
-                              indexContentProvider: EsIndexJsonContentProvider,
+                              indexContentProvider: IndexJsonContentService,
                               nodeExecutor: String,
                               nodeResponseClass: Class[RRConfig],
                               constructorDiscriminator: Unit)
@@ -67,7 +67,7 @@ class TransportRRConfigAction(actionName: String,
            transportService: TransportService,
            actionFilters: ActionFilters,
            env: Environment,
-           indexContentProvider: EsIndexJsonContentProvider,
+           indexContentProvider: IndexJsonContentService,
           ) =
     this(
       RRConfigAction.name,

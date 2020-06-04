@@ -18,12 +18,12 @@ package tech.beshu.ror.accesscontrol
 
 import cats.data.NonEmptyList
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.rules.{FieldsRule, FilterRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.Header
 
 trait AccessControlStaticContext {
-  def involvesFilter: Boolean
+  def involvesFields: Boolean
   def doesRequirePassword: Boolean
   def forbiddenRequestMessage: String
   def obfuscatedHeaders: Set[Header.Name]
@@ -36,17 +36,13 @@ class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
                                        )
   extends AccessControlStaticContext {
 
-  val involvesFilter: Boolean = {
+  val involvesFields: Boolean = {
     blocks
-      .find(_
-        .rules
-        .collect {
-          case _: FilterRule => true
-          case _: FieldsRule => true
-        }
-        .nonEmpty
-      )
-      .isDefined
+      .flatMap(_.rules)
+      .exists {
+        case _: FieldsRule => true
+        case _ => false
+      }
   }
 
   val doesRequirePassword: Boolean = {
@@ -65,7 +61,7 @@ class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
 }
 
 object DisabledAccessControlStaticContext$ extends AccessControlStaticContext {
-  override val involvesFilter: Boolean = false
+  override val involvesFields: Boolean = false
   override val doesRequirePassword: Boolean = false
   override val forbiddenRequestMessage: String = ""
   override val obfuscatedHeaders: Set[Header.Name] = Set.empty

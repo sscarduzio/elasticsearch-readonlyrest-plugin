@@ -110,11 +110,11 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val uriPath: UriPath = UriPath(restRequest.path())
 
-  override lazy val contentLength: Information = Bytes(if (restRequest.content == null) 0 else restRequest.content().length())
+  override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
 
   override lazy val `type`: Type = Type(esContext.actionRequest.getClass.getSimpleName)
 
-  override lazy val content: String = if (restRequest.content == null) "" else restRequest.content().utf8ToString()
+  override lazy val content: String = Option(restRequest.content()).map(_.utf8ToString()).getOrElse("")
 
   override lazy val allIndicesAndAliases: Set[IndexWithAliases] =
     clusterService
@@ -141,5 +141,13 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
     if (indices.nonEmpty) indices else Set(IndexName.wildcard)
+  }
+
+  protected def repositoriesOrWildcard(repositories: Set[RepositoryName]): Set[RepositoryName] = {
+    if (repositories.nonEmpty) repositories else Set(RepositoryName.all)
+  }
+
+  protected def snapshotsOrWildcard(snapshots: Set[SnapshotName]): Set[SnapshotName] = {
+    if (snapshots.nonEmpty) snapshots else Set(SnapshotName.all)
   }
 }

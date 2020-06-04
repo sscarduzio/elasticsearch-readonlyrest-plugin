@@ -48,13 +48,10 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   }
 
   override protected def repositoriesFrom(request: GetSnapshotsRequest): Set[RepositoryName] = Set {
-    NonEmptyString
-      .from(request.repository())
+    request
+      .repository().safeNonEmpty
       .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(RepositoryName.wildcard)
   }
 
   override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.IndexName] =

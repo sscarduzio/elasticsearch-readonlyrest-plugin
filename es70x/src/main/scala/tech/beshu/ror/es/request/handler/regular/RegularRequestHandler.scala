@@ -25,7 +25,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, MultiSearchRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SearchRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
@@ -104,19 +104,32 @@ class RegularRequestHandler(engine: Engine,
   private def onIndexNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     BlockContextUpdater[B] match {
       case GeneralIndexRequestBlockContextUpdater =>
-        handleIndexNotFound(request.asInstanceOf[EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]])
+        handleIndexNotFoundForGeneralIndexRequest(request.asInstanceOf[EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]])
+      case SearchRequestBlockContextUpdater =>
+        handleIndexNotFoundForSearchRequest(request.asInstanceOf[EsRequest[SearchRequestBlockContext] with RequestContext.Aux[SearchRequestBlockContext]])
       case CurrentUserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
            TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater =>
+           MultiIndexRequestBlockContextUpdater |
+           MultiSearchRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
 
-  private def handleIndexNotFound(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]): Unit = {
-    request.modifyWhenIndexNotFound match {
+  private def handleIndexNotFoundForGeneralIndexRequest(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]): Unit = {
+    val modificationResult = request.modifyWhenIndexNotFound
+    handleModificationResult(modificationResult)
+  }
+
+  private def handleIndexNotFoundForSearchRequest(request: EsRequest[SearchRequestBlockContext] with RequestContext.Aux[SearchRequestBlockContext]): Unit = {
+    val modificationResult = request.modifyWhenIndexNotFound
+    handleModificationResult(modificationResult)
+  }
+
+  private def handleModificationResult(modificationResult: ModificationResult): Unit = {
+    modificationResult match {
       case ModificationResult.Modified =>
         proceed()
       case ModificationResult.CannotModify =>

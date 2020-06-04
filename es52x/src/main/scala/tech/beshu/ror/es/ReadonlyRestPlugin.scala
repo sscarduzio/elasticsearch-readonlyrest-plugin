@@ -53,20 +53,26 @@ import tech.beshu.ror.es.rrconfig.{RRConfigAction, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 @Inject
-class ReadonlyRestPlugin(s: Settings, p: Path)
+class ReadonlyRestPlugin(s: Settings, constructorDiscriminator: Unit)
   extends Plugin
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
     with NetworkPlugin {
 
-  LogBuildInfoMessage()
+  @Inject
+  def this(s: Settings) = {
+    this(s, ())
+  }
+
+  LogPluginBuildInfoMessage()
 
   Constants.FIELDS_ALWAYS_ALLOW.addAll(MapperService.getAllMetaFields.toList.asJava)
 

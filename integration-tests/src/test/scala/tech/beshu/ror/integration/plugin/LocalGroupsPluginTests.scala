@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.LocalGroupsSuite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
 class LocalGroupsPluginTests extends LocalGroupsSuite with SingletonPluginTestSupport

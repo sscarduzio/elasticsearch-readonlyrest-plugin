@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.utils
 
 import org.elasticsearch.rest.RestChannel
-import tech.beshu.ror.SecurityPermissionException
+import tech.beshu.ror.exceptions.SecurityPermissionException
 
 object ThreadRepo {
   private val threadLocalChannel = new ThreadLocal[RestChannel]

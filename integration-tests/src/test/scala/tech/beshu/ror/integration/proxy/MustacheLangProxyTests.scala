@@ -17,5 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.MustacheLangSuite
+import tech.beshu.ror.integration.utils.ProxyTestSupport
 
 class MustacheLangProxyTests extends MustacheLangSuite with ProxyTestSupport

@@ -112,10 +112,10 @@ trait FiltersDocLevelSecuritySuite
     response.body.contains("c1") shouldBe false
     response.body.contains("c2") shouldBe false
 
-    response.body.contains(""""title": "d1"""") shouldBe true
-    response.body.contains(""""title": "d2"""") shouldBe false
-    response.body.contains(""""nottitle": "d1"""") shouldBe false
-    response.body.contains(""""nottitle": "d2"""") shouldBe false
+    val sourceJson = response.searchHits.head.obj("_source")
+    sourceJson.obj.size should be (2)
+    sourceJson("title").str should be ("d1")
+    sourceJson("dummy").bool should be (true)
   }
 
   "tesANoCache" in {

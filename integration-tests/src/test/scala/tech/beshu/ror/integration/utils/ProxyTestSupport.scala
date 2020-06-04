@@ -1,0 +1,83 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+package tech.beshu.ror.integration.utils
+
+import better.files._
+import com.dimafeng.testcontainers.ForAllTestContainer
+import com.typesafe.scalalogging.LazyLogging
+import monix.execution.Scheduler.Implicits.global
+import org.scalatest.{BeforeAndAfterAll, Suite}
+import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.utils.containers._
+import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
+import tech.beshu.ror.utils.proxy.RorProxyInstance
+
+import scala.language.postfixOps
+
+trait ProxyTestSupport
+  extends BeforeAndAfterAll
+    with ForAllTestContainer
+    with CallingProxy
+    with EsWithoutRorPluginContainerCreator
+    with LazyLogging {
+  this: Suite with MultipleEsTargets with RorConfigFileNameProvider =>
+
+  private var launchedProxy: RorProxyInstance = _
+
+  override def proxy: RorProxyInstance = launchedProxy
+
+  override def afterStart(): Unit = {
+    super.afterStart()
+    launchedProxy = launchProxy(esTargets.head, 5000)
+  }
+
+  override protected def afterAll(): Unit = {
+    super.afterAll()
+    launchedProxy.close()
+  }
+
+  private def launchProxy(esContainer: EsContainer, proxyPort: Int) = {
+    val rawRorConfig = ContainerUtils.getResourceFile(rorConfigFileName)
+    val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
+      rawRorConfig.toScala,
+      esTargets.head.startedClusterDependencies,
+      RorConfigAdjuster.Mode.Proxy
+    )
+    val instance = RorProxyInstance
+      .start(
+        proxyPort,
+        adjustedRorConfig,
+        esTargets.head.containerIpAddress,
+        esTargets.head.port,
+        esContainer.esClusterSettings.rorContainerSpecification.environmentVariables
+      )
+      .runSyncUnsafe()
+    instance
+  }
+}
+
+trait BasicClusterProxyTestSupport extends ProxyTestSupport {
+  this: Suite with BasicSingleNodeEsClusterSupport =>
+
+  override lazy val container = createLocalClusterContainer(
+    nodeDataInitializer.foldLeft(EsClusterSettings.basic) {
+      case (settings, definedInitializer) => settings.copy(nodeDataInitializer = definedInitializer)
+    }
+  )
+
+  override lazy val targetEs = container.nodes.head
+}

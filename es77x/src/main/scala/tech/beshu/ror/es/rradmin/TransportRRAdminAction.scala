@@ -16,30 +16,20 @@
  */
 package tech.beshu.ror.es.rradmin
 
-import monix.execution.Scheduler
-import monix.execution.schedulers.CanBlock
-import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.support.{ActionFilters, TransportAction}
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.adminapi.AdminRestApi
-import tech.beshu.ror.boot.SchedulerPools
-import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RorIndexNameConfiguration}
-import tech.beshu.ror.es.RorInstanceSupplier
-import tech.beshu.ror.es.providers.EsIndexJsonContentProvider
-import tech.beshu.ror.es.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.providers.JvmPropertiesProvider
+import tech.beshu.ror.es.services.EsIndexJsonContentService
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class TransportRRAdminAction(transportService: TransportService,
                              actionFilters: ActionFilters,
                              env: Environment,
-                             indexContentProvider: EsIndexJsonContentProvider,
+                             indexContentProvider: EsIndexJsonContentService,
                              ignore: Unit) // hack!
   extends TransportAction[RRAdminRequest, RRAdminResponse](
     RRAdminActionType.name, actionFilters, transportService.getTaskManager) {
@@ -48,35 +38,13 @@ class TransportRRAdminAction(transportService: TransportService,
   def this(transportService: TransportService,
            actionFilters: ActionFilters,
            env: Environment,
-           indexContentProvider: EsIndexJsonContentProvider) {
+           indexContentProvider: EsIndexJsonContentService) {
     this(transportService, actionFilters, env, indexContentProvider, ())
   }
 
-  private implicit val adminRestApiScheduler: Scheduler = SchedulerPools.adminRestApiScheduler
-
-  private val rorIndexNameConfig = RorIndexNameConfiguration
-    .load(env.configFile)
-    .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
-    .runSyncUnsafe(10 seconds)(adminRestApiScheduler, CanBlock.permit)
-
-  private val indexConfigManager = new IndexConfigManager(indexContentProvider, rorIndexNameConfig)
-  private val fileConfigLoader = new FileConfigLoader(env.configFile(), JvmPropertiesProvider)
+  private val handler = new RRAdminActionHandler(indexContentProvider, env.configFile())
 
   override def doExecute(task: Task, request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
-    getApi match {
-      case Some(api) => doPrivileged {
-        api
-          .call(request.getAdminRequest)
-          .runAsync { response =>
-            listener.onResponse(RRAdminResponse(response))
-          }
-      }
-      case None =>
-        listener.onResponse(new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable))
-    }
+    handler.handle(request, listener)
   }
-
-  private def getApi =
-    RorInstanceSupplier.get()
-      .map(instance => new AdminRestApi(instance, indexConfigManager, fileConfigLoader))
 }
