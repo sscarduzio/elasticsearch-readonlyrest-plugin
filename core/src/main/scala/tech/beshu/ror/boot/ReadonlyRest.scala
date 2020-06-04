@@ -142,7 +142,7 @@ trait ReadonlyRest extends Logging {
     EitherT.right[StartingFailure] {
       loadedConfig match {
         case LoadedConfig.FileRecoveredConfig(config, _) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
+          RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
         case LoadedConfig.ForcedFileConfig(config) =>
           RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
         case LoadedConfig.IndexConfig(_, config) =>

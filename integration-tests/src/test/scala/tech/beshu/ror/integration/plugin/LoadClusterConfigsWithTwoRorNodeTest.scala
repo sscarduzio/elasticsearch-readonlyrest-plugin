@@ -52,7 +52,29 @@ final class LoadClusterConfigsWithTwoRorNodeTest
   private lazy val rorWithIndexConfig = createLocalClusterContainers(rorNode1, rorNode2)
 
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)
+  private lazy val ror2WithIndexConfigAdminActionManager = new ActionManagerJ(clients.toList(1).adminClient)
 
+  "return exactly same config from another node" in {
+    def loadIndexConfig(adminActionManager: ActionManagerJ) = {
+      val result = adminActionManager.actionGet("_readonlyrest/admin/config/load")
+      result.getResponseCode should be(200)
+      result.getResponseJsonMap.get("clusterName") should be("ROR1")
+      result.getResponseJsonMap.get("failures").asInstanceOf[util.Collection[Nothing]] shouldBe empty
+      val javaResponses = result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String, String]]]
+      val jnode1 = javaResponses.get(0)
+      jnode1 should contain key "nodeId"
+      jnode1 should contain(Entry("type", "IndexConfig"))
+      jnode1 should contain(Entry("indexName", readonlyrestIndexName))
+      jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
+      val jnode2 = javaResponses.get(1)
+      jnode2 should contain key "nodeId"
+      jnode2 should contain(Entry("type", "IndexConfig"))
+      jnode2 should contain(Entry("indexName", readonlyrestIndexName))
+      jnode2.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
+    }
+    loadIndexConfig(ror1WithIndexConfigAdminActionManager)
+    loadIndexConfig(ror2WithIndexConfigAdminActionManager)
+  }
   "return exactly same config two times" in {
     val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
     result.getResponseCode should be(200)
