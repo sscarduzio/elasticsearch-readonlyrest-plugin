@@ -13,6 +13,7 @@ import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.main.MainRequest
 import org.elasticsearch.action.search.{ClearScrollRequest, MultiSearchRequest, SearchRequest}
+import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.xcontent.ToXContent
@@ -38,6 +39,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
     case request: RemoteInfoRequest => esClient.remoteInfo(request)
     case request: IndexRequest => esClient.getIndex(request)
     case request: GetRequest => esClient.get(request)
+    case request: UpdateRequest => esClient.update(request)
     case request: MultiGetRequest => esClient.mGet(request)
     case request: DeleteRequest => esClient.delete(request)
     case request: BulkRequest => esClient.bulk(request)
