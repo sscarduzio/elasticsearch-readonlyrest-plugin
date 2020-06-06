@@ -111,36 +111,39 @@ class GetEsRequestContext(actionRequest: GetRequest,
       case response: GetResponse =>
         filter match {
           case Some(definedFilter) =>
-            val filterQuery = QueryBuilders.wrapperQuery(definedFilter.value.value)
-            val composedQuery = QueryBuilders
-              .boolQuery()
-              .filter(QueryBuilders.constantScoreQuery(filterQuery))
-              .filter(QueryBuilders.idsQuery().addIds(documentId))
+            if (response.isExists) {
+              val filterQuery = QueryBuilders.wrapperQuery(definedFilter.value.value)
+              val composedQuery = QueryBuilders
+                .boolQuery()
+                .filter(QueryBuilders.constantScoreQuery(filterQuery))
+                .filter(QueryBuilders.idsQuery().addIds(documentId))
 
-            val searchResponse = nodeClient.prepareSearch(indexName.value.value)
-              .setQuery(composedQuery)
-              .get()
+              val searchResponse = nodeClient.prepareSearch(indexName.value.value)
+                .setQuery(composedQuery)
+                .get()
 
-            if (searchResponse.getHits.getTotalHits.value == 0L) {
-              val exists = false
-              val source = null
-              val result = new GetResult(
-                response.getIndex,
-                response.getType,
-                response.getId,
-                response.getSeqNo,
-                response.getPrimaryTerm,
-                response.getVersion,
-                exists,
-                source,
-                java.util.Collections.emptyMap(),
-                java.util.Collections.emptyMap())
-              new GetResponse(result)
+              if (searchResponse.getHits.getTotalHits.value == 0L) {
+                val exists = false
+                val source = null
+                val result = new GetResult(
+                  response.getIndex,
+                  response.getType,
+                  response.getId,
+                  response.getSeqNo,
+                  response.getPrimaryTerm,
+                  response.getVersion,
+                  exists,
+                  source,
+                  java.util.Collections.emptyMap(),
+                  java.util.Collections.emptyMap())
+                new GetResponse(result)
+              } else {
+                response
+              }
             } else {
               response
             }
           case None =>
-            logger.debug(s"No filter applied to query.")
             response
         }
       case other => other

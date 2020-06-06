@@ -105,6 +105,14 @@ object BlockContext {
                                                  override val contextHeaders: Set[Header],
                                                  indexPacks: List[Indices])
     extends BlockContext
+
+  final case class MultiGetRequestBlockContext(override val requestContext: RequestContext,
+                                               override val userMetadata: UserMetadata,
+                                               override val responseHeaders: Set[Header],
+                                               override val contextHeaders: Set[Header],
+                                               indexPacks: List[Indices],
+                                               filter: Option[Filter])
+    extends BlockContext
   object MultiIndexRequestBlockContext {
     sealed trait Indices
     object Indices {
@@ -152,6 +160,10 @@ object BlockContext {
       override def indexPacks(blockContext: MultiIndexRequestBlockContext): List[Indices] = blockContext.indexPacks
     }
 
+    implicit val indexPacksFromMultiGetRequestBlockContext = new HasIndexPacks[MultiGetRequestBlockContext] {
+      override def indexPacks(blockContext: MultiGetRequestBlockContext): List[Indices] = blockContext.indexPacks
+    }
+
     implicit class Ops[B <: BlockContext : HasIndexPacks](blockContext: B) {
       def indexPacks = HasIndexPacks[B].indexPacks(blockContext)
     }
@@ -174,6 +186,10 @@ object BlockContext {
 
     implicit val filterFromGetEsRequestBlockContext = new HasFilter[GetEsRequestBlockContext] {
       override def filter(blockContext: GetEsRequestBlockContext): Option[Filter] = blockContext.filter
+    }
+
+    implicit val filterFromMultiGetRequestBlockContext = new HasFilter[MultiGetRequestBlockContext] {
+      override def filter(blockContext: MultiGetRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
     implicit class Ops[B <: BlockContext : HasFilter](blockContext: B) {
@@ -257,6 +273,13 @@ object BlockContext {
               case Indices.NotFound => Nil
             }
             .toSet
+        case bc: MultiGetRequestBlockContext =>
+          bc.indexPacks
+            .flatMap {
+              case Indices.Found(indices) => indices.toList
+              case Indices.NotFound => Nil
+            }
+            .toSet
       }
     }
   }
@@ -274,6 +297,7 @@ object BlockContext {
         case _: SearchRequestBlockContext => Set.empty
         case _: GetEsRequestBlockContext => Set.empty
         case _: MultiSearchRequestBlockContext => Set.empty
+        case _: MultiGetRequestBlockContext => Set.empty
       }
     }
   }
@@ -291,6 +315,7 @@ object BlockContext {
         case _: SearchRequestBlockContext => Set.empty
         case _: GetEsRequestBlockContext => Set.empty
         case _: MultiSearchRequestBlockContext => Set.empty
+        case _: MultiGetRequestBlockContext => Set.empty
       }
     }
   }

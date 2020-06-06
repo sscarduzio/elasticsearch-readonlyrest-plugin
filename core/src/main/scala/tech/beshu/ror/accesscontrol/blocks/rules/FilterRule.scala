@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GetEsRequestBlockContext, MultiSearchRequestBlockContext, SearchRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GetEsRequestBlockContext, MultiGetRequestBlockContext, MultiSearchRequestBlockContext, SearchRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
@@ -47,6 +47,7 @@ class FilterRule(val settings: Settings)
             case bc: SearchRequestBlockContext => Fulfilled(addFilter(bc: SearchRequestBlockContext, filter).asInstanceOf[B])
             case bc: MultiSearchRequestBlockContext => Fulfilled(addFilter(bc: MultiSearchRequestBlockContext, filter).asInstanceOf[B])
             case bc: GetEsRequestBlockContext => Fulfilled(addFilter(bc: GetEsRequestBlockContext, filter).asInstanceOf[B])
+            case bc: MultiGetRequestBlockContext => Fulfilled(addFilter(bc: MultiGetRequestBlockContext, filter).asInstanceOf[B])
             case _ => Fulfilled(blockContext)
 
           }

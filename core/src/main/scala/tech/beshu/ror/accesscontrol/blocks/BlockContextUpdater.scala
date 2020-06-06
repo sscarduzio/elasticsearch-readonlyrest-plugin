@@ -240,6 +240,25 @@ object BlockContextUpdater {
                                         header: Header): GetEsRequestBlockContext =
       blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
   }
+
+  implicit object MultiGetRequestBlockContextUpdater
+    extends BlockContextUpdater[MultiGetRequestBlockContext] {
+
+    override def emptyBlockContext(blockContext: MultiGetRequestBlockContext): MultiGetRequestBlockContext =
+      MultiGetRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty, None)
+
+    override def withUserMetadata(blockContext: MultiGetRequestBlockContext,
+                                  userMetadata: UserMetadata): MultiGetRequestBlockContext =
+      blockContext.copy(userMetadata = userMetadata)
+
+    override def withAddedResponseHeader(blockContext: MultiGetRequestBlockContext,
+                                         header: Header): MultiGetRequestBlockContext =
+      blockContext.copy(responseHeaders = blockContext.responseHeaders + header)
+
+    override def withAddedContextHeader(blockContext: MultiGetRequestBlockContext,
+                                        header: Header): MultiGetRequestBlockContext =
+      blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
+  }
 }
 
 abstract class BlockContextWithIndicesUpdater[B <: BlockContext: HasIndices] {
@@ -298,6 +317,14 @@ object BlockContextWithIndexPacksUpdater {
                        indexPacks: List[Indices]): MultiIndexRequestBlockContext =
       blockContext.copy(indexPacks = indexPacks)
   }
+
+  implicit object MultiGetRequestBlockContextWithIndexPacksUpdater
+    extends BlockContextWithIndexPacksUpdater[MultiGetRequestBlockContext] {
+
+    def withIndexPacks(blockContext: MultiGetRequestBlockContext,
+                       indexPacks: List[Indices]): MultiGetRequestBlockContext =
+      blockContext.copy(indexPacks = indexPacks)
+  }
 }
 
 abstract class BlockContextWithFilterUpdater[B <: BlockContext : HasFilter] {
@@ -329,6 +356,14 @@ object BlockContextWithFilterUpdater {
 
     def withFilter(blockContext: GetEsRequestBlockContext,
                    filter: Filter): GetEsRequestBlockContext =
+      blockContext.copy(filter = Some(filter))
+  }
+
+  implicit object MultiGetRequestBlockContextWithFilterUpdater
+    extends BlockContextWithFilterUpdater[MultiGetRequestBlockContext] {
+
+    def withFilter(blockContext: MultiGetRequestBlockContext,
+                   filter: Filter): MultiGetRequestBlockContext =
       blockContext.copy(filter = Some(filter))
   }
 }

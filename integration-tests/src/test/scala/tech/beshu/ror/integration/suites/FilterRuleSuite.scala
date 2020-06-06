@@ -175,7 +175,7 @@ trait FilterRuleSuite
                   |    },
                   |    {
                   |      "_index":"test1_index",
-                  |      "_id":300
+                  |      "_id":3
                   |    }
                   |  ]
                   |}""".stripMargin
@@ -190,7 +190,7 @@ trait FilterRuleSuite
             result.docs(0)("_source") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
 
             result.docs(1)("found").bool shouldBe false
-            result.docs(1)("_id").str shouldBe "300"
+            result.docs(1)("_id").str shouldBe "3"
           }
         }
         "both requested documents are filtered and inaccessible" in {
@@ -202,11 +202,11 @@ trait FilterRuleSuite
                   |  "docs":[
                   |    {
                   |      "_index":"test1_index",
-                  |      "_id":200
+                  |      "_id":3
                   |    },
                   |    {
                   |      "_index":"test1_index",
-                  |      "_id":300
+                  |      "_id":4
                   |    }
                   |  ]
                   |}""".stripMargin
@@ -217,10 +217,40 @@ trait FilterRuleSuite
             result.responseCode shouldBe 200
 
             result.docs(0)("found").bool shouldBe false
-            result.docs(0)("_id").str shouldBe "200"
+            result.docs(0)("_id").str shouldBe "3"
 
             result.docs(1)("found").bool shouldBe false
-            result.docs(1)("_id").str shouldBe "300"
+            result.docs(1)("_id").str shouldBe "4"
+          }
+        }
+        "both requested documents are nonexistent" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.mGet(
+              ujson.read(
+                """{
+                  |  "docs":[
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":300
+                  |    },
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":400
+                  |    }
+                  |  ]
+                  |}""".stripMargin
+              )
+            )
+
+            println(result.body)
+            result.responseCode shouldBe 200
+
+            result.docs(0)("found").bool shouldBe false
+            result.docs(0)("_id").str shouldBe "300"
+
+            result.docs(1)("found").bool shouldBe false
+            result.docs(1)("_id").str shouldBe "400"
           }
         }
       }
