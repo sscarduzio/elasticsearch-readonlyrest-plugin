@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import java.nio.file.Path
 import java.util
 import java.util.Collections
 import java.util.function.Supplier
@@ -55,8 +54,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-@Inject
-class ReadonlyRestPlugin(s: Settings, p: Path)
+class ReadonlyRestPlugin(s: Settings)
   extends Plugin
     with ScriptPlugin
     with ActionPlugin

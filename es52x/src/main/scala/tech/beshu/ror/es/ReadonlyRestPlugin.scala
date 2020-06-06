@@ -59,8 +59,8 @@ import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-@Inject
-class ReadonlyRestPlugin(s: Settings, constructorDiscriminator: Unit)
+class ReadonlyRestPlugin(s: Settings,
+                         ignore: Unit) // hack!!!
   extends Plugin
     with ScriptPlugin
     with ActionPlugin
