@@ -29,6 +29,8 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.ActionManagerJ
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
+import scala.collection.JavaConverters._
+
 final class LoadClusterConfigsDifferentIndicesTest
   extends WordSpec
     with BeforeAndAfterEach
@@ -64,13 +66,25 @@ final class LoadClusterConfigsDifferentIndicesTest
     result.getResponseCode should be(200)
     result.getResponseJsonMap.get("clusterName") should be("ROR1")
     result.getResponseJsonMap.get("failures").asInstanceOf[util.Collection[Nothing]] should have size 0
-    val javaResponses = result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String, String]]]
-    val jnode1 = javaResponses.get(0)
+    val nodesResult = ror1WithIndexConfigAdminActionManager.actionGet("_nodes")
+
+    def nodeNameById(nodeId: String) = nodesResult.getResponseJsonMap()
+      .get("nodes").asInstanceOf[util.Map[String, Any]]
+      .get(nodeId).asInstanceOf[util.Map[String, Any]]
+      .get("name")
+
+    def findNodeByName(nodeName: String)(node: util.Map[String, String]):Boolean = {
+      val nodeId = node.get("nodeId")
+      nodeNameById(nodeId) == nodeName
+    }
+
+    val javaResponses = result.getResponseJsonMap.get("responses").asInstanceOf[util.List[util.Map[String, String]]].asScala.toList
+    val jnode1 = javaResponses.find(findNodeByName("ror1")).get
     jnode1 should contain key "nodeId"
     jnode1 should contain(Entry("type", "IndexConfig"))
     jnode1 should contain(Entry("indexName", readonlyrestIndexName))
     jnode1.get("config") should be(getResourceContent("/two_nodes_two_config_indices/readonlyrest_index1.yml"))
-    val jnode2 = javaResponses.get(1)
+    val jnode2 = javaResponses.find(findNodeByName("ror2")).get
     jnode2 should contain key "nodeId"
     jnode2 should contain(Entry("type", "IndexConfig"))
     jnode2 should contain(Entry("indexName", otherConfigIndexName))
