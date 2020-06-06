@@ -83,6 +83,14 @@ object BlockContext {
                                              filter: Option[Filter])
     extends BlockContext
 
+  final case class GetEsRequestBlockContext(override val requestContext: RequestContext,
+                                            override val userMetadata: UserMetadata,
+                                            override val responseHeaders: Set[Header],
+                                            override val contextHeaders: Set[Header],
+                                            indices: Set[IndexName],
+                                            filter: Option[Filter])
+    extends BlockContext
+
   final case class MultiSearchRequestBlockContext(override val requestContext: RequestContext,
                                                   override val userMetadata: UserMetadata,
                                                   override val responseHeaders: Set[Header],
@@ -118,6 +126,10 @@ object BlockContext {
 
     implicit val indicesFromGeneralIndexBlockContext = new HasIndices[GeneralIndexRequestBlockContext] {
       override def indices(blockContext: GeneralIndexRequestBlockContext): Set[IndexName] = blockContext.indices
+    }
+
+    implicit val indicesFromGetEsRequestBlockContext = new HasIndices[GetEsRequestBlockContext] {
+      override def indices(blockContext: GetEsRequestBlockContext): Set[IndexName] = blockContext.indices
     }
 
     implicit class Ops[B <: BlockContext : HasIndices](blockContext: B) {
@@ -158,6 +170,10 @@ object BlockContext {
 
     implicit val filterFromSearchRequestBlockContext = new HasFilter[SearchRequestBlockContext] {
       override def filter(blockContext: SearchRequestBlockContext): Option[Filter] = blockContext.filter
+    }
+
+    implicit val filterFromGetEsRequestBlockContext = new HasFilter[GetEsRequestBlockContext] {
+      override def filter(blockContext: GetEsRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
     implicit class Ops[B <: BlockContext : HasFilter](blockContext: B) {
@@ -226,6 +242,7 @@ object BlockContext {
         case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
         case bc: GeneralIndexRequestBlockContext => bc.indices
         case bc: SearchRequestBlockContext => bc.indices
+        case bc: GetEsRequestBlockContext => bc.indices
         case bc: MultiIndexRequestBlockContext =>
           bc.indexPacks
             .flatMap {
@@ -255,6 +272,7 @@ object BlockContext {
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: SearchRequestBlockContext => Set.empty
+        case _: GetEsRequestBlockContext => Set.empty
         case _: MultiSearchRequestBlockContext => Set.empty
       }
     }
@@ -271,6 +289,7 @@ object BlockContext {
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: SearchRequestBlockContext => Set.empty
+        case _: GetEsRequestBlockContext => Set.empty
         case _: MultiSearchRequestBlockContext => Set.empty
       }
     }

@@ -221,6 +221,25 @@ object BlockContextUpdater {
                                         header: Header): MultiSearchRequestBlockContext =
       blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
   }
+
+  implicit object GetEsRequestBlockContextUpdater
+    extends BlockContextUpdater[GetEsRequestBlockContext] {
+
+    override def emptyBlockContext(blockContext: GetEsRequestBlockContext): GetEsRequestBlockContext =
+      GetEsRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+
+    override def withUserMetadata(blockContext: GetEsRequestBlockContext,
+                                  userMetadata: UserMetadata): GetEsRequestBlockContext =
+      blockContext.copy(userMetadata = userMetadata)
+
+    override def withAddedResponseHeader(blockContext: GetEsRequestBlockContext,
+                                         header: Header): GetEsRequestBlockContext =
+      blockContext.copy(responseHeaders = blockContext.responseHeaders + header)
+
+    override def withAddedContextHeader(blockContext: GetEsRequestBlockContext,
+                                        header: Header): GetEsRequestBlockContext =
+      blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
+  }
 }
 
 abstract class BlockContextWithIndicesUpdater[B <: BlockContext: HasIndices] {
@@ -244,6 +263,14 @@ object BlockContextWithIndicesUpdater {
 
     def withIndices(blockContext: GeneralIndexRequestBlockContext,
                     indices: Set[IndexName]): GeneralIndexRequestBlockContext =
+      blockContext.copy(indices = indices)
+  }
+
+  implicit object GetEsRequestBlockContextWithIndicesUpdater
+    extends BlockContextWithIndicesUpdater[GetEsRequestBlockContext] {
+
+    def withIndices(blockContext: GetEsRequestBlockContext,
+                    indices: Set[IndexName]): GetEsRequestBlockContext =
       blockContext.copy(indices = indices)
   }
 }
@@ -294,6 +321,14 @@ object BlockContextWithFilterUpdater {
 
     def withFilter(blockContext: SearchRequestBlockContext,
                    filter: Filter): SearchRequestBlockContext =
+      blockContext.copy(filter = Some(filter))
+  }
+
+  implicit object GetEsRequestBlockContextWithFilterUpdater
+    extends BlockContextWithFilterUpdater[GetEsRequestBlockContext] {
+
+    def withFilter(blockContext: GetEsRequestBlockContext,
+                   filter: Filter): GetEsRequestBlockContext =
       blockContext.copy(filter = Some(filter))
   }
 }
