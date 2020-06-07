@@ -21,9 +21,8 @@ import cats.implicits._
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.index.IndexRequest
+import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.index.get.GetResult
-import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GetEsRequestBlockContext
@@ -31,9 +30,14 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.DocumentApiOps.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
+import tech.beshu.ror.es.request.DocumentApiOps.{GetApi, createSearchRequest}
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+
+import scala.util.{Failure, Success, Try}
 
 class GetEsRequestContext(actionRequest: GetRequest,
                           esContext: EsContext,
@@ -100,53 +104,42 @@ class GetEsRequestContext(actionRequest: GetRequest,
                      filter: Option[Filter]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
-    ModificationResult.UpdateResponse(applyFilterToResponse(filter, indexName, request.id()))
+    ModificationResult.UpdateResponse(filterResponse(filter, indexName, request.id()))
   }
 
-  private def applyFilterToResponse(filter: Option[Filter],
-                                    indexName: IndexName,
-                                    documentId: String)
-                                   (actionResponse: ActionResponse): ActionResponse = {
+  private def filterResponse(filter: Option[Filter],
+                             indexName: IndexName,
+                             documentId: String)
+                            (actionResponse: ActionResponse): ActionResponse = {
     actionResponse match {
       case response: GetResponse =>
         filter match {
-          case Some(definedFilter) =>
-            if (response.isExists) {
-              val filterQuery = QueryBuilders.wrapperQuery(definedFilter.value.value)
-              val composedQuery = QueryBuilders
-                .boolQuery()
-                .filter(QueryBuilders.constantScoreQuery(filterQuery))
-                .filter(QueryBuilders.idsQuery().addIds(documentId))
-
-              val searchResponse = nodeClient.prepareSearch(indexName.value.value)
-                .setQuery(composedQuery)
-                .get()
-
-              if (searchResponse.getHits.getTotalHits.value == 0L) {
-                val exists = false
-                val source = null
-                val result = new GetResult(
-                  response.getIndex,
-                  response.getType,
-                  response.getId,
-                  response.getSeqNo,
-                  response.getPrimaryTerm,
-                  response.getVersion,
-                  exists,
-                  source,
-                  java.util.Collections.emptyMap(),
-                  java.util.Collections.emptyMap())
-                new GetResponse(result)
-              } else {
-                response
-              }
-            } else {
-              response
+          case Some(definedFilter) if response.isExists =>
+            verifyDocumentAccessibility(response, definedFilter) match {
+              case Inaccessible => GetApi.doesNotExistResponse(response)
+              case Accessible => response
             }
-          case None =>
-            response
+          case _ => response
         }
       case other => other
     }
+  }
+
+  private def verifyDocumentAccessibility(originalResponse: GetResponse,
+                                          definedFilter: Filter) = {
+    val searchRequest = createSearchRequest(nodeClient, definedFilter)(originalResponse.asDocumentWithIndex)
+    Try(searchRequest.get()) match {
+      case Failure(exception) =>
+        logger.error(s"Could not verify get request. Blocking document", exception)
+        Inaccessible
+      case Success(searchResponse) =>
+        compareOriginalResponseWithSearchResult(searchResponse, originalResponse)
+    }
+  }
+
+  private def compareOriginalResponseWithSearchResult(searchResponse: SearchResponse,
+                                                      original: GetResponse) = {
+    if (searchResponse.getHits.getTotalHits.value == 0L) Inaccessible
+    else Accessible
   }
 }

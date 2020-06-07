@@ -16,13 +16,12 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.data.NonEmptyList
 import cats.implicits._
 import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
-import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder}
+import org.elasticsearch.action.get.{MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
+import org.elasticsearch.action.search.{MultiSearchRequestBuilder, MultiSearchResponse}
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.index.get.GetResult
-import org.elasticsearch.index.query.QueryBuilders
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiGetRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
@@ -32,12 +31,15 @@ import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.DocumentApiOps
+import tech.beshu.ror.es.request.DocumentApiOps.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.es.request.DocumentApiOps.MultiGetApi._
+import tech.beshu.ror.es.request.DocumentApiOps.{DocumentAccessibility, DocumentWithIndex, GetApi}
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
-import tech.beshu.ror.es.request.context.types.MultiGetEsRequestContext.MSearchVerificationResult.{Allow, Deny}
-import tech.beshu.ror.es.request.context.types.MultiGetEsRequestContext.{DocIndexKey, MSearchVerificationResult}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
 
 class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                esContext: EsContext,
@@ -115,104 +117,90 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private def applyFilterToResponse(filter: Option[Filter])
                                    (actionResponse: ActionResponse): ActionResponse = {
+    (actionResponse, filter) match {
+      case (response: MultiGetResponse, Some(definedFilter)) =>
+        val originalResponses = response.getResponses.toList
 
-    def requiresSearchBasedVerification(item: MultiGetItemResponse) = {
-      !item.isFailed && item.getResponse.isExists
-    }
-
-    def executeMSearch(definedFilter: Filter,
-                       docsRequiringVerification: List[DocIndexKey]) = {
-      docsRequiringVerification
-        .map(createSearchRequestFrom(definedFilter))
-        .foldLeft(nodeClient.prepareMultiSearch())(_ add _)
-        .get()
-    }
-
-    def createSearchRequestFrom(definedFilter: Filter)
-                               (docWithIndex: DocIndexKey): SearchRequestBuilder = {
-      val filterQuery = QueryBuilders.wrapperQuery(definedFilter.value.value)
-      val composedQuery = QueryBuilders
-        .boolQuery()
-        .filter(QueryBuilders.constantScoreQuery(filterQuery))
-        .filter(QueryBuilders.idsQuery().addIds(docWithIndex.docId))
-
-      nodeClient
-        .prepareSearch(docWithIndex.index)
-        .setQuery(composedQuery)
-    }
-
-    def verifyDocIsAllowed(mSearchItem: MultiSearchResponse.Item): MSearchVerificationResult = {
-      if (mSearchItem.isFailure) Deny
-      else if (mSearchItem.getResponse.getHits.getTotalHits.value < 1) Deny
-      else Allow
-    }
-
-    def docIndexKeyFrom(itemResponse: MultiGetItemResponse) =
-      DocIndexKey(itemResponse.getIndex, itemResponse.getId)
-
-    def createNewResponseBasedOn(resultPerDoc: Map[DocIndexKey, MSearchVerificationResult])
-                                (item: MultiGetItemResponse) = {
-      resultPerDoc(docIndexKeyFrom(item)) match {
-        case Allow => item
-        case Deny =>
-          val response = item.getResponse
-          val exists = false
-          val source = null
-          val result = new GetResult(
-            response.getIndex,
-            response.getType,
-            response.getId,
-            response.getSeqNo,
-            response.getPrimaryTerm,
-            response.getVersion,
-            exists,
-            source,
-            java.util.Collections.emptyMap(),
-            java.util.Collections.emptyMap())
-          val newResponse = new GetResponse(result)
-          new MultiGetItemResponse(newResponse, null)
-      }
-    }
-
-    actionResponse match {
-      case response: MultiGetResponse =>
-        filter match {
-          case Some(definedFilter) =>
-            val responses = response.getResponses.toList
-            val (needToVerifyItems, noNeedToVerifyItems) = responses.partition(requiresSearchBasedVerification)
-
-            if (needToVerifyItems.nonEmpty) {
-              val needToVerifyUniqueDocs = needToVerifyItems.map(docIndexKeyFrom).distinct
-              val noNeedToVerifyUniqueDocs = noNeedToVerifyItems.map(docIndexKeyFrom).distinct
-
-              val mSearchResponse = executeMSearch(definedFilter, needToVerifyUniqueDocs)
-              val verificationResults = mSearchResponse.getResponses.map(verifyDocIsAllowed)
-              val resultsForVerifiedDocs = needToVerifyUniqueDocs
-                .zip(verificationResults)
-                .toMap
-
-              val alwaysAllowResults = (noNeedToVerifyUniqueDocs zip List.fill(noNeedToVerifyUniqueDocs.size)(Allow)).toMap
-              val allResults = resultsForVerifiedDocs ++ alwaysAllowResults
-
-              val newResponses = responses
-                .map(createNewResponseBasedOn(allResults))
-              new MultiGetResponse(newResponses.toArray)
-            } else {
-              response
-            }
-          case None => response
+        NonEmptyList.fromList(identifyDocumentsToVerifyUsing(originalResponses)) match {
+          case Some(existingDocumentsToVerify) =>
+            val verificationResult = verifyDocumentsAccessibility(definedFilter, existingDocumentsToVerify)
+            prepareNewResponse(originalResponses, verificationResult)
+          case None =>
+            response
         }
-      case other => other
+      case (other, _) => other
     }
   }
-}
 
-object MultiGetEsRequestContext {
-  final case class DocIndexKey(index: String, docId: String)
+  private def identifyDocumentsToVerifyUsing(itemResponses: List[MultiGetItemResponse]) = {
+    itemResponses
+      .filter(requiresAdditionalVerification)
+      .map(_.asDocumentWithIndex)
+      .distinct
+  }
 
-  sealed trait MSearchVerificationResult
-  object MSearchVerificationResult {
-    case object Allow extends MSearchVerificationResult
-    case object Deny extends MSearchVerificationResult
+  private def requiresAdditionalVerification(item: MultiGetItemResponse) = {
+    !item.isFailed && item.getResponse.isExists
+  }
+
+  private def verifyDocumentsAccessibility(definedFilter: Filter,
+                                           docsToVerify: NonEmptyList[DocumentWithIndex]): Map[DocumentWithIndex, DocumentAccessibility] = {
+    val mSearchRequest = createMSearchRequest(definedFilter, docsToVerify)
+    val results = executeMultiSearch(docsToVerify, mSearchRequest)
+    docsToVerify.toList
+      .zip(results)
+      .toMap
+  }
+
+  private def createMSearchRequest(definedFilter: Filter,
+                                   docsToVerify: NonEmptyList[DocumentWithIndex]) = {
+    docsToVerify
+      .map(DocumentApiOps.createSearchRequest(nodeClient, definedFilter))
+      .foldLeft(nodeClient.prepareMultiSearch())(_ add _)
+  }
+
+  private def executeMultiSearch(docsToVerify: NonEmptyList[DocumentWithIndex],
+                                 mSearchRequest: MultiSearchRequestBuilder) = {
+    Try(mSearchRequest.get()) match {
+      case Failure(exception) =>
+        logger.error(s"Could not verify documents returned by multi get response. Blocking all returned documents", exception)
+        blockAllDocsReturned(docsToVerify)
+      case Success(multiSearchResponse) =>
+        handleMultiSearchResponse(multiSearchResponse)
+    }
+  }
+
+  private def blockAllDocsReturned(docsToVerify: NonEmptyList[DocumentWithIndex]) = {
+    List.fill(docsToVerify.size)(Inaccessible)
+  }
+
+  private def handleMultiSearchResponse(multiSearchResponse: MultiSearchResponse) = {
+    multiSearchResponse
+      .getResponses
+      .map(resolveAccessibilityBasedOnSearchResult)
+      .toList
+  }
+
+  private def resolveAccessibilityBasedOnSearchResult(mSearchItem: MultiSearchResponse.Item): DocumentAccessibility = {
+    if (mSearchItem.isFailure) Inaccessible
+    else if (mSearchItem.getResponse.getHits.getTotalHits.value == 0L) Inaccessible
+    else Accessible
+  }
+
+  private def prepareNewResponse(originalResponses: List[MultiGetItemResponse],
+                                 verificationResults: Map[DocumentWithIndex, DocumentAccessibility]) = {
+    val newResponses = originalResponses
+      .map(adjustResponseUsingResolvedAccessibility(verificationResults))
+    new MultiGetResponse(newResponses.toArray)
+  }
+
+  private def adjustResponseUsingResolvedAccessibility(accessibilityPerDocument: Map[DocumentWithIndex, DocumentAccessibility])
+                                                      (item: MultiGetItemResponse) = {
+    accessibilityPerDocument.get(item.asDocumentWithIndex) match {
+      case None | Some(Accessible) => item
+      case Some(Inaccessible) =>
+        val newResponse = GetApi.doesNotExistResponse(original = item.getResponse)
+        new MultiGetItemResponse(newResponse, null)
+    }
   }
 }
