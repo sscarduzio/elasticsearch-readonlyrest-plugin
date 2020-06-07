@@ -112,7 +112,6 @@ trait FilterRuleSuite
             val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
             val result = documentManager.get("test1_index", 1)
 
-            println(result.body)
             result.responseCode shouldBe 200
             result.responseJson("found").bool shouldBe true
             result.responseJson("_source") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
@@ -123,7 +122,6 @@ trait FilterRuleSuite
             val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
             val result = documentManager.get("test1_index", 4)
 
-            println(result.body)
             result.responseCode shouldBe 404
             result.responseJson("found").bool shouldBe false
           }
@@ -150,7 +148,6 @@ trait FilterRuleSuite
               )
             )
 
-            println(result.body)
             result.responseCode shouldBe 200
 
             result.docs(0)("found").bool shouldBe true
@@ -182,7 +179,6 @@ trait FilterRuleSuite
               )
             )
 
-            println(result.body)
             result.responseCode shouldBe 200
 
             result.docs(0)("found").bool shouldBe true
@@ -213,7 +209,6 @@ trait FilterRuleSuite
               )
             )
 
-            println(result.body)
             result.responseCode shouldBe 200
 
             result.docs(0)("found").bool shouldBe false
@@ -243,7 +238,6 @@ trait FilterRuleSuite
               )
             )
 
-            println(result.body)
             result.responseCode shouldBe 200
 
             result.docs(0)("found").bool shouldBe false
@@ -272,8 +266,6 @@ trait FilterRuleSuite
                   |}""".stripMargin
               )
             )
-
-            println(result.body)
             result.responseCode shouldBe 200
 
             result.docs(0)("found").bool shouldBe false

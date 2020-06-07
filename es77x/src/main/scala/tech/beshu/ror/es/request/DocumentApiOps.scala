@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
 object DocumentApiOps {
 
   final case class DocumentId(value: String) extends AnyVal
-
   final case class DocumentWithIndex(index: IndexName, documentId: DocumentId)
 
   sealed trait DocumentAccessibility
@@ -73,15 +72,12 @@ object DocumentApiOps {
     implicit class GetResponseOps(val response: GetResponse) extends AnyVal {
       def asDocumentWithIndex = createDocumentWithIndex(response.getIndex, response.getId)
     }
-
   }
 
   object MultiGetApi {
-
     implicit class MultiGetItemResponseOps(val item: MultiGetItemResponse) extends AnyVal {
       def asDocumentWithIndex = createDocumentWithIndex(item.getIndex, item.getId)
     }
-
   }
 
   private def createDocumentWithIndex(indexStr: String, docId: String) = {
@@ -97,5 +93,4 @@ object DocumentApiOps {
         throw RequestSeemsToBeInvalid[IndexRequest]("Index name is invalid")
       }
   }
-
 }

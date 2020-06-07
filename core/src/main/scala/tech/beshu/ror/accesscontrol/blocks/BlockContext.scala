@@ -259,28 +259,19 @@ object BlockContext {
         case bc: GeneralIndexRequestBlockContext => bc.indices
         case bc: SearchRequestBlockContext => bc.indices
         case bc: GetEsRequestBlockContext => bc.indices
-        case bc: MultiIndexRequestBlockContext =>
-          bc.indexPacks
-            .flatMap {
-              case Indices.Found(indices) => indices.toList
-              case Indices.NotFound => Nil
-            }
-            .toSet
-        case bc: MultiSearchRequestBlockContext =>
-          bc.indexPacks
-            .flatMap {
-              case Indices.Found(indices) => indices.toList
-              case Indices.NotFound => Nil
-            }
-            .toSet
-        case bc: MultiGetRequestBlockContext =>
-          bc.indexPacks
-            .flatMap {
-              case Indices.Found(indices) => indices.toList
-              case Indices.NotFound => Nil
-            }
-            .toSet
+        case bc: MultiIndexRequestBlockContext => extractIndicesFrom(bc.indexPacks)
+        case bc: MultiSearchRequestBlockContext => extractIndicesFrom(bc.indexPacks)
+        case bc: MultiGetRequestBlockContext => extractIndicesFrom(bc.indexPacks)
       }
+    }
+
+    private def extractIndicesFrom(indexPacks: List[Indices]) = {
+      indexPacks
+        .flatMap {
+          case Indices.Found(indices) => indices.toList
+          case Indices.NotFound => Nil
+        }
+        .toSet
     }
   }
 
