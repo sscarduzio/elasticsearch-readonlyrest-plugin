@@ -193,6 +193,36 @@ trait FilterRuleSuite
             result.docs(1)("_id").str shouldBe "3"
           }
         }
+        "one of requested documents is filtered and inaccessible and second is nonexistent" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.mGet(
+              ujson.read(
+                """{
+                  |  "docs":[
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":100
+                  |    },
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":3
+                  |    }
+                  |  ]
+                  |}""".stripMargin
+              )
+            )
+
+            println(result.body)
+            result.responseCode shouldBe 200
+
+            result.docs(0)("found").bool shouldBe false
+            result.docs(0)("_id").str shouldBe "100"
+
+            result.docs(1)("found").bool shouldBe false
+            result.docs(1)("_id").str shouldBe "3"
+          }
+        }
         "both requested documents are filtered and inaccessible" in {
           retry(times = 3) {
             val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)

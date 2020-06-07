@@ -31,10 +31,9 @@ import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.DocumentApiOps
 import tech.beshu.ror.es.request.DocumentApiOps.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.es.request.DocumentApiOps.MultiGetApi._
-import tech.beshu.ror.es.request.DocumentApiOps.{DocumentAccessibility, DocumentWithIndex, GetApi}
+import tech.beshu.ror.es.request.DocumentApiOps.{DocumentAccessibility, DocumentWithIndex, GetApi, createSearchRequest}
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
@@ -155,7 +154,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   private def createMSearchRequest(definedFilter: Filter,
                                    docsToVerify: NonEmptyList[DocumentWithIndex]) = {
     docsToVerify
-      .map(DocumentApiOps.createSearchRequest(nodeClient, definedFilter))
+      .map(createSearchRequest(nodeClient, definedFilter))
       .foldLeft(nodeClient.prepareMultiSearch())(_ add _)
   }
 
@@ -191,7 +190,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                  verificationResults: Map[DocumentWithIndex, DocumentAccessibility]) = {
     val newResponses = originalResponses
       .map(adjustResponseUsingResolvedAccessibility(verificationResults))
-    new MultiGetResponse(newResponses.toArray)
+      .toArray
+    new MultiGetResponse(newResponses)
   }
 
   private def adjustResponseUsingResolvedAccessibility(accessibilityPerDocument: Map[DocumentWithIndex, DocumentAccessibility])
