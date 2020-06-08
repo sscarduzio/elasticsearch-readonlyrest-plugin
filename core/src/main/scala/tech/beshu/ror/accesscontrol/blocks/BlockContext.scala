@@ -110,7 +110,7 @@ object BlockContext {
   }
   object HasIndices {
 
-    def apply[B <: BlockContext](implicit instance: HasIndices[B]) = instance
+    def apply[B <: BlockContext](implicit instance: HasIndices[B]): HasIndices[B] = instance
 
     implicit val indicesFromSearchBlockContext = new HasIndices[SearchRequestBlockContext] {
       override def indices(blockContext: SearchRequestBlockContext): Set[IndexName] = blockContext.indices
@@ -121,7 +121,7 @@ object BlockContext {
     }
 
     implicit class Ops[B <: BlockContext : HasIndices](blockContext: B) {
-      def indices = HasIndices[B].indices(blockContext)
+      def indices: Set[IndexName] = HasIndices[B].indices(blockContext)
     }
   }
 
@@ -130,7 +130,7 @@ object BlockContext {
   }
   object HasIndexPacks {
 
-    def apply[B <: BlockContext](implicit instance: HasIndexPacks[B]) = instance
+    def apply[B <: BlockContext](implicit instance: HasIndexPacks[B]): HasIndexPacks[B] = instance
 
     implicit val indexPacksFromMultiSearchBlockContext = new HasIndexPacks[MultiSearchRequestBlockContext] {
       override def indexPacks(blockContext: MultiSearchRequestBlockContext): List[Indices] = blockContext.indexPacks
@@ -141,7 +141,7 @@ object BlockContext {
     }
 
     implicit class Ops[B <: BlockContext : HasIndexPacks](blockContext: B) {
-      def indexPacks = HasIndexPacks[B].indexPacks(blockContext)
+      def indexPacks: List[Indices] = HasIndexPacks[B].indexPacks(blockContext)
     }
   }
 
@@ -150,7 +150,7 @@ object BlockContext {
   }
   object HasFilter {
 
-    def apply[B <: BlockContext](implicit instance: HasFilter[B]) = instance
+    def apply[B <: BlockContext](implicit instance: HasFilter[B]): HasFilter[B] = instance
 
     implicit val filterFromMultiSearchBlockContext = new HasFilter[MultiSearchRequestBlockContext] {
       override def filter(blockContext: MultiSearchRequestBlockContext): Option[Filter] = blockContext.filter
@@ -161,7 +161,7 @@ object BlockContext {
     }
 
     implicit class Ops[B <: BlockContext : HasFilter](blockContext: B) {
-      def filter = HasFilter[B].filter(blockContext)
+      def filter: Option[Filter] = HasFilter[B].filter(blockContext)
     }
   }
 
