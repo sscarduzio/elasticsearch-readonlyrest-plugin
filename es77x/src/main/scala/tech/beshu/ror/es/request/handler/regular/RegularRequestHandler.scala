@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.ForbiddenResponse
-import tech.beshu.ror.es.request.context.ModificationResult.{CustomResponse, UpdateResponse}
+import tech.beshu.ror.es.request.context.ModificationResult.{CustomListener, CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, fromMismatchedCause}
 import tech.beshu.ror.utils.LoggerOps._
@@ -94,6 +94,8 @@ class RegularRequestHandler(engine: Engine,
         respond(response)
       case UpdateResponse(updateFunc) =>
         proceed(new UpdateResponseListener(updateFunc))
+      case CustomListener(listener) =>
+        proceed(listener)
     }
   }
 
@@ -106,7 +108,7 @@ class RegularRequestHandler(engine: Engine,
       case GeneralIndexRequestBlockContextUpdater =>
         handleIndexNotFoundForGeneralIndexRequest(request.asInstanceOf[EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]])
       case FilterableRequestBlockContextUpdater =>
-        handleIndexNotFoundForSearchRequest(request.asInstanceOf[EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]])
+        handleIndexNotFoundForFilterableRequest(request.asInstanceOf[EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]])
       case CurrentUserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
@@ -123,7 +125,7 @@ class RegularRequestHandler(engine: Engine,
     handleModificationResult(modificationResult)
   }
 
-  private def handleIndexNotFoundForSearchRequest(request: EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]): Unit = {
+  private def handleIndexNotFoundForFilterableRequest(request: EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
     handleModificationResult(modificationResult)
   }
@@ -140,6 +142,8 @@ class RegularRequestHandler(engine: Engine,
         respond(response)
       case UpdateResponse(updateFunc) =>
         proceed(new UpdateResponseListener(updateFunc))
+      case CustomListener(listener) =>
+        proceed(listener)
     }
   }
 

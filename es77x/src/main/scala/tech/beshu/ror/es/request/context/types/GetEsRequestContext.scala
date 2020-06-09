@@ -18,26 +18,26 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.elasticsearch.action.ActionResponse
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.SearchResponse
+import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.DocumentApiOps.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
 import tech.beshu.ror.es.request.DocumentApiOps.{GetApi, createSearchRequest}
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.types.GetEsRequestContext.FilteringResponseListener
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-
-import scala.util.{Failure, Success, Try}
 
 class GetEsRequestContext(actionRequest: GetRequest,
                           esContext: EsContext,
@@ -104,40 +104,53 @@ class GetEsRequestContext(actionRequest: GetRequest,
                      filter: Option[Filter]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
-    ModificationResult.UpdateResponse(filterResponse(filter))
+    val filteringListener = new FilteringResponseListener(
+      esContext.listener,
+      nodeClient,
+      filter,
+      id
+    )
+    ModificationResult.CustomListener(filteringListener)
   }
+}
 
-  private def filterResponse(filter: Option[Filter])
-                            (actionResponse: ActionResponse): ActionResponse = {
-    actionResponse match {
-      case response: GetResponse =>
-        filter match {
-          case Some(definedFilter) if response.isExists =>
-            verifyDocumentAccessibility(response, definedFilter) match {
-              case Inaccessible => GetApi.doesNotExistResponse(response)
-              case Accessible => response
+object GetEsRequestContext {
+
+  private final class FilteringResponseListener(underlying: ActionListener[ActionResponse],
+                                                nodeClient: NodeClient,
+                                                filter: Option[Filter],
+                                                id: RequestContext.Id)
+    extends ActionListener[ActionResponse] with Logging {
+
+    override def onFailure(e: Exception): Unit = underlying.onFailure(e)
+
+    override def onResponse(actionResponse: ActionResponse): Unit = {
+      (actionResponse, filter) match {
+        case (response: GetResponse, Some(definedFilter)) if response.isExists =>
+          verifyDocumentAccessibility(response, definedFilter)
+        case (other, _) =>
+          underlying.onResponse(other)
+      }
+    }
+
+    private def verifyDocumentAccessibility(originalResponse: GetResponse,
+                                            definedFilter: Filter) = {
+      createSearchRequest(nodeClient, definedFilter)(originalResponse.asDocumentWithIndex)
+        .execute(new ActionListener[SearchResponse] {
+
+          override def onFailure(exception: Exception): Unit = {
+            logger.error(s"[${id.show}] Search request failed, could not verify get request. Blocking document", exception)
+            underlying.onResponse(GetApi.doesNotExistResponse(originalResponse))
+          }
+
+          override def onResponse(searchResponse: SearchResponse): Unit = {
+            if (searchResponse.getHits.getTotalHits.value == 0L) {
+              underlying.onResponse(GetApi.doesNotExistResponse(originalResponse))
+            } else {
+              underlying.onResponse(originalResponse)
             }
-          case _ => response
-        }
-      case other => other
+          }
+        })
     }
-  }
-
-  private def verifyDocumentAccessibility(originalResponse: GetResponse,
-                                          definedFilter: Filter) = {
-    val searchRequest = createSearchRequest(nodeClient, definedFilter)(originalResponse.asDocumentWithIndex)
-    Try(searchRequest.get()) match {
-      case Failure(exception) =>
-        logger.error(s"[${id.show}] Could not verify get request. Blocking document", exception)
-        Inaccessible
-      case Success(searchResponse) =>
-        compareOriginalResponseWithSearchResult(searchResponse, originalResponse)
-    }
-  }
-
-  private def compareOriginalResponseWithSearchResult(searchResponse: SearchResponse,
-                                                      original: GetResponse) = {
-    if (searchResponse.getHits.getTotalHits.value == 0L) Inaccessible
-    else Accessible
   }
 }
