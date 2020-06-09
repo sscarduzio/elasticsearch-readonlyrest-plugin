@@ -12,7 +12,7 @@ import org.elasticsearch.action.fieldcaps.FieldCapabilitiesRequest
 import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.main.MainRequest
-import org.elasticsearch.action.search.{ClearScrollRequest, MultiSearchRequest, SearchRequest}
+import org.elasticsearch.action.search.{ClearScrollRequest, MultiSearchRequest, SearchRequest, SearchScrollRequest}
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.cluster.service.ClusterService
@@ -53,6 +53,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
     case request: ReindexRequest => esClient.reindex(request)
     case request: GenericRequest => esClient.generic(request)
     case request: ClearScrollRequest => esClient.clearScroll(request)
+    case request: SearchScrollRequest => esClient.searchScroll(request)
     case other => Task(throw new IllegalStateException(s"not implemented: ${other.getClass.getSimpleName}")) // todo:
   }
 }

@@ -13,15 +13,31 @@ class GenericRequest(val rest: RestRequest) extends ActionRequest {
 object GenericRequest {
 
   def from(rest: RestRequest): Option[GenericRequest] = {
-    allowedRequestsStartingPaths
-      .find(rest.uri().startsWith)
-      .map(_ => new GenericRequest(rest))
+    isAllowedByInfix(rest) orElse isAllowedByPrefix(rest) map (_ => new GenericRequest(rest))
   }
 
-  private val allowedRequestsStartingPaths = Set(
+  private def isAllowedByPrefix(rest: RestRequest) = {
+    allowedPathPrefixes.find(rest.uri().startsWith)
+  }
+
+  private def isAllowedByInfix(rest: RestRequest) = {
+    allowedPathInfixes.find(rest.uri().contains)
+  }
+
+  private val allowedPathPrefixes = Set(
     "/_xpack",
     "/_security",
     "/_monitoring",
-    "/_nodes"
+    "/_nodes",
+    "/_cluster",
+    "/_cat",
+    "/_transform",
+    "/_license"
+  )
+
+  private val allowedPathInfixes = Set(
+    "/_rollup/",
+    "/_ccr/",
+    "/_ilm/"
   )
 }

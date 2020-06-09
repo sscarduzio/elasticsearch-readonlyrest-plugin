@@ -51,13 +51,13 @@ import org.elasticsearch.action.fieldcaps.{FieldCapabilitiesRequest, FieldCapabi
 import org.elasticsearch.action.get._
 import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.action.main.{MainRequest, MainResponse}
-import org.elasticsearch.action.search.{ClearScrollRequest, ClearScrollResponse, MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
+import org.elasticsearch.action.search._
 import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.action.update.{UpdateRequest, UpdateResponse}
+import org.elasticsearch.client._
 import org.elasticsearch.client.cluster.RemoteInfoRequest
 import org.elasticsearch.client.core.CountRequest
 import org.elasticsearch.client.indices._
-import org.elasticsearch.client._
 import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
 import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryRequest, ReindexRequest, UpdateByQueryRequest}
 import org.elasticsearch.rest.RestRequest
@@ -338,6 +338,10 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def clearScroll(request: ClearScrollRequest): Task[ClearScrollResponse] = {
     executeAsync(client.clearScroll(request, RequestOptions.DEFAULT))
+  }
+
+  def searchScroll(request: SearchScrollRequest): Task[SearchResponse] = {
+    executeAsync(client.scroll(request, RequestOptions.DEFAULT))
   }
 
   private def executeAsync[T](action: => T): Task[T] =
