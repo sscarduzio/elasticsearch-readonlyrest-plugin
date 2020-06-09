@@ -45,7 +45,7 @@ trait MustacheLangSuite
 
   "Search can be done" when {
     "user uses local auth rule" when {
-      "mustache template can be used" excludeES("es51x", "es52x", "es53x") in {
+      "mustache template can be used" in {
         val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
         val query =
           s"""
@@ -64,7 +64,7 @@ trait MustacheLangSuite
     }
   }
   "Template rendering can be done" when {
-    "user uses local auth rule" excludeES("es51x", "es52x", "es53x") in {
+    "user uses local auth rule" in {
       val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
 
       val result = searchManager.renderTemplate(

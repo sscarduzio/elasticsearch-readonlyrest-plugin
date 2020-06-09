@@ -77,21 +77,6 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es55x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es55x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x" ]]; then
-    echo ">>> es53x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es53x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x" ]]; then
-    echo ">>> es52x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es52x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es51x" ]]; then
-    echo ">>> es51x => Running testcontainers.."1
-    ./gradlew integration-tests:test '-PesModule=es51x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
 if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
     echo ">>> won't try to create builds because this is a PR"
     exit 0
