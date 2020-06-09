@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GetEsRequestBlockContext, MultiGetRequestBlockContext, MultiSearchRequestBlockContext, SearchRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
@@ -43,13 +43,16 @@ class FilterRule(val settings: Settings)
         case Left(_: Unresolvable) =>
           Rejected()
         case Right(filter) =>
-          blockContext match {
-            case bc: SearchRequestBlockContext => Fulfilled(addFilter(bc: SearchRequestBlockContext, filter).asInstanceOf[B])
-            case bc: MultiSearchRequestBlockContext => Fulfilled(addFilter(bc: MultiSearchRequestBlockContext, filter).asInstanceOf[B])
-            case bc: GetEsRequestBlockContext => Fulfilled(addFilter(bc: GetEsRequestBlockContext, filter).asInstanceOf[B])
-            case bc: MultiGetRequestBlockContext => Fulfilled(addFilter(bc: MultiGetRequestBlockContext, filter).asInstanceOf[B])
-            case _ => Fulfilled(blockContext)
-
+          BlockContextUpdater[B] match {
+            case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
+            case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+            case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
+            case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
+            case TemplateRequestBlockContextUpdater => Fulfilled(blockContext)
+            case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+            case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+            case FilterableRequestBlockContextUpdater => addFilter(blockContext, filter)
+            case FilterableMultiRequestBlockContextUpdater => addFilter(blockContext, filter)
           }
       }
     }
@@ -57,7 +60,7 @@ class FilterRule(val settings: Settings)
 
   private def addFilter[B <: BlockContext : BlockContextWithFilterUpdater](blockContext: B,
                                                                            filter: Filter) = {
-    blockContext.withFilter(filter)
+    Fulfilled(blockContext.withFilter(filter))
   }
 }
 

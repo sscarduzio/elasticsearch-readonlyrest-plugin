@@ -75,28 +75,21 @@ object BlockContext {
                                                    indices: Set[IndexName])
     extends BlockContext
 
-  final case class SearchRequestBlockContext(override val requestContext: RequestContext,
-                                             override val userMetadata: UserMetadata,
-                                             override val responseHeaders: Set[Header],
-                                             override val contextHeaders: Set[Header],
-                                             indices: Set[IndexName],
-                                             filter: Option[Filter])
+  final case class FilterableRequestBlockContext(override val requestContext: RequestContext,
+                                                 override val userMetadata: UserMetadata,
+                                                 override val responseHeaders: Set[Header],
+                                                 override val contextHeaders: Set[Header],
+                                                 indices: Set[IndexName],
+                                                 filter: Option[Filter])
     extends BlockContext
 
-  final case class GetEsRequestBlockContext(override val requestContext: RequestContext,
-                                            override val userMetadata: UserMetadata,
-                                            override val responseHeaders: Set[Header],
-                                            override val contextHeaders: Set[Header],
-                                            indices: Set[IndexName],
-                                            filter: Option[Filter])
-    extends BlockContext
 
-  final case class MultiSearchRequestBlockContext(override val requestContext: RequestContext,
-                                                  override val userMetadata: UserMetadata,
-                                                  override val responseHeaders: Set[Header],
-                                                  override val contextHeaders: Set[Header],
-                                                  indexPacks: List[Indices],
-                                                  filter: Option[Filter])
+  final case class FilterableMultiRequestBlockContext(override val requestContext: RequestContext,
+                                                      override val userMetadata: UserMetadata,
+                                                      override val responseHeaders: Set[Header],
+                                                      override val contextHeaders: Set[Header],
+                                                      indexPacks: List[Indices],
+                                                      filter: Option[Filter])
     extends BlockContext
 
   final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
@@ -106,13 +99,6 @@ object BlockContext {
                                                  indexPacks: List[Indices])
     extends BlockContext
 
-  final case class MultiGetRequestBlockContext(override val requestContext: RequestContext,
-                                               override val userMetadata: UserMetadata,
-                                               override val responseHeaders: Set[Header],
-                                               override val contextHeaders: Set[Header],
-                                               indexPacks: List[Indices],
-                                               filter: Option[Filter])
-    extends BlockContext
   object MultiIndexRequestBlockContext {
     sealed trait Indices
     object Indices {
@@ -128,16 +114,12 @@ object BlockContext {
 
     def apply[B <: BlockContext](implicit instance: HasIndices[B]) = instance
 
-    implicit val indicesFromSearchBlockContext = new HasIndices[SearchRequestBlockContext] {
-      override def indices(blockContext: SearchRequestBlockContext): Set[IndexName] = blockContext.indices
+    implicit val indicesFromFilterableBlockContext = new HasIndices[FilterableRequestBlockContext] {
+      override def indices(blockContext: FilterableRequestBlockContext): Set[IndexName] = blockContext.indices
     }
 
     implicit val indicesFromGeneralIndexBlockContext = new HasIndices[GeneralIndexRequestBlockContext] {
       override def indices(blockContext: GeneralIndexRequestBlockContext): Set[IndexName] = blockContext.indices
-    }
-
-    implicit val indicesFromGetEsRequestBlockContext = new HasIndices[GetEsRequestBlockContext] {
-      override def indices(blockContext: GetEsRequestBlockContext): Set[IndexName] = blockContext.indices
     }
 
     implicit class Ops[B <: BlockContext : HasIndices](blockContext: B) {
@@ -152,16 +134,12 @@ object BlockContext {
 
     def apply[B <: BlockContext](implicit instance: HasIndexPacks[B]) = instance
 
-    implicit val indexPacksFromMultiSearchBlockContext = new HasIndexPacks[MultiSearchRequestBlockContext] {
-      override def indexPacks(blockContext: MultiSearchRequestBlockContext): List[Indices] = blockContext.indexPacks
+    implicit val indexPacksFromFilterableMultiBlockContext = new HasIndexPacks[FilterableMultiRequestBlockContext] {
+      override def indexPacks(blockContext: FilterableMultiRequestBlockContext): List[Indices] = blockContext.indexPacks
     }
 
     implicit val indexPacksFromMultiIndexBlockContext = new HasIndexPacks[MultiIndexRequestBlockContext] {
       override def indexPacks(blockContext: MultiIndexRequestBlockContext): List[Indices] = blockContext.indexPacks
-    }
-
-    implicit val indexPacksFromMultiGetRequestBlockContext = new HasIndexPacks[MultiGetRequestBlockContext] {
-      override def indexPacks(blockContext: MultiGetRequestBlockContext): List[Indices] = blockContext.indexPacks
     }
 
     implicit class Ops[B <: BlockContext : HasIndexPacks](blockContext: B) {
@@ -176,20 +154,12 @@ object BlockContext {
 
     def apply[B <: BlockContext](implicit instance: HasFilter[B]) = instance
 
-    implicit val filterFromMultiSearchBlockContext = new HasFilter[MultiSearchRequestBlockContext] {
-      override def filter(blockContext: MultiSearchRequestBlockContext): Option[Filter] = blockContext.filter
+    implicit val filterFromFilterableMultiBlockContext = new HasFilter[FilterableMultiRequestBlockContext] {
+      override def filter(blockContext: FilterableMultiRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
-    implicit val filterFromSearchRequestBlockContext = new HasFilter[SearchRequestBlockContext] {
-      override def filter(blockContext: SearchRequestBlockContext): Option[Filter] = blockContext.filter
-    }
-
-    implicit val filterFromGetEsRequestBlockContext = new HasFilter[GetEsRequestBlockContext] {
-      override def filter(blockContext: GetEsRequestBlockContext): Option[Filter] = blockContext.filter
-    }
-
-    implicit val filterFromMultiGetRequestBlockContext = new HasFilter[MultiGetRequestBlockContext] {
-      override def filter(blockContext: MultiGetRequestBlockContext): Option[Filter] = blockContext.filter
+    implicit val filterFromSearchRequestBlockContext = new HasFilter[FilterableRequestBlockContext] {
+      override def filter(blockContext: FilterableRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
     implicit class Ops[B <: BlockContext : HasFilter](blockContext: B) {
@@ -257,11 +227,9 @@ object BlockContext {
         case bc: SnapshotRequestBlockContext => bc.indices
         case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
         case bc: GeneralIndexRequestBlockContext => bc.indices
-        case bc: SearchRequestBlockContext => bc.indices
-        case bc: GetEsRequestBlockContext => bc.indices
+        case bc: FilterableRequestBlockContext => bc.indices
         case bc: MultiIndexRequestBlockContext => extractIndicesFrom(bc.indexPacks)
-        case bc: MultiSearchRequestBlockContext => extractIndicesFrom(bc.indexPacks)
-        case bc: MultiGetRequestBlockContext => extractIndicesFrom(bc.indexPacks)
+        case bc: FilterableMultiRequestBlockContext => extractIndicesFrom(bc.indexPacks)
       }
     }
 
@@ -285,10 +253,8 @@ object BlockContext {
         case _: TemplateRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
-        case _: SearchRequestBlockContext => Set.empty
-        case _: GetEsRequestBlockContext => Set.empty
-        case _: MultiSearchRequestBlockContext => Set.empty
-        case _: MultiGetRequestBlockContext => Set.empty
+        case _: FilterableRequestBlockContext => Set.empty
+        case _: FilterableMultiRequestBlockContext => Set.empty
       }
     }
   }
@@ -303,10 +269,8 @@ object BlockContext {
         case _: TemplateRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
-        case _: SearchRequestBlockContext => Set.empty
-        case _: GetEsRequestBlockContext => Set.empty
-        case _: MultiSearchRequestBlockContext => Set.empty
-        case _: MultiGetRequestBlockContext => Set.empty
+        case _: FilterableRequestBlockContext => Set.empty
+        case _: FilterableMultiRequestBlockContext => Set.empty
       }
     }
   }

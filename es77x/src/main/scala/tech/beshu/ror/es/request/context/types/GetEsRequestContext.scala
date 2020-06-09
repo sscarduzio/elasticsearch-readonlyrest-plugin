@@ -25,7 +25,7 @@ import org.elasticsearch.action.search.SearchResponse
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GetEsRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
@@ -45,10 +45,10 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           clusterService: RorClusterService,
                           nodeClient: NodeClient,
                           override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[GetEsRequestBlockContext](esContext, clusterService)
-    with EsRequest[GetEsRequestBlockContext] {
+  extends BaseEsRequestContext[FilterableRequestBlockContext](esContext, clusterService)
+    with EsRequest[FilterableRequestBlockContext] {
 
-  override val initialBlockContext: GetEsRequestBlockContext = GetEsRequestBlockContext(
+  override val initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
     this,
     UserMetadata.from(this),
     Set.empty,
@@ -80,7 +80,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
     }
   }
 
-  override protected def modifyRequest(blockContext: GetEsRequestBlockContext): ModificationResult = {
+  override protected def modifyRequest(blockContext: FilterableRequestBlockContext): ModificationResult = {
     NonEmptyList.fromList(blockContext.indices.toList) match {
       case Some(indices) =>
         update(actionRequest, indices, blockContext.filter)
@@ -104,12 +104,10 @@ class GetEsRequestContext(actionRequest: GetRequest,
                      filter: Option[Filter]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
-    ModificationResult.UpdateResponse(filterResponse(filter, indexName, request.id()))
+    ModificationResult.UpdateResponse(filterResponse(filter))
   }
 
-  private def filterResponse(filter: Option[Filter],
-                             indexName: IndexName,
-                             documentId: String)
+  private def filterResponse(filter: Option[Filter])
                             (actionResponse: ActionResponse): ActionResponse = {
     actionResponse match {
       case response: GetResponse =>
@@ -130,7 +128,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
     val searchRequest = createSearchRequest(nodeClient, definedFilter)(originalResponse.asDocumentWithIndex)
     Try(searchRequest.get()) match {
       case Failure(exception) =>
-        logger.error(s"Could not verify get request. Blocking document", exception)
+        logger.error(s"[${id.show}] Could not verify get request. Blocking document", exception)
         Inaccessible
       case Success(searchResponse) =>
         compareOriginalResponseWithSearchResult(searchResponse, originalResponse)

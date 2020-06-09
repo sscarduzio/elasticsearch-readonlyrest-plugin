@@ -23,7 +23,7 @@ import org.elasticsearch.action.get.{MultiGetItemResponse, MultiGetRequest, Mult
 import org.elasticsearch.action.search.{MultiSearchRequestBuilder, MultiSearchResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiGetRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
@@ -42,14 +42,13 @@ import scala.util.{Failure, Success, Try}
 
 class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                esContext: EsContext,
-                               aclContext: AccessControlStaticContext,
                                clusterService: RorClusterService,
                                nodeClient: NodeClient,
                                override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[MultiGetRequestBlockContext](esContext, clusterService)
-    with EsRequest[MultiGetRequestBlockContext] {
+  extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
+    with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override lazy val initialBlockContext: MultiGetRequestBlockContext = MultiGetRequestBlockContext(
+  override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
     UserMetadata.from(this),
     Set.empty,
@@ -58,7 +57,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     None
   )
 
-  override protected def modifyRequest(blockContext: MultiGetRequestBlockContext): ModificationResult = {
+  override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
     val modifiedPacksOfIndices = blockContext.indexPacks
     val items = actionRequest.getItems.asScala.toList
     if (items.size == modifiedPacksOfIndices.size) {
@@ -162,7 +161,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                  mSearchRequest: MultiSearchRequestBuilder) = {
     Try(mSearchRequest.get()) match {
       case Failure(exception) =>
-        logger.error(s"Could not verify documents returned by multi get response. Blocking all returned documents", exception)
+        logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", exception)
         blockAllDocsReturned(docsToVerify)
       case Success(multiSearchResponse) =>
         handleMultiSearchResponse(multiSearchResponse)
