@@ -55,7 +55,7 @@ object AccessControl {
         case object ImpersonationNotAllowed extends Cause
       }
     }
-    final case class IndexNotFound[B <: BlockContext]() // todo; remove B
+    final case class IndexNotFound[B <: BlockContext]()
       extends RegularRequestResult[B]
     final case class Failed[B <: BlockContext](ex: Throwable)
       extends RegularRequestResult[B]
