@@ -402,4 +402,13 @@ object domain {
 
   final case class AuthorizationToken(value: NonEmptyString)
 
+  final case class DocumentId(value: String) extends AnyVal
+
+  final case class DocumentWithIndex(index: IndexName, documentId: DocumentId)
+
+  sealed trait DocumentAccessibility
+  object DocumentAccessibility {
+    case object Accessible extends DocumentAccessibility
+    case object Inaccessible extends DocumentAccessibility
+  }
 }

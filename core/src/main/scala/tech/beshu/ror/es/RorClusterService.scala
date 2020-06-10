@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.es
 
+import cats.data.NonEmptyList
 import cats.implicits._
+import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, DocumentWithIndex, Filter, IndexName, Template, TemplateName}
 import tech.beshu.ror.es.RorClusterService._
 
 trait RorClusterService {
@@ -29,6 +31,12 @@ trait RorClusterService {
   def allIndicesAndAliases: Map[IndexName, Set[AliasName]]
 
   def allTemplates: Set[Template]
+
+  def verifyDocumentAccessibility(document: Document,
+                                  filter: Filter): Task[DocumentAccessibility]
+
+  def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
+                                     filter: Filter): Task[DocumentsAccessibilities]
 
   def getTemplate(name: TemplateName): Option[Template] = {
     allTemplates.find(_.name === name)
@@ -44,6 +52,8 @@ trait RorClusterService {
 
 object RorClusterService {
   type IndexOrAlias = IndexName
+  type Document = DocumentWithIndex
+  type DocumentsAccessibilities = Map[DocumentWithIndex, DocumentAccessibility]
   type AliasName = IndexName
   type IndexUuid = String
 }

@@ -154,11 +154,11 @@ class RegularRequestHandler(engine: Engine,
     esContext.listener.onResponse(response)
   }
 
-  private class UpdateResponseListener(update: ActionResponse => ActionResponse) extends ActionListener[ActionResponse] {
+  private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {
     override def onResponse(response: ActionResponse): Unit = {
-      Try(update(response)) match {
-        case Success(updatedResponse) => esContext.listener.onResponse(updatedResponse)
-        case Failure(ex) => onFailure(new Exception(ex))
+      update(response) runAsync {
+        case Right(updatedResponse) => esContext.listener.onResponse(updatedResponse)
+        case Left(ex) => onFailure(new Exception(ex))
       }
     }
 

@@ -120,7 +120,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: SearchRequest =>
         regularRequestHandler.handle(new SearchEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: GetRequest =>
-        regularRequestHandler.handle(new GetEsRequestContext(request, esContext, aclContext, clusterService, nodeClient, threadPool))
+        regularRequestHandler.handle(new GetEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: MultiSearchRequest =>
         regularRequestHandler.handle(new MultiSearchEsRequestContext(request, esContext, clusterService, threadPool))
       case request: MultiTermVectorsRequest =>

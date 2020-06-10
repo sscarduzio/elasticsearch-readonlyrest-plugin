@@ -22,18 +22,9 @@ import org.elasticsearch.action.search.SearchRequestBuilder
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.index.query.QueryBuilders
-import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{DocumentId, DocumentWithIndex, Filter, IndexName}
 
 object DocumentApiOps {
-
-  final case class DocumentId(value: String) extends AnyVal
-  final case class DocumentWithIndex(index: IndexName, documentId: DocumentId)
-
-  sealed trait DocumentAccessibility
-  object DocumentAccessibility {
-    case object Accessible extends DocumentAccessibility
-    case object Inaccessible extends DocumentAccessibility
-  }
 
   def createSearchRequest(nodeClient: NodeClient,
                           filter: Filter)

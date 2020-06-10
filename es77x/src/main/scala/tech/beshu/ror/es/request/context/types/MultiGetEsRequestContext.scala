@@ -28,14 +28,14 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBl
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, DocumentWithIndex, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.DocumentApiOps.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.es.request.DocumentApiOps.MultiGetApi._
-import tech.beshu.ror.es.request.DocumentApiOps.{DocumentAccessibility, DocumentWithIndex, GetApi, createSearchRequest}
+import tech.beshu.ror.es.request.DocumentApiOps.{GetApi, createSearchRequest}
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.request.context.types.MultiGetEsRequestContext.FilteringResponseListener
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}

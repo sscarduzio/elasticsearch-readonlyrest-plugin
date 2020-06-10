@@ -16,19 +16,28 @@
  */
 package tech.beshu.ror.es.services
 
-import cats.implicits._
+import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.ActionListener
+import org.elasticsearch.action.search.{SearchRequestBuilder, SearchResponse}
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
+import org.elasticsearch.index.query.QueryBuilders
+import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
+import scala.concurrent.Promise
 
-class EsServerBasedRorClusterService(clusterService: ClusterService) extends RorClusterService {
+class EsServerBasedRorClusterService(clusterService: ClusterService,
+                                     nodeClient: NodeClient)
+  extends RorClusterService
+    with Logging {
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
@@ -65,5 +74,53 @@ class EsServerBasedRorClusterService(clusterService: ClusterService) extends Ror
         } yield Template(templateName, indexPatterns)
       }
       .toSet
+  }
+
+  override def verifyDocumentAccessibility(document: Document,
+                                           filter: Filter): Task[DocumentAccessibility] = {
+    val listener = new SearchResponseListener
+    createSearchRequest(filter, document)
+      .execute(listener)
+    listener.result
+  }
+
+  override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
+                                              filter: Filter): Task[DocumentsAccessibilities] = {
+    Task.now(Map.empty)
+  }
+
+  private def createSearchRequest(filter: Filter,
+                                  document: Document): SearchRequestBuilder = {
+    val wrappedQueryFromFilter = QueryBuilders.wrapperQuery(filter.value.value)
+    val composedQuery = QueryBuilders
+      .boolQuery()
+      .filter(QueryBuilders.constantScoreQuery(wrappedQueryFromFilter))
+      .filter(QueryBuilders.idsQuery().addIds(document.documentId.value))
+
+    nodeClient
+      .prepareSearch(document.index.value.value)
+      .setQuery(composedQuery)
+  }
+
+  private final class SearchResponseListener extends ActionListener[SearchResponse] {
+
+    private val promise = Promise[DocumentAccessibility]
+
+    override def onResponse(response: SearchResponse): Unit = {
+      val accessibility = extractAccessibilityFrom(response)
+      promise.success(accessibility)
+    }
+
+    override def onFailure(exception: Exception): Unit = {
+      logger.error(s"[id] Could not verify get request. Blocking document", exception)
+      promise.success(Inaccessible)
+    }
+
+    private def extractAccessibilityFrom(searchResponse: SearchResponse) = {
+      if (searchResponse.getHits.getTotalHits.value == 0L) Inaccessible
+      else Accessible
+    }
+
+    def result: Task[DocumentAccessibility] = Task.fromFuture(promise.future)
   }
 }
