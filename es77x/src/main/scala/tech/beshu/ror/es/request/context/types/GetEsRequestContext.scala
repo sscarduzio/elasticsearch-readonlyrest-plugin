@@ -67,7 +67,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
 
   private def handleExistingResponse(response: GetResponse,
                                      definedFilter: Filter) = {
-    clusterService.verifyDocumentAccessibility(response.asDocumentWithIndex, definedFilter)
+    clusterService.verifyDocumentAccessibility(response.asDocumentWithIndex, definedFilter, id)
       .map {
         case Inaccessible => GetApi.doesNotExistResponse(response)
         case Accessible => response

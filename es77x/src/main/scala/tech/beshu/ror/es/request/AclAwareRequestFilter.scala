@@ -62,8 +62,7 @@ import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
-                            threadPool: ThreadPool,
-                            nodeClient: NodeClient)
+                            threadPool: ThreadPool)
                            (implicit scheduler: Scheduler)
   extends Logging {
 
@@ -116,7 +115,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: IndexRequest =>
         regularRequestHandler.handle(new IndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: MultiGetRequest =>
-        regularRequestHandler.handle(new MultiGetEsRequestContext(request, esContext, clusterService, nodeClient, threadPool))
+        regularRequestHandler.handle(new MultiGetEsRequestContext(request, esContext, clusterService, threadPool))
       case request: SearchRequest =>
         regularRequestHandler.handle(new SearchEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: GetRequest =>

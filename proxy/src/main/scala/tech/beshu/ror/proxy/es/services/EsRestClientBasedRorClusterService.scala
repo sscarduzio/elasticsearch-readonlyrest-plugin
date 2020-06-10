@@ -3,13 +3,18 @@
  */
 package tech.beshu.ror.proxy.es.services
 
+import cats.data.NonEmptyList
 import cats.implicits._
+import monix.eval.Task
 import monix.execution.Scheduler
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
 import org.elasticsearch.client.indices.GetIndexRequest
 import org.elasticsearch.cluster.metadata.{AliasMetaData, IndexMetaData, IndexTemplateMetaData}
+import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.Inaccessible
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
@@ -59,6 +64,20 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
 
   override def getTemplate(name: TemplateName): Option[Template] = {
     allTemplates.find(_.name === name)
+  }
+
+  //TODO
+  override def verifyDocumentAccessibility(document: Document,
+                                           filter: domain.Filter,
+                                           id: RequestContext.Id): Task[domain.DocumentAccessibility] = {
+    Task.now(Inaccessible)
+  }
+
+  //TODO
+  override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
+                                              filter: domain.Filter,
+                                              id: RequestContext.Id): Task[DocumentsAccessibilities] = {
+    Task.now(Map.empty)
   }
 
   private def indexWithAliasesFrom(indexNameString: String, aliasMetadata: Set[AliasMetaData]) = {

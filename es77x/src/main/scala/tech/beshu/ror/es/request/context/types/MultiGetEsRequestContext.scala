@@ -18,11 +18,9 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.apache.logging.log4j.scala.Logging
+import monix.eval.Task
+import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
-import org.elasticsearch.action.search.{MultiSearchRequestBuilder, MultiSearchResponse}
-import org.elasticsearch.action.{ActionListener, ActionResponse}
-import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
@@ -30,14 +28,12 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, DocumentWithIndex, Filter, IndexName}
-import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.DocumentApiOps.GetApi
 import tech.beshu.ror.es.request.DocumentApiOps.MultiGetApi._
-import tech.beshu.ror.es.request.DocumentApiOps.{GetApi, createSearchRequest}
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
-import tech.beshu.ror.es.request.context.types.MultiGetEsRequestContext.FilteringResponseListener
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
 import scala.collection.JavaConverters._
@@ -45,7 +41,6 @@ import scala.collection.JavaConverters._
 class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                                esContext: EsContext,
                                clusterService: RorClusterService,
-                               nodeClient: NodeClient,
                                override val threadPool: ThreadPool)
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
@@ -68,13 +63,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
         .foreach { case (item, pack) =>
           updateItem(item, pack)
         }
-      val filteringListener = new FilteringResponseListener(
-        esContext.listener,
-        nodeClient,
-        blockContext.filter,
-        id
-      )
-      ModificationResult.CustomListener(filteringListener)
+      ModificationResult.UpdateResponse(filterResponse(blockContext.filter))
     } else {
       logger.error(
         s"""[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different
@@ -120,123 +109,58 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     val notExistingIndex = originRequestIndices.randomNonexistentIndex()
     item.index(notExistingIndex.value.value)
   }
-}
 
-object MultiGetEsRequestContext {
-
-  private final class FilteringResponseListener(underlying: ActionListener[ActionResponse],
-                                                nodeClient: NodeClient,
-                                                filter: Option[Filter],
-                                                id: RequestContext.Id)
-    extends ActionListener[ActionResponse] with Logging {
-
-    override def onFailure(e: Exception): Unit = underlying.onFailure(e)
-
-    override def onResponse(actionResponse: ActionResponse): Unit = {
-      (actionResponse, filter) match {
-        case (response: MultiGetResponse, Some(definedFilter)) =>
-          applyFilter(response, definedFilter)
-        case (other, _) =>
-          underlying.onResponse(other)
-      }
+  private def filterResponse(filter: Option[Filter])
+                            (actionResponse: ActionResponse): Task[ActionResponse] = {
+    (actionResponse, filter) match {
+      case (response: MultiGetResponse, Some(definedFilter)) =>
+        applyFilter(response, definedFilter)
+      case _ =>
+        Task.now(actionResponse)
     }
+  }
 
-    private def applyFilter(response: MultiGetResponse, definedFilter: Filter) = {
-      val originalResponses = response.getResponses.toList
+  private def applyFilter(response: MultiGetResponse,
+                          definedFilter: Filter): Task[ActionResponse] = {
+    val originalResponses = response.getResponses.toList
 
-      NonEmptyList.fromList(identifyDocumentsToVerifyUsing(originalResponses)) match {
-        case Some(existingDocumentsToVerify) =>
-          val request = createMSearchRequest(definedFilter, existingDocumentsToVerify)
-          executeMultiSearch(existingDocumentsToVerify, request, originalResponses)
-        case None =>
-          underlying.onResponse(response)
-      }
+    NonEmptyList.fromList(identifyDocumentsToVerifyUsing(originalResponses)) match {
+      case Some(existingDocumentsToVerify) =>
+        clusterService.verifyDocumentsAccessibilities(existingDocumentsToVerify, definedFilter, id)
+          .map { results =>
+            prepareNewResponse(originalResponses, results)
+          }
+      case None =>
+        Task.now(response)
     }
+  }
 
-    private def identifyDocumentsToVerifyUsing(itemResponses: List[MultiGetItemResponse]) = {
-      itemResponses
-        .filter(requiresAdditionalVerification)
-        .map(_.asDocumentWithIndex)
-        .distinct
-    }
+  private def identifyDocumentsToVerifyUsing(itemResponses: List[MultiGetItemResponse]) = {
+    itemResponses
+      .filter(requiresAdditionalVerification)
+      .map(_.asDocumentWithIndex)
+      .distinct
+  }
 
-    private def requiresAdditionalVerification(item: MultiGetItemResponse) = {
-      !item.isFailed && item.getResponse.isExists
-    }
+  private def requiresAdditionalVerification(item: MultiGetItemResponse) = {
+    !item.isFailed && item.getResponse.isExists
+  }
 
-    private def createMSearchRequest(definedFilter: Filter,
-                                     docsToVerify: NonEmptyList[DocumentWithIndex]) = {
-      docsToVerify
-        .map(createSearchRequest(nodeClient, definedFilter))
-        .foldLeft(nodeClient.prepareMultiSearch())(_ add _)
-    }
+  private def prepareNewResponse(originalResponses: List[MultiGetItemResponse],
+                                 verificationResults: Map[DocumentWithIndex, DocumentAccessibility]) = {
+    val newResponses = originalResponses
+      .map(adjustResponseUsingResolvedAccessibility(verificationResults))
+      .toArray
+    new MultiGetResponse(newResponses)
+  }
 
-    private def executeMultiSearch(docsToVerify: NonEmptyList[DocumentWithIndex],
-                                   mSearchRequest: MultiSearchRequestBuilder,
-                                   originalResponses: List[MultiGetItemResponse]) = {
-      mSearchRequest
-        .execute(new MultiSearchResponseListener(docsToVerify, originalResponses))
-    }
-
-    private final class MultiSearchResponseListener(docsToVerify: NonEmptyList[DocumentWithIndex],
-                                                    originalResponses: List[MultiGetItemResponse])
-      extends ActionListener[MultiSearchResponse] {
-
-      override def onResponse(response: MultiSearchResponse): Unit = {
-        val results = extractResultsFromSearchResponse(response)
-        handleResults(results, docsToVerify, originalResponses)
-      }
-
-      override def onFailure(e: Exception): Unit = {
-        logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", e)
-        val results = blockAllDocsReturned(docsToVerify)
-        handleResults(results, docsToVerify, originalResponses)
-      }
-
-      private def handleResults(results: List[DocumentAccessibility],
-                                docsToVerify: NonEmptyList[DocumentWithIndex],
-                                originalResponses: List[MultiGetItemResponse]) = {
-        val resultsAssignedToDocuments = docsToVerify.toList
-          .zip(results)
-          .toMap
-        val newResponse = prepareNewResponse(originalResponses, resultsAssignedToDocuments)
-        underlying.onResponse(newResponse)
-      }
-
-      private def blockAllDocsReturned(docsToVerify: NonEmptyList[DocumentWithIndex]) = {
-        List.fill(docsToVerify.size)(Inaccessible)
-      }
-
-      private def extractResultsFromSearchResponse(multiSearchResponse: MultiSearchResponse) = {
-        multiSearchResponse
-          .getResponses
-          .map(resolveAccessibilityBasedOnSearchResult)
-          .toList
-      }
-
-      private def resolveAccessibilityBasedOnSearchResult(mSearchItem: MultiSearchResponse.Item): DocumentAccessibility = {
-        if (mSearchItem.isFailure) Inaccessible
-        else if (mSearchItem.getResponse.getHits.getTotalHits.value == 0L) Inaccessible
-        else Accessible
-      }
-
-      private def prepareNewResponse(originalResponses: List[MultiGetItemResponse],
-                                     verificationResults: Map[DocumentWithIndex, DocumentAccessibility]) = {
-        val newResponses = originalResponses
-          .map(adjustResponseUsingResolvedAccessibility(verificationResults))
-          .toArray
-        new MultiGetResponse(newResponses)
-      }
-
-      private def adjustResponseUsingResolvedAccessibility(accessibilityPerDocument: Map[DocumentWithIndex, DocumentAccessibility])
-                                                          (item: MultiGetItemResponse) = {
-        accessibilityPerDocument.get(item.asDocumentWithIndex) match {
-          case None | Some(Accessible) => item
-          case Some(Inaccessible) =>
-            val newResponse = GetApi.doesNotExistResponse(original = item.getResponse)
-            new MultiGetItemResponse(newResponse, null)
-        }
-      }
+  private def adjustResponseUsingResolvedAccessibility(accessibilityPerDocument: Map[DocumentWithIndex, DocumentAccessibility])
+                                                      (item: MultiGetItemResponse) = {
+    accessibilityPerDocument.get(item.asDocumentWithIndex) match {
+      case None | Some(Accessible) => item
+      case Some(Inaccessible) =>
+        val newResponse = GetApi.doesNotExistResponse(original = item.getResponse)
+        new MultiGetItemResponse(newResponse, null)
     }
   }
 }

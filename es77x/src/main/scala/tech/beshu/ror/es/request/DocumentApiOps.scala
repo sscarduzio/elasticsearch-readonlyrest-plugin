@@ -18,27 +18,10 @@ package tech.beshu.ror.es.request
 
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.action.search.SearchRequestBuilder
-import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.index.get.GetResult
-import org.elasticsearch.index.query.QueryBuilders
-import tech.beshu.ror.accesscontrol.domain.{DocumentId, DocumentWithIndex, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{DocumentId, DocumentWithIndex, IndexName}
 
 object DocumentApiOps {
-
-  def createSearchRequest(nodeClient: NodeClient,
-                          filter: Filter)
-                         (documentWithIndex: DocumentWithIndex): SearchRequestBuilder = {
-    val wrappedQueryFromFilter = QueryBuilders.wrapperQuery(filter.value.value)
-    val composedQuery = QueryBuilders
-      .boolQuery()
-      .filter(QueryBuilders.constantScoreQuery(wrappedQueryFromFilter))
-      .filter(QueryBuilders.idsQuery().addIds(documentWithIndex.documentId.value))
-
-    nodeClient
-      .prepareSearch(documentWithIndex.index.value.value)
-      .setQuery(composedQuery)
-  }
 
   object GetApi {
 
