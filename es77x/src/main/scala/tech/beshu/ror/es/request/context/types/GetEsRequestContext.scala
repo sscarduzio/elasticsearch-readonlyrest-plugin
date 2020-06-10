@@ -26,8 +26,6 @@ import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
@@ -35,9 +33,8 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
 import tech.beshu.ror.es.request.DocumentApiOps.{GetApi, createSearchRequest}
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
-import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.types.GetEsRequestContext.FilteringResponseListener
-import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
 class GetEsRequestContext(actionRequest: GetRequest,
                           esContext: EsContext,
@@ -45,52 +42,9 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           clusterService: RorClusterService,
                           nodeClient: NodeClient,
                           override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[FilterableRequestBlockContext](esContext, clusterService)
-    with EsRequest[FilterableRequestBlockContext] {
+  extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override val initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
-    this,
-    UserMetadata.from(this),
-    Set.empty,
-    Set.empty,
-    {
-      import tech.beshu.ror.accesscontrol.show.logs._
-      val indices = indicesOrWildcard(indicesFrom(actionRequest))
-      logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
-      indices
-    },
-    None
-  )
-
-  override def modifyWhenIndexNotFound: ModificationResult = {
-    if (aclContext.doesRequirePassword) {
-      val nonExistentIndex = initialBlockContext.randomNonexistentIndex()
-      if (nonExistentIndex.hasWildcard) {
-        val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
-          .getOrElse(NonEmptyList.of(nonExistentIndex))
-        update(actionRequest, nonExistingIndices, initialBlockContext.filter)
-        Modified
-      } else {
-        ShouldBeInterrupted
-      }
-    } else {
-      update(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()), initialBlockContext.filter)
-      Modified
-    }
-  }
-
-  override protected def modifyRequest(blockContext: FilterableRequestBlockContext): ModificationResult = {
-    NonEmptyList.fromList(blockContext.indices.toList) match {
-      case Some(indices) =>
-        update(actionRequest, indices, blockContext.filter)
-      case None =>
-        logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
-        ShouldBeInterrupted
-    }
-  }
-
-  private def indicesFrom(request: GetRequest): Set[IndexName] = {
+  override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
     val indexName = IndexName
       .fromString(request.index())
       .getOrElse {
@@ -99,9 +53,9 @@ class GetEsRequestContext(actionRequest: GetRequest,
     Set(indexName)
   }
 
-  private def update(request: GetRequest,
-                     indices: NonEmptyList[IndexName],
-                     filter: Option[Filter]): ModificationResult = {
+  override protected def update(request: GetRequest,
+                                indices: NonEmptyList[IndexName],
+                                filter: Option[Filter]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
     val filteringListener = new FilteringResponseListener(

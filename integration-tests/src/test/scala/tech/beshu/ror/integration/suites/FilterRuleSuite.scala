@@ -117,6 +117,22 @@ trait FilterRuleSuite
             result.responseJson("_source") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
           }
         }
+        "index is inaccessible" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.get("test2_index", 1)
+
+            result.responseCode shouldBe 401
+          }
+        }
+        "index is not found" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(adminClient, targetEs.esVersion)
+            val result = documentManager.get("test3_index", 1)
+
+            result.responseCode shouldBe 404
+          }
+        }
         "document is filtered and inaccessible" in {
           retry(times = 3) {
             val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
@@ -333,5 +349,8 @@ object FilterRuleSuite {
     documentManager.createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
     documentManager.createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}"""))
     documentManager.createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}"""))
+
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}"""))
+    documentManager.createDoc("test2_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
   }
 }
