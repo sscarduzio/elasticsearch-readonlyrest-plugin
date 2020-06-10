@@ -69,7 +69,6 @@ object ModificationResult {
   case object ShouldBeInterrupted extends ModificationResult
   final case class CustomResponse(response: ActionResponse) extends ModificationResult
   final case class UpdateResponse(update: ActionResponse => Task[ActionResponse]) extends ModificationResult
-  final case class CustomListener(listener: ActionListener[ActionResponse]) extends ModificationResult
 }
 
 

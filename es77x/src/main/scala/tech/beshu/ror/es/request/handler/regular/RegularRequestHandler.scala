@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.ForbiddenResponse
-import tech.beshu.ror.es.request.context.ModificationResult.{CustomListener, CustomResponse, UpdateResponse}
+import tech.beshu.ror.es.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, fromMismatchedCause}
 import tech.beshu.ror.utils.LoggerOps._
@@ -94,8 +94,6 @@ class RegularRequestHandler(engine: Engine,
         respond(response)
       case UpdateResponse(updateFunc) =>
         proceed(new UpdateResponseListener(updateFunc))
-      case CustomListener(listener) =>
-        proceed(listener)
     }
   }
 
@@ -142,8 +140,6 @@ class RegularRequestHandler(engine: Engine,
         respond(response)
       case UpdateResponse(updateFunc) =>
         proceed(new UpdateResponseListener(updateFunc))
-      case CustomListener(listener) =>
-        proceed(listener)
     }
   }
 
