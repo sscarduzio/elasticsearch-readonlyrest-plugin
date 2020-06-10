@@ -15,8 +15,7 @@ object ProxyThreadRepo {
     threadLocalChannel.remove()
     result
   }
-
-  // todo: prove, that this works as expected (many, concurrent requests check)
+  
   def clearRestChannel(): Unit = {
     threadLocalChannel.remove()
   }

@@ -17,6 +17,7 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.node.Node
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.boot.StartingFailure
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -42,7 +43,12 @@ trait RorProxy {
   }
 
   private def runServer(config: RorProxy.Config): IO[Either[StartingFailure, CloseHandler]] = {
-    val threadPool: ThreadPool = new ThreadPool(Settings.EMPTY)
+    val threadPool: ThreadPool = new ThreadPool(
+      Settings
+        .builder()
+        .put(Node.NODE_NAME_SETTING.getKey, "proxy")
+        .build()
+    )
     val esClient = createEsHighLevelClient(config)
     val result = for {
       simulator <- EitherT(EsRestServiceSimulator.create(new RestHighLevelClientAdapter(esClient), config.esConfigFile, threadPool))
