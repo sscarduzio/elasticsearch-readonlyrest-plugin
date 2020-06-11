@@ -73,11 +73,15 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
   def processRequest(request: RestRequest): Task[ProcessingResult] = {
     val restChannel = new ProxyRestChannel(request)
     val executionResult = Try {
-      GenericRequest.from(request) match {
-        case Some(genericRequest) =>
-          processDirectly(genericRequest, restChannel)
-        case None =>
-          processThroughEsInternals(request, restChannel)
+      val threadContext = threadPool.getThreadContext
+      threadContext.stashContext.bracket { _ =>
+        ProxyThreadRepo.setRestChannel(restChannel)
+        GenericRequest.from(request) match {
+          case Some(genericRequest) =>
+            processDirectly(genericRequest, restChannel)
+          case None =>
+            processThroughEsInternals(request, restChannel, threadContext)
+        }
       }
     }
     executionResult match {
@@ -99,13 +103,9 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       )
   }
 
-  private def processThroughEsInternals(request: RestRequest, restChannel: ProxyRestChannel): Unit = {
-    val threadContext = threadPool.getThreadContext
-    threadContext.stashContext.bracket { _ =>
-      ProxyThreadRepo.setRestChannel(restChannel)
-      actionModule.getRestController
-        .dispatchRequest(request, restChannel, threadContext)
-    }
+  private def processThroughEsInternals(request: RestRequest, restChannel: ProxyRestChannel, threadContext: ThreadContext): Unit = {
+    actionModule.getRestController
+      .dispatchRequest(request, restChannel, threadContext)
   }
 
   def stop(): Task[Unit] = proxyFilter.stop()
