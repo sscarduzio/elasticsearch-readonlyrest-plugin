@@ -19,6 +19,7 @@ package tech.beshu.ror.configuration
 import cats.Show
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
 import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError, auditIndexConst}
 import tech.beshu.ror.configuration.loader.ConfigLoader
@@ -34,9 +35,11 @@ class IndexConfigManager(indexContentManager: IndexJsonContentService,
   extends ConfigLoader[IndexConfigError]
     with Logging {
 
-  override def load(): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
+  override def load(): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = load(rorIndexNameConfiguration.name)
+
+  def load(indexName: IndexName): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
     indexContentManager
-      .sourceOf(rorIndexNameConfiguration.name, auditIndexConst.id)
+      .sourceOf(indexName, auditIndexConst.id)
       .flatMap {
         case Right(source) =>
           source.asScala

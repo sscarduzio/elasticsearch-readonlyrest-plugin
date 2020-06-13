@@ -40,7 +40,7 @@ public class RRConfig extends BaseNodeResponse {
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
-        out.writeString(NodeConfigSerializer.show(nodeConfig));
+        out.writeString(NodeConfigSerializer.serialize(nodeConfig));
     }
 
     @Override

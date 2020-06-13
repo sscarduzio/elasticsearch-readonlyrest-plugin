@@ -29,7 +29,8 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.SchedulerPools
-import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RorIndexNameConfiguration}
+import tech.beshu.ror.configuration.loader.FileConfigLoader
+import tech.beshu.ror.configuration.{IndexConfigManager, RorIndexNameConfiguration}
 import tech.beshu.ror.utils.RorInstanceSupplier
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.utils.AccessControllerHelper._

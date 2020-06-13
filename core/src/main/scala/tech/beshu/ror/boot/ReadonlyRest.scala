@@ -37,8 +37,7 @@ import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactor
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
-import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
-import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError}
+import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
@@ -84,18 +83,20 @@ trait ReadonlyRest extends Logging {
            (implicit envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       esConfig <- loadEsConfig(esConfigPath)
-      loadedConfig <- loadConfig(esConfigPath, indexContentManager)
+      loadedRorConfig <- loadRorConfig(esConfigPath, indexContentManager)
       indexConfigLoader <- createIndexConfigLoader(indexContentManager, esConfigPath)
-      instance <- startRor(esConfig, loadedConfig, indexConfigLoader, auditSink)
+      instance <- startRor(esConfig, loadedRorConfig, indexConfigLoader, auditSink)
     } yield instance).value
   }
-  private def loadConfig(esConfigPath: Path,
+
+  private def loadRorConfig(esConfigPath: Path,
                          indexContentManager: IndexJsonContentService)
-                        (implicit envVarsProvider: EnvVarsProvider)= {
+                        (implicit envVarsProvider: EnvVarsProvider) = {
     EitherT(new ComposedConfigLoader(esConfigPath, indexContentManager).load())
-      .leftMap(convertError)
+      .leftMap(toStartingFailure)
   }
-  private def convertError(error: LoadedConfig.Error) = {
+
+  private def toStartingFailure(error: LoadedConfig.Error) = {
     error match {
       case LoadedConfig.FileParsingError(message) =>
         StartingFailure(message)
@@ -134,7 +135,7 @@ trait ReadonlyRest extends Logging {
   }
 
   private def startRor(esConfig: EsConfig,
-                        loadedConfig: LoadedConfig[RawRorConfig],
+                       loadedConfig: LoadedConfig[RawRorConfig],
                        indexConfigManager: IndexConfigManager,
                        auditSink: AuditSinkService) = {
     for {

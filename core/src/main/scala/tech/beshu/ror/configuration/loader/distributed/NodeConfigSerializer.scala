@@ -29,7 +29,7 @@ object NodeConfigSerializer {
     Codec.from(codec.map(NodeConfig), codec.contramap(_.loadedConfig))
   }
 
-  def show(nodeConfig: NodeConfig): String = {
+  def serialize(nodeConfig: NodeConfig): String = {
     nodeConfig.asJson.noSpaces
   }
 

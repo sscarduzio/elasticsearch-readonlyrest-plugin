@@ -36,7 +36,8 @@ import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
-import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.configuration.loader.FileConfigLoader
+import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.utils.ScalaOps._
 
 class AdminRestApi(rorInstance: RorInstance,

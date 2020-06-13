@@ -24,11 +24,11 @@ import org.apache.logging.log4j.scala.Logging
 import shapeless.{Inl, Inr}
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.configuration.ConfigLoading.LoadA
-import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.loader.LoadedConfig
+import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
+import tech.beshu.ror.configuration.loader.{FileConfigLoader, LoadedConfig}
 import tech.beshu.ror.configuration.loader.LoadedConfig.FileRecoveredConfig.Cause
 import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig, IndexParsingError}
 import tech.beshu.ror.es.IndexJsonContentService
@@ -80,8 +80,7 @@ object Compiler extends Logging {
   }
 
   private def loadFromIndex[A](indexContentManager: IndexJsonContentService, index: domain.IndexName) = {
-    val indexConf = RorIndexNameConfiguration(index)
-    EitherT(new IndexConfigManager(indexContentManager, indexConf).load().delayExecution(5 second))
+    EitherT(new IndexConfigManager(indexContentManager, RorIndexNameConfiguration(index)).load().delayExecution(5 second))
   }
 
   private def convertRecoveredFileError(cause: FileRecoveredConfig.Cause)

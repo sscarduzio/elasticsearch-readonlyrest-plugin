@@ -21,8 +21,8 @@ import cats.implicits._
 import io.circe.Decoder
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.configuration.{EsConfigFileLoader, MalformedSettings}
+import tech.beshu.ror.providers.EnvVarsProvider
 
 import scala.language.postfixOps
 

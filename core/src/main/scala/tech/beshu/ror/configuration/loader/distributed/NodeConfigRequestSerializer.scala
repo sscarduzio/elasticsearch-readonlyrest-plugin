@@ -21,7 +21,7 @@ object NodeConfigRequestSerializer {
   import io.circe.parser
   import io.circe.syntax._
 
-  def show(nodeConfigRequest: NodeConfigRequest): String = {
+  def serialize(nodeConfigRequest: NodeConfigRequest): String = {
     nodeConfigRequest.asJson.noSpaces
   }
 

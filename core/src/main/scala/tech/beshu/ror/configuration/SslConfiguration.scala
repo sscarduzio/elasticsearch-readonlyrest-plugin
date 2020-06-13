@@ -24,6 +24,7 @@ import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
+import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.providers.EnvVarsProvider
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],

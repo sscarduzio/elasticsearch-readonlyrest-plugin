@@ -24,7 +24,8 @@ import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.SchedulerPools
-import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RorIndexNameConfiguration}
+import tech.beshu.ror.configuration.loader.FileConfigLoader
+import tech.beshu.ror.configuration.{IndexConfigManager, RorIndexNameConfiguration}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.providers.JvmPropertiesProvider
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
