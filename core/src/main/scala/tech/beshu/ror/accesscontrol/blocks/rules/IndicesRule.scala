@@ -87,6 +87,7 @@ class IndicesRule(val settings: Settings)
 
   private def processIndicesPacks[B <: BlockContext: BlockContextWithIndexPacksUpdater: HasIndexPacks](blockContext: B): RuleResult[B] = {
     import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks._
+    def atLeastOneFound(indices: Vector[Indices]) = indices.exists(_.isInstanceOf[Indices.Found])
 
     val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
     val result = blockContext
@@ -111,7 +112,8 @@ class IndicesRule(val settings: Settings)
           result
       }
     result match {
-      case Right(indices) => Fulfilled(blockContext.withIndicesPacks(indices.toList))
+      case Right(indices) if atLeastOneFound(indices) => Fulfilled(blockContext.withIndicesPacks(indices.toList))
+      case Right(_) => Rejected(Cause.IndexNotFound)
       case Left(cause) => Rejected(cause)
     }
   }
