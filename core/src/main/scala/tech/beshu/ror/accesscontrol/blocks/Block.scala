@@ -48,7 +48,7 @@ class Block(val name: Name,
 
   import Lifter._
 
-  def execute[B <: BlockContext :  BlockContextUpdater](requestContext: RequestContext.Aux[B]): BlockResultWithHistory[B] = {
+  def execute[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): BlockResultWithHistory[B] = {
     implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
     val initBlockContext = requestContext.initialBlockContext
     rules

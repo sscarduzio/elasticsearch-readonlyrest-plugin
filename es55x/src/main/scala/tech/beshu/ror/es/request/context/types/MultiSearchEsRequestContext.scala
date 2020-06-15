@@ -68,6 +68,12 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
   }
 
+  override def modifyWhenIndexNotFound: ModificationResult = {
+    val requests = actionRequest.requests().asScala.toList
+    requests.foreach(updateRequestWithNonExistingIndex)
+    Modified
+  }
+
   private def indexPacksFrom(request: MultiSearchRequest): List[Indices] = {
     request
       .requests().asScala

@@ -25,7 +25,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, MultiSearchRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SearchRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
@@ -105,15 +105,16 @@ class RegularRequestHandler(engine: Engine,
     BlockContextUpdater[B] match {
       case GeneralIndexRequestBlockContextUpdater =>
         handleIndexNotFoundForGeneralIndexRequest(request.asInstanceOf[EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]])
-      case FilterableRequestBlockContextUpdater =>
-        handleIndexNotFoundForFilterableRequest(request.asInstanceOf[EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]])
+      case SearchRequestBlockContextUpdater =>
+        handleIndexNotFoundForSearchRequest(request.asInstanceOf[EsRequest[SearchRequestBlockContext] with RequestContext.Aux[SearchRequestBlockContext]])
+      case MultiSearchRequestBlockContextUpdater =>
+        handleIndexNotFoundForMultiSearchRequest(request.asInstanceOf[EsRequest[MultiSearchRequestBlockContext] with RequestContext.Aux[MultiSearchRequestBlockContext]])
       case CurrentUserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
            TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater |
-           FilterableMultiRequestBlockContextUpdater =>
+           MultiIndexRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
@@ -123,7 +124,12 @@ class RegularRequestHandler(engine: Engine,
     handleModificationResult(modificationResult)
   }
 
-  private def handleIndexNotFoundForFilterableRequest(request: EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]): Unit = {
+  private def handleIndexNotFoundForSearchRequest(request: EsRequest[SearchRequestBlockContext] with RequestContext.Aux[SearchRequestBlockContext]): Unit = {
+    val modificationResult = request.modifyWhenIndexNotFound
+    handleModificationResult(modificationResult)
+  }
+
+  private def handleIndexNotFoundForMultiSearchRequest(request: EsRequest[MultiSearchRequestBlockContext] with RequestContext.Aux[MultiSearchRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
     handleModificationResult(modificationResult)
   }
@@ -150,11 +156,11 @@ class RegularRequestHandler(engine: Engine,
     esContext.listener.onResponse(response)
   }
 
-  private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {
+  private class UpdateResponseListener(update: ActionResponse => ActionResponse) extends ActionListener[ActionResponse] {
     override def onResponse(response: ActionResponse): Unit = {
-      update(response) runAsync {
-        case Right(updatedResponse) => esContext.listener.onResponse(updatedResponse)
-        case Left(ex) => onFailure(new Exception(ex))
+      Try(update(response)) match {
+        case Success(updatedResponse) => esContext.listener.onResponse(updatedResponse)
+        case Failure(ex) => onFailure(new Exception(ex))
       }
     }
 

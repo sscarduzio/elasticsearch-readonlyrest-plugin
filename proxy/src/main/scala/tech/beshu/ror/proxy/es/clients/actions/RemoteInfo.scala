@@ -13,6 +13,7 @@ import org.elasticsearch.transport.SniffConnectionStrategy.{SniffModeInfo => Tra
 import org.elasticsearch.transport.{RemoteConnectionInfo => TransportRemoteConnectionInfo}
 
 import scala.collection.JavaConverters._
+import scala.concurrent.duration.Duration
 
 object RemoteInfo {
 
@@ -28,7 +29,7 @@ object RemoteInfo {
     new TransportRemoteConnectionInfo(
       remoteConnectionInfo.getClusterAlias,
       toTransportModeInfo(remoteConnectionInfo.getModeInfo),
-      TimeValue.timeValueMillis(remoteConnectionInfo.getInitialConnectionTimeoutString.toInt),
+      TimeValue.timeValueMillis(Duration(remoteConnectionInfo.getInitialConnectionTimeoutString).toMillis),
       remoteConnectionInfo.isSkipUnavailable
     )
   }

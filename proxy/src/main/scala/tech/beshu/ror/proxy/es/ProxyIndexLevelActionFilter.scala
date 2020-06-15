@@ -19,7 +19,7 @@ import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetRes
 import tech.beshu.ror.exceptions.SecurityPermissionException
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter.ThreadRepoChannelRenewalOnChainProceed
-import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
+import tech.beshu.ror.proxy.es.clients.{ProxyFilterable, RestHighLevelClientAdapter}
 import tech.beshu.ror.proxy.es.services.{EsRestClientBasedRorClusterService, ProxyAuditSinkService, ProxyIndexJsonContentService}
 import tech.beshu.ror.utils.RorInstanceSupplier
 
@@ -28,8 +28,11 @@ import scala.util.{Failure, Success, Try}
 class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                                           esClient: RestHighLevelClientAdapter,
                                           threadPool: ThreadPool)
-                                         (implicit scheduler: Scheduler)
-  extends ActionFilter {
+                                         (implicit override val scheduler: Scheduler)
+  extends ActionFilter
+    with ProxyFilterable {
+
+  override val proxyFilter: ProxyIndexLevelActionFilter = this
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
     new EsRestClientBasedRorClusterService(esClient), threadPool
@@ -87,7 +90,6 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
         case Left(ex) => channel.sendFailureResponse(ex)
       }
   }
-
 }
 
 object ProxyIndexLevelActionFilter {

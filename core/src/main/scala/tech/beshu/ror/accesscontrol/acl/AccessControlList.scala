@@ -28,14 +28,12 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Group
-import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class AccessControlList(val blocks: NonEmptyList[Block])
-                       (implicit val loggingContext: LoggingContext)
   extends AccessControl {
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](context: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
@@ -98,8 +96,10 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     val allGroupsWithRelatedResults =
       matchedResults
         .toList
-        .flatMap { case m@Matched(_, blockContext) =>
-          blockContext.userMetadata.availableGroups.map((_, m)).toList
+        .foldLeft(List.empty[(Group, Matched[CurrentUserMetadataRequestBlockContext])]) {
+          case (acc, m@Matched(_, blockContext)) =>
+            acc ::: blockContext.userMetadata.availableGroups.toList.map((_, m))
+          case (acc, _) => acc
         }
     preferredGroup match {
       case Some(pg) =>
