@@ -31,6 +31,7 @@ object GenericRequest {
     "/_ilm/",
     "/_license",
     "/_monitoring",
+    "/_ml/",
     "/_nodes",
     "/_rollup/",
     "/_security",
