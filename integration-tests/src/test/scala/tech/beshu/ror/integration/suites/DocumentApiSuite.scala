@@ -101,6 +101,26 @@ trait DocumentApiSuite
           result.docs(1)("error")("type").str should be("index_not_found_exception")
         }
       }
+      "don't pass through the request if no indices are matched" in {
+        val result = dev1documentManager.mGet(
+          ujson.read(
+            """{
+              |  "docs":[
+              |    {
+              |      "_index":"index2_fst",
+              |      "_id":1
+              |    },
+              |    {
+              |      "_index":"index3_fst",
+              |      "_id":1
+              |    }
+              |  ]
+              |}""".stripMargin
+          )
+        )
+
+        result.responseCode should be(401)
+      }
     }
     "_bulk API is used" should {
       "allow to create all requests indices" when {

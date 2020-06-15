@@ -84,6 +84,7 @@ object EsContainer extends StrictLogging {
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)
     esContainer.container.addExposedPort(9200)
     esContainer.container.addExposedPort(9300)
+    esContainer.container.addExposedPort(8000)
     esContainer.container.setWaitStrategy(
       new ElasticsearchNodeWaitingStrategy(config.esVersion, esContainer.name, Coeval(esContainer.adminClient), initializer)
         .withStartupTimeout(3 minutes)

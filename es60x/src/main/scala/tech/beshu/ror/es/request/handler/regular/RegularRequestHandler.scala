@@ -107,13 +107,14 @@ class RegularRequestHandler(engine: Engine,
         handleIndexNotFoundForGeneralIndexRequest(request.asInstanceOf[EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]])
       case SearchRequestBlockContextUpdater =>
         handleIndexNotFoundForSearchRequest(request.asInstanceOf[EsRequest[SearchRequestBlockContext] with RequestContext.Aux[SearchRequestBlockContext]])
+      case MultiSearchRequestBlockContextUpdater =>
+        handleIndexNotFoundForMultiSearchRequest(request.asInstanceOf[EsRequest[MultiSearchRequestBlockContext] with RequestContext.Aux[MultiSearchRequestBlockContext]])
       case CurrentUserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
            SnapshotRequestBlockContextUpdater |
            TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater |
-           MultiSearchRequestBlockContextUpdater =>
+           MultiIndexRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
@@ -124,6 +125,11 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def handleIndexNotFoundForSearchRequest(request: EsRequest[SearchRequestBlockContext] with RequestContext.Aux[SearchRequestBlockContext]): Unit = {
+    val modificationResult = request.modifyWhenIndexNotFound
+    handleModificationResult(modificationResult)
+  }
+
+  private def handleIndexNotFoundForMultiSearchRequest(request: EsRequest[MultiSearchRequestBlockContext] with RequestContext.Aux[MultiSearchRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
     handleModificationResult(modificationResult)
   }
