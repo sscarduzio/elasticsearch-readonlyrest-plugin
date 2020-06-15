@@ -158,7 +158,7 @@ object BlockContext {
       override def filter(blockContext: FilterableMultiRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
-    implicit val filterFromSearchRequestBlockContext = new HasFilter[FilterableRequestBlockContext] {
+    implicit val filterFromFilterableRequestBlockContext = new HasFilter[FilterableRequestBlockContext] {
       override def filter(blockContext: FilterableRequestBlockContext): Option[Filter] = blockContext.filter
     }
 
