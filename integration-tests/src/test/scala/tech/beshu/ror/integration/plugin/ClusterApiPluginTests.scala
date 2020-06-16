@@ -14,9 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.ClusterStateSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.integration.suites.ClusterApiSuite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-class ClusterStateProxyTests extends ClusterStateSuite with BasicClusterProxyTestSupport
+class ClusterApiPluginTests extends ClusterApiSuite with SingletonPluginTestSupport

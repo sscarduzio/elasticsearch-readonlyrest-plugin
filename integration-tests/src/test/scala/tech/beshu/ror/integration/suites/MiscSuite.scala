@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait MiscSuite
@@ -41,7 +41,7 @@ trait MiscSuite
     )
   )
 
-  private lazy val userClusterStateManager = new ClusterManager(
+  private lazy val userClusterStateManager = new CatManager(
     client = basicAuthClient("user1", "pass"),
     additionalHeaders = Map("X-Forwarded-For" -> "es-pub7"),
     esVersion = targetEs.esVersion)

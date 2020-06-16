@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.ClusterManager
+import tech.beshu.ror.utils.elasticsearch.CatManager
 
 import scala.collection.mutable
 
@@ -41,7 +41,7 @@ trait RorKbnAuthSuite
   override implicit val rorConfigFileName = "/ror_kbn_auth/readonlyrest.yml"
 
   "rejectRequestWithoutAuthorizationHeader" in {
-    val clusterStateManager = new ClusterManager(noBasicAuthClient, esVersion = targetEs.esVersion)
+    val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = targetEs.esVersion)
 
     val response = clusterStateManager.catIndices()
     response.responseCode should be(401)
@@ -49,7 +49,7 @@ trait RorKbnAuthSuite
 
   "rejectTokenWithWrongKey" in {
     val token = makeToken(wrongKey)
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
@@ -59,7 +59,7 @@ trait RorKbnAuthSuite
 
   "rejectTokenWithoutUserClaim" in {
     val token = makeToken(validKey)
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
@@ -70,7 +70,7 @@ trait RorKbnAuthSuite
   "acceptValidTokenWithUserClaim" in {
     // Groups claim is mandatory, even if empty
     val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user", groupsClaim, ""))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
@@ -80,7 +80,7 @@ trait RorKbnAuthSuite
 
   "rejectExpiredToken" in {
     val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user", "exp", 0))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
@@ -90,7 +90,7 @@ trait RorKbnAuthSuite
 
   "rejectTokenWithoutRolesClaim" in {
     val token = makeToken(validKeyRole)
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
@@ -100,7 +100,7 @@ trait RorKbnAuthSuite
 
   "rejectTokenWithWrongRolesClaim" in {
     val token = makeTokenWithClaims(validKeyRole, makeClaimMap(groupsClaim, "wrong_group"))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
@@ -110,7 +110,7 @@ trait RorKbnAuthSuite
 
   "acceptValidTokenWithRolesClaim" in {
     val token = makeTokenWithClaims(validKeyRole, makeClaimMap(groupsClaim, "viewer_group"))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
