@@ -40,7 +40,6 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
 
   override protected def update(request: ClusterStateRequest,
                                 indices: NonEmptyList[domain.IndexName]): ModificationResult = {
-
     request.indices(indices.toList.map(_.value.value): _*)
     Modified
   }

@@ -31,3 +31,7 @@ readonlyrest:
     - name: "real life case"
       indices: ["metrics_monitoring*", "etl:etl_*"]
       auth_key: dev3:test
+
+    - name: "real life case 2"
+      indices: ["other"]
+      auth_key: dev4:test
