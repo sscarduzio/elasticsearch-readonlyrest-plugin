@@ -12,7 +12,8 @@ import org.elasticsearch.action.fieldcaps.FieldCapabilitiesRequest
 import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.main.MainRequest
-import org.elasticsearch.action.search.{ClearScrollRequest, MultiSearchRequest, SearchRequest}
+import org.elasticsearch.action.search.{ClearScrollRequest, MultiSearchRequest, SearchRequest, SearchScrollRequest}
+import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.xcontent.ToXContent
@@ -21,7 +22,7 @@ import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, SearchTemp
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult.{Handled, PassItThrough}
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
-import tech.beshu.ror.proxy.es.rest.GenericRequest
+import tech.beshu.ror.proxy.es.genericaction.GenericRequest
 
 class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
                              clusterService: ClusterService)
@@ -38,6 +39,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
     case request: RemoteInfoRequest => esClient.remoteInfo(request)
     case request: IndexRequest => esClient.getIndex(request)
     case request: GetRequest => esClient.get(request)
+    case request: UpdateRequest => esClient.update(request)
     case request: MultiGetRequest => esClient.mGet(request)
     case request: DeleteRequest => esClient.delete(request)
     case request: BulkRequest => esClient.bulk(request)
@@ -51,6 +53,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
     case request: ReindexRequest => esClient.reindex(request)
     case request: GenericRequest => esClient.generic(request)
     case request: ClearScrollRequest => esClient.clearScroll(request)
+    case request: SearchScrollRequest => esClient.searchScroll(request)
     case other => Task(throw new IllegalStateException(s"not implemented: ${other.getClass.getSimpleName}")) // todo:
   }
 }

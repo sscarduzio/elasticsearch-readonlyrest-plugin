@@ -9,6 +9,11 @@ readonlyrest:
 
   access_control_rules:
 
+    - name: "KIBANA"
+      verbosity: error
+      type: allow
+      auth_key: kibana:kibana
+
     # ES containter initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error

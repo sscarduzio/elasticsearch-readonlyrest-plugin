@@ -34,7 +34,7 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
       nodes = nodeNames,
       envs = clusterSettings.rorContainerSpecification.environmentVariables,
       esVersion = esVersion,
-      xPackSupport = clusterSettings.xPackSupport,
+      xPackSupport = true,
       customRorIndexName = clusterSettings.customRorIndexName,
       configHotReloadingEnabled = true,
       internodeSslEnabled = false,
