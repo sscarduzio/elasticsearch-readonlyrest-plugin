@@ -55,7 +55,7 @@ object NodesResponse {
         case LoadedConfig.FileRecoveredConfig(value, cause) =>
           cause.zipConst(value).fold(createFileRecoveredResponse)
         case LoadedConfig.ForcedFileConfig(value) => ResponseConfigJson('ForcedFileConfig, config = value.some)
-        case LoadedConfig.IndexConfig(index, value) => ResponseConfigJson('IndexConfig, config = value.some, indexName = index.some)
+        case LoadedConfig.IndexConfig(index, value) => ResponseConfigJson('IndexConfig, config = value.some, indexName = index.index.some)
       }
     }
     private object createFileRecoveredResponse extends Poly1 {

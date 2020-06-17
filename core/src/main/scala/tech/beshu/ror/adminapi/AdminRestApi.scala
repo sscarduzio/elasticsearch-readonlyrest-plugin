@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.adminapi
 
-import cats.Show
 import cats.data.{EitherT, NonEmptyList}
 import cats.implicits._
 import com.twitter.finagle.http.Status.Successful
@@ -36,13 +35,14 @@ import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
-import tech.beshu.ror.configuration.loader.FileConfigLoader
+import tech.beshu.ror.configuration.loader.{FileConfigLoader, RorConfigurationIndex}
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.utils.ScalaOps._
 
 class AdminRestApi(rorInstance: RorInstance,
                    indexConfigManager: IndexConfigManager,
-                   fileConfigLoader: FileConfigLoader)
+                   fileConfigLoader: FileConfigLoader,
+                   rorConfigurationIndex: RorConfigurationIndex)
   extends EndpointModule[Task] {
 
   import AdminRestApi.encoders._
@@ -82,7 +82,7 @@ class AdminRestApi(rorInstance: RorInstance,
 
   private val provideRorIndexConfigEndpoint = get(provideRorIndexConfigPath.endpointPath) {
     indexConfigManager
-      .load()
+      .load(rorConfigurationIndex)
       .map {
         case Right(config) =>
           Ok[ApiCallResult](Success(config.raw))

@@ -23,19 +23,19 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.configuration.ConfigLoading.LoadA
 import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{ComposedConfigLoader, Path}
+import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, Path, RorConfigurationIndex}
 
 import scala.language.existentials
 
-class ComposedConfigLoaderTest extends WordSpec {
-  import ComposedConfigLoaderTest._
+class LoadRawRorConfigTest extends WordSpec {
+  import LoadRawRorConfigTest._
   "Free monad interpreter" should {
     "load forced file" in {
       val steps = List(
         (ConfigLoading.ForceLoadFromFile(filePath), Right(ForcedFileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = true, filePath, indexName, indexLoadingAttempts = 0)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = true, filePath, indexName, indexLoadingAttempts = 0)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, ForcedFileConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -45,7 +45,7 @@ class ComposedConfigLoaderTest extends WordSpec {
         (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 0)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 0)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -56,7 +56,7 @@ class ComposedConfigLoaderTest extends WordSpec {
         (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -71,7 +71,7 @@ class ComposedConfigLoaderTest extends WordSpec {
         (ConfigLoading.RecoverIndexWithFile(filePath, FileRecoveredConfig.indexUnknownStructure), Right(FileRecoveredConfig(rawRorConfig, FileRecoveredConfig.indexUnknownStructure))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = ComposedConfigLoader.loadRowConfig(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, FileRecoveredConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
@@ -79,11 +79,11 @@ class ComposedConfigLoaderTest extends WordSpec {
     }
   }
 }
-object ComposedConfigLoaderTest {
+object LoadRawRorConfigTest {
   import eu.timepit.refined.auto._
   private val filePath = Path("unused_file_path")
   private val rawRorConfig = RawRorConfig(Json.False, "forced file config")
-  private val indexName = IndexName("indexName")
+  private val indexName = RorConfigurationIndex(IndexName("indexName"))
 
 }
 object IdCompiler {

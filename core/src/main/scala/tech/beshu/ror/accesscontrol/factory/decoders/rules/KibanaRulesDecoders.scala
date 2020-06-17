@@ -37,6 +37,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.configuration.RorIndexNameConfiguration
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
@@ -60,7 +61,7 @@ class KibanaTemplateIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
     }
 )
 
-class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorIndexNameConfiguration)
+class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
   extends RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]](
   ruleDecoderCreator = kibanaIndexName =>
     DecoderHelpers
@@ -75,7 +76,7 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorIndexNameConfigurati
       case "unrestricted" => Right(KibanaAccess.Unrestricted)
       case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
     }
-      .map(KibanaAccessRule.Settings(_, kibanaIndexName, rorIndexNameConfiguration.name))
+      .map(KibanaAccessRule.Settings(_, kibanaIndexName, rorIndexNameConfiguration))
       .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
       .decoder,
   associatedFields = NonEmptySet.of("kibana_index"),

@@ -22,23 +22,33 @@ import cats.~>
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import shapeless.{Inl, Inr}
-import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.configuration.ConfigLoading.LoadA
+import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
-import tech.beshu.ror.configuration.loader.{FileConfigLoader, LoadedConfig}
 import tech.beshu.ror.configuration.loader.LoadedConfig.FileRecoveredConfig.Cause
-import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig, IndexParsingError}
-import tech.beshu.ror.es.IndexJsonContentService
+import tech.beshu.ror.configuration.loader.LoadedConfig._
+import tech.beshu.ror.configuration.loader.{FileConfigLoader, LoadedConfig, RorConfigurationIndex}
+import tech.beshu.ror.providers.EnvVarsProvider
 
-import concurrent.duration._
+import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
 object Compiler extends Logging {
-  def create(indexContentManager: IndexJsonContentService): (LoadA ~> Task) = new (LoadA ~> Task) {
+  def create(indexConfigManager: IndexConfigManager)
+            (implicit envVarsProvider: EnvVarsProvider): (LoadA ~> Task) = new (LoadA ~> Task) {
     override def apply[A](fa: LoadA[A]): Task[A] = fa match {
+      case ConfigLoading.LoadEsConfig(esConfigPath) =>
+        EsConfig
+          .from(esConfigPath)
+          .map(_.left.map {
+            case LoadEsConfigError.FileNotFound(file) =>
+              EsIndexConfigurationMalformed(file.pathAsString)
+            case LoadEsConfigError.MalformedContent(file, msg) =>
+              EsFileMalformed(file.toJava.toPath, msg)
+          })
       case ConfigLoading.ForceLoadFromFile(path) =>
         logger.info(s"Loading ReadonlyREST settings from file: $path")
         EitherT(FileConfigLoader.create(path).load())
@@ -58,7 +68,7 @@ object Compiler extends Logging {
           .value
       case ConfigLoading.LoadFromIndex(index) =>
         logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ...")
-        loadFromIndex(indexContentManager, index)
+        loadFromIndex(indexConfigManager, index)
           .bimap(convertIndexError, IndexConfig(index, _))
           .leftMap { error =>
             logIndexLoadingError(error)
@@ -79,8 +89,8 @@ object Compiler extends Logging {
     }
   }
 
-  private def loadFromIndex[A](indexContentManager: IndexJsonContentService, index: domain.IndexName) = {
-    EitherT(new IndexConfigManager(indexContentManager, RorIndexNameConfiguration(index)).load().delayExecution(5 second))
+  private def loadFromIndex[A](indexConfigManager: IndexConfigManager, index: RorConfigurationIndex) = {
+    EitherT(indexConfigManager.load(index).delayExecution(5 second))
   }
 
   private def convertRecoveredFileError(cause: FileRecoveredConfig.Cause)

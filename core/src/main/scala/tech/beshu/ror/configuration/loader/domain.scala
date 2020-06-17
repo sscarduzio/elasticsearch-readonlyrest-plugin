@@ -34,7 +34,7 @@ object LoadedConfig {
     def indexParsingError(indexParsingError: IndexParsingError): Cause = Coproduct[Cause](indexParsingError)
   }
   final case class ForcedFileConfig[A](value: A) extends LoadedConfig[A]
-  final case class IndexConfig[A](indexName: IndexName, value: A) extends LoadedConfig[A]
+  final case class IndexConfig[A](indexName: RorConfigurationIndex, value: A) extends LoadedConfig[A]
   final case class FileParsingError(message: String) extends LoadedConfig.Error
   final case class FileNotExist(path: Path) extends LoadedConfig.Error
   final case class EsFileNotExist(path: Path) extends LoadedConfig.Error
@@ -43,3 +43,4 @@ object LoadedConfig {
   final case class IndexParsingError(message: String) extends LoadedConfig.Error
 }
 final case class Path(value: String) extends AnyVal
+final case class RorConfigurationIndex(index: IndexName) extends AnyVal

@@ -26,9 +26,10 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.providers.OsEnvVarsProvider
 
-final case class RorIndexNameConfiguration(name: IndexName)
+final case class RorIndexNameConfiguration(index: RorConfigurationIndex)
 
 object RorIndexNameConfiguration extends Logging {
 
@@ -53,7 +54,7 @@ object RorIndexNameConfiguration extends Logging {
         case (_, Some(result)) => IndexName(result)
         case (_, _) => defaultIndexName
       }
-      Right(RorIndexNameConfiguration(customIndexName))
+      Right(RorIndexNameConfiguration(RorConfigurationIndex(customIndexName)))
     }
   }
 }

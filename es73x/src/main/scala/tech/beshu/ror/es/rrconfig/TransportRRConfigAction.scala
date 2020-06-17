@@ -26,8 +26,7 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.configuration.loader.ComposedConfigLoader
-import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, Timeout}
+import tech.beshu.ror.configuration.loader.distributed.{RawRorConfigLoadingAction, NodeConfig, Timeout}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -90,9 +89,7 @@ class TransportRRConfigAction(actionName: String,
   override def newNodeRequest(request: RRConfigsRequest): RRConfigRequest =
     new RRConfigRequest(request.getNodeConfigRequest)
 
-  private def loadConfig() =
-    new ComposedConfigLoader(env.configFile(), indexContentProvider)
-      .load()
+  private def loadConfig() = RawRorConfigLoadingAction.load(env.configFile(), indexContentProvider)
       .map(_.map(_.map(_.raw)))
 
   override def nodeOperation(request: RRConfigRequest): RRConfig = {

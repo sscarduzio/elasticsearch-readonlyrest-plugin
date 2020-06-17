@@ -23,6 +23,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig, IndexParsingError}
 import eu.timepit.refined.auto._
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 
 class NodesResponseTest extends WordSpec {
   "Encoding NodesResponse" when {
@@ -146,7 +147,7 @@ class NodesResponseTest extends WordSpec {
     }
     "has IndexConfig config" should {
       "encode as json" in {
-        val result = NodesResponse.create(ClusterName("cluster1"), NodeResponse(NodeId("node1"), Right(IndexConfig(IndexName("config"), "a"))) :: Nil, Nil).toJson
+        val result = NodesResponse.create(ClusterName("cluster1"), NodeResponse(NodeId("node1"), Right(IndexConfig(RorConfigurationIndex(IndexName("config")), "a"))) :: Nil, Nil).toJson
         val resultJson =
           """
             |{
@@ -180,7 +181,7 @@ class NodesResponseTest extends WordSpec {
     }
     "has File config" should {
       "encode as json" in {
-        val result = NodesResponse.create(ClusterName("cluster1"), NodeResponse(NodeId("node1"), Right(IndexConfig(IndexName("config"), "a"))) :: Nil, Nil).toJson
+        val result = NodesResponse.create(ClusterName("cluster1"), NodeResponse(NodeId("node1"), Right(IndexConfig(RorConfigurationIndex(IndexName("config")), "a"))) :: Nil, Nil).toJson
         val resultJson =
           """
             |{

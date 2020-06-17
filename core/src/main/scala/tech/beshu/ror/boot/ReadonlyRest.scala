@@ -41,7 +41,7 @@ import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
-import tech.beshu.ror.configuration.loader.{ComposedConfigLoader, LoadedConfig}
+import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedConfig, RorConfigurationIndex}
 import tech.beshu.ror.configuration.{RorProperties, _}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
@@ -79,20 +79,22 @@ trait ReadonlyRest extends Logging {
 
   def start(esConfigPath: Path,
             auditSink: AuditSinkService,
-            indexContentManager: IndexJsonContentService)
+            indexContentService: IndexJsonContentService)
            (implicit envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, RorInstance]] = {
     (for {
       esConfig <- loadEsConfig(esConfigPath)
-      loadedRorConfig <- loadRorConfig(esConfigPath, indexContentManager)
-      indexConfigLoader <- createIndexConfigLoader(indexContentManager, esConfigPath)
-      instance <- startRor(esConfig, loadedRorConfig, indexConfigLoader, auditSink)
+      indexConfigManager = new IndexConfigManager(indexContentService)
+      loadedRorConfig <- loadRorConfig(esConfigPath, esConfig, indexConfigManager)
+      instance <- startRor(esConfig, loadedRorConfig, indexConfigManager, auditSink)
     } yield instance).value
   }
 
   private def loadRorConfig(esConfigPath: Path,
-                         indexContentManager: IndexJsonContentService)
-                        (implicit envVarsProvider: EnvVarsProvider) = {
-    EitherT(new ComposedConfigLoader(esConfigPath, indexContentManager).load())
+                            esConfig: EsConfig,
+                            indexConfigManager: IndexConfigManager)
+                           (implicit envVarsProvider: EnvVarsProvider) = {
+    val compiler = Compiler.create(indexConfigManager)
+    EitherT(LoadRawRorConfig.load(esConfigPath, esConfig, esConfig.rorIndex.index).foldMap(compiler))
       .leftMap(toStartingFailure)
   }
 
@@ -111,13 +113,6 @@ trait ReadonlyRest extends Logging {
       case LoadedConfig.IndexParsingError(message) =>
         StartingFailure(message)
     }
-  }
-
-  private def createIndexConfigLoader(indexContentManager: IndexJsonContentService, esConfigPath: Path) = {
-    for {
-      rorIndexNameConfig <- EitherT(RorIndexNameConfiguration.load(esConfigPath)).leftMap(ms => StartingFailure(ms.message))
-      indexConfigManager <- EitherT.pure[Task, StartingFailure](new IndexConfigManager(indexContentManager, rorIndexNameConfig))
-    } yield indexConfigManager
   }
 
   private def loadEsConfig(esConfigPath: Path)
@@ -139,26 +134,26 @@ trait ReadonlyRest extends Logging {
                        indexConfigManager: IndexConfigManager,
                        auditSink: AuditSinkService) = {
     for {
-      engine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex, auditSink))
-      rorInstance <- createRorInstance(indexConfigManager, auditSink, engine, loadedConfig)
+      engine <- EitherT(loadRorCore(loadedConfig.value, esConfig.rorIndex.index, auditSink))
+      rorInstance <- createRorInstance(indexConfigManager, esConfig.rorIndex.index, auditSink, engine, loadedConfig)
     } yield rorInstance
   }
 
-  private def createRorInstance(indexConfigManager: IndexConfigManager, auditSink: AuditSinkService, engine: Engine, loadedConfig: LoadedConfig[RawRorConfig]) = {
+  private def createRorInstance(indexConfigManager: IndexConfigManager, rorConfigurationIndex: RorConfigurationIndex, auditSink: AuditSinkService, engine: Engine, loadedConfig: LoadedConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       loadedConfig match {
         case LoadedConfig.FileRecoveredConfig(config, _) =>
-          RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
+          RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
         case LoadedConfig.ForcedFileConfig(config) =>
-          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
+          RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
         case LoadedConfig.IndexConfig(_, config) =>
-          RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, auditSink)
+          RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
       }
     }
   }
 
   private[ror] def loadRorCore(config: RawRorConfig,
-                               rorIndexNameConfiguration: RorIndexNameConfiguration,
+                               rorIndexNameConfiguration: RorConfigurationIndex,
                                auditSink: AuditSinkService): Task[Either[StartingFailure, Engine]] = {
     val httpClientsFactory = new AsyncHttpClientsFactory
     val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
@@ -203,6 +198,7 @@ class RorInstance private(boot: ReadonlyRest,
                           initialEngine: (Engine, RawRorConfig),
                           reloadInProgress: Semaphore[Task],
                           indexConfigManager: IndexConfigManager,
+                          rorConfigurationIndex: RorConfigurationIndex,
                           auditSink: AuditSinkService)
                          (implicit propertiesProvider: PropertiesProvider)
   extends Logging {
@@ -240,7 +236,7 @@ class RorInstance private(boot: ReadonlyRest,
 
   private def saveConfig(newConfig: RawRorConfig): EitherT[Task, IndexConfigReloadWithUpdateError, Unit] = EitherT {
     for {
-      saveResult <- indexConfigManager.save(newConfig)
+      saveResult <- indexConfigManager.save(newConfig, rorConfigurationIndex)
     } yield saveResult.left.map(IndexConfigReloadWithUpdateError.IndexConfigSavingError.apply)
   }
 
@@ -322,7 +318,7 @@ class RorInstance private(boot: ReadonlyRest,
 
   private def loadRorConfigFromIndex() = {
     indexConfigManager
-      .load()
+      .load(rorConfigurationIndex)
       .map(_.left.map(IndexConfigReloadError.LoadingConfigError.apply))
   }
 
@@ -364,7 +360,7 @@ class RorInstance private(boot: ReadonlyRest,
   }
 
   private def tryToLoadRorCore(config: RawRorConfig) =
-    boot.loadRorCore(config, indexConfigManager.rorIndexNameConfiguration, auditSink)
+    boot.loadRorCore(config, rorConfigurationIndex, auditSink)
 }
 
 object RorInstance {
@@ -398,18 +394,20 @@ object RorInstance {
                                    engine: Engine,
                                    config: RawRorConfig,
                                    indexConfigManager: IndexConfigManager,
+                                   rorConfigurationIndex: RorConfigurationIndex,
                                    auditSink: AuditSinkService)
                                   (implicit propertiesProvider: PropertiesProvider): Task[RorInstance] = {
-    create(boot, Mode.WithPeriodicIndexCheck, engine, config, indexConfigManager, auditSink)
+    create(boot, Mode.WithPeriodicIndexCheck, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
   }
 
   def createWithoutPeriodicIndexCheck(boot: ReadonlyRest,
                                       engine: Engine,
                                       config: RawRorConfig,
                                       indexConfigManager: IndexConfigManager,
+                                      rorConfigurationIndex: RorConfigurationIndex,
                                       auditSink: AuditSinkService)
                                      (implicit propertiesProvider: PropertiesProvider): Task[RorInstance] = {
-    create(boot, Mode.NoPeriodicIndexCheck, engine, config, indexConfigManager, auditSink)
+    create(boot, Mode.NoPeriodicIndexCheck, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
   }
 
   private def create(boot: ReadonlyRest,
@@ -417,11 +415,12 @@ object RorInstance {
                      engine: Engine,
                      config: RawRorConfig,
                      indexConfigManager: IndexConfigManager,
+                     rorConfigurationIndex: RorConfigurationIndex,
                      auditSink: AuditSinkService)
                     (implicit propertiesProvider: PropertiesProvider) = {
     Semaphore[Task](1)
       .map { isReloadInProgressSemaphore =>
-        new RorInstance(boot, mode, (engine, config), isReloadInProgressSemaphore, indexConfigManager, auditSink)
+        new RorInstance(boot, mode, (engine, config), isReloadInProgressSemaphore, indexConfigManager, rorConfigurationIndex, auditSink)
       }
   }
 

@@ -33,6 +33,7 @@ package object distributed {
     Encoder.encodeString.contramap(_.value)
   )
   implicit lazy val codecIndexName: Codec[IndexName] = UnwrappedCodec.codecForUnwrapped[IndexName, NonEmptyString]
+  implicit lazy val codecRorConfigurationIndex: Codec[RorConfigurationIndex] = UnwrappedCodec.codecForUnwrapped[RorConfigurationIndex, IndexName]
   implicit lazy val codecLoadedConfigError: Codec[LoadedConfig.Error] = deriveSealedTraitCodec
   implicit lazy val codecFileParsingError: Codec[FileParsingError] = Codec.forProduct1("message")(FileParsingError)(_.message)
   implicit lazy val codecFileNotExist: Codec[FileNotExist] = Codec.forProduct1("path")(FileNotExist)(_.path)
