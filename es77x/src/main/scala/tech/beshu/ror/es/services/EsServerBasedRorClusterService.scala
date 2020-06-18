@@ -21,7 +21,6 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.action.ActionListener
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
@@ -31,11 +30,10 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
-import tech.beshu.ror.es.services.EsServerBasedRorClusterService.{MultiSearchResponseListener, SearchResponseListener}
+import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
-import scala.concurrent.Promise
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
                                      nodeClient: NodeClient)
@@ -82,26 +80,32 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   override def verifyDocumentAccessibility(document: Document,
                                            filter: Filter,
                                            id: RequestContext.Id): Task[DocumentAccessibility] = {
-    val listener = new SearchResponseListener(id)
-    createSearchRequest(filter, document)
-      .execute(listener)
+    val listener = new GenericResponseListener[SearchResponse]
+    createSearchRequest(filter, document).execute(listener)
+
     listener.result
+      .map(extractAccessibilityFrom)
+      .onErrorRecover {
+        case ex =>
+          logger.error(s"[${id.show}] Could not verify get request. Blocking document", ex)
+          Inaccessible
+      }
   }
 
   override def verifyDocumentsAccessibilities(documents: NonEmptyList[Document],
                                               filter: Filter,
                                               id: RequestContext.Id): Task[DocumentsAccessibilities] = {
-    val listener = new MultiSearchResponseListener(documents, id)
-    createMultiSearchRequest(filter, documents)
-      .execute(listener)
-    listener.result
-  }
+    val listener = new GenericResponseListener[MultiSearchResponse]
+    createMultiSearchRequest(filter, documents).execute(listener)
 
-  private def createMultiSearchRequest(definedFilter: Filter,
-                                       documents: NonEmptyList[Document]) = {
-    documents
-      .map(createSearchRequest(definedFilter, _))
-      .foldLeft(nodeClient.prepareMultiSearch())(_ add _)
+    listener.result
+      .map(extractResultsFromSearchResponse)
+      .onErrorRecover {
+        case ex =>
+          logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", ex)
+          blockAllDocsReturned(documents)
+      }
+      .map(results => zip(results, documents))
   }
 
   private def createSearchRequest(filter: Filter,
@@ -116,75 +120,40 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .prepareSearch(document.index.value.value)
       .setQuery(composedQuery)
   }
-}
 
-object EsServerBasedRorClusterService {
-
-  private final class SearchResponseListener(id: RequestContext.Id) extends ActionListener[SearchResponse]
-    with Logging {
-
-    private val promise = Promise[DocumentAccessibility]
-
-    def result: Task[DocumentAccessibility] = Task.fromFuture(promise.future)
-
-    override def onResponse(response: SearchResponse): Unit = {
-      val accessibility = extractAccessibilityFrom(response)
-      promise.success(accessibility)
-    }
-
-    override def onFailure(exception: Exception): Unit = {
-      logger.error(s"[${id.show}] Could not verify get request. Blocking document", exception)
-      promise.success(Inaccessible)
-    }
-
-    private def extractAccessibilityFrom(searchResponse: SearchResponse) = {
-      if (searchResponse.getHits.getTotalHits.value == 0L) Inaccessible
-      else Accessible
-    }
+  private def extractAccessibilityFrom(searchResponse: SearchResponse) = {
+    if (searchResponse.getHits.getTotalHits.value == 0L) Inaccessible
+    else Accessible
   }
 
-  private final class MultiSearchResponseListener(documents: NonEmptyList[Document],
-                                                  id: RequestContext.Id)
-    extends ActionListener[MultiSearchResponse]
-      with Logging {
+  private def createMultiSearchRequest(definedFilter: Filter,
+                                       documents: NonEmptyList[Document]) = {
+    documents
+      .map(createSearchRequest(definedFilter, _))
+      .foldLeft(nodeClient.prepareMultiSearch())(_ add _)
+  }
 
-    private val promise = Promise[DocumentsAccessibilities]
+  private def blockAllDocsReturned(docsToVerify: NonEmptyList[Document]) = {
+    List.fill(docsToVerify.size)(Inaccessible)
+  }
 
-    def result: Task[DocumentsAccessibilities] = Task.fromFuture(promise.future)
+  private def extractResultsFromSearchResponse(multiSearchResponse: MultiSearchResponse) = {
+    multiSearchResponse
+      .getResponses
+      .map(resolveAccessibilityBasedOnSearchResult)
+      .toList
+  }
 
-    override def onResponse(response: MultiSearchResponse): Unit = {
-      val results = extractResultsFromSearchResponse(response)
-      promise.success(zip(results, documents))
-    }
+  private def resolveAccessibilityBasedOnSearchResult(mSearchItem: MultiSearchResponse.Item): DocumentAccessibility = {
+    if (mSearchItem.isFailure) Inaccessible
+    else if (mSearchItem.getResponse.getHits.getTotalHits.value == 0L) Inaccessible
+    else Accessible
+  }
 
-    override def onFailure(exception: Exception): Unit = {
-      logger.error(s"[${id.show}] Could not verify documents returned by multi get response. Blocking all returned documents", exception)
-      val results = blockAllDocsReturned(documents)
-      promise.success(zip(results, documents))
-    }
-
-    private def blockAllDocsReturned(docsToVerify: NonEmptyList[Document]) = {
-      List.fill(docsToVerify.size)(Inaccessible)
-    }
-
-    private def extractResultsFromSearchResponse(multiSearchResponse: MultiSearchResponse) = {
-      multiSearchResponse
-        .getResponses
-        .map(resolveAccessibilityBasedOnSearchResult)
-        .toList
-    }
-
-    private def resolveAccessibilityBasedOnSearchResult(mSearchItem: MultiSearchResponse.Item): DocumentAccessibility = {
-      if (mSearchItem.isFailure) Inaccessible
-      else if (mSearchItem.getResponse.getHits.getTotalHits.value == 0L) Inaccessible
-      else Accessible
-    }
-
-    private def zip(results: List[DocumentAccessibility],
-                    documents: NonEmptyList[Document]) = {
-      documents.toList
-        .zip(results)
-        .toMap
-    }
+  private def zip(results: List[DocumentAccessibility],
+                  documents: NonEmptyList[Document]) = {
+    documents.toList
+      .zip(results)
+      .toMap
   }
 }

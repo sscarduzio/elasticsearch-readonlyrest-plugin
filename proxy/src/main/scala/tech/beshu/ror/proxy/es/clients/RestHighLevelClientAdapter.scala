@@ -62,6 +62,8 @@ import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
 import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryRequest, ReindexRequest, UpdateByQueryRequest}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearchTemplateResponse, SearchTemplateRequest, SearchTemplateResponse}
+import tech.beshu.ror.es.utils.GenericResponseListener
+import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter._
 import tech.beshu.ror.proxy.es.exceptions._
 import tech.beshu.ror.proxy.es.genericaction.{GenericRequest, GenericResponse}
 
@@ -143,13 +145,20 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def search(request: SearchRequest): Task[SearchResponse] = {
-    executeAsync(client.search(request, RequestOptions.DEFAULT))
+    val listener = new GenericResponseListener[SearchResponse]
+    client.searchAsync(request, RequestOptions.DEFAULT, listener)
+    listener.result
+      .recoverWithSpecializedException
   }
 
   def mSearch(request: MultiSearchRequest): Task[MultiSearchResponse] = {
     import tech.beshu.ror.proxy.es.clients.actions.MSearch._
-    executeAsync(client.msearch(request, RequestOptions.DEFAULT))
+
+    val listener = new GenericResponseListener[MultiSearchResponse]
+    client.msearchAsync(request, RequestOptions.DEFAULT, listener)
+    listener.result
       .map(_.toResponseWithSpecializedException)
+      .recoverWithSpecializedException
   }
 
   def health(request: ClusterHealthRequest): Task[ClusterHealthResponse] = {
@@ -345,12 +354,7 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   private def executeAsync[T](action: => T): Task[T] =
-    Task(action).onErrorRecover {
-      case ex: ElasticsearchStatusException =>
-        throw ex.toSpecializedException
-      case ex: ResponseException =>
-        throw ex.toSpecializedException
-    }
+    Task(action).recoverWithSpecializedException
 
   private def clientRequestFrom(restRequest: RestRequest) = {
     val clientRequest = new Request(restRequest.method().toString, restRequest.path())
@@ -370,3 +374,16 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 }
 
+object RestHighLevelClientAdapter {
+
+  implicit class TaskOps[A](val task: Task[A]) extends AnyVal {
+
+    def recoverWithSpecializedException =
+      task.onErrorRecover {
+        case ex: ElasticsearchStatusException =>
+          throw ex.toSpecializedException
+        case ex: ResponseException =>
+          throw ex.toSpecializedException
+      }
+  }
+}
