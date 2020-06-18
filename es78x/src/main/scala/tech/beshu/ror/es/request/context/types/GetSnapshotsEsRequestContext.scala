@@ -19,67 +19,59 @@ package tech.beshu.ror.es.request.context.types
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
-import org.elasticsearch.action.admin.cluster.snapshots.delete.DeleteSnapshotRequest
+import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
-                                     esContext: EsContext,
-                                     clusterService: RorClusterService,
-                                     override val threadPool: ThreadPool)
-  extends BaseSnapshotEsRequestContext[DeleteSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
+class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
+                                   esContext: EsContext,
+                                   clusterService: RorClusterService,
+                                   override val threadPool: ThreadPool)
+  extends BaseSnapshotEsRequestContext[GetSnapshotsRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def snapshotsFrom(request: DeleteSnapshotRequest): Set[SnapshotName] = Set {
-    NonEmptyString
-      .from(request.snapshot())
-      .map(SnapshotName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[DeleteSnapshotRequest](msg),
-        identity
-      )
+  override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
+    request
+      .snapshots().asSafeList
+      .flatMap { s =>
+        NonEmptyString.unapply(s).map(SnapshotName.apply)
+      }
+      .toSet[SnapshotName]
   }
 
-
-  override protected def repositoriesFrom(request: DeleteSnapshotRequest): Set[RepositoryName] = Set {
-    NonEmptyString
-      .from(request.repository())
+  override protected def repositoriesFrom(request: GetSnapshotsRequest): Set[RepositoryName] = Set {
+    request
+      .repository().safeNonEmpty
       .map(RepositoryName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(RepositoryName.wildcard)
   }
 
-
-  override protected def indicesFrom(request: DeleteSnapshotRequest): Set[IndexName] =
+  override protected def indicesFrom(request: GetSnapshotsRequest): Set[domain.IndexName] =
     Set(IndexName.wildcard)
 
-  override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
+  override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
-      snapshot <- snapshotFrom(blockContext)
+      snapshots <- snapshotsFrom(blockContext)
       repository <- repositoryFrom(blockContext)
-    } yield update(actionRequest, snapshot, repository)
+    } yield update(actionRequest, snapshots, repository)
     updateResult match {
       case Right(_) => ModificationResult.Modified
       case Left(_) => ModificationResult.ShouldBeInterrupted
     }
   }
 
-  private def snapshotFrom(blockContext: SnapshotRequestBlockContext) = {
-    val snapshots = blockContext.snapshots.toList
-    snapshots match {
-      case Nil =>
-        Left(())
-      case snapshot :: rest =>
-        if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. Whole set of snapshots [${snapshots.mkString(",")}]")
-        }
-        Right(snapshot)
+  private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
+    UniqueNonEmptyList.fromList(blockContext.snapshots.toList) match {
+      case Some(list) => Right(list)
+      case None => Left(())
     }
   }
 
@@ -96,10 +88,10 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
     }
   }
 
-  private def update(actionRequest: DeleteSnapshotRequest,
-                     snapshot: SnapshotName,
+  private def update(actionRequest: GetSnapshotsRequest,
+                     snapshots: UniqueNonEmptyList[SnapshotName],
                      repository: RepositoryName) = {
-    actionRequest.snapshot(snapshot.value.value)
+    actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
     actionRequest.repository(repository.value.value)
   }
 }

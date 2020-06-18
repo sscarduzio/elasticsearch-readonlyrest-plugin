@@ -34,14 +34,16 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
                                      override val threadPool: ThreadPool)
   extends BaseSnapshotEsRequestContext[DeleteSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def snapshotsFrom(request: DeleteSnapshotRequest): Set[SnapshotName] = Set {
-    NonEmptyString
-      .from(request.snapshot())
-      .map(SnapshotName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[DeleteSnapshotRequest](msg),
-        identity
-      )
+  override protected def snapshotsFrom(request: DeleteSnapshotRequest): Set[SnapshotName] = {
+    request.snapshots().toSet.map { snapshot: String =>
+      NonEmptyString
+        .from(snapshot)
+        .map(SnapshotName.apply)
+        .fold(
+          msg => throw RequestSeemsToBeInvalid[DeleteSnapshotRequest](msg),
+          identity
+        )
+    }
   }
 
 
@@ -99,7 +101,7 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
   private def update(actionRequest: DeleteSnapshotRequest,
                      snapshot: SnapshotName,
                      repository: RepositoryName) = {
-    actionRequest.snapshot(snapshot.value.value)
+    actionRequest.snapshots(snapshot.value.value)
     actionRequest.repository(repository.value.value)
   }
 }
