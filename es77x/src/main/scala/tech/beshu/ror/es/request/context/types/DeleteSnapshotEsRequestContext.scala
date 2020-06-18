@@ -44,7 +44,6 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
       )
   }
 
-
   override protected def repositoriesFrom(request: DeleteSnapshotRequest): Set[RepositoryName] = Set {
     NonEmptyString
       .from(request.repository())
