@@ -70,20 +70,3 @@ object ModificationResult {
   final case class CustomResponse(response: ActionResponse) extends ModificationResult
   final case class UpdateResponse(update: ActionResponse => Task[ActionResponse]) extends ModificationResult
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
