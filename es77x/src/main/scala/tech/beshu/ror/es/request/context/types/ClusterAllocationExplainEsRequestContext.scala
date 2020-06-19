@@ -23,8 +23,11 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
   override protected def update(request: ClusterAllocationExplainRequest,
                                 indices: NonEmptyList[IndexName]): ModificationResult = {
     getIndexFrom(request) match {
-      case Some(indexName) =>
-        updateIndexIn(request, indexName)
+      case Some(_) =>
+        if (indices.tail.nonEmpty) {
+          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. Whole set of indices [${indices.toList.mkString(",")}]")
+        }
+        updateIndexIn(request, indices.head)
         Modified
       case None =>
         logger.error(s"[${id.show}] Cluster allocation explain request without index name is unavailable")

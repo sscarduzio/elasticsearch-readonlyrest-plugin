@@ -191,7 +191,6 @@ class IndicesRule(val settings: Settings)
     val result = for {
       _ <- noneOrAllIndices(requestContext, indices, matcher)
       _ <- allIndicesMatchedByWildcard(requestContext, indices, matcher)
-      _ <- atLeastOneNonWildcardIndexNotExist(requestContext, indices)
       _ <- indicesAliases(requestContext, indices, matcher)
     } yield ()
     result.left.getOrElse(CanPass.No())
@@ -233,6 +232,7 @@ class IndicesRule(val settings: Settings)
     }
   }
 
+  // todo: it seems we don't need it
   private def atLeastOneNonWildcardIndexNotExist(requestContext: RequestContext,
                                                  indices: Set[IndexName]): CheckContinuation[Set[IndexName]] = {
     logger.debug(s"[${requestContext.id.show}] Checking if at least one non-wildcard index doesn't exist ...")

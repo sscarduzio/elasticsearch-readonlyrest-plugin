@@ -20,7 +20,7 @@ class ClusterManager(client: RestClient,
   def health(index: String): JsonResponse = health(Some(index))
 
   def state(indices: String*): JsonResponse = {
-    call(createStateRequest(indices.toList), new JsonResponse(_))
+    call(createStateRequest(indices), new JsonResponse(_))
   }
 
   private def allocationExplain(index: Option[String]): JsonResponse = {
@@ -58,9 +58,9 @@ class ClusterManager(client: RestClient,
     ))
   }
 
-  private def createStateRequest(indices: List[String]) = {
+  private def createStateRequest(indices: Seq[String]) = {
     new HttpGet(client.from(
-      indices match {
+      indices.toList match {
         case Nil => "_cluster/state/_all"
         case names => s"_cluster/state/_all/${names.mkString(",")}"
       }
