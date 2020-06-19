@@ -106,6 +106,192 @@ trait FilterRuleSuite
           result.searchHitsForResponse(0).size shouldBe 2
         }
       }
+      "get api is used" when {
+        "document is accessible" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.get("test1_index", 1)
+
+            result.responseCode shouldBe 200
+            result.responseJson("found").bool shouldBe true
+            result.responseJson("_source") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
+          }
+        }
+        "index is inaccessible" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.get("test2_index", 1)
+
+            result.responseCode shouldBe 401
+          }
+        }
+        "index is not found" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(adminClient, targetEs.esVersion)
+            val result = documentManager.get("test3_index", 1)
+
+            result.responseCode shouldBe 404
+          }
+        }
+        "document is filtered and inaccessible" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.get("test1_index", 4)
+
+            result.responseCode shouldBe 404
+            result.responseJson("found").bool shouldBe false
+          }
+        }
+      }
+      "mget api is used" when {
+        "both requested documents are accessible" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.mGet(
+              ujson.read(
+                """{
+                  |  "docs":[
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":1
+                  |    },
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":2
+                  |    }
+                  |  ]
+                  |}""".stripMargin
+              )
+            )
+
+            result.responseCode shouldBe 200
+
+            result.docs(0)("found").bool shouldBe true
+            result.docs(0)("_id").str shouldBe "1"
+            result.docs(0)("_source") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
+
+            result.docs(1)("found").bool shouldBe true
+            result.docs(1)("_id").str shouldBe "2"
+            result.docs(1)("_source") shouldBe ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}""")
+          }
+        }
+        "one of requested documents is filtered and inaccessible" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.mGet(
+              ujson.read(
+                """{
+                  |  "docs":[
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":1
+                  |    },
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":3
+                  |    }
+                  |  ]
+                  |}""".stripMargin
+              )
+            )
+
+            result.responseCode shouldBe 200
+
+            result.docs(0)("found").bool shouldBe true
+            result.docs(0)("_id").str shouldBe "1"
+            result.docs(0)("_source") shouldBe ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")
+
+            result.docs(1)("found").bool shouldBe false
+            result.docs(1)("_id").str shouldBe "3"
+          }
+        }
+        "one of requested documents is filtered and inaccessible and second is nonexistent" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.mGet(
+              ujson.read(
+                """{
+                  |  "docs":[
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":100
+                  |    },
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":3
+                  |    }
+                  |  ]
+                  |}""".stripMargin
+              )
+            )
+
+            result.responseCode shouldBe 200
+
+            result.docs(0)("found").bool shouldBe false
+            result.docs(0)("_id").str shouldBe "100"
+
+            result.docs(1)("found").bool shouldBe false
+            result.docs(1)("_id").str shouldBe "3"
+          }
+        }
+        "both requested documents are filtered and inaccessible" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.mGet(
+              ujson.read(
+                """{
+                  |  "docs":[
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":3
+                  |    },
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":4
+                  |    }
+                  |  ]
+                  |}""".stripMargin
+              )
+            )
+
+            result.responseCode shouldBe 200
+
+            result.docs(0)("found").bool shouldBe false
+            result.docs(0)("_id").str shouldBe "3"
+
+            result.docs(1)("found").bool shouldBe false
+            result.docs(1)("_id").str shouldBe "4"
+          }
+        }
+        "both requested documents are nonexistent" in {
+          retry(times = 3) {
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val result = documentManager.mGet(
+              ujson.read(
+                """{
+                  |  "docs":[
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":300
+                  |    },
+                  |    {
+                  |      "_index":"test1_index",
+                  |      "_id":400
+                  |    }
+                  |  ]
+                  |}""".stripMargin
+              )
+            )
+            result.responseCode shouldBe 200
+
+            result.docs(0)("found").bool shouldBe false
+            result.docs(0)("_id").str shouldBe "300"
+
+            result.docs(1)("found").bool shouldBe false
+            result.docs(1)("_id").str shouldBe "400"
+          }
+        }
+      }
     }
     "not allow request" when {
       "request is not read only" in {
@@ -163,5 +349,8 @@ object FilterRuleSuite {
     documentManager.createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
     documentManager.createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}"""))
     documentManager.createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}"""))
+
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}"""))
+    documentManager.createDoc("test2_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
   }
 }

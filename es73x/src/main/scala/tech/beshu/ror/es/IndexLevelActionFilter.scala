@@ -54,7 +54,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
   implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService), threadPool
+    new EsServerBasedRorClusterService(clusterService, client), threadPool
   )
 
   private val startingTaskCancellable = new Ror()

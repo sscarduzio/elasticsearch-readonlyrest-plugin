@@ -39,11 +39,12 @@ import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequ
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.delete.DeleteRequest
-import org.elasticsearch.action.get.MultiGetRequest
+import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
+import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
@@ -114,11 +115,13 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: IndexRequest =>
         regularRequestHandler.handle(new IndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: MultiGetRequest =>
-        regularRequestHandler.handle(new MultiGetEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new MultiGetEsRequestContext(request, esContext, clusterService, threadPool))
       case request: SearchRequest =>
         regularRequestHandler.handle(new SearchEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: GetRequest =>
+        regularRequestHandler.handle(new GetEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: MultiSearchRequest =>
-        regularRequestHandler.handle(new MultiSearchEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(new MultiSearchEsRequestContext(request, esContext, clusterService, threadPool))
       case request: MultiTermVectorsRequest =>
         regularRequestHandler.handle(new MultiTermVectorsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: BulkRequest =>

@@ -20,7 +20,7 @@ import java.time.Instant
 
 import com.softwaremill.sttp.Method
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, RepositoryRequestBlockContext, SearchRequestBlockContext, SnapshotRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, RepositoryRequestBlockContext, FilterableRequestBlockContext, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -80,9 +80,9 @@ final case class MockSearchRequestContext(override val timestamp: Instant = Inst
                                           override val hasRemoteClusters: Boolean = false,
                                           indices: Set[IndexName])
   extends RequestContext {
-  override type BLOCK_CONTEXT = SearchRequestBlockContext
+  override type BLOCK_CONTEXT = FilterableRequestBlockContext
 
-  override def initialBlockContext: SearchRequestBlockContext = SearchRequestBlockContext(
+  override def initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, Set.empty, indices, None
   )
 }
