@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
 import org.elasticsearch.cluster.ClusterState
@@ -60,7 +61,7 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
   }
 
   private def updateCatTemplateResponse(allowedTemplates: Set[TemplateName])
-                                       (actionResponse: ActionResponse): ActionResponse = {
+                                       (actionResponse: ActionResponse): Task[ActionResponse] = Task.now {
     actionResponse match {
       case response: ClusterStateResponse =>
         val oldMetadata = response.getState.metadata()

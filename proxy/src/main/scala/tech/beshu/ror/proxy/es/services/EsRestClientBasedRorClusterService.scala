@@ -10,14 +10,14 @@ import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
-import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchRequestBuilder, MultiSearchResponse, SearchResponse}
+import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchResponse}
 import org.elasticsearch.client.Requests
 import org.elasticsearch.client.indices.GetIndexRequest
 import org.elasticsearch.cluster.metadata.{AliasMetaData, IndexMetaData, IndexTemplateMetaData}
 import org.elasticsearch.index.query.QueryBuilders
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, Filter, IndexName, Template, TemplateName}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
