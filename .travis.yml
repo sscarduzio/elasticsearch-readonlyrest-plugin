@@ -26,6 +26,7 @@ env:
   - ROR_TASK="license"
   - ROR_TASK="unit"
   - ROR_TASK="integration_proxy"
+  - ROR_TASK="integration_es78x"
   - ROR_TASK="integration_es77x"
   - ROR_TASK="integration_es74x"
   - ROR_TASK="integration_es73x"
