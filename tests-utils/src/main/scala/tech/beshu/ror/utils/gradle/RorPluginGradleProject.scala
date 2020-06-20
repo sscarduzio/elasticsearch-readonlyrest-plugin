@@ -33,18 +33,37 @@ package tech.beshu.ror.utils.gradle
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-import java.nio.file.Paths
-import better.files._
 import java.io.{File => JFile}
+import java.nio.file.Paths
 
+import better.files._
+import monix.execution.atomic.Atomic
 import org.gradle.tooling.GradleConnector
 
 import scala.util.Try
 
+final class LastEsModuleCache[A]() {
+  private val lastElem: Atomic[Option[(String, A)]] = Atomic(Option.empty[(String, A)])
+
+  def get(moduleName: String, createNew: => A): A = {
+    lastElem.transformAndExtract {
+      case t@Some((`moduleName`, project)) => (project, t)
+      case _ =>
+        val elem = createNew
+        (elem, Some((moduleName, elem)))
+    }
+  }
+}
 object RorPluginGradleProject {
+  private val lastProjectCache = new LastEsModuleCache[RorPluginGradleProject]
+
+  def apply(moduleName: String): RorPluginGradleProject = {
+    lastProjectCache.get(moduleName, new RorPluginGradleProject(moduleName))
+  }
+
   def fromSystemProperty: RorPluginGradleProject =
     Option(System.getProperty("esModule"))
-      .map(new RorPluginGradleProject(_))
+      .map(RorPluginGradleProject(_))
       .getOrElse(throw new IllegalStateException("No 'esModule' system property set"))
 
   def getRootProject: JFile = {
@@ -63,7 +82,7 @@ object RorPluginGradleProject {
       .toList
 }
 
-class RorPluginGradleProject(val moduleName: String) {
+class RorPluginGradleProject private(val moduleName: String) {
   private val project = esProject(moduleName)
   private val esProjectProperties =
     GradleProperties
@@ -74,7 +93,7 @@ class RorPluginGradleProject(val moduleName: String) {
       .create(RorPluginGradleProject.getRootProject)
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
-  def assemble: Option[JFile] = {
+  lazy val assemble: Option[JFile] = {
     runTask(moduleName + ":ror")
     val plugin = new JFile(project, "build/distributions/" + pluginName)
     if (!plugin.exists) None

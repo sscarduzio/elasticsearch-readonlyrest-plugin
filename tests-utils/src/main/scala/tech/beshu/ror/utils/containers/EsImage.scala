@@ -19,7 +19,9 @@ package tech.beshu.ror.utils.containers
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
+import org.testcontainers.images.builder.dockerfile.statement.RawStatement
 import tech.beshu.ror.utils.containers.EsContainer.Config
+import tech.beshu.ror.utils.containers.steatment.FromAsStatement
 import tech.beshu.ror.utils.misc.Version
 
 import scala.collection.JavaConverters._
@@ -42,7 +44,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
     entry(config)
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
         builder
-          .from(baseDockerImage + ":" + esVersion)
+          .withStatement(FromAsStatement(s"$baseDockerImage:$esVersion", "build"))
 
         copyNecessaryFiles(builder, config)
 
@@ -87,7 +89,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
         builder
           .user("elasticsearch")
-          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts ) asJava)
+          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts) asJava)
 
         install(builder, config)
 

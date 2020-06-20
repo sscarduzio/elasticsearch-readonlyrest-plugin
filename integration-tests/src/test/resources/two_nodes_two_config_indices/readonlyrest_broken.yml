@@ -1,0 +1,14 @@
+readonlyrest:
+  enable: false #TODO: rm
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: "readonlyrest"
+    key_pass: "readonlyrest"
+
+  # comments should survive
+  access_control_rule2 :
+    - name: "CONTAINER ADMIN - file"
+      verbosity: "error"
+      type: "allow"
+      auth_key: "admin:container"
