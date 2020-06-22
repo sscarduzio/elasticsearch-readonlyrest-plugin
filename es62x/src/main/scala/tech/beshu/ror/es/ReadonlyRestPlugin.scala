@@ -55,15 +55,15 @@ import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.{ElasticsearchException, Version}
 import tech.beshu.ror.Constants
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
-import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -108,11 +108,12 @@ class ReadonlyRestPlugin(s: Settings,
                                 nodeEnvironment: NodeEnvironment,
                                 namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
     doPrivileged {
-      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier,emptyClusterState)
+      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier, emptyClusterState)
     }
     List.empty[AnyRef].asJava
   }
-  private def emptyClusterState=
+
+  private def emptyClusterState =
     new ClusterStateResponse(
       ClusterName.CLUSTER_NAME_SETTING.get(s),
       ClusterState.EMPTY_STATE,

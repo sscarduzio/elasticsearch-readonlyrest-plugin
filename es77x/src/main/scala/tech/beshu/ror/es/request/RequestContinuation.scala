@@ -20,8 +20,7 @@ import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel}
 import org.elasticsearch.tasks.Task
-import tech.beshu.ror.es.TransportServiceInterceptor
-import tech.beshu.ror.es.utils.RorRestChannel
+import tech.beshu.ror.es.{RorRestChannel, TransportServiceInterceptor}
 
 trait RequestContinuation {
 

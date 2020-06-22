@@ -51,13 +51,12 @@ import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.{RorClusterService, RorRestChannel}
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.handler.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.rradmin.RRAdminRequest
-import tech.beshu.ror.es.utils.RorRestChannel
 
 import scala.language.postfixOps
 import scala.reflect.ClassTag

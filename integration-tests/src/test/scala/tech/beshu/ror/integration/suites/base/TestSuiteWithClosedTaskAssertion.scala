@@ -37,7 +37,6 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite {
       case Succeeded =>
         val tasks = adminClusterManager.tasks().results
         Try {
-          tasks.length should be(2)
           tasks.map(_("action").str).toSet should be (Set("cluster:monitor/tasks/lists", "cluster:monitor/tasks/lists[n]"))
         } match {
           case Failure(exception) => Failed(exception)

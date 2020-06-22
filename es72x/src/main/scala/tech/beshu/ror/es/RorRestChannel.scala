@@ -14,27 +14,26 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.utils
+package tech.beshu.ror.es
 
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.io.stream.BytesStreamOutput
 import org.elasticsearch.common.xcontent.{XContentBuilder, XContentType}
 import org.elasticsearch.rest.{RestChannel, RestRequest, RestResponse}
 import org.elasticsearch.tasks.Task
-import tech.beshu.ror.es.TransportServiceInterceptor
 
 class RorRestChannel(underlying: RestChannel, task: Task)
   extends RestChannelDelegate(underlying)
-  with Logging {
+    with Logging {
 
-  override def sendResponse(response: RestResponse): Unit = {
-    TransportServiceInterceptor.taskManagerSupplier.get() match {
-      case Some(taskManager) => taskManager.unregister(task)
-      case None => logger.warn(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
+    override def sendResponse(response: RestResponse): Unit = {
+      TransportServiceInterceptor.taskManagerSupplier.get() match {
+        case Some(taskManager) => taskManager.unregister(task)
+        case None => logger.warn(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
+      }
+      super.sendResponse(response)
     }
-    super.sendResponse(response)
   }
-}
 
 sealed class RestChannelDelegate(delegate: RestChannel) extends RestChannel {
   override def newBuilder(): XContentBuilder = delegate.newBuilder()
