@@ -99,6 +99,10 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         case Some(channel) =>
           rorInstanceState.get() match {
             case RorInstanceStartingState.Starting =>
+              TransportServiceInterceptor.taskManagerSupplier.get() match {
+                case Some(taskManager) => taskManager.unregister(task)
+                case None =>
+              }
               channel.sendResponse(createRorNotReadyYetResponse(channel))
             case RorInstanceStartingState.Started(instance) =>
               instance.engine match {
@@ -113,9 +117,17 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                     channel
                   )
                 case None =>
+                  TransportServiceInterceptor.taskManagerSupplier.get() match {
+                    case Some(taskManager) => taskManager.unregister(task)
+                    case None =>
+                  }
                   channel.sendResponse(createRorNotReadyYetResponse(channel))
               }
             case RorInstanceStartingState.NotStarted(_) =>
+              TransportServiceInterceptor.taskManagerSupplier.get() match {
+                case Some(taskManager) => taskManager.unregister(task)
+                case None =>
+              }
               channel.sendResponse(createRorStartingFailureResponse(channel))
           }
       }

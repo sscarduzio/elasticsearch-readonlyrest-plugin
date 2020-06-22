@@ -18,8 +18,8 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.misc.Version
 
 trait FilterRuleSuite
   extends WordSpec
-    with BaseIntegrationTest
+    with BaseEsClusterIntegrationTest
     with SingleClientSupport {
   this: EsContainerCreator =>
 
@@ -35,7 +35,7 @@ trait FilterRuleSuite
 
   override lazy val targetEs = container.nodes.head
 
-  override lazy val container = createLocalClusterContainer(
+  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,

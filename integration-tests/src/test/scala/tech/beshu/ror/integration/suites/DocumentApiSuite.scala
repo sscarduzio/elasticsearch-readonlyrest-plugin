@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.misc.Version
 
 trait DocumentApiSuite
   extends WordSpec
-    with BaseIntegrationTest
+    with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport {
   this: EsContainerCreator =>
@@ -38,7 +38,7 @@ trait DocumentApiSuite
 
   private lazy val dev1documentManager = new DocumentManager(basicAuthClient("dev1", "test"), targetEs.esVersion)
 
-  override lazy val container: EsClusterContainer = createLocalClusterContainer(
+  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = DocumentApiSuite.nodeDataInitializer()

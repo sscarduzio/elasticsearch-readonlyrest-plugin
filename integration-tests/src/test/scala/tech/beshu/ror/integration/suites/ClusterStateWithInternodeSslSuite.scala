@@ -18,13 +18,13 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ContainerSpecification, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.utils.containers.{ContainerSpecification, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 trait ClusterStateWithInternodeSslSuite
   extends WordSpec
-    with BaseIntegrationTest
+    with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with BeforeAndAfterAll {
   this: EsContainerCreator =>
@@ -33,7 +33,7 @@ trait ClusterStateWithInternodeSslSuite
 
   override lazy val targetEs = container.nodes.head
 
-  override lazy val container = createLocalClusterContainer(
+  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 3,
