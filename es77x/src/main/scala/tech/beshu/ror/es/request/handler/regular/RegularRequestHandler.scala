@@ -99,10 +99,6 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit = {
-    TransportServiceInterceptor.taskManagerSupplier.get() match {
-      case Some(taskManager) => taskManager.unregister(esContext.task)
-      case None =>
-    }
     esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, causes.toList, engine.context))
   }
 

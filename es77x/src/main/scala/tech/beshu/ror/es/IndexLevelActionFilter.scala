@@ -36,7 +36,7 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse._
 import tech.beshu.ror.utils.AccessControllerHelper._
-import tech.beshu.ror.es.utils.ThreadRepo
+import tech.beshu.ror.es.utils.{RorRestChannel, ThreadRepo}
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.RorInstanceSupplier
@@ -91,7 +91,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      ThreadRepo.getRestChannel match {
+      ThreadRepo.getRorRestChannelFor(task) match {
         case None =>
           chain.proceed(task, action, request, listener)
         case Some(_) if action.startsWith("internal:") =>
@@ -99,10 +99,6 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         case Some(channel) =>
           rorInstanceState.get() match {
             case RorInstanceStartingState.Starting =>
-              TransportServiceInterceptor.taskManagerSupplier.get() match {
-                case Some(taskManager) => taskManager.unregister(task)
-                case None =>
-              }
               channel.sendResponse(createRorNotReadyYetResponse(channel))
             case RorInstanceStartingState.Started(instance) =>
               instance.engine match {
@@ -117,17 +113,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                     channel
                   )
                 case None =>
-                  TransportServiceInterceptor.taskManagerSupplier.get() match {
-                    case Some(taskManager) => taskManager.unregister(task)
-                    case None =>
-                  }
                   channel.sendResponse(createRorNotReadyYetResponse(channel))
               }
             case RorInstanceStartingState.NotStarted(_) =>
-              TransportServiceInterceptor.taskManagerSupplier.get() match {
-                case Some(taskManager) => taskManager.unregister(task)
-                case None =>
-              }
               channel.sendResponse(createRorStartingFailureResponse(channel))
           }
       }
@@ -140,7 +128,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                             request: ActionRequest,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
-                            channel: RestChannel): Unit = {
+                            channel: RorRestChannel): Unit = {
     remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         aclAwareRequestFilter

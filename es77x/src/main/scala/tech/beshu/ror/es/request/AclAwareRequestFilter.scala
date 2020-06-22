@@ -57,6 +57,7 @@ import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.handler.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.rradmin.RRAdminRequest
+import tech.beshu.ror.es.utils.RorRestChannel
 
 import scala.language.postfixOps
 import scala.reflect.ClassTag
@@ -187,7 +188,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 }
 
 object AclAwareRequestFilter {
-  final case class EsContext(channel: RestChannel,
+  final case class EsContext(channel: RorRestChannel,
                              task: EsTask,
                              actionType: String,
                              actionRequest: ActionRequest,

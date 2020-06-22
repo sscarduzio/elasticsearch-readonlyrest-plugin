@@ -70,18 +70,10 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def onForbidden(): Unit = {
-    TransportServiceInterceptor.taskManagerSupplier.get() match {
-      case Some(taskManager) => taskManager.unregister(esContext.task)
-      case None =>
-    }
     esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, Nil, engine.context))
   }
 
   private def onPassThrough(): Unit = {
-    TransportServiceInterceptor.taskManagerSupplier.get() match {
-      case Some(taskManager) => taskManager.unregister(esContext.task)
-      case None =>
-    }
     esContext.channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(esContext.channel))
   }
 }

@@ -21,6 +21,7 @@ import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel}
 import org.elasticsearch.tasks.Task
 import tech.beshu.ror.es.TransportServiceInterceptor
+import tech.beshu.ror.es.utils.RorRestChannel
 
 trait RequestContinuation {
 
@@ -39,7 +40,7 @@ class EsRequestContinuation(task: Task,
                             action: String,
                             baseListener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
-                            channel: RestChannel)
+                            channel: RorRestChannel)
   extends RequestContinuation {
 
   def proceed(request: ActionRequest,
@@ -56,10 +57,6 @@ class EsRequestContinuation(task: Task,
   }
 
   def customResponse(createResponse: RestChannel => BytesRestResponse): Unit = {
-    TransportServiceInterceptor.taskManagerSupplier.get() match {
-      case Some(taskManager) => taskManager.unregister(task)
-      case None =>
-    }
     channel.sendResponse(createResponse(channel))
   }
 
