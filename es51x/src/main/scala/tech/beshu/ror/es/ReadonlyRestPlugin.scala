@@ -70,7 +70,7 @@ class ReadonlyRestPlugin(s: Settings)
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
-  
+
   override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
     List[Class[_ <: LifecycleComponent]](classOf[TransportServiceInterceptor]).asJava
   }

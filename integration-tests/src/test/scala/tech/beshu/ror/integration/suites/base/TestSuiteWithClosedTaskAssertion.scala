@@ -42,7 +42,8 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
             "cluster:monitor/tasks/lists",
             "cluster:monitor/tasks/lists[n]",
             "indices:admin/seq_no/global_checkpoint_sync",
-            "indices:admin/seq_no/global_checkpoint_sync[p]"
+            "indices:admin/seq_no/global_checkpoint_sync[p]",
+            "internal:cluster/coordination/publish_state"
           ))
         } match {
           case Failure(exception) => Failed(exception)
