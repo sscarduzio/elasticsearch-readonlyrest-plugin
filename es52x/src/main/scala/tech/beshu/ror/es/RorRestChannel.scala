@@ -19,7 +19,7 @@ package tech.beshu.ror.es
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.xcontent.{XContentBuilder, XContentType}
+import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.{RestChannel, RestRequest, RestResponse}
 import org.elasticsearch.tasks.Task
 

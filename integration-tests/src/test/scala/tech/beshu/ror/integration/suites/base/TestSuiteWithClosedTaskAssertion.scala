@@ -20,10 +20,11 @@ import org.scalatest.Matchers._
 import org.scalatest._
 import tech.beshu.ror.utils.containers.providers.{MultipleClients, MultipleEsTargets}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
+import tech.beshu.ror.utils.misc.CustomMatchers
 
 import scala.util.{Failure, Success, Try}
 
-trait TestSuiteWithClosedTaskAssertion extends TestSuite {
+trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
   this: MultipleClients with MultipleEsTargets =>
 
   private lazy val adminClusterManager = new ClusterManager(
@@ -37,7 +38,12 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite {
       case Succeeded =>
         val tasks = adminClusterManager.tasks().results
         Try {
-          tasks.map(_("action").str).toSet should be (Set("cluster:monitor/tasks/lists", "cluster:monitor/tasks/lists[n]"))
+          tasks.map(_("action").str).toSet should containAtMostElementsFrom (Set(
+            "cluster:monitor/tasks/lists",
+            "cluster:monitor/tasks/lists[n]",
+            "indices:admin/seq_no/global_checkpoint_sync",
+            "indices:admin/seq_no/global_checkpoint_sync[p]"
+          ))
         } match {
           case Failure(exception) => Failed(exception)
           case Success(_) => Succeeded
