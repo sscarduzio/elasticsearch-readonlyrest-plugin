@@ -207,14 +207,22 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                                                        proxyRestChannel: ProxyRestChannel) = {
     esActionRequestHandler
       .handle(request)
+//      .runAsyncF {
+//        case Right(HandlingResult.Handled(response: StatusToXContentObject)) =>
+//          sendResponseThroughChannel(proxyRestChannel, response)
+//        case Right(HandlingResult.Handled(response)) =>
+//          sendResponseThroughChannel(proxyRestChannel, response)
+//        case Right(HandlingResult.PassItThrough) => proxyRestChannel.passThrough()
+//        case Left(ex) => proxyRestChannel.sendFailureResponse(ex)
+//      }
       .runAsyncF {
-        case Right(HandlingResult.Handled(response: StatusToXContentObject)) =>
-          sendResponseThroughChannel(proxyRestChannel, response)
-        case Right(HandlingResult.Handled(response)) =>
-          sendResponseThroughChannel(proxyRestChannel, response)
-        case Right(HandlingResult.PassItThrough) => proxyRestChannel.passThrough()
-        case Left(ex) => proxyRestChannel.sendFailureResponse(ex)
-      }
+      case Right(HandlingResult.Handled(response)) =>
+        listener.onResponse(response.asInstanceOf[RR])
+      case Right(HandlingResult.PassItThrough) =>
+        proxyRestChannel.passThrough()
+      case Left(ex) =>
+        proxyRestChannel.sendFailureResponse(ex)
+    }
   }
 
   private def sendResponseThroughChannel(proxyRestChannel: ProxyRestChannel,
