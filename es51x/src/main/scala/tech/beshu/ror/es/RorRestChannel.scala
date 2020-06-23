@@ -17,39 +17,18 @@
 package tech.beshu.ror.es
 
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.io.stream.BytesStreamOutput
-import org.elasticsearch.common.xcontent.{XContentBuilder, XContentType}
-import org.elasticsearch.rest.{RestChannel, RestRequest, RestResponse}
+import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import org.elasticsearch.tasks.Task
 
 class RorRestChannel(underlying: RestChannel, task: Task)
-  extends RestChannelDelegate(underlying)
+  extends AbstractRestChannel(underlying.request(), false)
     with Logging {
 
-    override def sendResponse(response: RestResponse): Unit = {
-      TransportServiceInterceptor.taskManagerSupplier.get() match {
-        case Some(taskManager) => taskManager.unregister(task)
-        case None => logger.warn(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
-      }
-      super.sendResponse(response)
+  override def sendResponse(response: RestResponse): Unit = {
+    TransportServiceInterceptor.taskManagerSupplier.get() match {
+      case Some(taskManager) => taskManager.unregister(task)
+      case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
     }
+    underlying.sendResponse(response)
   }
-
-sealed class RestChannelDelegate(delegate: RestChannel) extends RestChannel {
-  override def newBuilder(): XContentBuilder = delegate.newBuilder()
-
-  override def newBuilder(autoDetectSource: BytesReference, useFiltering: Boolean): XContentBuilder =
-    delegate.newBuilder(autoDetectSource, useFiltering)
-
-  override def newErrorBuilder(): XContentBuilder = delegate.newErrorBuilder()
-
-  override def bytesOutput(): BytesStreamOutput = delegate.bytesOutput()
-
-  override def request(): RestRequest = delegate.request()
-
-  override def detailedErrorsEnabled(): Boolean = delegate.detailedErrorsEnabled()
-
-  override def sendResponse(response: RestResponse): Unit = delegate.sendResponse(response)
-
 }

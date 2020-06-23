@@ -38,12 +38,15 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
       case Succeeded =>
         val tasks = adminClusterManager.tasks().results
         Try {
-          tasks.map(_("action").str).toSet should containAtMostElementsFrom (Set(
+          tasks.map(_ ("action").str).toSet should containAtMostElementsFrom(Set(
             "cluster:monitor/tasks/lists",
             "cluster:monitor/tasks/lists[n]",
             "indices:admin/seq_no/global_checkpoint_sync",
             "indices:admin/seq_no/global_checkpoint_sync[p]",
-            "internal:cluster/coordination/publish_state"
+            "internal:cluster/coordination/publish_state",
+            "indices:monitor/stats",
+            "cluster:monitor/nodes/stats",
+            "cluster:monitor/nodes/stats[n]"
           ))
         } match {
           case Failure(exception) => Failed(exception)
