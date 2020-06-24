@@ -19,14 +19,14 @@ package tech.beshu.ror.integration.suites
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.RorApiManager
 import ujson.Str
 
 trait CurrentUserMetadataSuite
   extends WordSpec
-    with BasicSingleNodeEsClusterSupport {
+    with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/current_user_metadata/readonlyrest.yml"

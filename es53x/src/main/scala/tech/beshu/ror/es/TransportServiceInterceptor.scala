@@ -23,18 +23,24 @@ import org.elasticsearch.action.search.{RemoteClusterService, SearchTransportSer
 import org.elasticsearch.common.component.AbstractLifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.tasks.TaskManager
+import org.elasticsearch.transport.TransportService
 
 class TransportServiceInterceptor(settings: Settings,
-                                  transportService: SearchTransportService,
+                                  searchTransportService: SearchTransportService,
+                                  transportService: TransportService,
                                   ignore: Unit) // hack!
   extends AbstractLifecycleComponent(settings) {
 
   @Inject
-  def this(settings: Settings, transportService: SearchTransportService) {
-    this(settings, transportService, ())
+  def this(settings: Settings, searchTransportService: SearchTransportService, transportService: TransportService) {
+    this(settings, searchTransportService, transportService, ())
   }
-  Option(transportService.getRemoteClusterService).foreach { r =>
+  Option(searchTransportService.getRemoteClusterService).foreach { r =>
     TransportServiceInterceptor.remoteClusterServiceSupplier.update(r)
+  }
+  Option(transportService.getTaskManager).foreach { t  =>
+    TransportServiceInterceptor.taskManagerSupplier.update(t)
   }
   override def doStart(): Unit = {}
   override def doStop(): Unit = {}
@@ -42,6 +48,7 @@ class TransportServiceInterceptor(settings: Settings,
 }
 object TransportServiceInterceptor {
   val remoteClusterServiceSupplier: RemoteClusterServiceSupplier = new RemoteClusterServiceSupplier
+  val taskManagerSupplier: TaskManagerSupplier = new TaskManagerSupplier
 }
 
 class RemoteClusterServiceSupplier extends Supplier[Option[RemoteClusterService]] {
@@ -51,4 +58,13 @@ class RemoteClusterServiceSupplier extends Supplier[Option[RemoteClusterService]
     case None => Option.empty
   }
   def update(service: RemoteClusterService): Unit = remoteClusterServiceAtomicReference.set(Some(service))
+}
+
+class TaskManagerSupplier extends Supplier[Option[TaskManager]] {
+  private val taskManagerAtomicReference = new AtomicReference(Option.empty[TaskManager])
+  override def get(): Option[TaskManager] = taskManagerAtomicReference.get() match {
+    case Some(value) => Option(value)
+    case None => Option.empty
+  }
+  def update(taskManager: TaskManager): Unit = taskManagerAtomicReference.set(Some(taskManager))
 }

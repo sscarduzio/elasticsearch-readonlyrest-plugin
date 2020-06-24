@@ -27,7 +27,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, SearchRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, FilterableRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
@@ -280,7 +280,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
           result.history should have size 5
-          inside(result.result) { case RegularRequestResult.Allow(blockContext: SearchRequestBlockContext, block) =>
+          inside(result.result) { case RegularRequestResult.Allow(blockContext: FilterableRequestBlockContext, block) =>
             block.name should be(Block.Name("Variables usage in filter"))
             blockContext.userMetadata should be(
               UserMetadata

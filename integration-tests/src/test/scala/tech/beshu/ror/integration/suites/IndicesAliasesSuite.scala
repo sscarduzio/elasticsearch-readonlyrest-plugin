@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -28,7 +28,7 @@ import scala.collection.JavaConverters._
 //TODO change test names. Current names are copies from old java integration tests
 trait IndicesAliasesSuite
   extends WordSpec
-    with BasicSingleNodeEsClusterSupport
+    with BaseSingleNodeEsClusterTest
     with Eventually
     with IntegrationPatience
     with Matchers {

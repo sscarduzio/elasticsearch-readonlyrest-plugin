@@ -56,7 +56,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
   implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService), threadPool
+    new EsServerBasedRorClusterService(clusterService, client), threadPool
   )
 
   private val startingTaskCancellable = new Ror()
@@ -92,7 +92,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      ThreadRepo.getRestChannel match {
+      ThreadRepo.getRorRestChannelFor(task) match {
         case None =>
           chain.proceed(task, action, request, listener)
         case Some(_) if action.startsWith("internal:") =>

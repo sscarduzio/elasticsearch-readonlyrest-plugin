@@ -17,7 +17,7 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -25,13 +25,11 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ClosedIndicesSuite
   extends WordSpec
-    with BasicSingleNodeEsClusterSupport
+    with BaseSingleNodeEsClusterTest
     with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/closed_indices/readonlyrest.yml"
-
-  override def nodeDataInitializer = Some(ClosedIndicesSuite.nodeDataInitializer())
 
   // we use admin client here so 'CONTAINER ADMIN' block is matched. We need to match 'Getter' block
   private lazy val searchManager = new SearchManager(adminClient, additionalHeaders = Map("x-api-key" -> "g"))
@@ -69,21 +67,22 @@ trait ClosedIndicesSuite
       }
     }
   }
-}
 
-object ClosedIndicesSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDocAndWaitForRefresh(
-      "/intentp1_a1/documents/doc-a1",
-      """{"title": "a1"}"""
-    )
-    documentManager.insertDocAndWaitForRefresh(
-      "/intentp1_a2/documents/doc-a2",
-      """{"title": "a2"}"""
-    )
+  override val nodeDataInitializer = Some {
+    (_, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManagerJ(adminRestClient)
+      documentManager.insertDocAndWaitForRefresh(
+        "/intentp1_a1/documents/doc-a1",
+        """{"title": "a1"}"""
+      )
+      documentManager.insertDocAndWaitForRefresh(
+        "/intentp1_a2/documents/doc-a2",
+        """{"title": "a2"}"""
+      )
 
-    val indexManager = new IndexManagerJ(adminRestClient)
-    indexManager.close("/intentp1_a2")
+      val indexManager = new IndexManagerJ(adminRestClient)
+      indexManager.close("/intentp1_a2")
+    }
   }
+
 }

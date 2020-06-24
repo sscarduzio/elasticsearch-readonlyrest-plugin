@@ -24,6 +24,7 @@ import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
+import org.elasticsearch.common.component.LifecycleComponent
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings._
@@ -69,6 +70,10 @@ class ReadonlyRestPlugin(s: Settings)
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
+
+  override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
+    List[Class[_ <: LifecycleComponent]](classOf[TransportServiceInterceptor]).asJava
+  }
 
   override def getActionFilters: util.List[Class[_ <: ActionFilter]] = {
     List[Class[_ <: ActionFilter]](classOf[IndexLevelActionFilter]).asJava

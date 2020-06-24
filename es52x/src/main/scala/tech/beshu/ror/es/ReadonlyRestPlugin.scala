@@ -26,6 +26,7 @@ import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.common.component.LifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
@@ -84,6 +85,10 @@ class ReadonlyRestPlugin(s: Settings,
 
   override def getActionFilters: util.List[Class[_ <: ActionFilter]] = {
     List[Class[_ <: ActionFilter]](classOf[IndexLevelActionFilter]).asJava
+  }
+
+  override def getGuiceServiceClasses: util.Collection[Class[_ <: LifecycleComponent]] = {
+    List[Class[_ <: LifecycleComponent]](classOf[TransportServiceInterceptor]).asJava
   }
 
   override def onIndexModule(indexModule: IndexModule): Unit = {

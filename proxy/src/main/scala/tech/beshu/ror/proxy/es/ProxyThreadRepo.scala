@@ -3,6 +3,8 @@
  */
 package tech.beshu.ror.proxy.es
 
+import org.elasticsearch.tasks.Task
+
 object ProxyThreadRepo {
   private val threadLocalChannel = new ThreadLocal[ProxyRestChannel]
 
@@ -10,8 +12,8 @@ object ProxyThreadRepo {
     threadLocalChannel.set(restChannel)
   }
 
-  def getRestChannel: Option[ProxyRestChannel] = {
-    val result = Option(threadLocalChannel.get)
+  def getRestChannel(task: Task): Option[ProxyRestChannel] = {
+    val result = Option(threadLocalChannel.get).map(new UnregisteringTaskProxyRestChannel(_, task))
     threadLocalChannel.remove()
     result
   }

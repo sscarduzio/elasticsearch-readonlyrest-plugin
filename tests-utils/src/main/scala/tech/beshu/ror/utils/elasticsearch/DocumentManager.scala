@@ -17,7 +17,7 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpDelete, HttpPost, HttpPut, HttpUriRequest}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut, HttpUriRequest}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.MGetResult
@@ -32,6 +32,10 @@ class DocumentManager(restClient: RestClient, esVersion: String)
 
   def mGet(query: JSON): MGetResult = {
     call(createMGetRequest(query), new MGetResult(_))
+  }
+
+  def get(index: String, id: Int): JsonResponse = {
+    call(new HttpGet(restClient.from(createDocPathWithDefaultType(index, id))), new JsonResponse(_))
   }
 
   def createFirstDoc(index: String, content: JSON): JsonResponse = {

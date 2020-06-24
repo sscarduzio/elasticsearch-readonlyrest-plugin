@@ -22,16 +22,15 @@ import java.util.function.{Supplier, UnaryOperator}
 
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
-import org.elasticsearch.{ElasticsearchException, Version}
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
 import org.elasticsearch.cluster.service.ClusterService
+import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.component.LifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
@@ -54,16 +53,17 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
+import org.elasticsearch.{ElasticsearchException, Version}
 import tech.beshu.ror.Constants
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
-import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
-import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -107,11 +107,12 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                 nodeEnvironment: NodeEnvironment,
                                 namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
     doPrivileged {
-      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier,emptyClusterState)
+      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier, emptyClusterState)
     }
     List.empty[AnyRef].asJava
   }
-  private def emptyClusterState=
+
+  private def emptyClusterState =
     new ClusterStateResponse(
       ClusterName.CLUSTER_NAME_SETTING.get(s),
       ClusterState.EMPTY_STATE,

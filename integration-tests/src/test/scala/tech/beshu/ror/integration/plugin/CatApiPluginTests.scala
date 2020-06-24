@@ -20,6 +20,4 @@ import tech.beshu.ror.integration.suites.CatApiSuite
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 import tech.beshu.ror.utils.containers.{EsClusterContainer, SingletonEsContainer}
 
-class CatApiPluginTests extends CatApiSuite with SingletonPluginTestSupport {
-  override lazy val rorContainer: EsClusterContainer = SingletonEsContainer.singleton
-}
+class CatApiPluginTests extends CatApiSuite with SingletonPluginTestSupport

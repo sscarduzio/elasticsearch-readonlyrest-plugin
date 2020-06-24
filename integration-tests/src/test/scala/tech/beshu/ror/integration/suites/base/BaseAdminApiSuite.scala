@@ -17,11 +17,10 @@
 package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
-import com.dimafeng.testcontainers.MultipleContainers
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
+import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManager, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -29,13 +28,15 @@ import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 trait BaseAdminApiSuite
   extends WordSpec
-    with BeforeAndAfterEach
-    with BaseIntegrationTest
-    with MultipleClientsSupport {
+    with BaseManyEsClustersIntegrationTest
+    with MultipleClientsSupport
+    with BeforeAndAfterEach {
   this: EsContainerCreator =>
 
   protected def readonlyrestIndexName: String
+
   protected def rorWithIndexConfig: EsClusterContainer
+
   protected def rorWithNoIndexConfig: EsClusterContainer
 
   private lazy val ror1_1Node = rorWithIndexConfig.nodes.head
@@ -46,7 +47,7 @@ trait BaseAdminApiSuite
   private lazy val rorWithNoIndexConfigAdminActionManager = new ActionManagerJ(clients.last.adminClient)
 
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node, ror2_1Node)
-  override lazy val container: MultipleContainers = MultipleContainers(rorWithIndexConfig, rorWithNoIndexConfig)
+  override lazy val clusterContainers = NonEmptyList.of(rorWithIndexConfig, rorWithNoIndexConfig)
 
   "An admin REST API" should {
     "provide a method for force refresh ROR config" which {
@@ -246,11 +247,13 @@ trait BaseAdminApiSuite
     )
   }
 
-  protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
-    insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
+  protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = {
+    (esVersion: String, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
+      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
+      insertInIndexConfig(documentManager, "/admin_api/readonlyrest_index.yml")
+    }
   }
 
   private def insertInIndexConfig(documentManager: DocumentManager, resourceFilePath: String): Unit = {
