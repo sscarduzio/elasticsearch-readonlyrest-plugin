@@ -18,13 +18,13 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 trait ClusterStateSuite
   extends WordSpec
-    with BasicSingleNodeEsClusterSupport {
+    with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/cluster_state/readonlyrest.yml"

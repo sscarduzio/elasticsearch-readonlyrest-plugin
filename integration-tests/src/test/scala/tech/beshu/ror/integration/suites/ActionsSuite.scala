@@ -18,19 +18,24 @@ package tech.beshu.ror.integration.suites
 
 import org.junit.Assert.assertEquals
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ActionsSuite
   extends WordSpec
-    with BasicSingleNodeEsClusterSupport {
+    with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/actions/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(ActionsSuite.nodeDataInitializer())
+  override val nodeDataInitializer = Some { (esVersion, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    }
+  }
 
   private lazy val actionManager = new DocumentManager(basicAuthClient("any", "whatever"), targetEs.esVersion)
 
@@ -45,14 +50,5 @@ trait ActionsSuite
         assertEquals(200, result.responseCode)
       }
     }
-  }
-}
-
-object ActionsSuite {
-
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManager(adminRestClient, esVersion)
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
   }
 }

@@ -68,10 +68,11 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       )
   )
   private val nodeClient = new EsRestNodeClient(new NodeClient(settings, threadPool), proxyFilter, esClient, settings, threadPool)
+  private val taskManager = new TaskManager(settings, threadPool, Set.empty[String].asJava)
   private val actionModule: ActionModule = configureSimulator()
 
   def processRequest(request: RestRequest): Task[ProcessingResult] = {
-    val restChannel = new ProxyRestChannel(request)
+    val restChannel = new PromiseBasedProxyRestChannel(request, taskManager)
     val executionResult = Try {
       val threadContext = threadPool.getThreadContext
       threadContext.stashContext.bracket { _ =>
@@ -86,14 +87,13 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     }
     executionResult match {
       case Success(_) =>
-        restChannel
-          .result
-          .andThen { case _ =>
-            ProxyThreadRepo.clearRestChannel()
-          }
-      case Failure(exception) =>
-        Task.now(ProcessingResult.Response(restChannel.failureResponseFrom(exception)))
+      case Failure(exception) => restChannel.sendFailureResponse(exception)
     }
+    restChannel
+      .result
+      .andThen { case _ =>
+        ProxyThreadRepo.clearRestChannel()
+      }
   }
 
   private def processDirectly(request: GenericRequest, restChannel: ProxyRestChannel): Unit = {
@@ -137,7 +137,6 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       clusterService
     )
 
-    val taskManager = new TaskManager(settings, threadPool, Set.empty[String].asJava)
     val esActionRequestHandler = new EsActionRequestHandler(esClient, clusterService)
     nodeClient.initialize(
       actions(
@@ -187,7 +186,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                                                         taskManager: TaskManager): TransportAction[_ <: ActionRequest, _ <: ActionResponse] =
     new TransportAction[R, RR](actionName, actionFilters, taskManager) {
       override def doExecute(task: tasks.Task, request: R, listener: ActionListener[RR]): Unit = {
-        ProxyThreadRepo.getRestChannel match {
+        ProxyThreadRepo.getRestChannel(task) match {
           case Some(proxyRestChannel) =>
             (request, listener) match {
               case (req: RRAdminRequest, resp: ActionListener[RRAdminResponse]) =>
@@ -214,18 +213,6 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
         proxyRestChannel.passThrough()
       case Left(ex) =>
         proxyRestChannel.sendFailureResponse(ex)
-    }
-  }
-
-  private def builderFrom(response: ToXContent, proxyRestChannel: ProxyRestChannel) = {
-    response match {
-      case r: ToXContentObject =>
-        r.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
-      case r: ToXContentFragment =>
-        val builder = proxyRestChannel.newBuilder()
-        builder.startObject()
-        r.toXContent(builder, ToXContent.EMPTY_PARAMS)
-        builder.endObject()
     }
   }
 
