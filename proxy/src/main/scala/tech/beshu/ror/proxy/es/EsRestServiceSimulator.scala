@@ -207,43 +207,13 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     esActionRequestHandler
       .handle(request)
       .runAsyncF {
-        case Right(HandlingResult.Handled(response: StatusToXContentObject)) =>
-          sendResponseThroughChannel(proxyRestChannel, response)
-        case Right(HandlingResult.Handled(response)) =>
-          sendResponseThroughChannel(proxyRestChannel, response)
-        case Right(HandlingResult.PassItThrough) =>
-          proxyRestChannel.passThrough()
-        case Left(ex) =>
-          proxyRestChannel.sendFailureResponse(ex)
-      }
-  }
-
-  private def sendResponseThroughChannel(proxyRestChannel: ProxyRestChannel,
-                                         response: ToXContent): Unit = {
-    proxyRestChannel.sendResponse(new BytesRestResponse(
-      RestStatus.OK,
-      builderFrom(response, proxyRestChannel)
-    ))
-  }
-
-  private def builderFrom(response: ToXContent, proxyRestChannel: ProxyRestChannel) = {
-    response match {
-      case r: ToXContentObject =>
-        r.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
-      case r: ToXContentFragment =>
-        val builder = proxyRestChannel.newBuilder()
-        builder.startObject()
-        r.toXContent(builder, ToXContent.EMPTY_PARAMS)
-        builder.endObject()
+      case Right(HandlingResult.Handled(response)) =>
+        listener.onResponse(response.asInstanceOf[RR])
+      case Right(HandlingResult.PassItThrough) =>
+        proxyRestChannel.passThrough()
+      case Left(ex) =>
+        proxyRestChannel.sendFailureResponse(ex)
     }
-  }
-
-  private def sendResponseThroughChannel(proxyRestChannel: ProxyRestChannel,
-                                         response: StatusToXContentObject): Unit = {
-    proxyRestChannel.sendResponse(new BytesRestResponse(
-      response.status(),
-      response.toXContent(proxyRestChannel.newBuilder(), ToXContent.EMPTY_PARAMS)
-    ))
   }
 
   private class RORActionPlugin extends ActionPlugin {

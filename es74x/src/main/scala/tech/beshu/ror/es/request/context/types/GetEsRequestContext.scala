@@ -61,16 +61,20 @@ class GetEsRequestContext(actionRequest: GetRequest,
     (actionResponse, filter) match {
       case (response: GetResponse, Some(definedFilter)) if response.isExists =>
         handleExistingResponse(response, definedFilter)
-      case _ => Task.now(actionResponse)
+      case _ =>
+        Task.now(actionResponse)
     }
   }
 
   private def handleExistingResponse(response: GetResponse,
                                      definedFilter: Filter) = {
-    clusterService.verifyDocumentAccessibility(response.asDocumentWithIndex, definedFilter, id)
+    clusterService
+      .verifyDocumentAccessibility(response.asDocumentWithIndex, definedFilter, id)
       .map {
-        case Inaccessible => GetApi.doesNotExistResponse(response)
-        case Accessible => response
+        case Inaccessible =>
+          GetApi.doesNotExistResponse(response)
+        case Accessible =>
+          response
       }
   }
 }
