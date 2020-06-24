@@ -5,14 +5,14 @@
 [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest)
 [![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate)
 
-## ReadonlyREST needs your help ⚠️
-ReadonlyREST is an GPLv3 open source project. Its ongoing development can only made possible thanks to the support of its backers:
+|   | Sponsored link |
+| ------------- | ------------- |
+| Thanks **@Id57, Jeff Saxe, GoodMirek** for donating! __________________________________________ [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest) [![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate) | [![SponsoredAd](https://images.gitads.io/elasticsearch-readonlyrest-plugin)](https://tracking.gitads.io/?repo=elasticsearch-readonlyrest-plugin) |
 
-1. @nmaisonneuve 
-2. @Id57 
-3. PPRO
-4. Jeff Saxe
-3. Joseph Bull
+
+[![SponsoredAd](https://images.gitads.io/elasticsearch-readonlyrest-plugin)](https://tracking.gitads.io/?repo=elasticsearch-readonlyrest-plugin)
+## ReadonlyREST needs your help ⚠️
+
 
 If you care this project **keeps on existing**, read up the [Patreon campaign](https://www.patreon.com/readonlyrest), or [Liberapay campaign](https://liberapay.com/sscarduzio/donate).
 
