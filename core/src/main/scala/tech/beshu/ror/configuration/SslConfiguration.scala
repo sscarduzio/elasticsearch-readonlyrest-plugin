@@ -23,6 +23,7 @@ import better.files._
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
 import tech.beshu.ror.providers.EnvVarsProvider
 
@@ -140,12 +141,12 @@ private object SslDecoders {
                                        allowedCiphers: Set[SslConfiguration.Cipher],
                                        verification: Option[Boolean])
 
-  private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = Decoder.decodeString.map(KeystorePassword.apply)
-  private implicit val truststorePasswordDecoder: Decoder[TruststorePassword] = Decoder.decodeString.map(TruststorePassword.apply)
-  private implicit val keyPassDecoder: Decoder[KeyPass] = Decoder.decodeString.map(KeyPass.apply)
-  private implicit val keyAliasDecoder: Decoder[KeyAlias] = Decoder.decodeString.map(KeyAlias.apply)
-  private implicit val cipherDecoder: Decoder[Cipher] = Decoder.decodeString.map(Cipher.apply)
-  private implicit val protocolDecoder: Decoder[Protocol] = Decoder.decodeString.map(Protocol.apply)
+  private implicit val keystorePasswordDecoder: Decoder[KeystorePassword] = DecoderHelpers.decodeStringLike.map(KeystorePassword.apply)
+  private implicit val truststorePasswordDecoder: Decoder[TruststorePassword] = DecoderHelpers.decodeStringLike.map(TruststorePassword.apply)
+  private implicit val keyPassDecoder: Decoder[KeyPass] = DecoderHelpers.decodeStringLike.map(KeyPass.apply)
+  private implicit val keyAliasDecoder: Decoder[KeyAlias] = DecoderHelpers.decodeStringLike.map(KeyAlias.apply)
+  private implicit val cipherDecoder: Decoder[Cipher] = DecoderHelpers.decodeStringLike.map(Cipher.apply)
+  private implicit val protocolDecoder: Decoder[Protocol] = DecoderHelpers.decodeStringLike.map(Protocol.apply)
 
   def rorSslDecoder(basePath: Path): Decoder[RorSsl] = Decoder.instance { c =>
     implicit val internodeSslConfigDecoder: Decoder[Option[InternodeSslConfiguration]] = sslInternodeConfigurationDecoder(basePath)
@@ -204,7 +205,9 @@ private object SslDecoders {
         keystorePassword <- c.downField(consts.keystorePass).as[Option[KeystorePassword]]
         truststoreFile <- c.downField(consts.truststoreFile).as[Option[TruststoreFile]]
         truststorePassword <- c.downField(consts.truststorePass).as[Option[TruststorePassword]]
-        keyPass <- c.downField(consts.keyPass).as[Option[KeyPass]]
+        cursor = c.downField(consts.keyPass)
+        value = cursor.as[KeyPass]
+        keyPass <- value
         keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
         ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
         protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
@@ -213,7 +216,7 @@ private object SslDecoders {
         CommonSslProperties(
           keystoreFile = keystoreFile,
           keystorePassword = keystorePassword,
-          keyPass = keyPass,
+          keyPass = Some(keyPass),
           keyAlias = keyAlias,
           truststoreFile = truststoreFile,
           truststorePassword = truststorePassword,
