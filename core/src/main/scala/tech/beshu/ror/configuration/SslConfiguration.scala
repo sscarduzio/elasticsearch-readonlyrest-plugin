@@ -200,30 +200,28 @@ private object SslDecoders {
     val jFileDecoder: Decoder[JFile] = fileDecoder(basePath)
     implicit val keystoreFileDecoder = jFileDecoder.map(KeystoreFile)
     implicit val truststoreFileDecoder = jFileDecoder.map(TruststoreFile)
-      for {
-        keystoreFile <- c.downField(consts.keystoreFile).as[KeystoreFile]
-        keystorePassword <- c.downField(consts.keystorePass).as[Option[KeystorePassword]]
-        truststoreFile <- c.downField(consts.truststoreFile).as[Option[TruststoreFile]]
-        truststorePassword <- c.downField(consts.truststorePass).as[Option[TruststorePassword]]
-        cursor = c.downField(consts.keyPass)
-        value = cursor.as[KeyPass]
-        keyPass <- value
-        keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
-        ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
-        protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
-        verification <- c.downField(consts.verification).as[Option[Boolean]]
-      } yield
-        CommonSslProperties(
-          keystoreFile = keystoreFile,
-          keystorePassword = keystorePassword,
-          keyPass = Some(keyPass),
-          keyAlias = keyAlias,
-          truststoreFile = truststoreFile,
-          truststorePassword = truststorePassword,
-          allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
-          allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
-          verification = verification)
-    }
+    for {
+      keystoreFile <- c.downField(consts.keystoreFile).as[KeystoreFile]
+      keystorePassword <- c.downField(consts.keystorePass).as[Option[KeystorePassword]]
+      truststoreFile <- c.downField(consts.truststoreFile).as[Option[TruststoreFile]]
+      truststorePassword <- c.downField(consts.truststorePass).as[Option[TruststorePassword]]
+      keyPass <- c.downField(consts.keyPass).as[Option[KeyPass]]
+      keyAlias <- c.downField(consts.keyAlias).as[Option[KeyAlias]]
+      ciphers <- c.downField(consts.allowedCiphers).as[Option[Set[Cipher]]]
+      protocols <- c.downField(consts.allowedProtocols).as[Option[Set[Protocol]]]
+      verification <- c.downField(consts.verification).as[Option[Boolean]]
+    } yield
+      CommonSslProperties(
+        keystoreFile = keystoreFile,
+        keystorePassword = keystorePassword,
+        keyPass = keyPass,
+        keyAlias = keyAlias,
+        truststoreFile = truststoreFile,
+        truststorePassword = truststorePassword,
+        allowedProtocols = protocols.getOrElse(Set.empty[Protocol]),
+        allowedCiphers = ciphers.getOrElse(Set.empty[Cipher]),
+        verification = verification)
+  }
 
   private def whenEnabled[T <: SslConfiguration](cursor: HCursor)(decoding: => Either[DecodingFailure, T]) = {
     for {
