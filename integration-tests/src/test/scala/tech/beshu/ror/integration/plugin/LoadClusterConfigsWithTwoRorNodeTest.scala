@@ -104,7 +104,8 @@ final class LoadClusterConfigsWithTwoRorNodeTest
     failure1 should contain key "detailedMessage"
     val failure2 = javaResponsesFailures.get(1)
     failure2 should contain key "nodeId"
-    failure1 should contain key "detailedMessage" }
+    failure1 should contain key "detailedMessage"
+  }
   "return summary" in {
     val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
     result.getResponseCode should be(200)
@@ -115,6 +116,5 @@ final class LoadClusterConfigsWithTwoRorNodeTest
     val javaResponse1 = javaResponses.get(0).asInstanceOf[util.Map[String, Any]]
     javaResponse1.remove("nodeId")
     summary.get("value") shouldEqual javaResponse1
-
   }
 }
