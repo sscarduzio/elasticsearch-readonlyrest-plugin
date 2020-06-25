@@ -20,6 +20,7 @@ import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel}
 import org.elasticsearch.tasks.Task
+import tech.beshu.ror.es.{RorRestChannel, TransportServiceInterceptor}
 
 trait RequestContinuation {
 
@@ -38,7 +39,7 @@ class EsRequestContinuation(task: Task,
                             action: String,
                             baseListener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
-                            channel: RestChannel)
+                            channel: RorRestChannel)
   extends RequestContinuation {
 
   def proceed(request: ActionRequest,

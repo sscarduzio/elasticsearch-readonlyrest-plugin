@@ -21,7 +21,7 @@ import com.dimafeng.testcontainers.ForAllTestContainer
 import com.typesafe.scalalogging.LazyLogging
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, Suite}
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.containers.providers.{CallingProxy, MultipleEsTargets, RorConfigFileNameProvider}
 import tech.beshu.ror.utils.proxy.RorProxyInstance
@@ -71,7 +71,7 @@ trait ProxyTestSupport
 }
 
 trait BasicClusterProxyTestSupport extends ProxyTestSupport {
-  this: Suite with BasicSingleNodeEsClusterSupport =>
+  this: Suite with BaseSingleNodeEsClusterTest =>
 
   override lazy val container = createLocalClusterContainer(
     nodeDataInitializer.foldLeft(EsClusterSettings.basic.copy(xPackSupport = true)) {

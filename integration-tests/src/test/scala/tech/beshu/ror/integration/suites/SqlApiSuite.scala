@@ -17,16 +17,16 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest._
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SqlApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
 
 trait SqlApiSuite
   extends WordSpec
-    with BaseIntegrationTest
+    with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport
     with Matchers {
@@ -36,7 +36,7 @@ trait SqlApiSuite
 
   override lazy val targetEs = container.nodes.head
 
-  override lazy val container = createLocalClusterContainer(
+  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = SqlApiSuite.nodeDataInitializer(),

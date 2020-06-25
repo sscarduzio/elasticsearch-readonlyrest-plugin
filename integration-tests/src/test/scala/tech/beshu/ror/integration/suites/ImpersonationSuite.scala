@@ -19,7 +19,8 @@ package tech.beshu.ror.integration.suites
 import org.junit.Assert.assertEquals
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.integration.suites.base.TestSuiteWithClosedTaskAssertion
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -28,7 +29,8 @@ import scala.collection.JavaConverters._
 
 trait ImpersonationSuite
   extends WordSpec
-    with BasicSingleNodeEsClusterSupport {
+    with TestSuiteWithClosedTaskAssertion
+    with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/impersonation/readonlyrest.yml"

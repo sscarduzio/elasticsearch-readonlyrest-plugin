@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator, SingletonEsContainer}
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 import ujson.Str
 
@@ -31,6 +31,7 @@ trait CatApiSuite
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/cat_api/readonlyrest.yml"
+  override lazy val rorContainer: EsClusterContainer = SingletonEsContainer.singleton
 
   private lazy val dev1ClusterStateManager = new ClusterManager(basicAuthClient("dev1", "test"), esVersion = targetEs.esVersion)
   private lazy val dev2ClusterStateManager = new ClusterManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)

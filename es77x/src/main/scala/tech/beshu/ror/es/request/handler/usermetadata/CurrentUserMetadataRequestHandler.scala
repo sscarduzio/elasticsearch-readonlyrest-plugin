@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataReque
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
+import tech.beshu.ror.es.TransportServiceInterceptor
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.EsRequest
 import tech.beshu.ror.es.request.{ForbiddenResponse, RorNotAvailableResponse}
@@ -72,6 +73,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     esContext.channel.sendResponse(ForbiddenResponse.create(esContext.channel, Nil, engine.context))
   }
 
-  private def onPassThrough(): Unit =
+  private def onPassThrough(): Unit = {
     esContext.channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(esContext.channel))
+  }
 }

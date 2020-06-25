@@ -10,8 +10,8 @@ import monix.execution.Scheduler
 import org.elasticsearch.ElasticsearchStatusException
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.tasks.{Task => EsTask}
+import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter
 import tech.beshu.ror.proxy.es.exceptions.RorProxyException
-import tech.beshu.ror.proxy.es.{ProxyIndexLevelActionFilter, ProxyThreadRepo}
 
 import scala.collection.JavaConverters._
 
@@ -22,15 +22,6 @@ trait ProxyFilterable {
   implicit def scheduler: Scheduler
 
   def proxyFilter: ProxyIndexLevelActionFilter
-
-  protected def passThrough(): Unit = {
-    ProxyThreadRepo.getRestChannel match {
-      case Some(channel) =>
-        channel.passThrough()
-      case None =>
-        throw new RorProxyException("Cannot find rest channel for given request")
-    }
-  }
 
   def execute[REQ <: ActionRequest, RESP <: ActionResponse](action: String,
                                                             request: REQ,

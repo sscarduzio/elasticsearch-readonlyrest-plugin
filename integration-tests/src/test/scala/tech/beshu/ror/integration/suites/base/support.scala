@@ -16,24 +16,61 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import com.dimafeng.testcontainers.ForAllTestContainer
+import cats.data.NonEmptyList
+import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Suite
 import tech.beshu.ror.utils.containers.providers._
-import tech.beshu.ror.utils.containers.{EsClusterProvider, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterProvider, EsContainerCreator, EsRemoteClustersContainer}
 
 object support {
 
-  trait BaseIntegrationTest
-    extends ForAllTestContainer
+  trait BaseEsClusterIntegrationTest
+    extends RorConfigFileNameProvider
       with EsClusterProvider
-      with RorConfigFileNameProvider {
+      with MultipleClientsSupport
+      with TestSuiteWithClosedTaskAssertion
+      with ForAllTestContainer {
     this: Suite with EsContainerCreator =>
+
+    override lazy val container: EsClusterContainer = clusterContainer
+
+    def clusterContainer: EsClusterContainer
   }
 
-  trait BasicSingleNodeEsClusterSupport
+  trait BaseEsRemoteClusterIntegrationTest
     extends RorConfigFileNameProvider
-      with SingleClientSupport
       with EsClusterProvider
+      with MultipleClientsSupport
+      with TestSuiteWithClosedTaskAssertion
+      with ForAllTestContainer {
+    this: Suite with EsContainerCreator =>
+
+    override lazy val container: EsRemoteClustersContainer = remoteClusterContainer
+
+    def remoteClusterContainer: EsRemoteClustersContainer
+  }
+
+  trait BaseManyEsClustersIntegrationTest
+    extends RorConfigFileNameProvider
+      with EsClusterProvider
+      with MultipleClientsSupport
+      with TestSuiteWithClosedTaskAssertion
+      with ForAllTestContainer {
+    this: Suite with EsContainerCreator =>
+
+    import com.dimafeng.testcontainers.LazyContainer._
+
+    override lazy val container: MultipleContainers =
+      MultipleContainers(clusterContainers.map(containerToLazyContainer(_)).toList: _*)
+
+    def clusterContainers: NonEmptyList[EsClusterContainer]
+  }
+
+  trait BaseSingleNodeEsClusterTest
+    extends RorConfigFileNameProvider
+      with EsClusterProvider
+      with SingleClientSupport
+      with TestSuiteWithClosedTaskAssertion
       with NodeInitializerProvider {
     this: Suite with EsContainerCreator =>
   }

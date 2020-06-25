@@ -23,7 +23,7 @@ import com.google.common.collect.Lists
 import io.jsonwebtoken.{JwtBuilder, Jwts, SignatureAlgorithm}
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
@@ -32,7 +32,7 @@ import scala.collection.mutable
 //TODO change test names. Current names are copies from old java integration tests
 trait JwtAuthSuite
   extends WordSpec
-    with BasicSingleNodeEsClusterSupport {
+    with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
   private val algo = "HS256"

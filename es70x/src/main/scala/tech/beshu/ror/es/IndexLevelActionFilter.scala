@@ -92,7 +92,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                                                                            listener: ActionListener[Response],
                                                                            chain: ActionFilterChain[Request, Response]): Unit = {
     doPrivileged {
-      ThreadRepo.getRestChannel match {
+      ThreadRepo.getRorRestChannelFor(task) match {
         case None =>
           chain.proceed(task, action, request, listener)
         case Some(_) if action.startsWith("internal:") =>

@@ -19,10 +19,9 @@ package tech.beshu.ror.integration.plugin
 import java.util
 
 import cats.data.NonEmptyList
-import com.dimafeng.testcontainers.MultipleContainers
 import org.scalatest.Matchers.{be, contain, _}
 import org.scalatest.{BeforeAndAfterEach, Entry, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, MultipleClientsSupport}
+import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{IndexConfigInitializer, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
 import tech.beshu.ror.utils.containers._
@@ -33,15 +32,16 @@ final class LoadClusterConfigsWithNoRorNodeTest
   extends WordSpec
     with BeforeAndAfterEach
     with PluginTestSupport
-    with BaseIntegrationTest
+    with BaseEsClusterIntegrationTest
     with MultipleClientsSupport {
   this: EsContainerCreator =>
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
   private val readonlyrestIndexName: String = ".readonlyrest"
-  private lazy val ror1_1Node = rorWithIndexConfig.nodes.head
-  private lazy val ror1_2Node = rorWithIndexConfig.nodes.tail.head
+  private lazy val ror1_1Node = container.nodes.head
+  private lazy val ror1_2Node = container.nodes.tail.head
   override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node)
-  override lazy val container: MultipleContainers = MultipleContainers(rorWithIndexConfig)
+
+  override def clusterContainer: EsClusterContainer = createLocalClusterContainers(rorNode1, rorNode2)
 
   private val rorNode1: ClusterNodeData = ClusterNodeData("ror1", EsWithRorPluginContainerCreator, EsClusterSettings(
     name = "ROR1",
@@ -54,7 +54,6 @@ final class LoadClusterConfigsWithNoRorNodeTest
   )(rorConfigFileName)
   )
 
-  private lazy val rorWithIndexConfig = createLocalClusterContainers(rorNode1, rorNode2)
 
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)
 
@@ -69,4 +68,5 @@ final class LoadClusterConfigsWithNoRorNodeTest
     jnode1 should contain(Entry("type", "IndexConfig"))
     jnode1.get("config") should be(getResourceContent("/admin_api/readonlyrest_index.yml"))
   }
+
 }

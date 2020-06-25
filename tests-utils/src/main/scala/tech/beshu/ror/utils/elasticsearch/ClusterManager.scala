@@ -56,6 +56,10 @@ class ClusterManager(client: RestClient,
     call(createAddCLusterSettingsRequest(remoteClusters), new SimpleResponse(_))
   }
 
+  def tasks(): CatResponse = {
+    call(createTasksRequest(), new CatResponse(_))
+  }
+
   private def createCatTemplatesRequest(index: Option[String]) = {
     new HttpGet(client.from(
       s"/_cat/templates${index.map(i => s"/$i").getOrElse("")}",
@@ -68,6 +72,10 @@ class ClusterManager(client: RestClient,
       s"/_cat/indices${index.map(i => s"/$i").getOrElse("")}",
       Map("format" -> "json", "s" -> "index:asc").asJava
     ))
+  }
+
+  private def createTasksRequest() = {
+    new HttpGet(client.from(s"/_cat/tasks", Map("format" -> "json").asJava))
   }
 
   private def createAddCLusterSettingsRequest(remoteClusters: Map[String, List[String]]) = {

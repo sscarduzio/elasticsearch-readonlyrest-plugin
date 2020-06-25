@@ -17,15 +17,15 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, ScriptManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait MustacheLangSuite
   extends WordSpec
-    with BaseIntegrationTest
+    with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport
     with Matchers {
@@ -35,7 +35,7 @@ trait MustacheLangSuite
 
   override lazy val targetEs = container.nodes.head
 
-  override lazy val container = createLocalClusterContainer(
+  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = MustacheLangSuite.nodeDataInitializer(),

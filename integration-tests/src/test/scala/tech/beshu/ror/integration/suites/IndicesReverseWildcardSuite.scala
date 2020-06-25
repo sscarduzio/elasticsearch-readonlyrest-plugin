@@ -17,14 +17,14 @@
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.base.support.BasicSingleNodeEsClusterSupport
+import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait IndicesReverseWildcardSuite
   extends WordSpec
-    with BasicSingleNodeEsClusterSupport
+    with BaseSingleNodeEsClusterTest
     with Matchers {
   this: EsContainerCreator =>
 

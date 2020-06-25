@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite.{localClusterNodeDataInitializer, remoteClusterNodeDataInitializer, remoteClusterSetup}
-import tech.beshu.ror.integration.suites.base.support.{BaseIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 trait CrossClusterCallsSuite
   extends WordSpec
-    with BaseIntegrationTest
+    with BaseEsRemoteClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport {
   this: EsContainerCreator =>
@@ -37,7 +37,7 @@ trait CrossClusterCallsSuite
 
   override lazy val targetEs = container.localCluster.nodes.head
 
-  override lazy val container = createRemoteClustersContainer(
+  override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
     EsClusterSettings(name = "ROR1", nodeDataInitializer = localClusterNodeDataInitializer()),
     NonEmptyList.of(
       EsClusterSettings(name = "ROR2", nodeDataInitializer = remoteClusterNodeDataInitializer()),
