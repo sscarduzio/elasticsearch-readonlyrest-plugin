@@ -52,14 +52,14 @@ trait CrossClusterCallsSuite
   "A cluster _search for given index" should {
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" in {
+        "he queries local and remote indices"  in {
           val result = user3SearchManager.search("/etl:etl*,metrics*/_search")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be(
             Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27", "etl:etl_usage_2020-03-26", "etl:etl_usage_2020-03-27")
           )
         }
-        "he queries remote indices only" in {
+        "he queries remote indices only"  in {
           val result = user1SearchManager.search("/odd:test1_index/_search")
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
@@ -68,12 +68,12 @@ trait CrossClusterCallsSuite
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns" in {
+        "he queries local and remote indices patterns"  in {
           val result = user2SearchManager.search("/etl:etl*,metrics*/_search")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
         }
-        "he queries remote indices patterns only" in {
+        "he queries remote indices patterns only"  in {
           val result = user2SearchManager.search("/etl:etl*/_search")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
@@ -82,11 +82,11 @@ trait CrossClusterCallsSuite
     }
     "return 404" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices" in {
+        "he queries local and remote indices"  in {
           val result = user2SearchManager.search("/etl:etl_usage_2020-03-26,metrics_monitoring_2020-03-26/_search")
           result.responseCode should be(404)
         }
-        "he queries remote indices only" in {
+        "he queries remote indices only"  in {
           val result = user2SearchManager.search("/odd:test1_index/_search")
           result.responseCode should be(404)
         }
@@ -97,7 +97,7 @@ trait CrossClusterCallsSuite
   "A cluster _msearch for a given index" should {
     "return 200 and allow user to see its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" in {
+        "he queries local and remote indices"  in {
           val result = user3SearchManager.mSearch(
             """{"index":"metrics*"}""",
             """{"query" : {"match_all" : {}}}""",
@@ -115,7 +115,7 @@ trait CrossClusterCallsSuite
             Set("etl:etl_usage_2020-03-26", "etl:etl_usage_2020-03-27")
           )
         }
-        "he queries remote indices only" in {
+        "he queries remote indices only"  in {
           val result = user3SearchManager.mSearch(
             """{"index":"etl:etl*"}""",
             """{"query" : {"match_all" : {}}}"""
@@ -129,7 +129,7 @@ trait CrossClusterCallsSuite
         }
       }
       "user has permission to do only one request" when {
-        "both requests contain index patterns" in {
+        "both requests contain index patterns"  in {
           val result = user3SearchManager.mSearch(
             """{"index":"test1*"}""",
             """{"query" : {"match_all" : {}}}""",
@@ -145,7 +145,7 @@ trait CrossClusterCallsSuite
             Set("etl:etl_usage_2020-03-26", "etl:etl_usage_2020-03-27")
           )
         }
-        "both requests contain full name indices" in {
+        "both requests contain full name indices"  in {
           val result = user3SearchManager.mSearch(
             """{"index":"test1"}""",
             """{"query" : {"match_all" : {}}}""",
@@ -166,7 +166,7 @@ trait CrossClusterCallsSuite
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns" in {
+        "he queries local and remote indices patterns"  in {
           val result = user3SearchManager.mSearch(
             """{"index":"metrics_etl*"}""",
             """{"query" : {"match_all" : {}}}""",
@@ -180,7 +180,7 @@ trait CrossClusterCallsSuite
           val secondQueryResponse = result.responseJson("responses")(1)
           secondQueryResponse("hits")("hits").arr.size should be (0)
         }
-        "he queries remote indices only" in {
+        "he queries remote indices only"  in {
           val result = user3SearchManager.mSearch(
             """{"index":"odd:*"}""",
             """{"query" : {"match_all" : {}}}"""
@@ -197,7 +197,7 @@ trait CrossClusterCallsSuite
   "A _field_caps for a given index" should {
     "return 200 and allow user to see its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" in {
+        "he queries local and remote indices"  in {
           val result = user3SearchManager.fieldCaps(
             indices = List("metrics*", "etl:etl*"),
             fields = List("counter1", "usage")
@@ -205,7 +205,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.fields.keys.toSet should be (Set("counter1", "usage"))
         }
-        "he queries remote indices only" in {
+        "he queries remote indices only"  in {
           val result = user3SearchManager.fieldCaps(
             indices = List("etl:etl*"),
             fields = List("counter1", "usage")
@@ -215,7 +215,7 @@ trait CrossClusterCallsSuite
         }
       }
       "user has permission to do only one request" when {
-        "both requests contain index patterns" in {
+        "both requests contain index patterns"  in {
           val result = user3SearchManager.fieldCaps(
             indices = List("test1*", "etl:etl*"),
             fields = List("hello", "usage")
@@ -223,7 +223,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.fields.keys.toSet should be (Set("usage"))
         }
-        "both requests contain full name indices" in {
+        "both requests contain full name indices"  in {
           val result = user3SearchManager.fieldCaps(
             indices = List("test1", "etl:etl_usage_2020-03-26"),
             fields = List("hello", "usage")
@@ -235,7 +235,7 @@ trait CrossClusterCallsSuite
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns" in {
+        "he queries local and remote indices patterns"  in {
           val result = user3SearchManager.fieldCaps(
             indices = List("metrics_etl*", "odd:*"),
             fields = List("hello", "usage", "counter1")
@@ -243,7 +243,7 @@ trait CrossClusterCallsSuite
           result.responseCode should be(200)
           result.fields.keys.toSet should be (Set.empty)
         }
-        "he queries remote indices only" in {
+        "he queries remote indices only"  in {
           val result = user3SearchManager.fieldCaps(
             indices = List("odd:*"),
             fields = List("hello", "usage", "counter1")
