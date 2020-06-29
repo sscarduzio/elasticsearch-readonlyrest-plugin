@@ -1,9 +1,10 @@
 package tech.beshu.ror.utils.elasticsearch
 
-import org.apache.http.client.methods.HttpGet
+import org.apache.http.client.methods.{HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
+import tech.beshu.ror.utils.misc.Version
 
 import scala.collection.JavaConverters._
 
@@ -21,6 +22,18 @@ class ClusterManager(client: RestClient,
 
   def state(indices: String*): JsonResponse = {
     call(createStateRequest(indices), new JsonResponse(_))
+  }
+
+  def reroute(command: JSON, commands: JSON*): JsonResponse = {
+    call(createRerouteRequest(command :: commands.toList), new JsonResponse(_))
+  }
+
+  def configureRemoteClusters(remoteClusters: Map[String, List[String]]): SimpleResponse = {
+    call(createAddCLusterSettingsRequest(remoteClusters), new SimpleResponse(_))
+  }
+
+  def cancelAllTasks(): JsonResponse = {
+    call(createCancelAllTasksRequest(), new JsonResponse(_))
   }
 
   private def allocationExplain(index: Option[String]): JsonResponse = {
@@ -65,5 +78,61 @@ class ClusterManager(client: RestClient,
         case names => s"_cluster/state/_all/${names.mkString(",")}"
       }
     ))
+  }
+
+  private def createRerouteRequest(commands: List[JSON]) = {
+    val request = new HttpPost(client.from("_cluster/reroute"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{
+         |"commands":[
+         |  ${commands.map(ujson.write(_)).mkString(",")}
+         |]
+         |}""".stripMargin
+    ))
+    request
+  }
+
+  private def createCancelAllTasksRequest() = {
+    new HttpPost(client.from("_tasks/_cancel"))
+  }
+
+  private def createAddCLusterSettingsRequest(remoteClusters: Map[String, List[String]]) = {
+    val remoteClustersConfigString = remoteClusters
+      .map { case (name, seeds) =>
+        s""""$name": { "seeds": [ ${seeds.mkString(",")} ] }"""
+      }
+      .mkString(",\n")
+
+    val request = new HttpPut(client.from("_cluster/settings"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      if (Version.greaterOrEqualThan(esVersion, 6, 5, 0)) {
+        s"""
+           |{
+           |  "persistent": {
+           |    "cluster": {
+           |      "remote": {
+           |        $remoteClustersConfigString
+           |      }
+           |    }
+           |  }
+           |}
+          """.stripMargin
+      } else {
+        s"""
+           |{
+           |  "persistent": {
+           |    "search": {
+           |      "remote": {
+           |        $remoteClustersConfigString
+           |      }
+           |    }
+           |  }
+           |}
+          """.stripMargin
+      }
+    ))
+    request
   }
 }

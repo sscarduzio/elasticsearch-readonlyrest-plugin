@@ -48,7 +48,7 @@ class ReindexEsRequestContext private(actionRequest: ActionRequest,
       sr.indices.asSafeSet ++ Set(ir.index())
     } fold(
       ex => {
-        logger.errorEx(s"Cannot extract indices from ReindexRequest", ex)
+        logger.errorEx(s"[${id.show}] Cannot extract indices from ReindexRequest", ex)
         Set.empty[String]
       },
       identity

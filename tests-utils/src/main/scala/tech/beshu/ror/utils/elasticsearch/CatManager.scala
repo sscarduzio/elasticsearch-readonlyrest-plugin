@@ -17,12 +17,10 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpGet, HttpPut}
-import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.CatManager.CatResponse
+import org.apache.http.client.methods.HttpGet
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.CatManager.{CatNodesResponse, CatResponse, CatShardsResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.Version
 import ujson.{Arr, Value}
 
 import scala.collection.JavaConverters._
@@ -32,33 +30,21 @@ class CatManager(client: RestClient,
                  esVersion: String)
   extends BaseManager(client) {
 
-  def healthCheck(): SimpleResponse = {
-    call(new HttpGet(client.from("/_cat/health")), new SimpleResponse(_))
-  }
+  def healthCheck(): SimpleResponse = call(genericCatRequest("health"), new SimpleResponse(_))
 
-  def catTemplates(): CatResponse = {
-    call(createCatTemplatesRequest(None), new CatResponse(_))
-  }
+  def templates(): CatResponse = call(createCatTemplatesRequest(None), new CatResponse(_))
 
-  def catTemplates(index: String): CatResponse = {
-    call(createCatTemplatesRequest(Some(index)), new CatResponse(_))
-  }
+  def templates(index: String): CatResponse = call(createCatTemplatesRequest(Some(index)), new CatResponse(_))
 
-  def catIndices(): CatResponse = {
-    call(createCatIndicesRequest(None), new CatResponse(_))
-  }
+  def indices(): CatResponse = call(createCatIndicesRequest(None), new CatResponse(_))
 
-  def catIndices(index: String): CatResponse = {
-    call(createCatIndicesRequest(Some(index)), new CatResponse(_))
-  }
+  def indices(index: String): CatResponse = call(createCatIndicesRequest(Some(index)), new CatResponse(_))
 
-  def configureRemoteClusters(remoteClusters: Map[String, List[String]]): SimpleResponse = {
-    call(createAddCLusterSettingsRequest(remoteClusters), new SimpleResponse(_))
-  }
+  def tasks(): CatResponse = call(genericCatRequest("tasks"), new CatResponse(_))
 
-  def tasks(): CatResponse = {
-    call(createTasksRequest(), new CatResponse(_))
-  }
+  def nodes(): CatNodesResponse = call(genericCatRequest("nodes"), new CatNodesResponse(_))
+
+  def shards(): CatShardsResponse = call(genericCatRequest("shards"), new CatShardsResponse(_))
 
   private def createCatTemplatesRequest(index: Option[String]) = {
     new HttpGet(client.from(
@@ -74,58 +60,42 @@ class CatManager(client: RestClient,
     ))
   }
 
-  private def createTasksRequest() = {
-    new HttpGet(client.from(s"/_cat/tasks", Map("format" -> "json").asJava))
+  private def genericCatRequest(catType: String) = {
+    new HttpGet(client.from(s"/_cat/$catType", Map("format" -> "json").asJava))
   }
 
-  private def createAddCLusterSettingsRequest(remoteClusters: Map[String, List[String]]) = {
-    val remoteClustersConfigString = remoteClusters
-      .map { case (name, seeds) =>
-        s""""$name": { "seeds": [ ${seeds.mkString(",")} ] }"""
-      }
-      .mkString(",\n")
-
-    val request = new HttpPut(client.from("_cluster/settings"))
-    request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      if (Version.greaterOrEqualThan(esVersion, 6, 5, 0)) {
-        s"""
-           |{
-           |  "persistent": {
-           |    "cluster": {
-           |      "remote": {
-           |        $remoteClustersConfigString
-           |      }
-           |    }
-           |  }
-           |}
-          """.stripMargin
-      } else {
-        s"""
-           |{
-           |  "persistent": {
-           |    "search": {
-           |      "remote": {
-           |        $remoteClustersConfigString
-           |      }
-           |    }
-           |  }
-           |}
-          """.stripMargin
-      }
-    ))
-    request
-  }
 }
 
 object CatManager {
 
-  final class CatResponse(response: HttpResponse)
+  sealed class CatResponse(response: HttpResponse)
     extends JsonResponse(response) {
 
     lazy val results: Vector[Value] = responseJson match {
       case Arr(value) => value.toVector
       case value => throw new AssertionError(s"Expecting JSON list, got: $value")
+    }
+  }
+
+  final class CatShardsResponse(response: HttpResponse)
+    extends CatResponse(response) {
+
+    def nodeOfIndex(index: String): Option[String] = {
+      ofIndex(index)
+        .map(_("node").str)
+        .toList.headOption
+    }
+
+    def ofIndex(index: String): Option[JSON] = {
+      responseJson.arr.find(i => i("index").str == index)
+    }
+  }
+
+  final class CatNodesResponse(response: HttpResponse)
+    extends CatResponse(response) {
+
+    def names: List[String] = {
+      responseJson.arr.map(_("name").str).toList.distinct
     }
   }
 

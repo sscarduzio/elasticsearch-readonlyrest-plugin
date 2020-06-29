@@ -9,11 +9,6 @@ readonlyrest:
 
   access_control_rules:
 
-    - name: "KIBANA"
-      verbosity: error
-      type: allow
-      auth_key: kibana:kibana
-
     # ES containter initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error
@@ -21,17 +16,13 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "test1"
-      indices: ["test1_index", "odd:test1_index"]
+      indices: ["test1_index"]
       auth_key: dev1:test
 
     - name: "test2"
-      indices: ["test2_index", "even:test1_index"]
+      indices: ["test2_index"]
       auth_key: dev2:test
 
-    - name: "real life case"
-      indices: ["metrics_monitoring*", "etl:etl_*"]
+    - name: "test3"
+      indices: ["test3_index"]
       auth_key: dev3:test
-
-    - name: "real life case 2"
-      indices: ["other"]
-      auth_key: dev4:test

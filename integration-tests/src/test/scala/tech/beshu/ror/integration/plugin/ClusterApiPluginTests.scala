@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.ClusterApiSuite
-import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import tech.beshu.ror.integration.utils.PluginTestSupport
 
-class ClusterApiPluginTests extends ClusterApiSuite with SingletonPluginTestSupport
+class ClusterApiPluginTests extends ClusterApiSuite with PluginTestSupport

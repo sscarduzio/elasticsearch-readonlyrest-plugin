@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.implicits._
 import cats.data.NonEmptySet
 import com.softwaremill.sttp.Method
 import monix.eval.Task

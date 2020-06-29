@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ClusterApiSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.PluginTestSupport
 
-class ClusterApiProxyTests extends ClusterApiSuite with BasicClusterProxyTestSupport
+class ClusterApiProxyTests extends ClusterApiSuite with PluginTestSupport

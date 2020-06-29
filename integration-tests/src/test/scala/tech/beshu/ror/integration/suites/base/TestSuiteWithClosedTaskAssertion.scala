@@ -39,20 +39,12 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
         val tasks = adminCatManager.tasks().results
         Try {
           tasks.map(_ ("action").str).toSet should containAtMostElementsFrom(Set(
-            "cluster:monitor/tasks/lists",
-            "cluster:monitor/tasks/lists[n]",
-            "indices:admin/seq_no/global_checkpoint_sync",
-            "indices:admin/seq_no/global_checkpoint_sync[p]",
-            "internal:cluster/coordination/publish_state",
-            "internal:cluster/coordination/commit_state",
-            "indices:monitor/stats",
-            "indices:monitor/stats[n]",
-            "cluster:monitor/nodes/stats",
-            "cluster:monitor/nodes/stats[n]",
-            "internal:cluster/shard/started",
-            "internal:cluster/shard/started[n]",
-            "indices:data/read/get",
-            "indices:data/read/get[s]"
+            """^internal:.*$""".r,
+            """^cluster:monitor/.*$""".r,
+            """^indices:admin/.*$""".r,
+            """^indices:data/read/get""".r,
+            """^indices:data/read/get\[s\]$""".r,
+            """^retention_lease_sync$""".r,
           ))
         } match {
           case Failure(exception) => Failed(exception)

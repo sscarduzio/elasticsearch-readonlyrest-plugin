@@ -21,7 +21,7 @@ import com.dimafeng.testcontainers.{Container, SingleContainer}
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
-import tech.beshu.ror.utils.elasticsearch.CatManager
+import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 import scala.collection.immutable.Seq
 import scala.language.existentials
@@ -102,7 +102,7 @@ class EsRemoteClustersContainer private[containers](val localCluster: EsClusterC
 
   private def remoteClustersInitializer(container: EsClusterContainer,
                                         remoteClustersConfig: Map[String, EsClusterContainer]): Unit = {
-    val clusterManager = new CatManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
+    val clusterManager = new ClusterManager(container.nodes.head.adminClient, esVersion = container.nodes.head.esVersion)
     val result = clusterManager.configureRemoteClusters(
       remoteClustersConfig.mapValues(_.nodes.map(c => s""""${c.name}:9300""""))
     )

@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.handler.regular
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -75,7 +76,7 @@ class RegularRequestHandler(engine: Engine,
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx("ACL committing result failure", ex)
+        logger.errorEx(s"[${request.id.show}] ACL committing result failure", ex)
         esContext.listener.onFailure(ex.asInstanceOf[Exception])
     }
   }
@@ -88,7 +89,7 @@ class RegularRequestHandler(engine: Engine,
       case ModificationResult.ShouldBeInterrupted =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.CannotModify =>
-        logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
+        logger.error(s"[${request.id.show}] Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
         onForbidden(NonEmptyList.one(OperationNotAllowed))
       case CustomResponse(response) =>
         respond(response)

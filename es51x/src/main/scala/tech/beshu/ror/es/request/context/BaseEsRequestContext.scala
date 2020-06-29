@@ -94,7 +94,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     Try(restRequest.getRemoteAddress.asInstanceOf[InetSocketAddress].getAddress.getHostAddress)
       .toEither
       .left
-      .map(ex => logger.error("Could not extract remote address", ex))
+      .map(ex => logger.error(s"[${id.show}] Could not extract remote address", ex))
       .map { remoteHost => if (RCUtils.isLocalHost(remoteHost)) RCUtils.LOCALHOST else remoteHost }
       .toOption
       .flatMap(Address.from)
@@ -103,7 +103,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     Try(restRequest.getLocalAddress.asInstanceOf[InetSocketAddress].getAddress.getHostAddress)
       .toEither
       .left
-      .map(ex => logger.error("Could not extract local address", ex))
+      .map(ex => logger.error(s"[${id.show}] Could not extract local address", ex))
       .toOption
       .flatMap(Address.from)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))

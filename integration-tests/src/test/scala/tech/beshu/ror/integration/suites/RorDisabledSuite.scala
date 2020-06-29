@@ -42,7 +42,7 @@ trait RorDisabledSuite
     "pass ES request through" in {
       val user1ClusterStateManager = new CatManager(basicAuthClient("user1", "pass"), esVersion = targetEs.esVersion)
 
-      val result = user1ClusterStateManager.catTemplates()
+      val result = user1ClusterStateManager.templates()
 
       result.responseCode should be(200)
     }

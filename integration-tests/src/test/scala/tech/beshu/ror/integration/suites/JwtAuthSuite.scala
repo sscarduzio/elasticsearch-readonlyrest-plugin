@@ -47,7 +47,7 @@ trait JwtAuthSuite
   "rejectRequestWithoutAuthorizationHeader" in {
     val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -58,7 +58,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -69,7 +69,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -80,7 +80,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
@@ -91,7 +91,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("x-custom-header" -> s"$token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
@@ -102,7 +102,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("x-custom-header2" -> s"x-custom-prefix$token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
@@ -113,7 +113,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("x-custom-header" -> s"$token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -124,7 +124,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -135,7 +135,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -146,7 +146,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -158,7 +158,7 @@ trait JwtAuthSuite
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 

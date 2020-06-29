@@ -43,7 +43,7 @@ trait RorKbnAuthSuite
   "rejectRequestWithoutAuthorizationHeader" in {
     val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -53,7 +53,7 @@ trait RorKbnAuthSuite
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -63,7 +63,7 @@ trait RorKbnAuthSuite
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -74,7 +74,7 @@ trait RorKbnAuthSuite
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
@@ -84,7 +84,7 @@ trait RorKbnAuthSuite
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -94,7 +94,7 @@ trait RorKbnAuthSuite
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -104,7 +104,7 @@ trait RorKbnAuthSuite
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
@@ -114,7 +114,7 @@ trait RorKbnAuthSuite
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
