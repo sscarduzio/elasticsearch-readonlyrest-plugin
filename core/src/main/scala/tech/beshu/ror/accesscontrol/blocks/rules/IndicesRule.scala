@@ -232,24 +232,6 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  // todo: it seems we don't need it
-  private def atLeastOneNonWildcardIndexNotExist(requestContext: RequestContext,
-                                                 indices: Set[IndexName]): CheckContinuation[Set[IndexName]] = {
-    logger.debug(s"[${requestContext.id.show}] Checking if at least one non-wildcard index doesn't exist ...")
-    val real = requestContext.allIndicesAndAliases.flatMap(_.all)
-    val nonExistent = indices.foldLeft(Set.empty[IndexName]) {
-      case (acc, index) if !index.hasWildcard && !real.contains(index) => acc + index
-      case (acc, _) => acc
-    }
-    if (nonExistent.nonEmpty && !requestContext.isCompositeRequest) {
-      stop(CanPass.No(Reason.IndexNotExist))
-    } else if (nonExistent.nonEmpty && (indices -- nonExistent).isEmpty) {
-      stop(CanPass.No(Reason.IndexNotExist))
-    } else {
-      continue
-    }
-  }
-
   private def indicesAliases(requestContext: RequestContext,
                              indices: Set[IndexName],
                              matcher: IndicesMatcher): CheckContinuation[Set[IndexName]] = {
