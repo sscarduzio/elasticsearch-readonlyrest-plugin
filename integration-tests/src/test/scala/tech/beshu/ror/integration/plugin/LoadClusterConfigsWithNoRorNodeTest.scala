@@ -57,7 +57,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
 
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)
 
-  "return index config, and a failure" in {
+  "return index config, and a failure" ignore {
     val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
     result.getResponseCode should be(200)
     result.getResponseJsonMap.get("clusterName") should be("ROR1")
