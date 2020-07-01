@@ -62,8 +62,6 @@ object BaseManager {
     val body: String = stringBodyFrom(response)
     val responseJson: JSON = ujson.read(body)
 
-    logger.info(s"ES response: HTTP $responseJson, body: $body")
-
     def force(): Unit = {
       if(!isSuccess) throw new IllegalStateException(s"Expected success but got HTTP $responseCode, body: $body")
     }
