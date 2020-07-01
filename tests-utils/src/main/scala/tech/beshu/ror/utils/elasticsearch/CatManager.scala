@@ -86,6 +86,12 @@ object CatManager {
         .toList.headOption
     }
 
+    def shardOfIndex(index: String): Option[String] = {
+      ofIndex(index)
+        .map(_("shard").str)
+        .toList.headOption
+    }
+
     def ofIndex(index: String): Option[JSON] = {
       responseJson.arr.find(i => i("index").str == index)
     }

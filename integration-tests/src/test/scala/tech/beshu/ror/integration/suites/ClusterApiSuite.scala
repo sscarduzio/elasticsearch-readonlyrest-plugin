@@ -104,20 +104,24 @@ trait ClusterApiSuite
   "Cluster reroute API" should {
     "allow to be used" when {
       "command with index is used and the user has access to given index" in {
-        waitForCondition("test2_index index node is STARTED") {
-          val test1IndexNodeState = adminCatManager.shards().ofIndex("test1_index").get("state").str
+        val indexName = "test1_index"
+
+        waitForCondition(s"$indexName index node is STARTED") {
+          val test1IndexNodeState = adminCatManager.shards().ofIndex(indexName).get("state").str
           test1IndexNodeState == "STARTED"
         }
 
-        val nodeOfIndex = adminCatManager.shards().nodeOfIndex("test1_index").get
+        val shardsResponse = adminCatManager.shards()
+        val nodeOfIndex = shardsResponse.nodeOfIndex(indexName).get
+        val shardOfIndex = shardsResponse.shardOfIndex(indexName).get
         val otherNode = adminCatManager.nodes().names.find(_ != nodeOfIndex).get
 
         val result = dev1ClusterManager.reroute(
           ujson.read(
             s"""{
                |  "move": {
-               |    "index": "test1_index",
-               |    "shard": 0,
+               |    "index": "$indexName",
+               |    "shard": $shardOfIndex,
                |    "from_node": "$nodeOfIndex",
                |    "to_node": "$otherNode"
                |  }
@@ -129,20 +133,23 @@ trait ClusterApiSuite
     "not allow to be used (pretend that index doesn't exist)" when {
       "user doesn't have an access to command index" when {
         "the index does exist" in {
-          waitForCondition("test2_index index node is STARTED") {
-            val test1IndexNodeState = adminCatManager.shards().ofIndex("test2_index").get("state").str
+          val indexName = "test2_index"
+          waitForCondition(s"$indexName index node is STARTED") {
+            val test1IndexNodeState = adminCatManager.shards().ofIndex(indexName).get("state").str
             test1IndexNodeState == "STARTED"
           }
 
-          val nodeOfIndex = adminCatManager.shards().nodeOfIndex("test2_index").get
+          val shardsResponse = adminCatManager.shards()
+          val nodeOfIndex = shardsResponse.nodeOfIndex(indexName).get
+          val shardOfIndex = shardsResponse.shardOfIndex(indexName).get
           val otherNode = adminCatManager.nodes().names.find(_ != nodeOfIndex).get
 
           val result = dev1ClusterManager.reroute(
             ujson.read(
               s"""{
                  |  "move": {
-                 |    "index": "test2_index",
-                 |    "shard": 0,
+                 |    "index": "$indexName",
+                 |    "shard": $shardOfIndex,
                  |    "from_node": "$nodeOfIndex",
                  |    "to_node": "$otherNode"
                  |  }

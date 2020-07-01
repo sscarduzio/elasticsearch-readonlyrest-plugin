@@ -41,10 +41,12 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
           tasks.map(_ ("action").str).toSet should containAtMostElementsFrom(Set(
             """^internal:.*$""".r,
             """^cluster:monitor/.*$""".r,
+            """^indices:monitor/.*$""".r,
             """^indices:admin/.*$""".r,
             """^indices:data/read/get""".r,
             """^indices:data/read/get\[s\]$""".r,
             """^retention_lease_sync$""".r,
+            """^retention_lease_background_sync$""".r
           ))
         } match {
           case Failure(exception) => Failed(exception)
