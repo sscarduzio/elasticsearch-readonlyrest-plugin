@@ -30,7 +30,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
-import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
+import tech.beshu.ror.boot.{Engine, EsInitListener, Ror, RorInstance}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -47,31 +47,20 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              client: NodeClient,
                              threadPool: ThreadPool,
                              env: Environment,
-                             remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]])
+                             remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
+                             esInitListener: EsInitListener)
   extends ActionFilter with Logging {
+
+  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
     new EsServerBasedRorClusterService(clusterService, client), threadPool
   )
 
-  private val startingTaskCancellable = new Ror()
-      .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
-    .runAsync {
-      case Right(Right(instance)) =>
-        RorInstanceSupplier.update(instance)
-        rorInstanceState.set(RorInstanceStartingState.Started(instance))
-      case Right(Left(failure)) =>
-        val startingFailureException = StartingFailureException.from(failure)
-        logger.error("ROR starting failure:", startingFailureException)
-        rorInstanceState.set(RorInstanceStartingState.NotStarted(startingFailureException))
-      case Left(ex) =>
-        val startingFailureException = StartingFailureException.from(ex)
-        logger.error("ROR starting failure:", startingFailureException)
-        rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
-    }
+  private val startingTaskCancellable = startRorInstance()
 
   override def order(): Int = 0
 
@@ -141,6 +130,26 @@ class IndexLevelActionFilter(clusterService: ClusterService,
           }
       case None =>
         listener.onFailure(new Exception("Cluster service not ready yet. Cannot continue"))
+    }
+  }
+
+  private def startRorInstance() = {
+    val startResult = for {
+      _ <- esInitListener.waitUntilReady
+      result <- new Ror().start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
+    } yield result
+    startResult.runAsync {
+      case Right(Right(instance)) =>
+        RorInstanceSupplier.update(instance)
+        rorInstanceState.set(RorInstanceStartingState.Started(instance))
+      case Right(Left(failure)) =>
+        val startingFailureException = StartingFailureException.from(failure)
+        logger.error("ROR starting failure:", startingFailureException)
+        rorInstanceState.set(RorInstanceStartingState.NotStarted(startingFailureException))
+      case Left(ex) =>
+        val startingFailureException = StartingFailureException.from(ex)
+        logger.error("ROR starting failure:", startingFailureException)
+        rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
     }
   }
 }

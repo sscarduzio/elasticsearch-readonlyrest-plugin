@@ -43,7 +43,7 @@ trait EnabledAuditingToolsSuite
 
   private lazy val auditIndexManager = new AuditIndexManagerJ(adminClient, "audit_index")
 
-  override def beforeEach() = {
+  override def beforeEach(): Unit = {
     super.beforeEach()
     auditIndexManager.cleanAuditIndex
   }
@@ -78,7 +78,7 @@ trait EnabledAuditingToolsSuite
       }
 
       "no rule is matching with raw auth header as user" in {
-        val indexManager = new IndexManager(basicAuthClient("usernameWithEmptyPass", ""))
+        val indexManager = new IndexManager(tokenAuthClient("user_token"))
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
@@ -87,7 +87,7 @@ trait EnabledAuditingToolsSuite
 
         val firstEntry = auditEntries.get(0)
         firstEntry.get("final_state") shouldBe "FORBIDDEN"
-        firstEntry.get("user") shouldBe "Basic dXNlcm5hbWVXaXRoRW1wdHlQYXNzOg=="
+        firstEntry.get("user") shouldBe "user_token"
       }
     }
     "not be audited" when {

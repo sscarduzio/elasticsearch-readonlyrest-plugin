@@ -55,6 +55,7 @@ import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
+import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
@@ -76,7 +77,8 @@ class ReadonlyRestPlugin(s: Settings,
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
-    with NetworkPlugin {
+    with NetworkPlugin
+    with ClusterPlugin {
 
   LogPluginBuildInfoMessage()
 
@@ -88,13 +90,14 @@ class ReadonlyRestPlugin(s: Settings,
     Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
   }
 
+  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val environment = new Environment(s, p)
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
+  private val esInitListener = new EsInitListener
 
   private var ilaf: IndexLevelActionFilter = _
 
@@ -108,7 +111,14 @@ class ReadonlyRestPlugin(s: Settings,
                                 nodeEnvironment: NodeEnvironment,
                                 namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
     doPrivileged {
-      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier,emptyClusterState)
+      ilaf = new IndexLevelActionFilter(
+        clusterService,
+        client.asInstanceOf[NodeClient],
+        threadPool,
+        environment,
+        TransportServiceInterceptor.remoteClusterServiceSupplier,
+        emptyClusterState,
+        esInitListener)
     }
     List.empty[AnyRef].asJava
   }
@@ -206,5 +216,10 @@ class ReadonlyRestPlugin(s: Settings,
         ThreadRepo.setRestChannel(channel)
         restHandler.handleRequest(request, channel, client)
       }
+  }
+
+  override def onNodeStarted(): Unit = {
+    super.onNodeStarted()
+    esInitListener.onEsReady()
   }
 }
