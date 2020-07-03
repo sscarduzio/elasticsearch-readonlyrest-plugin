@@ -48,4 +48,3 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
     )
   }
 }
-object EsWithoutRorPluginContainerCreator extends EsWithoutRorPluginContainerCreator

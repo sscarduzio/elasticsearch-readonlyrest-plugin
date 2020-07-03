@@ -16,54 +16,18 @@
  */
 package tech.beshu.ror.utils.gradle
 
-/*
- *    This file is part of ReadonlyREST.
- *
- *    ReadonlyREST is free software: you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation, either version 3 of the License, or
- *    (at your option) any later version.
- *
- *    ReadonlyREST is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU General Public License for more details.
- *
- *    You should have received a copy of the GNU General Public License
- *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
- */
-
 import java.io.{File => JFile}
 import java.nio.file.Paths
 
 import better.files._
-import monix.execution.atomic.Atomic
 import org.gradle.tooling.GradleConnector
 
 import scala.util.Try
 
-final class LastEsModuleCache[A]() {
-  private val lastElem: Atomic[Option[(String, A)]] = Atomic(Option.empty[(String, A)])
-
-  def get(moduleName: String, createNew: => A): A = {
-    lastElem.transformAndExtract {
-      case t@Some((`moduleName`, project)) => (project, t)
-      case _ =>
-        val elem = createNew
-        (elem, Some((moduleName, elem)))
-    }
-  }
-}
 object RorPluginGradleProject {
-  private val lastProjectCache = new LastEsModuleCache[RorPluginGradleProject]
-
-  def apply(moduleName: String): RorPluginGradleProject = {
-    lastProjectCache.get(moduleName, new RorPluginGradleProject(moduleName))
-  }
-
   def fromSystemProperty: RorPluginGradleProject =
     Option(System.getProperty("esModule"))
-      .map(RorPluginGradleProject(_))
+      .map(new RorPluginGradleProject(_))
       .getOrElse(throw new IllegalStateException("No 'esModule' system property set"))
 
   def getRootProject: JFile = {
@@ -82,7 +46,7 @@ object RorPluginGradleProject {
       .toList
 }
 
-class RorPluginGradleProject private(val moduleName: String) {
+class RorPluginGradleProject(val moduleName: String) {
   private val project = esProject(moduleName)
   private val esProjectProperties =
     GradleProperties
@@ -93,7 +57,7 @@ class RorPluginGradleProject private(val moduleName: String) {
       .create(RorPluginGradleProject.getRootProject)
       .getOrElse(throw new IllegalStateException("cannot load root project gradle.properties file"))
 
-  lazy val assemble: Option[JFile] = {
+  def assemble: Option[JFile] = {
     runTask(moduleName + ":ror")
     val plugin = new JFile(project, "build/distributions/" + pluginName)
     if (!plugin.exists) None

@@ -31,7 +31,6 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
   override protected def copyNecessaryFiles(builder: DockerfileBuilder, config: EsWithRorPluginContainer.Config): DockerfileBuilder = {
     builder
       .copy(config.rorPluginFile.getAbsolutePath, "/tmp/")
-      .from("build")
       .copy(s"$configDir/*", "/usr/share/elasticsearch/config/")
   }
 

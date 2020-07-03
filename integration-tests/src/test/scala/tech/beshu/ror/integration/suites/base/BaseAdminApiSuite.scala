@@ -26,7 +26,6 @@ import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManager, Inde
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
-
 trait BaseAdminApiSuite
   extends WordSpec
     with BaseManyEsClustersIntegrationTest
