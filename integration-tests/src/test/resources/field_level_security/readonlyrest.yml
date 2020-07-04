@@ -35,19 +35,19 @@ readonlyrest:
     - name: Nested field test1
       auth_key: "user1:pass"
       indices: ["nestedtest"]
-      fields: ["_source", "items.endDate", "secrets", "names"]
+      fields: ["_source", "items.endDate", "secrets", "user"]
 
     - name: Nested field test2
       auth_key: "user2:pass"
       indices: ["nestedtest"]
-      fields: ["_source", "items.*Date", "secrets.*", "names.*"]
+      fields: ["_source", "items.*Date", "secrets.*", "user.*"]
 
     - name: Nested field test3
       auth_key: "user3:pass"
       indices: ["nestedtest"]
-      fields: ["~items.endDate", "~secrets", "~names"]
+      fields: ["~items.endDate", "~secrets", "~user"]
 
     - name: Nested field test4
       auth_key: "user4:pass"
       indices: ["nestedtest"]
-      fields: ["~items.*Date", "~secrets.*", "~names.*"]
+      fields: ["~items.*Date", "~secrets.*", "~user.*"]

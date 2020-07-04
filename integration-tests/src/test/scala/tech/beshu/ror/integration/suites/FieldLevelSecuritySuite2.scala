@@ -146,7 +146,7 @@ trait FieldLevelSecuritySuite2
           """
             |{
             |  "_source": {
-            |      "includes": [ "items.endDate", "secrets", "names"]
+            |      "includes": [ "items.endDate", "secrets", "user"]
             |  }
             |}
             |""".stripMargin
@@ -167,9 +167,9 @@ trait FieldLevelSecuritySuite2
             |    {"key":1, "text": "secret1"},
             |    {"key":2, "text": "secret2"}
             |  ],
-            |  "names": {
-            |     "prop1": "value1",
-            |     "prop2": "value2"
+            |  "user": {
+            |     "name": "value1",
+            |     "age": "value2"
             |  }
             |}
             |""".stripMargin
@@ -182,7 +182,7 @@ trait FieldLevelSecuritySuite2
           """
             |{
             |  "_source": {
-            |      "includes": [ "items.*Date", "secrets.*", "names.*"]
+            |      "includes": [ "items.*Date", "secrets.*", "user.*"]
             |  }
             |}
             |""".stripMargin
@@ -204,9 +204,9 @@ trait FieldLevelSecuritySuite2
              |    {"key":1,"text":"secret1"},
              |    {"key":2,"text":"secret2"}
              |  ],
-             |  "names": {
-             |     "prop1": "value1",
-             |     "prop2": "value2"
+             |  "user": {
+             |     "name": "value1",
+             |     "age": "value2"
              |  }
              |}
            """.stripMargin
@@ -219,7 +219,7 @@ trait FieldLevelSecuritySuite2
           """
             |{
             |  "_source": {
-            |      "excludes": ["items.endDate", "secrets", "names"]
+            |      "excludes": ["items.endDate", "secrets", "user"]
             |  }
             |}
             |""".stripMargin
@@ -248,7 +248,7 @@ trait FieldLevelSecuritySuite2
           """
             |{
             |  "_source": {
-            |      "excludes": ["items.*Date", "secrets.*", "names.*"]
+            |      "excludes": ["items.*Date", "secrets.*", "user.*"]
             |  }
             |}
             |""".stripMargin
@@ -267,7 +267,7 @@ trait FieldLevelSecuritySuite2
             |    {"itemId":2,"text":"text2"},
             |    {"itemId":3,"text":"text3"}
             |  ],
-            |  "names": {}
+            |  "user": {}
             |}""".stripMargin
         ))
       }
@@ -276,7 +276,7 @@ trait FieldLevelSecuritySuite2
     "get api is used" in {
       val documentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
-      val queryParams = Map("_source_excludes" -> "items.*Date,secrets.*,names.*")
+      val queryParams = Map("_source_excludes" -> "items.*Date,secrets.*,user.*")
       val result = documentManager.get("nestedtest", 1, queryParams)
 
       assertEquals(200, result.responseCode)
@@ -292,14 +292,14 @@ trait FieldLevelSecuritySuite2
           |    {"itemId":2,"text":"text2"},
           |    {"itemId":3,"text":"text3"}
           |  ],
-          |  "names": {}
+          |  "user": {}
           |}""".stripMargin
       ))
     }
     "mget api is used" in {
       val documentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
-      val queryParams = Map("_source_excludes" -> "items.*Date,secrets.*,names.*")
+      val queryParams = Map("_source_excludes" -> "items.*Date,secrets.*,user.*")
 
       val result = documentManager.mGet(
         ujson.read(
@@ -328,7 +328,7 @@ trait FieldLevelSecuritySuite2
           |    {"itemId":2,"text":"text2"},
           |    {"itemId":3,"text":"text3"}
           |  ],
-          |  "names": {}
+          |  "user": {}
           |}""".stripMargin
       ))
     }
@@ -357,9 +357,9 @@ object FieldLevelSecuritySuite2 {
         |    {"key":1, "text": "secret1"},
         |    {"key":2, "text": "secret2"}
         |  ],
-        |  "names": {
-        |     "prop1": "value1",
-        |     "prop2": "value2"
+        |  "user": {
+        |     "name": "value1",
+        |     "age": "value2"
         |  }
         |}""".stripMargin
     )

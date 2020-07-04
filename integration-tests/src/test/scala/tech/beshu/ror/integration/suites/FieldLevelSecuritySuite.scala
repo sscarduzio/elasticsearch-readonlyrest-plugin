@@ -46,16 +46,6 @@ trait FieldLevelSecuritySuite
 
         source should be(ujson.read("""{"dummy2":"true"}"""))
       }
-      "whitelist mode is used with field caps query" in {
-        val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
-
-        val result = searchManager.fieldCaps(List("testfiltera"), List("dummy", "dummy2"))
-
-        println(result.body)
-        assertEquals(200, result.responseCode)
-
-        result.fields.size shouldBe 1
-      }
       "whitelist mode is used with search query using inaccessible field" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
 
@@ -129,7 +119,7 @@ trait FieldLevelSecuritySuite
             |    {"endDate":"2019-09-30"}
             |  ],
             |  "secrets":[{},{}],
-            |  "names": {}
+            |  "user": {}
             |}
             |""".stripMargin
         ))
@@ -155,9 +145,9 @@ trait FieldLevelSecuritySuite
              |    {"key":1,"text":"secret1"},
              |    {"key":2,"text":"secret2"}
              |  ],
-             |  "names": {
-             |     "prop1": "value1",
-             |     "prop2": "value2"
+             |  "user": {
+             |     "name": "value1",
+             |     "age": "value2"
              |  }
              |}
            """.stripMargin
@@ -203,7 +193,7 @@ trait FieldLevelSecuritySuite
             |    {"itemId":3,"text":"text3"}
             |  ],
             |  "secrets":[{},{}],
-            |  "names":{}
+            |  "user":{}
             |}""".stripMargin
         ))
       }
@@ -226,7 +216,7 @@ trait FieldLevelSecuritySuite
           |    {"itemId":3,"text":"text3"}
           |  ],
           |  "secrets":[{},{}],
-          |  "names":{}
+          |  "user":{}
           |}""".stripMargin
       ))
     }
@@ -259,7 +249,7 @@ trait FieldLevelSecuritySuite
           |    {"itemId":3,"text":"text3"}
           |  ],
           |  "secrets":[{},{}],
-          |  "names":{}
+          |  "user":{}
           |}""".stripMargin
       ))
     }
@@ -288,9 +278,9 @@ object FieldLevelSecuritySuite {
         |    {"key":1, "text": "secret1"},
         |    {"key":2, "text": "secret2"}
         |  ],
-        |  "names": {
-        |     "prop1": "value1",
-        |     "prop2": "value2"
+        |  "user": {
+        |     "name": "value1",
+        |     "age": "value2"
         |  }
         |}""".stripMargin
     )
