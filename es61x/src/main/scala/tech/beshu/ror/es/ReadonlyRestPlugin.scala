@@ -215,6 +215,8 @@ class ReadonlyRestPlugin(s: Settings,
 
   override def onNodeStarted(): Unit = {
     super.onNodeStarted()
-    esInitListener.onEsReady()
+    doPrivileged {
+      esInitListener.onEsReady()
+    }
   }
 }
