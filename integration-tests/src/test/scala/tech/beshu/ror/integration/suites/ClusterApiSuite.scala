@@ -43,6 +43,7 @@ trait ClusterApiSuite
   )
 
   private lazy val adminCatManager = new CatManager(esTargets.head.basicAuthClient("admin", "container"), esVersion = esTargets.head.esVersion)
+  private lazy val adminClusterManager = new ClusterManager(esTargets.head.basicAuthClient("admin", "container"), esVersion = esTargets.head.esVersion)
   private lazy val dev1ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esTargets.head.esVersion)
   private lazy val dev2ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev2", "test"), esVersion = esTargets.head.esVersion)
   private lazy val dev3ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev3", "test"), esVersion = esTargets.head.esVersion)
@@ -201,6 +202,27 @@ trait ClusterApiSuite
         result.responseCode should be(200)
         result.responseJson should not(containKeyOrValue("test3_index"))
       }
+    }
+  }
+
+  "Cluster settings API" should {
+    "allow user to modify and get current settings" in {
+      val settingsBeforePut = adminClusterManager.getSettings
+
+      val response = adminClusterManager.putSettings(
+        ujson.read(
+          s"""{
+             |  "persistent": {
+             |    "cluster.routing.allocation.cluster_concurrent_rebalance": "30"
+             |  }
+             |}""".stripMargin
+        )
+      )
+      response.responseCode should be(200)
+
+      val settingsAfterPut = adminClusterManager.getSettings
+      settingsAfterPut should not be settingsBeforePut
+      settingsAfterPut.responseJson("persistent")("cluster")("routing")("allocation")("cluster_concurrent_rebalance").str should be("30")
     }
   }
 }

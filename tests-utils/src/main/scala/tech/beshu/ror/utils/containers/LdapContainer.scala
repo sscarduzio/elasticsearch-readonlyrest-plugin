@@ -21,7 +21,7 @@ import java.io.{BufferedReader, InputStreamReader}
 import better.files.{Disposable, Dispose, File, Resource}
 import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.scalalogging.LazyLogging
-import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, ResultCode}
+import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, LDAPException, ResultCode}
 import com.unboundid.ldif.LDIFReader
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -131,6 +131,10 @@ private class LdapWaitStrategy(name: String,
                 Task.now(())
               case result =>
                 Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
+            }
+            .onErrorRecover {
+              case ex: LDAPException if ex.getResultCode == ResultCode.ENTRY_ALREADY_EXISTS =>
+                Task.now(())
             }
         }
       }

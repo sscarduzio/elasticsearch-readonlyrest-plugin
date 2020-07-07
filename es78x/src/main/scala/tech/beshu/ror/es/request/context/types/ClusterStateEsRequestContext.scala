@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.threadpool.ThreadPool
@@ -40,8 +41,13 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
 
   override protected def update(request: ClusterStateRequest,
                                 indices: NonEmptyList[domain.IndexName]): ModificationResult = {
-
-    request.indices(indices.toList.map(_.value.value): _*)
-    Modified
+    indicesFrom(request).toList match {
+      case Nil if indices.exists(_ === IndexName.wildcard) =>
+        // hack: when empty indices list is replaced with wildcard index, returned result is wrong
+        Modified
+      case _ =>
+        request.indices(indices.toList.map(_.value.value): _*)
+        Modified
+    }
   }
 }

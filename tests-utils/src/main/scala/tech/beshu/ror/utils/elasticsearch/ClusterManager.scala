@@ -52,6 +52,14 @@ class ClusterManager(client: RestClient,
     call(createCancelAllTasksRequest(), new JsonResponse(_))
   }
 
+  def getSettings: JsonResponse = {
+    call(createGetSettingsRequest(), new JsonResponse(_))
+  }
+
+  def putSettings(content: JSON): JsonResponse = {
+    call(createPutSettingsRequest(content), new JsonResponse(_))
+  }
+
   private def allocationExplain(index: Option[String]): JsonResponse = {
     call(createAllocationExplainRequest(index), new JsonResponse(_))
   }
@@ -148,6 +156,19 @@ class ClusterManager(client: RestClient,
            |}
           """.stripMargin
       }
+    ))
+    request
+  }
+
+  private def createGetSettingsRequest() = {
+    new HttpGet(client.from("_cluster/settings"))
+  }
+
+  private def createPutSettingsRequest(content: JSON) = {
+    val request = new HttpPut(client.from("_cluster/settings"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      content.toString()
     ))
     request
   }
