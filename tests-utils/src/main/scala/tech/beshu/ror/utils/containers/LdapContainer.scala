@@ -127,7 +127,7 @@ private class LdapWaitStrategy(name: String,
         readEntries().map { entry =>
           Task(connection.add(new AddRequest(entry.toLDIF: _*)))
             .flatMap {
-              case result if result.getResultCode == ResultCode.SUCCESS =>
+              case result if Set(ResultCode.SUCCESS, ResultCode.ENTRY_ALREADY_EXISTS).contains(result.getResultCode) =>
                 Task.now(())
               case result =>
                 Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
