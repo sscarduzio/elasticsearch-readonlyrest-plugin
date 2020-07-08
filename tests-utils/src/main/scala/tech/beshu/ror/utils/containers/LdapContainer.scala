@@ -71,7 +71,8 @@ object LdapContainer {
 
   def create(name: String, ldapInitScript: String): LdapContainer = {
     val ldapContainer = new LdapContainer(name, ldapInitScript)
-    ldapContainer.container.setNetwork(Network.SHARED)
+    ldapContainer.container
+      .setNetwork(Network.SHARED)
     ldapContainer
   }
 

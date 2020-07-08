@@ -142,7 +142,7 @@ class IndexLevelActionFilter(settings: Settings,
     }
   }
 
-  private def startRorInstance() = {
+  private def startRorInstance() = doPrivileged {
     new Ror()
       .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
       .runAsync {
