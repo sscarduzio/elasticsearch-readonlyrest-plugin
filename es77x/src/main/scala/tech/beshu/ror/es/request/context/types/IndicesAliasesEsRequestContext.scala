@@ -42,7 +42,8 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
 
   override protected def update(request: IndicesAliasesRequest,
                                 indices: NonEmptyList[IndexName]): ModificationResult = {
-    request.getAliasActions.removeIf { action => removeOrAlter(action, indices.toList.toSet) }
+    // todo: fixme
+//    request.getAliasActions.removeIf { action => removeOrAlter(action, indices.toList.toSet) }
     if (request.getAliasActions.asScala.isEmpty) ShouldBeInterrupted
     else Modified
   }

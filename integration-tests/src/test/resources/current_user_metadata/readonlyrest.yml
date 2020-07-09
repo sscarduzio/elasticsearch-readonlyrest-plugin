@@ -14,6 +14,7 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "User 1 - index1"
+      filter: '{"query_string":{"query":"app:(cste)"}}'
       users: ["user1"]
       groups: [group2, group3]
 
