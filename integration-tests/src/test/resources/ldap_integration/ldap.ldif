@@ -2,9 +2,8 @@
 #################################
 #################################
 # g1: cartman, chandler
-# g2: morgan
+# g2: morgan, Bìlbö Bággįnš
 # g3: morgan, cartman, chandler
-# gAll: morgan, cartman, chandler
 ################################
 ################################
 ################################
@@ -69,13 +68,13 @@ objectClass: groupOfUniqueNames
 cn: group1
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
-uniqueMember: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
 
 dn: cn=group2,ou=Groups,dc=example,dc=com
 objectClass: top
 objectClass: groupOfUniqueNames
 cn: group2
 uniqueMember: cn=Morgman Freeman,ou=People,dc=example,dc=com
+uniqueMember: cn=Bìlbö Bággįnš,ou=People,dc=example,dc=com
 
 dn: cn=group3,ou=Groups,dc=example,dc=com
 objectClass: top
@@ -85,10 +84,3 @@ uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
 uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
 uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
 
-dn: cn=groupAll,ou=Groups,dc=example,dc=com
-objectClass: top
-objectClass: groupOfUniqueNames
-cn: groupAll
-uniqueMember: cn=Chanandler Bong,ou=People,dc=example,dc=com
-uniqueMember: cn=Eric Cartman,ou=People,dc=example,dc=com
-uniqueMember: cn=Morgan Freeman,ou=People,dc=example,dc=com
