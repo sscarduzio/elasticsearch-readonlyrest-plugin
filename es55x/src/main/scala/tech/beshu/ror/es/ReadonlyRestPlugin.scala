@@ -24,11 +24,9 @@ import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
-import org.elasticsearch.client.Client
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver
 import org.elasticsearch.cluster.node.DiscoveryNodes
-import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.component.LifecycleComponent
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
@@ -45,21 +43,19 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
-import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
-import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
+import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
-import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -88,8 +84,8 @@ class ReadonlyRestPlugin(s: Settings,
     Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
   }
 
+  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val environment = new Environment(s)
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl
     .load(environment.configFile)
