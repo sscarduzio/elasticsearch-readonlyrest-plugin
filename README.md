@@ -4,9 +4,9 @@
 [![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/readonlyrest)
 
 
-|   | Sponsored link |
+|  Supporters | Sponsored link |
 | ------------- | ------------- |
-| Thanks **@Id57, Jeff Saxe, GoodMirek** for donating! __________________________________________ [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest) [![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate) | [![SponsoredAd](https://images.gitads.io/elasticsearch-readonlyrest-plugin)](https://tracking.gitads.io/?repo=elasticsearch-readonlyrest-plugin) |
+| Thanks **@Id57, Jeff Saxe, GoodMirek** for donating! __________________________________________ [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest) [![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate) | <a href="https://tracking.gitads.io/?repo=elasticsearch-readonlyrest-plugin"><img src="https://images.gitads.io/elasticsearch-readonlyrest-plugin" alt="GitAds"/></a> |
 
 
 ## ReadonlyREST needs your help ⚠️
