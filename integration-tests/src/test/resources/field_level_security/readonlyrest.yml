@@ -17,6 +17,11 @@ readonlyrest:
       indices: ["testfiltera"]
       fields: ["_source","dummy2"]
 
+    - name: getter_a_positive_with_variable
+      auth_key: "dummy:pass"
+      indices: ["testfiltera"]
+      fields: ["_source","@{acl:user}2"]
+
     - name: getter_a_positive_wc
       auth_key: "user2:pass"
       indices: ["testfiltera"]

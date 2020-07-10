@@ -19,6 +19,8 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.accesscontrol.domain.DocumentField.ADocumentField
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
@@ -43,7 +45,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(ADocumentField("field1".nonempty))
+            val expectedFields: NonEmptySet[RuntimeMultiResolvableVariable[DocumentField]] = NonEmptySet.of(AlreadyResolved(ADocumentField("field1".nonempty).nel))
             rule.settings.fields should be(expectedFields)
           }
         )
@@ -61,8 +63,8 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(
-              ADocumentField("field1".nonempty), ADocumentField("field2".nonempty)
+            val expectedFields: NonEmptySet[RuntimeMultiResolvableVariable[DocumentField]] = NonEmptySet.of(
+              AlreadyResolved(ADocumentField("field1".nonempty).nel), AlreadyResolved(ADocumentField("field2".nonempty).nel)
             )
             rule.settings.fields should be(expectedFields)
           }
@@ -81,7 +83,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(ADocumentField("field1".nonempty))
+            val expectedFields: NonEmptySet[RuntimeMultiResolvableVariable[DocumentField]] = NonEmptySet.of(AlreadyResolved(ADocumentField("field1".nonempty).nel))
             rule.settings.fields should be(expectedFields)
           }
         )
@@ -99,13 +101,32 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val expectedFields: NonEmptySet[DocumentField] = NonEmptySet.of(
-              ADocumentField("field1".nonempty), ADocumentField("field2".nonempty)
+            val expectedFields: NonEmptySet[RuntimeMultiResolvableVariable[DocumentField]] = NonEmptySet.of(
+              AlreadyResolved(ADocumentField("field1".nonempty).nel), AlreadyResolved(ADocumentField("field2".nonempty).nel)
             )
             rule.settings.fields should be(expectedFields)
           }
         )
       }
+      "field is defined with variable" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    fields: ["@{user}", "field2"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.fields.head should be(AlreadyResolved(ADocumentField("field2".nonempty).nel))
+            rule.settings.fields.last shouldBe a [ToBeResolved[_]]
+          }
+        )
+      }
+
     }
     "not be able to be loaded from config" when {
       "no field is defined" in {
