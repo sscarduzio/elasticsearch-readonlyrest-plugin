@@ -1,0 +1,106 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  prompt_for_basic_auth: false
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      type: allow
+      auth_key: admin:container
+
+    - name: "::Test1 index::"
+      type: allow
+      methods: GET
+      indices: ["test1"]
+      ldap_auth:
+        name: "ldap1"
+        groups: ["group1", "group3"]
+
+    - name: "::Test2 index::"
+      type: allow
+      methods: GET
+      indices: ["test2"]
+      ldap_authentication:
+        name: "ldap2"
+      ldap_authorization:
+        name: "ldap2"
+        groups: ["group3"]
+
+    - name: "::Test3 index::"
+      methods: GET
+      indices: ["test3"]
+      groups: ["local_group1", "local_group3"]
+
+    - name: "::Test4 index::"
+      methods: GET
+      indices: ["test4"]
+      groups: ["local_group2"]
+
+
+  users:
+    - username: cartman
+      groups: ["local_group1", "local_group3"]
+      ldap_authentication: "ldap1"
+
+    - username: Bìlbö Bággįnš
+      groups: ["local_group1"]
+      ldap_authentication: "ldap1"
+
+    - username: bong
+      groups: ["local_group2"]
+      ldap_authentication: "ldap1"
+
+    - username: morgan
+      groups: ["local_group2", "local_group3"]
+      ldap_authentication: "ldap1"
+
+
+  ######### LDAP SERVERS CONFIGURATION ########################
+  # users:                                                    #
+  #   * cartman:user2                                         #
+  #   * bong:user1                                            #
+  #   * morgan:user1                                          #
+  #   * Bìlbö Bággįnš:user2                                   #
+  # groups:                                                   #
+  #   * group1: cartman, bong                                 #
+  #   * group2: morgan, Bìlbö Bággįnš                         #
+  #   * group3: morgan, cartman, bong                         #
+  #############################################################
+  ldaps:
+    - name: ldap1
+      host: "{LDAP1_HOST}"
+      port: {LDAP1_PORT}                                        # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout_in_sec: 10                             # default 1
+      request_timeout_in_sec: 10                                # default 1
+      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+
+    - name: ldap2
+      host: "{LDAP2_HOST}"
+      port: {LDAP2_PORT}                                        # default 389
+      ssl_enabled: false                                        # default true
+      ssl_trust_all_certs: true                                 # default false
+      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      bind_password: "password"                                 # skip for anonymous bind
+      search_user_base_DN: "ou=People,dc=example,dc=com"
+      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      user_id_attribute: "uid"                                  # default "uid"
+      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      connection_pool_size: 10                                  # default 30
+      connection_timeout_in_sec: 10                             # default 1
+      request_timeout_in_sec: 10                                # default 1
+      cache_ttl_in_sec: 60                                      # default 0 - cache disabled

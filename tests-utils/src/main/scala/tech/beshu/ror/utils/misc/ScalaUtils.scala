@@ -21,9 +21,12 @@ import java.time.Duration
 import cats.implicits._
 import cats.Functor
 import monix.eval.Task
+import monix.execution.Scheduler
 
-import scala.concurrent.duration.FiniteDuration
-import scala.language.{higherKinds, implicitConversions}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.language.{higherKinds, implicitConversions, postfixOps}
+import scala.util.{Success, Try}
 
 object ScalaUtils {
 
@@ -52,14 +55,19 @@ object ScalaUtils {
   implicit def finiteDurationToJavaDuration(interval: FiniteDuration): Duration = Duration.ofMillis(interval.toMillis)
 
   def retry(times: Int)(action: Unit): Unit = {
-    Stream.fill(times)(()).foreach(_ => action)
+    Stream
+      .fill(times)(())
+      .foldLeft(Success(()): Try[Unit]) {
+        case (Success(_), _) => Try(action)
+        case (failure, _) => failure
+      }
+      .get
   }
 
   def retryBackoff[A](source: Task[A],
                       maxRetries: Int,
                       firstDelay: FiniteDuration,
                       backOffScaler: Int): Task[A] = {
-
     source.onErrorHandleWith {
       case ex: Exception =>
         if (maxRetries > 0)
@@ -68,6 +76,22 @@ object ScalaUtils {
         else
           Task.raiseError(ex)
     }
+  }
+
+  def waitForCondition(conditionDescription: String)
+                      (condition: => Boolean)
+                      (implicit timeout: FiniteDuration = 10 seconds): Unit = {
+    import monix.execution.Scheduler.Implicits.global
+    val retriesCount = timeout.toSeconds.toInt + 1
+    retryBackoff(
+      Task.delay(
+        if(condition) ()
+        else throw new Exception(s"Condition '$conditionDescription' is not fulfilled. Cannot wait longer than $timeout")
+      ),
+      maxRetries = retriesCount,
+      firstDelay = 1 seconds,
+      backOffScaler = 1
+    ) runSyncUnsafe()
   }
 
 }

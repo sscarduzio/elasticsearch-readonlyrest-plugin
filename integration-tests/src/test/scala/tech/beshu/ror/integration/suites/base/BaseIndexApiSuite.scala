@@ -74,6 +74,13 @@ trait BaseIndexApiSuite
               indexResponse.responseJson("index1")
             }
           }
+          "one of called indices doesn't exist" in {
+            val indexResponse = dev1IndexManager.getIndex("index1", "index3")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be(1)
+            indexResponse.responseJson("index1")
+          }
         }
         "he has access to its alias" when {
           "the alias is called" in {
@@ -114,11 +121,6 @@ trait BaseIndexApiSuite
 
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
-        "one of called indices doesn't exist" in {
-          val indexResponse = dev1IndexManager.getIndex("index1", "index3")
-
-          indexResponse.responseCode should be(notFoundIndexStatusReturned)
-        }
         "the index is called explicitly when user has configured alias in indices rule" in {
           val indexResponse = dev2IndexManager.getIndex("index2")
 
@@ -152,6 +154,7 @@ trait BaseIndexApiSuite
 
             aliasResponse.responseCode should be(200)
             aliasResponse.responseJson.obj.size should be(1)
+
             val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
             aliasesJson.size should be(1)
             aliasesJson.contains("index1_alias") should be(true)
@@ -159,7 +162,12 @@ trait BaseIndexApiSuite
           "one of passed indices doesn't exist" in {
             val aliasResponse = dev1IndexManager.getAlias(indices = "index1", "nonexistent")
 
-            aliasResponse.responseCode should be(notFoundIndexStatusReturned)
+            aliasResponse.responseCode should be(200)
+            aliasResponse.responseJson.obj.size should be(1)
+
+            val aliasesJson = aliasResponse.responseJson("index1").obj("aliases").obj
+            aliasesJson.size should be(1)
+            aliasesJson.contains("index1_alias") should be(true)
           }
         }
         "/[index]/_alias/[alias] API is used" when {
@@ -221,7 +229,7 @@ trait BaseIndexApiSuite
           aliasResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "the alias name with wildcard is used" when {
-          "there is no matching alias" excludeES(allEs7x, "^es66x$".r, allEs5xExceptEs55x) in {
+          "there is no matching alias" excludeES(allEs7x, "^es66x$".r) in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
             aliasResponse.responseCode should be(404)
@@ -229,7 +237,7 @@ trait BaseIndexApiSuite
         }
       }
       "return alias not found" when {
-        "full alias name is used and the alias doesn't exist" excludeES (allEs5xExceptEs55x) in {
+        "full alias name is used and the alias doesn't exist" in {
           val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent")
 
           aliasResponse.responseCode should be(404)
@@ -278,6 +286,13 @@ trait BaseIndexApiSuite
               indexResponse.responseJson("index1")
             }
           }
+          "one of called indices doesn't exist" in {
+            val indexResponse = dev1IndexManager.getSettings("index1", "index3")
+
+            indexResponse.responseCode should be(200)
+            indexResponse.responseJson.obj.size should be(1)
+            indexResponse.responseJson("index1")
+          }
         }
         "he has access to the index's alias" when {
           "the alias is called" in {
@@ -321,11 +336,6 @@ trait BaseIndexApiSuite
         }
         "called index exists, but the user has no access to it" in {
           val indexResponse = dev1IndexManager.getSettings("index2")
-
-          indexResponse.responseCode should be(notFoundIndexStatusReturned)
-        }
-        "one of called indices doesn't exist" in {
-          val indexResponse = dev1IndexManager.getSettings("index1", "index3")
 
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }

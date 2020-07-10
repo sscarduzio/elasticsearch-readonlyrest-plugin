@@ -47,7 +47,7 @@ class UnboundidLdapAuthorizationServiceTests
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(15, Seconds)), interval = scaled(Span(100, Millis)))
 
-  override val container: LdapContainer = new LdapContainer("LDAP1", "/test_example.ldif")
+  override val container: LdapContainer = new LdapContainer("LDAP1", "test_example.ldif")
   val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override protected def afterAll(): Unit = {

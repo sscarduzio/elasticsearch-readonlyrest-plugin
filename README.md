@@ -2,17 +2,15 @@
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12)
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
 [![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/readonlyrest)
-[![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest)
-[![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate)
+
+
+|  Supporters | Sponsored link |
+| ------------- | ------------- |
+| Thanks **@Id57, Jeff Saxe, GoodMirek** for donating! __________________________________________ [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest) [![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate) | <a href="https://tracking.gitads.io/?repo=elasticsearch-readonlyrest-plugin"><img src="https://images.gitads.io/elasticsearch-readonlyrest-plugin" alt="GitAds"/></a> |
+
 
 ## ReadonlyREST needs your help ⚠️
-ReadonlyREST is an GPLv3 open source project. Its ongoing development can only made possible thanks to the support of its backers:
 
-1. @nmaisonneuve 
-2. @Id57 
-3. PPRO
-4. Jeff Saxe
-3. Joseph Bull
 
 If you care this project **keeps on existing**, read up the [Patreon campaign](https://www.patreon.com/readonlyrest), or [Liberapay campaign](https://liberapay.com/sscarduzio/donate).
 

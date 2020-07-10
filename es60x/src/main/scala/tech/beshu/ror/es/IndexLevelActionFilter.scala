@@ -60,30 +60,16 @@ class IndexLevelActionFilter(settings: Settings,
     this(settings, clusterService, client, threadPool, env, ())
   }
 
+  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
     new EsServerBasedRorClusterService(clusterService, client), threadPool
   )
 
-  private val startingTaskCancellable = doPrivileged {
-    new Ror()
-      .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
-      .runAsync {
-        case Right(Right(instance)) =>
-          RorInstanceSupplier.update(instance)
-          rorInstanceState.set(RorInstanceStartingState.Started(instance))
-        case Right(Left(failure)) =>
-          val startingFailureException = StartingFailureException.from(failure)
-          logger.error("ROR starting failure:", startingFailureException)
-          rorInstanceState.set(RorInstanceStartingState.NotStarted(startingFailureException))
-        case Left(ex) =>
-          val startingFailureException = StartingFailureException.from(ex)
-          logger.error("ROR starting failure:", startingFailureException)
-          rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
-      }
-  }
+  private val startingTaskCancellable = startRorInstance()
 
   override def order(): Int = 0
 
@@ -156,6 +142,25 @@ class IndexLevelActionFilter(settings: Settings,
     }
   }
 
+  private def startRorInstance() = {
+    val startResult = for {
+      _ <- EsInitListenerSingleton.waitUntilReady
+      result <- new Ror().start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
+    } yield result
+    startResult.runAsync {
+      case Right(Right(instance)) =>
+        RorInstanceSupplier.update(instance)
+        rorInstanceState.set(RorInstanceStartingState.Started(instance))
+      case Right(Left(failure)) =>
+        val startingFailureException = StartingFailureException.from(failure)
+        logger.error("ROR starting failure:", startingFailureException)
+        rorInstanceState.set(RorInstanceStartingState.NotStarted(startingFailureException))
+      case Left(ex) =>
+        val startingFailureException = StartingFailureException.from(ex)
+        logger.error("ROR starting failure:", startingFailureException)
+        rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
+    }
+  }
 }
 
 private sealed trait RorInstanceStartingState

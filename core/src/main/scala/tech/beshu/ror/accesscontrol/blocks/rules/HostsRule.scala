@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.HostsRule.Settings
@@ -58,7 +59,7 @@ class HostsRule(val settings: Settings,
           addressToCheck = remoteAddress
         ).map(condition => RuleResult.fromCondition(blockContext)(condition))
       case None =>
-        logger.warn("Remote address is unavailable!")
+        logger.warn(s"[${blockContext.requestContext.id.show}] Remote address is unavailable!")
         Task.now(Rejected())
     }
   }

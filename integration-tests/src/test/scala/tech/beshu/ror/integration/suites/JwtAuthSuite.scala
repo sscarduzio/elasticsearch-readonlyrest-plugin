@@ -25,7 +25,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.ClusterManager
+import tech.beshu.ror.utils.elasticsearch.CatManager
 
 import scala.collection.mutable
 
@@ -45,120 +45,120 @@ trait JwtAuthSuite
   override implicit val rorConfigFileName = "/jwt_auth/readonlyrest.yml"
 
   "rejectRequestWithoutAuthorizationHeader" in {
-    val clusterStateManager = new ClusterManager(noBasicAuthClient, esVersion = targetEs.esVersion)
+    val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "rejectTokenWithWrongKey" in {
     val token = makeToken(wrongKey)
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "rejectTokenWithoutUserClaim" in {
     val token = makeToken(validKey)
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "acceptValidTokenWithUserClaim" in {
     val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user"))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
   "acceptValidTokenWithUserClaimAndCustomHeader" in {
     val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user"))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("x-custom-header" -> s"$token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
   "acceptValidTokenWithUserClaimAndCustomHeaderAndCustomHeaderPrefix" in {
     val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user"))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("x-custom-header2" -> s"x-custom-prefix$token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
   "rejectTokenWithUserClaimAndCustomHeader" in {
     val token = makeTokenWithClaims(validKey, makeClaimMap("inexistent_claim", "user"))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("x-custom-header" -> s"$token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "rejectExpiredToken" in {
     val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user", "exp", 0))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "rejectTokenWithoutRolesClaim" in {
     val token = makeToken(validKeyRole)
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "rejectTokenWithWrongRolesClaim" in {
     val token = makeTokenWithClaims(validKeyRole, makeClaimMap(rolesClaim, "role_wrong"))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "acceptValidTokenWithRolesClaim" in {
     val roles: util.List[String] = Lists.newArrayList("role_viewer", "something_lol")
     val token = makeTokenWithClaims(validKeyRole, makeClaimMap(userClaim, "user1", rolesClaim, roles))
-    val clusterStateManager = new ClusterManager(
+    val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
       esVersion = targetEs.esVersion)
 
-    val response = clusterStateManager.catIndices()
+    val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 

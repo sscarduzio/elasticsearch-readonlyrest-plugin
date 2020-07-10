@@ -379,20 +379,37 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
   }
 
   "A ReadonlyREST ES API SSL settings" should {
-    "be loaded from elasticsearch config file" in {
-      val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
-      inside(ssl.externalSsl) {
-        case Some(ExternalSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
-          keystoreFile.value.getName should be("keystore.jks")
-          keystorePassword should be(KeystorePassword("readonlyrest1"))
-          keyPass should be(KeyPass("readonlyrest2"))
-          truststoreFile.value.getName should be("truststore.jks")
-          truststorePassword should be(TruststorePassword("readonlyrest3"))
-          allowedProtocols should be(Set.empty)
-          allowedCiphers should be(Set.empty)
-          clientAuthenticationEnabled should be(false)
+    "be loaded from elasticsearch config file" when {
+      "all properties contain at least one non-digit" in {
+        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config/")).runSyncUnsafe().right.get
+        inside(ssl.externalSsl) {
+          case Some(ExternalSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
+            keystoreFile.value.getName should be("keystore.jks")
+            keystorePassword should be(KeystorePassword("readonlyrest1"))
+            keyPass should be(KeyPass("readonlyrest2"))
+            truststoreFile.value.getName should be("truststore.jks")
+            truststorePassword should be(TruststorePassword("readonlyrest3"))
+            allowedProtocols should be(Set.empty)
+            allowedCiphers should be(Set.empty)
+            clientAuthenticationEnabled should be(false)
+        }
+        ssl.interNodeSsl should be(None)
       }
-      ssl.interNodeSsl should be(None)
+      "some properties contains only digits" in {
+        val ssl = RorSsl.load(getResourcePath("/boot_tests/es_api_ssl_settings_in_elasticsearch_config_only_digits/")).runSyncUnsafe().right.get
+        inside(ssl.externalSsl) {
+          case Some(ExternalSslConfiguration(keystoreFile, Some(keystorePassword), Some(keyPass), None, Some(truststoreFile), Some(truststorePassword), allowedProtocols, allowedCiphers, clientAuthenticationEnabled)) =>
+            keystoreFile.value.getName should be("keystore.jks")
+            keystorePassword should be(KeystorePassword("123456"))
+            keyPass should be(KeyPass("12"))
+            truststoreFile.value.getName should be("truststore.jks")
+            truststorePassword should be(TruststorePassword("1234"))
+            allowedProtocols should be(Set.empty)
+            allowedCiphers should be(Set.empty)
+            clientAuthenticationEnabled should be(false)
+        }
+        ssl.interNodeSsl should be(None)
+      }
     }
     "be loaded from readonlyrest config file" when {
       "elasticsearch config file doesn't contain ROR ssl section" in {
