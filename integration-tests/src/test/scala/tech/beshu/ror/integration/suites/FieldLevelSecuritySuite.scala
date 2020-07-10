@@ -46,6 +46,17 @@ trait FieldLevelSecuritySuite
 
         source should be(ujson.read("""{"dummy2":"true"}"""))
       }
+      "whitelist mode with user variable is used " in {
+        val searchManager = new SearchManager(basicAuthClient("dummy", "pass"))
+
+        val result = searchManager.search("/testfiltera/_search")
+
+        assertEquals(200, result.responseCode)
+        val searchJson = result.searchHits
+        val source = searchJson(0)("_source")
+
+        source should be(ujson.read("""{"dummy2":"true"}"""))
+      }
       "whitelist mode with wildcard is used" in {
         val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
 
