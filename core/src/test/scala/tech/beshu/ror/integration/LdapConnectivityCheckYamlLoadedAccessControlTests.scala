@@ -36,7 +36,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     with ForAllTestContainer
     with Inside {
 
-  override val container: LdapContainer = new LdapContainer("LDAP1", "/test_example.ldif")
+  override val container: LdapContainer = new LdapContainer("LDAP1", "test_example.ldif")
 
   override protected def configYaml: String =
     s"""readonlyrest:

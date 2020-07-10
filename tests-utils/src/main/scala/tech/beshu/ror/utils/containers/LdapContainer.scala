@@ -16,23 +16,24 @@
  */
 package tech.beshu.ror.utils.containers
 
-import java.io.InputStream
+import java.io.{BufferedReader, InputStreamReader}
 
+import better.files.{Disposable, Dispose, File, Resource}
 import com.dimafeng.testcontainers.GenericContainer
 import com.typesafe.scalalogging.LazyLogging
-import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, ResultCode}
+import com.unboundid.ldap.sdk.{AddRequest, LDAPConnection, LDAPException, ResultCode}
 import com.unboundid.ldif.LDIFReader
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
-import tech.beshu.ror.utils.containers.LdapContainer.defaults
+import tech.beshu.ror.utils.containers.LdapContainer.{InitScriptSource, defaults}
 import tech.beshu.ror.utils.misc.ScalaUtils._
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
+import scala.language.{implicitConversions, postfixOps}
 
-class LdapContainer(name: String, ldapInitScript: String)
+class LdapContainer(name: String, ldapInitScript: InitScriptSource)
   extends GenericContainer(
     dockerImage = "osixia/openldap:1.1.7",
     env = Map(
@@ -59,9 +60,19 @@ class LdapContainer(name: String, ldapInitScript: String)
 
 object LdapContainer {
 
+  sealed trait InitScriptSource
+  object InitScriptSource {
+    final case class Resource(name: String) extends InitScriptSource
+    final case class AFile(file: File) extends InitScriptSource
+
+    implicit def fromString(name: String): InitScriptSource = Resource(name)
+    implicit def fromFile(file: File): InitScriptSource = AFile(file)
+  }
+
   def create(name: String, ldapInitScript: String): LdapContainer = {
     val ldapContainer = new LdapContainer(name, ldapInitScript)
-    ldapContainer.container.setNetwork(Network.SHARED)
+    ldapContainer.container
+      .setNetwork(Network.SHARED)
     ldapContainer
   }
 
@@ -90,18 +101,13 @@ object LdapContainer {
 }
 
 private class LdapWaitStrategy(name: String,
-                               ldapInitScript: String)
+                               ldapInitScript: InitScriptSource)
   extends AbstractWaitStrategy
     with LazyLogging {
 
   override def waitUntilReady(): Unit = {
     logger.info(s"Waiting for LDAP container '$name' ...")
-    Task(getClass.getResourceAsStream(ldapInitScript))
-      .bracket(stream =>
-        retryBackoff(ldapInitiate(stream), 15, 1 second, 1)
-      )(stream =>
-        Task(stream.close())
-      )
+    retryBackoff(ldapInitiate(), 15, 1 second, 1)
       .onErrorHandle { ex =>
         logger.error("LDAP container startup failed", ex)
         throw ex
@@ -110,36 +116,49 @@ private class LdapWaitStrategy(name: String,
     logger.info(s"LDAP container '$name' started")
   }
 
-  private def ldapInitiate(ldapInitScriptInputStream: InputStream) = {
+  private def ldapInitiate() = {
     runOnBindedLdapConnection { connection =>
-      initLdapFromFile(connection, ldapInitScriptInputStream)
+      initLdapFromFile(connection)
     }
   }
 
-  private def initLdapFromFile(connection: LDAPConnection, scriptInputStream: InputStream) = {
-    val reader = new LDIFReader(scriptInputStream)
-    val entries = Iterator
-      .continually(Option(reader.readEntry()))
-      .takeWhile(_.isDefined)
-      .flatten
-      .toList
+  private def initLdapFromFile(connection: LDAPConnection) = {
     Task
       .sequence {
-        entries.map { entry =>
-           // fixme: if there is any connection problem during initilization, flatMap is ignored so there is no error message in log.
-           // Retry with the same input stream doesn't help because all data has already been read by LDIFReader -
-           // entries list is empty, initialization finishes with success but part of data from file still has not been added to ldap.
-           // Test continues with corrupted ldap container state and then fails.
+        readEntries().map { entry =>
           Task(connection.add(new AddRequest(entry.toLDIF: _*)))
             .flatMap {
-              case result if result.getResultCode == ResultCode.SUCCESS =>
+              case result if Set(ResultCode.SUCCESS, ResultCode.ENTRY_ALREADY_EXISTS).contains(result.getResultCode) =>
                 Task.now(())
               case result =>
                 Task.raiseError(new IllegalStateException(s"Adding entry failed, due to: ${result.getResultCode}"))
             }
+            .onErrorRecover {
+              case ex: LDAPException if ex.getResultCode == ResultCode.ENTRY_ALREADY_EXISTS =>
+                Task.now(())
+            }
         }
       }
       .map(_ => ())
+  }
+
+  private def readEntries() = {
+    val result = for {
+      inputStream <- ldapInitScript match {
+        case InitScriptSource.Resource(resourceName) =>
+          new Dispose(new BufferedReader(new InputStreamReader(Resource.getAsStream(resourceName))))
+        case InitScriptSource.AFile(file) =>
+          file.bufferedReader
+      }
+      reader <- new Dispose(new LDIFReader(inputStream))
+    } yield {
+      Iterator
+        .continually(Option(reader.readEntry()))
+        .takeWhile(_.isDefined)
+        .flatten
+        .toList
+    }
+    result.get()
   }
 
   private def runOnBindedLdapConnection(action: LDAPConnection => Task[Unit]): Task[Unit] = {
@@ -159,4 +178,6 @@ private class LdapWaitStrategy(name: String,
         Task.raiseError(new IllegalStateException(s"Cannot create bind DN from LDAP config data"))
     }
   }
+
+  private implicit val ldifReaderDisposable: Disposable[LDIFReader] = Disposable(_.close())
 }

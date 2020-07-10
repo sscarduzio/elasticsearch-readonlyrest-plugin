@@ -42,6 +42,7 @@ import java.util.Optional;
 
 import static tech.beshu.ror.utils.containers.ContainerUtils.checkTimeout;
 
+// todo: to remove
 public class JavaLdapContainer extends GenericContainer<JavaLdapContainer> {
 
   private static Logger logger = LogManager.getLogger(JavaLdapContainer.class);

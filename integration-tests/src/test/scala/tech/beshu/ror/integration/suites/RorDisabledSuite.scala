@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ClusterManager, RorApiManager}
+import tech.beshu.ror.utils.elasticsearch.{CatManager, RorApiManager}
 
 trait RorDisabledSuite
   extends WordSpec
@@ -40,9 +40,9 @@ trait RorDisabledSuite
 
   "ROR with `enable: false` in settings" should {
     "pass ES request through" in {
-      val user1ClusterStateManager = new ClusterManager(basicAuthClient("user1", "pass"), esVersion = targetEs.esVersion)
+      val user1ClusterStateManager = new CatManager(basicAuthClient("user1", "pass"), esVersion = targetEs.esVersion)
 
-      val result = user1ClusterStateManager.catTemplates()
+      val result = user1ClusterStateManager.templates()
 
       result.responseCode should be(200)
     }

@@ -31,8 +31,8 @@ class LdapAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthorizationRule]
     with ForAllTestContainer{
 
-  private val containerLdap1 = new LdapContainer("LDAP1", "/test_example.ldif")
-  private val containerLdap2 = new LdapContainer("LDAP2", "/test_example.ldif")
+  private val containerLdap1 = new LdapContainer("LDAP1", "test_example.ldif")
+  private val containerLdap2 = new LdapContainer("LDAP2", "test_example.ldif")
 
   override val container: MultipleContainers = MultipleContainers(containerLdap1, containerLdap2)
 

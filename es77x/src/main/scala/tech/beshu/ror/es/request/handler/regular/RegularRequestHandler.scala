@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.request.handler.regular
 
 import cats.data.NonEmptyList
+import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -29,7 +30,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetad
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.TransportServiceInterceptor
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.ForbiddenResponse
 import tech.beshu.ror.es.request.context.ModificationResult.{CustomResponse, UpdateResponse}
@@ -76,7 +76,7 @@ class RegularRequestHandler(engine: Engine,
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx("ACL committing result failure", ex)
+        logger.errorEx(s"[${request.id.show}] ACL committing result failure", ex)
         esContext.listener.onFailure(ex.asInstanceOf[Exception])
     }
   }
@@ -89,7 +89,7 @@ class RegularRequestHandler(engine: Engine,
       case ModificationResult.ShouldBeInterrupted =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
       case ModificationResult.CannotModify =>
-        logger.error("Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
+        logger.error(s"[${request.id.show}] Cannot modify incoming request. Passing it could lead to a security leak. Report this issue as fast as you can.")
         onForbidden(NonEmptyList.one(OperationNotAllowed))
       case CustomResponse(response) =>
         respond(response)

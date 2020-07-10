@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
@@ -52,7 +53,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
         case Success(_) =>
           Modified
         case Failure(ex) =>
-          logger.error("Cannot modify SQL indices of incoming request", ex)
+          logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request", ex)
           CannotModify
       }
     } else {
