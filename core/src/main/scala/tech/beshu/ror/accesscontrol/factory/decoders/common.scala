@@ -33,6 +33,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain.{Address, Group, Header, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -43,8 +44,8 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration._
@@ -154,6 +155,30 @@ object common extends Logging {
       Address.from(str) match {
         case Some(address) => Right(address)
         case None => Left(ConvertError(s"Cannot create address (IP or hostname) from '$str'"))
+      }
+    }
+  }
+  implicit val aDocumentFieldConvertible: Convertible[ADocumentField] = new Convertible[ADocumentField] {
+    override def convert: String => Either[ConvertError, ADocumentField] = str => {
+      if (!str.startsWith("~")) {
+        NonEmptyString.from(str) match {
+          case Right(nes) => Right(ADocumentField(nes))
+          case Left(_) => Left(ConvertError("Field cannot be empty string"))
+        }
+      } else {
+        Left(ConvertError("Invalid character in whitelist mode"))
+      }
+    }
+  }
+  implicit val negativeDocumentFieldConvertible: Convertible[NegatedDocumentField] = new Convertible[NegatedDocumentField] {
+    override def convert: String => Either[ConvertError, NegatedDocumentField] = str => {
+      if (str.startsWith("~")) {
+        NonEmptyString.from(str.substring(1)) match {
+          case Right(nes) => Right(NegatedDocumentField(nes))
+          case Left(_) => Left(ConvertError("There was no name passed for blacklist field (~ only is forbidden)"))
+        }
+      } else {
+        Left(ConvertError("Blacklist mode field should start with '~'"))
       }
     }
   }
