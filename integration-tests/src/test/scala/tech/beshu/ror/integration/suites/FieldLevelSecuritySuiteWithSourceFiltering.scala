@@ -24,14 +24,14 @@ import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsCont
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, DocumentManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldLevelSecuritySuite2
+trait FieldLevelSecuritySuiteWithSourceFiltering
   extends WordSpec
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/field_level_security/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(FieldLevelSecuritySuite2.nodeDataInitializer())
+  override def nodeDataInitializer = Some(FieldLevelSecuritySuiteWithSourceFiltering.nodeDataInitializer())
 
   "A fields rule" should {
     "work for simple cases" when {
@@ -336,7 +336,7 @@ trait FieldLevelSecuritySuite2
   }
 }
 
-object FieldLevelSecuritySuite2 {
+object FieldLevelSecuritySuiteWithSourceFiltering {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDocAndWaitForRefresh(
