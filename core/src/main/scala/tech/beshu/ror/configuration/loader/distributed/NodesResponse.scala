@@ -20,9 +20,7 @@ import cats.implicits._
 import io.circe.generic.extras.codec.UnwrappedCodec
 import io.circe.syntax._
 import io.circe.{Encoder, Json}
-import shapeless._
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.configuration.loader.LoadedConfig.FileRecoveredConfig
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{ClusterName, NodeError, NodeResponse}
 import tech.beshu.ror.configuration.loader.distributed.Summary.{ConfigurationStatement, Summary}
 import tech.beshu.ror.configuration.loader.{LoadedConfig, Path}
@@ -46,26 +44,16 @@ object NodesResponse {
       case LoadedConfig.FileNotExist(path) => ResponseConfigJson('FileNotExist, path = path.some)
       case LoadedConfig.EsFileNotExist(path) => ResponseConfigJson('EsFileNotExist, path = path.some)
       case LoadedConfig.EsFileMalformed(path, message) => ResponseConfigJson('EsFileMalformed, message = message.some, path = path.some)
-      case LoadedConfig.EsIndexConfigurationMalformed(message) => ResponseConfigJson('EsIndexConfigurationMalformed, message = message.some)
       case LoadedConfig.IndexParsingError(message) => ResponseConfigJson('IndexParsingError, message = message.some)
+      case LoadedConfig.IndexUnknownStructure =>  ResponseConfigJson('IndexUnknownStructure)
     }
 
     private def createResponseJson(loadedConfig: LoadedConfig[String]) = {
       loadedConfig match {
-        case LoadedConfig.FileRecoveredConfig(value, cause) =>
-          cause.zipConst(value).fold(createFileRecoveredResponse)
+        case LoadedConfig.FileConfig(value) => ResponseConfigJson('FileRecoveredConfig, config = value.some)
         case LoadedConfig.ForcedFileConfig(value) => ResponseConfigJson('ForcedFileConfig, config = value.some)
         case LoadedConfig.IndexConfig(index, value) => ResponseConfigJson('IndexConfig, config = value.some, indexName = index.index.some)
       }
-    }
-    private object createFileRecoveredResponse extends Poly1 {
-      type Out = ResponseConfigJson
-      implicit val caseIndexNotExist: this.Case.Aux[(FileRecoveredConfig.IndexNotExist.type, String), Out] =
-        at { case (_, config) => ResponseConfigJson('FileRecoveredConfig, config = config.some, cause = 'IndexNotExist.some) }
-      implicit val caseIndexUnknownStructure: this.Case.Aux[(FileRecoveredConfig.IndexUnknownStructure.type, String), Out] =
-        at { case (_, config) => ResponseConfigJson('FileRecoveredConfig, config = config.some, cause = 'IndexUnknownStructure.some) }
-      implicit val caseIndexParsingError: this.Case.Aux[(LoadedConfig.IndexParsingError, String), Out] =
-        at { case (cause, config) => ResponseConfigJson('FileRecoveredConfig, message = cause.message.some, config = config.some, cause = 'IndexParsingError.some) }
     }
 
     implicit private val encodeResponseConfigJson: Encoder[ResponseConfigJson] = io.circe.generic.semiauto.deriveEncoder

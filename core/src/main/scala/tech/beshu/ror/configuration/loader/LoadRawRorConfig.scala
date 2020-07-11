@@ -21,7 +21,7 @@ import tech.beshu.ror.configuration.ConfigLoading._
 import tech.beshu.ror.configuration.{EsConfig, RawRorConfig}
 
 import scala.language.implicitConversions
-
+import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, IndexConfig}
 
 object LoadRawRorConfig {
   def load(esConfigPath: Path,
@@ -43,32 +43,30 @@ object LoadRawRorConfig {
       loadedFileOrIndex <- if (isLoadingFromFileForced) {
         forceLoadFromFile(esConfigPath)
       } else {
-        attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts, recoverIndexWithFile(esConfigPath, _))
+        attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts, loadFromFile(esConfigPath))
       }
     } yield loadedFileOrIndex
   }
 
   def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
                                     attempts: Int,
-                                    fallback: Fallback[RawRorConfig]): Load[ErrorOr[LoadedConfig[RawRorConfig]]] = {
-    if (attempts <= 1) {
-      for {
-        result <- loadFromIndex(index)
-        rrc <- result match {
-          case Left(value) => fallback(value)
-          case Right(value) =>
-            Free.pure[LoadA, ErrorOr[LoadedConfig[RawRorConfig]]](Right(value))
-        }
-      } yield rrc
+                                    fallback: Load[ErrorOr[FileConfig[RawRorConfig]]]): Load[ErrorOr[LoadedConfig[RawRorConfig]]] = {
+    if (attempts <= 0) {
+      fallback.map(identity)
     } else {
       for {
         result <- loadFromIndex(index)
-        rrc <- result match {
-          case Left(_) => Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1, fallback(_)))
+        rawRorConfig <- result match {
+          case Left(LoadedConfig.IndexNotExist) =>
+            Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1, fallback))
+          case Left(error@LoadedConfig.IndexUnknownStructure) =>
+            Free.pure[LoadA, ErrorOr[LoadedConfig[RawRorConfig]]](Left(error))
+          case Left(error@LoadedConfig.IndexParsingError(_)) =>
+            Free.pure[LoadA, ErrorOr[LoadedConfig[RawRorConfig]]](Left(error))
           case Right(value) =>
             Free.pure[LoadA, ErrorOr[LoadedConfig[RawRorConfig]]](Right(value))
         }
-      } yield rrc
+      } yield rawRorConfig
     }
   }
 }

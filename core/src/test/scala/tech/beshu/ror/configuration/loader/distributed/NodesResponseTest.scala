@@ -21,9 +21,9 @@ import org.scalatest.{Assertion, WordSpec}
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{ClusterName, NodeId, NodeResponse}
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig, IndexParsingError}
+import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, ForcedFileConfig, IndexConfig, IndexParsingError}
 import eu.timepit.refined.auto._
-import tech.beshu.ror.configuration.loader.RorConfigurationIndex
+import tech.beshu.ror.configuration.loader.{LoadedConfig, RorConfigurationIndex}
 
 class NodesResponseTest extends WordSpec {
   "Encoding NodesResponse" when {
@@ -45,7 +45,7 @@ class NodesResponseTest extends WordSpec {
     }
     "has FileRecoveredConfig config because of no index config" should {
       "encode as json" in {
-        val result = NodesResponse.create(ClusterName("cluster1"), NodeResponse(NodeId("node1"), Right(FileRecoveredConfig("a", FileRecoveredConfig.indexNotExist))) :: Nil, Nil).toJson
+        val result = NodesResponse.create(ClusterName("cluster1"), NodeResponse(NodeId("node1"), Right(FileConfig("a"))) :: Nil, Nil).toJson
         val resultJson =
           """
             |{
@@ -56,7 +56,7 @@ class NodesResponseTest extends WordSpec {
             |      "message": null,
             |      "path": null,
             |      "config": "a",
-            |      "cause": "IndexNotExist",
+            |      "cause": null,
             |      "indexName": null,
             |      "nodeId": "node1"
             |    }
@@ -69,7 +69,7 @@ class NodesResponseTest extends WordSpec {
             |      "message": null,
             |      "path": null,
             |      "config": "a",
-            |      "cause": "IndexNotExist",
+            |      "cause": null,
             |      "indexName": null
             |    }
             |  }
@@ -79,7 +79,7 @@ class NodesResponseTest extends WordSpec {
     }
     "has FileRecoveredConfig config because of IndexParsingError" should {
       "encode as json" in {
-        val result = NodesResponse.create(ClusterName("cluster1"), NodeResponse(NodeId("node1"), Right(FileRecoveredConfig("a", FileRecoveredConfig.indexParsingError(IndexParsingError("error"))))) :: Nil, Nil).toJson
+        val result = NodesResponse.create(ClusterName("cluster1"), NodeResponse(NodeId("node1"), Right(FileConfig("a"))) :: Nil, Nil).toJson
         val resultJson =
           """
             |{
@@ -87,10 +87,10 @@ class NodesResponseTest extends WordSpec {
             |  "responses": [
             |    {
             |      "type": "FileRecoveredConfig",
-            |      "message": "error",
+            |      "message": null,
             |      "path": null,
             |      "config": "a",
-            |      "cause": "IndexParsingError",
+            |      "cause": null,
             |      "indexName": null,
             |      "nodeId": "node1"
             |    }
@@ -100,10 +100,10 @@ class NodesResponseTest extends WordSpec {
             |    "type": "clear_result",
             |    "value": {
             |      "type": "FileRecoveredConfig",
-            |      "message": "error",
+            |      "message": null,
             |      "path": null,
             |      "config": "a",
-            |      "cause": "IndexParsingError",
+            |      "cause": null,
             |      "indexName": null
             |    }
             |  }

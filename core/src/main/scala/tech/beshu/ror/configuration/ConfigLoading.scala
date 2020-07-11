@@ -17,27 +17,26 @@
 package tech.beshu.ror.configuration
 
 import cats.free.Free
-import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig}
+import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.configuration.loader.{LoadedConfig, Path, RorConfigurationIndex}
 
 import scala.language.higherKinds
 
 object ConfigLoading {
   type ErrorOr[A] = LoadedConfig.Error Either A
-  type Fallback[A] = FileRecoveredConfig.Cause => Load[ErrorOr[FileRecoveredConfig[A]]]
+  type IndexErrorOr[A] = LoadedConfig.LoadingIndexError Either A
   type Load[A] = Free[LoadA, A]
   sealed trait LoadA[A]
   case class LoadEsConfig(path: Path) extends LoadA[ErrorOr[EsConfig]]
   case class ForceLoadFromFile(path: Path) extends LoadA[ErrorOr[ForcedFileConfig[RawRorConfig]]]
-  case class RecoverIndexWithFile(path: Path, loadingFromIndexCause: FileRecoveredConfig.Cause) extends LoadA[ErrorOr[FileRecoveredConfig[RawRorConfig]]]
-  case class LoadFromIndex(index: RorConfigurationIndex) extends LoadA[FileRecoveredConfig.Cause Either IndexConfig[RawRorConfig]]
+  case class LoadFromFile(path: Path) extends LoadA[ErrorOr[FileConfig[RawRorConfig]]]
+  case class LoadFromIndex(index: RorConfigurationIndex) extends LoadA[IndexErrorOr[IndexConfig[RawRorConfig]]]
 
-  def loadFromIndex(index: RorConfigurationIndex): Load[FileRecoveredConfig.Cause Either IndexConfig[RawRorConfig]] =
+  def loadFromIndex(index: RorConfigurationIndex): Load[IndexErrorOr[IndexConfig[RawRorConfig]]] =
     Free.liftF(LoadFromIndex(index))
 
-  def recoverIndexWithFile(path: Path,
-                           loadingFromIndexCause: FileRecoveredConfig.Cause): Load[ErrorOr[FileRecoveredConfig[RawRorConfig]]] =
-    Free.liftF(RecoverIndexWithFile(path, loadingFromIndexCause))
+  def loadFromFile(path: Path): Load[ErrorOr[FileConfig[RawRorConfig]]] =
+    Free.liftF(LoadFromFile(path))
 
   def loadEsConfig(path: Path): Load[ErrorOr[EsConfig]] =
     Free.liftF(LoadEsConfig(path))

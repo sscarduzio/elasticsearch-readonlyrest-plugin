@@ -22,42 +22,58 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.configuration.loader.{LoadedConfig, RorConfigurationIndex}
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeId, NodeResponse}
+import tech.beshu.ror.configuration.loader.{LoadedConfig, RorConfigurationIndex}
 
 import scala.language.postfixOps
 
 class SummaryTest extends WordSpec {
   "Summary" when {
     "there are no configs" should {
-      "return no configs" in {
-        Summary.create(Nil) shouldBe Summary.NoResult
+      "return no node response" in {
+        Summary.create2(NodeId(""), Nil) shouldBe Summary.NoCurrentNodeResponse.asLeft
       }
-      "return clear result for only response" in {
-        val conf = LoadedConfig.IndexConfig(configIndex("n1"), "config")
-        Summary.create(NodeResponse(NodeId(""), conf asRight) :: Nil) shouldBe Summary.ClearResult(conf)
-      }
-      "return clear result for two identical responses" in {
+    }
+    "there is no current node config" should {
+      "return no current node config error" in {
         val conf = LoadedConfig.IndexConfig(configIndex("config-index"), "config")
-        Summary.create(NodeResponse(NodeId("n1"), conf asRight) :: NodeResponse(NodeId("n2"), conf asRight) :: Nil) shouldBe Summary.ClearResult(conf)
+        Summary.create2(NodeId(""), NodeResponse(NodeId("b"), conf asRight) :: Nil) shouldBe Summary.NoCurrentNodeResponse.asLeft
       }
-      "return ambiguous result for two different responses" in {
+    }
+    "only node returns config" should {
+      "return current node config" in {
         val conf = LoadedConfig.IndexConfig(configIndex("config-index"), "config")
-        val conf2 = LoadedConfig.IndexConfig(configIndex("config-index2"), "config2")
-        val result = Summary.create(NodeResponse(NodeId("n1"), conf asRight) :: NodeResponse(NodeId("n2"), conf2 asRight) :: Nil).asInstanceOf[Summary.AmbiguousConfigs]
-        val resultConfigStatement1 = result.configs.head
-        val resultConfigStatement2 = result.configs.get(1).get
-        resultConfigStatement1.nodes shouldEqual List(NodeId("n2"))
-        resultConfigStatement1.config.right.get shouldEqual conf2
-        resultConfigStatement2.nodes shouldEqual List(NodeId("n1"))
-        resultConfigStatement2.config.right.get shouldEqual conf
+        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), conf asRight) :: Nil) shouldBe Summary.Result("config", Nil).asRight
       }
-      "accumulate node ids" in {
+    }
+    "only node returns error" should {
+      "return that error" in {
+        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), LoadedConfig.IndexUnknownStructure asLeft) :: Nil) shouldBe Summary.CurrentNodeConfigError(LoadedConfig.IndexUnknownStructure).asLeft
+      }
+    }
+    "current node returns error" should {
+      "return that error" in {
         val conf = LoadedConfig.IndexConfig(configIndex("config-index"), "config")
-        val conf2 = LoadedConfig.IndexConfig(configIndex("config-index2"), "config2")
-        val result = Summary.create(NodeResponse(NodeId("n1"), conf asRight) :: NodeResponse(NodeId("n2"), conf2 asRight) :: NodeResponse(NodeId("n3"), conf2 asRight) :: Nil).asInstanceOf[Summary.AmbiguousConfigs]
-        val resultConfigStatement1 = result.configs.head
-        resultConfigStatement1.nodes shouldEqual List(NodeId("n2"), NodeId("n3"))
+        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), LoadedConfig.IndexUnknownStructure asLeft) :: NodeResponse(NodeId("b"), conf asRight) :: Nil) shouldBe Summary.CurrentNodeConfigError(LoadedConfig.IndexUnknownStructure).asLeft
+      }
+    }
+    "other node returns error" should {
+      "return config, and other node error as warning" in {
+        val conf = LoadedConfig.IndexConfig(configIndex("config-index"), "config")
+        Summary.create2(NodeId("b"), NodeResponse(NodeId("a"), LoadedConfig.IndexUnknownStructure asLeft) :: NodeResponse(NodeId("b"), conf asRight) :: Nil) shouldBe Summary.Result("config", Summary.NodeReturnedError(NodeId("a"), LoadedConfig.IndexUnknownStructure) :: Nil).asRight
+      }
+    }
+    "current node is force loaded from file" should {
+      "return config, and forced loading from file as warning" in {
+        val conf = LoadedConfig.ForcedFileConfig("config")
+        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), conf asRight) :: Nil) shouldBe Summary.Result("config", Summary.NodeForcedFileConfig(NodeId("a")) :: Nil).asRight
+      }
+    }
+    "other node has different config, than current node" should {
+      "return config, and warning" in {
+        val currentConfig = LoadedConfig.FileConfig("config1")
+        val otherConfig = LoadedConfig.FileConfig("config2")
+        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), currentConfig asRight) :: NodeResponse(NodeId("b"), otherConfig asRight) :: Nil) shouldBe Summary.Result("config1", Summary.NodeReturnedDifferentConfig(NodeId("b"), LoadedConfig.FileConfig("config2")) :: Nil).asRight
       }
     }
   }

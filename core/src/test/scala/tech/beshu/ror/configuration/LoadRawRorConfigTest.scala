@@ -22,8 +22,8 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.configuration.ConfigLoading.LoadA
-import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, Path, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, ForcedFileConfig, IndexConfig}
+import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedConfig, Path, RorConfigurationIndex}
 
 import scala.language.existentials
 
@@ -45,14 +45,14 @@ class LoadRawRorConfigTest extends WordSpec {
         (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
-      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 0)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 1)
       val result = program.foldMap(compiler)
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
     }
     "load successfully from index, after failure" in {
       val steps = List(
-        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
         (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
@@ -61,21 +61,38 @@ class LoadRawRorConfigTest extends WordSpec {
       val ffc = result.asInstanceOf[Right[Nothing, IndexConfig[RawRorConfig]]]
       ffc.value.value shouldEqual rawRorConfig
     }
-    "fail loading from index, and fallback to file" in {
+    "load from file when index not exist" in {
       val steps = List(
-        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Left(FileRecoveredConfig.indexUnknownStructure)),
-        (ConfigLoading.RecoverIndexWithFile(filePath, FileRecoveredConfig.indexUnknownStructure), Right(FileRecoveredConfig(rawRorConfig, FileRecoveredConfig.indexUnknownStructure))),
+        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadFromFile(filePath), Right(FileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
       val result = program.foldMap(compiler)
-      val ffc = result.asInstanceOf[Right[Nothing, FileRecoveredConfig[RawRorConfig]]]
-      ffc.value.value shouldEqual rawRorConfig
-      ffc.value.cause shouldEqual FileRecoveredConfig.indexUnknownStructure
+      result.right.get shouldBe FileConfig(rawRorConfig)
+    }
+    "unknown index structure fail loading from index immediately" in {
+      val steps = List(
+        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexUnknownStructure)),
+      )
+      val compiler = IdCompiler.instance(steps)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
+      val result = program.foldMap(compiler)
+      result shouldBe a[Left[LoadedConfig.IndexUnknownStructure.type, _]]
+    }
+    "parse index error fail loading from index immediately" in {
+      val steps = List(
+        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexParsingError("error"))),
+      )
+      val compiler = IdCompiler.instance(steps)
+      val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
+      val result = program.foldMap(compiler)
+      result shouldBe a[Left[LoadedConfig.IndexParsingError, _]]
+      result.left.get.asInstanceOf[LoadedConfig.IndexParsingError].message shouldBe "error"
     }
   }
 }

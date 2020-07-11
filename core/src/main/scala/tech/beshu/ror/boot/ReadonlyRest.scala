@@ -108,10 +108,10 @@ trait ReadonlyRest extends Logging {
         StartingFailure(s"Cannot find elasticsearch settings file: [${path.value}]")
       case LoadedConfig.EsFileMalformed(path, message) =>
         StartingFailure(s"Settings file is malformed: [${path.value}], $message")
-      case LoadedConfig.EsIndexConfigurationMalformed(message) =>
-        StartingFailure(message)
       case LoadedConfig.IndexParsingError(message) =>
         StartingFailure(message)
+      case LoadedConfig.IndexUnknownStructure =>
+        StartingFailure(s"Settings index is malformed")
     }
   }
 
@@ -142,7 +142,7 @@ trait ReadonlyRest extends Logging {
   private def createRorInstance(indexConfigManager: IndexConfigManager, rorConfigurationIndex: RorConfigurationIndex, auditSink: AuditSinkService, engine: Engine, loadedConfig: LoadedConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       loadedConfig match {
-        case LoadedConfig.FileRecoveredConfig(config, _) =>
+        case LoadedConfig.FileConfig(config) =>
           RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
         case LoadedConfig.ForcedFileConfig(config) =>
           RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)

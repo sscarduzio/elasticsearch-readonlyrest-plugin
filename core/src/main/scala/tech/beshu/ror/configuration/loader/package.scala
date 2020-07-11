@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.configuration
 
-import tech.beshu.ror.configuration.loader.LoadedConfig.{FileRecoveredConfig, ForcedFileConfig, IndexConfig}
+import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import language.implicitConversions
 
 package object loader {
@@ -26,13 +26,13 @@ package object loader {
 
   implicit class LoadedConfigOps[A](fa: LoadedConfig[A]) {
     lazy val value: A = fa match {
-      case FileRecoveredConfig(value, _) => value
+      case FileConfig(value) => value
       case ForcedFileConfig(value) => value
       case IndexConfig(_, value) => value
     }
 
     def map[B](f: A => B): LoadedConfig[B] = fa match {
-      case FileRecoveredConfig(value, cause) => FileRecoveredConfig(f(value), cause)
+      case FileConfig(value) => FileConfig(f(value))
       case ForcedFileConfig(value) => ForcedFileConfig(f(value))
       case IndexConfig(indexName, value) => IndexConfig(indexName, f(value))
     }

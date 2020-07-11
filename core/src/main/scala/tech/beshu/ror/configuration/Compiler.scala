@@ -21,14 +21,12 @@ import cats.implicits._
 import cats.~>
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import shapeless.{Inl, Inr}
 import tech.beshu.ror.configuration.ConfigLoading.LoadA
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
-import tech.beshu.ror.configuration.loader.LoadedConfig.FileRecoveredConfig.Cause
 import tech.beshu.ror.configuration.loader.LoadedConfig._
 import tech.beshu.ror.configuration.loader.{FileConfigLoader, LoadedConfig, RorConfigurationIndex}
 import tech.beshu.ror.providers.EnvVarsProvider
@@ -45,7 +43,7 @@ object Compiler extends Logging {
           .from(esConfigPath)
           .map(_.left.map {
             case LoadEsConfigError.FileNotFound(file) =>
-              EsIndexConfigurationMalformed(file.pathAsString)
+              EsFileNotExist(file.toJava.toPath)
             case LoadEsConfigError.MalformedContent(file, msg) =>
               EsFileMalformed(file.toJava.toPath, msg)
           })
@@ -57,10 +55,10 @@ object Compiler extends Logging {
             logger.error(s"Loading ReadonlyREST from file failed: ${error}")
             error
           }.value
-      case ConfigLoading.RecoverIndexWithFile(path, loadingFromIndexCause) =>
-        logger.info(s"Loading ReadonlyREST settings from file: $path, due to error $loadingFromIndexCause")
+      case ConfigLoading.LoadFromFile(path) =>
+        logger.info(s"Loading ReadonlyREST settings from file: $path, because index not exist")
         EitherT(FileConfigLoader.create(path).load())
-          .bimap(convertRecoveredFileError(loadingFromIndexCause), FileRecoveredConfig(_, loadingFromIndexCause))
+          .bimap(convertFileError, FileConfig(_))
           .leftMap { error =>
             logger.error(s"Loading ReadonlyREST from file failed: ${error}")
             error
@@ -77,30 +75,19 @@ object Compiler extends Logging {
     }
   }
 
-  private def logIndexLoadingError[A](error: Cause): Unit = {
+  private def logIndexLoadingError[A](error: LoadedConfig.LoadingIndexError): Unit = {
     error match {
-      case Inl(FileRecoveredConfig.IndexNotExist) =>
-        logger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
-      case Inr(Inl(FileRecoveredConfig.IndexUnknownStructure)) =>
-        logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
-      case Inr(Inr(Inl(IndexParsingError(message)))) =>
+      case IndexParsingError(message) =>
         logger.error(s"Loading ReadonlyREST settings from index failed: $message")
-      case Inr(Inr(Inr(_))) => throw new IllegalStateException("couldn't happen")
+      case LoadedConfig.IndexUnknownStructure =>
+        logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
+      case LoadedConfig.IndexNotExist =>
+        logger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
     }
   }
 
   private def loadFromIndex[A](indexConfigManager: IndexConfigManager, index: RorConfigurationIndex) = {
     EitherT(indexConfigManager.load(index).delayExecution(5 second))
-  }
-
-  private def convertRecoveredFileError(cause: FileRecoveredConfig.Cause)
-                                       (error: ConfigLoaderError[FileConfigError]): LoadedConfig.Error = {
-    cause match {
-      case Inl(FileRecoveredConfig.IndexNotExist)
-           | Inr(Inl(FileRecoveredConfig.IndexUnknownStructure)) => convertFileError(error)
-      case Inr(Inr(Inl(err@IndexParsingError(_)))) => err
-      case Inr(Inr(Inr(_))) => throw new IllegalStateException("couldn't happen")
-    }
   }
 
   private def convertFileError(error: ConfigLoaderError[FileConfigError]): LoadedConfig.Error = {
@@ -112,11 +99,11 @@ object Compiler extends Logging {
     }
   }
 
-  private def convertIndexError(error: ConfigLoaderError[IndexConfigManager.IndexConfigError]): FileRecoveredConfig.Cause =
+  private def convertIndexError(error: ConfigLoaderError[IndexConfigManager.IndexConfigError])=
     error match {
-      case ParsingError(error) => FileRecoveredConfig.indexParsingError(LoadedConfig.IndexParsingError(error.show))
-      case SpecializedError(IndexConfigError.IndexConfigNotExist) => FileRecoveredConfig.indexNotExist
-      case SpecializedError(IndexConfigError.IndexConfigUnknownStructure) => FileRecoveredConfig.indexUnknownStructure
+      case ParsingError(error) => LoadedConfig.IndexParsingError(error.show)
+      case SpecializedError(IndexConfigError.IndexConfigNotExist) => LoadedConfig.IndexNotExist
+      case SpecializedError(IndexConfigError.IndexConfigUnknownStructure) => LoadedConfig.IndexUnknownStructure
     }
 
 }

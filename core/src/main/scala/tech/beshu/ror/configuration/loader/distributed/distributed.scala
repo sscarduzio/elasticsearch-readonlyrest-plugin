@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.configuration.loader
 
+import cats.Eq
+import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.generic.codec.DerivedAsObjectCodec
 import io.circe.generic.extras.codec.UnwrappedCodec
@@ -23,8 +25,8 @@ import io.circe.shapes._
 import io.circe.{Codec, Decoder, Encoder}
 import shapeless.{:+:, Coproduct, HNil, LabelledGeneric, Lazy}
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.configuration.loader.LoadedConfig.FileRecoveredConfig.{IndexNotExist, IndexUnknownStructure}
 import tech.beshu.ror.configuration.loader.LoadedConfig._
+import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 
 package object distributed {
 
@@ -39,12 +41,10 @@ package object distributed {
   implicit lazy val codecFileNotExist: Codec[FileNotExist] = Codec.forProduct1("path")(FileNotExist)(_.path)
   implicit lazy val codecEsFileNotExist: Codec[EsFileNotExist] = Codec.forProduct1("path")(EsFileNotExist)(_.path)
   implicit lazy val codecEsFileMalformed: Codec[EsFileMalformed] = Codec.forProduct2("path", "message")(EsFileMalformed)(m => (m.path, m.message))
-  implicit lazy val codecEsIndexConfigurationMalformed: Codec[EsIndexConfigurationMalformed] = Codec.forProduct1("message")(EsIndexConfigurationMalformed)(_.message)
   implicit lazy val codecIndexNotExist: Codec[IndexNotExist.type] = codecProduct0("index_not_exist")
   implicit lazy val codecIndexUnknownStructure: Codec[IndexUnknownStructure.type] = codecProduct0("index_not_exist")
   implicit lazy val codecIndexParsingError: Codec[IndexParsingError] = Codec.forProduct1("message")(IndexParsingError)(_.message)
-  implicit lazy val codecFileRecoveredConfigCause: Codec[FileRecoveredConfig.Cause] = deriveReprCodec
-  implicit lazy val codecFileRecoveredConfig: Codec[FileRecoveredConfig[String]] = Codec.forProduct2("value", "cause")(FileRecoveredConfig[String])(c => (c.value, c.cause))
+  implicit lazy val codecFileRecoveredConfig: Codec[FileConfig[String]] = Codec.forProduct1("value")(FileConfig[String])(c => (c.value)) //TODO: unwrapped
   implicit lazy val codecForcedFileConfig: Codec[ForcedFileConfig[String]] = Codec.forProduct1("value")(ForcedFileConfig[String])(_.value)
   implicit lazy val codecIndexConfig: Codec[IndexConfig[String]] = Codec.forProduct2("indexName", "value")(IndexConfig[String])(c => (c.indexName, c.value))
   implicit lazy val codecLoadedConfig: Codec[LoadedConfig[String]] = deriveSealedTraitCodec
@@ -62,6 +62,8 @@ package object distributed {
   }
   private def codecProduct0[A](name: String)(implicit gen: LabelledGeneric.Aux[A, HNil]): Codec[A] = {
     val instance = gen.from(HNil)
-    Codec.from(Decoder.decodeString.emap { case `name` => Right(instance);case invalid => Left(s"""Invalid value: "$invalid"""") }, Encoder.encodeString.contramap(_ => name))
+    Codec.from(Decoder.decodeString.emap { case `name` => Right(instance); case invalid => Left(s"""Invalid value: "$invalid"""") }, Encoder.encodeString.contramap(_ => name))
   }
+
+  implicit val eqNodeId: Eq[NodeId] = Eq.by(_.value)
 }
