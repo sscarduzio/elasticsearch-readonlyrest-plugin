@@ -53,14 +53,14 @@ trait CrossClusterCallsSuite
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
         "he queries local and remote indices"  in {
-          val result = user3SearchManager.search("/etl:etl*,metrics*/_search")
+          val result = user3SearchManager.search("etl:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be(
             Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27", "etl:etl_usage_2020-03-26", "etl:etl_usage_2020-03-27")
           )
         }
         "he queries remote indices only"  in {
-          val result = user1SearchManager.search("/odd:test1_index/_search")
+          val result = user1SearchManager.search("odd:test1_index")
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
         }
@@ -69,12 +69,12 @@ trait CrossClusterCallsSuite
     "return empty response" when {
       "user has no permission to do so" when {
         "he queries local and remote indices patterns"  in {
-          val result = user2SearchManager.search("/etl:etl*,metrics*/_search")
+          val result = user2SearchManager.search("etl:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
         }
         "he queries remote indices patterns only"  in {
-          val result = user2SearchManager.search("/etl:etl*/_search")
+          val result = user2SearchManager.search("etl:etl*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
         }
@@ -83,11 +83,11 @@ trait CrossClusterCallsSuite
     "return 404" when {
       "user has no permission to do so" when {
         "he queries local and remote indices"  in {
-          val result = user2SearchManager.search("/etl:etl_usage_2020-03-26,metrics_monitoring_2020-03-26/_search")
+          val result = user2SearchManager.search("etl:etl_usage_2020-03-26", "metrics_monitoring_2020-03-26")
           result.responseCode should be(404)
         }
         "he queries remote indices only"  in {
-          val result = user2SearchManager.search("/odd:test1_index/_search")
+          val result = user2SearchManager.search("odd:test1_index")
           result.responseCode should be(404)
         }
       }

@@ -44,7 +44,7 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
 
   override protected def update(request: ActionRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
     if (tryUpdate(actionRequest, indices)) Modified
-    else ShouldBeInterrupted
+    else ShouldBeInterrupted // todo: need cause log
   }
 
   private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[IndexName]) = {

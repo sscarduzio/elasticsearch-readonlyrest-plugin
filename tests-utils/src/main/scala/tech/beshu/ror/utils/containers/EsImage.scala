@@ -49,7 +49,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         RunCommandCombiner.empty
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(config.xPackSupport && Version.greaterOrEqualThan(esVersion, 6, 3, 0),
+          .runWhen(true, //config.xPackSupport && Version.greaterOrEqualThan(esVersion, 6, 3, 0), // todo:
             "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -96,6 +96,8 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
   }
 
   private def shouldUseEsOssImage(config: Config) = {
-    !config.xPackSupport && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
+    false
+    // todo:
+    //!config.xPackSupport && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
   }
 }

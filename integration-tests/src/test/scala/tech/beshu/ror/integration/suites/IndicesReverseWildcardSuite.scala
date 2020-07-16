@@ -37,21 +37,21 @@ trait IndicesReverseWildcardSuite
   "A search request" should {
     "return proper data" when {
       "direct index search is used" in {
-        val response = searchManager.search("/logstash-a1/_search")
+        val response = searchManager.search("logstash-a1")
 
         response.responseCode should be(200)
         response.searchHits.size should be(1)
         response.searchHits.head("_id").str should be("doc-a1")
       }
       "simple wildcard search is used" in {
-        val response = searchManager.search("/logstash-a*/_search")
+        val response = searchManager.search("logstash-a*")
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
         response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
       "reverse wildcard search is used" in {
-        val response = searchManager.search("/logstash-*/_search")
+        val response = searchManager.search("logstash-*")
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
@@ -59,7 +59,7 @@ trait IndicesReverseWildcardSuite
       }
 
       "reverse total wildcard search is used" in {
-        val response = searchManager.search("/*/_search")
+        val response = searchManager.search("*")
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
@@ -67,7 +67,7 @@ trait IndicesReverseWildcardSuite
       }
 
       "generic search all is used" in {
-        val response = searchManager.search("/_search")
+        val response = searchManager.search()
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
@@ -85,7 +85,7 @@ object IndicesReverseWildcardSuite {
     insertDoc("b1")
     insertDoc("b2")
 
-    def insertDoc(index: String) = {
+    def insertDoc(index: String): Unit = {
       documentManager.insertDocAndWaitForRefresh(
         s"/logstash-$index/documents/doc-$index",
         s"""{"title": "$index"}"""
