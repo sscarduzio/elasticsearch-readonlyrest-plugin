@@ -21,6 +21,7 @@ import monix.eval.Task
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import cats.implicits._
 
 trait ConfigLoader[SPECIALIZED_ERROR] {
 
@@ -37,7 +38,7 @@ object ConfigLoader {
 
     implicit def show[E: Show]: Show[ConfigLoaderError[E]] = Show.show {
       case ParsingError(error) => RawRorConfig.ParsingRorConfigError.show.show(error)
-      case SpecializedError(error) => implicitly[Show[E]].show(error)
+      case SpecializedError(error) => error.show
     }
   }
 

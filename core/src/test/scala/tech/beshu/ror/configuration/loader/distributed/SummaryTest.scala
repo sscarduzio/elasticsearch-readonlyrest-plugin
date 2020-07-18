@@ -43,7 +43,7 @@ class SummaryTest extends WordSpec {
     "only node returns config" should {
       "return current node config" in {
         val conf = LoadedConfig.IndexConfig(configIndex("config-index"), "config")
-        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), conf asRight) :: Nil) shouldBe Summary.Result("config", Nil).asRight
+        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), conf asRight) :: Nil) shouldBe Summary.Result(conf, Nil).asRight
       }
     }
     "only node returns error" should {
@@ -60,20 +60,20 @@ class SummaryTest extends WordSpec {
     "other node returns error" should {
       "return config, and other node error as warning" in {
         val conf = LoadedConfig.IndexConfig(configIndex("config-index"), "config")
-        Summary.create2(NodeId("b"), NodeResponse(NodeId("a"), LoadedConfig.IndexUnknownStructure asLeft) :: NodeResponse(NodeId("b"), conf asRight) :: Nil) shouldBe Summary.Result("config", Summary.NodeReturnedError(NodeId("a"), LoadedConfig.IndexUnknownStructure) :: Nil).asRight
+        Summary.create2(NodeId("b"), NodeResponse(NodeId("a"), LoadedConfig.IndexUnknownStructure asLeft) :: NodeResponse(NodeId("b"), conf asRight) :: Nil) shouldBe Summary.Result(conf, Summary.NodeReturnedError(NodeId("a"), LoadedConfig.IndexUnknownStructure) :: Nil).asRight
       }
     }
     "current node is force loaded from file" should {
       "return config, and forced loading from file as warning" in {
         val conf = LoadedConfig.ForcedFileConfig("config")
-        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), conf asRight) :: Nil) shouldBe Summary.Result("config", Summary.NodeForcedFileConfig(NodeId("a")) :: Nil).asRight
+        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), conf asRight) :: Nil) shouldBe Summary.Result(conf, Summary.NodeForcedFileConfig(NodeId("a")) :: Nil).asRight
       }
     }
     "other node has different config, than current node" should {
       "return config, and warning" in {
         val currentConfig = LoadedConfig.FileConfig("config1")
         val otherConfig = LoadedConfig.FileConfig("config2")
-        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), currentConfig asRight) :: NodeResponse(NodeId("b"), otherConfig asRight) :: Nil) shouldBe Summary.Result("config1", Summary.NodeReturnedDifferentConfig(NodeId("b"), LoadedConfig.FileConfig("config2")) :: Nil).asRight
+        Summary.create2(NodeId("a"), NodeResponse(NodeId("a"), currentConfig asRight) :: NodeResponse(NodeId("b"), otherConfig asRight) :: Nil) shouldBe Summary.Result(currentConfig, Summary.NodeReturnedDifferentConfig(NodeId("b"), LoadedConfig.FileConfig("config2")) :: Nil).asRight
       }
     }
   }

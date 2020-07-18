@@ -21,17 +21,21 @@ import io.circe.generic.extras.codec.UnwrappedCodec
 import io.circe.syntax._
 import io.circe.{Encoder, Json}
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{ClusterName, NodeError, NodeResponse}
-import tech.beshu.ror.configuration.loader.distributed.Summary.{ConfigurationStatement, Summary}
+import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{ClusterName, NodeError, NodeId, NodeResponse}
+import tech.beshu.ror.configuration.loader.distributed.Summary.{ConfigurationStatement, NodeReturnedError, Summary}
+import tech.beshu.ror.configuration.loader.distributed.dto.ResultDTO
 import tech.beshu.ror.configuration.loader.{LoadedConfig, Path}
 
 final case class NodesResponse private(clusterName: ClusterName, responses: List[NodeResponse], failures: List[NodeError], summary: Summary)
 
 object NodesResponse {
-  def create(clusterName: ClusterName,
+  def create(clusterName: ClusterName, //TODO: RM
              responses: List[NodeResponse],
              failures: List[NodeError],
-            ): NodesResponse = NodesResponse(clusterName, responses, failures, Summary.create(responses))
+            ): NodesResponse = {
+    ResultDTO.create(Summary.create2(NodeId(""), responses))
+    NodesResponse(clusterName, responses, failures, Summary.create(responses))
+  }
   implicit object EncodeErrorOrLoadedConfig extends Encoder[Either[LoadedConfig.Error, LoadedConfig[String]]] {
     override def apply(a: Either[LoadedConfig.Error, LoadedConfig[String]]): Json = encodeResponseConfigJson(toResponseConfigJson(a))
 
@@ -89,4 +93,6 @@ object NodesResponse {
   }
   implicit private lazy val encodeNodesResponse: Encoder[NodesResponse] = Encoder.forProduct4("clusterName", "responses", "failures", "summary")(tupleNodesResponse)
 }
+
+
 
