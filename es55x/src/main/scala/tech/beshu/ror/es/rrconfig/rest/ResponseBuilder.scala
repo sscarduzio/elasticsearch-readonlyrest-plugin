@@ -21,12 +21,12 @@ import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.action.RestBuilderListener
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestResponse, RestStatus}
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse
-import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{ClusterName, NodeError, NodeId, NodeResponse}
+import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.es.rrconfig.{RRConfig, RRConfigsResponse}
 
 import scala.collection.JavaConverters._
 
-final class ResponseBuilder(channel: RestChannel) extends RestBuilderListener[RRConfigsResponse](channel) {
+final class ResponseBuilder(localNode: NodeId, channel: RestChannel) extends RestBuilderListener[RRConfigsResponse](channel) {
   override def buildResponse(response: RRConfigsResponse, builder: XContentBuilder): RestResponse = {
     val nodeResponse = createNodesResponse(response)
     new BytesRestResponse(RestStatus.OK, nodeResponse.toJson)
@@ -34,7 +34,7 @@ final class ResponseBuilder(channel: RestChannel) extends RestBuilderListener[RR
 
   private def createNodesResponse(response: RRConfigsResponse) =
     NodesResponse.create(
-      clusterName = ClusterName(response.getClusterName.value()),
+      localNode = localNode,
       responses = response.getNodes.asScala.toList.map(createNodeResponse),
       failures = response.failures().asScala.toList.map(createNodeError),
     )

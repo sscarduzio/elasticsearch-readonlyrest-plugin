@@ -16,11 +16,11 @@
  */
 package tech.beshu.ror.configuration.loader.distributed
 
-import cats.data.NonEmptyList
+import cats.implicits._
 import tech.beshu.ror.configuration.loader.LoadedConfig
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeId, NodeResponse}
-import cats.implicits._
-import language.postfixOps
+
+import scala.language.postfixOps
 
 object Summary {
   sealed trait Error
@@ -33,7 +33,7 @@ object Summary {
   final case class Result(config: LoadedConfig[String], warnings: List[Warning])
 
 
-  def create2(currentNodeId: NodeId, nodesResponses: List[NodeResponse]): Either[Error, Result] = {
+  def create(currentNodeId: NodeId, nodesResponses: List[NodeResponse]): Either[Error, Result] = {
     findCurrentNodeResponse(currentNodeId, nodesResponses) match {
       case Some(NodeResponse(_, Right(loadedConfig))) =>
         val warnings = createWarnings(nodesResponses, loadedConfig)
@@ -72,23 +72,5 @@ object Summary {
     }
   }
 
-  def create(nodesResponses: List[NodeResponse]): Summary = {
-    nodesResponses.foldMap(createConfigurationMap).toList match {
-      case Nil => NoResult
-      case (Right(conf), _) :: Nil => ClearResult(conf)
-      case head :: tail =>
-        val results = NonEmptyList.of(head, tail: _*).map(r => ConfigurationStatement(r._2, r._1))
-        AmbiguousConfigs(results)
-    }
-  }
-
-  private def createConfigurationMap(nodeResponse: NodeResponse) =
-    Map(nodeResponse.loadedConfig -> List(nodeResponse.nodeId))
-
-  final case class ClearResult(config: LoadedConfig[String]) extends Summary
-  final case class AmbiguousConfigs(configs: NonEmptyList[ConfigurationStatement]) extends Summary
-  case object NoResult extends Summary
-  sealed trait Summary
-  final case class ConfigurationStatement(nodes: List[NodeId], config: Either[LoadedConfig.Error, LoadedConfig[String]])
 }
 
