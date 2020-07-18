@@ -79,7 +79,6 @@ public class RestClient {
   private CloseableHttpClient createUnderlyingClient(Optional<Tuple<String, String>> basicAuth, Header... headers) {
     // Common ops
     if (basicAuth.isPresent()) {
-      System.out.println("SETTING CREDENTIALS " + (basicAuth.isPresent() ? (basicAuth.get().v1() + ":" + basicAuth.get().v2()) : ""));
       Header auth = createBasicAuthHeader(basicAuth.get().v1(), basicAuth.get().v2());
       Header[] tmp = Arrays.copyOf(headers, headers.length + 1);
       tmp[tmp.length - 1] = auth;

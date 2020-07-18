@@ -53,7 +53,7 @@ object RorSsl extends Logging {
                                  (implicit rorSslDecoder: Decoder[RorSsl],
                                   envVarsProvider: EnvVarsProvider) = {
     val rorConfig = FileConfigLoader.create(esConfigFolderPath).rawConfigFile
-    logger.info(s"Cannot find SSL configuration is elasticsearch.yml, trying: ${rorConfig.pathAsString}")
+    logger.info(s"Cannot find SSL configuration in elasticsearch.yml, trying: ${rorConfig.pathAsString}")
     if (rorConfig.exists) {
       loadSslConfigFromFile(rorConfig)
     } else {

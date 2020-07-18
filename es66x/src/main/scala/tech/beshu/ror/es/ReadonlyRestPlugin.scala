@@ -55,6 +55,7 @@ import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.{ElasticsearchException, Version}
 import tech.beshu.ror.Constants
+import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
@@ -78,7 +79,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
-    with NetworkPlugin {
+    with NetworkPlugin
+    with ClusterPlugin {
 
   LogPluginBuildInfoMessage()
 
@@ -90,8 +92,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     Netty4Utils.setAvailableProcessors(EsExecutors.PROCESSORS_SETTING.get(s))
   }
 
+  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val environment = new Environment(s, p)
-  implicit private val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl
     .load(environment.configFile)
@@ -100,6 +102,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   private val emptyClusterState = new ClusterStateResponse(
     ClusterName.CLUSTER_NAME_SETTING.get(s), ClusterState.EMPTY_STATE,serializeFullClusterState(ClusterState.EMPTY_STATE, Version.CURRENT).length,false
   )
+  private val esInitListener = new EsInitListener
 
   private var ilaf: IndexLevelActionFilter = _
 
@@ -119,7 +122,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         threadPool,
         environment,
         TransportServiceInterceptor.remoteClusterServiceSupplier,
-        emptyClusterState
+        emptyClusterState,
+        esInitListener,
       )
     }
     List.empty[AnyRef].asJava
@@ -211,5 +215,12 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         ThreadRepo.setRestChannel(channel)
         restHandler.handleRequest(request, channel, client)
       }
+  }
+
+  override def onNodeStarted(): Unit = {
+    super.onNodeStarted()
+    doPrivileged {
+      esInitListener.onEsReady()
+    }
   }
 }

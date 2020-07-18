@@ -77,7 +77,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
-    with NetworkPlugin {
+    with NetworkPlugin
+    with ClusterPlugin {
 
   LogPluginBuildInfoMessage()
 
@@ -175,5 +176,12 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         ThreadRepo.setRestChannel(channel)
         restHandler.handleRequest(request, channel, client)
       }
+  }
+
+  override def onNodeStarted(): Unit = {
+    super.onNodeStarted()
+    doPrivileged {
+      EsInitListenerSingleton.onEsReady()
+    }
   }
 }

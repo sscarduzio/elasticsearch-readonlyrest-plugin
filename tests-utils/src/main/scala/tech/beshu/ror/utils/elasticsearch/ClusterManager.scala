@@ -16,66 +16,109 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpGet, HttpPut}
+import org.apache.http.client.methods.{HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.ClusterManager.CatResponse
-import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.Version
-import ujson.{Arr, Value}
 
 import scala.collection.JavaConverters._
 
 class ClusterManager(client: RestClient,
-                     override val additionalHeaders: Map[String, String] = Map.empty,
                      esVersion: String)
-  extends BaseManager(client) {
+  extends BaseManager(client)  {
 
-  def healthCheck(): SimpleResponse = {
-    call(new HttpGet(client.from("/_cat/health")), new SimpleResponse(_))
+  def allocationExplain(): JsonResponse = allocationExplain(None)
+
+  def allocationExplain(index: String): JsonResponse = allocationExplain(Some(index))
+
+  def health(): JsonResponse = health(None)
+
+  def health(index: String): JsonResponse = health(Some(index))
+
+  def state(indices: String*): JsonResponse = {
+    call(createStateRequest(indices), new JsonResponse(_))
   }
 
-  def catTemplates(): CatResponse = {
-    call(createCatTemplatesRequest(None), new CatResponse(_))
-  }
-
-  def catTemplates(index: String): CatResponse = {
-    call(createCatTemplatesRequest(Some(index)), new CatResponse(_))
-  }
-
-  def catIndices(): CatResponse = {
-    call(createCatIndicesRequest(None), new CatResponse(_))
-  }
-
-  def catIndices(index: String): CatResponse = {
-    call(createCatIndicesRequest(Some(index)), new CatResponse(_))
+  def reroute(command: JSON, commands: JSON*): JsonResponse = {
+    call(createRerouteRequest(command :: commands.toList), new JsonResponse(_))
   }
 
   def configureRemoteClusters(remoteClusters: Map[String, List[String]]): SimpleResponse = {
     call(createAddCLusterSettingsRequest(remoteClusters), new SimpleResponse(_))
   }
 
-  def tasks(): CatResponse = {
-    call(createTasksRequest(), new CatResponse(_))
+  def cancelAllTasks(): JsonResponse = {
+    call(createCancelAllTasksRequest(), new JsonResponse(_))
   }
 
-  private def createCatTemplatesRequest(index: Option[String]) = {
+  def getSettings: JsonResponse = {
+    call(createGetSettingsRequest(), new JsonResponse(_))
+  }
+
+  def putSettings(content: JSON): JsonResponse = {
+    call(createPutSettingsRequest(content), new JsonResponse(_))
+  }
+
+  private def allocationExplain(index: Option[String]): JsonResponse = {
+    call(createAllocationExplainRequest(index), new JsonResponse(_))
+  }
+
+  private def health(index: Option[String]): JsonResponse = {
+    call(createHealthRequest(index), new JsonResponse(_))
+  }
+
+  private def createAllocationExplainRequest(index: Option[String]) = {
+    val request = new HttpGetWithEntity(client.from("_cluster/allocation/explain"))
+    index match {
+      case Some(indexName) =>
+        request.addHeader("Content-Type", "application/json")
+        request.setEntity(new StringEntity(
+          s"""{
+             |"index":"$indexName",
+             |"shard": 0,
+             |"primary": true
+             |}""".stripMargin
+        ))
+      case None =>
+    }
+    request
+  }
+
+  private def createHealthRequest(index: Option[String]) = {
     new HttpGet(client.from(
-      s"/_cat/templates${index.map(i => s"/$i").getOrElse("")}",
-      Map("format" -> "json").asJava
+      index match {
+        case Some(value) => s"_cluster/health/$value"
+        case None => "_cluster/health"
+      },
+      Map("timeout" -> "2s").asJava
     ))
   }
 
-  private def createCatIndicesRequest(index: Option[String]) = {
+  private def createStateRequest(indices: Seq[String]) = {
     new HttpGet(client.from(
-      s"/_cat/indices${index.map(i => s"/$i").getOrElse("")}",
-      Map("format" -> "json", "s" -> "index:asc").asJava
+      indices.toList match {
+        case Nil => "_cluster/state/_all"
+        case names => s"_cluster/state/_all/${names.mkString(",")}"
+      }
     ))
   }
 
-  private def createTasksRequest() = {
-    new HttpGet(client.from(s"/_cat/tasks", Map("format" -> "json").asJava))
+  private def createRerouteRequest(commands: List[JSON]) = {
+    val request = new HttpPost(client.from("_cluster/reroute"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{
+         |"commands":[
+         |  ${commands.map(ujson.write(_)).mkString(",")}
+         |]
+         |}""".stripMargin
+    ))
+    request
+  }
+
+  private def createCancelAllTasksRequest() = {
+    new HttpPost(client.from("_tasks/_cancel"))
   }
 
   private def createAddCLusterSettingsRequest(remoteClusters: Map[String, List[String]]) = {
@@ -116,30 +159,17 @@ class ClusterManager(client: RestClient,
     ))
     request
   }
-}
 
-object ClusterManager {
-
-  final class CatResponse(response: HttpResponse)
-    extends JsonResponse(response) {
-
-    lazy val results: Vector[Value] = responseJson match {
-      case Arr(value) => value.toVector
-      case value => throw new AssertionError(s"Expecting JSON list, got: $value")
-    }
+  private def createGetSettingsRequest() = {
+    new HttpGet(client.from("_cluster/settings"))
   }
 
-  final class SingleLineCatResponse(response: HttpResponse)
-    extends JsonResponse(response) {
-
-    lazy val result: Value = responseJson match {
-      case Arr(value) =>
-        value.toVector.toList match {
-          case Nil => throw new AssertionError(s"Expecting one element JSON list, got: $value")
-          case one :: Nil => one
-          case _ => throw new AssertionError(s"Expecting one element JSON list, got: $value")
-        }
-      case value => throw new AssertionError(s"Expecting JSON list, got: $value")
-    }
+  private def createPutSettingsRequest(content: JSON) = {
+    val request = new HttpPut(client.from("_cluster/settings"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      content.toString()
+    ))
+    request
   }
 }

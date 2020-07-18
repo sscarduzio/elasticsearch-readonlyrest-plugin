@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpUriRequest
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse
@@ -57,7 +58,7 @@ object BaseManager {
     val isBadRequest: Boolean = responseCode == 400
   }
 
-  class JsonResponse(response: HttpResponse) extends SimpleResponse(response) {
+  class JsonResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {
     val body: String = stringBodyFrom(response)
     val responseJson: JSON = ujson.read(body)
 

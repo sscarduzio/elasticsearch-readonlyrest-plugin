@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.handler.usermetadata
 
+import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -45,11 +46,11 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def commitResult(result: UserMetadataRequestResult,
-                           requestContext: RequestContext): Unit = {
+                           request: RequestContext): Unit = {
     Try {
       result match {
         case UserMetadataRequestResult.Allow(userMetadata, _) =>
-          onAllow(requestContext, userMetadata)
+          onAllow(request, userMetadata)
         case UserMetadataRequestResult.Forbidden =>
           onForbidden()
         case UserMetadataRequestResult.PassedThrough =>
@@ -58,7 +59,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     } match {
       case Success(_) =>
       case Failure(ex) =>
-        logger.errorEx("ACL committing result failure", ex)
+        logger.errorEx(s"[${request.id.show}] ACL committing result failure", ex)
         esContext.listener.onFailure(ex.asInstanceOf[Exception])
     }
   }

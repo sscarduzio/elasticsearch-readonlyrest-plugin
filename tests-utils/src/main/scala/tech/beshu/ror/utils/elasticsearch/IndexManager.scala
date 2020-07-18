@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -64,6 +64,14 @@ class IndexManager(client: RestClient,
     call(createGetSettingsRequest(Set("_all")), new JsonResponse(_))
   }
 
+  def putAllSettings(numberOfReplicas: Int): JsonResponse = {
+    call(createPutAllSettingsRequest(numberOfReplicas), new JsonResponse(_))
+  }
+
+  def putSettings(indexName: String, allocationNodeNames: String*): JsonResponse = {
+    call(createPutSettingsRequest(indexName, allocationNodeNames.toList), new JsonResponse(_))
+  }
+
   def removeAll: SimpleResponse =
     call(createDeleteIndicesRequest, new SimpleResponse(_))
 
@@ -104,4 +112,21 @@ class IndexManager(client: RestClient,
     new HttpDelete(client.from("/_all"))
   }
 
+  private def createPutAllSettingsRequest(numberOfReplicas: Int) = {
+    val request = new HttpPut(client.from("/_all/_settings/"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{"index":{"number_of_replicas":$numberOfReplicas}}"""
+    ))
+    request
+  }
+
+  private def createPutSettingsRequest(indexName: String, allocationNodeNames: List[String]) = {
+    val request = new HttpPut(client.from(s"/$indexName/_settings/"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{"index.routing.allocation.include._name":"${allocationNodeNames.mkString(",")}"}"""
+    ))
+    request
+  }
 }

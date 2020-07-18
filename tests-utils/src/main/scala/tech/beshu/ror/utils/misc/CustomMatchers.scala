@@ -18,20 +18,26 @@ package tech.beshu.ror.utils.misc
 
 import org.scalatest.matchers._
 
+import scala.util.matching.Regex
+
 trait CustomMatchers {
 
-  class SetMayContainOnlyGivenElementsMatcher(elements: Set[String]) extends Matcher[Set[String]] {
+  class SetMayContainOnlyGivenElementsMatcher(elements: Set[Regex]) extends Matcher[Set[String]] {
 
     override def apply(setToCheck: Set[String]): MatchResult = {
       MatchResult(
-        setToCheck.diff(elements).isEmpty,
-        s"Set [${setToCheck.mkString(",")}] contains unexpected elements like [${setToCheck.diff(elements).mkString(",")}]",
-        s"Set [${setToCheck.mkString(",")}] contains only elements specified in [${elements.mkString(",")}]"
+        doesAllValuesFromSetMatchPatterns(setToCheck),
+        s"Set [${setToCheck.mkString(",")}] contains unexpected elements which don't match any of patterns [${elements.map(_.pattern.pattern()).mkString(",")}]",
+        s"Set [${setToCheck.mkString(",")}] contains only elements matching at least one pattern [${elements.map(_.pattern.pattern()).mkString(",")}]"
       )
     }
+
+    private def doesAllValuesFromSetMatchPatterns(set: Set[String]): Boolean = set.forall(value => matchesAnyOfPatterns(value))
+
+    private def matchesAnyOfPatterns(value: String) = elements.exists(r => r.findFirstMatchIn(value).isDefined)
   }
 
-  def containAtMostElementsFrom(elements: Set[String]) = new SetMayContainOnlyGivenElementsMatcher(elements)
+  def containAtMostElementsFrom(elements: Set[Regex]) = new SetMayContainOnlyGivenElementsMatcher(elements)
 }
 
 object CustomMatchers extends CustomMatchers
