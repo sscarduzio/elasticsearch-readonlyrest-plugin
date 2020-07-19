@@ -36,7 +36,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
   def create(config: CONFIG): ImageFromDockerfile = {
     import config._
     val baseDockerImage =
-      if (shouldUseEsOssImage(config)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
+      if (!config.xPackSupport) "docker.elastic.co/elasticsearch/elasticsearch-oss"
       else "docker.elastic.co/elasticsearch/elasticsearch"
 
     entry(config)
@@ -49,7 +49,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         RunCommandCombiner.empty
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(true, //config.xPackSupport && Version.greaterOrEqualThan(esVersion, 6, 3, 0), // todo:
+          .runWhen(config.xPackSupport,
             "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -93,11 +93,5 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
         logger.info("Dockerfile\n" + builder.build)
       })
-  }
-
-  private def shouldUseEsOssImage(config: Config) = {
-    false
-    // todo:
-    //!config.xPackSupport && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
   }
 }
