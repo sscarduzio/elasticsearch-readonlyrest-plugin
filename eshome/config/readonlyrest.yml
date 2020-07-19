@@ -1,32 +1,13 @@
 readonlyrest:
   access_control_rules:
 
-    - name: "kibana"
-      verbosity: error
-      auth_key: kibana:kibana
-
     - name: "CONTAINER ADMIN"
       verbosity: error
       indices: ["*"]
       type: allow
       auth_key: admin:container
 
-#    - name: "test1"
-#      kibana_access: rw
-#      auth_key: test:test555
-#      kibana_index: ".kibana"
-#      indices: ["app-a", ".kibana"]
-#      filter: '{"query_string":{"query":"app:(cste)"}}'
-
-    - name: "::TESTX - FILTERED QUERY::"
-      kibana_access: rw
-      auth_key: test:test555
-#      kibana_index: ".kibana"
-      indices: [ "app-a" ]
+    - name: "test1"
+      indices: ["app-a"]
       filter: '{"query_string":{"query":"app:(cste)"}}'
-
-    - name: "::TESTX::"
-      kibana_access: rw
       auth_key: test:test555
-#      kibana_index: ".kibana"
-      indices: [".kibana", "welcome"]
