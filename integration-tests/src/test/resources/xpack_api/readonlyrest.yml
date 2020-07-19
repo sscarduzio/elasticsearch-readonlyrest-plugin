@@ -21,4 +21,4 @@ readonlyrest:
       indices: ["test2_index"]
       auth_key: dev2:test
       filter: '{"query_string":{"query":"name:(john)"}}'
-      fields: ["name"]
+      fields: ["_source", "name"]

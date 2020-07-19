@@ -31,7 +31,7 @@ trait XpackApiSuite
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
 
   "Async search" should {
-    "be supported" in {
+    "be allowed for dev1 and test1_index" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
       val result = dev1SearchManager.asyncSearch("test1_index")
 
       result.responseCode should be (200)
@@ -39,14 +39,21 @@ trait XpackApiSuite
         Set("test1_index")
       )
     }
-    "support filter and fields rule" in {
+    "not be allowed for dev2 and test1_index" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+      val result = dev2SearchManager.asyncSearch("test1_index")
+
+      result.responseCode should be (401)
+    }
+    "support filter and fields rule" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
       val result = dev2SearchManager.asyncSearch("test2_index")
 
       result.responseCode should be (200)
       result.searchHits.map(i => i("_index").str).toSet should be(
         Set("test2_index")
       )
-      // todo: only one result
+      result.searchHits.map(i => i("_source")).toSet should be(
+        Set(ujson.read("""{"name":"john"}"""))
+      )
     }
   }
 

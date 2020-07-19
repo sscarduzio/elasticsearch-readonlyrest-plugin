@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import com.google.common.collect.Sets
 import org.elasticsearch.action.ActionRequest
@@ -44,14 +45,17 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
 
   override protected def update(request: ActionRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
     if (tryUpdate(actionRequest, indices)) Modified
-    else ShouldBeInterrupted // todo: need cause log
+    else {
+      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
+      ShouldBeInterrupted
+    }
   }
 
   private def tryUpdate(actionRequest: ActionRequest, indices: NonEmptyList[IndexName]) = {
     // Optimistic reflection attempt
     ReflecUtils.setIndices(
       actionRequest,
-      Sets.newHashSet("index", "indices"),
+      Sets.newHashSet("index", "indices", "setIndex", "setIndices"),
       indices.toList.map(_.value.value).toSet.asJava
     )
   }
@@ -69,9 +73,15 @@ object ReflectionBasedIndicesEsRequestContext {
   }
 
   private def indicesFrom(request: ActionRequest) = {
-    NonEmptyList
-      .fromList(extractStringArrayFromPrivateMethod("indices", request).asSafeList)
-      .orElse(NonEmptyList.fromList(extractStringArrayFromPrivateMethod("index", request).asSafeList))
+    getIndicesUsingReflection(request, methodName = "indices")
+      .orElse(getIndicesUsingReflection(request, methodName = "getIndices"))
+      .orElse(getIndicesUsingReflection(request, methodName = "index"))
+      .orElse(getIndicesUsingReflection(request, methodName = "getIndex"))
       .map(indices => indices.toList.toSet.flatMap(IndexName.fromString))
   }
+
+  private def getIndicesUsingReflection(request: ActionRequest, methodName: String) = {
+    NonEmptyList.fromList(extractStringArrayFromPrivateMethod(methodName, request).asSafeList)
+  }
+
 }

@@ -20,7 +20,7 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.SearchManager.{FieldCapsResult, MSearchResult, SearchResult}
+import tech.beshu.ror.utils.elasticsearch.SearchManager.{AsyncSearchResult, FieldCapsResult, MSearchResult, SearchResult}
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
@@ -37,8 +37,8 @@ class SearchManager(client: RestClient,
   def search(indexNames: String*): SearchResult =
     call(createSearchRequest(indexNames.toList), new SearchResult(_))
 
-  def asyncSearch(indexName: String): SearchResult = {
-    call(createAsyncSearchRequest(Some(indexName)), new SearchResult(_))
+  def asyncSearch(indexName: String): AsyncSearchResult = {
+    call(createAsyncSearchRequest(Some(indexName)), new AsyncSearchResult(_))
   }
 
   def mSearchUnsafe(lines: String*): MSearchResult = {
@@ -126,8 +126,9 @@ object SearchManager {
     def removeRorSettings(): Vector[Value] = hits.filter(hit => hit("_index").str != ".readonlyrest").toVector
   }
 
-  class SearchResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val searchHitsWithSettings: Value = responseJson("hits")("hits")
+  abstract class BaseSearchResult(response: HttpResponse) extends JsonResponse(response) {
+    protected def searchHitsWithSettings: Value
+
     lazy val searchHits: List[Value] = searchHitsWithSettings.arr.removeRorSettings().toList
     lazy val docIds: List[String] = searchHits.map(_ ("_id").str)
 
@@ -136,6 +137,14 @@ object SearchManager {
     def head = hit(0)
 
     def id(docId: String) = searchHits.find(_ ("_id").str == docId).get("_source")
+  }
+
+  class SearchResult(response: HttpResponse) extends BaseSearchResult(response) {
+    override lazy val searchHitsWithSettings: Value = responseJson("hits")("hits")
+  }
+
+  class AsyncSearchResult(response: HttpResponse) extends BaseSearchResult(response) {
+    override lazy val searchHitsWithSettings: Value = responseJson("response")("hits")("hits")
   }
 
   class MSearchResult(response: HttpResponse) extends JsonResponse(response) {

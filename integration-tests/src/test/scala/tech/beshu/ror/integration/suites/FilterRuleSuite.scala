@@ -346,12 +346,12 @@ object FilterRuleSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}"""))
-    documentManager.createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
-    documentManager.createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}"""))
-    documentManager.createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}"""))
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")).force()
+    documentManager.createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}""")).force()
+    documentManager.createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}""")).force()
+    documentManager.createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}""")).force()
 
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}"""))
-    documentManager.createDoc("test2_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")).force()
+    documentManager.createDoc("test2_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}""")).force()
   }
 }
