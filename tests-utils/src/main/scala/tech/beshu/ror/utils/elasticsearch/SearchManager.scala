@@ -34,6 +34,9 @@ class SearchManager(client: RestClient,
   def search(indexName: String, query: JSON): SearchResult =
     call(createSearchRequest(Some(indexName), query), new SearchResult(_))
 
+  def search(query: JSON): SearchResult =
+    call(createSearchRequest(None, query), new SearchResult(_))
+
   def search(indexNames: String*): SearchResult =
     call(createSearchRequest(indexNames.toList), new SearchResult(_))
 

@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait IndicesReverseWildcardSuite
@@ -32,26 +32,26 @@ trait IndicesReverseWildcardSuite
 
   override def nodeDataInitializer = Some(IndicesReverseWildcardSuite.nodeDataInitializer())
 
-  private lazy val searchManager = new SearchManager(adminClient)
+  private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
 
   "A search request" should {
     "return proper data" when {
       "direct index search is used" in {
-        val response = searchManager.search("logstash-a1")
+        val response = dev1SearchManager.search("logstash-a1")
 
         response.responseCode should be(200)
         response.searchHits.size should be(1)
         response.searchHits.head("_id").str should be("doc-a1")
       }
       "simple wildcard search is used" in {
-        val response = searchManager.search("logstash-a*")
+        val response = dev1SearchManager.search("logstash-a*")
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
         response.searchHits.map(_("_id").str) should contain allOf ("doc-a1", "doc-a2")
       }
       "reverse wildcard search is used" in {
-        val response = searchManager.search("logstash-*")
+        val response = dev1SearchManager.search("logstash-*")
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
@@ -59,7 +59,7 @@ trait IndicesReverseWildcardSuite
       }
 
       "reverse total wildcard search is used" in {
-        val response = searchManager.search("*")
+        val response = dev1SearchManager.search("*")
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
@@ -67,7 +67,7 @@ trait IndicesReverseWildcardSuite
       }
 
       "generic search all is used" in {
-        val response = searchManager.search()
+        val response = dev1SearchManager.search()
 
         response.responseCode should be(200)
         response.searchHits.size should be(2)
@@ -78,18 +78,11 @@ trait IndicesReverseWildcardSuite
 }
 
 object IndicesReverseWildcardSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    insertDoc("a1")
-    insertDoc("a2")
-    insertDoc("b1")
-    insertDoc("b2")
-
-    def insertDoc(index: String): Unit = {
-      documentManager.insertDocAndWaitForRefresh(
-        s"/logstash-$index/documents/doc-$index",
-        s"""{"title": "$index"}"""
-      )
-    }
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager.createDoc("logstash-a1", "doc-a1", ujson.read(s"""{"title": "logstash-a1"}"""))
+    documentManager.createDoc("logstash-a2", "doc-a2", ujson.read(s"""{"title": "logstash-a2"}"""))
+    documentManager.createDoc("logstash-b1", "doc-b1", ujson.read(s"""{"title": "logstash-b1"}"""))
+    documentManager.createDoc("logstash-b2", "doc-b2", ujson.read(s"""{"title": "logstash-b2"}"""))
   }
 }

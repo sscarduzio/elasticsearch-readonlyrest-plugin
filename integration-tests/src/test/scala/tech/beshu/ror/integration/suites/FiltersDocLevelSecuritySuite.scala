@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.integration.suites
 
+import monix.execution.atomic.AtomicInt
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
@@ -86,7 +87,7 @@ trait FiltersDocLevelSecuritySuite
       adminClient,
       Map("x-api-key" -> "g")
     )
-    val response = searchManager.search("testfilterbandcs")
+    val response = searchManager.search("testfilterbandc")
 
     response.responseCode should be(200)
     response.body.contains("a1") shouldBe false
@@ -113,9 +114,9 @@ trait FiltersDocLevelSecuritySuite
     response.body.contains("c2") shouldBe false
 
     val sourceJson = response.searchHits.head.obj("_source")
-    sourceJson.obj.size should be (2)
-    sourceJson("title").str should be ("d1")
-    sourceJson("dummy").bool should be (true)
+    sourceJson.obj.size should be(2)
+    sourceJson("title").str should be("d1")
+    sourceJson("dummy").bool should be(true)
   }
 
   "tesANoCache" in {
@@ -144,8 +145,9 @@ trait FiltersDocLevelSecuritySuite
 }
 
 object FiltersDocLevelSecuritySuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    val docId = AtomicInt(0)
     insertDoc("a1", "a", "title")
     insertDoc("a2", "a", "title")
     insertDoc("b1", "bandc", "title")
@@ -158,10 +160,13 @@ object FiltersDocLevelSecuritySuite {
     insertDoc("d2", "d", "nottitle")
 
     def insertDoc(docName: String, idx: String, field: String): Unit = {
-      val path = s"/testfilter$idx/documents/doc-$docName${Math.random().toString}"
-      val entity = s"""{"$field": "$docName", "dummy": true}"""
-
-      documentManager.insertDocAndWaitForRefresh(path, entity)
+      documentManager
+        .createDoc(
+          s"testfilter$idx",
+          docId.incrementAndGet(),
+          ujson.read(s"""{"$field": "$docName", "dummy": true}""")
+        )
+        .force()
     }
   }
 }
