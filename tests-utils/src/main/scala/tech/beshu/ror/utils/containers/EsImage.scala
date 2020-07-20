@@ -36,7 +36,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
   def create(config: CONFIG): ImageFromDockerfile = {
     import config._
     val baseDockerImage =
-      if (esOssImage(config)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
+      if (shouldUseEsOssImage(config)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
       else "docker.elastic.co/elasticsearch/elasticsearch"
 
     entry(config)
@@ -49,7 +49,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         RunCommandCombiner.empty
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(!esOssImage(config),
+          .runWhen(config.xPackSupport && Version.greaterOrEqualThan(esVersion, 6, 3, 0),
             "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -81,7 +81,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           "-Xmx512m",
           "-Djava.security.egd=file:/dev/./urandoms",
           "-Dcom.unboundid.ldap.sdk.debug.enabled=false",
-          "-Xdebug", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000",
+          "-Xdebug", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000",
           if (!configHotReloadingEnabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
         ).mkString(" ")
 
@@ -95,7 +95,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
       })
   }
 
-  private def esOssImage(config: Config) = {
+  private def shouldUseEsOssImage(config: Config) = {
     !config.xPackSupport && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
   }
 }
