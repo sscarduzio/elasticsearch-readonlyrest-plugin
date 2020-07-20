@@ -19,6 +19,7 @@ package tech.beshu.ror.utils.containers
 import com.typesafe.scalalogging.StrictLogging
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
+import tech.beshu.ror.utils.containers.EsContainer.Config
 import tech.beshu.ror.utils.misc.Version
 
 import scala.collection.JavaConverters._
@@ -35,7 +36,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
   def create(config: CONFIG): ImageFromDockerfile = {
     import config._
     val baseDockerImage =
-      if (!config.xPackSupport) "docker.elastic.co/elasticsearch/elasticsearch-oss"
+      if (esOssImage(config)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
       else "docker.elastic.co/elasticsearch/elasticsearch"
 
     entry(config)
@@ -48,7 +49,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         RunCommandCombiner.empty
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(config.xPackSupport,
+          .runWhen(!esOssImage(config),
             "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -92,5 +93,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
         logger.info("Dockerfile\n" + builder.build)
       })
+  }
+
+  private def esOssImage(config: Config) = {
+    !config.xPackSupport && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
   }
 }
