@@ -18,4 +18,3 @@ readonlyrest:
     verbosity: error
     type: allow
     auth_key: admin:container
-
