@@ -20,16 +20,16 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect._
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
-
-import scala.util.Try
 
 class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
                                              esContext: EsContext,
@@ -38,29 +38,31 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
                                              override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  private lazy val searchRequest = Try(Option(invokeMethodCached(actionRequest, actionRequest.getClass, "getRequest")))
-    .toOption.flatten
-    .flatMap {
-      case req: SearchRequest => Some(req)
-      case _ => None
-    }
+  private lazy val searchRequest = searchRequestFrom(actionRequest)
 
   override protected def indicesFrom(request: ActionRequest): Set[IndexName] = {
     searchRequest
-      .map(_.indices.asSafeSet)
-      .getOrElse(Set.empty)
+      .indices.asSafeSet
       .flatMap(IndexName.fromString)
   }
 
   override protected def update(request: ActionRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
-    searchRequest match {
-      case Some(sr) =>
-        sr.indices(indices.toList.map(_.value.value): _*)
-        Modified
+    searchRequest.indices(indices.toList.map(_.value.value): _*)
+    Modified
+  }
+
+  private def searchRequestFrom(request: ActionRequest) = {
+    Option(invokeMethodCached(request, request.getClass, "getRequest")) match {
+      case Some(sr: SearchRequest) => sr
+      case Some(_) =>
+        throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot get SearchRequest from SearchTemplateRequest request")
       case None =>
-        Modified
+        val sr = new SearchRequest("*")
+        on(request).call("setRequest", sr)
+        sr
     }
   }
+
 }
 
 object SearchTemplateEsRequestContext {

@@ -18,8 +18,8 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManagerJ, SearchManager}
+import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManager, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 
@@ -33,25 +33,26 @@ trait ClosedIndicesSuite
 
   // we use admin client here so 'CONTAINER ADMIN' block is matched. We need to match 'Getter' block
   private lazy val searchManager = new SearchManager(adminClient, additionalHeaders = Map("x-api-key" -> "g"))
+  private lazy val indexManager = new IndexManager(adminClient, additionalHeaders = Map("x-api-key" -> "g"))
 
   "A search request" should {
     "return only data related to a1 index and ignore closed a2 index" when {
       "direct index search is used" in {
-        val response = searchManager.search("/intentp1_a1/_search")
+        val response = searchManager.search("intentp1_a1")
 
         response.responseCode should be(200)
         response.searchHits.size should be(1)
         response.searchHits.head("_id").str should be("doc-a1")
       }
       "wildcard search is used" in {
-        val response = searchManager.search("/*/_search")
+        val response = searchManager.search("*")
 
         response.responseCode should be(200)
         response.searchHits.size should be(1)
         response.searchHits.head("_id").str should be("doc-a1")
       }
       "generic search all" in {
-        val response = searchManager.search("/_search")
+        val response = searchManager.search()
 
         response.responseCode should be(200)
         response.searchHits.size should be(1)
@@ -59,7 +60,7 @@ trait ClosedIndicesSuite
       }
 
       "get mappings is used" in {
-        val response = searchManager.search("/intentp1_*/_mapping/field/*")
+        val response = indexManager.getMapping(indexName = "intentp1_*", field = "*")
 
         response.responseCode should be(200)
         response.body.contains("intentp1_a1") should be(true)

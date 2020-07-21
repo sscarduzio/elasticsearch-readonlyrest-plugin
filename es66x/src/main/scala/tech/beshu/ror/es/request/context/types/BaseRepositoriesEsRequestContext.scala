@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
@@ -47,6 +48,7 @@ abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionReques
       case Some(repositories) =>
         update(actionRequest, repositories)
       case None =>
+        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request, because of empty repositories list.")
         ShouldBeInterrupted
     }
   }

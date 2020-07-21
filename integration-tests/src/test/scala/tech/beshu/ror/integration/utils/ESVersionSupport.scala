@@ -30,6 +30,7 @@ trait ESVersionSupport extends WordSpecLike {
   val allEs6xExceptEs66x = "^es6(?!(?:6x)$)\\dx$".r
   val allEs7x = "^es7\\dx$".r
   val allEs7xExceptEs70x = "^es7(?!(?:0x)$)\\dx$".r
+  val allEs7xBelowEs77x = "^es7[0-6]x$".r
 
   implicit final class ESVersionSupportOps(string: String) {
     def excludeES(esVersion: String, esVersions: String*): ResultOfTaggedAsInvocationOnString = {

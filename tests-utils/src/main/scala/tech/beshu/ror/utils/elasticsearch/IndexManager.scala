@@ -75,6 +75,10 @@ class IndexManager(client: RestClient,
   def removeAll: SimpleResponse =
     call(createDeleteIndicesRequest, new SimpleResponse(_))
 
+  def getMapping(indexName: String, field: String): JsonResponse = {
+    call(createGetMappingRequest(indexName, field), new JsonResponse(_))
+  }
+
   private def getAliasRequest(indexOpt: Option[String] = None,
                               aliasOpt: Option[String] = None) = {
     val path = indexOpt match {
@@ -128,5 +132,9 @@ class IndexManager(client: RestClient,
       s"""{"index.routing.allocation.include._name":"${allocationNodeNames.mkString(",")}"}"""
     ))
     request
+  }
+
+  private def createGetMappingRequest(indexName: String, field: String) = {
+    new HttpGet(client.from(s"/$indexName/_mapping/field/$field"))
   }
 }

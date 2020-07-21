@@ -14,9 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.MustacheLangSuite
-import tech.beshu.ror.integration.utils.ProxyTestSupport
+import tech.beshu.ror.integration.suites.XpackApiSuite
+import tech.beshu.ror.integration.utils.PluginTestSupport
 
-class MustacheLangProxyTests extends MustacheLangSuite with ProxyTestSupport
+class XpackApiPluginTests extends XpackApiSuite with PluginTestSupport
