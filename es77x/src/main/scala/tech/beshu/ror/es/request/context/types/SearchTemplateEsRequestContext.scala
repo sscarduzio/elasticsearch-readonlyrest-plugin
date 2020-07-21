@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect._
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
@@ -51,9 +52,15 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
   }
 
   private def searchRequestFrom(request: ActionRequest) = {
-    Option(invokeMethodCached(actionRequest, actionRequest.getClass, "getRequest"))
-      .collect { case sr: SearchRequest => sr }
-      .getOrElse(throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot get SearchRequest from SearchTemplateRequest request"))
+    Option(invokeMethodCached(request, request.getClass, "getRequest")) match {
+      case Some(sr: SearchRequest) => sr
+      case Some(_) =>
+        throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot get SearchRequest from SearchTemplateRequest request")
+      case None =>
+        val sr = new SearchRequest("*")
+        on(request).call("setRequest", sr)
+        sr
+    }
   }
 
 }
