@@ -8,6 +8,10 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "test1"
+      indices: ["index6", "a2"]
+      auth_key: dev1:test
+
+    - name: "test2"
       indices: ["app-a"]
       filter: '{"query_string":{"query":"app:(cste)"}}'
       auth_key: test:test555
