@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, DocumentWithIndex, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, DocumentField, DocumentWithIndex, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -35,6 +35,7 @@ import tech.beshu.ror.es.request.DocumentApiOps.GetApi
 import tech.beshu.ror.es.request.DocumentApiOps.MultiGetApi._
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.es.request.SourceFiltering._
 
 import scala.collection.JavaConverters._
 
@@ -51,6 +52,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     Set.empty,
     Set.empty,
     indexPacksFrom(actionRequest),
+    None,
     None
   )
 
@@ -61,7 +63,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       items
         .zip(modifiedPacksOfIndices)
         .foreach { case (item, pack) =>
-          updateItem(item, pack)
+          updateItem(item, pack, blockContext.fields)
         }
       ModificationResult.UpdateResponse(filterResponse(blockContext.filter))
     } else {
@@ -84,13 +86,19 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     indicesOrWildcard(requestIndices)
   }
 
-  private def updateItem(item: MultiGetRequest.Item, indexPack: Indices): Unit = {
+  private def updateItem(item: MultiGetRequest.Item,
+                         indexPack: Indices,
+                         fields: Option[NonEmptySet[DocumentField]]): Unit = {
     indexPack match {
       case Indices.Found(indices) =>
         updateItemWithIndices(item, indices)
       case Indices.NotFound =>
         updateItemWithNonExistingIndex(item)
     }
+
+    val originalSourceContext = item.fetchSourceContext()
+    val newContext = originalSourceContext.applyNewFields(fields)
+    item.fetchSourceContext(newContext.modifiedContext)
   }
 
   private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[IndexName]) = {

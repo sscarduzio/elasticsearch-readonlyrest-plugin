@@ -16,16 +16,24 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.NonEmptyList
-import org.elasticsearch.action.search.SearchRequest
+import java.nio.ByteBuffer
+
+import cats.data.{NonEmptyList, NonEmptySet}
+import com.google.gson.Gson
+import monix.eval.Task
+import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
+import org.elasticsearch.common.bytes.BytesReference
+import org.elasticsearch.common.xcontent.json.JsonXContent
+import org.elasticsearch.common.xcontent.support.XContentMapValues
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchRequestOps._
+import tech.beshu.ror.es.request.SourceFiltering
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._
 
 class SearchEsRequestContext(actionRequest: SearchRequest,
@@ -41,20 +49,58 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
 
   override protected def update(request: SearchRequest,
                                 indices: NonEmptyList[IndexName],
-                                filter: Option[Filter]): ModificationResult = {
-    optionallyDisableCaching()
+                                filter: Option[Filter],
+                                fields: Option[NonEmptySet[DocumentField]]): ModificationResult = {
     request
       .applyFilterToQuery(filter)
       .indices(indices.toList.map(_.value.value): _*)
-    Modified
+
+    import SourceFiltering._
+    val originalFetchSource = request.source().fetchSource()
+    val sourceFilteringResult = originalFetchSource.applyNewFields(fields)
+      request.source().fetchSource(sourceFilteringResult.modifiedContext)
+
+    sourceFilteringResult match {
+      case _: SourceFilteringResult.Applied =>
+        ModificationResult.Modified
+      case result: SourceFilteringResult.ClientFilteringNotApplied =>
+        ModificationResult.UpdateResponse(applyClientFiltering(result.ignoredClientFiltering))
+    }
   }
 
-  //TODO cache is now disabled only when 'fields' rule is used.
-  //Remove after 'fields' rule improvements.
-  private def optionallyDisableCaching(): Unit = {
-    if (esContext.involvesFields) {
-      logger.debug("ACL involves fields, will disable request cache for SearchRequest")
-      actionRequest.requestCache(false)
+  private def applyClientFiltering(clientFiltering: Array[String])
+                                  (actionResponse: ActionResponse): Task[ActionResponse] = {
+    actionResponse match {
+      case response: SearchResponse =>
+        response.getHits.getHits
+          .foreach { hit =>
+            val map = hit.getSourceAsMap
+            val map1 = XContentMapValues.filter(map, clientFiltering, Array.empty[String])
+            val str = new Gson().toJson(map1)
+            JsonXContent.jsonXContent
+            val bytes = str.map(_.toByte).toArray
+            val newSource = BytesReference.fromByteBuffer(ByteBuffer.wrap(bytes))
+            hit.sourceRef(newSource)
+          }
+        Task.now(response)
+
+//        NonEmptyList.fromList(documents.toList) match {
+//          case Some(documentsToUpdate) =>
+//            clusterService
+//              .provideNewSourcesFor(documentsToUpdate, clientFiltering, id)
+//              .map { newSources =>
+//                response.getHits.getHits
+//                  .foreach { hit =>
+//                    val document = DocumentWithIndex(IndexName.fromUnsafeString(hit.getIndex), DocumentId(hit.getId))
+//                    val newSource = newSources(document)
+//                    hit.sourceRef(BytesReference.fromByteBuffer(ByteBuffer.wrap(newSource)))
+//                  }
+//                response
+//              }
+//          case None =>
+//            Task.now(actionResponse)
+//        }
+      case _ => Task.now(actionResponse)
     }
   }
 }

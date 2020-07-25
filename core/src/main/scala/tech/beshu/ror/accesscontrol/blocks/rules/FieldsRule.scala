@@ -19,14 +19,14 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFieldsUpdater}
+import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
-import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{DocumentField, Header}
-import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.ScalaOps._
@@ -42,19 +42,30 @@ class FieldsRule(val settings: Settings)
     if (!blockContext.requestContext.isReadOnlyRequest) RuleResult.Rejected()
     else {
       val resolved = resolveAll(settings.fields.toNonEmptyList, blockContext)
-      val option = NonEmptySet.fromSet(SortedSet.empty[DocumentField] ++ resolved.toSet)
-      option match {
+      NonEmptySet.fromSet(SortedSet.empty[DocumentField] ++ resolved.toSet) match {
         case Some(resolvedFields) =>
-          val transientFieldsHeader = new Header(
-            Name.transientFields,
-            transientFieldsToHeaderValue.toRawValue(resolvedFields)
-          )
-          RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
+          BlockContextUpdater[B] match {
+            case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
+            case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+            case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
+            case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
+            case TemplateRequestBlockContextUpdater => Fulfilled(blockContext)
+            case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+            case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+            case FilterableRequestBlockContextUpdater => addFields(blockContext, resolvedFields)
+            case FilterableMultiRequestBlockContextUpdater => addFields(blockContext, resolvedFields)
+          }
         case None =>
           RuleResult.Rejected()
       }
     }
   }
+
+  private def addFields[B <: BlockContext : BlockContextWithFieldsUpdater](blockContext: B,
+                                                                           fields: NonEmptySet[DocumentField]) = {
+    Fulfilled(blockContext.withFields(fields))
+  }
+
 }
 
 object FieldsRule {

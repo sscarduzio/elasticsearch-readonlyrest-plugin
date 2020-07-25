@@ -41,6 +41,10 @@ trait RorClusterService {
                                      filter: Filter,
                                      id: RequestContext.Id): Task[DocumentsAccessibilities]
 
+  def provideNewSourcesFor(documents: NonEmptyList[Document],
+                           clientFiltering: Array[String],
+                           id: RequestContext.Id): Task[NewDocumentSources]
+
   def getTemplate(name: TemplateName): Option[Template] = {
     allTemplates.find(_.name === name)
   }
@@ -59,4 +63,5 @@ object RorClusterService {
   type DocumentsAccessibilities = Map[DocumentWithIndex, DocumentAccessibility]
   type AliasName = IndexName
   type IndexUuid = String
+  type NewDocumentSources = Map[DocumentWithIndex, Array[Byte]]
 }

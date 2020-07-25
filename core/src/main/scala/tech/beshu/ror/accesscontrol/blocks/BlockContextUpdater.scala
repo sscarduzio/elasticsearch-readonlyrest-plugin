@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
+import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -295,5 +296,30 @@ object BlockContextWithFilterUpdater {
     def withFilter(blockContext: FilterableRequestBlockContext,
                    filter: Filter): FilterableRequestBlockContext =
       blockContext.copy(filter = Some(filter))
+  }
+}
+
+abstract class BlockContextWithFieldsUpdater[B <: BlockContext : HasFields] {
+
+  def withFields(blockContext: B, fields: NonEmptySet[DocumentField]): B
+}
+
+object BlockContextWithFieldsUpdater {
+  def apply[B <: BlockContext](implicit ev: BlockContextWithFieldsUpdater[B]) = ev
+
+  implicit object FilterableMultiRequestBlockContextWithFieldsUpdater
+    extends BlockContextWithFieldsUpdater[FilterableMultiRequestBlockContext] {
+
+    def withFields(blockContext: FilterableMultiRequestBlockContext,
+                   fields: NonEmptySet[DocumentField]): FilterableMultiRequestBlockContext =
+      blockContext.copy(fields = Some(fields))
+  }
+
+  implicit object FilterableBlockContextWithFieldsUpdater
+    extends BlockContextWithFieldsUpdater[FilterableRequestBlockContext] {
+
+    def withFields(blockContext: FilterableRequestBlockContext,
+                   fields: NonEmptySet[DocumentField]): FilterableRequestBlockContext =
+      blockContext.copy(fields = Some(fields))
   }
 }

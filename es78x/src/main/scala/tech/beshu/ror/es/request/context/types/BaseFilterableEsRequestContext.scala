@@ -16,14 +16,14 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{DocumentField, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
@@ -48,6 +48,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
       logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
       indices
     },
+    None,
     None
   )
 
@@ -58,13 +59,13 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
         val nonExistingIndices = NonEmptyList
           .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
-        update(actionRequest, nonExistingIndices, initialBlockContext.filter)
+        update(actionRequest, nonExistingIndices, initialBlockContext.filter, initialBlockContext.fields)
         Modified
       } else {
         ShouldBeInterrupted
       }
     } else {
-      update(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()), initialBlockContext.filter)
+      update(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()), initialBlockContext.filter, initialBlockContext.fields)
       Modified
     }
   }
@@ -72,7 +73,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
   override protected def modifyRequest(blockContext: FilterableRequestBlockContext): ModificationResult = {
     NonEmptyList.fromList(blockContext.indices.toList) match {
       case Some(indices) =>
-        update(actionRequest, indices, blockContext.filter)
+        update(actionRequest, indices, blockContext.filter, blockContext.fields)
       case None =>
         logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
         ShouldBeInterrupted
@@ -83,5 +84,6 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
 
   protected def update(request: R,
                        indices: NonEmptyList[IndexName],
-                       filter: Option[Filter]): ModificationResult
+                       filter: Option[Filter],
+                       fields: Option[NonEmptySet[DocumentField]]): ModificationResult
 }

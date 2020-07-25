@@ -21,10 +21,12 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
+import org.elasticsearch.action.get.{GetResponse, MultiGetRequest, MultiGetResponse}
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
+import org.elasticsearch.search.fetch.subphase.FetchSourceContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -106,6 +108,47 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           blockAllDocsReturned(documents)
       }
       .map(results => zip(results, documents))
+  }
+
+
+  override def provideNewSourcesFor(documents: NonEmptyList[Document],
+                                    clientFiltering: Array[String],
+                                    id: RequestContext.Id): Task[NewDocumentSources] = {
+    val listener = new GenericResponseListener[MultiGetResponse]
+
+    val builder = nodeClient.prepareMultiGet()
+
+    val items = documents
+      .map { doc =>
+        val item = new MultiGetRequest.Item(doc.index.value.value, doc.documentId.value)
+        item.fetchSourceContext(new FetchSourceContext(true, clientFiltering, Array.empty[String]))
+      }
+
+    val builderWithAddedItems = items.foldLeft(builder)(_ add _)
+    builderWithAddedItems.execute(listener)
+
+    listener.result
+      .map { multiGetResponse =>
+        multiGetResponse.getResponses
+          .map { response =>
+            if (response.isFailed) {
+              logger.warn(s"[${id.show}] Fetching new source failed. Returning empty source")
+              Array.empty[Byte]
+            } else {
+              response.getResponse.getSourceAsBytes
+            }
+          }.toList
+      }
+      .onErrorRecover {
+        case ex =>
+          logger.error(s"[${id.show}] Could not fetch new sources. Returning empty sources", ex)
+          List.fill(documents.size)(Array.empty[Byte])
+      }
+      .map { newSources =>
+        documents.toList
+          .zip(newSources)
+          .toMap
+      }
   }
 
   private def createSearchRequest(filter: Filter,

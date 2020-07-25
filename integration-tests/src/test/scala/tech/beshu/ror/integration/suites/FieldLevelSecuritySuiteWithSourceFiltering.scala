@@ -146,7 +146,8 @@ trait FieldLevelSecuritySuiteWithSourceFiltering
           """
             |{
             |  "_source": {
-            |      "includes": [ "items.endDate", "secrets", "user"]
+            |      "includes": [ "items.endDate", "secrets.key", "user"],
+            |      "excludes": ["secrets"]
             |  }
             |}
             |""".stripMargin

@@ -71,7 +71,8 @@ class FieldsPolicy(fields: NonEmptySet[DocumentField]) {
 }
 
 object FieldsPolicy {
-  private class EnhancedDocumentField(field: DocumentField) {
+
+  class EnhancedDocumentField(field: DocumentField) {
     val fieldPartPatterns: List[Pattern] =
       field.value.value
         .split("\\.").toList
@@ -79,6 +80,11 @@ object FieldsPolicy {
           Pattern.compile(s"^${part.replace("*", ".*")}$$")
         }
 
+    val fullPattern: Pattern =
+      Pattern.compile(s"^${field.value.value
+        .replace(".", "\\.")
+        .replace("*", ".*")}$$"
+      )
     val isNegated: Boolean = field.isInstanceOf[NegatedDocumentField]
 
   }

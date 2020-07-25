@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
@@ -24,12 +24,13 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{DocumentField, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.request.SourceFiltering._
 import tech.beshu.ror.es.request.context.ModificationResult
 
 class GetEsRequestContext(actionRequest: GetRequest,
@@ -50,9 +51,13 @@ class GetEsRequestContext(actionRequest: GetRequest,
 
   override protected def update(request: GetRequest,
                                 indices: NonEmptyList[IndexName],
-                                filter: Option[Filter]): ModificationResult = {
+                                filter: Option[Filter],
+                                fields: Option[NonEmptySet[DocumentField]]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
+    val originalSourceContext = request.fetchSourceContext()
+    val newContext = originalSourceContext.applyNewFields(fields)
+    request.fetchSourceContext(newContext.modifiedContext)
     ModificationResult.UpdateResponse(filterResponse(filter))
   }
 

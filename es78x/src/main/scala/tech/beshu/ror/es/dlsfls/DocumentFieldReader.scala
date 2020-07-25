@@ -31,7 +31,7 @@ import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XCont
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader
-import tech.beshu.ror.fls.FieldsPolicy
+import tech.beshu.ror.fls.EnhancedFieldsPolicy
 import ujson._
 
 import scala.collection.JavaConverters._
@@ -40,7 +40,7 @@ import scala.util.Try
 private class DocumentFieldReader(reader: LeafReader, fields: NonEmptySet[DocumentField])
   extends FilterLeafReader(reader) with Logging {
 
-  private val policy = new FieldsPolicy(fields)
+  private val policy = new EnhancedFieldsPolicy(fields)
   private val remainingFieldsInfo = {
     val fInfos = in.getFieldInfos
     val newfInfos = if (fInfos.asScala.isEmpty) {

@@ -97,6 +97,8 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .map(results => zip(results, documents))
   }
 
+  override def provideNewSources(document: Document, clientFiltering: Array[String]): Task[NewDocumentSource] = ???
+
   private def indexWithAliasesFrom(indexNameString: String, aliasMetadata: Set[AliasMetaData]) = {
     IndexName
       .fromString(indexNameString)

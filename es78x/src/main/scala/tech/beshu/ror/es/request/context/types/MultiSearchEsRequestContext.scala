@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.data.NonEmptySet
 import cats.implicits._
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
@@ -23,11 +24,12 @@ import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{DocumentField, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchRequestOps._
+import tech.beshu.ror.es.request.SourceFiltering
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
@@ -48,6 +50,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     Set.empty,
     Set.empty,
     indexPacksFrom(actionRequest),
+    None,
     None
   )
 
@@ -58,7 +61,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       requests
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
-          updateRequest(request, pack, blockContext.filter)
+          updateRequest(request, pack, blockContext.filter, blockContext.fields)
         }
       Modified
     } else {
@@ -88,14 +91,22 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   private def updateRequest(request: SearchRequest,
                             indexPack: Indices,
-                            filter: Option[Filter]) = {
+                            filter: Option[Filter],
+                            fields: Option[NonEmptySet[DocumentField]]) = {
     indexPack match {
       case Indices.Found(indices) =>
         updateRequestWithIndices(request, indices)
       case Indices.NotFound =>
         updateRequestWithNonExistingIndex(request)
     }
-    request.applyFilterToQuery(filter)
+    request
+      .applyFilterToQuery(filter)
+
+    import SourceFiltering._
+
+    val originalFetchSource = request.source().fetchSource()
+    val sourceFilteringResult = originalFetchSource.applyNewFields(fields)
+    request.source().fetchSource(sourceFilteringResult.modifiedContext)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[IndexName]) = {

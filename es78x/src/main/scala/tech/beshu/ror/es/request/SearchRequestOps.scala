@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.es.request
 
+import cats.data.NonEmptySet
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
-import tech.beshu.ror.accesscontrol.domain.Filter
+import tech.beshu.ror.accesscontrol.domain.{DocumentField, Filter}
 
 object SearchRequestOps extends Logging {
 
@@ -46,6 +47,19 @@ object SearchRequestOps extends Logging {
         case None =>
           QueryBuilders.constantScoreQuery(filterQuery)
       }
+    }
+  }
+
+  implicit class FieldsOps(val request: SearchRequest) extends AnyVal {
+
+    def applyFilterToFields(fields: Option[NonEmptySet[DocumentField]]): SearchRequest = {
+      import SourceFiltering._
+      val originalFetchSource = request.source().fetchSource()
+
+      val sourceFilteringResult = originalFetchSource.applyNewFields(fields)
+
+      request.source().fetchSource(sourceFilteringResult.modifiedContext)
+      request
     }
   }
 }
