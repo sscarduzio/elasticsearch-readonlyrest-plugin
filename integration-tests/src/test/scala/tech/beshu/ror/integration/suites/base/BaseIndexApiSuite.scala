@@ -31,6 +31,7 @@ trait BaseIndexApiSuite
   this: EsContainerCreator =>
 
   protected def notFoundIndexStatusReturned: Int
+  protected def forbiddenStatusReturned: Int
 
   override def nodeDataInitializer = Some(BaseIndexApiSuite.nodeDataInitializer())
 
@@ -364,12 +365,12 @@ trait BaseIndexApiSuite
         "user has no access to rollover target" in {
           val result = dev5IndexManager.rollover("index1")
 
-          result.responseCode should be (401)
+          result.responseCode should be (forbiddenStatusReturned)
         }
         "user has no access to rollover index" in {
           val result = dev5IndexManager.rollover("index5", "index1")
 
-          result.responseCode should be (401)
+          result.responseCode should be (forbiddenStatusReturned)
         }
       }
     }
