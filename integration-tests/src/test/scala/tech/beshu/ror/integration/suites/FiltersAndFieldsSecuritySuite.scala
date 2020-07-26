@@ -38,7 +38,7 @@ trait FiltersAndFieldsSecuritySuite
       adminClient,
       Map("x-api-key" -> "g")
     )
-    val response = searchManager.search("/testfiltera/_search")
+    val response = searchManager.search("testfiltera")
 
     response.responseCode should be(200)
     response.body.contains("a1") shouldBe true
@@ -55,7 +55,7 @@ trait FiltersAndFieldsSecuritySuite
       adminClient,
       Map("x-api-key" -> "put-the-header", "x-randomheader" -> "value")
     )
-    val response = searchManager.search("/testfiltera/_search")
+    val response = searchManager.search("testfiltera")
 
     response.responseCode should be(200)
     response.body.contains("a1") shouldBe true
@@ -72,7 +72,7 @@ trait FiltersAndFieldsSecuritySuite
       adminClient,
       Map("x-api-key" -> "g")
     )
-    val response = searchManager.search("/testfilterbandc/_search")
+    val response = searchManager.search("testfilterbandc")
 
     response.responseCode should be(200)
     response.body.contains("a1") shouldBe false
@@ -89,7 +89,7 @@ trait FiltersAndFieldsSecuritySuite
       adminClient,
       Map("x-api-key" -> "g")
     )
-    val response = searchManager.search("/testfilterd/_search")
+    val response = searchManager.search("testfilterd")
 
     response.responseCode should be(200)
     response.body.contains("a1") shouldBe false
@@ -111,7 +111,7 @@ trait FiltersAndFieldsSecuritySuite
       adminClient,
       Map("x-api-key" -> "a_nofilter")
     )
-    val firstResponse = searchManager.search("/testfiltera/_search")
+    val firstResponse = searchManager.search("testfiltera")
     firstResponse.responseCode shouldBe 200
 
     val searchManager2 = new SearchManager(
@@ -119,7 +119,7 @@ trait FiltersAndFieldsSecuritySuite
       Map("x-api-key" -> "g")
     )
 
-    val response = searchManager2.search("/testfiltera/_search")
+    val response = searchManager2.search("testfiltera")
 
     response.responseCode should be(200)
     response.body.contains("a1") shouldBe true

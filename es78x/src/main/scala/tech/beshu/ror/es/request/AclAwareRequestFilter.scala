@@ -165,10 +165,19 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         }
       // rest
       case _ =>
+        handleAsyncSearchRequest(regularRequestHandler, esContext, aclContext) orElse
         handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
           handleReflectionBasedIndicesRequest(regularRequestHandler, esContext, aclContext) getOrElse
           handleGeneralNonIndexOperation(regularRequestHandler, esContext)
     }
+  }
+
+  private def handleAsyncSearchRequest(regularRequestHandler: RegularRequestHandler,
+                                       esContext: EsContext,
+                                       aclContext: AccessControlStaticContext) = {
+    XpackAsyncSearchRequest
+      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
+      .map(regularRequestHandler.handle(_))
   }
 
   private def handleSearchTemplateRequest(regularRequestHandler: RegularRequestHandler,

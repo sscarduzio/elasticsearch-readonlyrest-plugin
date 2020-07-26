@@ -52,7 +52,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.types._
+import tech.beshu.ror.es.request.context.types.{XpackAsyncSearchRequest, _}
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.handler.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.rradmin.RRAdminRequest
@@ -161,10 +161,19 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         }
       // rest
       case _ =>
-        handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
+        handleAsyncSearchRequest(regularRequestHandler, esContext, aclContext) orElse
+          handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
           handleReflectionBasedIndicesRequest(regularRequestHandler, esContext, aclContext) getOrElse
           handleGeneralNonIndexOperation(regularRequestHandler, esContext)
     }
+  }
+
+  private def handleAsyncSearchRequest(regularRequestHandler: RegularRequestHandler,
+                                       esContext: EsContext,
+                                       aclContext: AccessControlStaticContext) = {
+    XpackAsyncSearchRequest
+      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
+      .map(regularRequestHandler.handle(_))
   }
 
   private def handleSearchTemplateRequest(regularRequestHandler: RegularRequestHandler,

@@ -16,3 +16,9 @@ readonlyrest:
     - name: "test1"
       indices: ["test1_index"]
       auth_key: dev1:test
+
+    - name: "test2"
+      indices: ["test2_index"]
+      auth_key: dev2:test
+      filter: '{"query_string":{"query":"name:(john)"}}'
+      fields: ["_source", "name"]

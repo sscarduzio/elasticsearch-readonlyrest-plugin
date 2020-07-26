@@ -20,12 +20,14 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect._
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -36,22 +38,31 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
                                              override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
+  private lazy val searchRequest = searchRequestFrom(actionRequest)
+
   override protected def indicesFrom(request: ActionRequest): Set[IndexName] = {
-    Option(invokeMethodCached(request, request.getClass, "getRequest"))
-      .map(_.asInstanceOf[SearchRequest].indices.asSafeSet)
-      .getOrElse(Set.empty)
+    searchRequest
+      .indices.asSafeSet
       .flatMap(IndexName.fromString)
   }
 
   override protected def update(request: ActionRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
+    searchRequest.indices(indices.toList.map(_.value.value): _*)
+    Modified
+  }
+
+  private def searchRequestFrom(request: ActionRequest) = {
     Option(invokeMethodCached(request, request.getClass, "getRequest")) match {
-      case Some(request: SearchRequest) =>
-        request.indices(indices.toList.map(_.value.value): _*)
-        Modified
-      case Some(_) | None =>
-        ShouldBeInterrupted
+      case Some(sr: SearchRequest) => sr
+      case Some(_) =>
+        throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot get SearchRequest from SearchTemplateRequest request")
+      case None =>
+        val sr = new SearchRequest("*")
+        on(request).call("setRequest", sr)
+        sr
     }
   }
+
 }
 
 object SearchTemplateEsRequestContext {
