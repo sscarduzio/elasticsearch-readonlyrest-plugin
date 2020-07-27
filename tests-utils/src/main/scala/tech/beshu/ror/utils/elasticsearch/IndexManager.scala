@@ -79,6 +79,14 @@ class IndexManager(client: RestClient,
     call(createGetMappingRequest(indexName, field), new JsonResponse(_))
   }
 
+  def rollover(target: String, index: String): JsonResponse = {
+    call(createRolloverRequest(target, Some(index)), new JsonResponse(_))
+  }
+
+  def rollover(target: String): JsonResponse = {
+    call(createRolloverRequest(target, None), new JsonResponse(_))
+  }
+
   private def getAliasRequest(indexOpt: Option[String] = None,
                               aliasOpt: Option[String] = None) = {
     val path = indexOpt match {
@@ -136,5 +144,12 @@ class IndexManager(client: RestClient,
 
   private def createGetMappingRequest(indexName: String, field: String) = {
     new HttpGet(client.from(s"/$indexName/_mapping/field/$field"))
+  }
+
+  private def createRolloverRequest(target: String, index: Option[String]) = {
+    val request = new HttpPost(client.from(s"/$target/_rollover/${index.getOrElse("")}"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(""))
+    request
   }
 }
