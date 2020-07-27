@@ -1,14 +1,13 @@
 readonlyrest:
   access_control_rules:
 
-    - name: "Allow read/write all indexes for the vadim user only"
-      type: allow
-      groups: ["team1"]
-      actions: ["indices:monitor/*","cluster:monitor/*","indices:data/read*","indices:data/write*","indices:admin/create"]
+    - name: "CONTAINER ADMIN"
+      verbosity: error
       indices: ["*"]
+      type: allow
+      auth_key: admin:container
 
-  users:
-    - username: vadim
-      # vadim:test
-      auth_key_sha256: vadim:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
-      groups: ["team1"]
+    - name: "dev1"
+      indices: ["dev1*"]
+      type: allow
+      auth_key: dev1:test
