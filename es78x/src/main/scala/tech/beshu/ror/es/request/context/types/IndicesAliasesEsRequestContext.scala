@@ -51,7 +51,7 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
                                 indices: NonEmptyList[IndexName]): ModificationResult = {
     if(originIndices == indices.toList.toSet) {
       Modified
-    } else Modified {
+    } else {
       logger.error(s"[${id.show}] Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")
       ShouldBeInterrupted
     }

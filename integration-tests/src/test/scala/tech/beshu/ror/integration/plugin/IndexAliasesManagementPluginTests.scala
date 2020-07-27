@@ -1,0 +1,6 @@
+package tech.beshu.ror.integration.plugin
+
+import tech.beshu.ror.integration.suites.IndexAliasesManagementSuite
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+
+class IndexAliasesManagementPluginTests extends IndexAliasesManagementSuite with SingletonPluginTestSupport
