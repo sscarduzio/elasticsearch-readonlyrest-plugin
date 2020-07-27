@@ -29,3 +29,7 @@ readonlyrest:
 
     - name: "dev4 - no indices rule"
       auth_key: dev4:test
+
+    - name: "dev5 - rollover"
+      auth_key: dev5:test
+      indices: ["index5", "index5-*"]

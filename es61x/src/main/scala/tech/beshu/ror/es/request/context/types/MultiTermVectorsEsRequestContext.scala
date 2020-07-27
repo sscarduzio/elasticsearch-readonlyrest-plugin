@@ -42,8 +42,12 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
 
   override protected def update(request: MultiTermVectorsRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
     request.getRequests.removeIf { request => removeOrAlter(request, indices.toList.toSet) }
-    if (request.getRequests.asScala.isEmpty) ShouldBeInterrupted
-    else Modified
+    if (request.getRequests.asScala.isEmpty) {
+      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. All indices were filtered out.")
+      ShouldBeInterrupted
+    } else {
+      Modified
+    }
   }
 
   private def removeOrAlter(request: TermVectorsRequest,

@@ -49,7 +49,7 @@ trait FilterRuleSuite
         "custom query in request body is sent" in {
           retry(times = 3) {
             val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
-            val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}}""")
+            val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}}"""))
 
             result.responseCode shouldBe 200
             result.searchHits.size shouldBe 1
@@ -60,7 +60,7 @@ trait FilterRuleSuite
         "there is no query in request body" in {
           retry(times = 3) {
             val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
-            val result = searchManager.search("/test1_index/_search")
+            val result = searchManager.search("test1_index")
 
             result.responseCode shouldBe 200
             result.searchHits.size shouldBe 2
@@ -73,7 +73,7 @@ trait FilterRuleSuite
         "wildcard in filter query is used" in {
           retry(times = 3) {
             val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
-            val result = searchManager.search("/test1_index/_search")
+            val result = searchManager.search("test1_index")
 
             result.responseCode shouldBe 200
             result.searchHits.size shouldBe 1
@@ -84,7 +84,7 @@ trait FilterRuleSuite
         "prefix in filter query is used" in {
           retry(times = 3) {
             val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
-            val result = searchManager.search("/test1_index/_search")
+            val result = searchManager.search("test1_index")
 
             result.responseCode shouldBe 200
             result.searchHits.size shouldBe 1
@@ -302,13 +302,13 @@ trait FilterRuleSuite
       }
       "search request has 'profile' option" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
-        val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}, "profile": true}""")
+        val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}, "profile": true}"""))
 
         result.responseCode shouldBe 401
       }
       "search request has suggestions" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
-        val query =
+        val query = ujson.read(
           """|{
              |"query": { "term": { "code": 1 }},
              |"suggest": {
@@ -320,14 +320,15 @@ trait FilterRuleSuite
              |  }
              | }
              |}""".stripMargin
-        val result = searchManager.search("/test1_index/_search", query)
+        )
+        val result = searchManager.search("test1_index", query)
 
         result.responseCode shouldBe 401
       }
       "return error" when {
         "filter query is malformed" in {
           val searchManager = new SearchManager(basicAuthClient("user4", "pass"))
-          val result = searchManager.search("/test1_index/_search", """{ "query": { "term": { "code": 1 }}}""")
+          val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}}"""))
 
           if (Version.greaterOrEqualThan(targetEs.esVersion, 7, 6, 0)) {
             result.responseCode shouldBe 400
@@ -345,12 +346,12 @@ object FilterRuleSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}"""))
-    documentManager.createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
-    documentManager.createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}"""))
-    documentManager.createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}"""))
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")).force()
+    documentManager.createDoc("test1_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}""")).force()
+    documentManager.createDoc("test1_index", 3, ujson.read("""{"db_name":"db_user2", "code": 1, "status": "ok"}""")).force()
+    documentManager.createDoc("test1_index", 4, ujson.read("""{"db_name":"db_user3", "code": 2, "status": "wrong"}""")).force()
 
-    documentManager.createDoc("test2_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}"""))
-    documentManager.createDoc("test2_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}"""))
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"db_name":"db_user1", "code": 1, "status": "ok"}""")).force()
+    documentManager.createDoc("test2_index", 2, ujson.read("""{"db_name":"db_user1", "code": 2, "status": "ok"}""")).force()
   }
 }

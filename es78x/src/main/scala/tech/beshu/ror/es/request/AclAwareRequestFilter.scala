@@ -33,6 +33,7 @@ import org.elasticsearch.action.admin.cluster.snapshots.restore.RestoreSnapshotR
 import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRequest
 import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
+import org.elasticsearch.action.admin.indices.rollover.RolloverRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
@@ -146,6 +147,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         }
       case request: ClusterAllocationExplainRequest =>
         regularRequestHandler.handle(new ClusterAllocationExplainEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: RolloverRequest =>
+        regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesRequest.Replaceable =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ReindexRequest =>
@@ -162,10 +165,19 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         }
       // rest
       case _ =>
+        handleAsyncSearchRequest(regularRequestHandler, esContext, aclContext) orElse
         handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
           handleReflectionBasedIndicesRequest(regularRequestHandler, esContext, aclContext) getOrElse
           handleGeneralNonIndexOperation(regularRequestHandler, esContext)
     }
+  }
+
+  private def handleAsyncSearchRequest(regularRequestHandler: RegularRequestHandler,
+                                       esContext: EsContext,
+                                       aclContext: AccessControlStaticContext) = {
+    XpackAsyncSearchRequest
+      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
+      .map(regularRequestHandler.handle(_))
   }
 
   private def handleSearchTemplateRequest(regularRequestHandler: RegularRequestHandler,
