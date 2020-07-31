@@ -67,7 +67,9 @@ trait RorProxyApp extends IOApp
     val user = ProxyEnvSettings.rorSuperuserName
     val secret = ProxyEnvSettings.rorSuperUserSecret
     (user, secret) match {
-      case (Some(u), Some(s)) => Some(Credentials(u, s))
+      case (Some(u), Some(s)) =>
+        logger.info(s"Configured superuser '${u.show}'")
+        Some(Credentials(u, s))
       case (None, None)       => None
       case (Some(u), None)    => throw new IllegalArgumentException(s"Superuser name '${u.show}' defined, but no secret passed")
       case (None, Some(_))    => throw new IllegalArgumentException(s"Superuser password defined, but no user name passed")
