@@ -23,7 +23,7 @@ trait IndexAliasesManagementSuite
 
   "Add index alias API" should {
     "be allowed to use" when {
-      "there is no indices rule in block" in {
+      "there are no indices rule in block" in {
         val result = adminIndexManager.createAliasOf("index", "admin-alias")
         result.responseCode should be (200)
       }
@@ -45,6 +45,48 @@ trait IndexAliasesManagementSuite
       }
       "user has no access to alias name" in {
         val result = dev1IndexManager.createAliasOf("dev2-000*", "dev1")
+        result.responseCode should be (403)
+      }
+    }
+  }
+
+  "Delete index alias API" should {
+    "be allowed to use" when {
+      "there are no indices rule in block" in {
+        adminIndexManager.createAliasOf("index", "admin-alias").force()
+
+        val result = adminIndexManager.deleteAliasOf("index", "admin-alias")
+
+        result.responseCode should be (200)
+      }
+      "user has access to both: index pattern and alias name" when {
+        "an index of the pattern exists" in {
+          adminIndexManager.createAliasOf("dev1-000*", "dev1").force()
+
+          val result = dev1IndexManager.deleteAliasOf("dev1-000*", "dev1")
+          result.responseCode should be(200)
+        }
+        "no index of the pattern exists" in {
+          val result = dev1IndexManager.deleteAliasOf("dev1-0000*", "dev1")
+          result.responseCode should be(404)
+        }
+        "no alias exists" in {
+          val result = dev1IndexManager.deleteAliasOf("dev1-0001", "dev1-000x")
+          result.responseCode should be(404)
+        }
+      }
+    }
+    "not be allowed to use" when {
+      "user has no access to given at least one index pattern" in {
+        adminIndexManager.createAliasOf("dev1-000*", "dev2").force()
+
+        val result = dev1IndexManager.deleteAliasOf("dev1-000*", "dev2")
+        result.responseCode should be (403)
+      }
+      "user has no access to alias name" in {
+        adminIndexManager.createAliasOf("dev2-000*", "dev1").force()
+
+        val result = dev1IndexManager.deleteAliasOf("dev2-000*", "dev1")
         result.responseCode should be (403)
       }
     }

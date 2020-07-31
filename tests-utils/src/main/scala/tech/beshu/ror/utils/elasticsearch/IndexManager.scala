@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut, HttpUriRequest}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -49,11 +49,8 @@ class IndexManager(client: RestClient,
     call(createAliasRequest(index, alias), new JsonResponse(_))
   }
 
-  def createAliasAndAssert(index: String, alias: String): Unit = {
-    val result = createAliasOf(index, alias)
-    if(!result.isSuccess) {
-      throw new IllegalStateException(s"Cannot create alias '$alias'; returned: ${result.body}")
-    }
+  def deleteAliasOf(index: String, alias: String): JsonResponse = {
+    call(deleteAliasRequest(index, alias), new JsonResponse(_))
   }
 
   def getSettings(index: String*): JsonResponse = {
@@ -114,6 +111,10 @@ class IndexManager(client: RestClient,
     request.setEntity(new StringEntity(
       s"""{"actions":[{"add":{"index":"$index","alias":"$alias"}}]}""".stripMargin))
     request
+  }
+
+  private def deleteAliasRequest(index: String, alias: String) = {
+    new HttpDelete(client.from(s"$index/_aliases/$alias"))
   }
 
   private def createGetSettingsRequest(indices: Set[String]) = {
