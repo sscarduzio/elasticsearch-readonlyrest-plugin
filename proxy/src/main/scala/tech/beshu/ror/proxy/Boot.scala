@@ -8,8 +8,10 @@ import java.io.{BufferedReader, InputStreamReader}
 import better.files.File
 import cats.effect.{ExitCode, IO, IOApp, Resource}
 import cats.implicits._
+import tech.beshu.ror.accesscontrol.show.logs._
 import org.apache.logging.log4j.core.util.IOUtils
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.domain.Credentials
 import tech.beshu.ror.buildinfo.LogProxyBuildInfoMessage
 import tech.beshu.ror.configuration.RorProperties
 import tech.beshu.ror.providers.{JvmPropertiesProvider, PropertiesProvider}
@@ -56,8 +58,20 @@ trait RorProxyApp extends IOApp
       proxyPort = RorProperties.rorProxyPort,
       esHost = RorProperties.rorProxyEsHost,
       esPort = RorProperties.rorProxyEsPort,
-      esConfigFile = createElasticsearchYamlFileInTempDict()
+      esConfigFile = createElasticsearchYamlFileInTempDict(),
+      superUserCredentials = readSuperUserCredentials()
     )
+  }
+
+  private def readSuperUserCredentials() = {
+    val user = ProxyEnvSettings.rorSuperuserName
+    val secret = ProxyEnvSettings.rorSuperUserSecret
+    (user, secret) match {
+      case (Some(u), Some(s)) => Some(Credentials(u, s))
+      case (None, None)       => None
+      case (Some(u), None)    => throw new IllegalArgumentException(s"Superuser name '${u.show}' defined, but no secret passed")
+      case (None, Some(_))    => throw new IllegalArgumentException(s"Superuser password defined, but no user name passed")
+    }
   }
 
   private def createElasticsearchYamlFileInTempDict() = {

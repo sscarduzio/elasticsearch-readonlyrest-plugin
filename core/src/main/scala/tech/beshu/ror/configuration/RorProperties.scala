@@ -69,7 +69,7 @@ object RorProperties extends Logging {
 
   def rorProxyEsHost(implicit provider: PropertiesProvider): String =
     getProperty(keys.esHost, str => Success(str), defaults.esHost)
-
+  
   def rorProxyEsPort(implicit provider: PropertiesProvider): Int =
     getProperty(keys.esPort, str => Try(Integer.valueOf(str)), defaults.esPort)
 
