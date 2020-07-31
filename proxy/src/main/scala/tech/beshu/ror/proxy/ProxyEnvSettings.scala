@@ -1,3 +1,6 @@
+/*
+ *     Beshu Limited all rights reserved
+ */
 package tech.beshu.ror.proxy
 
 import eu.timepit.refined.auto._
