@@ -16,23 +16,21 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import java.nio.ByteBuffer
-
 import cats.data.{NonEmptyList, NonEmptySet}
-import com.google.gson.Gson
+import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.xcontent.json.JsonXContent
 import org.elasticsearch.common.xcontent.support.XContentMapValues
+import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchRequestOps._
-import tech.beshu.ror.es.request.SourceFiltering
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -54,53 +52,37 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
     request
       .applyFilterToQuery(filter)
       .indices(indices.toList.map(_.value.value): _*)
-
-    import SourceFiltering._
-    val originalFetchSource = request.source().fetchSource()
-    val sourceFilteringResult = originalFetchSource.applyNewFields(fields)
-      request.source().fetchSource(sourceFilteringResult.modifiedContext)
-
-    sourceFilteringResult match {
-      case _: SourceFilteringResult.Applied =>
-        ModificationResult.Modified
-      case result: SourceFilteringResult.ClientFilteringNotApplied =>
-        ModificationResult.UpdateResponse(applyClientFiltering(result.ignoredClientFiltering))
-    }
+    ModificationResult.UpdateResponse(applyClientFiltering(fields))
   }
 
-  private def applyClientFiltering(clientFiltering: Array[String])
+  private def applyClientFiltering(fields: Option[NonEmptySet[DocumentField]])
                                   (actionResponse: ActionResponse): Task[ActionResponse] = {
-    actionResponse match {
-      case response: SearchResponse =>
+    (actionResponse, fields) match {
+      case (response: SearchResponse, Some(definedFields)) =>
         response.getHits.getHits
           .foreach { hit =>
-            val map = hit.getSourceAsMap
-            val map1 = XContentMapValues.filter(map, clientFiltering, Array.empty[String])
-            val str = new Gson().toJson(map1)
-            JsonXContent.jsonXContent
-            val bytes = str.map(_.toByte).toArray
-            val newSource = BytesReference.fromByteBuffer(ByteBuffer.wrap(bytes))
-            hit.sourceRef(newSource)
+            val (excluding, including) = splitFields(definedFields)
+            val responseSource = hit.getSourceAsMap
+
+            if (responseSource != null && responseSource.size() > 0) {
+              val filteredSource = XContentMapValues.filter(responseSource, including.toArray, excluding.toArray)
+              val newContent = XContentFactory.contentBuilder(XContentType.JSON).map(filteredSource)
+              hit.sourceRef(BytesReference.bytes(newContent))
+            } else {
+              //source not present or empty - nothing to modify
+            }
           }
         Task.now(response)
-
-//        NonEmptyList.fromList(documents.toList) match {
-//          case Some(documentsToUpdate) =>
-//            clusterService
-//              .provideNewSourcesFor(documentsToUpdate, clientFiltering, id)
-//              .map { newSources =>
-//                response.getHits.getHits
-//                  .foreach { hit =>
-//                    val document = DocumentWithIndex(IndexName.fromUnsafeString(hit.getIndex), DocumentId(hit.getId))
-//                    val newSource = newSources(document)
-//                    hit.sourceRef(BytesReference.fromByteBuffer(ByteBuffer.wrap(newSource)))
-//                  }
-//                response
-//              }
-//          case None =>
-//            Task.now(actionResponse)
-//        }
-      case _ => Task.now(actionResponse)
+      case _ =>
+        Task.now(actionResponse)
     }
   }
+
+  private def splitFields(fields: NonEmptySet[DocumentField]) = {
+    fields.toNonEmptyList.toList.partitionEither {
+      case d: ADocumentField => Right(d.value.value)
+      case d: NegatedDocumentField => Left(d.value.value)
+    }
+  }
+
 }

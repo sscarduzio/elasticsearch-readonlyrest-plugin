@@ -17,20 +17,26 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.{NonEmptyList, NonEmptySet}
+import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.index.IndexRequest
+import org.elasticsearch.common.bytes.BytesReference
+import org.elasticsearch.common.document.{DocumentField => EDF}
+import org.elasticsearch.common.xcontent.support.XContentMapValues
+import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
+import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
-import tech.beshu.ror.es.request.SourceFiltering._
 import tech.beshu.ror.es.request.context.ModificationResult
 
 class GetEsRequestContext(actionRequest: GetRequest,
@@ -55,10 +61,11 @@ class GetEsRequestContext(actionRequest: GetRequest,
                                 fields: Option[NonEmptySet[DocumentField]]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
-    val originalSourceContext = request.fetchSourceContext()
-    val newContext = originalSourceContext.applyNewFields(fields)
-    request.fetchSourceContext(newContext.modifiedContext)
-    ModificationResult.UpdateResponse(filterResponse(filter))
+    val function = filterResponse(filter) _
+    val updateFunction =
+      function
+        .andThen(_.map(filterFieldsFromResponse(fields)))
+    ModificationResult.UpdateResponse(updateFunction)
   }
 
   private def filterResponse(filter: Option[Filter])
@@ -67,6 +74,47 @@ class GetEsRequestContext(actionRequest: GetRequest,
       case (response: GetResponse, Some(definedFilter)) if response.isExists =>
         handleExistingResponse(response, definedFilter)
       case _ => Task.now(actionResponse)
+    }
+  }
+
+  private def filterFieldsFromResponse(fields: Option[NonEmptySet[DocumentField]])
+                                      (actionResponse: ActionResponse): ActionResponse = {
+    (actionResponse, fields) match {
+      case (response: GetResponse, Some(definedFields)) if response.isExists && !response.isSourceEmpty =>
+        val (excluding, including) = splitFields(definedFields)
+        val filteredSource = XContentMapValues.filter(response.getSource, including.toArray, excluding.toArray)
+        val newContent = XContentFactory.contentBuilder(XContentType.JSON).map(filteredSource)
+        import scala.collection.JavaConverters._
+
+        val (metdataFields, nonMetadaDocumentFields) = splitFieldsByMetadata(response.getFields.asScala.toMap)
+
+        val result = new GetResult(
+          response.getIndex,
+          response.getType,
+          response.getId,
+          response.getSeqNo,
+          response.getPrimaryTerm,
+          response.getVersion,
+          true,
+          BytesReference.bytes(newContent),
+          nonMetadaDocumentFields.asJava,
+          metdataFields.asJava)
+        new GetResponse(result)
+      case _ =>
+        actionResponse
+    }
+  }
+
+  def splitFieldsByMetadata(fields: Map[String, EDF]): (Map[String, EDF], Map[String, EDF]) = {
+    fields.partition {
+      case t if t._2.isMetadataField => true
+      case _ => false
+    }
+  }
+  private def splitFields(fields: NonEmptySet[DocumentField]) = {
+    fields.toNonEmptyList.toList.partitionEither {
+      case d: ADocumentField => Right(d.value.value)
+      case d: NegatedDocumentField => Left(d.value.value)
     }
   }
 

@@ -20,14 +20,20 @@ import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.get.{MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
+import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
+import org.elasticsearch.common.bytes.BytesReference
+import org.elasticsearch.common.document.{DocumentField => EDF}
+import org.elasticsearch.common.xcontent.support.XContentMapValues
+import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
+import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, DocumentField, DocumentWithIndex, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -35,7 +41,6 @@ import tech.beshu.ror.es.request.DocumentApiOps.GetApi
 import tech.beshu.ror.es.request.DocumentApiOps.MultiGetApi._
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.es.request.SourceFiltering._
 
 import scala.collection.JavaConverters._
 
@@ -65,7 +70,12 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
         .foreach { case (item, pack) =>
           updateItem(item, pack, blockContext.fields)
         }
-      ModificationResult.UpdateResponse(filterResponse(blockContext.filter))
+      val function = filterResponse(blockContext.filter) _
+      val updateFunction =
+        function
+          .andThen(_.map(filterFieldsFromResponse(blockContext.fields)))
+
+      ModificationResult.UpdateResponse(updateFunction)
     } else {
       logger.error(
         s"""[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different
@@ -95,10 +105,6 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       case Indices.NotFound =>
         updateItemWithNonExistingIndex(item)
     }
-
-    val originalSourceContext = item.fetchSourceContext()
-    val newContext = originalSourceContext.applyNewFields(fields)
-    item.fetchSourceContext(newContext.modifiedContext)
   }
 
   private def updateItemWithIndices(item: MultiGetRequest.Item, indices: Set[IndexName]) = {
@@ -116,6 +122,53 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     val originRequestIndices = indicesFrom(item).toList
     val notExistingIndex = originRequestIndices.randomNonexistentIndex()
     item.index(notExistingIndex.value.value)
+  }
+
+
+  private def filterFieldsFromResponse(fields: Option[NonEmptySet[DocumentField]])
+                                      (actionResponse: ActionResponse): ActionResponse = {
+    (actionResponse, fields) match {
+      case (response: MultiGetResponse, Some(definedFields)) =>
+        val (excluding, including) = splitFields(definedFields)
+        val newResponses = response.getResponses
+          .map {
+            case multiGetItem if !multiGetItem.isFailed =>
+              val getResponse = multiGetItem.getResponse
+              val filteredSource = XContentMapValues.filter(getResponse.getSource, including.toArray, excluding.toArray)
+              val newContent = XContentFactory.contentBuilder(XContentType.JSON).map(filteredSource)
+              val (metdataFields, nonMetadaDocumentFields) = splitFieldsByMetadata(getResponse.getFields.asScala.toMap)
+
+              val result = new GetResult(
+                getResponse.getIndex,
+                getResponse.getType,
+                getResponse.getId,
+                getResponse.getSeqNo,
+                getResponse.getPrimaryTerm,
+                getResponse.getVersion,
+                true,
+                BytesReference.bytes(newContent),
+                nonMetadaDocumentFields.asJava,
+                metdataFields.asJava)
+              new MultiGetItemResponse(new GetResponse(result), null)
+            case other => other
+        }
+        new MultiGetResponse(newResponses)
+      case _ =>
+        actionResponse
+    }
+  }
+
+  def splitFieldsByMetadata(fields: Map[String, EDF]): (Map[String, EDF], Map[String, EDF]) = {
+    fields.partition {
+      case t if t._2.isMetadataField => true
+      case _ => false
+    }
+  }
+  private def splitFields(fields: NonEmptySet[DocumentField]) = {
+    fields.toNonEmptyList.toList.partitionEither {
+      case d: ADocumentField => Right(d.value.value)
+      case d: NegatedDocumentField => Left(d.value.value)
+    }
   }
 
   private def filterResponse(filter: Option[Filter])

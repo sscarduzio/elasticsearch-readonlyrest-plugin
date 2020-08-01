@@ -18,12 +18,18 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
+import monix.eval.Task
+import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
+import org.elasticsearch.common.bytes.BytesReference
+import org.elasticsearch.common.xcontent.support.XContentMapValues
+import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
@@ -63,11 +69,44 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         .foreach { case (request, pack) =>
           updateRequest(request, pack, blockContext.filter, blockContext.fields)
         }
-      Modified
+      ModificationResult.UpdateResponse(applyClientFiltering(blockContext.fields))
     } else {
       logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
       ShouldBeInterrupted
+    }
+  }
+
+  private def applyClientFiltering(fields: Option[NonEmptySet[DocumentField]])
+                                  (actionResponse: ActionResponse): Task[ActionResponse] = {
+    (actionResponse, fields) match {
+      case (response: MultiSearchResponse, Some(definedFields)) =>
+        response.getResponses
+          .foreach { multiSearchItem =>
+            if (multiSearchItem.getResponse != null) {
+              multiSearchItem.getResponse.getHits.getHits
+                .foreach { hit =>
+                  val (excluding, including) = splitFields(definedFields)
+                  val responseSource = hit.getSourceAsMap
+
+                  if (responseSource != null && responseSource.size() > 0) {
+                    val filteredSource = XContentMapValues.filter(responseSource, including.toArray, excluding.toArray)
+                    val newContent = XContentFactory.contentBuilder(XContentType.JSON).map(filteredSource)
+                    hit.sourceRef(BytesReference.bytes(newContent))
+                  }
+                }
+            }
+          }
+        Task.now(response)
+      case _ =>
+        Task.now(actionResponse)
+    }
+  }
+
+  private def splitFields(fields: NonEmptySet[DocumentField]) = {
+    fields.toNonEmptyList.toList.partitionEither {
+      case d: ADocumentField => Right(d.value.value)
+      case d: NegatedDocumentField => Left(d.value.value)
     }
   }
 
