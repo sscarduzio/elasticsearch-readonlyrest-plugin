@@ -27,7 +27,9 @@ object NodesResponse {
              responses: List[NodeResponse],
              failures: List[NodeError],
             ): NodesResponse =
-    NodesResponse(ResultDTO.create(Summary.create(localNode, responses)))
+    {
+      NodesResponse(ResultDTO.create(Summary.create(localNode, responses, failures)))
+    }
 
   implicit class Ops(nodesResponse: NodesResponse) {
     def toJson: String = nodesResponse.resultDTO.asJson.noSpaces
@@ -35,7 +37,13 @@ object NodesResponse {
 
   final case class NodeId(value: String) extends AnyVal
   final case class NodeResponse(nodeId: NodeId, loadedConfig: Either[LoadedConfig.Error, LoadedConfig[String]])
-  final case class NodeError(nodeId: NodeId, detailedMessage: String)
+  final case class NodeError(nodeId: NodeId, cause: NodeError.Cause)
+  object NodeError {
+    sealed trait Cause
+    case object ActionNotFound extends Cause
+    case object Timeout extends Cause
+    final case class Unknown(detailedMessage: String) extends Cause
+  }
 }
 
 

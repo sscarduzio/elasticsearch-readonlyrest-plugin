@@ -18,43 +18,72 @@ package tech.beshu.ror.configuration.loader.distributed
 
 import cats.implicits._
 import tech.beshu.ror.configuration.loader.LoadedConfig
-import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeId, NodeResponse}
+import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 
 import scala.language.postfixOps
 
 object Summary {
+  case object CurrentNodeHaveToProduceResult extends Exception
   sealed trait Error
-  case object NoCurrentNodeResponse extends Error
   final case class CurrentNodeConfigError(error: LoadedConfig.Error) extends Error
+  final case class CurrentNodeResponseError(detailedMessage:String) extends Error
+  case object CurrentNodeResponseTimeoutError extends Error
   sealed trait Warning
-  final case class NodeReturnedError(nodeId: NodeId, error: LoadedConfig.Error) extends Warning
+  final case class NodeResponseTimeoutWarning(nodeId: NodeId) extends Warning
+  final case class NodeReturnedConfigError(nodeId: NodeId, error: LoadedConfig.Error) extends Warning
+  final case class NodeReturnedUnknownError(nodeId: NodeId, detailedMessage: String) extends Warning
   final case class NodeForcedFileConfig(nodeId: NodeId) extends Warning
   final case class NodeReturnedDifferentConfig(nodeId: NodeId, loadedConfig: LoadedConfig[String]) extends Warning
   final case class Result(config: LoadedConfig[String], warnings: List[Warning])
 
 
-  def create(currentNodeId: NodeId, nodesResponses: List[NodeResponse]): Either[Error, Result] = {
+  def create(currentNodeId: NodeId, nodesResponses: List[NodeResponse], failures: List[NodeError]): Either[Error, Result] = {
     findCurrentNodeResponse(currentNodeId, nodesResponses) match {
       case Some(NodeResponse(_, Right(loadedConfig))) =>
-        val warnings = createWarnings(nodesResponses, loadedConfig)
+        val warnings = createWarnings(nodesResponses, loadedConfig, failures)
         Result(loadedConfig, warnings) asRight
       case Some(NodeResponse(_, Left(error))) => CurrentNodeConfigError(error) asLeft
-      case None => NoCurrentNodeResponse asLeft
+      case None => findCurrentNodeFailure(currentNodeId, failures) match {
+        case Some(NodeError(_, cause)) => cause match {
+          case NodeError.ActionNotFound => throw CurrentNodeHaveToProduceResult
+          case NodeError.Timeout => CurrentNodeResponseTimeoutError asLeft
+          case NodeError.Unknown(detailedMessage) => CurrentNodeResponseError(detailedMessage) asLeft
+        }
+        case None => throw CurrentNodeHaveToProduceResult
+      }
     }
   }
 
-  private def createWarnings(nodesResponses: List[NodeResponse], loadedConfig: LoadedConfig[String]) = {
+  private def createWarnings(nodesResponses: List[NodeResponse], loadedConfig: LoadedConfig[String], failures: List[NodeError]) = {
     createNodeErrorWarnings(nodesResponses) ++
       createNodeNodeForcedFileConfigWarnings(nodesResponses) ++
-      createNodeReturnedDifferentConfigWarnings(loadedConfig, nodesResponses)
+      createNodeReturnedDifferentConfigWarnings(loadedConfig, nodesResponses) ++
+      createNodeReturnedUnknownError(failures) ++
+      createNodeResponseTimeoutWarnings(failures) ++
+      Nil
   }
+
+  private def findCurrentNodeFailure(currentNodeId: NodeId, nodesResponses: List[NodeError]) =
+    nodesResponses.find(_.nodeId === currentNodeId)
 
   private def findCurrentNodeResponse(currentNodeId: NodeId, nodesResponses: List[NodeResponse]) =
     nodesResponses.find(_.nodeId === currentNodeId)
 
-  private def createNodeErrorWarnings(otherResponses: List[NodeResponse]): List[NodeReturnedError] =
+  private def createNodeReturnedUnknownError(failures: List[NodeError]): List[NodeReturnedUnknownError] =
+    failures.flatMap {
+      case NodeError(nodeId, NodeError.Unknown(detailedMessage)) => NodeReturnedUnknownError(nodeId, detailedMessage) :: Nil
+      case _ => Nil
+    }
+
+  private def createNodeErrorWarnings(otherResponses: List[NodeResponse]): List[NodeReturnedConfigError] =
     otherResponses.flatMap {
-      case NodeResponse(nodeId, Left(error)) => NodeReturnedError(nodeId, error) :: Nil
+      case NodeResponse(nodeId, Left(error)) => NodeReturnedConfigError(nodeId, error) :: Nil
+      case _ => Nil
+    }
+
+  private def createNodeResponseTimeoutWarnings(failures: List[NodeError]): List[NodeResponseTimeoutWarning] =
+    failures.flatMap {
+      case NodeError(nodeId, NodeError.Timeout) => NodeResponseTimeoutWarning(nodeId) :: Nil
       case _ => Nil
     }
 

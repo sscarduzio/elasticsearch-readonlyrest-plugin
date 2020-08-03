@@ -16,10 +16,13 @@
  */
 package tech.beshu.ror.es.rrconfig.rest
 
+import java.util.concurrent.TimeoutException
+
 import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.common.xcontent.XContentBuilder
 import org.elasticsearch.rest.action.RestBuilderListener
 import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestResponse, RestStatus}
+import org.elasticsearch.transport.ActionNotFoundTransportException
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.es.rrconfig.{RRConfig, RRConfigsResponse}
@@ -44,7 +47,17 @@ final class ResponseBuilder(localNode: NodeId, channel: RestChannel) extends Res
   }
 
   private def createNodeError(failedNodeException: FailedNodeException) = {
-    NodeError(NodeId(failedNodeException.nodeId()), failedNodeException.getDetailedMessage)
+    NodeError(NodeId(failedNodeException.nodeId()), createCause(failedNodeException))
   }
 
+  private def createCause(failedNodeException: FailedNodeException): NodeError.Cause = {
+    failedNodeException.getRootCause match {
+      case _: TimeoutException =>
+        NodeError.Timeout
+      case _: ActionNotFoundTransportException =>
+        NodeError.ActionNotFound
+      case _ =>
+        NodeError.Unknown(failedNodeException.getDetailedMessage)
+    }
+  }
 }

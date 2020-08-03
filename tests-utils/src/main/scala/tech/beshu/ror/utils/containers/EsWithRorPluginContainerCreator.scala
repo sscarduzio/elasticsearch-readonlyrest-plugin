@@ -61,3 +61,4 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       clusterSettings)
   }
 }
+object EsWithRorPluginContainerCreator extends EsWithRorPluginContainerCreator
