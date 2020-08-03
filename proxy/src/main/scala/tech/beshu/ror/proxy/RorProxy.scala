@@ -12,13 +12,15 @@ import com.twitter.finagle.Http
 import javax.net.ssl.{SSLContext, X509TrustManager}
 import monix.eval.Task
 import monix.execution.schedulers.SchedulerService
-import org.apache.http.HttpHost
+import org.apache.http.{HttpHost, Header => ApacheHttpHeader}
 import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
+import org.apache.http.message.BasicHeader
 import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.node.Node
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, Header}
 import tech.beshu.ror.boot.StartingFailure
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.proxy.RorProxy.CloseHandler
@@ -69,6 +71,7 @@ trait RorProxy {
         new HttpHost(config.esHost, config.esPort, "https"),
         new HttpHost(config.esHost, config.esPort, "http")
       )
+      .setDefaultHeaders(defaultHeadersFrom(config))
       .setHttpClientConfigCallback(
         (httpClientBuilder: HttpAsyncClientBuilder) => {
           // todo: at the moment there is no hostname verification and all certs are considered as trusted
@@ -85,6 +88,13 @@ trait RorProxy {
         }
       )
   )
+
+  private def defaultHeadersFrom(config: RorProxy.Config): Array[ApacheHttpHeader] = config.superUserCredentials match {
+    case Some(credentials) => Array(toApacheHeader(BasicAuth(credentials).header))
+    case None => Array()
+  }
+
+  private def toApacheHeader(header: Header): ApacheHttpHeader = new BasicHeader(header.name.value.value, header.value.value)
 }
 
 object RorProxy {
@@ -94,7 +104,8 @@ object RorProxy {
   final case class Config(proxyPort: Int,
                           esHost: String,
                           esPort: Int,
-                          esConfigFile: File) {
+                          esConfigFile: File,
+                          superUserCredentials: Option[Credentials]) {
     val esAddress: String = s"$esHost:$esPort"
   }
 
