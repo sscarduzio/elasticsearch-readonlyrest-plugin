@@ -41,14 +41,14 @@ class ResultDTOTest extends WordSpec {
           """
             |{
             |  "config" : {
-            |    "config" : "config",
+            |    "raw" : "config",
             |    "type" : "FORCED_FILE_CONFIG"
             |  },
             |  "warnings" : [
             |    {
             |      "nodeId" : "n2",
             |      "error" : "index unknown structure",
-            |      "type" : "NODE_RETURNED_ERROR"
+            |      "type" : "NODE_RETURNED_CONFIG_ERROR"
             |    },
             |    {
             |      "nodeId" : "n1",

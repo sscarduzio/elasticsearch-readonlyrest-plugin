@@ -18,5 +18,6 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.MiscSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.utils.containers.NoXPackSupport
 
-class MiscPluginTests extends MiscSuite with PluginTestSupport
+class MiscPluginTests extends MiscSuite with PluginTestSupport with NoXPackSupport

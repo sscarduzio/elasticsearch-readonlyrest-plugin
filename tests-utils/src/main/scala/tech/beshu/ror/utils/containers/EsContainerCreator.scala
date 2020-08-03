@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 
-trait EsContainerCreator {
+trait EsContainerCreator extends UsingXPackSupport {
 
   def create(name: String,
              nodeNames: NonEmptyList[String],

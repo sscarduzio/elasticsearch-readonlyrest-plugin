@@ -39,7 +39,8 @@ trait FilterRuleSuite
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
-      nodeDataInitializer = FilterRuleSuite.nodeDataInitializer()
+      nodeDataInitializer = FilterRuleSuite.nodeDataInitializer(),
+      xPackSupport = isUsingXPackSupport,
     )
   )
 

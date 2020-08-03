@@ -38,7 +38,8 @@ trait ClusterStateWithInternodeSslSuite
       name = "ROR1",
       numberOfInstances = 3,
       rorContainerSpecification = ContainerSpecification(Map("ROR_INTER_KEY_PASS" -> "readonlyrest")),
-      internodeSslEnabled = true
+      internodeSslEnabled = true,
+      xPackSupport = isUsingXPackSupport,
     )
   )
 

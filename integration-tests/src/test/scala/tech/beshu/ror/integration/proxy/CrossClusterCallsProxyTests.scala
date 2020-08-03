@@ -18,5 +18,6 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
+import tech.beshu.ror.utils.containers.XPackSupport
 
-class CrossClusterCallsProxyTests extends CrossClusterCallsSuite with ProxyTestSupport
+class CrossClusterCallsProxyTests extends CrossClusterCallsSuite with ProxyTestSupport with XPackSupport

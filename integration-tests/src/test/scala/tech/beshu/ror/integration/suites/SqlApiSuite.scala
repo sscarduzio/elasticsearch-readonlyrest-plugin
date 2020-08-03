@@ -35,12 +35,12 @@ trait SqlApiSuite
   override implicit val rorConfigFileName = "/sql_api/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
-
+  override final val isUsingXPackSupport = true
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = SqlApiSuite.nodeDataInitializer(),
-      xPackSupport = true
+      xPackSupport = isUsingXPackSupport,
     )
   )
 

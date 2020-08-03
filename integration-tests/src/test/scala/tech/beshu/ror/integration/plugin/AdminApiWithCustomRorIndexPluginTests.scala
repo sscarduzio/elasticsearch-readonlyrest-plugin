@@ -18,5 +18,6 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.AdminApiWithCustomRorIndexSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.utils.containers.NoXPackSupport
 
-class AdminApiWithCustomRorIndexPluginTests extends AdminApiWithCustomRorIndexSuite with PluginTestSupport
+class AdminApiWithCustomRorIndexPluginTests extends AdminApiWithCustomRorIndexSuite with PluginTestSupport with NoXPackSupport

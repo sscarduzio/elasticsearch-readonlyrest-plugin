@@ -30,7 +30,8 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
       name = "ROR1",
       numberOfInstances = 2,
       customRorIndexName = Some(readonlyrestIndexName),
-      nodeDataInitializer = nodeDataInitializer()
+      nodeDataInitializer = nodeDataInitializer(),
+      xPackSupport = isUsingXPackSupport,
     )
   )
 
@@ -38,7 +39,8 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
     EsClusterSettings(
       name = "ROR2",
       configHotReloadingEnabled = false,
-      customRorIndexName = Some(readonlyrestIndexName)
+      customRorIndexName = Some(readonlyrestIndexName),
+      xPackSupport = isUsingXPackSupport,
     )
   )
 }

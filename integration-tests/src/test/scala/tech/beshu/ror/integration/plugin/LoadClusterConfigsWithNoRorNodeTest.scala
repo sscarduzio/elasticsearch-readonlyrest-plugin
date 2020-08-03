@@ -33,6 +33,7 @@ import scala.collection.JavaConverters._
 final class LoadClusterConfigsWithNoRorNodeTest
   extends WordSpec
     with BeforeAndAfterEach
+    with XPackSupport
     with PluginTestSupport
     with BaseEsClusterIntegrationTest
     with MultipleClientsSupport {
@@ -49,12 +50,13 @@ final class LoadClusterConfigsWithNoRorNodeTest
     name = "ROR1",
     nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
     numberOfInstances = 2,
+    xPackSupport = isUsingXPackSupport
   )(rorConfigFileName)
   )
   private lazy val rorNode2: ClusterNodeData = ClusterNodeData("ror2", EsWithoutRorPluginContainerCreator, EsClusterSettings(
     name = "ROR1",
     nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
-    numberOfInstances = 2,
+    xPackSupport = isUsingXPackSupport
   )(rorConfigFileName)
   )
 
@@ -67,7 +69,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
     val config = result.getResponseJsonMap.get("config").asInstanceOf[util.Map[_, _]]
     config should contain(Entry("indexName", readonlyrestIndexName))
     config should contain(Entry("type", "INDEX_CONFIG"))
-    config should contain(Entry("config", getResourceContent("/admin_api/readonlyrest_index.yml")))
+    config should contain(Entry("raw", getResourceContent("/admin_api/readonlyrest_index.yml")))
     result.getResponseJsonMap.get("warnings").asInstanceOf[util.Collection[Nothing]] shouldBe empty
   }
   "return timeout" in {

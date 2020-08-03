@@ -45,7 +45,8 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
         wiremock(name = "GROUPS2", mappings =
           "/rev_proxy_groups_provider/wiremock_service2.json")
       ),
-      nodeDataInitializer = ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite.nodeDataInitializer()
+      nodeDataInitializer = ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite.nodeDataInitializer(),
+      xPackSupport = isUsingXPackSupport,
     )
   )
 

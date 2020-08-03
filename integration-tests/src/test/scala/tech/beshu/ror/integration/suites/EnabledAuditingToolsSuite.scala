@@ -37,7 +37,8 @@ trait EnabledAuditingToolsSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = EnabledAuditingToolsSuite.nodeDataInitializer()
+      nodeDataInitializer = EnabledAuditingToolsSuite.nodeDataInitializer(),
+      xPackSupport = isUsingXPackSupport,
     )
   )
 

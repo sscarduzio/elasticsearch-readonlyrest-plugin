@@ -38,9 +38,17 @@ trait CrossClusterCallsSuite
   override lazy val targetEs = container.localCluster.nodes.head
 
   override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
-    EsClusterSettings(name = "ROR1", nodeDataInitializer = localClusterNodeDataInitializer()),
+    EsClusterSettings(
+      name = "ROR1",
+      nodeDataInitializer = localClusterNodeDataInitializer(),
+      xPackSupport = isUsingXPackSupport,
+    ),
     NonEmptyList.of(
-      EsClusterSettings(name = "ROR2", nodeDataInitializer = remoteClusterNodeDataInitializer()),
+      EsClusterSettings(
+        name = "ROR2",
+        nodeDataInitializer = remoteClusterNodeDataInitializer(),
+        xPackSupport = isUsingXPackSupport,
+      ),
     ),
     remoteClusterSetup()
   )

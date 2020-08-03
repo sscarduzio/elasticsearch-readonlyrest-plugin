@@ -42,7 +42,8 @@ trait ExternalAuthenticationSuite
         wiremock(name = "EXT1", mappings = "/external_authentication/wiremock_service1_cartman.json", "/external_authentication/wiremock_service1_morgan.json"),
         wiremock(name = "EXT2", mappings = "/external_authentication/wiremock_service2_cartman.json")
       ),
-      nodeDataInitializer = ExternalAuthenticationSuite.nodeDataInitializer()
+      nodeDataInitializer = ExternalAuthenticationSuite.nodeDataInitializer(),
+      xPackSupport = isUsingXPackSupport,
     )
   )
 

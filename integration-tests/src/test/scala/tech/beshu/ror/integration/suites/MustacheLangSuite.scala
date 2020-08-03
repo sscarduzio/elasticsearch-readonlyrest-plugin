@@ -34,18 +34,18 @@ trait MustacheLangSuite
   override implicit val rorConfigFileName = "/plugin_indices/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
-
+  override final val isUsingXPackSupport = true
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = MustacheLangSuite.nodeDataInitializer(),
-      xPackSupport = true
+      xPackSupport = isUsingXPackSupport,
     )
   )
 
   "Search can be done" when {
     "user uses local auth rule" when {
-      "mustache template can be used"  in {
+      "mustache template can be used" in {
         val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
         val query =
           s"""
@@ -64,7 +64,7 @@ trait MustacheLangSuite
     }
   }
   "Template rendering can be done" when {
-    "user uses local auth rule"  in {
+    "user uses local auth rule" in {
       val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
 
       val result = searchManager.renderTemplate(

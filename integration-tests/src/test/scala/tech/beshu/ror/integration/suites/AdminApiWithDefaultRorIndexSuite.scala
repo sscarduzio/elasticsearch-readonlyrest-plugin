@@ -29,14 +29,16 @@ trait AdminApiWithDefaultRorIndexSuite extends BaseAdminApiSuite {
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
-      nodeDataInitializer = nodeDataInitializer()
+      nodeDataInitializer = nodeDataInitializer(),
+      xPackSupport = isUsingXPackSupport,
     )
   )
 
   override protected lazy val rorWithNoIndexConfig = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR2",
-      configHotReloadingEnabled = false
+      configHotReloadingEnabled = false,
+      xPackSupport = isUsingXPackSupport,
     )
   )
 }
