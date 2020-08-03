@@ -40,7 +40,7 @@ trait FilterRuleSuite
       name = "ROR1",
       numberOfInstances = 2,
       nodeDataInitializer = FilterRuleSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

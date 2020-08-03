@@ -42,7 +42,7 @@ trait DocumentApiSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = DocumentApiSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

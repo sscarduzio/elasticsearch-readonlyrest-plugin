@@ -38,7 +38,7 @@ trait EnabledAuditingToolsSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = EnabledAuditingToolsSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

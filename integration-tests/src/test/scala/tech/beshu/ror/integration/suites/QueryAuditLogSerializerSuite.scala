@@ -38,7 +38,7 @@ trait QueryAuditLogSerializerSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = QueryAuditLogSerializerSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

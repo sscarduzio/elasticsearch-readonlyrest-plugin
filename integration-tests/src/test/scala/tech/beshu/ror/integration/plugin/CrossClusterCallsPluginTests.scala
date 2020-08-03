@@ -18,6 +18,6 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
-import tech.beshu.ror.utils.containers.NoXPackSupport
+import tech.beshu.ror.utils.containers.NoXpackSupport
 
-class CrossClusterCallsPluginTests extends CrossClusterCallsSuite with PluginTestSupport with NoXPackSupport
+class CrossClusterCallsPluginTests extends CrossClusterCallsSuite with PluginTestSupport with NoXpackSupport

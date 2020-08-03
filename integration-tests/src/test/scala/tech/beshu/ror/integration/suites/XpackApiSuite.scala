@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator, XpackSupport}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, ScriptManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -28,6 +28,7 @@ trait XpackApiSuite
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport
+    with XpackSupport
     with Matchers {
   this: EsContainerCreator =>
 

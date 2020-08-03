@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
-import tech.beshu.ror.utils.containers.NoXPackSupport
+import tech.beshu.ror.utils.containers.NoXpackSupport
 
 class ReverseProxyAuthenticationWithGroupsProviderAuthorizationPluginTests
-  extends ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite with PluginTestSupport with NoXPackSupport
+  extends ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite with PluginTestSupport with NoXpackSupport

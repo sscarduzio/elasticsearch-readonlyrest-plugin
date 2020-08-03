@@ -38,7 +38,7 @@ trait DynamicVariablesSuite
       name = "ROR1",
       rorContainerSpecification = ContainerSpecification(Map("TEST_VAR" -> "dev")),
       nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

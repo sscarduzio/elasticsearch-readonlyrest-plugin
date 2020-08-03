@@ -31,7 +31,7 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
       numberOfInstances = 2,
       customRorIndexName = Some(readonlyrestIndexName),
       nodeDataInitializer = nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 
@@ -40,7 +40,7 @@ trait AdminApiWithCustomRorIndexSuite extends BaseAdminApiSuite {
       name = "ROR2",
       configHotReloadingEnabled = false,
       customRorIndexName = Some(readonlyrestIndexName),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 }

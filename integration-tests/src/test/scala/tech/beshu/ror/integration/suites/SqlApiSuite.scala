@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest._
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator, XpackSupport}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SqlApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
@@ -28,6 +28,7 @@ trait SqlApiSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
+    with XpackSupport
     with ESVersionSupport
     with Matchers {
   this: EsContainerCreator =>
@@ -35,12 +36,11 @@ trait SqlApiSuite
   override implicit val rorConfigFileName = "/sql_api/readonlyrest.yml"
 
   override lazy val targetEs = container.nodes.head
-  override final val isUsingXPackSupport = true
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = SqlApiSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

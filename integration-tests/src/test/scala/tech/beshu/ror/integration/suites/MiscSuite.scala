@@ -38,7 +38,7 @@ trait MiscSuite
       name = "ROR1",
       numberOfInstances = 2,
       nodeDataInitializer = MiscSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

@@ -39,7 +39,7 @@ trait ClusterApiSuite
       name = "ROR1",
       numberOfInstances = 2,
       nodeDataInitializer = ClusterApiSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

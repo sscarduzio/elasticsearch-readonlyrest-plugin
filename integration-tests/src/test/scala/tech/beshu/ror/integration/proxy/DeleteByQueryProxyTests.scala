@@ -18,6 +18,6 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.DeleteByQuerySuite
 import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
-import tech.beshu.ror.utils.containers.XPackSupport
+import tech.beshu.ror.utils.containers.XpackSupport
 
-class DeleteByQueryProxyTests extends DeleteByQuerySuite with BasicClusterProxyTestSupport with XPackSupport
+class DeleteByQueryProxyTests extends DeleteByQuerySuite with BasicClusterProxyTestSupport with XpackSupport

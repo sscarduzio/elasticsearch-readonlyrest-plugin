@@ -47,7 +47,7 @@ trait DuplicatedResponseHeadersIssueSuite
           "/duplicated_response_headers_issue/freddie_groups.json")
       ),
       nodeDataInitializer = DuplicatedResponseHeadersIssueSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

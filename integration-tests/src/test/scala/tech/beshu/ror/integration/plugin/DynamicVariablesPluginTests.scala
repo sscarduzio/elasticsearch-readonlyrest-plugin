@@ -18,6 +18,6 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.DynamicVariablesSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
-import tech.beshu.ror.utils.containers.NoXPackSupport
+import tech.beshu.ror.utils.containers.NoXpackSupport
 
-class DynamicVariablesPluginTests extends DynamicVariablesSuite with PluginTestSupport with NoXPackSupport
+class DynamicVariablesPluginTests extends DynamicVariablesSuite with PluginTestSupport with NoXpackSupport

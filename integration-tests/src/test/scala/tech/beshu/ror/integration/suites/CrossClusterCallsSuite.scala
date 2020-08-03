@@ -41,13 +41,13 @@ trait CrossClusterCallsSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = localClusterNodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     ),
     NonEmptyList.of(
       EsClusterSettings(
         name = "ROR2",
         nodeDataInitializer = remoteClusterNodeDataInitializer(),
-        xPackSupport = isUsingXPackSupport,
+        xPackSupport = isUsingXpackSupport,
       ),
     ),
     remoteClusterSetup()

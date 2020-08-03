@@ -18,6 +18,6 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.LocalGroupsSuite
 import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
-import tech.beshu.ror.utils.containers.XPackSupport
+import tech.beshu.ror.utils.containers.XpackSupport
 
-class LocalGroupsProxyTests extends LocalGroupsSuite with BasicClusterProxyTestSupport with XPackSupport
+class LocalGroupsProxyTests extends LocalGroupsSuite with BasicClusterProxyTestSupport with XpackSupport

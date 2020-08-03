@@ -28,7 +28,7 @@ object SingletonEsContainer
     with StrictLogging {
 
   private implicit val description: Description = Description.EMPTY
-  override final val isUsingXPackSupport = false
+  override final val isUsingXpackSupport = false
 
   val singleton: EsClusterContainer = createLocalClusterContainer(EsClusterSettings.basic)
 

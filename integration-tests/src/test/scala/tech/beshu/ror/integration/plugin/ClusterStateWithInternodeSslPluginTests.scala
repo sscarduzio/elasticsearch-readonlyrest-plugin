@@ -18,6 +18,6 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.ClusterStateWithInternodeSslSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
-import tech.beshu.ror.utils.containers.NoXPackSupport
+import tech.beshu.ror.utils.containers.NoXpackSupport
 
-class ClusterStateWithInternodeSslPluginTests extends ClusterStateWithInternodeSslSuite with PluginTestSupport with NoXPackSupport
+class ClusterStateWithInternodeSslPluginTests extends ClusterStateWithInternodeSslSuite with PluginTestSupport with NoXpackSupport

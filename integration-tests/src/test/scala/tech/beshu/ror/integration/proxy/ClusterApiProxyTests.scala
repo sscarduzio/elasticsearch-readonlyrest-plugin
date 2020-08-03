@@ -18,6 +18,6 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ClusterApiSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
-import tech.beshu.ror.utils.containers.NoXPackSupport
+import tech.beshu.ror.utils.containers.NoXpackSupport
 
-class ClusterApiProxyTests extends ClusterApiSuite with PluginTestSupport with NoXPackSupport
+class ClusterApiProxyTests extends ClusterApiSuite with PluginTestSupport with NoXpackSupport

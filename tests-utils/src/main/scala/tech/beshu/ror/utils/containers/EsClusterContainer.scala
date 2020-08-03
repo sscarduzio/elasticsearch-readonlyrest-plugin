@@ -137,12 +137,3 @@ object EsClusterSettings {
 }
 
 final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]], originalPort: Int)
-trait UsingXPackSupport {
-  def isUsingXPackSupport: Boolean
-}
-trait XPackSupport extends UsingXPackSupport{
-  override final val isUsingXPackSupport: Boolean = true
-}
-trait NoXPackSupport extends UsingXPackSupport{
-  override final val isUsingXPackSupport: Boolean = false
-}

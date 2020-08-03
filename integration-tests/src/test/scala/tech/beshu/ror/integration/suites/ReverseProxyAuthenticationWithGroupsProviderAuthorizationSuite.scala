@@ -46,7 +46,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
           "/rev_proxy_groups_provider/wiremock_service2.json")
       ),
       nodeDataInitializer = ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXPackSupport,
+      xPackSupport = isUsingXpackSupport,
     )
   )
 
