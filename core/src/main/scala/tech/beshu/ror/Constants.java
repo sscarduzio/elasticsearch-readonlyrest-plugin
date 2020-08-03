@@ -75,6 +75,7 @@ public class Constants {
 
   public static final Set<String> RW_ACTIONS = Sets.newHashSet(
       "indices:admin/create",
+      "indices:admin/create_index",
       "indices:admin/mapping/put",
       "indices:data/write/delete*",
       "indices:data/write/index",
@@ -89,6 +90,7 @@ public class Constants {
       "cluster:admin/rradmin/*",
       "indices:data/write/*", // <-- DEPRECATED!
       "indices:admin/create",
+      "indices:admin/create_index",
       "indices:admin/ilm/*",
       "indices:monitor/*"
   );

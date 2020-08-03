@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.integration.proxy
 
-import tech.beshu.ror.integration.suites.MustacheLangSuite
+import tech.beshu.ror.integration.suites.XpackApiSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
+import tech.beshu.ror.utils.containers.XPackSupport
 
-class MustacheLangProxyTests extends MustacheLangSuite with ProxyTestSupport
+class XpackApiProxyTests extends XpackApiSuite with ProxyTestSupport with XPackSupport

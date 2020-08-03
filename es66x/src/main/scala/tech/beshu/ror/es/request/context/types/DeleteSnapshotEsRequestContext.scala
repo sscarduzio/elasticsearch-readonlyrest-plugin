@@ -54,7 +54,6 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
       )
   }
 
-
   override protected def indicesFrom(request: DeleteSnapshotRequest): Set[IndexName] =
     Set(IndexName.wildcard)
 
@@ -64,8 +63,11 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
       repository <- repositoryFrom(blockContext)
     } yield update(actionRequest, snapshot, repository)
     updateResult match {
-      case Right(_) => ModificationResult.Modified
-      case Left(_) => ModificationResult.ShouldBeInterrupted
+      case Right(_) =>
+        ModificationResult.Modified
+      case Left(_) =>
+        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+        ModificationResult.ShouldBeInterrupted
     }
   }
 

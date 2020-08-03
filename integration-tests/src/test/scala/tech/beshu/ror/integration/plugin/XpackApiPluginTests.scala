@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.MustacheLangSuite
+import tech.beshu.ror.integration.suites.XpackApiSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.utils.containers.XPackSupport
 
-class MustacheLangPluginTests extends MustacheLangSuite with PluginTestSupport
+class XpackApiPluginTests extends XpackApiSuite with PluginTestSupport with XPackSupport
