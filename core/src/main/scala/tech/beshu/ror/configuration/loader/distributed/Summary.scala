@@ -24,10 +24,12 @@ import scala.language.postfixOps
 
 object Summary {
   case object CurrentNodeHaveToProduceResult extends Exception
+
   sealed trait Error
   final case class CurrentNodeConfigError(error: LoadedConfig.Error) extends Error
-  final case class CurrentNodeResponseError(detailedMessage:String) extends Error
+  final case class CurrentNodeResponseError(detailedMessage: String) extends Error
   case object CurrentNodeResponseTimeoutError extends Error
+
   sealed trait Warning
   final case class NodeResponseTimeoutWarning(nodeId: NodeId) extends Warning
   final case class NodeReturnedConfigError(nodeId: NodeId, error: LoadedConfig.Error) extends Warning
@@ -54,7 +56,8 @@ object Summary {
     }
   }
 
-  private def createWarnings(nodesResponses: List[NodeResponse], loadedConfig: LoadedConfig[String], failures: List[NodeError]) = {
+  private def createWarnings(nodesResponses: List[NodeResponse],
+                             loadedConfig: LoadedConfig[String], failures: List[NodeError]): List[Warning] = {
     createNodeErrorWarnings(nodesResponses) ++
       createNodeNodeForcedFileConfigWarnings(nodesResponses) ++
       createNodeReturnedDifferentConfigWarnings(loadedConfig, nodesResponses) ++
@@ -89,11 +92,12 @@ object Summary {
 
   private def createNodeNodeForcedFileConfigWarnings(otherResponses: List[NodeResponse]): List[NodeForcedFileConfig] =
     otherResponses.flatMap {
-      case NodeResponse(nodeId, Right(LoadedConfig.ForcedFileConfig(config))) => NodeForcedFileConfig(nodeId) :: Nil
+      case NodeResponse(nodeId, Right(LoadedConfig.ForcedFileConfig(_))) => NodeForcedFileConfig(nodeId) :: Nil
       case _ => Nil
     }
 
-  private def createNodeReturnedDifferentConfigWarnings(currentNodeConfig: LoadedConfig[String], otherResponses: List[NodeResponse]): List[NodeReturnedDifferentConfig] = {
+  private def createNodeReturnedDifferentConfigWarnings(currentNodeConfig: LoadedConfig[String],
+                                                        otherResponses: List[NodeResponse]): List[NodeReturnedDifferentConfig] = {
     otherResponses.foldLeft(List.empty[NodeReturnedDifferentConfig]) {
       case (warnings, NodeResponse(_, Right(`currentNodeConfig`))) => warnings
       case (warnings, NodeResponse(nodeId, Right(loadedConfig))) => NodeReturnedDifferentConfig(nodeId, loadedConfig) :: warnings

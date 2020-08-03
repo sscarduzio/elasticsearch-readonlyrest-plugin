@@ -1,44 +1,28 @@
-/*
- *    This file is part of ReadonlyREST.
- *
- *    ReadonlyREST is free software: you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
- *    the Free Software Foundation, either version 3 of the License, or
- *    (at your option) any later version.
- *
- *    ReadonlyREST is distributed in the hope that it will be useful,
- *    but WITHOUT ANY WARRANTY; without even the implied warranty of
- *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *    GNU General Public License for more details.
- *
- *    You should have received a copy of the GNU General Public License
- *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
- */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.configuration.loader
 
 import cats.data.EitherT
-import cats.implicits._
 import cats.~>
+import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.ConfigLoading.LoadA
+import tech.beshu.ror.configuration.ConfigLoading.LoadRorConfigAction
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.loader.LoadedConfig._
-import tech.beshu.ror.configuration.loader.{FileConfigLoader, LoadedConfig, RorConfigurationIndex}
+import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, IndexConfigManager}
 import tech.beshu.ror.providers.EnvVarsProvider
+import concurrent.duration._
+import language.postfixOps
 
-import scala.concurrent.duration._
-import scala.language.{implicitConversions, postfixOps}
+object ConfigLoadingInterpreter extends Logging {
 
-object Compiler extends Logging {
   def create(indexConfigManager: IndexConfigManager)
-            (implicit envVarsProvider: EnvVarsProvider): (LoadA ~> Task) = new (LoadA ~> Task) {
-    override def apply[A](fa: LoadA[A]): Task[A] = fa match {
-      case ConfigLoading.LoadEsConfig(esConfigPath) =>
+            (implicit envVarsProvider: EnvVarsProvider): (LoadRorConfigAction ~> Task) = new (LoadRorConfigAction ~> Task) {
+    override def apply[A](fa: LoadRorConfigAction[A]): Task[A] = fa match {
+      case ConfigLoading.LoadRorConfigAction.LoadEsConfig(esConfigPath) =>
         EsConfig
           .from(esConfigPath)
           .map(_.left.map {
@@ -47,7 +31,7 @@ object Compiler extends Logging {
             case LoadEsConfigError.MalformedContent(file, msg) =>
               EsFileMalformed(file.toJava.toPath, msg)
           })
-      case ConfigLoading.ForceLoadFromFile(path) =>
+      case ConfigLoading.LoadRorConfigAction.ForceLoadFromFile(path) =>
         logger.info(s"Loading ReadonlyREST settings from file: $path")
         EitherT(FileConfigLoader.create(path).load())
           .bimap(convertFileError, ForcedFileConfig(_))
@@ -55,7 +39,7 @@ object Compiler extends Logging {
             logger.error(s"Loading ReadonlyREST from file failed: ${error}")
             error
           }.value
-      case ConfigLoading.LoadFromFile(path) =>
+      case ConfigLoading.LoadRorConfigAction.LoadFromFile(path) =>
         logger.info(s"Loading ReadonlyREST settings from file: $path, because index not exist")
         EitherT(FileConfigLoader.create(path).load())
           .bimap(convertFileError, FileConfig(_))
@@ -64,7 +48,7 @@ object Compiler extends Logging {
             error
           }
           .value
-      case ConfigLoading.LoadFromIndex(index) =>
+      case ConfigLoading.LoadRorConfigAction.LoadFromIndex(index) =>
         logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ...")
         loadFromIndex(indexConfigManager, index)
           .bimap(convertIndexError, IndexConfig(index, _))

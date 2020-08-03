@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.configuration
 
+import cats.Functor
 import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, ForcedFileConfig, IndexConfig}
+
 import language.implicitConversions
 
 package object loader {
@@ -30,8 +32,10 @@ package object loader {
       case ForcedFileConfig(value) => value
       case IndexConfig(_, value) => value
     }
-
-    def map[B](f: A => B): LoadedConfig[B] = fa match {
+  }
+  
+  implicit val functorLoadedConfig: Functor[LoadedConfig] = new Functor[LoadedConfig] {
+    override def map[A, B](fa: LoadedConfig[A])(f: A => B): LoadedConfig[B] = fa match {
       case FileConfig(value) => FileConfig(f(value))
       case ForcedFileConfig(value) => ForcedFileConfig(f(value))
       case IndexConfig(indexName, value) => IndexConfig(indexName, f(value))

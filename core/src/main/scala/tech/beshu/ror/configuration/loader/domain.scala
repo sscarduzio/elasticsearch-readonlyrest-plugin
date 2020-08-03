@@ -22,15 +22,17 @@ import scala.language.implicitConversions
 
 sealed trait LoadedConfig[A]
 object LoadedConfig {
-  sealed trait Error
-  sealed trait LoadingIndexError
   final case class FileConfig[A](value: A) extends LoadedConfig[A]
   final case class ForcedFileConfig[A](value: A) extends LoadedConfig[A]
   final case class IndexConfig[A](indexName: RorConfigurationIndex, value: A) extends LoadedConfig[A]
+
+  sealed trait Error
   final case class FileParsingError(message: String) extends LoadedConfig.Error
   final case class FileNotExist(path: Path) extends LoadedConfig.Error
   final case class EsFileNotExist(path: Path) extends LoadedConfig.Error
   final case class EsFileMalformed(path: Path, message: String) extends LoadedConfig.Error
+
+  sealed trait LoadingIndexError
   final case class IndexParsingError(message: String) extends LoadedConfig.Error with LoadingIndexError
   case object IndexUnknownStructure extends LoadedConfig.Error with LoadingIndexError
   case object IndexNotExist  extends LoadingIndexError

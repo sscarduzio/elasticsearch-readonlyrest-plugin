@@ -18,6 +18,7 @@ package tech.beshu.ror.es.rrconfig
 
 import java.util
 
+import cats.implicits._
 import org.elasticsearch.action.FailedNodeException
 import org.elasticsearch.action.support.ActionFilters
 import org.elasticsearch.action.support.nodes.TransportNodesAction
@@ -62,7 +63,7 @@ class TransportRRConfigAction(setting: Settings,
     nodeResponseClass
   ) {
 
-  import monix.execution.Scheduler.Implicits.global
+  import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
 
   implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 

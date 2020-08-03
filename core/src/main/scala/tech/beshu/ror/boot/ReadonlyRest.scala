@@ -41,7 +41,7 @@ import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
-import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedConfig, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedConfig, RorConfigurationIndex}
 import tech.beshu.ror.configuration.{RorProperties, _}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
@@ -93,7 +93,7 @@ trait ReadonlyRest extends Logging {
                             esConfig: EsConfig,
                             indexConfigManager: IndexConfigManager)
                            (implicit envVarsProvider: EnvVarsProvider) = {
-    val compiler = Compiler.create(indexConfigManager)
+    val compiler = ConfigLoadingInterpreter.create(indexConfigManager)
     EitherT(LoadRawRorConfig.load(esConfigPath, esConfig, esConfig.rorIndex.index).foldMap(compiler))
       .leftMap(toStartingFailure)
   }

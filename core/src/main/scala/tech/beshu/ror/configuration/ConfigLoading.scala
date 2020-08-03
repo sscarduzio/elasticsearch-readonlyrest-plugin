@@ -25,23 +25,25 @@ import scala.language.higherKinds
 object ConfigLoading {
   type ErrorOr[A] = LoadedConfig.Error Either A
   type IndexErrorOr[A] = LoadedConfig.LoadingIndexError Either A
-  type Load[A] = Free[LoadA, A]
-  sealed trait LoadA[A]
-  case class LoadEsConfig(path: Path) extends LoadA[ErrorOr[EsConfig]]
-  case class ForceLoadFromFile(path: Path) extends LoadA[ErrorOr[ForcedFileConfig[RawRorConfig]]]
-  case class LoadFromFile(path: Path) extends LoadA[ErrorOr[FileConfig[RawRorConfig]]]
-  case class LoadFromIndex(index: RorConfigurationIndex) extends LoadA[IndexErrorOr[IndexConfig[RawRorConfig]]]
+  type LoadRorConfig[A] = Free[LoadRorConfigAction, A]
+  sealed trait LoadRorConfigAction[A]
+  object LoadRorConfigAction {
+    final case class LoadEsConfig(path: Path) extends LoadRorConfigAction[ErrorOr[EsConfig]]
+    final case class ForceLoadFromFile(path: Path) extends LoadRorConfigAction[ErrorOr[ForcedFileConfig[RawRorConfig]]]
+    final case class LoadFromFile(path: Path) extends LoadRorConfigAction[ErrorOr[FileConfig[RawRorConfig]]]
+    final case class LoadFromIndex(index: RorConfigurationIndex) extends LoadRorConfigAction[IndexErrorOr[IndexConfig[RawRorConfig]]]
+  }
 
-  def loadFromIndex(index: RorConfigurationIndex): Load[IndexErrorOr[IndexConfig[RawRorConfig]]] =
-    Free.liftF(LoadFromIndex(index))
+  def loadFromIndex(index: RorConfigurationIndex): LoadRorConfig[IndexErrorOr[IndexConfig[RawRorConfig]]] =
+    Free.liftF(LoadRorConfigAction.LoadFromIndex(index))
 
-  def loadFromFile(path: Path): Load[ErrorOr[FileConfig[RawRorConfig]]] =
-    Free.liftF(LoadFromFile(path))
+  def loadFromFile(path: Path): LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]] =
+    Free.liftF(LoadRorConfigAction.LoadFromFile(path))
 
-  def loadEsConfig(path: Path): Load[ErrorOr[EsConfig]] =
-    Free.liftF(LoadEsConfig(path))
+  def loadEsConfig(path: Path): LoadRorConfig[ErrorOr[EsConfig]] =
+    Free.liftF(LoadRorConfigAction.LoadEsConfig(path))
 
-  def forceLoadFromFile(path: Path): Load[ErrorOr[ForcedFileConfig[RawRorConfig]]] =
-    Free.liftF(ForceLoadFromFile(path))
+  def forceLoadFromFile(path: Path): LoadRorConfig[ErrorOr[ForcedFileConfig[RawRorConfig]]] =
+    Free.liftF(LoadRorConfigAction.ForceLoadFromFile(path))
 
 }

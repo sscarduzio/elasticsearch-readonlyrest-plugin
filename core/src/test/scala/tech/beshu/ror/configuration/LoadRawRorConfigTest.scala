@@ -21,7 +21,7 @@ import io.circe.Json
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.configuration.ConfigLoading.LoadA
+import tech.beshu.ror.configuration.ConfigLoading.LoadRorConfigAction
 import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedConfig, Path, RorConfigurationIndex}
 
@@ -32,7 +32,7 @@ class LoadRawRorConfigTest extends WordSpec {
   "Free monad interpreter" should {
     "load forced file" in {
       val steps = List(
-        (ConfigLoading.ForceLoadFromFile(filePath), Right(ForcedFileConfig(rawRorConfig))),
+        (ConfigLoading.LoadRorConfigAction.ForceLoadFromFile(filePath), Right(ForcedFileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = true, filePath, indexName, indexLoadingAttempts = 0)
@@ -42,7 +42,7 @@ class LoadRawRorConfigTest extends WordSpec {
     }
     "load successfully from index" in {
       val steps = List(
-        (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 1)
@@ -52,8 +52,8 @@ class LoadRawRorConfigTest extends WordSpec {
     }
     "load successfully from index, after failure" in {
       val steps = List(
-        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Right(IndexConfig(indexName, rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
@@ -63,12 +63,12 @@ class LoadRawRorConfigTest extends WordSpec {
     }
     "load from file when index not exist" in {
       val steps = List(
-        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
-        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
-        (ConfigLoading.LoadFromFile(filePath), Right(FileConfig(rawRorConfig))),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Left(LoadedConfig.IndexNotExist)),
+        (ConfigLoading.LoadRorConfigAction.LoadFromFile(filePath), Right(FileConfig(rawRorConfig))),
       )
       val compiler = IdCompiler.instance(steps)
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
@@ -77,7 +77,7 @@ class LoadRawRorConfigTest extends WordSpec {
     }
     "unknown index structure fail loading from index immediately" in {
       val steps = List(
-        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexUnknownStructure)),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Left(LoadedConfig.IndexUnknownStructure)),
       )
       val compiler = IdCompiler.instance(steps)
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
@@ -86,7 +86,7 @@ class LoadRawRorConfigTest extends WordSpec {
     }
     "parse index error fail loading from index immediately" in {
       val steps = List(
-        (ConfigLoading.LoadFromIndex(indexName), Left(LoadedConfig.IndexParsingError("error"))),
+        (ConfigLoading.LoadRorConfigAction.LoadFromIndex(indexName), Left(LoadedConfig.IndexParsingError("error"))),
       )
       val compiler = IdCompiler.instance(steps)
       val program = LoadRawRorConfig.load(isLoadingFromFileForced = false, filePath, indexName, indexLoadingAttempts = 5)
@@ -104,10 +104,10 @@ object LoadRawRorConfigTest {
 
 }
 object IdCompiler {
-  def instance(mocksDef: List[(LoadA[_], _)]): LoadA ~> Id = new (LoadA ~> Id) {
-    var mocks: List[(LoadA[_], _)] = mocksDef
+  def instance(mocksDef: List[(LoadRorConfigAction[_], _)]): LoadRorConfigAction ~> Id = new (LoadRorConfigAction ~> Id) {
+    var mocks: List[(LoadRorConfigAction[_], _)] = mocksDef
 
-    override def apply[A](fa: LoadA[A]): Id[A] = {
+    override def apply[A](fa: LoadRorConfigAction[A]): Id[A] = {
       val (f1, r) = mocks.head
       mocks = mocks.tail
       assert(f1 == fa)

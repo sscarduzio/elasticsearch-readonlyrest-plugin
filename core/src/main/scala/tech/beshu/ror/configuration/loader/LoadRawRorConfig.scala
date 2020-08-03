@@ -26,7 +26,7 @@ import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, IndexConfig
 object LoadRawRorConfig {
   def load(esConfigPath: Path,
            esConfig: EsConfig,
-           configurationIndex: RorConfigurationIndex): Load[ErrorOr[LoadedConfig[RawRorConfig]]] = {
+           configurationIndex: RorConfigurationIndex): LoadRorConfig[ErrorOr[LoadedConfig[RawRorConfig]]] = {
     LoadRawRorConfig.load(
       isLoadingFromFileForced = esConfig.rorEsLevelSettings.forceLoadRorFromFile,
       esConfigPath = esConfigPath,
@@ -38,7 +38,7 @@ object LoadRawRorConfig {
   def load(isLoadingFromFileForced: Boolean,
            esConfigPath: Path,
            configIndex: RorConfigurationIndex,
-           indexLoadingAttempts: Int): Load[ErrorOr[LoadedConfig[RawRorConfig]]] = {
+           indexLoadingAttempts: Int): LoadRorConfig[ErrorOr[LoadedConfig[RawRorConfig]]] = {
     for {
       loadedFileOrIndex <- if (isLoadingFromFileForced) {
         forceLoadFromFile(esConfigPath)
@@ -50,7 +50,7 @@ object LoadRawRorConfig {
 
   def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
                                     attempts: Int,
-                                    fallback: Load[ErrorOr[FileConfig[RawRorConfig]]]): Load[ErrorOr[LoadedConfig[RawRorConfig]]] = {
+                                    fallback: LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]]): LoadRorConfig[ErrorOr[LoadedConfig[RawRorConfig]]] = {
     if (attempts <= 0) {
       fallback.map(identity)
     } else {
@@ -60,11 +60,11 @@ object LoadRawRorConfig {
           case Left(LoadedConfig.IndexNotExist) =>
             Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1, fallback))
           case Left(error@LoadedConfig.IndexUnknownStructure) =>
-            Free.pure[LoadA, ErrorOr[LoadedConfig[RawRorConfig]]](Left(error))
+            Free.pure[LoadRorConfigAction, ErrorOr[LoadedConfig[RawRorConfig]]](Left(error))
           case Left(error@LoadedConfig.IndexParsingError(_)) =>
-            Free.pure[LoadA, ErrorOr[LoadedConfig[RawRorConfig]]](Left(error))
+            Free.pure[LoadRorConfigAction, ErrorOr[LoadedConfig[RawRorConfig]]](Left(error))
           case Right(value) =>
-            Free.pure[LoadA, ErrorOr[LoadedConfig[RawRorConfig]]](Right(value))
+            Free.pure[LoadRorConfigAction, ErrorOr[LoadedConfig[RawRorConfig]]](Right(value))
         }
       } yield rawRorConfig
     }
