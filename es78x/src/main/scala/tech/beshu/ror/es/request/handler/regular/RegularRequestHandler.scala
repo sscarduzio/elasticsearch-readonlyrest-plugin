@@ -26,7 +26,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
@@ -110,6 +110,8 @@ class RegularRequestHandler(engine: Engine,
         handleIndexNotFoundForSearchRequest(request.asInstanceOf[EsRequest[FilterableRequestBlockContext] with RequestContext.Aux[FilterableRequestBlockContext]])
       case FilterableMultiRequestBlockContextUpdater =>
         handleIndexNotFoundForMultiSearchRequest(request.asInstanceOf[EsRequest[FilterableMultiRequestBlockContext] with RequestContext.Aux[FilterableMultiRequestBlockContext]])
+      case AliasRequestBlockContextUpdater =>
+        handleIndexNotFoundForAliasRequest(request.asInstanceOf[EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]])
       case CurrentUserMetadataRequestBlockContextUpdater |
            GeneralNonIndexRequestBlockContextUpdater |
            RepositoryRequestBlockContextUpdater |
@@ -131,6 +133,11 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private def handleIndexNotFoundForMultiSearchRequest(request: EsRequest[FilterableMultiRequestBlockContext] with RequestContext.Aux[FilterableMultiRequestBlockContext]): Unit = {
+    val modificationResult = request.modifyWhenIndexNotFound
+    handleModificationResult(modificationResult)
+  }
+
+  private def handleIndexNotFoundForAliasRequest(request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
     handleModificationResult(modificationResult)
   }

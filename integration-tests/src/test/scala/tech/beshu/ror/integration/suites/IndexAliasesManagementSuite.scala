@@ -1,6 +1,6 @@
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.WordSpec
+import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import org.scalatest.Matchers._
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
@@ -11,6 +11,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait IndexAliasesManagementSuite
   extends WordSpec
     with BaseSingleNodeEsClusterTest
+    with BeforeAndAfterEach
     with ESVersionSupport {
   this: EsContainerCreator =>
 
@@ -23,7 +24,7 @@ trait IndexAliasesManagementSuite
 
   "Add index alias API" should {
     "be allowed to use" when {
-      "there are no indices rule in block" in {
+      "there is no indices rule in block" in {
         val result = adminIndexManager.createAliasOf("index", "admin-alias")
         result.responseCode should be (200)
       }
@@ -52,7 +53,7 @@ trait IndexAliasesManagementSuite
 
   "Delete index alias API" should {
     "be allowed to use" when {
-      "there are no indices rule in block" in {
+      "there is no indices rule in block" in {
         adminIndexManager.createAliasOf("index", "admin-alias").force()
 
         val result = adminIndexManager.deleteAliasOf("index", "admin-alias")
@@ -92,6 +93,24 @@ trait IndexAliasesManagementSuite
     }
   }
 
+  "Exist index alias API" should {
+    "return all aliases" when {
+      "there is no indices rule in block" in {
+
+      }
+    }
+    "return aliases" which {
+      "names are allowed by indices rule" which {
+        "indices, they are related to, are allowed by indices rule" in {
+
+        }
+      }
+    }
+  }
+
+  override protected def beforeEach(): Unit = {
+    adminIndexManager.removeAll.force()
+  }
 }
 
 object IndexAliasesManagementSuite {

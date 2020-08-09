@@ -56,14 +56,14 @@ object BaseManager {
     val isForbidden: Boolean = responseCode == 401
     val isNotFound: Boolean = responseCode == 404
     val isBadRequest: Boolean = responseCode == 400
-  }
-
-  class JsonResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {
-    val body: String = stringBodyFrom(response)
-    val responseJson: JSON = ujson.read(body)
+    lazy val body: String = stringBodyFrom(response)
 
     def force(): Unit = {
       if(!isSuccess) throw new IllegalStateException(s"Expected success but got HTTP $responseCode, body: $body")
     }
+  }
+
+  class JsonResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {
+    val responseJson: JSON = ujson.read(body)
   }
 }
