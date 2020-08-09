@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.utils
 import cats.data.NonEmptySet
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.TestsUtils._
@@ -29,7 +29,7 @@ class FieldsPolicyTests extends WordSpec {
   "A FieldMatcher" should {
     "work in whitelist mode" in {
       val matcher = new FieldsPolicy(NonEmptySet.of(
-        ADocumentField("it*re*bus1".nonempty), ADocumentField("item.*Date".nonempty)
+        DocumentField.whitelisted("it*re*bus1".nonempty), DocumentField.whitelisted("item.*Date".nonempty)
       ))
 
       matcher.canKeep("itemresobus2resobus1") should be (true)
@@ -40,7 +40,7 @@ class FieldsPolicyTests extends WordSpec {
     }
     "work in blacklist mode" in {
       val matcher = new FieldsPolicy(NonEmptySet.of(
-        NegatedDocumentField("it*re*bus1".nonempty), NegatedDocumentField("item.*Date".nonempty)
+        DocumentField.blacklisted("it*re*bus1".nonempty), DocumentField.blacklisted("item.*Date".nonempty)
       ))
 
       matcher.canKeep("itemresobus2resobus1") should be (false)

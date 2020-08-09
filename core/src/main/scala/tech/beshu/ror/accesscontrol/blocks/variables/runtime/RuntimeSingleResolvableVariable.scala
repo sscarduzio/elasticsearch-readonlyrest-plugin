@@ -24,7 +24,7 @@ import cats.syntax.traverse._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.{Convertible, Unresolvable}
 
-sealed trait RuntimeSingleResolvableVariable[+T] extends RuntimeResolvableVariable[T]
+sealed trait RuntimeSingleResolvableVariable[T] extends RuntimeResolvableVariable[T]
 
 object RuntimeSingleResolvableVariable {
 

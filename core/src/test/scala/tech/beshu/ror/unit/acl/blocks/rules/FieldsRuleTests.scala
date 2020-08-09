@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.domain.DocumentField.ADocumentField
+import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -36,8 +36,8 @@ class FieldsRuleTests extends WordSpec with MockFactory {
   "A FieldsRule" should {
     "match" when {
       "request is read only" in {
-        val rule = new FieldsRule(FieldsRule.Settings.ofFields(
-          NonEmptySet.of(AlreadyResolved(ADocumentField("_field1".nonempty).nel), AlreadyResolved(ADocumentField("_field2".nonempty).nel))
+        val rule = new FieldsRule(FieldsRule.Settings(
+          NonEmptySet.of(AlreadyResolved(DocumentField.whitelisted("_field1".nonempty).nel), AlreadyResolved(DocumentField.whitelisted("_field2".nonempty).nel))
         ))
         val requestContext = mock[RequestContext]
         (requestContext.isReadOnlyRequest _).expects().returning(true)
@@ -49,14 +49,14 @@ class FieldsRuleTests extends WordSpec with MockFactory {
             requestContext,
             UserMetadata.empty,
             Set.empty,
-            Set(headerFrom("_fields" -> "W3siJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5Eb2N1bWVudEZpZWxkLkFEb2N1bWVudEZpZWxkIiwidmFsdWUiOiJfZmllbGQxIn0seyIkdHlwZSI6InRlY2guYmVzaHUucm9yLmFjY2Vzc2NvbnRyb2wuZG9tYWluLkRvY3VtZW50RmllbGQuQURvY3VtZW50RmllbGQiLCJ2YWx1ZSI6Il9maWVsZDIifV0="))
+            Set(headerFrom("_fields" -> "W3sidmFsdWUiOiJfZmllbGQxIiwibW9kZSI6eyIkdHlwZSI6InRlY2guYmVzaHUucm9yLmFjY2Vzc2NvbnRyb2wuZG9tYWluLkRvY3VtZW50RmllbGQyLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19LHsidmFsdWUiOiJfZmllbGQyIiwibW9kZSI6eyIkdHlwZSI6InRlY2guYmVzaHUucm9yLmFjY2Vzc2NvbnRyb2wuZG9tYWluLkRvY3VtZW50RmllbGQyLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19XQ=="))
           )
         ))
       }
     }
     "not match" when {
       "request is not read only" in {
-        val rule = new FieldsRule(FieldsRule.Settings.ofFields(NonEmptySet.of(AlreadyResolved(ADocumentField("_field1".nonempty).nel))))
+        val rule = new FieldsRule(FieldsRule.Settings(NonEmptySet.of(AlreadyResolved(DocumentField.whitelisted("_field1".nonempty).nel))))
         val requestContext = mock[RequestContext]
         (requestContext.isReadOnlyRequest _).expects().returning(false)
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)

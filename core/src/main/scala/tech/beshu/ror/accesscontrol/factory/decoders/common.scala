@@ -33,8 +33,8 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
-import tech.beshu.ror.accesscontrol.domain.{Address, Group, Header, User}
+import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.accesscontrol.domain.{Address, DocumentField, Group, Header, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
@@ -158,27 +158,19 @@ object common extends Logging {
       }
     }
   }
-  implicit val aDocumentFieldConvertible: Convertible[ADocumentField] = new Convertible[ADocumentField] {
-    override def convert: String => Either[ConvertError, ADocumentField] = str => {
-      if (!str.startsWith("~")) {
-        NonEmptyString.from(str) match {
-          case Right(nes) => Right(ADocumentField(nes))
-          case Left(_) => Left(ConvertError("Field cannot be empty string"))
-        }
-      } else {
-        Left(ConvertError("Field in whitelist mode cannot start with '~'"))
-      }
-    }
-  }
-  implicit val negativeDocumentFieldConvertible: Convertible[NegatedDocumentField] = new Convertible[NegatedDocumentField] {
-    override def convert: String => Either[ConvertError, NegatedDocumentField] = str => {
+
+  implicit val documentFieldConvertible: Convertible[DocumentField] = new Convertible[domain.DocumentField] {
+    override def convert: String => Either[ConvertError, domain.DocumentField] = str => {
       if (str.startsWith("~")) {
         NonEmptyString.from(str.substring(1)) match {
-          case Right(nes) => Right(NegatedDocumentField(nes))
+          case Right(nes) => Right(DocumentField.blacklisted(nes))
           case Left(_) => Left(ConvertError("There was no name passed for blacklist field (~ only is forbidden)"))
         }
       } else {
-        Left(ConvertError("Field in blacklist mode should start with '~'"))
+        NonEmptyString.from(str) match {
+          case Right(nes) => Right(DocumentField.whitelisted(nes))
+          case Left(_) => Left(ConvertError("Field cannot be empty string"))
+        }
       }
     }
   }

@@ -22,7 +22,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.DocumentField
-import tech.beshu.ror.accesscontrol.domain.DocumentField.NegatedDocumentField
+import tech.beshu.ror.accesscontrol.domain.DocumentField.AccessMode
 
 class FieldsPolicy(fields: NonEmptySet[DocumentField]) {
 
@@ -30,7 +30,7 @@ class FieldsPolicy(fields: NonEmptySet[DocumentField]) {
 
   def canKeep(field: String): Boolean = {
     Constants.FIELDS_ALWAYS_ALLOW.contains(field) || {
-      if (enhancedFields.head.isNegated) {
+      if (enhancedFields.head.isBlacklisted) {
         !enhancedFields.exists(f => blacklistMatch(f, field))
       } else {
         enhancedFields.exists(f => whitelistMatch(f, field))
@@ -79,7 +79,10 @@ object FieldsPolicy {
           Pattern.compile(s"^${part.replace("*", ".*")}$$")
         }
 
-    val isNegated: Boolean = field.isInstanceOf[NegatedDocumentField]
+    val isBlacklisted: Boolean = field.mode match {
+      case AccessMode.Whitelist => false
+      case AccessMode.Blacklist => true
+    }
 
   }
 }

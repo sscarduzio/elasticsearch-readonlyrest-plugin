@@ -16,60 +16,56 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
-import cats.Order
 import cats.data.NonEmptySet
+import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
-import io.circe.Decoder
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.FieldsRuleDecoderHelper.documentFieldDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 
 import scala.collection.JavaConverters._
 
-object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(documentFieldDecoder)
+object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(FieldsRuleDecoderHelper.fieldsRuleDecoder)
 
 private object FieldsRuleDecoderHelper {
 
-  private type SettingsCreator[FIELD_TYPE] = NonEmptySet[RuntimeMultiResolvableVariable[FIELD_TYPE]] => FieldsRule.Settings
+  val fieldsRuleDecoder = DecoderHelpers
+    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[DocumentField]]
+    .toSyncDecoder
+    .emapE(validateDecodedFields)
+    .map(settings => RuleWithVariableUsageDefinition.create(new FieldsRule(settings)))
+    .decoder
 
-  private val aDocumentFieldDecoder: Decoder[RuleWithVariableUsageDefinition[FieldsRule]] = documentFieldDecoder(FieldsRule.Settings.ofFields)
-  private val negatedDocumentFieldDecoder: Decoder[RuleWithVariableUsageDefinition[FieldsRule]] = documentFieldDecoder(FieldsRule.Settings.ofNegatedFields)
+  private def validateDecodedFields(fields: NonEmptySet[RuntimeMultiResolvableVariable[DocumentField]]) = {
+    val resolvedFields = extractAlreadyResolvedFields(fields)
 
-  val documentFieldDecoder: Decoder[RuleWithVariableUsageDefinition[FieldsRule]] =
-    aDocumentFieldDecoder.or(negatedDocumentFieldDecoder)
-      .toSyncDecoder
-      .emapE { ruleWithContext =>
-        if (containsAlwaysAllowedFields(ruleWithContext.rule.settings.fields)) {
-          Left(RulesLevelCreationError(Message(s"The fields rule cannot contain always-allowed fields: ${Constants.FIELDS_ALWAYS_ALLOW.asScala.mkString(",")}")))
-        } else {
-          Right(ruleWithContext)
-        }
-      }
-      .decoder
-
-  private def documentFieldDecoder[FIELD_TYPE <: DocumentField : Order : Convertible](settingsCreator: SettingsCreator[FIELD_TYPE]) = {
-    DecoderHelpers
-      .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[FIELD_TYPE]]
-      .map(settingsCreator)
-      .map(settings => RuleWithVariableUsageDefinition.create(new FieldsRule(settings)))
+    if (DocumentField.areDifferentAccessModesUsedSimultaneously(resolvedFields)) {
+      Left(RulesLevelCreationError(Message(s"fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: ${resolvedFields.map(_.value).toSet.mkString(",")}")))
+    } else if (containsAlwaysAllowedFields(resolvedFields)) {
+      Left(RulesLevelCreationError(Message(s"The fields rule cannot contain always-allowed fields: ${Constants.FIELDS_ALWAYS_ALLOW.asScala.mkString(",")}")))
+    } else {
+      Right(FieldsRule.Settings(fields))
+    }
   }
 
-  private def containsAlwaysAllowedFields[FIELD_TYPE <: DocumentField](fields: NonEmptySet[RuntimeMultiResolvableVariable[FIELD_TYPE]]): Boolean = {
-    fields.toNonEmptyList
+  private def extractAlreadyResolvedFields(fields: NonEmptySet[RuntimeMultiResolvableVariable[DocumentField]]) = {
+    fields.toList
       .collect {
-        case resolved: RuntimeMultiResolvableVariable.AlreadyResolved[FIELD_TYPE] => resolved.value.toList
+        case alreadyResolved: RuntimeMultiResolvableVariable.AlreadyResolved[DocumentField] => alreadyResolved.value.toList
       }
       .flatten
+  }
+
+  private def containsAlwaysAllowedFields(fields: List[DocumentField]): Boolean = {
+    fields
       .map(_.value)
       .intersect(Constants.FIELDS_ALWAYS_ALLOW.asScala.map(NonEmptyString.unsafeFrom).toList)
       .nonEmpty

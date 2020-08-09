@@ -41,7 +41,6 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
-import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -97,8 +96,6 @@ object orders {
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
-  implicit val aDocumentFieldOrder: Order[ADocumentField] = Order.by(_.value)
-  implicit val negatedDocumentFieldOrder: Order[NegatedDocumentField] = Order.by(_.value)
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[PlainTextSecret] = Order.by(_.value)
   implicit val indexOrder: Order[IndexName] = Order.by(_.value)
@@ -132,10 +129,6 @@ object show {
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val lemonUriShow: Show[LemonUri] = Show.show(_.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
-    implicit val documentFieldShow: Show[DocumentField] = Show.show {
-      case f: ADocumentField => f.value.value
-      case f: NegatedDocumentField => s"~${f.value.value}"
-    }
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val indexNameShow: Show[IndexName] = Show.show(_.value.value)
@@ -294,25 +287,35 @@ object headerValues {
 
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
-  implicit val transientFieldsToHeaderValue: ToHeaderValue[NonEmptySet[DocumentField]] = ToHeaderValue { filters =>
+
+  implicit val transientFieldsToHeaderValue: ToHeaderValue[NonEmptySet[DocumentField]] = ToHeaderValue { fields =>
+    import default._
     implicit val nesW: default.Writer[NonEmptyString] = default.StringWriter.comap(_.value)
-    implicit val documentFieldW: default.Writer[DocumentField] = default.Writer.merge(
-      upickle.default.macroW[DocumentField.ADocumentField],
-      upickle.default.macroW[DocumentField.NegatedDocumentField]
+    implicit val accessModeW: default.Writer[DocumentField.AccessMode] = default.Writer.merge(
+      macroW[DocumentField.AccessMode.Whitelist.type],
+      macroW[DocumentField.AccessMode.Blacklist.type]
     )
+    implicit val documentField2W: default.Writer[DocumentField] = macroW
+
     implicit val setR: default.Writer[NonEmptySet[DocumentField]] =
       default.SeqLikeWriter[Set, DocumentField].comap(_.toSortedSet)
-    val filtersJsonString = upickle.default.write(filters)
+
+    val filtersJsonString = upickle.default.write(fields)
     NonEmptyString.unsafeFrom(
       Base64.getEncoder.encodeToString(filtersJsonString.getBytes("UTF-8"))
     )
   }
+
   implicit val transientFieldsFromHeaderValue: FromHeaderValue[NonEmptySet[DocumentField]] = (value: NonEmptyString) => {
+
+    import default._
     implicit val nesR: default.Reader[NonEmptyString] = default.StringReader.map(NonEmptyString.unsafeFrom)
-    implicit val documentFieldR: default.Reader[DocumentField] = default.Reader.merge(
-      upickle.default.macroR[DocumentField.ADocumentField],
-      upickle.default.macroR[DocumentField.NegatedDocumentField]
+    implicit val accessModeR: default.Reader[DocumentField.AccessMode] = default.Reader.merge(
+      macroR[DocumentField.AccessMode.Whitelist.type],
+      macroR[DocumentField.AccessMode.Blacklist.type]
     )
+    implicit val documentFieldR: default.Reader[DocumentField] = macroR
+
     import tech.beshu.ror.accesscontrol.orders._
     implicit val setR: default.Reader[NonEmptySet[DocumentField]] =
       default.SeqLikeReader[Set, DocumentField]
@@ -321,5 +324,6 @@ object headerValues {
       new String(Base64.getDecoder.decode(value.value), "UTF-8")
     ))
   }
+
   implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
 }

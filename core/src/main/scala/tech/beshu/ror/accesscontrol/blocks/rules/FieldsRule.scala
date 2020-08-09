@@ -23,13 +23,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, Header}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.ScalaOps.SetOps
 
 class FieldsRule(val settings: Settings)
@@ -43,13 +41,13 @@ class FieldsRule(val settings: Settings)
     else {
       val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext).toSet
       maybeResolvedFields.toNonEmptySet match {
-        case Some(resolvedFields) =>
+        case Some(resolvedFields) if !DocumentField.areDifferentAccessModesUsedSimultaneously(resolvedFields.toList) =>
           val transientFieldsHeader = new Header(
             Name.transientFields,
             transientFieldsToHeaderValue.toRawValue(resolvedFields)
           )
           RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
-        case None =>
+        case _ =>
           RuleResult.Rejected()
       }
     }
@@ -59,11 +57,5 @@ class FieldsRule(val settings: Settings)
 object FieldsRule {
   val name = Rule.Name("fields")
 
-  final case class Settings private(fields: NonEmptySet[RuntimeMultiResolvableVariable[DocumentField]])
-
-  object Settings {
-    def ofFields(fields: NonEmptySet[RuntimeMultiResolvableVariable[ADocumentField]]): Settings = Settings(fields.widen[RuntimeMultiResolvableVariable[DocumentField]])
-
-    def ofNegatedFields(fields: NonEmptySet[RuntimeMultiResolvableVariable[NegatedDocumentField]]): Settings = Settings(fields.widen[RuntimeMultiResolvableVariable[DocumentField]])
-  }
+  final case class Settings(fields: NonEmptySet[RuntimeMultiResolvableVariable[DocumentField]])
 }

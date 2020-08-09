@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.{Convertible, Unresolvable}
 import tech.beshu.ror.utils.ScalaOps._
 
-sealed trait RuntimeMultiResolvableVariable[+T] extends RuntimeResolvableVariable[NonEmptyList[T]]
+sealed trait RuntimeMultiResolvableVariable[T] extends RuntimeResolvableVariable[NonEmptyList[T]]
 
 object RuntimeMultiResolvableVariable {
 
