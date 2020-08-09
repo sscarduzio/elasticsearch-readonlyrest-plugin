@@ -48,7 +48,6 @@ import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import upickle.default
 
 import scala.collection.SortedSet
 import scala.concurrent.duration.FiniteDuration
@@ -289,36 +288,39 @@ object headerValues {
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
 
   implicit val transientFieldsToHeaderValue: ToHeaderValue[NonEmptySet[DocumentField]] = ToHeaderValue { fields =>
+    import upickle.default
     import default._
-    implicit val nesW: default.Writer[NonEmptyString] = default.StringWriter.comap(_.value)
-    implicit val accessModeW: default.Writer[DocumentField.AccessMode] = default.Writer.merge(
+
+    implicit val nesW: Writer[NonEmptyString] = StringWriter.comap(_.value)
+    implicit val accessModeW: Writer[DocumentField.AccessMode] = Writer.merge(
       macroW[DocumentField.AccessMode.Whitelist.type],
       macroW[DocumentField.AccessMode.Blacklist.type]
     )
-    implicit val documentField2W: default.Writer[DocumentField] = macroW
+    implicit val documentField2W: Writer[DocumentField] = macroW
 
-    implicit val setR: default.Writer[NonEmptySet[DocumentField]] =
-      default.SeqLikeWriter[Set, DocumentField].comap(_.toSortedSet)
+    implicit val setW: Writer[NonEmptySet[DocumentField]] =
+      SeqLikeWriter[Set, DocumentField].comap(_.toSortedSet)
 
-    val filtersJsonString = upickle.default.write(fields)
+    val fieldsJsonString = upickle.default.write(fields)
     NonEmptyString.unsafeFrom(
-      Base64.getEncoder.encodeToString(filtersJsonString.getBytes("UTF-8"))
+      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
     )
   }
 
   implicit val transientFieldsFromHeaderValue: FromHeaderValue[NonEmptySet[DocumentField]] = (value: NonEmptyString) => {
-
+    import tech.beshu.ror.accesscontrol.orders._
+    import upickle.default
     import default._
-    implicit val nesR: default.Reader[NonEmptyString] = default.StringReader.map(NonEmptyString.unsafeFrom)
-    implicit val accessModeR: default.Reader[DocumentField.AccessMode] = default.Reader.merge(
+
+    implicit val nesR: Reader[NonEmptyString] = StringReader.map(NonEmptyString.unsafeFrom)
+    implicit val accessModeR: Reader[DocumentField.AccessMode] = Reader.merge(
       macroR[DocumentField.AccessMode.Whitelist.type],
       macroR[DocumentField.AccessMode.Blacklist.type]
     )
-    implicit val documentFieldR: default.Reader[DocumentField] = macroR
+    implicit val documentFieldR: Reader[DocumentField] = macroR
 
-    import tech.beshu.ror.accesscontrol.orders._
-    implicit val setR: default.Reader[NonEmptySet[DocumentField]] =
-      default.SeqLikeReader[Set, DocumentField]
+    implicit val setR: Reader[NonEmptySet[DocumentField]] =
+      SeqLikeReader[Set, DocumentField]
         .map(set => NonEmptySet.fromSetUnsafe(SortedSet.empty[DocumentField] ++ set))
     Try(upickle.default.read[NonEmptySet[DocumentField]](
       new String(Base64.getDecoder.decode(value.value), "UTF-8")

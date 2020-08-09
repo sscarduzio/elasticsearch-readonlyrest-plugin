@@ -313,14 +313,14 @@ object domain {
   final case class DocumentField(value: NonEmptyString, mode: AccessMode)
   object DocumentField {
 
-    def whitelisted(value: NonEmptyString) = DocumentField(value, AccessMode.Whitelist)
-    def blacklisted(value: NonEmptyString) = DocumentField(value, AccessMode.Blacklist)
-
     sealed trait AccessMode
     object AccessMode {
-        case object Whitelist extends AccessMode
-        case object Blacklist extends AccessMode
+      case object Whitelist extends AccessMode
+      case object Blacklist extends AccessMode
     }
+
+    def whitelisted(value: NonEmptyString) = DocumentField(value, AccessMode.Whitelist)
+    def blacklisted(value: NonEmptyString) = DocumentField(value, AccessMode.Blacklist)
     
     def areDifferentAccessModesUsedSimultaneously(allFields: List[DocumentField]): Boolean = {
       val (blacklistedFields, whitelistedFields) = allFields
