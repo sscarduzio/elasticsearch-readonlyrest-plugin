@@ -30,8 +30,7 @@ import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.ScalaOps._
-
-import scala.collection.SortedSet
+import tech.beshu.ror.utils.ScalaOps.SetOps
 
 class FieldsRule(val settings: Settings)
   extends RegularRule {
@@ -39,11 +38,11 @@ class FieldsRule(val settings: Settings)
   override val name: Rule.Name = FieldsRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    if (!blockContext.requestContext.isReadOnlyRequest) RuleResult.Rejected()
+    if (!blockContext.requestContext.isReadOnlyRequest)
+      RuleResult.Rejected()
     else {
-      val resolved = resolveAll(settings.fields.toNonEmptyList, blockContext)
-      val option = NonEmptySet.fromSet(SortedSet.empty[DocumentField] ++ resolved.toSet)
-      option match {
+      val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext).toSet
+      maybeResolvedFields.toNonEmptySet match {
         case Some(resolvedFields) =>
           val transientFieldsHeader = new Header(
             Name.transientFields,

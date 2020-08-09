@@ -166,7 +166,7 @@ object common extends Logging {
           case Left(_) => Left(ConvertError("Field cannot be empty string"))
         }
       } else {
-        Left(ConvertError("Invalid character in whitelist mode"))
+        Left(ConvertError("Field in whitelist mode cannot start with '~'"))
       }
     }
   }
@@ -178,7 +178,7 @@ object common extends Logging {
           case Left(_) => Left(ConvertError("There was no name passed for blacklist field (~ only is forbidden)"))
         }
       } else {
-        Left(ConvertError("Blacklist mode field should start with '~'"))
+        Left(ConvertError("Field in blacklist mode should start with '~'"))
       }
     }
   }

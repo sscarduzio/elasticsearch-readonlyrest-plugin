@@ -44,31 +44,20 @@ trait FieldLevelSecuritySuite
         val searchJson = result.searchHits
         val source = searchJson(0)("_source")
 
-        source should be(ujson.read("""{"dummy2":"true"}"""))
+        source should be(ujson.read("""{"user1":"user1Value"}"""))
       }
       "whitelist mode with user variable is used " in {
-        val searchManager = new SearchManager(basicAuthClient("dummy", "pass"))
-
-        val result = searchManager.search("/testfiltera/_search")
-
-        assertEquals(200, result.responseCode)
-        val searchJson = result.searchHits
-        val source = searchJson(0)("_source")
-
-        source should be(ujson.read("""{"dummy2":"true"}"""))
-      }
-      "whitelist mode with wildcard is used" in {
         val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
 
-        val result = searchManager.search("testfiltera")
+        val result = searchManager.search("/testfiltera")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson(0)("_source")
 
-        source should be(ujson.read("""{"dummy2":"true"}"""))
+        source should be(ujson.read("""{"user2":"user2Value"}"""))
       }
-      "blacklist mode is used" in {
+      "whitelist mode with wildcard is used" in {
         val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
 
         val result = searchManager.search("testfiltera")
@@ -77,9 +66,9 @@ trait FieldLevelSecuritySuite
         val searchJson = result.searchHits
         val source = searchJson(0)("_source")
 
-        source should be(ujson.read("""{"dummy":"a1"}"""))
+        source should be(ujson.read("""{"user3":"user3Value"}"""))
       }
-      "blacklist mode with wildcard is used" in {
+      "blacklist mode is used" in {
         val searchManager = new SearchManager(basicAuthClient("user4", "pass"))
 
         val result = searchManager.search("testfiltera")
@@ -88,8 +77,61 @@ trait FieldLevelSecuritySuite
         val searchJson = result.searchHits
         val source = searchJson(0)("_source")
 
-        source should be(ujson.read("""{"dummy":"a1"}"""))
+        source should be(ujson.read(
+          """|{
+             | "user1": "user1Value",
+             | "user2": "user2Value",
+             | "user3": "user3Value",
+             | "user5": "user5Value",
+             | "user6": "user6Value"
+             |}""".stripMargin)
+        )
       }
+      "blacklist mode with user variable is used " in {
+        val searchManager = new SearchManager(basicAuthClient("user5", "pass"))
+
+        val result = searchManager.search("/testfiltera")
+
+        assertEquals(200, result.responseCode)
+        val searchJson = result.searchHits
+        val source = searchJson(0)("_source")
+
+        source should be(ujson.read(
+          """|{
+             | "user1": "user1Value",
+             | "user2": "user2Value",
+             | "user3": "user3Value",
+             | "user4": "user4Value",
+             | "user6": "user6Value"
+             |}""".stripMargin)
+        )
+      }
+      "blacklist mode with wildcard is used" in {
+        val searchManager = new SearchManager(basicAuthClient("user6", "pass"))
+
+        val result = searchManager.search("testfiltera")
+
+        assertEquals(200, result.responseCode)
+        val searchJson = result.searchHits
+        val source = searchJson(0)("_source")
+
+        source should be(ujson.read(
+          """|{
+             | "user1": "user1Value",
+             | "user2": "user2Value",
+             | "user3": "user3Value",
+             | "user4": "user4Value",
+             | "user5": "user5Value"
+             |}""".stripMargin)
+        )
+      }
+    }
+    "reject when runtime variables resolves to mixed field mode (whitelist with blacklist)" in {
+      val searchManager = new SearchManager(basicAuthClient("user", "pass"))
+
+      val result = searchManager.search("testfiltera")
+
+      assertEquals(401, result.responseCode)
     }
     "work for nested fields" when {
       "whitelist mode is used" in {
@@ -192,7 +234,14 @@ object FieldLevelSecuritySuite {
     val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDocAndWaitForRefresh(
       "/testfiltera/documents/doc-a1",
-      """{"dummy":"a1", "dummy2": "true"}"""
+      """{
+        | "user1": "user1Value",
+        | "user2": "user2Value",
+        | "user3": "user3Value",
+        | "user4": "user4Value",
+        | "user5": "user5Value",
+        | "user6": "user6Value"
+        |}""".stripMargin
     )
     documentManager.insertDocAndWaitForRefresh(
       "/nestedtest/documents/1",
