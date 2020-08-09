@@ -26,11 +26,11 @@ import scala.util.matching.Regex
 trait ESVersionSupport extends WordSpecLike {
 
   val allEs5x = "^es5\\dx$".r
-  val allEs5xExceptEs55x = "^es5(?!(?:5x)$)\\dx$".r
   val allEs6x = "^es6\\dx$".r
   val allEs6xExceptEs66x = "^es6(?!(?:6x)$)\\dx$".r
   val allEs7x = "^es7\\dx$".r
   val allEs7xExceptEs70x = "^es7(?!(?:0x)$)\\dx$".r
+  val allEs7xBelowEs77x = "^es7[0-6]x$".r
 
   implicit final class ESVersionSupportOps(string: String) {
     def excludeES(esVersion: String, esVersions: String*): ResultOfTaggedAsInvocationOnString = {

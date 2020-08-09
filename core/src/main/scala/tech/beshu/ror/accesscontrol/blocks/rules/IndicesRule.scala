@@ -21,7 +21,7 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, HasIndexPacks, MultiIndexRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
@@ -191,7 +191,6 @@ class IndicesRule(val settings: Settings)
     val result = for {
       _ <- noneOrAllIndices(requestContext, indices, matcher)
       _ <- allIndicesMatchedByWildcard(requestContext, indices, matcher)
-      _ <- atLeastOneNonWildcardIndexNotExist(requestContext, indices)
       _ <- indicesAliases(requestContext, indices, matcher)
     } yield ()
     result.left.getOrElse(CanPass.No())
@@ -230,23 +229,6 @@ class IndicesRule(val settings: Settings)
         stop(CanPass.Yes(indices))
       case _ =>
         continue[Set[IndexName]]
-    }
-  }
-
-  private def atLeastOneNonWildcardIndexNotExist(requestContext: RequestContext,
-                                                 indices: Set[IndexName]): CheckContinuation[Set[IndexName]] = {
-    logger.debug(s"[${requestContext.id.show}] Checking if at least one non-wildcard index doesn't exist ...")
-    val real = requestContext.allIndicesAndAliases.flatMap(_.all)
-    val nonExistent = indices.foldLeft(Set.empty[IndexName]) {
-      case (acc, index) if !index.hasWildcard && !real.contains(index) => acc + index
-      case (acc, _) => acc
-    }
-    if (nonExistent.nonEmpty && !requestContext.isCompositeRequest) {
-      stop(CanPass.No(Reason.IndexNotExist))
-    } else if (nonExistent.nonEmpty && (indices -- nonExistent).isEmpty) {
-      stop(CanPass.No(Reason.IndexNotExist))
-    } else {
-      continue
     }
   }
 

@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ContainerSpecification, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.ClusterManager
+import tech.beshu.ror.utils.elasticsearch.CatManager
 
 trait ClusterStateWithInternodeSslSuite
   extends WordSpec
@@ -42,7 +42,7 @@ trait ClusterStateWithInternodeSslSuite
     )
   )
 
-  private lazy val adminClusterStateManager = new ClusterManager(adminClient, esVersion = targetEs.esVersion)
+  private lazy val adminClusterStateManager = new CatManager(adminClient, esVersion = targetEs.esVersion)
 
   "Health check" should {
     "be successful" when {

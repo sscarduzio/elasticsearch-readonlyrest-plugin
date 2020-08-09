@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.implicits._
 import cats.data.NonEmptyList
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.threadpool.ThreadPool
@@ -43,8 +44,12 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
   override protected def update(request: IndicesAliasesRequest,
                                 indices: NonEmptyList[IndexName]): ModificationResult = {
     request.getAliasActions.removeIf { action => removeOrAlter(action, indices.toList.toSet) }
-    if (request.getAliasActions.asScala.isEmpty) ShouldBeInterrupted
-    else Modified
+    if (request.getAliasActions.asScala.isEmpty) {
+      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. All indices were filtered out.")
+      ShouldBeInterrupted
+    } else {
+      Modified
+    }
   }
 
   private def removeOrAlter(action: IndicesAliasesRequest.AliasActions,

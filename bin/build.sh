@@ -82,21 +82,6 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es55x" ]]; then
     ./gradlew integration-tests:test '-PesModule=es55x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es53x" ]]; then
-    echo ">>> es53x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es53x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es52x" ]]; then
-    echo ">>> es52x => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es52x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es51x" ]]; then
-    echo ">>> es51x => Running testcontainers.."1
-    ./gradlew integration-tests:test '-PesModule=es51x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
-fi
-
 if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; then
     echo ">>> won't try to create builds because this is a PR"
     exit 0
@@ -237,26 +222,6 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.1'
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.2'
     ./gradlew --stacktrace es55x:ror '-PesVersion=5.5.3'
-
-    # es53
-    ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.0'
-    ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.1'
-    ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.2'
-    ./gradlew --stacktrace es53x:ror '-PesVersion=5.4.3'
-
-    ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.0'
-    ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.1'
-    ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.2'
-    ./gradlew --stacktrace es53x:ror '-PesVersion=5.3.3'
-
-    # es52
-    ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.0'
-    ./gradlew --stacktrace es52x:ror '-PesVersion=5.2.1'
-    #./gradlew --stacktrace es52x:ror '-PesVersion=5.2.2'
-
-    # es51
-    ./gradlew --stacktrace es51x:ror '-PesVersion=5.1.1'
-    #./gradlew --stacktrace es51x:ror '-PesVersion=5.1.2'
 
 fi
 

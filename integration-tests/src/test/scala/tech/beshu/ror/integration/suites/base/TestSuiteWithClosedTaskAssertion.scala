@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import org.scalatest.Matchers._
 import org.scalatest._
 import tech.beshu.ror.utils.containers.providers.{MultipleClients, MultipleEsTargets}
-import tech.beshu.ror.utils.elasticsearch.ClusterManager
+import tech.beshu.ror.utils.elasticsearch.CatManager
 import tech.beshu.ror.utils.misc.CustomMatchers
 
 import scala.util.{Failure, Success, Try}
@@ -27,7 +27,7 @@ import scala.util.{Failure, Success, Try}
 trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
   this: MultipleClients with MultipleEsTargets =>
 
-  private lazy val adminClusterManager = new ClusterManager(
+  private lazy val adminCatManager = new CatManager(
     clients.head.basicAuthClient("admin", "container"),
     esVersion = esTargets.head.esVersion
   )
@@ -36,23 +36,17 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
     super.withFixture(test) match {
       case exceptional: Exceptional => exceptional
       case Succeeded =>
-        val tasks = adminClusterManager.tasks().results
+        val tasks = adminCatManager.tasks().results
         Try {
           tasks.map(_ ("action").str).toSet should containAtMostElementsFrom(Set(
-            "cluster:monitor/tasks/lists",
-            "cluster:monitor/tasks/lists[n]",
-            "indices:admin/seq_no/global_checkpoint_sync",
-            "indices:admin/seq_no/global_checkpoint_sync[p]",
-            "internal:cluster/coordination/publish_state",
-            "internal:cluster/coordination/commit_state",
-            "indices:monitor/stats",
-            "indices:monitor/stats[n]",
-            "cluster:monitor/nodes/stats",
-            "cluster:monitor/nodes/stats[n]",
-            "internal:cluster/shard/started",
-            "internal:cluster/shard/started[n]",
-            "indices:data/read/get",
-            "indices:data/read/get[s]"
+            """^internal:.*$""".r,
+            """^cluster:monitor/.*$""".r,
+            """^indices:monitor/.*$""".r,
+            """^indices:admin/.*$""".r,
+            """^indices:data/read/get""".r,
+            """^indices:data/read/get\[s\]$""".r,
+            """^retention_lease_sync$""".r,
+            """^retention_lease_background_sync$""".r
           ))
         } match {
           case Failure(exception) => Failed(exception)

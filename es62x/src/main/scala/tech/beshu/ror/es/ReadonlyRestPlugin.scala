@@ -55,6 +55,7 @@ import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import org.elasticsearch.{ElasticsearchException, Version}
 import tech.beshu.ror.Constants
+import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
@@ -76,7 +77,8 @@ class ReadonlyRestPlugin(s: Settings,
     with ScriptPlugin
     with ActionPlugin
     with IngestPlugin
-    with NetworkPlugin {
+    with NetworkPlugin
+    with ClusterPlugin {
 
   LogPluginBuildInfoMessage()
 
@@ -95,6 +97,7 @@ class ReadonlyRestPlugin(s: Settings,
     .load(environment.configFile)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
+  private val esInitListener = new EsInitListener
 
   private var ilaf: IndexLevelActionFilter = _
 
@@ -108,7 +111,15 @@ class ReadonlyRestPlugin(s: Settings,
                                 nodeEnvironment: NodeEnvironment,
                                 namedWriteableRegistry: NamedWriteableRegistry): util.Collection[AnyRef] = {
     doPrivileged {
-      ilaf = new IndexLevelActionFilter(clusterService, client.asInstanceOf[NodeClient], threadPool, environment, TransportServiceInterceptor.remoteClusterServiceSupplier, emptyClusterState)
+      ilaf = new IndexLevelActionFilter(
+        clusterService,
+        client.asInstanceOf[NodeClient],
+        threadPool,
+        environment,
+        TransportServiceInterceptor.remoteClusterServiceSupplier,
+        emptyClusterState,
+        esInitListener
+      )
     }
     List.empty[AnyRef].asJava
   }
@@ -207,5 +218,12 @@ class ReadonlyRestPlugin(s: Settings,
         ThreadRepo.setRestChannel(channel)
         restHandler.handleRequest(request, channel, client)
       }
+  }
+
+  override def onNodeStarted(): Unit = {
+    super.onNodeStarted()
+    doPrivileged {
+      esInitListener.onEsReady()
+    }
   }
 }

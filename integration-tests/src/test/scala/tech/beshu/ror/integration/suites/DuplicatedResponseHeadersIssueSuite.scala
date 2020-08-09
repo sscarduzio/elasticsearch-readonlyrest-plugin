@@ -78,7 +78,7 @@ trait DuplicatedResponseHeadersIssueSuite
   }
 
   private def searchCall(searchManager: SearchManager) = {
-    val result = searchManager.search("/neg*/_search")
+    val result = searchManager.search("neg*")
     result.responseCode shouldBe 200
     SearchResult(result.responseCode, result.headers)
   }

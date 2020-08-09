@@ -41,7 +41,7 @@ class EsStartupChecker private(name: String,
     retry {
       checkClusterHealth(client).fold(
         throwable => {
-          logger.error(s"[$name] Cannot check ES health: ${throwable.getLocalizedMessage}")
+          logger.debug(s"[$name] Cannot check ES health: ${throwable.getLocalizedMessage}")
           false
         },
         identity

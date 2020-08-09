@@ -18,5 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.EnabledAuditingToolsSuite
 
-// todo: enable when audit in proxxy is ready
+// todo: enable when audit in proxy is ready
 //class EnabledAuditingToolsProxyTests extends EnabledAuditingToolsSuite with ProxyTestSupport

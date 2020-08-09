@@ -42,8 +42,8 @@ class UnboundidLdapAuthenticationServiceTests
     with ForAllTestContainer
     with Inside {
 
-  private val ldap1Container = new LdapContainer("LDAP1", "/test_example.ldif")
-  private val ldap2Container = new LdapContainer("LDAP2", "/test_example.ldif")
+  private val ldap1Container = new LdapContainer("LDAP1", "test_example.ldif")
+  private val ldap2Container = new LdapContainer("LDAP2", "test_example.ldif")
   override val container: Container = MultipleContainers(ldap1Container, ldap2Container)
   private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 

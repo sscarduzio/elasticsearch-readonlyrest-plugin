@@ -36,7 +36,7 @@ trait HostsRuleSuite
   private lazy val searchManager = new SearchManager(basicAuthClient("blabla", "kibana"))
 
   "testGet" in {
-    val response = searchManager.search("/_search")
+    val response = searchManager.search()
 
     response.responseCode shouldBe 401
   }

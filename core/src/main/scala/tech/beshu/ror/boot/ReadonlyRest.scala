@@ -164,7 +164,7 @@ trait ReadonlyRest extends Logging {
     def attempt(attemptsLeft: Int,
                 startingFailure: Option[ConfigLoaderError[IndexConfigError]] = None): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
       val executionDelay = startingFailure match {
-        case None => 1 second
+        case None => 0 second
         case Some(_) => 5 seconds
       }
       startingFailure match {
@@ -253,7 +253,7 @@ class RorInstance private(boot: ReadonlyRest,
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
   import RorInstance._
 
-  logger.info("Readonly REST plugin core was loaded ...")
+  logger.info("ReadonlyREST core was loaded ...")
   mode match {
     case Mode.WithPeriodicIndexCheck =>
       RorProperties.rorIndexSettingReloadInterval match {

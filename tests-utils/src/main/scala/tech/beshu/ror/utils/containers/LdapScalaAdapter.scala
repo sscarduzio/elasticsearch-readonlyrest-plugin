@@ -20,6 +20,7 @@ package tech.beshu.ror.utils.containers
 import com.dimafeng.testcontainers.SingleContainer
 import org.testcontainers.containers.GenericContainer
 
+// todo: remove
 class LdapScalaAdapter(proxy: JavaLdapContainer) extends SingleContainer[GenericContainer[_]]{
   override implicit val container: GenericContainer[_] = proxy
 }
