@@ -15,14 +15,18 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "dev1 indexes"
+    - name: "dev1 block"
       indices: ["dev1-*", "dev1"]
       auth_key: dev1:test
 
-    - name: "dev2 indexes"
+    - name: "dev2 block"
       indices: ["dev2-*", "dev2"]
       auth_key: dev2:test
 
-    - name: "dev3 indexes"
+    - name: "dev3 block"
       indices: ["dev3*"]
       auth_key: dev3:test
+
+    - name: "dev4 block"
+      auth_key: dev4:test
+

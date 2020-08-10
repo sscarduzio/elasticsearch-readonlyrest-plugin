@@ -14,6 +14,8 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.RandomIndexBasedOnBlockContextIndices
+import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,
@@ -47,8 +49,8 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     } yield (indices, aliases)
     result match {
       case Some((indices, aliases)) =>
-        actionRequest.indices(indices.map(_.value.value).toList: _*)
-        actionRequest.aliases(aliases.map(_.value.value).toList: _*)
+        updateIndices(actionRequest, indices)
+        updateAliases(actionRequest, aliases)
         Modified
       case None =>
         logger.error(s"[${id.show}] At least one alias and one index has to be allowed. " +
@@ -56,6 +58,50 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
           s"Found allowed aliases: [${blockContext.aliases.map(_.show).mkString(",")}]")
         ShouldBeInterrupted
     }
+  }
+
+  override def modifyWhenIndexNotFound: ModificationResult = {
+    if (aclContext.doesRequirePassword) {
+      val nonExistentIndex = initialBlockContext.randomNonexistentIndex()
+      if (nonExistentIndex.hasWildcard) {
+        val nonExistingIndices = NonEmptyList
+          .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
+          .getOrElse(NonEmptyList.of(nonExistentIndex))
+        updateIndices(actionRequest, nonExistingIndices)
+        Modified
+      } else {
+        ShouldBeInterrupted
+      }
+    } else {
+      updateIndices(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()))
+      Modified
+    }
+  }
+
+  override def modifyWhenAliasNotFound: ModificationResult = {
+    if (aclContext.doesRequirePassword) {
+      val nonExistentAlias = initialBlockContext.aliases.toList.randomNonexistentIndex()
+      if (nonExistentAlias.hasWildcard) {
+        val nonExistingAliases = NonEmptyList
+          .fromList(initialBlockContext.aliases.map(a => IndexName.randomNonexistentIndex(a.value.value)).toList)
+          .getOrElse(NonEmptyList.of(nonExistentAlias))
+        updateAliases(actionRequest, nonExistingAliases)
+        Modified
+      } else {
+        ShouldBeInterrupted
+      }
+    } else {
+      updateAliases(actionRequest, NonEmptyList.of(initialBlockContext.aliases.toList.randomNonexistentIndex()))
+      Modified
+    }
+  }
+
+  private def updateIndices(request: GetAliasesRequest, indices: NonEmptyList[IndexName]): Unit = {
+    actionRequest.indices(indices.map(_.value.value).toList: _*)
+  }
+
+  private def updateAliases(request: GetAliasesRequest, aliases: NonEmptyList[IndexName]): Unit = {
+    actionRequest.aliases(aliases.map(_.value.value).toList: _*)
   }
 
   private def indicesFrom(request: GetAliasesRequest) = {
