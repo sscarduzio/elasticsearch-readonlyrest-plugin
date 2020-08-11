@@ -19,9 +19,9 @@ import java.io.{Reader, StringReader}
 
 import cats.syntax.either._
 import io.circe._
-import org.yaml.snakeyaml.Yaml
-import org.yaml.snakeyaml.constructor.SafeConstructor
-import org.yaml.snakeyaml.nodes._
+import tech.beshu.ror.org.yaml.snakeyaml.Yaml
+import tech.beshu.ror.org.yaml.snakeyaml.constructor.SafeConstructor
+import tech.beshu.ror.org.yaml.snakeyaml.nodes._
 
 import scala.collection.JavaConverters._
 
