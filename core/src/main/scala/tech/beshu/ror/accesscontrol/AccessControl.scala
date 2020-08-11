@@ -57,8 +57,6 @@ object AccessControl {
     }
     final case class IndexNotFound[B <: BlockContext]()
       extends RegularRequestResult[B]
-    final case class AliasNotFound[B <: BlockContext]()
-      extends RegularRequestResult[B]
     final case class Failed[B <: BlockContext](ex: Throwable)
       extends RegularRequestResult[B]
     final case class PassedThrough[B <: BlockContext]()

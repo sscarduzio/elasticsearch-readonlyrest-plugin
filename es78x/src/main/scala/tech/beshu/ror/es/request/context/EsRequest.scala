@@ -42,8 +42,6 @@ trait EsRequest[B <: BlockContext] extends Logging {
 
   def modifyWhenIndexNotFound: ModificationResult = ModificationResult.CannotModify
 
-  def modifyWhenAliasNotFound: ModificationResult = ModificationResult.CannotModify
-
   protected def modifyRequest(blockContext: B): ModificationResult
 
   private def modifyCommonParts(blockContext: B): Unit = {

@@ -15,7 +15,6 @@ import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeI
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RandomIndexBasedOnBlockContextIndices
-import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 
 class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
                                  esContext: EsContext,
@@ -74,24 +73,6 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
       }
     } else {
       updateIndices(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()))
-      Modified
-    }
-  }
-
-  override def modifyWhenAliasNotFound: ModificationResult = {
-    if (aclContext.doesRequirePassword) {
-      val nonExistentAlias = initialBlockContext.aliases.toList.randomNonexistentIndex()
-      if (nonExistentAlias.hasWildcard) {
-        val nonExistingAliases = NonEmptyList
-          .fromList(initialBlockContext.aliases.map(a => IndexName.randomNonexistentIndex(a.value.value)).toList)
-          .getOrElse(NonEmptyList.of(nonExistentAlias))
-        updateAliases(actionRequest, nonExistingAliases)
-        Modified
-      } else {
-        ShouldBeInterrupted
-      }
-    } else {
-      updateAliases(actionRequest, NonEmptyList.of(initialBlockContext.aliases.toList.randomNonexistentIndex()))
       Modified
     }
   }

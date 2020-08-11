@@ -39,6 +39,7 @@ trait BaseIndexApiSuite
   private lazy val dev2IndexManager = new IndexManager(basicAuthClient("dev2", "test"))
   private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"))
   private lazy val dev5IndexManager = new IndexManager(basicAuthClient("dev5", "test"))
+  private lazy val dev6IndexManager = new IndexManager(basicAuthClient("dev6", "test"))
 
   "ROR" when {
     "Get index API is used" should {
@@ -124,7 +125,7 @@ trait BaseIndexApiSuite
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "the index is called explicitly when user has configured alias in indices rule" in {
-          val indexResponse = dev2IndexManager.getIndex("index2")
+          val indexResponse = dev6IndexManager.getIndex("index2")
 
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
@@ -342,7 +343,7 @@ trait BaseIndexApiSuite
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "the index is called explicitly when user has configured alias in indices rule" in {
-          val indexResponse = dev2IndexManager.getSettings("index2")
+          val indexResponse = dev6IndexManager.getSettings("index2")
 
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }

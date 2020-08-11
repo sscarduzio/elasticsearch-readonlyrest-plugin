@@ -326,7 +326,6 @@ class IndicesRule(val settings: Settings)
       case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
         Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
       case (ProcessResult.Failed(cause), _) => Rejected(cause)
-      case (_, ProcessResult.Failed(Some(Cause.IndexNotFound))) => Rejected(Some(Cause.AliasNotFound))
       case (_, ProcessResult.Failed(cause)) => Rejected(cause)
     }
   }

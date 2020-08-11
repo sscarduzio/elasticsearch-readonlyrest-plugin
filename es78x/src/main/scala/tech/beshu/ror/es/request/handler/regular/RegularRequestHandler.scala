@@ -68,8 +68,6 @@ class RegularRequestHandler(engine: Engine,
           onForbidden(causes.toNonEmptyList.map(fromMismatchedCause))
         case RegularRequestResult.IndexNotFound() =>
           onIndexNotFound(request)
-        case RegularRequestResult.AliasNotFound() =>
-          onAliasNotFound(request)
         case RegularRequestResult.Failed(ex) =>
           esContext.listener.onFailure(ex.asInstanceOf[Exception])
         case RegularRequestResult.PassedThrough() =>
@@ -124,23 +122,6 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def onAliasNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
-    BlockContextUpdater[B] match {
-      case AliasRequestBlockContextUpdater =>
-        handleAliasNotFoundForAliasRequest(request.asInstanceOf[EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]])
-      case FilterableMultiRequestBlockContextUpdater |
-           FilterableRequestBlockContextUpdater |
-           GeneralIndexRequestBlockContextUpdater |
-           CurrentUserMetadataRequestBlockContextUpdater |
-           GeneralNonIndexRequestBlockContextUpdater |
-           RepositoryRequestBlockContextUpdater |
-           SnapshotRequestBlockContextUpdater |
-           TemplateRequestBlockContextUpdater |
-           MultiIndexRequestBlockContextUpdater =>
-        onForbidden(NonEmptyList.one(OperationNotAllowed))
-    }
-  }
-
   private def handleIndexNotFoundForGeneralIndexRequest(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
     handleModificationResult(modificationResult)
@@ -160,12 +141,6 @@ class RegularRequestHandler(engine: Engine,
     val modificationResult = request.modifyWhenIndexNotFound
     handleModificationResult(modificationResult)
   }
-
-  private def handleAliasNotFoundForAliasRequest(request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]): Unit = {
-    val modificationResult = request.modifyWhenAliasNotFound
-    handleModificationResult(modificationResult)
-  }
-
 
   private def handleModificationResult(modificationResult: ModificationResult): Unit = {
     modificationResult match {

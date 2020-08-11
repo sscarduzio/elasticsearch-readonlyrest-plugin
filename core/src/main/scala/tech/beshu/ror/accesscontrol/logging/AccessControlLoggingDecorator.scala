@@ -56,8 +56,6 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
               log(Forbidden(requestContext, resultWithHistory.history))
             case RegularRequestResult.IndexNotFound() =>
               log(RequestedIndexNotExist(requestContext, resultWithHistory.history))
-            case RegularRequestResult.AliasNotFound() =>
-              log(RequestedIndexNotExist(requestContext, resultWithHistory.history))
             case RegularRequestResult.Failed(ex) =>
               log(Errored(requestContext, ex))
             case RegularRequestResult.PassedThrough() =>
