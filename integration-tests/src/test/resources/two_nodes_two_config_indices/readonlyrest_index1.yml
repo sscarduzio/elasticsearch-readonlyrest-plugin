@@ -1,7 +1,0 @@
-readonlyrest:
-  # comments should survive
-  access_control_rules:
-    - name: "CONTAINER ADMIN - index1"
-      verbosity: "error"
-      type: "allow"
-      auth_key: "admin:container"
