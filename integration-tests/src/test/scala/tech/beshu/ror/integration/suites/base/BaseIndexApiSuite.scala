@@ -243,7 +243,7 @@ trait BaseIndexApiSuite
         "full alias name is used and the alias doesn't exist" in {
           val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent")
 
-          aliasResponse.responseCode should be(404)
+          aliasResponse.responseCode should be(notFoundIndexStatusReturned)
         }
       }
     }

@@ -1,3 +1,19 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
 package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
@@ -5,6 +21,7 @@ import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction.{Add, Delete}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 
 trait IndexAliasesManagementSuite
@@ -19,10 +36,10 @@ trait IndexAliasesManagementSuite
   private lazy val adminDocumentManager = new DocumentManager(basicAuthClient("admin", "container"), targetEs.esVersion)
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"))
   private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
-  private lazy val dev4IndexManager = new IndexManager(basicAuthClient("dev4", "test"))
+  private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"))
 
   "Add index alias API" should {
-    "be allowed to use" when {
+    "be allowed to be used" when {
       "there is no indices rule in block" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
@@ -31,6 +48,9 @@ trait IndexAliasesManagementSuite
         val result = adminIndexManager.createAliasOf("index", "admin-alias")
 
         result.responseCode should be (200)
+        val allAliasesResponse = adminIndexManager.getAliases
+        allAliasesResponse.responseCode should be (200)
+        allAliasesResponse.aliasesOfIndices("index") should be (List("admin-alias"))
       }
       "user has access to both: index pattern and alias name" when {
         "an index of the pattern exists" in {
@@ -41,6 +61,10 @@ trait IndexAliasesManagementSuite
           val result = dev1IndexManager.createAliasOf("dev1-000*", "dev1")
 
           result.responseCode should be(200)
+          val allAliasesResponse = adminIndexManager.getAliases
+          allAliasesResponse.responseCode should be (200)
+          allAliasesResponse.aliasesOfIndices.size should be (1)
+          allAliasesResponse.aliasesOfIndices("dev1-0001") should be (List("dev1"))
         }
         "no index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
@@ -53,7 +77,7 @@ trait IndexAliasesManagementSuite
         }
       }
     }
-    "not be allowed to use" when {
+    "not be allowed to be used" when {
       "user has no access to given at least one index pattern" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
@@ -76,7 +100,7 @@ trait IndexAliasesManagementSuite
   }
 
   "Delete index alias API" should {
-    "be allowed to use" when {
+    "be allowed to be used" when {
       "there is no indices rule in block" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
@@ -86,6 +110,9 @@ trait IndexAliasesManagementSuite
         val result = adminIndexManager.deleteAliasOf("index", "admin-alias")
 
         result.responseCode should be (200)
+        val allAliasesResponse = adminIndexManager.getAliases
+        allAliasesResponse.responseCode should be (200)
+        allAliasesResponse.aliasesOfIndices.size should be (0)
       }
       "user has access to both: index pattern and alias name" when {
         "an index of the pattern exists" in {
@@ -97,6 +124,10 @@ trait IndexAliasesManagementSuite
           val result = dev1IndexManager.deleteAliasOf("dev1-000*", "dev1")
 
           result.responseCode should be(200)
+
+          val allAliasesResponse = adminIndexManager.getAliases
+          allAliasesResponse.responseCode should be (200)
+          allAliasesResponse.aliasesOfIndices.size should be (0)
         }
         "no index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
@@ -118,7 +149,7 @@ trait IndexAliasesManagementSuite
         }
       }
     }
-    "not be allowed to use" when {
+    "not be allowed to be used" when {
       "user has no access to given at least one index pattern" in {
         adminDocumentManager.createFirstDoc("index", exampleDocument).force()
         adminDocumentManager.createFirstDoc("dev1-0001",  exampleDocument).force()
@@ -142,17 +173,57 @@ trait IndexAliasesManagementSuite
     }
   }
 
-  "Exist index alias API" should {
-    "return all aliases" when {
-      "there is no indices rule in block" in {
-        dev4IndexManager.getAlias()
+  "Update index alias API" should {
+    "be allowed to be used" when {
+      "user has access to all indices and aliases from actions" in {
+        adminDocumentManager.createFirstDoc("dev3-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev3-0002",  exampleDocument).force()
+
+        val result = dev3IndexManager.updateAliases(
+          Add("dev3-0001", "dev3"),
+          Add("dev3-0002", "dev3")
+        )
+
+        result.responseCode should be (200)
+        val allAliasesResponse = adminIndexManager.getAliases
+        allAliasesResponse.responseCode should be (200)
+        allAliasesResponse.aliasesOfIndices.size should be (2)
+        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (List("dev3"))
+        allAliasesResponse.aliasesOfIndices("dev3-0002") should be (List("dev3"))
       }
     }
-    "return aliases" which {
-      "names are allowed by indices rule" which {
-        "indices, they are related to, are allowed by indices rule" in {
+    "be not allowed to be used" when {
+      "user doesn't have access to at least one index from actions" in {
+        adminDocumentManager.createFirstDoc("dev2-0001",  exampleDocument).force()
+        adminDocumentManager.createFirstDoc("dev3-0001",  exampleDocument).force()
+        adminIndexManager.createAliasOf("dev3-0001", "dev3").force()
 
-        }
+        val result = dev3IndexManager.updateAliases(
+          Delete("dev3-0001", "dev3"),
+          Add("dev2-0001", "dev3")
+        )
+
+        result.responseCode should be (403)
+        val allAliasesResponse = adminIndexManager.getAliases
+        allAliasesResponse.responseCode should be (200)
+        allAliasesResponse.aliasesOfIndices.size should be (1)
+        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (List("dev3"))
+      }
+      "user doesn't have access to at least one alias from actions" in {
+        adminDocumentManager.createFirstDoc("dev3-0001",  exampleDocument).force()
+        adminIndexManager.createAliasOf("dev3-0001", "dev3").force()
+        adminDocumentManager.createFirstDoc("dev3-0002",  exampleDocument).force()
+
+        val result = dev3IndexManager.updateAliases(
+          Delete("dev3-0001", "dev3"),
+          Add("dev3-0002", "dev2")
+        )
+
+        result.responseCode should be (403)
+        val allAliasesResponse = adminIndexManager.getAliases
+        allAliasesResponse.responseCode should be (200)
+        allAliasesResponse.aliasesOfIndices.size should be (1)
+        allAliasesResponse.aliasesOfIndices("dev3-0001") should be (List("dev3"))
       }
     }
   }

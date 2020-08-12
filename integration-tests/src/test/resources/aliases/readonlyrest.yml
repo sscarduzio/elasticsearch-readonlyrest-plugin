@@ -27,6 +27,3 @@ readonlyrest:
       indices: ["dev3*"]
       auth_key: dev3:test
 
-    - name: "dev4 block"
-      auth_key: dev4:test
-
