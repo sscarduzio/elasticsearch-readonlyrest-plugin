@@ -16,9 +16,12 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import cats.data.NonEmptyList
+import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class IndexManager(client: RestClient,
@@ -29,31 +32,32 @@ class IndexManager(client: RestClient,
     call(getIndexRequest(indices.toSet), new JsonResponse(_))
   }
 
-  def getAliases: JsonResponse = {
-    call(getAliasRequest(), new JsonResponse(_))
+  def getAliases: AliasesResponse = {
+    call(getAliasRequest(), new AliasesResponse(_))
   }
 
-  def getAlias(indices: String*): JsonResponse = {
+  def getAlias(indices: String*): AliasesResponse = {
     val indexOpt = indices.mkString(",") match {
       case "" => None
       case str => Some(str)
     }
-    call(getAliasRequest(indexOpt), new JsonResponse(_))
+    call(getAliasRequest(indexOpt), new AliasesResponse(_))
   }
 
-  def getAliasByName(index: String, alias: String): JsonResponse = {
-    call(getAliasRequest(Some(index), Some(alias)), new JsonResponse(_))
+  def getAliasByName(index: String, alias: String): AliasesResponse = {
+    call(getAliasRequest(Some(index), Some(alias)), new AliasesResponse(_))
   }
 
   def createAliasOf(index: String, alias: String): JsonResponse = {
     call(createAliasRequest(index, alias), new JsonResponse(_))
   }
 
-  def createAliasAndAssert(index: String, alias: String): Unit = {
-    val result = createAliasOf(index, alias)
-    if(!result.isSuccess) {
-      throw new IllegalStateException(s"Cannot create alias '$alias'; returned: ${result.body}")
-    }
+  def deleteAliasOf(index: String, alias: String): JsonResponse = {
+    call(deleteAliasRequest(index, alias), new JsonResponse(_))
+  }
+
+  def updateAliases(action: AliasAction, actions: AliasAction*): JsonResponse = {
+    call(updateAliasesRequest(NonEmptyList.of(action, actions: _*)), new JsonResponse(_))
   }
 
   def getSettings(index: String*): JsonResponse = {
@@ -74,6 +78,9 @@ class IndexManager(client: RestClient,
 
   def removeAll: SimpleResponse =
     call(createDeleteIndicesRequest, new SimpleResponse(_))
+
+  def removeAllAliases: SimpleResponse =
+    call(createDeleteAliasesRequest, new SimpleResponse(_))
 
   def getMapping(indexName: String, field: String): JsonResponse = {
     call(createGetMappingRequest(indexName, field), new JsonResponse(_))
@@ -109,11 +116,11 @@ class IndexManager(client: RestClient,
   }
 
   private def createAliasRequest(index: String, alias: String) = {
-    val request = new HttpPost(client.from("_aliases"))
-    request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{"actions":[{"add":{"index":"$index","alias":"$alias"}}]}""".stripMargin))
-    request
+    new HttpPut(client.from(s"/$index/_alias/$alias"))
+  }
+
+  private def deleteAliasRequest(index: String, alias: String) = {
+    new HttpDelete(client.from(s"$index/_aliases/$alias"))
   }
 
   private def createGetSettingsRequest(indices: Set[String]) = {
@@ -122,6 +129,10 @@ class IndexManager(client: RestClient,
 
   private def createDeleteIndicesRequest = {
     new HttpDelete(client.from("/_all"))
+  }
+
+  private def createDeleteAliasesRequest = {
+    new HttpDelete(client.from("/_all/_aliases/_all"))
   }
 
   private def createPutAllSettingsRequest(numberOfReplicas: Int) = {
@@ -151,5 +162,38 @@ class IndexManager(client: RestClient,
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(""))
     request
+  }
+
+  private def updateAliasesRequest(actions: NonEmptyList[AliasAction]) = {
+    def actionStrings = actions.map {
+      case AliasAction.Add(index, alias) => s"""{ "add": { "index": "$index", "alias": "$alias" } }"""
+      case AliasAction.Delete(index, alias) => s"""{ "remove": { "index": "$index", "alias": "$alias" } }"""
+    }
+    val request = new HttpPost(client.from("/_aliases"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{
+        |  "actions": [
+        |     ${actionStrings.toList.mkString(",\n")}
+        |  ]
+        |}""".stripMargin))
+    request
+  }
+}
+
+object IndexManager {
+
+  sealed trait AliasAction
+  object AliasAction {
+    final case class Add(index: String, alias: String) extends AliasAction
+    final case class Delete(index: String, alias: String) extends AliasAction
+  }
+
+  class AliasesResponse(response: HttpResponse) extends JsonResponse(response) {
+    lazy val aliasesOfIndices: Map[String, List[String]] =
+      responseJson.obj.toMap.map { case (indexName, json) =>
+        val aliases = json("aliases").obj.keys.toList
+        (indexName, aliases)
+      }
   }
 }
