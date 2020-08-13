@@ -166,7 +166,6 @@ class RegularRequestHandler(engine: Engine,
     handleModificationResult(modificationResult)
   }
 
-
   private def handleModificationResult(modificationResult: ModificationResult): Unit = {
     modificationResult match {
       case ModificationResult.Modified =>

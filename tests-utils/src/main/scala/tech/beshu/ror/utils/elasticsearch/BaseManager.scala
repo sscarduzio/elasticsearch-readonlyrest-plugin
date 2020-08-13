@@ -25,6 +25,8 @@ import tech.beshu.ror.utils.misc.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.misc.ScalaUtils._
 import ujson.Value
 
+import scala.util.Try
+
 abstract class BaseManager(client: RestClient) {
 
   protected def call[T <: SimpleResponse](request: HttpUriRequest, fromResponse: HttpResponse => T): T = {
@@ -59,7 +61,9 @@ object BaseManager {
     lazy val body: String = stringBodyFrom(response)
 
     def force(): Unit = {
-      if(!isSuccess) throw new IllegalStateException(s"Expected success but got HTTP $responseCode, body: $body")
+      if(!isSuccess) throw new IllegalStateException(
+        s"Expected success but got HTTP $responseCode, body: ${Try(stringBodyFrom(response)).getOrElse("")}"
+      )
     }
   }
 

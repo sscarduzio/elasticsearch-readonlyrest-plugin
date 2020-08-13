@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction.{Add, Delete}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager}
 
 trait IndexAliasesManagementSuite
   extends WordSpec
@@ -35,6 +35,7 @@ trait IndexAliasesManagementSuite
 
   private lazy val adminDocumentManager = new DocumentManager(basicAuthClient("admin", "container"), targetEs.esVersion)
   private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"))
+  private lazy val adminCatManager = new CatManager(basicAuthClient("admin", "container"), esVersion = targetEs.esVersion)
   private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
   private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"))
 
@@ -63,7 +64,6 @@ trait IndexAliasesManagementSuite
           result.responseCode should be(200)
           val allAliasesResponse = adminIndexManager.getAliases
           allAliasesResponse.responseCode should be (200)
-          allAliasesResponse.aliasesOfIndices.size should be (1)
           allAliasesResponse.aliasesOfIndices("dev1-0001") should be (List("dev1"))
         }
         "no index of the pattern exists" in {
@@ -110,9 +110,9 @@ trait IndexAliasesManagementSuite
         val result = adminIndexManager.deleteAliasOf("index", "admin-alias")
 
         result.responseCode should be (200)
-        val allAliasesResponse = adminIndexManager.getAliases
+        val allAliasesResponse = adminCatManager.aliases()
         allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices.size should be (0)
+        allAliasesResponse.results.size should be (0)
       }
       "user has access to both: index pattern and alias name" when {
         "an index of the pattern exists" in {
@@ -125,9 +125,9 @@ trait IndexAliasesManagementSuite
 
           result.responseCode should be(200)
 
-          val allAliasesResponse = adminIndexManager.getAliases
+          val allAliasesResponse = adminCatManager.aliases()
           allAliasesResponse.responseCode should be (200)
-          allAliasesResponse.aliasesOfIndices.size should be (0)
+          allAliasesResponse.results.size should be (0)
         }
         "no index of the pattern exists" in {
           adminDocumentManager.createFirstDoc("index", exampleDocument).force()
@@ -187,7 +187,6 @@ trait IndexAliasesManagementSuite
         result.responseCode should be (200)
         val allAliasesResponse = adminIndexManager.getAliases
         allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices.size should be (2)
         allAliasesResponse.aliasesOfIndices("dev3-0001") should be (List("dev3"))
         allAliasesResponse.aliasesOfIndices("dev3-0002") should be (List("dev3"))
       }
@@ -206,7 +205,6 @@ trait IndexAliasesManagementSuite
         result.responseCode should be (403)
         val allAliasesResponse = adminIndexManager.getAliases
         allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices.size should be (1)
         allAliasesResponse.aliasesOfIndices("dev3-0001") should be (List("dev3"))
       }
       "user doesn't have access to at least one alias from actions" in {
@@ -222,7 +220,6 @@ trait IndexAliasesManagementSuite
         result.responseCode should be (403)
         val allAliasesResponse = adminIndexManager.getAliases
         allAliasesResponse.responseCode should be (200)
-        allAliasesResponse.aliasesOfIndices.size should be (1)
         allAliasesResponse.aliasesOfIndices("dev3-0001") should be (List("dev3"))
       }
     }
@@ -230,6 +227,7 @@ trait IndexAliasesManagementSuite
 
   override protected def beforeEach(): Unit = {
     adminIndexManager.removeAll.force()
+    adminIndexManager.removeAllAliases
   }
 
   private def exampleDocument = ujson.read("""{"hello":"world"}""")

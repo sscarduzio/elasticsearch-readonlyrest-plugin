@@ -115,6 +115,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       // aliases
       case request: GetAliasesRequest =>
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: IndicesAliasesRequest =>
+        regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // indices
       case request: BulkShardRequest =>
         regularRequestHandler.handle(new BulkShardEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
@@ -134,8 +136,6 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new BulkEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: DeleteRequest =>
         regularRequestHandler.handle(new DeleteDocumentEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
-      case request: IndicesAliasesRequest =>
-        regularRequestHandler.handle(new IndicesAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: GetSettingsRequest =>
         regularRequestHandler.handle(new GetSettingsEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesStatsRequest =>

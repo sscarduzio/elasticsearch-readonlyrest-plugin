@@ -79,6 +79,9 @@ class IndexManager(client: RestClient,
   def removeAll: SimpleResponse =
     call(createDeleteIndicesRequest, new SimpleResponse(_))
 
+  def removeAllAliases: SimpleResponse =
+    call(createDeleteAliasesRequest, new SimpleResponse(_))
+
   def getMapping(indexName: String, field: String): JsonResponse = {
     call(createGetMappingRequest(indexName, field), new JsonResponse(_))
   }
@@ -113,11 +116,7 @@ class IndexManager(client: RestClient,
   }
 
   private def createAliasRequest(index: String, alias: String) = {
-    val request = new HttpPost(client.from("_aliases"))
-    request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""{"actions":[{"add":{"index":"$index","alias":"$alias"}}]}""".stripMargin))
-    request
+    new HttpPut(client.from(s"/$index/_alias/$alias"))
   }
 
   private def deleteAliasRequest(index: String, alias: String) = {
@@ -130,6 +129,10 @@ class IndexManager(client: RestClient,
 
   private def createDeleteIndicesRequest = {
     new HttpDelete(client.from("/_all"))
+  }
+
+  private def createDeleteAliasesRequest = {
+    new HttpDelete(client.from("/_all/_aliases/_all"))
   }
 
   private def createPutAllSettingsRequest(numberOfReplicas: Int) = {
