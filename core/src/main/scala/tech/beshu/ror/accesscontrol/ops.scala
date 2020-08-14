@@ -19,14 +19,14 @@ package tech.beshu.ror.accesscontrol
 import java.util.Base64
 import java.util.regex.Pattern
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import cats.implicits._
 import cats.{Order, Show}
 import com.softwaremill.sttp.{Method, Uri}
-import io.lemonlabs.uri.{Uri => LemonUri}
 import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
+import io.lemonlabs.uri.{Uri => LemonUri}
 import shapeless.Nat
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
@@ -48,8 +48,8 @@ import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
@@ -287,7 +287,7 @@ object headerValues {
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
 
-  implicit val transientFieldsToHeaderValue: ToHeaderValue[NonEmptySet[DocumentField]] = ToHeaderValue { fields =>
+  implicit val transientFieldsToHeaderValue: ToHeaderValue[FieldsRestrictions] = ToHeaderValue { fieldsRestrictions =>
     import upickle.default
     import default._
 
@@ -296,19 +296,19 @@ object headerValues {
       macroW[DocumentField.AccessMode.Whitelist.type],
       macroW[DocumentField.AccessMode.Blacklist.type]
     )
-    implicit val documentField2W: Writer[DocumentField] = macroW
+    implicit val documentFieldW: Writer[DocumentField] = macroW
+    implicit val setW: Writer[UniqueNonEmptyList[DocumentField]] =
+      SeqLikeWriter[UniqueNonEmptyList, DocumentField]
 
-    implicit val setW: Writer[NonEmptySet[DocumentField]] =
-      SeqLikeWriter[Set, DocumentField].comap(_.toSortedSet)
+    implicit val fieldsRestrictionsW: Writer[FieldsRestrictions] = macroW
 
-    val fieldsJsonString = upickle.default.write(fields)
+    val fieldsJsonString = upickle.default.write(fieldsRestrictions)
     NonEmptyString.unsafeFrom(
       Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
     )
   }
 
-  implicit val transientFieldsFromHeaderValue: FromHeaderValue[NonEmptySet[DocumentField]] = (value: NonEmptyString) => {
-    import tech.beshu.ror.accesscontrol.orders._
+  implicit val transientFieldsFromHeaderValue: FromHeaderValue[FieldsRestrictions] = (value: NonEmptyString) => {
     import upickle.default
     import default._
 
@@ -319,10 +319,13 @@ object headerValues {
     )
     implicit val documentFieldR: Reader[DocumentField] = macroR
 
-    implicit val setR: Reader[NonEmptySet[DocumentField]] =
-      SeqLikeReader[Set, DocumentField]
-        .map(set => NonEmptySet.fromSetUnsafe(SortedSet.empty[DocumentField] ++ set))
-    Try(upickle.default.read[NonEmptySet[DocumentField]](
+    implicit val setR: Reader[UniqueNonEmptyList[DocumentField]] =
+      SeqLikeReader[List, DocumentField]
+        .map(UniqueNonEmptyList.unsafeFromList)
+
+    implicit val fieldsRestrictionsR: Reader[FieldsRestrictions] = macroR
+
+    Try(upickle.default.read[FieldsRestrictions](
       new String(Base64.getDecoder.decode(value.value), "UTF-8")
     ))
   }

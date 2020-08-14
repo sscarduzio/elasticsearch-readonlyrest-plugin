@@ -57,6 +57,17 @@ trait FieldLevelSecuritySuite
 
         source should be(ujson.read("""{"user2":"user2Value"}"""))
       }
+      "whitelist mode with user variable is used and called by user with 'negated' value" in {
+        val searchManager = new SearchManager(basicAuthClient("~user", "pass"))
+
+        val result = searchManager.search("/testfiltera")
+
+        assertEquals(200, result.responseCode)
+        val searchJson = result.searchHits
+        val source = searchJson(0)("_source")
+
+        source should be(ujson.read("""{"~user":"~userValue"}"""))
+      }
       "whitelist mode with wildcard is used" in {
         val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
 
@@ -79,6 +90,7 @@ trait FieldLevelSecuritySuite
 
         source should be(ujson.read(
           """|{
+             | "~user": "~userValue",
              | "user1": "user1Value",
              | "user2": "user2Value",
              | "user3": "user3Value",
@@ -98,6 +110,7 @@ trait FieldLevelSecuritySuite
 
         source should be(ujson.read(
           """|{
+             | "~user": "~userValue",
              | "user1": "user1Value",
              | "user2": "user2Value",
              | "user3": "user3Value",
@@ -117,6 +130,7 @@ trait FieldLevelSecuritySuite
 
         source should be(ujson.read(
           """|{
+             | "~user": "~userValue",
              | "user1": "user1Value",
              | "user2": "user2Value",
              | "user3": "user3Value",
@@ -125,13 +139,6 @@ trait FieldLevelSecuritySuite
              |}""".stripMargin)
         )
       }
-    }
-    "reject when runtime variables resolves to mixed field mode (whitelist with blacklist)" in {
-      val searchManager = new SearchManager(basicAuthClient("user", "pass"))
-
-      val result = searchManager.search("testfiltera")
-
-      assertEquals(401, result.responseCode)
     }
     "work for nested fields" when {
       "whitelist mode is used" in {
@@ -235,6 +242,7 @@ object FieldLevelSecuritySuite {
     documentManager.insertDocAndWaitForRefresh(
       "/testfiltera/documents/doc-a1",
       """{
+        | "~user": "~userValue",
         | "user1": "user1Value",
         | "user2": "user2Value",
         | "user3": "user3Value",

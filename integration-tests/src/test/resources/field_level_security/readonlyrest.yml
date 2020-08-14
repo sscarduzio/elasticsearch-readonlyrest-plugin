@@ -22,6 +22,11 @@ readonlyrest:
       indices: ["testfiltera"]
       fields: ["_source","@{acl:user}"]
 
+    - name: whitelist_with_variable_user_with_negated_value
+      auth_key: "~user:pass"
+      indices: ["testfiltera"]
+      fields: ["_source","@{acl:user}"]
+
     - name: whitelist_wildcard
       auth_key: "user3:pass"
       indices: ["testfiltera"]
@@ -41,11 +46,6 @@ readonlyrest:
       auth_key: "user6:pass"
       indices: ["testfiltera"]
       fields: ["~us*6"]
-
-    - name: mixed_modes_with_variable
-      auth_key: "user:pass"
-      indices: ["testfiltera"]
-      fields: ["@{acl:user}1", "~@{acl:user}2"]
 
     - name: Nested field test1
       auth_key: "user1:pass"

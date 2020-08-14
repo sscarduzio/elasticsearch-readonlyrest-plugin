@@ -19,7 +19,6 @@ package tech.beshu.ror.es.dlsfls
 import java.io.ByteArrayOutputStream
 import java.util.{Iterator => JavaIterator}
 
-import cats.data.NonEmptySet
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.StoredFieldVisitor.Status
@@ -29,7 +28,7 @@ import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
 import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XContentType}
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.DocumentField
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions
 import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader
 import tech.beshu.ror.fls.FieldsPolicy
 import ujson._
@@ -37,22 +36,22 @@ import ujson._
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-private class DocumentFieldReader(reader: LeafReader, fields: NonEmptySet[DocumentField])
+private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: FieldsRestrictions)
   extends FilterLeafReader(reader) with Logging {
 
-  private val policy = new FieldsPolicy(fields)
+  private val policy = new FieldsPolicy(fieldsRestrictions)
   private val remainingFieldsInfo = {
     val fInfos = in.getFieldInfos
     val newfInfos = if (fInfos.asScala.isEmpty) {
-      logger.warn("original fields were empty! This is weird!")
+      logger.warn("original fieldsRestrictions were empty! This is weird!")
       fInfos
     } else {
       val remainingFields = fInfos.asScala.filter(f => policy.canKeep(f.name)).toSet
       new FieldInfos(remainingFields.toArray)
     }
     logger.debug(s"always allow: ${Constants.FIELDS_ALWAYS_ALLOW.asScala.mkString(",")}")
-    logger.debug(s"original fields were: ${fInfos.asScala.map(_.name).mkString(",")}")
-    logger.debug(s"new fields are: ${newfInfos.asScala.map(_.name).mkString(",")}")
+    logger.debug(s"original fieldsRestrictions were: ${fInfos.asScala.map(_.name).mkString(",")}")
+    logger.debug(s"new fieldsRestrictions are: ${newfInfos.asScala.map(_.name).mkString(",")}")
     newfInfos
   }
 
@@ -204,26 +203,26 @@ private class DocumentFieldReader(reader: LeafReader, fields: NonEmptySet[Docume
 }
 
 object DocumentFieldReader {
-  def wrap(in: DirectoryReader, fields: NonEmptySet[DocumentField]): DocumentFieldDirectoryReader =
-    new DocumentFieldDirectoryReader(in, fields)
+  def wrap(in: DirectoryReader, fieldsRestrictions: FieldsRestrictions): DocumentFieldDirectoryReader =
+    new DocumentFieldDirectoryReader(in, fieldsRestrictions)
 }
 
-final class DocumentFieldDirectoryReader(in: DirectoryReader, fields: NonEmptySet[DocumentField])
-  extends FilterDirectoryReader(in, new DocumentFieldDirectorySubReader(fields)) {
+final class DocumentFieldDirectoryReader(in: DirectoryReader, fieldsRestrictions: FieldsRestrictions)
+  extends FilterDirectoryReader(in, new DocumentFieldDirectorySubReader(fieldsRestrictions)) {
 
   override protected def doWrapDirectoryReader(in: DirectoryReader) =
-    new DocumentFieldDirectoryReader(in, fields)
+    new DocumentFieldDirectoryReader(in, fieldsRestrictions)
 
   override def getReaderCacheHelper: IndexReader.CacheHelper =
     in.getReaderCacheHelper
 }
 
 object DocumentFieldDirectoryReader {
-  private class DocumentFieldDirectorySubReader(fields: NonEmptySet[DocumentField])
+  private class DocumentFieldDirectorySubReader(fieldsRestrictions: FieldsRestrictions)
     extends FilterDirectoryReader.SubReaderWrapper {
 
     override def wrap(reader: LeafReader): LeafReader = {
-      Try(new DocumentFieldReader(reader, fields))
+      Try(new DocumentFieldReader(reader, fieldsRestrictions))
         .recover { case ex: Exception => throw ExceptionsHelper.convertToElastic(ex) }
         .get
     }

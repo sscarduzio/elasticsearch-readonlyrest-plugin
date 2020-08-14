@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.util.{Base64, Locale}
 
 import cats.Eq
-import cats.data.NonEmptyList
+import cats.data.{NonEmptyList, NonEmptySet}
 import cats.implicits._
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
@@ -310,28 +310,16 @@ object domain {
 
   final case class UserOrigin(value: NonEmptyString)
 
-  final case class DocumentField(value: NonEmptyString, mode: AccessMode)
+  final case class FieldsRestrictions(fields: UniqueNonEmptyList[DocumentField],
+                                      mode: AccessMode)
+
+  final case class DocumentField(value: NonEmptyString)
   object DocumentField {
 
     sealed trait AccessMode
     object AccessMode {
       case object Whitelist extends AccessMode
       case object Blacklist extends AccessMode
-    }
-
-    def whitelisted(value: NonEmptyString) = DocumentField(value, AccessMode.Whitelist)
-    def blacklisted(value: NonEmptyString) = DocumentField(value, AccessMode.Blacklist)
-    
-    def areDifferentAccessModesUsedSimultaneously(allFields: List[DocumentField]): Boolean = {
-      val (blacklistedFields, whitelistedFields) = allFields
-        .partitionEither { field =>
-          field.mode match {
-            case AccessMode.Blacklist => Left(field)
-            case AccessMode.Whitelist => Right(field)
-          }
-        }
-
-      blacklistedFields.nonEmpty && whitelistedFields.nonEmpty
     }
   }
 

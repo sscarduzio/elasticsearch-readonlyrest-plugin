@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
@@ -25,20 +24,21 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBl
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.DocumentField
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.domain.DocumentField.AccessMode
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class FieldsRuleTests extends WordSpec with MockFactory {
 
   "A FieldsRule" should {
     "match" when {
       "request is read only" in {
-        val rule = new FieldsRule(FieldsRule.Settings(
-          NonEmptySet.of(AlreadyResolved(DocumentField.whitelisted("_field1".nonempty).nel), AlreadyResolved(DocumentField.whitelisted("_field2".nonempty).nel))
-        ))
+        val fields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[DocumentField]] = UniqueNonEmptyList.of(AlreadyResolved(DocumentField("_field1".nonempty).nel), AlreadyResolved(DocumentField("_field2".nonempty).nel))
+        val rule = new FieldsRule(FieldsRule.Settings(fields, AccessMode.Whitelist))
         val requestContext = mock[RequestContext]
         (requestContext.isReadOnlyRequest _).expects().returning(true)
 
@@ -49,14 +49,14 @@ class FieldsRuleTests extends WordSpec with MockFactory {
             requestContext,
             UserMetadata.empty,
             Set.empty,
-            Set(headerFrom("_fields" -> "W3sidmFsdWUiOiJfZmllbGQxIiwibW9kZSI6eyIkdHlwZSI6InRlY2guYmVzaHUucm9yLmFjY2Vzc2NvbnRyb2wuZG9tYWluLkRvY3VtZW50RmllbGQyLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19LHsidmFsdWUiOiJfZmllbGQyIiwibW9kZSI6eyIkdHlwZSI6InRlY2guYmVzaHUucm9yLmFjY2Vzc2NvbnRyb2wuZG9tYWluLkRvY3VtZW50RmllbGQyLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19XQ=="))
+            Set(headerFrom("_fields" -> "eyJmaWVsZHMiOlt7InZhbHVlIjoiX2ZpZWxkMSJ9LHsidmFsdWUiOiJfZmllbGQyIn1dLCJtb2RlIjp7IiR0eXBlIjoidGVjaC5iZXNodS5yb3IuYWNjZXNzY29udHJvbC5kb21haW4uRG9jdW1lbnRGaWVsZC5BY2Nlc3NNb2RlLldoaXRlbGlzdCJ9fQ=="))
           )
         ))
       }
     }
     "not match" when {
       "request is not read only" in {
-        val rule = new FieldsRule(FieldsRule.Settings(NonEmptySet.of(AlreadyResolved(DocumentField.whitelisted("_field1".nonempty).nel))))
+        val rule = new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.of(AlreadyResolved(DocumentField("_field1".nonempty).nel)), AccessMode.Whitelist))
         val requestContext = mock[RequestContext]
         (requestContext.isReadOnlyRequest _).expects().returning(false)
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)

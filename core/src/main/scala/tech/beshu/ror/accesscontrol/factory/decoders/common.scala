@@ -33,8 +33,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{Address, DocumentField, Group, Header, User}
+import tech.beshu.ror.accesscontrol.domain.{Address, Group, Header, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
@@ -155,22 +154,6 @@ object common extends Logging {
       Address.from(str) match {
         case Some(address) => Right(address)
         case None => Left(ConvertError(s"Cannot create address (IP or hostname) from '$str'"))
-      }
-    }
-  }
-
-  implicit val documentFieldConvertible: Convertible[DocumentField] = new Convertible[domain.DocumentField] {
-    override def convert: String => Either[ConvertError, domain.DocumentField] = str => {
-      if (str.startsWith("~")) {
-        NonEmptyString.from(str.substring(1)) match {
-          case Right(nes) => Right(DocumentField.blacklisted(nes))
-          case Left(_) => Left(ConvertError("There was no name passed for blacklist field (~ only is forbidden)"))
-        }
-      } else {
-        NonEmptyString.from(str) match {
-          case Right(nes) => Right(DocumentField.whitelisted(nes))
-          case Left(_) => Left(ConvertError("Field cannot be empty string"))
-        }
       }
     }
   }
