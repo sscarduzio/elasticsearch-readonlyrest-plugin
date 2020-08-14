@@ -39,7 +39,7 @@ class ElasticsearchNodeWaitingStrategy(esVersion: String,
   override def waitUntilReady(): Unit = {
     implicit val startupThreshold: FiniteDuration = FiniteDuration(startupTimeout.toMillis, TimeUnit.MILLISECONDS)
     val client = restClient.runAttempt().fold(throw _, identity)
-    val checker = EsStartupChecker.accessibleEsChecker(containerName, client)
+    val checker = EsStartupChecker.greenEsClusterChecker(containerName, client)
     val started = checker.waitForStart()
     if (!started) {
       throw new ContainerLaunchException(s"Cannot start ROR-ES container [$containerName]")

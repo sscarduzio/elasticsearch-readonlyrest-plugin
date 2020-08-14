@@ -33,7 +33,7 @@ import scala.collection.JavaConverters._
 final class LoadClusterConfigsWithNoRorNodeTest
   extends WordSpec
     with BeforeAndAfterEach
-    with XpackSupport
+    with NoXpackSupport
     with PluginTestSupport
     with BaseEsClusterIntegrationTest
     with MultipleClientsSupport {
