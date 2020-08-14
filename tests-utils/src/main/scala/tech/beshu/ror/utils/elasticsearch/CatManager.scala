@@ -40,6 +40,8 @@ class CatManager(client: RestClient,
 
   def indices(index: String): CatResponse = call(createCatIndicesRequest(Some(index)), new CatResponse(_))
 
+  def aliases(): CatResponse = call(genericCatRequest("aliases"), new CatResponse(_))
+
   def tasks(): CatResponse = call(genericCatRequest("tasks"), new CatResponse(_))
 
   def nodes(): CatNodesResponse = call(genericCatRequest("nodes"), new CatNodesResponse(_))
