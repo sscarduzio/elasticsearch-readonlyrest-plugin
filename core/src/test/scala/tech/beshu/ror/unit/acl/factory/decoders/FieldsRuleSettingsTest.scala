@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.DocumentField
-import tech.beshu.ror.accesscontrol.domain.DocumentField.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.TestsUtils._

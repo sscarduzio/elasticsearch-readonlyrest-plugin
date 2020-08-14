@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.DocumentField
-import tech.beshu.ror.accesscontrol.domain.DocumentField.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList

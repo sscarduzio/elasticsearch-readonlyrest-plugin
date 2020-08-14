@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.util.{Base64, Locale}
 
 import cats.Eq
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import cats.implicits._
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.types.string.NonEmptyString
@@ -28,7 +28,7 @@ import io.jsonwebtoken.Claims
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.DocumentField.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
@@ -313,8 +313,7 @@ object domain {
   final case class FieldsRestrictions(fields: UniqueNonEmptyList[DocumentField],
                                       mode: AccessMode)
 
-  final case class DocumentField(value: NonEmptyString)
-  object DocumentField {
+  object FieldsRestrictions {
 
     sealed trait AccessMode
     object AccessMode {
@@ -322,6 +321,8 @@ object domain {
       case object Blacklist extends AccessMode
     }
   }
+
+  final case class DocumentField(value: NonEmptyString)
 
   final case class Type(value: String) extends AnyVal
 

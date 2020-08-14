@@ -16,20 +16,16 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.data.NonEmptySet
-import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.DocumentField.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, FieldsRestrictions, Header}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.ScalaOps.SetOps
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class FieldsRule(val settings: Settings)

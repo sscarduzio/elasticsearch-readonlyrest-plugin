@@ -19,7 +19,7 @@ package tech.beshu.ror.fls
 import java.util.regex.Pattern
 
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.DocumentField.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, FieldsRestrictions}
 
 class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {

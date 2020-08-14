@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -292,9 +293,9 @@ object headerValues {
     import default._
 
     implicit val nesW: Writer[NonEmptyString] = StringWriter.comap(_.value)
-    implicit val accessModeW: Writer[DocumentField.AccessMode] = Writer.merge(
-      macroW[DocumentField.AccessMode.Whitelist.type],
-      macroW[DocumentField.AccessMode.Blacklist.type]
+    implicit val accessModeW: Writer[AccessMode] = Writer.merge(
+      macroW[AccessMode.Whitelist.type],
+      macroW[AccessMode.Blacklist.type]
     )
     implicit val documentFieldW: Writer[DocumentField] = macroW
     implicit val setW: Writer[UniqueNonEmptyList[DocumentField]] =
@@ -313,9 +314,9 @@ object headerValues {
     import default._
 
     implicit val nesR: Reader[NonEmptyString] = StringReader.map(NonEmptyString.unsafeFrom)
-    implicit val accessModeR: Reader[DocumentField.AccessMode] = Reader.merge(
-      macroR[DocumentField.AccessMode.Whitelist.type],
-      macroR[DocumentField.AccessMode.Blacklist.type]
+    implicit val accessModeR: Reader[AccessMode] = Reader.merge(
+      macroR[AccessMode.Whitelist.type],
+      macroR[AccessMode.Blacklist.type]
     )
     implicit val documentFieldR: Reader[DocumentField] = macroR
 

@@ -36,7 +36,7 @@ import ujson._
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-private class DocumentFieldReader(reader: LeafReader, fields: FieldsRestrictions)
+private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: FieldsRestrictions)
   extends FilterLeafReader(reader) with Logging {
 
   private val policy = new FieldsPolicy(fieldsRestrictions)
@@ -203,11 +203,11 @@ private class DocumentFieldReader(reader: LeafReader, fields: FieldsRestrictions
 }
 
 object DocumentFieldReader {
-  def wrap(in: DirectoryReader, fields: FieldsRestrictions): DocumentFieldDirectoryReader =
+  def wrap(in: DirectoryReader, fieldsRestrictions: FieldsRestrictions): DocumentFieldDirectoryReader =
     new DocumentFieldDirectoryReader(in, fieldsRestrictions)
 }
 
-final class DocumentFieldDirectoryReader(in: DirectoryReader, fields: FieldsRestrictions)
+final class DocumentFieldDirectoryReader(in: DirectoryReader, fieldsRestrictions: FieldsRestrictions)
   extends FilterDirectoryReader(in, new DocumentFieldDirectorySubReader(fieldsRestrictions)) {
 
   override protected def doWrapDirectoryReader(in: DirectoryReader) =
@@ -218,7 +218,7 @@ final class DocumentFieldDirectoryReader(in: DirectoryReader, fields: FieldsRest
 }
 
 object DocumentFieldDirectoryReader {
-  private class DocumentFieldDirectorySubReader(fields: FieldsRestrictions)
+  private class DocumentFieldDirectorySubReader(fieldsRestrictions: FieldsRestrictions)
     extends FilterDirectoryReader.SubReaderWrapper {
 
     override def wrap(reader: LeafReader): LeafReader = {

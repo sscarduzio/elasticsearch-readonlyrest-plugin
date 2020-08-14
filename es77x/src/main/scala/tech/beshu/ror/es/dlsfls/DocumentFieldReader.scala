@@ -43,15 +43,15 @@ private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fields
   private val remainingFieldsInfo = {
     val fInfos = in.getFieldInfos
     val newfInfos = if (fInfos.asScala.isEmpty) {
-      logger.warn("original fieldsRestrictions were empty! This is weird!")
+      logger.warn("original fields were empty! This is weird!")
       fInfos
     } else {
       val remainingFields = fInfos.asScala.filter(f => policy.canKeep(f.name)).toSet
       new FieldInfos(remainingFields.toArray)
     }
     logger.debug(s"always allow: ${Constants.FIELDS_ALWAYS_ALLOW.asScala.mkString(",")}")
-    logger.debug(s"original fieldsRestrictions were: ${fInfos.asScala.map(_.name).mkString(",")}")
-    logger.debug(s"new fieldsRestrictions are: ${newfInfos.asScala.map(_.name).mkString(",")}")
+    logger.debug(s"original fields were: ${fInfos.asScala.map(_.name).mkString(",")}")
+    logger.debug(s"new fields are: ${newfInfos.asScala.map(_.name).mkString(",")}")
     newfInfos
   }
 

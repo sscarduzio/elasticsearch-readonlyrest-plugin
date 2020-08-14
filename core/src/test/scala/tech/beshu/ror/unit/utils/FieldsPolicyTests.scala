@@ -18,7 +18,7 @@ package tech.beshu.ror.unit.utils
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.domain.DocumentField.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, FieldsRestrictions}
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.TestsUtils._
