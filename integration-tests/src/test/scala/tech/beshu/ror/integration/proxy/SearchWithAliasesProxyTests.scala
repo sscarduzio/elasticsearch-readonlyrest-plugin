@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.proxy
 
-import tech.beshu.ror.integration.suites.IndicesAliasesSuite
+import tech.beshu.ror.integration.suites.SearchWithAliasesSuite
 import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
 
-class IndicesAliasesProxyTests extends IndicesAliasesSuite with BasicClusterProxyTestSupport
+class SearchWithAliasesProxyTests extends SearchWithAliasesSuite with BasicClusterProxyTestSupport

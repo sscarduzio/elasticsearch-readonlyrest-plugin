@@ -23,7 +23,7 @@ import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.TemplateManager
 
-trait TemplatesSuite
+trait IndexTemplatesManagementSuite
   extends WordSpec
     with BaseTemplatesSuite
     with ESVersionSupport {

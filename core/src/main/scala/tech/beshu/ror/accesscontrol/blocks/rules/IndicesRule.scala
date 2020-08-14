@@ -21,8 +21,8 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, TemplateRequestBlockContext}
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, HasIndexPacks, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.IndexNotFound
@@ -69,6 +69,7 @@ class IndicesRule(val settings: Settings)
         case MultiIndexRequestBlockContextUpdater => processIndicesPacks(blockContext)
         case FilterableMultiRequestBlockContextUpdater => processIndicesPacks(blockContext)
         case TemplateRequestBlockContextUpdater => processTemplateRequest(blockContext)
+        case AliasRequestBlockContextUpdater => processAliasRequest(blockContext)
       }
     }
   }
@@ -314,6 +315,19 @@ class IndicesRule(val settings: Settings)
           case None => CanPass.Yes(indices)
         }
       }
+    }
+  }
+
+  private def processAliasRequest(blockContext: AliasRequestBlockContext): RuleResult[AliasRequestBlockContext] = {
+    val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
+    val indicesResult = processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.indices)
+    val aliasesResult = processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.aliases)
+    (indicesResult, aliasesResult) match {
+      case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
+        Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
+      case (ProcessResult.Failed(cause), _) => Rejected(cause)
+      case (_, ProcessResult.Failed(Some(Cause.IndexNotFound))) => Rejected(Some(Cause.AliasNotFound))
+      case (_, ProcessResult.Failed(cause)) => Rejected(cause)
     }
   }
 
