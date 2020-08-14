@@ -20,7 +20,7 @@ import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, ScriptManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, ScriptManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait XpackApiSuite
@@ -43,8 +43,10 @@ trait XpackApiSuite
     )
   )
 
+  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"))
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
+  private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"))
 
   "Async search" should {
     "be allowed for dev1 and test1_index" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
@@ -116,6 +118,55 @@ trait XpackApiSuite
       }
     }
   }
+
+  "Rollup API" when {
+    "create rollup job method is used" should {
+      "be allowed to be used" when {
+        "there it no indices rule defined" in {
+          val result = adminIndexManager.rollup("job1", "test3*", "admin")
+
+          result.responseCode should be(200)
+          val rollupJobsResult = adminIndexManager.getRollupJobs("job1")
+          rollupJobsResult.responseCode should be(200)
+          rollupJobsResult.jobs.size should be(1)
+        }
+        "user has access to both: index pattern and rollup_index" in {
+          val result = dev3IndexManager.rollup("job2", "test3*", "test3_rollup_job2")
+
+          result.responseCode should be(200)
+          val rollupJobsResult = adminIndexManager.getRollupJobs("job2")
+          rollupJobsResult.responseCode should be(200)
+          rollupJobsResult.jobs.size should be(1)
+        }
+      }
+      "not be allowed to be used" when {
+        "user has no access to rollup_index" in {
+          val result = dev3IndexManager.rollup("job3", "test3*", "rollup_index")
+
+          result.responseCode should be(401)
+        }
+        "user has no access to passed index" in {
+          val result = dev3IndexManager.rollup("job4", "test1_index", "rollup_index")
+
+          result.responseCode should be(401)
+        }
+        "user has no access to given index pattern" in {
+          val result = dev3IndexManager.rollup("job5", "test*", "rollup_index")
+
+          result.responseCode should be(401)
+        }
+      }
+    }
+    "get rollup capabilities method is used" should {
+
+    }
+    "get index capabilities method is used" should {
+
+    }
+    "rollup search method is used" should {
+
+    }
+  }
 }
 
 object XpackApiSuite {
@@ -131,6 +182,9 @@ object XpackApiSuite {
 
     documentManager.createDoc("test2_index", 1, ujson.read("""{"name":"john", "age":33}""")).force()
     documentManager.createDoc("test2_index", 2, ujson.read("""{"name":"bill", "age":50}""")).force()
+
+    documentManager.createDoc("test3_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "counter": 10}""")).force()
+    documentManager.createDoc("test3_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "counter": 100}""")).force()
   }
 
   private def storeScriptTemplate(adminRestClient: RestClient): Unit = {

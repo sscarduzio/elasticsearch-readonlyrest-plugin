@@ -22,3 +22,7 @@ readonlyrest:
       auth_key: dev2:test
       filter: '{"query_string":{"query":"name:(john)"}}'
       fields: ["_source", "name"]
+
+    - name: "test3"
+      indices: ["test3_*"]
+      auth_key: dev3:test

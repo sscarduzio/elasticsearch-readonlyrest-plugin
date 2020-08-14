@@ -16,10 +16,13 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.RollupJobsResult
 import tech.beshu.ror.utils.httpclient.RestClient
+import ujson.Value
 
 class IndexManager(client: RestClient,
                    override val additionalHeaders: Map[String, String] = Map.empty)
@@ -87,6 +90,18 @@ class IndexManager(client: RestClient,
     call(createRolloverRequest(target, None), new JsonResponse(_))
   }
 
+  def rollup(jobId: String,
+             indexPattern: String,
+             rollupIndex: String,
+             timestampField: String = "timestamp",
+             aggregableField: String = "counter"): JsonResponse = {
+    call(createRollupRequest(jobId, indexPattern, rollupIndex, timestampField, aggregableField), new JsonResponse(_))
+  }
+
+  def getRollupJobs(jobId: String): RollupJobsResult = {
+    call(createGetRollupJobsRequest(jobId), new RollupJobsResult(_))
+  }
+
   private def getAliasRequest(indexOpt: Option[String] = None,
                               aliasOpt: Option[String] = None) = {
     val path = indexOpt match {
@@ -151,5 +166,45 @@ class IndexManager(client: RestClient,
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(""))
     request
+  }
+
+  private def createRollupRequest(jobId: String,
+                                  indexPattern: String,
+                                  rollupIndex: String,
+                                  timestampField: String,
+                                  aggregableField: String) = {
+    val request = new HttpPut(client.from(s"/_rollup/job/$jobId"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""
+        |{
+        |  "index_pattern": "$indexPattern",
+        |  "rollup_index": "$rollupIndex",
+        |  "cron": "*/30 * * * * ?",
+        |  "page_size": 1000,
+        |  "groups": {
+        |    "date_histogram": {
+        |      "field": "$timestampField",
+        |      "fixed_interval": "1h",
+        |      "delay": "7d"
+        |    },
+        |    "terms": {
+        |       "fields": [ "$aggregableField" ]
+        |     }
+        |  }
+        |}
+      """.stripMargin))
+    request
+  }
+
+  private def createGetRollupJobsRequest(jobId: String) = {
+    new HttpGet(client.from(s"/_rollup/job/$jobId"))
+  }
+}
+
+object IndexManager {
+
+  class RollupJobsResult(response: HttpResponse) extends JsonResponse(response) {
+    lazy val jobs: List[JSON] = responseJson("jobs").arr.toList
   }
 }
