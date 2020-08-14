@@ -27,7 +27,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.ParsingFailure
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, FilterableMultiRequestBlockContext, RepositoryRequestBlockContext, FilterableRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
@@ -89,6 +89,7 @@ object TestsUtils {
                            responseHeaders: Set[Header] = Set.empty,
                            contextHeaders: Set[Header] = Set.empty,
                            indices: Set[IndexName] = Set.empty,
+                           aliases: Set[IndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
                            templates: Set[Template] = Set.empty)
@@ -123,6 +124,9 @@ object TestsUtils {
           bc.indices should be (indices)
         case bc: FilterableMultiRequestBlockContext =>
           bc.indices should be (indices)
+        case bc: AliasRequestBlockContext =>
+          bc.indices should be (indices)
+          bc.aliases should be (aliases)
       }
     }
   }

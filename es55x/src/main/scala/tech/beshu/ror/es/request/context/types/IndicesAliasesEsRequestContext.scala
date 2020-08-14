@@ -37,31 +37,23 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
                                      override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext[IndicesAliasesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: IndicesAliasesRequest): Set[IndexName] = {
-    request.getAliasActions.asScala.flatMap(_.indices.asSafeSet.flatMap(IndexName.fromString)).toSet
-  }
+  private lazy val originIndices = actionRequest
+    .getAliasActions.asScala
+    .flatMap { r =>
+      r.indices.asSafeSet.flatMap(IndexName.fromString) ++
+        r.aliases.asSafeList.flatMap(IndexName.fromString)
+    }
+    .toSet
+
+  override protected def indicesFrom(request: IndicesAliasesRequest): Set[IndexName] = originIndices
 
   override protected def update(request: IndicesAliasesRequest,
                                 indices: NonEmptyList[IndexName]): ModificationResult = {
-    request.getAliasActions.removeIf { action => removeOrAlter(action, indices.toList.toSet) }
-    if (request.getAliasActions.asScala.isEmpty) {
-      logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. All indices were filtered out.")
-      ShouldBeInterrupted
-    } else {
+    if(originIndices == indices.toList.toSet) {
       Modified
-    }
-  }
-
-  private def removeOrAlter(action: IndicesAliasesRequest.AliasActions,
-                            filteredIndices: Set[IndexName]): Boolean = {
-    val expandedIndicesOfRequest = clusterService.expandIndices(action.indices().asSafeSet.flatMap(IndexName.fromString))
-    val remaining = expandedIndicesOfRequest.intersect(filteredIndices).toList
-    remaining match {
-      case Nil =>
-        true
-      case indices =>
-        action.indices(indices.map(_.value.value): _*)
-        false
+    } else {
+      logger.error(s"[${id.show}] Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")
+      ShouldBeInterrupted
     }
   }
 }

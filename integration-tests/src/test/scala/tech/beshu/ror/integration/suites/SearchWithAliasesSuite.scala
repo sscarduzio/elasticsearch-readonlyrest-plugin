@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import scala.collection.JavaConverters._
 
 //TODO change test names. Current names are copies from old java integration tests
-trait IndicesAliasesSuite
+trait SearchWithAliasesSuite
   extends WordSpec
     with BaseSingleNodeEsClusterTest
     with Eventually
@@ -36,7 +36,7 @@ trait IndicesAliasesSuite
 
   override implicit val rorConfigFileName = "/indices_aliases_test/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(IndicesAliasesSuite.nodeDataInitializer())
+  override def nodeDataInitializer = Some(SearchWithAliasesSuite.nodeDataInitializer())
 
   private lazy val restrictedDevSearchManager = new SearchManagerJ(basicAuthClient("restricted", "dev"))
   private lazy val unrestrictedDevSearchManager = new SearchManagerJ(basicAuthClient("unrestricted", "dev"))
@@ -183,7 +183,7 @@ trait IndicesAliasesSuite
   }
 }
 
-object IndicesAliasesSuite {
+object SearchWithAliasesSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDoc("/my_data/test/1", """{"hello":"world"}""")

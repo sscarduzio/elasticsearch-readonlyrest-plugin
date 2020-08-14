@@ -65,6 +65,7 @@ object Rule {
         case object ImpersonationNotSupported extends Cause
         case object ImpersonationNotAllowed extends Cause
         case object IndexNotFound extends Cause
+        case object AliasNotFound extends Cause
       }
     }
 

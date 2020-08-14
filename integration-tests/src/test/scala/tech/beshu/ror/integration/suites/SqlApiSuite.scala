@@ -485,7 +485,7 @@ object SqlApiSuite {
     documentManager.createDocAndAssert("bookstore", "stock", 3, ujson.read(
       s"""{"name": "Dune", "author": "Frank Herbert", "release_date": "1965-06-01", "price": 50}"""
     ))
-    indexManager.createAliasAndAssert("bookstore", "bookshop")
+    indexManager.createAliasOf("bookstore", "bookshop").force()
   }
 
   private def configureLibrary(documentManager: DocumentManager): Unit = {

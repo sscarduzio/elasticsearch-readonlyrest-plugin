@@ -25,6 +25,8 @@ import tech.beshu.ror.utils.misc.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.misc.ScalaUtils._
 import ujson.Value
 
+import scala.util.Try
+
 abstract class BaseManager(client: RestClient) {
 
   protected def call[T <: SimpleResponse](request: HttpUriRequest, fromResponse: HttpResponse => T): T = {
@@ -56,14 +58,16 @@ object BaseManager {
     val isForbidden: Boolean = responseCode == 401
     val isNotFound: Boolean = responseCode == 404
     val isBadRequest: Boolean = responseCode == 400
+    lazy val body: String = stringBodyFrom(response)
+
+    def force(): Unit = {
+      if(!isSuccess) throw new IllegalStateException(
+        s"Expected success but got HTTP $responseCode, body: ${Try(stringBodyFrom(response)).getOrElse("")}"
+      )
+    }
   }
 
   class JsonResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {
-    val body: String = stringBodyFrom(response)
     val responseJson: JSON = ujson.read(body)
-
-    def force(): Unit = {
-      if(!isSuccess) throw new IllegalStateException(s"Expected success but got HTTP $responseCode, body: $body")
-    }
   }
 }
