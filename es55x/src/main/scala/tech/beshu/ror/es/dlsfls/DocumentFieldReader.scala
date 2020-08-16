@@ -18,7 +18,6 @@ package tech.beshu.ror.es.dlsfls
 
 import java.util.{Iterator => JavaIterator}
 
-import cats.data.NonEmptySet
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
 import org.apache.lucene.index.StoredFieldVisitor.Status
@@ -28,7 +27,7 @@ import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
 import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XContentType}
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.DocumentField
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions
 import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader
 import tech.beshu.ror.fls.FieldsPolicy
 import ujson._
