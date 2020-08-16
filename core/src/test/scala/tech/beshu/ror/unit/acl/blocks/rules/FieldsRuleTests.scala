@@ -49,7 +49,7 @@ class FieldsRuleTests extends WordSpec with MockFactory {
             requestContext,
             UserMetadata.empty,
             Set.empty,
-            Set(headerFrom("_fields" -> "eyJmaWVsZHMiOlt7InZhbHVlIjoiX2ZpZWxkMSJ9LHsidmFsdWUiOiJfZmllbGQyIn1dLCJtb2RlIjp7IiR0eXBlIjoidGVjaC5iZXNodS5yb3IuYWNjZXNzY29udHJvbC5kb21haW4uRG9jdW1lbnRGaWVsZC5BY2Nlc3NNb2RlLldoaXRlbGlzdCJ9fQ=="))
+            Set(headerFrom("_fields" -> "eyJmaWVsZHMiOlt7InZhbHVlIjoiX2ZpZWxkMSJ9LHsidmFsdWUiOiJfZmllbGQyIn1dLCJtb2RlIjp7IiR0eXBlIjoidGVjaC5iZXNodS5yb3IuYWNjZXNzY29udHJvbC5kb21haW4uRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19"))
           )
         ))
       }
