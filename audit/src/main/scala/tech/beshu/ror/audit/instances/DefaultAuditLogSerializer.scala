@@ -68,7 +68,7 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       .put("type", requestContext.`type`)
       .put("origin", requestContext.remoteAddress)
       .put("destination", requestContext.localAddress)
-      .put("xff", requestContext.headers.get("X-Forwarded-For").orNull)
+      .put("xff", requestContext.headers.find { case (key, _) => key.toLowerCase == "x-forwarded-for" }.map(_._2).orNull)
       .put("task_id", requestContext.taskId)
       .put("req_method", requestContext.httpMethod)
       .put("headers", requestContext.headers.keys.toList.asJava)
