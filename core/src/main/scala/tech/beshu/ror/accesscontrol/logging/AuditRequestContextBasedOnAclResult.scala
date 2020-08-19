@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs.{historyShow, obfuscatedHeaderShow}
-import tech.beshu.ror.audit.AuditRequestContext
+import tech.beshu.ror.audit.{AuditRequestContext, Headers}
 
 class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                              blockContext: Option[B],
@@ -41,6 +41,14 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
   override val indices: Set[String] = requestContext.initialBlockContext.indices.map(_.value.value)
   override val action: String = requestContext.action.value
   override val headers: Map[String, String] = requestContext.headers.map(h => (h.name.value.value, h.value.value)).toMap
+  override val requestHeaders: Headers = new Headers(
+    requestContext.headers
+      .foldLeft(Map.empty[String, Set[String]]) {
+        case (acc, header) =>
+          val headerNames = acc.get(header.name.value.value).toList.flatten.toSet
+          acc + (header.name.value.value -> (headerNames + header.value.value))
+      }
+  )
   override val uriPath: String = requestContext.uriPath.value
   override val history: String = historyEntries.map(h => historyShow(showHeader).show(h)).mkString(", ")
   override val content: String = requestContext.content
