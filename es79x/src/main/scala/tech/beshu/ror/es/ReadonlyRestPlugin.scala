@@ -97,6 +97,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(timeout)(Scheduler.global, CanBlock.permit)
   private val esInitListener = new EsInitListener
+  private val groupFactory = new SetOnce[SharedGroupFactory]
 
   private var ilaf: IndexLevelActionFilter = _
 
@@ -180,8 +181,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       .toMap
       .asJava
   }
-
-  private val groupFactory = new SetOnce[SharedGroupFactory]
 
   private def getSharedGroupFactory(settings: Settings): SharedGroupFactory = {
     this.groupFactory.getOrElse(new SharedGroupFactory(settings))
