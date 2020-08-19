@@ -18,29 +18,28 @@ package tech.beshu.ror.fls
 
 import java.util.regex.Pattern
 
-import cats.data.NonEmptySet
-import cats.implicits._
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.DocumentField
-import tech.beshu.ror.accesscontrol.domain.DocumentField.NegatedDocumentField
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.domain.{DocumentField, FieldsRestrictions}
 
-class FieldsPolicy(fields: NonEmptySet[DocumentField]) {
+class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
 
-  private val enhancedFields = fields.toList.map(new FieldsPolicy.EnhancedDocumentField(_))
+  private val enhancedFields = fieldsRestrictions.fields.toList.map(new FieldsPolicy.EnhancedDocumentField(_))
 
   def canKeep(field: String): Boolean = {
     Constants.FIELDS_ALWAYS_ALLOW.contains(field) || {
-      if (enhancedFields.head.isNegated) {
-        !enhancedFields.exists(f => blacklistMatch(f, field))
-      } else {
-        enhancedFields.exists(f => whitelistMatch(f, field))
+      fieldsRestrictions.mode match {
+        case AccessMode.Whitelist =>
+          enhancedFields.exists(f => whitelistMatch(f, field))
+        case AccessMode.Blacklist =>
+          !enhancedFields.exists(f => blacklistMatch(f, field))
       }
     }
   }
 
   private def whitelistMatch(enhancedField: FieldsPolicy.EnhancedDocumentField, field: String): Boolean = {
     val fieldParts = field.split("\\.").toList
-    if(enhancedField.fieldPartPatterns.length < fieldParts.length) false
+    if (enhancedField.fieldPartPatterns.length < fieldParts.length) false
     else {
       val foundMismatch = fieldParts.zip(enhancedField.fieldPartPatterns)
         .exists { case (fieldPart, patternPart) =>
@@ -53,7 +52,7 @@ class FieldsPolicy(fields: NonEmptySet[DocumentField]) {
 
   private def blacklistMatch(enhancedField: FieldsPolicy.EnhancedDocumentField, field: String): Boolean = {
     val fieldParts = field.split("\\.").toList
-    if(enhancedField.fieldPartPatterns.length  > fieldParts.length) false
+    if (enhancedField.fieldPartPatterns.length > fieldParts.length) false
     else {
       val foundMismatch = enhancedField.fieldPartPatterns.zip(fieldParts)
         .forall { case (patternPart, fieldPart) =>
@@ -78,8 +77,5 @@ object FieldsPolicy {
         .map { part =>
           Pattern.compile(s"^${part.replace("*", ".*")}$$")
         }
-
-    val isNegated: Boolean = field.isInstanceOf[NegatedDocumentField]
-
   }
 }
