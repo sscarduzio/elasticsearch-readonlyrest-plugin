@@ -14,9 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.audit
 
-import tech.beshu.ror.integration.suites.SqlApiSuite
-import tech.beshu.ror.integration.utils.PluginTestSupport
+class Headers(originMap: Map[String, Set[String]]) {
 
-class SqlApiPluginTests extends SqlApiSuite with PluginTestSupport
+  private val mapWithLowerCaseKeys = originMap
+    .foldLeft(Map.empty[String, Set[String]]) {
+      case (acc, (key, values)) =>
+        val headerValues = acc.get(key.toLowerCase()).toList.flatten.toSet ++ values
+        acc + (key.toLowerCase -> headerValues)
+    }
+
+  def getValue(headerName: String): Option[Set[String]] = {
+    mapWithLowerCaseKeys.get(headerName.toLowerCase())
+  }
+
+  def names: Set[String] = originMap.keys.toSet
+}

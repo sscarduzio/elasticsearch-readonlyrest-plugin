@@ -16,19 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
-import cats.data.NonEmptySet
-import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{DocumentField, Header}
+import tech.beshu.ror.accesscontrol.domain.{DocumentField, FieldsRestrictions, Header}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
-import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class FieldsRule(val settings: Settings)
   extends RegularRule {
@@ -36,23 +34,27 @@ class FieldsRule(val settings: Settings)
   override val name: Rule.Name = FieldsRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    if (!blockContext.requestContext.isReadOnlyRequest) RuleResult.Rejected()
-    else RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
+    if (!blockContext.requestContext.isReadOnlyRequest)
+      RuleResult.Rejected()
+    else {
+      val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
+      UniqueNonEmptyList.fromList(maybeResolvedFields) match {
+        case Some(resolvedFields) =>
+          val transientFieldsHeader = new Header(
+            Name.transientFields,
+            transientFieldsToHeaderValue.toRawValue(FieldsRestrictions(resolvedFields, settings.accessMode))
+          )
+          RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
+        case _ =>
+          RuleResult.Rejected()
+      }
+    }
   }
-
-  private val transientFieldsHeader = new Header(
-    Name.transientFields,
-    transientFieldsToHeaderValue.toRawValue(settings.fields)
-  )
 }
 
 object FieldsRule {
   val name = Rule.Name("fields")
 
-  final case class Settings private(fields: NonEmptySet[DocumentField])
-  object Settings {
-    def ofFields(fields: NonEmptySet[ADocumentField]): Settings = Settings(fields.widen[DocumentField])
-
-    def ofNegatedFields(fields: NonEmptySet[NegatedDocumentField]): Settings = Settings(fields.widen[DocumentField])
-  }
+  final case class Settings(fields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[DocumentField]],
+                            accessMode: AccessMode)
 }
