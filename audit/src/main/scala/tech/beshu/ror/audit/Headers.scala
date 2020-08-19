@@ -16,29 +16,18 @@
  */
 package tech.beshu.ror.audit
 
-import java.time.Instant
+class Headers(originMap: Map[String, Set[String]]) {
 
-trait AuditRequestContext {
+  private val mapWithLowerCaseKeys = originMap
+    .foldLeft(Map.empty[String, Set[String]]) {
+      case (acc, (key, values)) =>
+        val headerValues = acc.get(key.toLowerCase()).toList.flatten.toSet ++ values
+        acc + (key.toLowerCase -> headerValues)
+    }
 
-  def timestamp: Instant
-  def id: String
-  def indices: Set[String]
-  def action: String
-  @deprecated("Use requestHeaders instead", "1.22.0")
-  def headers: Map[String, String]
-  def requestHeaders: Headers
-  def uriPath: String
-  def history: String
-  def content: String
-  def contentLength: Integer
-  def remoteAddress: String
-  def localAddress: String
-  def `type`: String
-  def taskId: Long
-  def httpMethod: String
-  def loggedInUserName: Option[String]
-  def impersonatedByUserName: Option[String]
-  def involvesIndices: Boolean
-  def attemptedUserName: Option[String]
-  def rawAuthHeader: Option[String]
+  def getValue(headerName: String): Option[Set[String]] = {
+    mapWithLowerCaseKeys.get(headerName.toLowerCase())
+  }
+
+  def names: Set[String] = originMap.keys.toSet
 }

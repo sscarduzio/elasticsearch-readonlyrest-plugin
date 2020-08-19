@@ -16,24 +16,33 @@
  */
 package tech.beshu.ror.mocks
 
-import java.time.Instant
+import java.time.{Clock, Instant}
 
 import com.softwaremill.sttp.Method
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, GeneralIndexRequestBlockContext, RepositoryRequestBlockContext, FilterableRequestBlockContext, SnapshotRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 object MockRequestContext {
-  def indices: MockGeneralIndexRequestContext = MockGeneralIndexRequestContext(indices = Set.empty)
-  def search: MockSearchRequestContext = MockSearchRequestContext(indices = Set.empty)
-  def repositories: MockRepositoriesRequestContext = MockRepositoriesRequestContext(repositories = Set.empty)
-  def snapshots: MockSnapshotsRequestContext = MockSnapshotsRequestContext(snapshots = Set.empty)
-  def metadata: MockUserMetadataRequestContext = MockUserMetadataRequestContext()
+  def indices(implicit clock: Clock = Clock.systemUTC()): MockGeneralIndexRequestContext =
+    MockGeneralIndexRequestContext(timestamp = clock.instant(), indices = Set.empty)
+
+  def search(implicit clock: Clock = Clock.systemUTC()): MockSearchRequestContext =
+    MockSearchRequestContext(timestamp = clock.instant(), indices = Set.empty)
+
+  def repositories(implicit clock: Clock = Clock.systemUTC()): MockRepositoriesRequestContext =
+    MockRepositoriesRequestContext(timestamp = clock.instant(), repositories = Set.empty)
+
+  def snapshots(implicit clock: Clock = Clock.systemUTC()): MockSnapshotsRequestContext =
+    MockSnapshotsRequestContext(timestamp = clock.instant(), snapshots = Set.empty)
+
+  def metadata(implicit clock: Clock = Clock.systemUTC()): MockUserMetadataRequestContext =
+    MockUserMetadataRequestContext(timestamp = clock.instant())
 }
 
-final case class MockGeneralIndexRequestContext(override val timestamp: Instant = Instant.now(),
+final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
@@ -60,7 +69,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant 
   )
 }
 
-final case class MockSearchRequestContext(override val timestamp: Instant = Instant.now(),
+final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val taskId: Long = 0L,
                                           override val id: RequestContext.Id = RequestContext.Id("mock"),
                                           override val `type`: Type = Type("default-type"),
@@ -87,7 +96,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant = Inst
   )
 }
 
-final case class MockRepositoriesRequestContext(override val timestamp: Instant = Instant.now(),
+final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
@@ -114,7 +123,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant 
   )
 }
 
-final case class MockSnapshotsRequestContext(override val timestamp: Instant = Instant.now(),
+final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val taskId: Long = 0L,
                                              override val id: RequestContext.Id = RequestContext.Id("mock"),
                                              override val `type`: Type = Type("default-type"),
@@ -141,7 +150,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant = I
   )
 }
 
-final case class MockUserMetadataRequestContext(override val timestamp: Instant = Instant.now(),
+final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
