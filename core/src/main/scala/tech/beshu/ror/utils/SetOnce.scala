@@ -14,24 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.utils
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es66x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es78x'
-include 'es79x'
-include 'proxy'
-include 'tests-utils'
-include 'integration-tests'
+import monix.execution.atomic.Atomic
+
+class SetOnce[A] {
+  private val ref: Atomic[Option[A]] = Atomic(Option.empty[A])
+
+  def getOrElse(default: => A): A = ref.transformAndGet(_.orElse(Some(default))).get
+}
