@@ -19,8 +19,8 @@ package tech.beshu.ror.utils.elasticsearch
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
-import tech.beshu.ror.utils.elasticsearch.SearchManager.{FieldCapsResult, MSearchResult, SearchResult}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
+import tech.beshu.ror.utils.elasticsearch.SearchManager.{AsyncSearchResult, FieldCapsResult, MSearchResult, SearchResult}
 import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import ujson.Value
 
@@ -31,11 +31,22 @@ class SearchManager(client: RestClient,
                     override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
-  def search(endpoint: String, query: String): SearchResult =
-    call(createSearchRequest(endpoint, query), new SearchResult(_))
+  def search(indexName: String, query: JSON): SearchResult =
+    call(createSearchRequest(Some(indexName), query), new SearchResult(_))
 
-  def search(endpoint: String): SearchResult =
-    call(createSearchRequest(endpoint), new SearchResult(_))
+  def search(query: JSON): SearchResult =
+    call(createSearchRequest(None, query), new SearchResult(_))
+
+  def search(indexNames: String*): SearchResult =
+    call(createSearchRequest(indexNames.toList), new SearchResult(_))
+
+  def asyncSearch(indexName: String): AsyncSearchResult = {
+    call(createAsyncSearchRequest(indexName :: Nil), new AsyncSearchResult(_))
+  }
+
+  def asyncSearch(indexNames: String*): AsyncSearchResult = {
+    call(createAsyncSearchRequest(indexNames.toList), new AsyncSearchResult(_))
+  }
 
   def mSearchUnsafe(lines: String*): MSearchResult = {
     lines.toList match {
@@ -49,6 +60,10 @@ class SearchManager(client: RestClient,
     call(createMSearchRequest(payload), new MSearchResult(_))
   }
 
+  def searchTemplate(index: String, query: JSON): SearchResult = {
+    call(createSearchTemplateRequest(index, query), new SearchResult(_))
+  }
+
   def fieldCaps(indices: List[String], fields: List[String]): FieldCapsResult = {
     call(createFieldCapsRequest(indices.mkString(","), fields.mkString(",")), new FieldCapsResult(_))
   }
@@ -56,15 +71,34 @@ class SearchManager(client: RestClient,
   def renderTemplate(query: String): JsonResponse =
     call(createRenderTemplateRequest(query), new JsonResponse(_))
 
-  private def createSearchRequest(endpoint: String, query: String) = {
-    val request = new HttpPost(client.from(endpoint))
+  private def createSearchRequest(indexName: Option[String], query: JSON) = {
+    val request = new HttpPost(client.from(
+      indexName match {
+        case Some(name) => s"/$name/_search"
+        case None => "/_search"
+      }
+    ))
     request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(query))
+    request.setEntity(new StringEntity(ujson.write(query)))
     request
   }
 
-  private def createSearchRequest(endpoint: String) = {
-    new HttpGet(client.from(endpoint))
+  private def createSearchRequest(indexNames: List[String] = Nil) = {
+    new HttpPost(client.from(
+      indexNames match {
+        case Nil => "/_search"
+        case names => s"/${names.mkString(",")}/_search"
+      }
+    ))
+  }
+
+  private def createAsyncSearchRequest(indexNames: List[String] = Nil) = {
+    new HttpPost(client.from(
+      indexNames match {
+        case Nil => "/_async_search"
+        case names => s"/${names.mkString(",")}/_async_search"
+      }
+    ))
   }
 
   private def createMSearchRequest(payload: String) = {
@@ -81,6 +115,13 @@ class SearchManager(client: RestClient,
     request
   }
 
+  private def createSearchTemplateRequest(index: String, query: JSON) = {
+    val request = new HttpGetWithEntity(client.from(s"/$index/_search/template"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(query)))
+    request
+  }
+
   private def createFieldCapsRequest(indicesStr: String, fieldsStr: String) = {
     new HttpGet(client.from(s"/$indicesStr/_field_caps", Map("fields" -> fieldsStr).asJava))
   }
@@ -92,14 +133,25 @@ object SearchManager {
     def removeRorSettings(): Vector[Value] = hits.filter(hit => hit("_index").str != ".readonlyrest").toVector
   }
 
-  class SearchResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val searchHitsWithSettings: Value = responseJson("hits")("hits")
+  abstract class BaseSearchResult(response: HttpResponse) extends JsonResponse(response) {
+    protected def searchHitsWithSettings: Value
+
     lazy val searchHits: List[Value] = searchHitsWithSettings.arr.removeRorSettings().toList
-    lazy val docIds: List[String] = searchHits.map(_("_id").str)
+    lazy val docIds: List[String] = searchHits.map(_ ("_id").str)
 
     def hit(idx: Int) = searchHits(idx)("_source")
+
     def head = hit(0)
-    def id(docId: String) = searchHits.find(_("_id").str == docId).get("_source")
+
+    def id(docId: String) = searchHits.find(_ ("_id").str == docId).get("_source")
+  }
+
+  class SearchResult(response: HttpResponse) extends BaseSearchResult(response) {
+    override lazy val searchHitsWithSettings: Value = responseJson("hits")("hits")
+  }
+
+  class AsyncSearchResult(response: HttpResponse) extends BaseSearchResult(response) {
+    override lazy val searchHitsWithSettings: Value = responseJson("response")("hits")("hits")
   }
 
   class MSearchResult(response: HttpResponse) extends JsonResponse(response) {

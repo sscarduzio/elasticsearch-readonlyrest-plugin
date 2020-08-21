@@ -147,6 +147,33 @@ object BlockContextUpdater {
       blockContext.copy(templates = templates)
   }
 
+  implicit object AliasRequestBlockContextUpdater
+    extends BlockContextUpdater[AliasRequestBlockContext] {
+
+    override def emptyBlockContext(blockContext: AliasRequestBlockContext): AliasRequestBlockContext =
+      AliasRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, Set.empty)
+
+    override def withUserMetadata(blockContext: AliasRequestBlockContext,
+                                  userMetadata: UserMetadata): AliasRequestBlockContext =
+      blockContext.copy(userMetadata = userMetadata)
+
+    override def withAddedResponseHeader(blockContext: AliasRequestBlockContext,
+                                         header: Header): AliasRequestBlockContext =
+      blockContext.copy(responseHeaders = blockContext.responseHeaders + header)
+
+    override def withAddedContextHeader(blockContext: AliasRequestBlockContext,
+                                        header: Header): AliasRequestBlockContext =
+      blockContext.copy(contextHeaders = blockContext.contextHeaders + header)
+
+    def withIndices(blockContext: AliasRequestBlockContext,
+                    indices: Set[IndexName]): AliasRequestBlockContext =
+      blockContext.copy(indices = indices)
+
+    def withAliases(blockContext: AliasRequestBlockContext,
+                    aliases: Set[IndexName]): AliasRequestBlockContext =
+      blockContext.copy(aliases = aliases)
+  }
+
   implicit object GeneralIndexRequestBlockContextUpdater
     extends BlockContextUpdater[GeneralIndexRequestBlockContext] {
 

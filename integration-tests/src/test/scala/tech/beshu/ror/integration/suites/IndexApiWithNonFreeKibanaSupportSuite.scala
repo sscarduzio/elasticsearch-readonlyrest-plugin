@@ -24,4 +24,5 @@ trait IndexApiWithNonFreeKibanaSupportSuite extends BaseIndexApiSuite {
 
   override implicit val rorConfigFileName: String = "/index_api/nonfree_readonlyrest.yml"
   override val notFoundIndexStatusReturned: Int = 404
+  override val forbiddenStatusReturned: Int = 403
 }

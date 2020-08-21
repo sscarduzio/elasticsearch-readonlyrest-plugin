@@ -1,0 +1,42 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  prompt_for_basic_auth: false
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container
+
+    - name: "test1"
+      indices: ["test1_index"]
+      auth_key: dev1:test
+
+    - name: "test2"
+      indices: ["test2_index"]
+      auth_key: dev2:test
+      filter: '{"query_string":{"query":"name:(john)"}}'
+      fields: ["_source", "name"]
+
+    - name: "admin sql"
+      verbosity: error
+      type: allow
+      indices: ["bookstore", "library", "bookshop"]
+      auth_key: sqladmin:pass
+
+    - name: "dev3 sql"
+      auth_key: dev3:test
+      indices: ["bookstore"]
+      fields: ["~price"]
+
+    - name: "dev4 sql"
+      auth_key: dev4:test
+      indices: ["library"]
+      fields: ["~internal_id"]

@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TimeZone;
 
 /**
@@ -60,9 +61,12 @@ public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String,
     map.put("origin", req.getRemoteAddress());
     map.put("destination", req.getLocalAddress());
 
-    String xff = req.getHeaders().get("X-Forwarded-For");
-    if(xff != null && !xff.equals("")){
-      map.put("xff", xff);
+    Optional<String> xff = req.getHeaders().entrySet().stream()
+        .filter(entry -> entry.getKey().toLowerCase().equals("x-forwarded-for"))
+        .findFirst()
+        .map(Map.Entry::getValue);
+    if(xff.isPresent() && !xff.get().equals("")){
+      map.put("xff", xff.get());
     }
 
     map.put("task_id", req.getTaskId());

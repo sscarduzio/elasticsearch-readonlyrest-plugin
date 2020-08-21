@@ -15,12 +15,12 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "dev1 indexes"
-      indices: ["index1"]
+    - name: "dev1 indexes & aliases"
+      indices: ["index1", "index1_alias"]
       auth_key: dev1:test
 
-    - name: "dev2 aliases"
-      indices: ["index2_alias"]
+    - name: "dev2 indexes & aliases"
+      indices: ["index2", "index2_alias"]
       auth_key: dev2:test
 
     - name: "dev3 - there is no index of this user"
@@ -29,3 +29,12 @@ readonlyrest:
 
     - name: "dev4 - no indices rule"
       auth_key: dev4:test
+
+    - name: "dev5 - rollover"
+      auth_key: dev5:test
+      indices: ["index5", "index5-*"]
+
+    - name: "dev6 aliases"
+      indices: ["index2_alias"]
+      auth_key: dev6:test
+

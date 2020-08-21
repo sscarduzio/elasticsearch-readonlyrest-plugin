@@ -24,7 +24,9 @@ trait AuditRequestContext {
   def id: String
   def indices: Set[String]
   def action: String
+  @deprecated("Use requestHeaders instead", "1.22.0")
   def headers: Map[String, String]
+  def requestHeaders: Headers
   def uriPath: String
   def history: String
   def content: String

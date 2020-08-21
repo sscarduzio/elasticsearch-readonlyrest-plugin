@@ -21,8 +21,8 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, TemplateRequestBlockContext}
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, HasIndexPacks, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.IndexNotFound
@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherW
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
-import tech.beshu.ror.accesscontrol.domain.Action.{fieldCapsAction, mSearchAction, searchAction}
+import tech.beshu.ror.accesscontrol.domain.Action.{fieldCapsAction, mSearchAction, searchAction, asyncSearchAction}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -69,6 +69,7 @@ class IndicesRule(val settings: Settings)
         case MultiIndexRequestBlockContextUpdater => processIndicesPacks(blockContext)
         case FilterableMultiRequestBlockContextUpdater => processIndicesPacks(blockContext)
         case TemplateRequestBlockContextUpdater => processTemplateRequest(blockContext)
+        case AliasRequestBlockContextUpdater => processAliasRequest(blockContext)
       }
     }
   }
@@ -176,7 +177,7 @@ class IndicesRule(val settings: Settings)
   }
 
   private def isSearchAction(requestContext: RequestContext): Boolean =
-    requestContext.isReadOnlyRequest && List(searchAction, mSearchAction, fieldCapsAction).contains(requestContext.action)
+    requestContext.isReadOnlyRequest && List(searchAction, mSearchAction, fieldCapsAction, asyncSearchAction).contains(requestContext.action)
 
   private def canPass(requestContext: RequestContext,
                       indices: Set[IndexName],
@@ -314,6 +315,19 @@ class IndicesRule(val settings: Settings)
           case None => CanPass.Yes(indices)
         }
       }
+    }
+  }
+
+  private def processAliasRequest(blockContext: AliasRequestBlockContext): RuleResult[AliasRequestBlockContext] = {
+    val resolvedAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
+    val indicesResult = processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.indices)
+    val aliasesResult = processIndices(blockContext.requestContext, resolvedAllowedIndices, blockContext.aliases)
+    (indicesResult, aliasesResult) match {
+      case (ProcessResult.Ok(indices), ProcessResult.Ok(aliases)) =>
+        Fulfilled(blockContext.withIndices(indices).withAliases(aliases))
+      case (ProcessResult.Failed(cause), _) => Rejected(cause)
+      case (_, ProcessResult.Failed(Some(Cause.IndexNotFound))) => Rejected(Some(Cause.AliasNotFound))
+      case (_, ProcessResult.Failed(cause)) => Rejected(cause)
     }
   }
 

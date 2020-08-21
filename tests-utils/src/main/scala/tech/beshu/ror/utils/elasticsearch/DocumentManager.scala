@@ -39,7 +39,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   def get(index: String, id: Int): JsonResponse = {
-    call(new HttpGet(restClient.from(createDocPathWithDefaultType(index, id))), new JsonResponse(_))
+    call(new HttpGet(restClient.from(createDocPathWithDefaultType(index, s"$id"))), new JsonResponse(_))
   }
 
   def get(index: String, id: Int, queryParams: Map[String, String]): JsonResponse = {
@@ -48,19 +48,23 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   def createFirstDoc(index: String, content: JSON): JsonResponse = {
-    call(createInsertDocRequest(createDocPathWithDefaultType(index, 1), content, waitForRefresh = true), new JsonResponse(_))
+    call(createInsertDocRequest(createDocPathWithDefaultType(index, "1"), content, waitForRefresh = true), new JsonResponse(_))
   }
 
   def createDoc(index: String, id: Int, content: JSON): JsonResponse = {
+    call(createInsertDocRequest(createDocPathWithDefaultType(index, s"$id"), content, waitForRefresh = true), new JsonResponse(_))
+  }
+
+  def createDoc(index: String, id: String, content: JSON): JsonResponse = {
     call(createInsertDocRequest(createDocPathWithDefaultType(index, id), content, waitForRefresh = true), new JsonResponse(_))
   }
 
   def createDoc(index: String, `type`: String, id: Int, content: JSON): JsonResponse = {
-    call(createInsertDocRequest(createDocPathWithDefaultType(index, id, Some(`type`)), content, waitForRefresh = true), new JsonResponse(_))
+    call(createInsertDocRequest(createDocPathWithDefaultType(index, s"$id", Some(`type`)), content, waitForRefresh = true), new JsonResponse(_))
   }
 
   def deleteDoc(index: String, id: Int): JsonResponse = {
-    call(createDeleteDocRequest(createDocPathWithDefaultType(index, id), waitForRefresh = true), new JsonResponse(_))
+    call(createDeleteDocRequest(createDocPathWithDefaultType(index, s"$id"), waitForRefresh = true), new JsonResponse(_))
   }
 
   def bulk(line: String, lines: String*): JsonResponse = {
@@ -75,17 +79,17 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     }
   }
 
-  private def createDocPath(index: String, `type`: String, id: Int) = {
+  private def createDocPath(index: String, `type`: String, id: String) = {
     s"""/$index/${`type`}/$id"""
   }
 
-  private def createDocPathWithDefaultType(index: String, id: Int, fallbackType: Option[String] = None) = {
+  private def createDocPathWithDefaultType(index: String, id: String, fallbackType: Option[String] = None) = {
     if(Version.greaterOrEqualThan(esVersion, 7, 0, 0)) createDocPath(index, "_doc", id)
     else createDocPath(index, fallbackType.getOrElse("doc"), id)
   }
 
   def createDocAndAssert(index: String, `type`: String, id: Int, content: JSON): Unit = {
-    val docPath = createDocPathWithDefaultType(index, id, Some(`type`))
+    val docPath = createDocPathWithDefaultType(index, s"$id", Some(`type`))
     val createDocResult = call(
       createInsertDocRequest(docPath, content, waitForRefresh = true),
       new JsonResponse(_)

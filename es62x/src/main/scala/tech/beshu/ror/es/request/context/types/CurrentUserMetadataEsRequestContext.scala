@@ -32,6 +32,8 @@ class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
   extends BaseEsRequestContext[CurrentUserMetadataRequestBlockContext](esContext, clusterService)
     with EsRequest[CurrentUserMetadataRequestBlockContext] {
 
+  override lazy val isReadOnlyRequest: Boolean = true
+
   override val initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this,
     UserMetadata.from(this),

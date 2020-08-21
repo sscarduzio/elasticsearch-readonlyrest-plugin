@@ -35,15 +35,16 @@ trait FieldLevelSecuritySuite
 
   "A fields rule" should {
     "work for simple cases" when {
-      "whitelist mode is used (search API)" in {
+      "whitelist mode is used" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
-        val result = searchManager.search("/testfiltera/_search")
+
+        val result = searchManager.search("testfiltera")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson(0)("_source")
 
-        source should be(ujson.read("""{"dummy2":"true"}"""))
+        source should be(ujson.read("""{"user1":"user1Value"}"""))
       }
       "whitelist mode is used (msearach API)" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
@@ -131,15 +132,26 @@ trait FieldLevelSecuritySuite
         source should be(ujson.read("""{}"""))
       }
       "whitelist mode with user variable is used " in {
-        val searchManager = new SearchManager(basicAuthClient("dummy", "pass"))
+        val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
 
-        val result = searchManager.search("/testfiltera/_search")
+        val result = searchManager.search("/testfiltera")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson(0)("_source")
 
-        source should be(ujson.read("""{"dummy2":"true"}"""))
+        source should be(ujson.read("""{"user2":"user2Value"}"""))
+      }
+      "whitelist mode with user variable is used and called by user with 'negated' value" in {
+        val searchManager = new SearchManager(basicAuthClient("~user", "pass"))
+
+        val result = searchManager.search("/testfiltera")
+
+        assertEquals(200, result.responseCode)
+        val searchJson = result.searchHits
+        val source = searchJson(0)("_source")
+
+        source should be(ujson.read("""{"~user":"~userValue"}"""))
       }
       "whitelist mode is used with search query using inaccessible field" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
@@ -162,15 +174,15 @@ trait FieldLevelSecuritySuite
         result.searchHits.isEmpty shouldBe true
       }
       "whitelist mode with wildcard is used" in {
-        val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
+        val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
 
-        val result = searchManager.search("/testfiltera/_search")
+        val result = searchManager.search("testfiltera")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson(0)("_source")
 
-        source should be(ujson.read("""{"dummy2":"true"}"""))
+        source should be(ujson.read("""{"user3":"user3Value"}"""))
       }
       "whitelist mode is used with wildcard and with included blacklisted field" in {
         val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
@@ -194,15 +206,44 @@ trait FieldLevelSecuritySuite
       }
 
       "blacklist mode is used" in {
-        val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
+        val searchManager = new SearchManager(basicAuthClient("user4", "pass"))
 
-        val result = searchManager.search("/testfiltera/_search")
+        val result = searchManager.search("testfiltera")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson(0)("_source")
 
-        source should be(ujson.read("""{"dummy":"a1"}"""))
+        source should be(ujson.read(
+          """|{
+             | "~user": "~userValue",
+             | "user1": "user1Value",
+             | "user2": "user2Value",
+             | "user3": "user3Value",
+             | "user5": "user5Value",
+             | "user6": "user6Value"
+             |}""".stripMargin)
+        )
+      }
+      "blacklist mode with user variable is used " in {
+        val searchManager = new SearchManager(basicAuthClient("user5", "pass"))
+
+        val result = searchManager.search("/testfiltera")
+
+        assertEquals(200, result.responseCode)
+        val searchJson = result.searchHits
+        val source = searchJson(0)("_source")
+
+        source should be(ujson.read(
+          """|{
+             | "~user": "~userValue",
+             | "user1": "user1Value",
+             | "user2": "user2Value",
+             | "user3": "user3Value",
+             | "user4": "user4Value",
+             | "user6": "user6Value"
+             |}""".stripMargin)
+        )
       }
       "blacklist mode is used with included blacklisted field search query" in {
         val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
@@ -245,22 +286,31 @@ trait FieldLevelSecuritySuite
         source should be(ujson.read("""{}"""))
       }
       "blacklist mode with wildcard is used" in {
-        val searchManager = new SearchManager(basicAuthClient("user4", "pass"))
+        val searchManager = new SearchManager(basicAuthClient("user6", "pass"))
 
-        val result = searchManager.search("/testfiltera/_search")
+        val result = searchManager.search("testfiltera")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
         val source = searchJson(0)("_source")
 
-        source should be(ujson.read("""{"dummy":"a1"}"""))
+        source should be(ujson.read(
+          """|{
+             | "~user": "~userValue",
+             | "user1": "user1Value",
+             | "user2": "user2Value",
+             | "user3": "user3Value",
+             | "user4": "user4Value",
+             | "user5": "user5Value"
+             |}""".stripMargin)
+        )
       }
     }
     "work for nested fields" when {
       "whitelist mode is used" in {
         val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
 
-        val result = searchManager.search("/nestedtest/_search")
+        val result = searchManager.search("nestedtest")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
@@ -318,7 +368,7 @@ trait FieldLevelSecuritySuite
       "whitelist mode with wildcard is used" in {
         val searchManager = new SearchManager(basicAuthClient("user2", "pass"))
 
-        val result = searchManager.search("/nestedtest/_search")
+        val result = searchManager.search("nestedtest")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
@@ -347,7 +397,7 @@ trait FieldLevelSecuritySuite
       "blacklist mode is used" in {
         val searchManager = new SearchManager(basicAuthClient("user3", "pass"))
 
-        val result = searchManager.search("/nestedtest/_search")
+        val result = searchManager.search("nestedtest")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
@@ -368,7 +418,7 @@ trait FieldLevelSecuritySuite
       "blacklist mode with wildcards is used" in {
         val searchManager = new SearchManager(basicAuthClient("user4", "pass"))
 
-        val result = searchManager.search("/nestedtest/_search")
+        val result = searchManager.search("nestedtest")
 
         assertEquals(200, result.responseCode)
         val searchJson = result.searchHits
@@ -450,7 +500,15 @@ object FieldLevelSecuritySuite {
     val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDocAndWaitForRefresh(
       "/testfiltera/documents/doc-a1",
-      """{"dummy":"a1", "dummy2": "true"}"""
+      """{
+        | "~user": "~userValue",
+        | "user1": "user1Value",
+        | "user2": "user2Value",
+        | "user3": "user3Value",
+        | "user4": "user4Value",
+        | "user5": "user5Value",
+        | "user6": "user6Value"
+        |}""".stripMargin
     )
     documentManager.insertDocAndWaitForRefresh(
       "/nestedtest/documents/1",

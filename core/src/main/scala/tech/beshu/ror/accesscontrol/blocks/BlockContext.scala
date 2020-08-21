@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks
 
 import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -60,6 +60,14 @@ object BlockContext {
                                                snapshots: Set[SnapshotName],
                                                repositories: Set[RepositoryName],
                                                indices: Set[IndexName])
+    extends BlockContext
+
+  final case class AliasRequestBlockContext(override val requestContext: RequestContext,
+                                            override val userMetadata: UserMetadata,
+                                            override val responseHeaders: Set[Header],
+                                            override val contextHeaders: Set[Header],
+                                            aliases: Set[IndexName],
+                                            indices: Set[IndexName])
     extends BlockContext
 
   final case class TemplateRequestBlockContext(override val requestContext: RequestContext,
@@ -123,6 +131,10 @@ object BlockContext {
 
     implicit val indicesFromGeneralIndexBlockContext = new HasIndices[GeneralIndexRequestBlockContext] {
       override def indices(blockContext: GeneralIndexRequestBlockContext): Set[IndexName] = blockContext.indices
+    }
+
+    implicit val indicesFromAliasRequestBlockContext = new HasIndices[AliasRequestBlockContext] {
+      override def indices(blockContext: AliasRequestBlockContext): Set[IndexName] = blockContext.indices
     }
 
     implicit class Ops[B <: BlockContext : HasIndices](blockContext: B) {
@@ -247,6 +259,16 @@ object BlockContext {
     }
   }
 
+  implicit class AliasRequestBlockContextUpdaterOps(val blockContext: AliasRequestBlockContext) extends AnyVal {
+    def withIndices(indices: Set[IndexName]): AliasRequestBlockContext = {
+      AliasRequestBlockContextUpdater.withIndices(blockContext, indices)
+    }
+
+    def withAliases(aliases: Set[IndexName]): AliasRequestBlockContext = {
+      AliasRequestBlockContextUpdater.withAliases(blockContext, aliases)
+    }
+  }
+
   implicit class IndicesFromBlockContext(val blockContext: BlockContext) extends AnyVal {
     def indices: Set[IndexName] = {
       blockContext match {
@@ -255,6 +277,7 @@ object BlockContext {
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.indices
         case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
+        case bc: AliasRequestBlockContext => bc.indices ++ bc.aliases
         case bc: GeneralIndexRequestBlockContext => bc.indices
         case bc: FilterableRequestBlockContext => bc.indices
         case bc: MultiIndexRequestBlockContext => extractIndicesFrom(bc.indexPacks)
@@ -280,6 +303,7 @@ object BlockContext {
         case bc: RepositoryRequestBlockContext => bc.repositories
         case bc: SnapshotRequestBlockContext => bc.repositories
         case _: TemplateRequestBlockContext => Set.empty
+        case _: AliasRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: FilterableRequestBlockContext => Set.empty
@@ -296,6 +320,7 @@ object BlockContext {
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.snapshots
         case _: TemplateRequestBlockContext => Set.empty
+        case _: AliasRequestBlockContext => Set.empty
         case _: GeneralIndexRequestBlockContext => Set.empty
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: FilterableRequestBlockContext => Set.empty

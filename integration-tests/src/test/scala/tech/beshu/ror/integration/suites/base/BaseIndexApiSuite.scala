@@ -31,12 +31,15 @@ trait BaseIndexApiSuite
   this: EsContainerCreator =>
 
   protected def notFoundIndexStatusReturned: Int
+  protected def forbiddenStatusReturned: Int
 
   override def nodeDataInitializer = Some(BaseIndexApiSuite.nodeDataInitializer())
 
   private lazy val dev1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
   private lazy val dev2IndexManager = new IndexManager(basicAuthClient("dev2", "test"))
   private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"))
+  private lazy val dev5IndexManager = new IndexManager(basicAuthClient("dev5", "test"))
+  private lazy val dev6IndexManager = new IndexManager(basicAuthClient("dev6", "test"))
 
   "ROR" when {
     "Get index API is used" should {
@@ -122,7 +125,7 @@ trait BaseIndexApiSuite
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "the index is called explicitly when user has configured alias in indices rule" in {
-          val indexResponse = dev2IndexManager.getIndex("index2")
+          val indexResponse = dev6IndexManager.getIndex("index2")
 
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
@@ -240,7 +243,7 @@ trait BaseIndexApiSuite
         "full alias name is used and the alias doesn't exist" in {
           val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent")
 
-          aliasResponse.responseCode should be(404)
+          aliasResponse.responseCode should be(notFoundIndexStatusReturned)
         }
       }
     }
@@ -340,9 +343,35 @@ trait BaseIndexApiSuite
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "the index is called explicitly when user has configured alias in indices rule" in {
-          val indexResponse = dev2IndexManager.getSettings("index2")
+          val indexResponse = dev6IndexManager.getSettings("index2")
 
           indexResponse.responseCode should be(notFoundIndexStatusReturned)
+        }
+      }
+    }
+    "Rollover API is used" should {
+      "be allowed" when {
+        "user has access to rollover target and rollover index (defined)" in {
+          val result = dev5IndexManager.rollover("index5", "index5-000010")
+
+          result.responseCode should be (200)
+        }
+        "user gas access to rollover target (rollover index not defined)" in {
+          val result = dev5IndexManager.rollover("index5")
+
+          result.responseCode should be (200)
+        }
+      }
+      "not be allowed" when {
+        "user has no access to rollover target" in {
+          val result = dev5IndexManager.rollover("index1")
+
+          result.responseCode should be (forbiddenStatusReturned)
+        }
+        "user has no access to rollover index" in {
+          val result = dev5IndexManager.rollover("index5", "index1")
+
+          result.responseCode should be (forbiddenStatusReturned)
         }
       }
     }
@@ -355,10 +384,13 @@ object BaseIndexApiSuite {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val indexManager = new IndexManager(adminRestClient)
 
-    documentManager.createDoc("index1", 1, ujson.read("""{"hello":"world"}"""))
-    indexManager.createAliasOf("index1", "index1_alias")
+    documentManager.createDoc("index1", 1, ujson.read("""{"hello":"world"}""")).force()
+    indexManager.createAliasOf("index1", "index1_alias").force()
 
-    documentManager.createDoc("index2", 1, ujson.read("""{"hello":"world"}"""))
-    indexManager.createAliasOf("index2", "index2_alias")
+    documentManager.createDoc("index2", 1, ujson.read("""{"hello":"world"}""")).force()
+    indexManager.createAliasOf("index2", "index2_alias").force()
+
+    documentManager.createDoc("index5-000001", 1, ujson.read("""{"hello":"world"}""")).force()
+    indexManager.createAliasOf("index5-000001", "index5").force()
   }
 }
