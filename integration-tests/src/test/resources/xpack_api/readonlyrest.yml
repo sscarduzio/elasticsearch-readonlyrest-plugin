@@ -33,6 +33,10 @@ readonlyrest:
       indices: ["test4*", "rollup_test4_*"]
       auth_key: dev4:test
 
+    - name: "test5"
+      indices: ["test5*", "rollup_test5_*"]
+      auth_key: dev5:test
+
     - name: "admin sql"
       verbosity: error
       type: allow

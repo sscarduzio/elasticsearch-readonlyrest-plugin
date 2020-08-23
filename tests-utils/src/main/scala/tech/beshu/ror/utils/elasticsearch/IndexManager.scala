@@ -133,8 +133,12 @@ class IndexManager(client: RestClient,
     call(createGetRollupJobsRequest(jobId), new RollupJobsResult(_))
   }
 
-  def getRollupJobCapabilities(index: String): RollupCapabilitiesResult = {
-    call(createGetRollupJobCapabilitiesRequest(index), new RollupCapabilitiesResult(_))
+  def getRollupJobCapabilities(indexPattern: String): RollupCapabilitiesResult = {
+    call(createGetRollupJobCapabilitiesRequest(indexPattern), new RollupCapabilitiesResult(_))
+  }
+
+  def getRollupIndexCapabilities(rollupIndex: String, rollupIndices: String*): RollupCapabilitiesResult = {
+    call(createGetRollupIndexCapabilitiesRequest(rollupIndex :: rollupIndices.toList), new RollupCapabilitiesResult(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -246,6 +250,10 @@ class IndexManager(client: RestClient,
 
   private def createGetRollupJobCapabilitiesRequest(index: String) = {
     new HttpGet(client.from(s"/_rollup/data/$index"))
+  }
+
+  private def createGetRollupIndexCapabilitiesRequest(indices: List[String]) = {
+    new HttpGet(client.from(s"/${indices.mkString(",")}/_rollup/data"))
   }
 
   private def updateAliasesRequest(actions: NonEmptyList[AliasAction]) = {
