@@ -26,7 +26,7 @@ readonlyrest:
       fields: ["_source", "name"]
 
     - name: "test3"
-      indices: ["test3_*"]
+      indices: ["test3*", "rollup_test3_*"]
       auth_key: dev3:test
 
     - name: "admin sql"

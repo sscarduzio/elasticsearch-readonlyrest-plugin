@@ -20,7 +20,6 @@ import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, ScriptManager, SearchManager}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, ScriptManager, SearchManager, SqlApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
@@ -137,7 +136,7 @@ trait XpackApiSuite
           rollupJobsResult.jobs.size should be(1)
         }
         "user has access to both: index pattern and rollup_index" in {
-          val result = dev3IndexManager.rollup("job2", "test3*", "test3_rollup_job2")
+          val result = dev3IndexManager.rollup("job2", "test3*", "rollup_test3_job2")
 
           result.responseCode should be(200)
           val rollupJobsResult = adminIndexManager.getRollupJobs("job2")
@@ -149,17 +148,17 @@ trait XpackApiSuite
         "user has no access to rollup_index" in {
           val result = dev3IndexManager.rollup("job3", "test3*", "rollup_index")
 
-          result.responseCode should be(401)
+          result.responseCode should be(403)
         }
         "user has no access to passed index" in {
           val result = dev3IndexManager.rollup("job4", "test1_index", "rollup_index")
 
-          result.responseCode should be(401)
+          result.responseCode should be(403)
         }
         "user has no access to given index pattern" in {
           val result = dev3IndexManager.rollup("job5", "test*", "rollup_index")
 
-          result.responseCode should be(401)
+          result.responseCode should be(403)
         }
       }
     }

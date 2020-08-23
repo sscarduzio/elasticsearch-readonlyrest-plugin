@@ -170,7 +170,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       // rest
       case _ =>
         handleAsyncSearchRequest(regularRequestHandler, esContext, aclContext) orElse
-        handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
+          handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
+          handleCreateRollupJobRequest(regularRequestHandler, esContext, aclContext) orElse
           handleReflectionBasedIndicesRequest(regularRequestHandler, esContext, aclContext) getOrElse
           handleGeneralNonIndexOperation(regularRequestHandler, esContext)
     }
@@ -188,6 +189,14 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                                           esContext: EsContext,
                                           aclContext: AccessControlStaticContext) = {
     SearchTemplateEsRequestContext
+      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
+      .map(regularRequestHandler.handle(_))
+  }
+
+  private def handleCreateRollupJobRequest(regularRequestHandler: RegularRequestHandler,
+                                           esContext: EsContext,
+                                            aclContext: AccessControlStaticContext) = {
+    PutRollupJobEsRequestContext
       .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
       .map(regularRequestHandler.handle(_))
   }
