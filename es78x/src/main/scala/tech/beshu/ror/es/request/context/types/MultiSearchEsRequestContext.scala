@@ -16,28 +16,29 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest, SearchResponse}
+import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
 import org.elasticsearch.common.bytes.BytesReference
+import org.elasticsearch.common.document.{DocumentField => EDF}
 import org.elasticsearch.common.xcontent.support.XContentMapValues
 import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
+import org.elasticsearch.index.query.{MatchQueryBuilder, QueryBuilders, TermQueryBuilder}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
-import tech.beshu.ror.accesscontrol.domain.{DocumentField, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.domain.{FieldsRestrictions, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchRequestOps._
-import tech.beshu.ror.es.request.SourceFiltering
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
@@ -49,6 +50,8 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                                   override val threadPool: ThreadPool)
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
+
+  override val requiresContextHeader: Boolean = false
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
@@ -67,9 +70,9 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       requests
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
-          updateRequest(request, pack, blockContext.filter, blockContext.fields)
+          updateRequest(request, pack, blockContext.filter, blockContext.fieldsRestrictions)
         }
-      ModificationResult.UpdateResponse(applyClientFiltering(blockContext.fields))
+      ModificationResult.UpdateResponse(applyClientFiltering(blockContext.fieldsRestrictions))
     } else {
       logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
@@ -77,7 +80,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
   }
 
-  private def applyClientFiltering(fields: Option[NonEmptySet[DocumentField]])
+  private def applyClientFiltering(fields: Option[FieldsRestrictions])
                                   (actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, fields) match {
       case (response: MultiSearchResponse, Some(definedFields)) =>
@@ -94,6 +97,19 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
                     val newContent = XContentFactory.contentBuilder(XContentType.JSON).map(filteredSource)
                     hit.sourceRef(BytesReference.bytes(newContent))
                   }
+
+                  //handle fields
+                  val (metdataFields, nonMetadaDocumentFields) = splitFieldsByMetadata(hit.getFields.asScala.toMap)
+
+                  val policy = new FieldsPolicy(definedFields)
+
+                  val filteredFields = nonMetadaDocumentFields.filter {
+                    case (key, _) => policy.canKeep(key)
+                  }
+
+                  val allNewFields = (metdataFields ++ filteredFields).asJava
+
+                  hit.fields(allNewFields)
                 }
             }
           }
@@ -103,11 +119,51 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
   }
 
-  private def splitFields(fields: NonEmptySet[DocumentField]) = {
-    fields.toNonEmptyList.toList.partitionEither {
-      case d: ADocumentField => Right(d.value.value)
-      case d: NegatedDocumentField => Left(d.value.value)
+  def splitFieldsByMetadata(fields: Map[String, EDF]): (Map[String, EDF], Map[String, EDF]) = {
+    fields.partition {
+      case t if t._2.isMetadataField => true
+      case _ => false
     }
+  }
+
+  private def applyFieldsToQuery(request: SearchRequest,
+                                 fieldsRestrictions: Option[FieldsRestrictions]): SearchRequest = {
+
+    fieldsRestrictions match {
+      case Some(definedFields) =>
+        request.source().query() match {
+          case builder: TermQueryBuilder =>
+            val fieldsPolicy = new FieldsPolicy(definedFields)
+            if (fieldsPolicy.canKeep(builder.fieldName())) {
+              request
+            } else {
+              val someRandomShit = "ROR123123123123123"
+              val newQuery = QueryBuilders.termQuery(someRandomShit, builder.value())
+              request.source().query(newQuery)
+              request
+            }
+          case builder: MatchQueryBuilder =>
+            val fieldsPolicy = new FieldsPolicy(definedFields)
+            if (fieldsPolicy.canKeep(builder.fieldName())) {
+              request
+            } else {
+              val someRandomShit = "ROR123123123123123"
+              val newQuery = QueryBuilders.matchQuery(someRandomShit, builder.value())
+              request.source().query(newQuery)
+              request
+            }
+
+          case _ => request
+        }
+
+      case None =>
+        request
+    }
+  }
+
+  private def splitFields(fields: FieldsRestrictions) = fields.mode match {
+    case AccessMode.Whitelist => (List.empty, fields.fields.map(_.value.value).toList)
+    case AccessMode.Blacklist => (fields.fields.map(_.value.value).toList, List.empty)
   }
 
   override def modifyWhenIndexNotFound: ModificationResult = {
@@ -131,7 +187,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   private def updateRequest(request: SearchRequest,
                             indexPack: Indices,
                             filter: Option[Filter],
-                            fields: Option[NonEmptySet[DocumentField]]) = {
+                            fields: Option[FieldsRestrictions]) = {
     indexPack match {
       case Indices.Found(indices) =>
         updateRequestWithIndices(request, indices)
@@ -141,11 +197,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     request
       .applyFilterToQuery(filter)
 
-    import SourceFiltering._
-
-    val originalFetchSource = request.source().fetchSource()
-    val sourceFilteringResult = originalFetchSource.applyNewFields(fields)
-    request.source().fetchSource(sourceFilteringResult.modifiedContext)
+    applyFieldsToQuery(request, fields)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[IndexName]) = {

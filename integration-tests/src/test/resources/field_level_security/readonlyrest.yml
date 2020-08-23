@@ -47,6 +47,11 @@ readonlyrest:
       indices: ["testfiltera"]
       fields: ["~us*6"]
 
+    - name: wihitelist_docvalues
+      auth_key: "user8:pass"
+      indices: ["testfiltera"]
+      fields: ["_source", "counter"]
+
     - name: Nested field test1
       auth_key: "user1:pass"
       indices: ["nestedtest"]

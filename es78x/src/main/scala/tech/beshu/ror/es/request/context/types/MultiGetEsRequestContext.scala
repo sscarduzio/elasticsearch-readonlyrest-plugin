@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
@@ -51,6 +51,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
+  override val requiresContextHeader: Boolean = false
+
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
     UserMetadata.from(this),
@@ -68,12 +70,12 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       items
         .zip(modifiedPacksOfIndices)
         .foreach { case (item, pack) =>
-          updateItem(item, pack, blockContext.fields)
+          updateItem(item, pack, blockContext.fieldsRestrictions)
         }
       val function = filterResponse(blockContext.filter) _
       val updateFunction =
         function
-          .andThen(_.map(filterFieldsFromResponse(blockContext.fields)))
+          .andThen(_.map(filterFieldsFromResponse(blockContext.fieldsRestrictions)))
 
       ModificationResult.UpdateResponse(updateFunction)
     } else {
@@ -98,7 +100,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
 
   private def updateItem(item: MultiGetRequest.Item,
                          indexPack: Indices,
-                         fields: Option[NonEmptySet[DocumentField]]): Unit = {
+                         fields: Option[FieldsRestrictions]): Unit = {
     indexPack match {
       case Indices.Found(indices) =>
         updateItemWithIndices(item, indices)
@@ -125,14 +127,14 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   }
 
 
-  private def filterFieldsFromResponse(fields: Option[NonEmptySet[DocumentField]])
+  private def filterFieldsFromResponse(fields: Option[FieldsRestrictions])
                                       (actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fields) match {
       case (response: MultiGetResponse, Some(definedFields)) =>
         val (excluding, including) = splitFields(definedFields)
         val newResponses = response.getResponses
           .map {
-            case multiGetItem if !multiGetItem.isFailed =>
+            case multiGetItem if !multiGetItem.isFailed && !multiGetItem.getResponse.isSourceEmpty=>
               val getResponse = multiGetItem.getResponse
               val filteredSource = XContentMapValues.filter(getResponse.getSource, including.toArray, excluding.toArray)
               val newContent = XContentFactory.contentBuilder(XContentType.JSON).map(filteredSource)
@@ -164,11 +166,10 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       case _ => false
     }
   }
-  private def splitFields(fields: NonEmptySet[DocumentField]) = {
-    fields.toNonEmptyList.toList.partitionEither {
-      case d: ADocumentField => Right(d.value.value)
-      case d: NegatedDocumentField => Left(d.value.value)
-    }
+
+  private def splitFields(fields: FieldsRestrictions) = fields.mode match {
+    case AccessMode.Whitelist => (List.empty, fields.fields.map(_.value.value).toList)
+    case AccessMode.Blacklist => (fields.fields.map(_.value.value).toList, List.empty)
   }
 
   private def filterResponse(filter: Option[Filter])

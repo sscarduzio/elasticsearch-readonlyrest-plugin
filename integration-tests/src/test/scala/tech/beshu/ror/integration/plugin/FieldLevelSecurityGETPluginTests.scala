@@ -14,9 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.FieldLevelSecuritySuiteMSearch
+import tech.beshu.ror.integration.suites.FieldLevelSecuritySuiteGet
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-// todo: enable when proxy supports fields rule
-//class FieldLevelSecurityProxyTests extends FieldLevelSecuritySuite with BasicClusterProxyTestSupport
+class FieldLevelSecurityGETPluginTests extends FieldLevelSecuritySuiteGet with SingletonPluginTestSupport

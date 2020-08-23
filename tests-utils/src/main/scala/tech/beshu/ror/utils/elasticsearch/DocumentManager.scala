@@ -43,7 +43,7 @@ class DocumentManager(restClient: RestClient, esVersion: String)
   }
 
   def get(index: String, id: Int, queryParams: Map[String, String]): JsonResponse = {
-    val uri = restClient.from(createDocPathWithDefaultType(index, id), queryParams.asJava)
+    val uri = restClient.from(createDocPathWithDefaultType(index, s"$id"), queryParams.asJava)
     call(new HttpGet(uri), new JsonResponse(_))
   }
 

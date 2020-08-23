@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks
 
-import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -90,7 +89,7 @@ object BlockContext {
                                                  override val contextHeaders: Set[Header],
                                                  indices: Set[IndexName],
                                                  filter: Option[Filter],
-                                                 fields: Option[NonEmptySet[DocumentField]] = None)
+                                                 fieldsRestrictions: Option[FieldsRestrictions] = None)
     extends BlockContext
 
 
@@ -100,7 +99,7 @@ object BlockContext {
                                                       override val contextHeaders: Set[Header],
                                                       indexPacks: List[Indices],
                                                       filter: Option[Filter],
-                                                      fields: Option[NonEmptySet[DocumentField]] = None)
+                                                      fieldsRestrictions: Option[FieldsRestrictions] = None)
     extends BlockContext
 
   final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
@@ -183,22 +182,22 @@ object BlockContext {
   }
 
   trait HasFields[B <: BlockContext] {
-    def fields(blockContext: B): Option[NonEmptySet[DocumentField]]
+    def fields(blockContext: B): Option[FieldsRestrictions]
   }
   object HasFields {
 
     def apply[B <: BlockContext](implicit instance: HasFields[B]): HasFields[B] = instance
 
     implicit val fieldsFromFilterableMultiBlockContext = new HasFields[FilterableMultiRequestBlockContext] {
-      override def fields(blockContext: FilterableMultiRequestBlockContext): Option[NonEmptySet[DocumentField]] = blockContext.fields
+      override def fields(blockContext: FilterableMultiRequestBlockContext): Option[FieldsRestrictions] = blockContext.fieldsRestrictions
     }
 
     implicit val fieldsFromFilterableRequestBlockContext = new HasFields[FilterableRequestBlockContext] {
-      override def fields(blockContext: FilterableRequestBlockContext): Option[NonEmptySet[DocumentField]] = blockContext.fields
+      override def fields(blockContext: FilterableRequestBlockContext): Option[FieldsRestrictions] = blockContext.fieldsRestrictions
     }
 
     implicit class Ops[B <: BlockContext : HasFields](blockContext: B) {
-      def filter: Option[NonEmptySet[DocumentField]] = HasFields[B].fields(blockContext)
+      def fields: Option[FieldsRestrictions] = HasFields[B].fields(blockContext)
     }
   }
 
@@ -248,7 +247,7 @@ object BlockContext {
   }
 
   implicit class BlockContextWithFieldsUpdaterOps[B <: BlockContext: BlockContextWithFieldsUpdater](blockContext: B) {
-    def withFields(fields: NonEmptySet[DocumentField]): B = {
+    def withFields(fields: FieldsRestrictions): B = {
       BlockContextWithFieldsUpdater[B].withFields(blockContext, fields)
     }
   }

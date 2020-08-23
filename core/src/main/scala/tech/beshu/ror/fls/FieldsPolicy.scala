@@ -84,7 +84,5 @@ object FieldsPolicy {
         .replace(".", "\\.")
         .replace("*", ".*")}$$"
       )
-    val isNegated: Boolean = field.isInstanceOf[NegatedDocumentField]
-
   }
 }

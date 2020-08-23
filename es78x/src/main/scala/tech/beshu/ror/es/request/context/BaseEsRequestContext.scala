@@ -137,6 +137,8 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
+  override def requiresContextHeader: Boolean = true
+
   override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 
   protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {

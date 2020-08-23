@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
@@ -30,8 +30,8 @@ import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
-import tech.beshu.ror.accesscontrol.domain.{DocumentField, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.domain.{FieldsRestrictions, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
@@ -46,6 +46,8 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
+  override val requiresContextHeader: Boolean = false
+
   override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
     val indexName = IndexName
       .fromString(request.index())
@@ -58,7 +60,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
   override protected def update(request: GetRequest,
                                 indices: NonEmptyList[IndexName],
                                 filter: Option[Filter],
-                                fields: Option[NonEmptySet[DocumentField]]): ModificationResult = {
+                                fields: Option[FieldsRestrictions]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
     val function = filterResponse(filter) _
@@ -77,7 +79,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
     }
   }
 
-  private def filterFieldsFromResponse(fields: Option[NonEmptySet[DocumentField]])
+  private def filterFieldsFromResponse(fields: Option[FieldsRestrictions])
                                       (actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fields) match {
       case (response: GetResponse, Some(definedFields)) if response.isExists && !response.isSourceEmpty =>
@@ -111,11 +113,10 @@ class GetEsRequestContext(actionRequest: GetRequest,
       case _ => false
     }
   }
-  private def splitFields(fields: NonEmptySet[DocumentField]) = {
-    fields.toNonEmptyList.toList.partitionEither {
-      case d: ADocumentField => Right(d.value.value)
-      case d: NegatedDocumentField => Left(d.value.value)
-    }
+
+  private def splitFields(fields: FieldsRestrictions) = fields.mode match {
+    case AccessMode.Whitelist => (List.empty, fields.fields.map(_.value.value).toList)
+    case AccessMode.Blacklist => (fields.fields.map(_.value.value).toList, List.empty)
   }
 
   private def handleExistingResponse(response: GetResponse,

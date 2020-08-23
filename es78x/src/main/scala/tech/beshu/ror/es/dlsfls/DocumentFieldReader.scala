@@ -30,7 +30,7 @@ import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XCont
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions
 import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader
-import tech.beshu.ror.fls.FieldsPolicy
+import tech.beshu.ror.fls.{EnhancedFieldsPolicy, FieldsPolicy}
 import ujson._
 
 import scala.collection.JavaConverters._

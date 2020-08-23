@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, FieldsRestrictions}
-import tech.beshu.ror.fls.FieldsPolicy
+import tech.beshu.ror.fls.{EnhancedFieldsPolicy, FieldsPolicy}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -56,9 +56,12 @@ class FieldsPolicyTests extends WordSpec {
   }
   "A EnhancedFieldMatcher" should {
     "work in whitelist mode" in {
-      val matcher = new EnhancedFieldsPolicy(NonEmptySet.of(
-        ADocumentField("it*re*bus1".nonempty), ADocumentField("item.*Date".nonempty)
-      ))
+
+      val fields = UniqueNonEmptyList.of(
+      DocumentField("it*re*bus1".nonempty), DocumentField("item.*Date".nonempty)
+    )
+      val fieldsRestrictions = FieldsRestrictions(fields, AccessMode.Whitelist)
+      val matcher = new EnhancedFieldsPolicy(fieldsRestrictions)
 
       matcher.canKeep("itemresobus2resobus1") should be (true)
       matcher.canKeep("item.resobus2res.obus1") should be (true)
@@ -68,9 +71,12 @@ class FieldsPolicyTests extends WordSpec {
       matcher.canKeep("item.endDate1") should be (false)
     }
     "work in blacklist mode" in {
-      val matcher = new EnhancedFieldsPolicy(NonEmptySet.of(
-        NegatedDocumentField("it*re*bus1".nonempty), NegatedDocumentField("item.*Date".nonempty)
-      ))
+
+      val fields = UniqueNonEmptyList.of(
+        DocumentField("it*re*bus1".nonempty), DocumentField("item.*Date".nonempty)
+      )
+      val fieldsRestrictions = FieldsRestrictions(fields, AccessMode.Blacklist)
+      val matcher = new EnhancedFieldsPolicy(fieldsRestrictions)
 
       matcher.canKeep("itemresobus2resobus1") should be (false)
       matcher.canKeep("item.resobus2res.obus1") should be (false)

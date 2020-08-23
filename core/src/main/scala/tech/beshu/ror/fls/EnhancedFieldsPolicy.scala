@@ -18,21 +18,21 @@ package tech.beshu.ror.fls
 
 import java.util.regex.Pattern
 
-import cats.data.NonEmptySet
-import cats.implicits._
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.DocumentField
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 
-class EnhancedFieldsPolicy(fields: NonEmptySet[DocumentField]) {
+class EnhancedFieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
 
-  private val enhancedFields = fields.toList.map(new FieldsPolicy.EnhancedDocumentField(_))
+  private val enhancedFields = fieldsRestrictions.fields.toList.map(new FieldsPolicy.EnhancedDocumentField(_))
 
   def canKeep(field: String): Boolean = {
     Constants.FIELDS_ALWAYS_ALLOW.contains(field) || {
-      if (enhancedFields.head.isNegated) {
-        !enhancedFields.exists(f => matches(f, field))
-      } else {
-        enhancedFields.exists(f => matches(f, field))
+      fieldsRestrictions.mode match {
+        case AccessMode.Whitelist =>
+          enhancedFields.exists(f => matches(f, field))
+        case AccessMode.Blacklist =>
+          !enhancedFields.exists(f => matches(f, field))
       }
     }
   }
@@ -40,13 +40,9 @@ class EnhancedFieldsPolicy(fields: NonEmptySet[DocumentField]) {
   private def matches(enhancedField: FieldsPolicy.EnhancedDocumentField,
                       field: String): Boolean = {
     val fieldParts = field.split("\\.").toList
-    if (enhancedField.fullPattern.matcher(field).find())
-      true
-    else if(enhancedField.fieldPartPatterns.length > fieldParts.length)
-      false
-    else {
-      checkPartByPart(enhancedField, fieldParts)
-    }
+    if (enhancedField.fullPattern.matcher(field).find()) true
+    else if (enhancedField.fieldPartPatterns.length > fieldParts.length) false
+    else checkPartByPart(enhancedField, fieldParts)
   }
 
   private def checkPartByPart(enhancedField: FieldsPolicy.EnhancedDocumentField, fieldParts: List[String]) = {
