@@ -171,7 +171,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case _ =>
         handleAsyncSearchRequest(regularRequestHandler, esContext, aclContext) orElse
           handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
-          handleCreateRollupJobRequest(regularRequestHandler, esContext, aclContext) orElse
+          handlePutRollupJobEsRequestContext(regularRequestHandler, esContext, aclContext) orElse
+          handleGetRollupCapsEsRequestContext(regularRequestHandler, esContext, aclContext) orElse
           handleReflectionBasedIndicesRequest(regularRequestHandler, esContext, aclContext) getOrElse
           handleGeneralNonIndexOperation(regularRequestHandler, esContext)
     }
@@ -193,10 +194,18 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       .map(regularRequestHandler.handle(_))
   }
 
-  private def handleCreateRollupJobRequest(regularRequestHandler: RegularRequestHandler,
-                                           esContext: EsContext,
-                                            aclContext: AccessControlStaticContext) = {
+  private def handlePutRollupJobEsRequestContext(regularRequestHandler: RegularRequestHandler,
+                                                 esContext: EsContext,
+                                                 aclContext: AccessControlStaticContext) = {
     PutRollupJobEsRequestContext
+      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
+      .map(regularRequestHandler.handle(_))
+  }
+
+  private def handleGetRollupCapsEsRequestContext(regularRequestHandler: RegularRequestHandler,
+                                                  esContext: EsContext,
+                                                  aclContext: AccessControlStaticContext) = {
+    GetRollupCapsEsRequestContext
       .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
       .map(regularRequestHandler.handle(_))
   }

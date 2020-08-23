@@ -21,8 +21,9 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, RollupJobsResult}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, RollupCapabilitiesResult, RollupJobsResult}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 
 class IndexManager(client: RestClient,
                    override val additionalHeaders: Map[String, String] = Map.empty)
@@ -99,11 +100,41 @@ class IndexManager(client: RestClient,
              rollupIndex: String,
              timestampField: String = "timestamp",
              aggregableField: String = "counter"): JsonResponse = {
-    call(createRollupRequest(jobId, indexPattern, rollupIndex, timestampField, aggregableField), new JsonResponse(_))
+    val response = call(createRollupRequest(jobId, indexPattern, rollupIndex, timestampField, aggregableField), new JsonResponse(_))
+    if(response.isSuccess) {
+      waitForCondition(s"Job $jobId is indexed") {
+        getAllRollupJobs.jobs.exists(_ ("config")("id").str == jobId)
+      }
+    }
+    response
   }
+
+  def deleteRollupJob(jobId: String): JsonResponse = {
+    call(createDeleteRollupJobRequest(jobId), new JsonResponse(_))
+  }
+
+  def deleteAllRollupJobs(): Unit = {
+    getAllRollupJobs.jobs match {
+      case Nil =>
+      case jobs =>
+        jobs.foreach { jobJson =>
+          val jobId = jobJson("config")("id").str
+          deleteRollupJob(jobId).force()
+        }
+        waitForCondition("All rollup jobs are deleted") {
+          getAllRollupJobs.jobs.isEmpty
+        }
+    }
+  }
+
+  def getAllRollupJobs: RollupJobsResult = getRollupJobs("_all")
 
   def getRollupJobs(jobId: String): RollupJobsResult = {
     call(createGetRollupJobsRequest(jobId), new RollupJobsResult(_))
+  }
+
+  def getRollupJobCapabilities(index: String): RollupCapabilitiesResult = {
+    call(createGetRollupJobCapabilitiesRequest(index), new RollupCapabilitiesResult(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -188,7 +219,7 @@ class IndexManager(client: RestClient,
         |{
         |  "index_pattern": "$indexPattern",
         |  "rollup_index": "$rollupIndex",
-        |  "cron": "*/30 * * * * ?",
+        |  "cron": "* * */2 * * ?",
         |  "page_size": 1000,
         |  "groups": {
         |    "date_histogram": {
@@ -205,8 +236,16 @@ class IndexManager(client: RestClient,
     request
   }
 
+  private def createDeleteRollupJobRequest(jobId: String) = {
+    new HttpDelete(client.from(s"/_rollup/job/$jobId"))
+  }
+
   private def createGetRollupJobsRequest(jobId: String) = {
     new HttpGet(client.from(s"/_rollup/job/$jobId"))
+  }
+
+  private def createGetRollupJobCapabilitiesRequest(index: String) = {
+    new HttpGet(client.from(s"/_rollup/data/$index"))
   }
 
   private def updateAliasesRequest(actions: NonEmptyList[AliasAction]) = {
@@ -244,5 +283,11 @@ object IndexManager {
 
   class RollupJobsResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val jobs: List[JSON] = responseJson("jobs").arr.toList
+  }
+
+  class RollupCapabilitiesResult(response: HttpResponse) extends JsonResponse(response) {
+    lazy val capabilities: Map[String, List[JSON]] = {
+      responseJson.obj.toMap.mapValues(_("rollup_jobs").arr.toList)
+    }
   }
 }
