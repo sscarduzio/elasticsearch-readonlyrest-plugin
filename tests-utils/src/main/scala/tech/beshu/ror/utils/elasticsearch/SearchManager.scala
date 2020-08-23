@@ -41,7 +41,11 @@ class SearchManager(client: RestClient,
     call(createSearchRequest(indexNames.toList), new SearchResult(_))
 
   def asyncSearch(indexName: String): AsyncSearchResult = {
-    call(createAsyncSearchRequest(Some(indexName)), new AsyncSearchResult(_))
+    call(createAsyncSearchRequest(indexName :: Nil), new AsyncSearchResult(_))
+  }
+
+  def asyncSearch(indexNames: String*): AsyncSearchResult = {
+    call(createAsyncSearchRequest(indexNames.toList), new AsyncSearchResult(_))
   }
 
   def mSearchUnsafe(lines: String*): MSearchResult = {
@@ -88,11 +92,11 @@ class SearchManager(client: RestClient,
     ))
   }
 
-  private def createAsyncSearchRequest(indexName: Option[String] = None) = {
+  private def createAsyncSearchRequest(indexNames: List[String] = Nil) = {
     new HttpPost(client.from(
-      indexName match {
-        case None => "/_async_search"
-        case Some(name) => s"/$name/_async_search"
+      indexNames match {
+        case Nil => "/_async_search"
+        case names => s"/${names.mkString(",")}/_async_search"
       }
     ))
   }
