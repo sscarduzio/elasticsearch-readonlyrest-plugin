@@ -91,6 +91,9 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
+    #es79
+    ./gradlew --stacktrace es79x:ror '-PesVersion=7.9.0'
+
     #es78
     ./gradlew --stacktrace es78x:ror '-PesVersion=7.8.0'
     ./gradlew --stacktrace es78x:ror '-PesVersion=7.8.1'
@@ -156,6 +159,7 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.9'
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.10'
     ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.11'
+    ./gradlew --stacktrace es66x:ror '-PesVersion=6.8.12'
 
     # es65
     ./gradlew --stacktrace es63x:ror '-PesVersion=6.5.0'
@@ -232,18 +236,11 @@ if [[ $TRAVIS_PULL_REQUEST = "false" ]] && [[ $ROR_TASK == "publish_artifacts" ]
     CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
     PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
 
-    # Check if this tag already exists, so we don't overwrite builds
-    if git tag --list | egrep -e "^v${PUBLISHED_PLUGIN_VER}_es" > /dev/null; then
-        echo "Skipping publishing audit module artifacts because GIT tag $PUBLISHED_PLUGIN_VER already exists, exiting."
-    else 
-      if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
-        echo ">>> Publishing audit module artifacts to sonatype repo"
-        ./gradlew audit:publishToSonatype
-        ./gradlew audit:closeAndReleaseRepository
-      else
-        echo ">>> Skipping publishing audit module artifacts"
-      fi
-    fi
-    
-    
+    if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
+      echo ">>> Publishing audit module artifacts to sonatype repo"
+      ./gradlew audit:publishToSonatype
+      ./gradlew audit:closeAndReleaseRepository
+    else
+      echo ">>> Skipping publishing audit module artifacts"
+    fi   
 fi

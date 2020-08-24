@@ -43,8 +43,8 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.LoggerOps._
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration._

@@ -28,6 +28,7 @@ import io.jsonwebtoken.Claims
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
@@ -227,6 +228,7 @@ object domain {
     val searchAction = Action("indices:data/read/search")
     val mSearchAction = Action("indices:data/read/msearch")
     val fieldCapsAction = Action("indices:data/read/field_caps")
+    val asyncSearchAction = Action("indices:data/read/async_search/submit")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }
@@ -309,11 +311,19 @@ object domain {
 
   final case class UserOrigin(value: NonEmptyString)
 
-  sealed abstract class DocumentField(val value: NonEmptyString)
-  object DocumentField {
-    final case class ADocumentField(override val value: NonEmptyString) extends DocumentField(value)
-    final case class NegatedDocumentField(override val value: NonEmptyString) extends DocumentField(value)
+  final case class FieldsRestrictions(fields: UniqueNonEmptyList[DocumentField],
+                                      mode: AccessMode)
+
+  object FieldsRestrictions {
+
+    sealed trait AccessMode
+    object AccessMode {
+      case object Whitelist extends AccessMode
+      case object Blacklist extends AccessMode
+    }
   }
+
+  final case class DocumentField(value: NonEmptyString)
 
   final case class Type(value: String) extends AnyVal
 

@@ -19,14 +19,14 @@ package tech.beshu.ror.accesscontrol
 import java.util.Base64
 import java.util.regex.Pattern
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import cats.implicits._
 import cats.{Order, Show}
 import com.softwaremill.sttp.{Method, Uri}
-import io.lemonlabs.uri.{Uri => LemonUri}
 import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
+import io.lemonlabs.uri.{Uri => LemonUri}
 import shapeless.Nat
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
@@ -41,7 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
-import tech.beshu.ror.accesscontrol.domain.DocumentField.{ADocumentField, NegatedDocumentField}
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -49,9 +49,8 @@ import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import upickle.default
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.SortedSet
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
@@ -97,8 +96,6 @@ object orders {
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
-  implicit val aDocumentFieldOrder: Order[ADocumentField] = Order.by(_.value)
-  implicit val negatedDocumentFieldOrder: Order[NegatedDocumentField] = Order.by(_.value)
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[PlainTextSecret] = Order.by(_.value)
   implicit val indexOrder: Order[IndexName] = Order.by(_.value)
@@ -132,10 +129,6 @@ object show {
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val lemonUriShow: Show[LemonUri] = Show.show(_.toString())
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
-    implicit val documentFieldShow: Show[DocumentField] = Show.show {
-      case f: ADocumentField => f.value.value
-      case f: NegatedDocumentField => s"~${f.value.value}"
-    }
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val indexNameShow: Show[IndexName] = Show.show(_.value.value)
@@ -294,32 +287,49 @@ object headerValues {
 
   implicit val userIdHeaderValue: ToHeaderValue[User.Id] = ToHeaderValue(_.value)
   implicit val indexNameHeaderValue: ToHeaderValue[IndexName] = ToHeaderValue(_.value)
-  implicit val transientFieldsToHeaderValue: ToHeaderValue[NonEmptySet[DocumentField]] = ToHeaderValue { filters =>
-    implicit val nesW: default.Writer[NonEmptyString] = default.StringWriter.comap(_.value)
-    implicit val documentFieldW: default.Writer[DocumentField] = default.Writer.merge(
-      upickle.default.macroW[DocumentField.ADocumentField],
-      upickle.default.macroW[DocumentField.NegatedDocumentField]
+
+  implicit val transientFieldsToHeaderValue: ToHeaderValue[FieldsRestrictions] = ToHeaderValue { fieldsRestrictions =>
+    import upickle.default
+    import default._
+
+    implicit val nesW: Writer[NonEmptyString] = StringWriter.comap(_.value)
+    implicit val accessModeW: Writer[AccessMode] = Writer.merge(
+      macroW[AccessMode.Whitelist.type],
+      macroW[AccessMode.Blacklist.type]
     )
-    implicit val setR: default.Writer[NonEmptySet[DocumentField]] =
-      default.SeqLikeWriter[Set, DocumentField].comap(_.toSortedSet)
-    val filtersJsonString = upickle.default.write(filters)
+    implicit val documentFieldW: Writer[DocumentField] = macroW
+    implicit val setW: Writer[UniqueNonEmptyList[DocumentField]] =
+      SeqLikeWriter[UniqueNonEmptyList, DocumentField]
+
+    implicit val fieldsRestrictionsW: Writer[FieldsRestrictions] = macroW
+
+    val fieldsJsonString = upickle.default.write(fieldsRestrictions)
     NonEmptyString.unsafeFrom(
-      Base64.getEncoder.encodeToString(filtersJsonString.getBytes("UTF-8"))
+      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
     )
   }
-  implicit val transientFieldsFromHeaderValue: FromHeaderValue[NonEmptySet[DocumentField]] = (value: NonEmptyString) => {
-    implicit val nesR: default.Reader[NonEmptyString] = default.StringReader.map(NonEmptyString.unsafeFrom)
-    implicit val documentFieldR: default.Reader[DocumentField] = default.Reader.merge(
-      upickle.default.macroR[DocumentField.ADocumentField],
-      upickle.default.macroR[DocumentField.NegatedDocumentField]
+
+  implicit val transientFieldsFromHeaderValue: FromHeaderValue[FieldsRestrictions] = (value: NonEmptyString) => {
+    import upickle.default
+    import default._
+
+    implicit val nesR: Reader[NonEmptyString] = StringReader.map(NonEmptyString.unsafeFrom)
+    implicit val accessModeR: Reader[AccessMode] = Reader.merge(
+      macroR[AccessMode.Whitelist.type],
+      macroR[AccessMode.Blacklist.type]
     )
-    import tech.beshu.ror.accesscontrol.orders._
-    implicit val setR: default.Reader[NonEmptySet[DocumentField]] =
-      default.SeqLikeReader[Set, DocumentField]
-        .map(set => NonEmptySet.fromSetUnsafe(SortedSet.empty[DocumentField] ++ set))
-    Try(upickle.default.read[NonEmptySet[DocumentField]](
+    implicit val documentFieldR: Reader[DocumentField] = macroR
+
+    implicit val setR: Reader[UniqueNonEmptyList[DocumentField]] =
+      SeqLikeReader[List, DocumentField]
+        .map(UniqueNonEmptyList.unsafeFromList)
+
+    implicit val fieldsRestrictionsR: Reader[FieldsRestrictions] = macroR
+
+    Try(upickle.default.read[FieldsRestrictions](
       new String(Base64.getDecoder.decode(value.value), "UTF-8")
     ))
   }
+
   implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
 }
