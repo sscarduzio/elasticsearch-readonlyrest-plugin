@@ -14,12 +14,21 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader
+package tech.beshu.ror.configuration.loader.distributed.internode
 
-import cats.Eq
-import cats.implicits._
-import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
+import tech.beshu.ror.configuration.loader.distributed.NodeConfig
+import tech.beshu.ror.configuration.loader.distributed.internode.dto.NodeConfigDTO
 
-package object distributed {
-  implicit val eqNodeId: Eq[NodeId] = Eq.by(_.value)
+object NodeConfigSerializer {
+
+  import io.circe.parser
+  import io.circe.syntax._
+
+  def serialize(nodeConfig: NodeConfig): String = {
+    NodeConfigDTO.create(nodeConfig).asJson.noSpaces
+  }
+
+  def parse(str: String): NodeConfig = {
+    parser.decode[NodeConfigDTO](str).map(NodeConfigDTO.fromDto).toTry.get
+  }
 }

@@ -14,12 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader
+package tech.beshu.ror.configuration.loader.distributed.internode
 
-import cats.Eq
-import cats.implicits._
-import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
+import io.circe.{Codec, Decoder, Encoder}
+import io.circe.generic.extras.Configuration
 
-package object distributed {
-  implicit val eqNodeId: Eq[NodeId] = Eq.by(_.value)
+package object dto {
+  implicit val config: Configuration = Configuration.default.withDiscriminator("type")
+
+  implicit def codecEither[A: Decoder : Encoder, B: Decoder : Encoder]: Codec[Either[A, B]] = io.circe.generic.semiauto.deriveCodec
+
 }

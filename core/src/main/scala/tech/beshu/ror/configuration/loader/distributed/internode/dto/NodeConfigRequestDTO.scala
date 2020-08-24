@@ -14,26 +14,26 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader.distributed
+package tech.beshu.ror.configuration.loader.distributed.internode.dto
 
-import io.circe.Codec
-import tech.beshu.ror.configuration.loader.LoadedConfig
+import io.circe.generic.extras.ConfiguredJsonCodec
+import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
 
-object NodeConfigSerializer {
+@ConfiguredJsonCodec
+final case class NodeConfigRequestDTO(nanos: Long)
 
-  import io.circe.parser
-  import io.circe.syntax._
+object NodeConfigRequestDTO {
+  def create(o: NodeConfigRequest): NodeConfigRequestDTO =
+    new NodeConfigRequestDTO(
+      nanos = o.timeout.nanos,
 
-  implicit private val codecNodeConfig: Codec[NodeConfig] = {
-    val codec = Codec.codecForEither[LoadedConfig.Error, LoadedConfig[String]]("error", "config")
-    Codec.from(codec.map(NodeConfig), codec.contramap(_.loadedConfig))
-  }
+    )
 
-  def serialize(nodeConfig: NodeConfig): String = {
-    nodeConfig.asJson.noSpaces
-  }
+  def fromDto(o: NodeConfigRequestDTO): NodeConfigRequest = NodeConfigRequest(
+    timeout = Timeout(o.nanos),
 
-  def parse(str: String): NodeConfig = {
-    parser.decode[NodeConfig](str).toTry.get
+  )
+  implicit class Ops(o: NodeConfigRequestDTO) {
+    implicit def fromDto: NodeConfigRequest = NodeConfigRequestDTO.fromDto(o)
   }
 }

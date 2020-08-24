@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.configuration.loader.distributed.dto
 
+import cats.implicits._
 import io.circe.generic.extras.ConfiguredJsonCodec
 import tech.beshu.ror.configuration.loader.distributed.Summary
 import tech.beshu.ror.configuration.loader.distributed.Summary.{NodeForcedFileConfig, NodeReturnedDifferentConfig, NodeReturnedConfigError}
@@ -50,7 +51,7 @@ object NodesResponseWaringDTO {
     def create(o: Summary.NodeReturnedConfigError): NODE_RETURNED_CONFIG_ERROR =
       new NODE_RETURNED_CONFIG_ERROR(
         nodeId = o.nodeId.value,
-        error = LoadedConfigError.createError(o.error),
+        error = o.error.show,
       )
   }
   final case class NODE_RETURNED_UNKNOWN_ERROR(nodeId: String, detailedMessage: String) extends NodesResponseWaringDTO

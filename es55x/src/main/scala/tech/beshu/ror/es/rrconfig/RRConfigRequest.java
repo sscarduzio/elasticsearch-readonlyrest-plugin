@@ -20,7 +20,9 @@ import org.elasticsearch.action.support.nodes.BaseNodeRequest;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest;
-import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequestSerializer;
+import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigRequestSerializer;
+
+
 
 import java.io.IOException;
 

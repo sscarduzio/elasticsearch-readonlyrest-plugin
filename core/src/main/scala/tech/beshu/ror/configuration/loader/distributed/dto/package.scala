@@ -16,9 +16,21 @@
  */
 package tech.beshu.ror.configuration.loader.distributed
 
+import cats.Show
 import io.circe.generic.extras.Configuration
+import tech.beshu.ror.configuration.loader.LoadedConfig
 
 package object dto {
   implicit val configuration: Configuration = Configuration.default.withDiscriminator("type")
+  implicit val showLoadedConfigError: Show[LoadedConfig.Error] = Show.show {
+    {
+      case LoadedConfig.FileNotExist(path) => s"""file not exist: ${path.value}"""
+      case LoadedConfig.FileParsingError(message) => s"""file parsing error: ${message}"""
+      case LoadedConfig.EsFileNotExist(path) => s"""es file not exist: ${path.value}"""
+      case LoadedConfig.EsFileMalformed(path, message) => s"""es file malformed: ${path} ${message}"""
+      case LoadedConfig.IndexParsingError(message) => s"""index parsing error: ${message}"""
+      case LoadedConfig.IndexUnknownStructure => "index unknown structure"
+    }
+  }
 
 }

@@ -34,7 +34,7 @@ object ResultDTO {
   private def createError(error: Error) = {
     val message = error match {
       case Summary.CurrentNodeResponseError(detailedMessage) => s"current node response error: $detailedMessage"
-      case Summary.CurrentNodeConfigError(error) => s"current node returned error: ${LoadedConfigError.createError(error)}"
+      case Summary.CurrentNodeConfigError(error) => show"current node returned error: $error"
       case Summary.CurrentNodeResponseTimeoutError => "current node response timeout"
     }
     ResultDTO(None, Nil, message.some)

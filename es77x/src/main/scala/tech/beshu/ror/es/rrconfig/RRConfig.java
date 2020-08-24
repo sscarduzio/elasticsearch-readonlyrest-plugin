@@ -22,7 +22,7 @@ import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
 import tech.beshu.ror.configuration.loader.distributed.NodeConfig;
-import tech.beshu.ror.configuration.loader.distributed.NodeConfigSerializer;
+import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigSerializer;
 
 import java.io.IOException;
 

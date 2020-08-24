@@ -139,7 +139,11 @@ trait ReadonlyRest extends Logging {
     } yield rorInstance
   }
 
-  private def createRorInstance(indexConfigManager: IndexConfigManager, rorConfigurationIndex: RorConfigurationIndex, auditSink: AuditSinkService, engine: Engine, loadedConfig: LoadedConfig[RawRorConfig]) = {
+  private def createRorInstance(indexConfigManager: IndexConfigManager,
+                                rorConfigurationIndex: RorConfigurationIndex,
+                                auditSink: AuditSinkService,
+                                engine: Engine,
+                                loadedConfig: LoadedConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       loadedConfig match {
         case LoadedConfig.FileConfig(config) =>

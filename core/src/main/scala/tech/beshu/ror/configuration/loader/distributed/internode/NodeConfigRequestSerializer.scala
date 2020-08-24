@@ -14,7 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader.distributed
+package tech.beshu.ror.configuration.loader.distributed.internode
+
+import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest
+import tech.beshu.ror.configuration.loader.distributed.internode.dto.NodeConfigRequestDTO
 
 object NodeConfigRequestSerializer {
 
@@ -22,10 +25,10 @@ object NodeConfigRequestSerializer {
   import io.circe.syntax._
 
   def serialize(nodeConfigRequest: NodeConfigRequest): String = {
-    nodeConfigRequest.asJson.noSpaces
+    NodeConfigRequestDTO.create(nodeConfigRequest).asJson.noSpaces
   }
 
   def parse(str: String): NodeConfigRequest = {
-    parser.decode[NodeConfigRequest](str).toTry.get
+    parser.decode[NodeConfigRequestDTO](str).map(NodeConfigRequestDTO.fromDto).toTry.get
   }
 }
