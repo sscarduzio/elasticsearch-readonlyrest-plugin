@@ -89,20 +89,18 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
   }
 
   override lazy val remoteAddress: Option[Address] =
-    Try(restRequest.getHttpChannel.getRemoteAddress.getAddress.getHostAddress)
-      .toEither
-      .left
-      .map(ex => logger.error(s"[${id.show}] Could not extract remote address", ex))
+    Option(restRequest.getHttpChannel)
+      .flatMap(c => Option(c.getRemoteAddress))
+      .flatMap(isa => Option(isa.getAddress))
+      .flatMap(a => Option(a.getHostAddress))
       .map { remoteHost => if (RCUtils.isLocalHost(remoteHost)) RCUtils.LOCALHOST else remoteHost }
-      .toOption
       .flatMap(Address.from)
 
   override lazy val localAddress: Address =
-    Try(restRequest.getHttpChannel.getLocalAddress.getAddress.getHostAddress)
-      .toEither
-      .left
-      .map(ex => logger.error(s"[${id.show}] Could not extract local address", ex))
-      .toOption
+    Option(restRequest.getHttpChannel)
+      .flatMap(c => Option(c.getLocalAddress))
+      .flatMap(isa => Option(isa.getAddress))
+      .flatMap(a => Option(a.getHostAddress))
       .flatMap(Address.from)
       .getOrElse(throw new IllegalArgumentException(s"Cannot create IP or hostname"))
 
