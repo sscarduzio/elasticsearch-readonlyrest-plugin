@@ -52,7 +52,7 @@ class GetRollupCapsEsRequestContext private(actionRequest: ActionRequest,
 object GetRollupCapsEsRequestContext {
 
   def unapply(arg: ReflectionBasedActionRequest): Option[GetRollupCapsEsRequestContext] = {
-    if (arg.esContext.getClass.getName.endsWith("GetRollupCapsAction$Request")) {
+    if (arg.esContext.actionRequest.getClass.getName.endsWith("GetRollupCapsAction$Request")) {
       Some(new GetRollupCapsEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
     } else {
       None

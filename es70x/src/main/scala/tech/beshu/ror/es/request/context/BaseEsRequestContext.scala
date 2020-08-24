@@ -114,7 +114,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     val requestClazz = esContext.actionRequest.getClass
     val simpleName = requestClazz.getSimpleName
     simpleName.toLowerCase match {
-      case "request" => requestClazz.getCanonicalName.split("\\.").toList.reverse.headOption.getOrElse(simpleName)
+      case "request" => requestClazz.getName.split("\\.").toList.reverse.headOption.getOrElse(simpleName)
       case _ => simpleName
     }
   }

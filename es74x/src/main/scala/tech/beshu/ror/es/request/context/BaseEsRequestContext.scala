@@ -35,7 +35,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -115,7 +114,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     val requestClazz = esContext.actionRequest.getClass
     val simpleName = requestClazz.getSimpleName
     simpleName.toLowerCase match {
-      case "request" => requestClazz.getCanonicalName.split("\\.").toList.reverse.headOption.getOrElse(simpleName)
+      case "request" => requestClazz.getName.split("\\.").toList.reverse.headOption.getOrElse(simpleName)
       case _ => simpleName
     }
   }
