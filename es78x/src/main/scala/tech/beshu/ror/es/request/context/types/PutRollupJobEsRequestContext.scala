@@ -39,13 +39,10 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
 }
 
 object PutRollupJobEsRequestContext {
-  def from(actionRequest: ActionRequest,
-           esContext: EsContext,
-           aclContext: AccessControlStaticContext,
-           clusterService: RorClusterService,
-           threadPool: ThreadPool): Option[PutRollupJobEsRequestContext] = {
-    if (actionRequest.getClass.getName.endsWith("PutRollupJobAction$Request")) {
-      Some(new PutRollupJobEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool))
+
+  def unapply(arg: ReflectionBasedActionRequest): Option[PutRollupJobEsRequestContext] = {
+    if (arg.esContext.actionRequest.getClass.getName.endsWith("PutRollupJobAction$Request")) {
+      Some(new PutRollupJobEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
     } else {
       None
     }

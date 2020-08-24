@@ -34,13 +34,10 @@ class GetRollupCapsEsRequestContext private(actionRequest: ActionRequest,
 }
 
 object GetRollupCapsEsRequestContext {
-  def from(actionRequest: ActionRequest,
-           esContext: EsContext,
-           aclContext: AccessControlStaticContext,
-           clusterService: RorClusterService,
-           threadPool: ThreadPool): Option[GetRollupCapsEsRequestContext] = {
-    if (actionRequest.getClass.getName.endsWith("GetRollupCapsAction$Request")) {
-      Some(new GetRollupCapsEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool))
+
+  def unapply(arg: ReflectionBasedActionRequest): Option[GetRollupCapsEsRequestContext] = {
+    if (arg.esContext.getClass.getName.endsWith("GetRollupCapsAction$Request")) {
+      Some(new GetRollupCapsEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
     } else {
       None
     }

@@ -22,7 +22,7 @@ import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, RollupCapabilitiesResult, RollupJobsResult}
-import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 
 class IndexManager(client: RestClient,
@@ -99,7 +99,7 @@ class IndexManager(client: RestClient,
              indexPattern: String,
              rollupIndex: String,
              timestampField: String = "timestamp",
-             aggregableField: String = "counter"): JsonResponse = {
+             aggregableField: String = "count"): JsonResponse = {
     val response = call(createRollupRequest(jobId, indexPattern, rollupIndex, timestampField, aggregableField), new JsonResponse(_))
     if(response.isSuccess) {
       waitForCondition(s"Job $jobId is indexed") {
@@ -139,6 +139,10 @@ class IndexManager(client: RestClient,
 
   def getRollupIndexCapabilities(rollupIndex: String, rollupIndices: String*): RollupCapabilitiesResult = {
     call(createGetRollupIndexCapabilitiesRequest(rollupIndex :: rollupIndices.toList), new RollupCapabilitiesResult(_))
+  }
+
+  def rollupSearch(rollupIndex: String): JsonResponse = {
+    call(createRollupSearchRequest(rollupIndex), new JsonResponse(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -234,6 +238,10 @@ class IndexManager(client: RestClient,
         |    "terms": {
         |       "fields": [ "$aggregableField" ]
         |     }
+        |  },
+        |  "metrics": {
+        |    "field": "$aggregableField",
+        |    "metrics": [ "min", "max", "sum" ]
         |  }
         |}
       """.stripMargin))
@@ -254,6 +262,25 @@ class IndexManager(client: RestClient,
 
   private def createGetRollupIndexCapabilitiesRequest(indices: List[String]) = {
     new HttpGet(client.from(s"/${indices.mkString(",")}/_rollup/data"))
+  }
+
+  private def createRollupSearchRequest(rollupIndex: String) = {
+    val request = new HttpGetWithEntity(client.from(s"/$rollupIndex/_rollup_search"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""
+         |{
+         |  "size": 0,
+         |  "aggregations": {
+         |    "max_count": {
+         |      "max": {
+         |        "field": "count"
+         |      }
+         |    }
+         |  }
+         |}
+       """.stripMargin))
+    request
   }
 
   private def updateAliasesRequest(actions: NonEmptyList[AliasAction]) = {
