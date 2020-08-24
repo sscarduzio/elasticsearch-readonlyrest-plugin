@@ -110,7 +110,14 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val contentLength: Information = Bytes(if (restRequest.content == null) 0 else restRequest.content().length())
 
-  override lazy val `type`: Type = Type(esContext.actionRequest.getClass.getSimpleName)
+  override lazy val `type`: Type = Type {
+    val requestClazz = esContext.actionRequest.getClass
+    val simpleName = requestClazz.getSimpleName
+    simpleName.toLowerCase match {
+      case "request" => requestClazz.getCanonicalName.split("\\.").toList.reverse.headOption.getOrElse(simpleName)
+      case _ => simpleName
+    }
+  }
 
   override lazy val content: String = if (restRequest.content == null) "" else restRequest.content().utf8ToString()
 
