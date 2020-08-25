@@ -20,10 +20,9 @@ import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, RollupCapabilitiesResult, RollupJobsResult}
-import tech.beshu.ror.utils.httpclient.{HttpGetWithEntity, RestClient}
-import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse}
+import tech.beshu.ror.utils.httpclient.RestClient
 
 class IndexManager(client: RestClient,
                    override val additionalHeaders: Map[String, String] = Map.empty)
@@ -93,56 +92,6 @@ class IndexManager(client: RestClient,
 
   def rollover(target: String): JsonResponse = {
     call(createRolloverRequest(target, None), new JsonResponse(_))
-  }
-
-  def rollup(jobId: String,
-             indexPattern: String,
-             rollupIndex: String,
-             timestampField: String = "timestamp",
-             aggregableField: String = "count"): JsonResponse = {
-    val response = call(createRollupRequest(jobId, indexPattern, rollupIndex, timestampField, aggregableField), new JsonResponse(_))
-    if(response.isSuccess) {
-      waitForCondition(s"Job $jobId is indexed") {
-        getAllRollupJobs.jobs.exists(_ ("config")("id").str == jobId)
-      }
-    }
-    response
-  }
-
-  def deleteRollupJob(jobId: String): JsonResponse = {
-    call(createDeleteRollupJobRequest(jobId), new JsonResponse(_))
-  }
-
-  def deleteAllRollupJobs(): Unit = {
-    getAllRollupJobs.jobs match {
-      case Nil =>
-      case jobs =>
-        jobs.foreach { jobJson =>
-          val jobId = jobJson("config")("id").str
-          deleteRollupJob(jobId).force()
-        }
-        waitForCondition("All rollup jobs are deleted") {
-          getAllRollupJobs.jobs.isEmpty
-        }
-    }
-  }
-
-  def getAllRollupJobs: RollupJobsResult = getRollupJobs("_all")
-
-  def getRollupJobs(jobId: String): RollupJobsResult = {
-    call(createGetRollupJobsRequest(jobId), new RollupJobsResult(_))
-  }
-
-  def getRollupJobCapabilities(indexPattern: String): RollupCapabilitiesResult = {
-    call(createGetRollupJobCapabilitiesRequest(indexPattern), new RollupCapabilitiesResult(_))
-  }
-
-  def getRollupIndexCapabilities(rollupIndex: String, rollupIndices: String*): RollupCapabilitiesResult = {
-    call(createGetRollupIndexCapabilitiesRequest(rollupIndex :: rollupIndices.toList), new RollupCapabilitiesResult(_))
-  }
-
-  def rollupSearch(rollupIndex: String): JsonResponse = {
-    call(createRollupSearchRequest(rollupIndex), new JsonResponse(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -215,74 +164,6 @@ class IndexManager(client: RestClient,
     request
   }
 
-  private def createRollupRequest(jobId: String,
-                                  indexPattern: String,
-                                  rollupIndex: String,
-                                  timestampField: String,
-                                  aggregableField: String) = {
-    val request = new HttpPut(client.from(s"/_rollup/job/$jobId"))
-    request.addHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-        |{
-        |  "index_pattern": "$indexPattern",
-        |  "rollup_index": "$rollupIndex",
-        |  "cron": "* * */2 * * ?",
-        |  "page_size": 1000,
-        |  "groups": {
-        |    "date_histogram": {
-        |      "field": "$timestampField",
-        |      "fixed_interval": "1h",
-        |      "delay": "7d"
-        |    },
-        |    "terms": {
-        |       "fields": [ "$aggregableField" ]
-        |     }
-        |  },
-        |  "metrics": {
-        |    "field": "$aggregableField",
-        |    "metrics": [ "min", "max", "sum" ]
-        |  }
-        |}
-      """.stripMargin))
-    request
-  }
-
-  private def createDeleteRollupJobRequest(jobId: String) = {
-    new HttpDelete(client.from(s"/_rollup/job/$jobId"))
-  }
-
-  private def createGetRollupJobsRequest(jobId: String) = {
-    new HttpGet(client.from(s"/_rollup/job/$jobId"))
-  }
-
-  private def createGetRollupJobCapabilitiesRequest(index: String) = {
-    new HttpGet(client.from(s"/_rollup/data/$index"))
-  }
-
-  private def createGetRollupIndexCapabilitiesRequest(indices: List[String]) = {
-    new HttpGet(client.from(s"/${indices.mkString(",")}/_rollup/data"))
-  }
-
-  private def createRollupSearchRequest(rollupIndex: String) = {
-    val request = new HttpGetWithEntity(client.from(s"/$rollupIndex/_rollup_search"))
-    request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |  "size": 0,
-         |  "aggregations": {
-         |    "max_count": {
-         |      "max": {
-         |        "field": "count"
-         |      }
-         |    }
-         |  }
-         |}
-       """.stripMargin))
-    request
-  }
-
   private def updateAliasesRequest(actions: NonEmptyList[AliasAction]) = {
     def actionStrings = actions.map {
       case AliasAction.Add(index, alias) => s"""{ "add": { "index": "$index", "alias": "$alias" } }"""
@@ -314,15 +195,5 @@ object IndexManager {
         val aliases = json("aliases").obj.keys.toList
         (indexName, aliases)
       }
-  }
-
-  class RollupJobsResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val jobs: List[JSON] = responseJson("jobs").arr.toList
-  }
-
-  class RollupCapabilitiesResult(response: HttpResponse) extends JsonResponse(response) {
-    lazy val capabilities: Map[String, List[JSON]] = {
-      responseJson.obj.toMap.mapValues(_("rollup_jobs").arr.toList)
-    }
   }
 }

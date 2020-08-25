@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherW
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
-import tech.beshu.ror.accesscontrol.domain.Action.{fieldCapsAction, mSearchAction, searchAction, asyncSearchAction}
+import tech.beshu.ror.accesscontrol.domain.Action.{fieldCapsAction, mSearchAction, searchAction, asyncSearchAction, rollupSearchAction}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -177,7 +177,8 @@ class IndicesRule(val settings: Settings)
   }
 
   private def isSearchAction(requestContext: RequestContext): Boolean =
-    requestContext.isReadOnlyRequest && List(searchAction, mSearchAction, fieldCapsAction, asyncSearchAction).contains(requestContext.action)
+    requestContext.isReadOnlyRequest &&
+      List(searchAction, mSearchAction, fieldCapsAction, asyncSearchAction, rollupSearchAction).contains(requestContext.action)
 
   private def canPass(requestContext: RequestContext,
                       indices: Set[IndexName],
