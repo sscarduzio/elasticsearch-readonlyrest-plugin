@@ -97,9 +97,19 @@ object SqlRequestHelper {
       case tables =>
         tables.foldLeft(oldQuery) {
           case (currentQuery, table) =>
-            currentQuery.replaceAll(Pattern.quote(table.tableStringInQuery), finalIndices.mkString(","))
+            val (beforeFrom, afterFrom) = currentQuery.splitBy("FROM")
+            afterFrom match {
+              case None =>
+                replaceTableNameInQueryPart(currentQuery, table.tableStringInQuery, finalIndices)
+              case Some(tablesPart) =>
+                s"${beforeFrom}FROM ${replaceTableNameInQueryPart(tablesPart, table.tableStringInQuery, finalIndices)}"
+            }
         }
     }
+  }
+
+  private def replaceTableNameInQueryPart(currentQuery: String, originTable: String, finalIndices: Set[String]) = {
+    currentQuery.replaceAll(Pattern.quote(originTable), finalIndices.mkString(","))
   }
 }
 
