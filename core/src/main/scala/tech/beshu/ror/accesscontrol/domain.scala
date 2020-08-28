@@ -229,6 +229,7 @@ object domain {
     val mSearchAction = Action("indices:data/read/msearch")
     val fieldCapsAction = Action("indices:data/read/field_caps")
     val asyncSearchAction = Action("indices:data/read/async_search/submit")
+    val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }

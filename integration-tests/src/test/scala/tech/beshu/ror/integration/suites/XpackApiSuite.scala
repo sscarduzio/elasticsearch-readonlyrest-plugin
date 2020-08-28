@@ -16,11 +16,13 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.{Matchers, WordSpec}
+import monix.execution.atomic.Atomic
+import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, ScriptManager, SearchManager, SqlApiManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, ScriptManager, SearchManager, SqlApiManager, XpackApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
 
@@ -29,6 +31,7 @@ trait XpackApiSuite
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport
+    with BeforeAndAfterEach
     with Matchers {
   this: EsContainerCreator =>
 
@@ -44,12 +47,17 @@ trait XpackApiSuite
     )
   )
 
+  private lazy val adminXpackApiManager = new XpackApiManager(basicAuthClient("admin", "container"), targetEs.esVersion)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
+  private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), targetEs.esVersion)
+  private lazy val dev4XpackApiManager = new XpackApiManager(basicAuthClient("dev4", "test"), targetEs.esVersion)
+  private lazy val dev5XpackApiManager = new XpackApiManager(basicAuthClient("dev5", "test"), targetEs.esVersion)
+  private lazy val dev6XpackApiManager = new XpackApiManager(basicAuthClient("dev6", "test"), targetEs.esVersion)
 
   private lazy val adminSqlManager = new SqlApiManager(basicAuthClient("sqladmin", "pass"), container.esVersion)
-  private lazy val dev3SqlManager = new SqlApiManager(basicAuthClient("dev3", "test"), container.esVersion)
-  private lazy val dev4SqlManager = new SqlApiManager(basicAuthClient("dev4", "test"), container.esVersion)
+  private lazy val dev3SqlManager = new SqlApiManager(basicAuthClient("dev1sql", "test"), container.esVersion)
+  private lazy val dev4SqlManager = new SqlApiManager(basicAuthClient("dev2sql", "test"), container.esVersion)
 
   "Async search" should {
     "be allowed for dev1 and test1_index" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
@@ -118,6 +126,242 @@ trait XpackApiSuite
 
         result.responseCode shouldEqual 200
         result.body should be("""{"template_output":{"query":{"match":{"hello":"world"}}}}""")
+      }
+    }
+  }
+
+  "Rollup API" when {
+    "create rollup job method is used" should {
+      "be allowed to be used" when {
+        "there is no indices rule defined" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName = NextRollupJobName.get
+          val result = adminXpackApiManager.rollup(jobName, "test3*", "admin_t3")
+
+          result.responseCode should be(200)
+          val rollupJobsResult = adminXpackApiManager.getRollupJobs(jobName)
+          rollupJobsResult.responseCode should be(200)
+          rollupJobsResult.jobs.size should be(1)
+        }
+        "user has access to both: index pattern and rollup_index" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName = NextRollupJobName.get
+          val result = dev3XpackApiManager.rollup(jobName, "test3*", s"rollup_test3_$jobName")
+
+          result.responseCode should be(200)
+          val rollupJobsResult = adminXpackApiManager.getRollupJobs(jobName)
+          rollupJobsResult.responseCode should be(200)
+          rollupJobsResult.jobs.size should be(1)
+        }
+      }
+      "not be allowed to be used" when {
+        "user has no access to rollup_index" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test3*", "rollup_index")
+
+          result.responseCode should be(403)
+        }
+        "user has no access to passed index" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test1_index", "rollup_index")
+
+          result.responseCode should be(403)
+        }
+        "user has no access to given index pattern" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val result = dev3XpackApiManager.rollup(NextRollupJobName.get, "test*", "rollup_index")
+
+          result.responseCode should be(403)
+        }
+      }
+    }
+    "get rollup job capabilities method is used" should {
+      "return non-empty list" when {
+        "there is not indices rule defined" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName, "test4*", "admin_t4").force()
+
+          val result = adminXpackApiManager.getRollupJobCapabilities("test4*")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.map(_("job_id").str) should contain (jobName)
+        }
+        "user has access to requested indices" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName1 = NextRollupJobName.get
+          val jobName2 = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName1, "test4_index_a", s"rollup_test4_$jobName1").force()
+          adminXpackApiManager.rollup(jobName2, "test3_index_a", s"rollup_test3_$jobName2").force()
+
+          val result = dev4XpackApiManager.getRollupJobCapabilities("test4_index_a")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.foreach { job =>
+            job("rollup_index").str should startWith ("rollup_test4")
+            job("index_pattern").str should startWith ("test4")
+          }
+        }
+        "user has access to requested index pattern" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName1 = NextRollupJobName.get
+          val jobName2 = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName1, "test4_index_a", s"rollup_test4_$jobName1").force()
+          adminXpackApiManager.rollup(jobName2, "test3_index_a", s"rollup_test3_$jobName2").force()
+
+          val result = dev4XpackApiManager.getRollupJobCapabilities("test4*")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.foreach { job =>
+            job("rollup_index").str should startWith ("rollup_test4")
+            job("index_pattern").str should startWith ("test4")
+          }
+        }
+        "user has access to one index of requested index patten" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName1 = NextRollupJobName.get
+          val jobName2 = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName1, "test4_index_a", s"rollup_test4_$jobName1").force()
+          adminXpackApiManager.rollup(jobName2, "test3_index_a", s"rollup_test3_$jobName2").force()
+
+          val result = dev4XpackApiManager.getRollupJobCapabilities("test4*")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.foreach { job =>
+            job("rollup_index").str should startWith ("rollup_test4")
+            job("index_pattern").str should startWith ("test4")
+          }
+        }
+      }
+      "return empty list" when {
+        "user has no access to requested index" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName, "test3_index_a", s"rollup_test3_$jobName").force()
+
+          val result = dev4XpackApiManager.getRollupJobCapabilities("test3_index_a")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.size should be (0)
+        }
+        "user had no access to requested index pattern" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName, "test4*", s"rollup_test4_$jobName").force()
+
+          val result = dev4XpackApiManager.getRollupJobCapabilities("test3*")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.size should be (0)
+        }
+      }
+    }
+    "get rollup index capabilities method is used" should {
+      "return non-empty list" when {
+        "there is not indices rule defined" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName, "test5*", "admin_t5").force()
+
+          val result = adminXpackApiManager.getRollupIndexCapabilities("admin_t5")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.map(_("job_id").str) should contain (jobName)
+        }
+        "user has access to requested indices" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName1 = NextRollupJobName.get
+          val jobName2 = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
+          adminXpackApiManager.rollup(jobName2, "test3_index_a", s"rollup_test3_$jobName2").force()
+
+          val result = dev5XpackApiManager.getRollupIndexCapabilities(s"rollup_test5_$jobName1")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.foreach { job =>
+            job("rollup_index").str should startWith ("rollup_test5")
+            job("index_pattern").str should startWith ("test5")
+          }
+        }
+        "user has access to requested index pattern" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName1 = NextRollupJobName.get
+          val jobName2 = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
+          adminXpackApiManager.rollup(jobName2, "test3_index_a", s"rollup_test3_$jobName2").force()
+
+          val result = dev5XpackApiManager.getRollupIndexCapabilities("rollup_test5*")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.foreach { job =>
+            job("rollup_index").str should startWith ("rollup_test5")
+            job("index_pattern").str should startWith ("test5")
+          }
+        }
+        "user has access to one index of requested index patten" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName1 = NextRollupJobName.get
+          val jobName2 = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName1, "test5_index_a", s"rollup_test5_$jobName1").force()
+          adminXpackApiManager.rollup(jobName2, "test3_index_a", s"rollup_test3_$jobName2").force()
+
+          val result = dev5XpackApiManager.getRollupIndexCapabilities("rollup_test*")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs.foreach { job =>
+            job("rollup_index").str should startWith ("rollup_test5")
+            job("index_pattern").str should startWith ("test5")
+          }
+        }
+      }
+      "return empty list" when {
+        "user had no access to requested index pattern" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName, "test5*", s"rollup_test5_$jobName").force()
+
+          val result = dev5XpackApiManager.getRollupIndexCapabilities("rollup_test3*")
+
+          result.responseCode should be (200)
+          val jobs = result.capabilities.values.toList.flatten
+          jobs.size should be (0)
+        }
+      }
+      "return 404" when {
+        "user has no access to requested index" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName = NextRollupJobName.get
+          adminXpackApiManager.rollup(jobName, "test3_index_a", s"rollup_test3_$jobName").force()
+
+          val result = dev5XpackApiManager.getRollupIndexCapabilities(s"rollup_test3_$jobName")
+
+          result.responseCode should be (404)
+        }
+      }
+    }
+    "rollup search method is used" should {
+      "be allowed to be used" when {
+        "user has access to called rollup index" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName1 = NextRollupJobName.get
+          val jobName2 = NextRollupJobName.get
+          val rollupIndex6a = s"rollup_test6_$jobName1"
+          adminXpackApiManager.rollup(jobName1, "test6_index_a", rollupIndex6a).force()
+          adminXpackApiManager.rollup(jobName2, "test6_index_b", s"rollup_test6_$jobName2").force()
+
+          val result = dev6XpackApiManager.rollupSearch(rollupIndex6a)
+
+          result.responseCode should be (200)
+        }
+      }
+      "return 404" when {
+        "user has no access to called rollup index" excludeES(allEs5x, allEs6xBelowEs63x) in {
+          val jobName = NextRollupJobName.get
+          val rollupIndex = s"rollup_test4_$jobName"
+          adminXpackApiManager.rollup(jobName, "test4*", rollupIndex).force()
+
+          val result = dev6XpackApiManager.rollupSearch(rollupIndex)
+
+          result.responseCode should be (404)
+        }
       }
     }
   }
@@ -557,6 +801,18 @@ object XpackApiSuite {
 
     documentManager.createDoc("test2_index", 1, ujson.read("""{"name":"john", "age":33}""")).force()
     documentManager.createDoc("test2_index", 2, ujson.read("""{"name":"bill", "age":50}""")).force()
+
+    documentManager.createDoc("test3_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
+    documentManager.createDoc("test3_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
+
+    documentManager.createDoc("test4_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
+    documentManager.createDoc("test4_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
+
+    documentManager.createDoc("test5_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
+    documentManager.createDoc("test5_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
+
+    documentManager.createDoc("test6_index_a", 1, ujson.read("""{"timestamp":"2020-01-01", "count": 10}""")).force()
+    documentManager.createDoc("test6_index_b", 1, ujson.read("""{"timestamp":"2020-02-01", "count": 100}""")).force()
   }
 
   private def storeScriptTemplate(adminRestClient: RestClient): Unit = {
@@ -599,5 +855,10 @@ object XpackApiSuite {
     documentManager.createDocAndAssert("library", "book", 2, ujson.read(
       s"""{"name": "Hyperion", "author": "Dan Simmons", "release_date": "1989-05-26", "internal_id": 2}"""
     ))
+  }
+
+  private object NextRollupJobName {
+    private val currentId = Atomic(0)
+    def get: String = s"job${currentId.incrementAndGet()}"
   }
 }
