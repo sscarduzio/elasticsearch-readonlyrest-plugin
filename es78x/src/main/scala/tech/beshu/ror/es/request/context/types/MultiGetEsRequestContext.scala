@@ -21,10 +21,6 @@ import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
-import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.document.{DocumentField => EDF}
-import org.elasticsearch.common.xcontent.support.XContentMapValues
-import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
@@ -32,13 +28,14 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
+import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
 import tech.beshu.ror.es.request.DocumentApiOps.MultiGetApi._
+import tech.beshu.ror.es.request.FieldsFiltering
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
@@ -126,19 +123,16 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     item.index(notExistingIndex.value.value)
   }
 
-
-  private def filterFieldsFromResponse(fields: Option[FieldsRestrictions])
+  private def filterFieldsFromResponse(fieldsRestrictions: Option[FieldsRestrictions])
                                       (actionResponse: ActionResponse): ActionResponse = {
-    (actionResponse, fields) match {
-      case (response: MultiGetResponse, Some(definedFields)) =>
-        val (excluding, including) = splitFields(definedFields)
+    (actionResponse, fieldsRestrictions) match {
+      case (response: MultiGetResponse, Some(definedFieldsRestrictions)) =>
         val newResponses = response.getResponses
           .map {
-            case multiGetItem if !multiGetItem.isFailed && !multiGetItem.getResponse.isSourceEmpty=>
+            case multiGetItem if !multiGetItem.isFailed =>
               val getResponse = multiGetItem.getResponse
-              val filteredSource = XContentMapValues.filter(getResponse.getSource, including.toArray, excluding.toArray)
-              val newContent = XContentFactory.contentBuilder(XContentType.JSON).map(filteredSource)
-              val (metdataFields, nonMetadaDocumentFields) = splitFieldsByMetadata(getResponse.getFields.asScala.toMap)
+              val newSource = getResponse.provideNewSourceUsing(definedFieldsRestrictions)
+              val newFields = FieldsFiltering.provideFilteredDocumentFields(getResponse.getFields.asScala.toMap, definedFieldsRestrictions)
 
               val result = new GetResult(
                 getResponse.getIndex,
@@ -148,28 +142,16 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
                 getResponse.getPrimaryTerm,
                 getResponse.getVersion,
                 true,
-                BytesReference.bytes(newContent),
-                nonMetadaDocumentFields.asJava,
-                metdataFields.asJava)
+                newSource,
+                newFields.documentFields.asJava,
+                newFields.metadataFields.asJava)
               new MultiGetItemResponse(new GetResponse(result), null)
             case other => other
-        }
+          }
         new MultiGetResponse(newResponses)
       case _ =>
         actionResponse
     }
-  }
-
-  def splitFieldsByMetadata(fields: Map[String, EDF]): (Map[String, EDF], Map[String, EDF]) = {
-    fields.partition {
-      case t if t._2.isMetadataField => true
-      case _ => false
-    }
-  }
-
-  private def splitFields(fields: FieldsRestrictions) = fields.mode match {
-    case AccessMode.Whitelist => (List.empty, fields.fields.map(_.value.value).toList)
-    case AccessMode.Blacklist => (fields.fields.map(_.value.value).toList, List.empty)
   }
 
   private def filterResponse(filter: Option[Filter])

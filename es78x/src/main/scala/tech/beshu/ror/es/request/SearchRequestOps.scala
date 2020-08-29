@@ -20,6 +20,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import tech.beshu.ror.accesscontrol.domain.{FieldsRestrictions, Filter}
+import tech.beshu.ror.es.request.queries.QueryModifier
 
 object SearchRequestOps extends Logging {
 
@@ -51,14 +52,16 @@ object SearchRequestOps extends Logging {
 
   implicit class FieldsOps(val request: SearchRequest) extends AnyVal {
 
-    def applyFilterToFields(fields: Option[FieldsRestrictions]): SearchRequest = {
-      import SourceFiltering._
-      val originalFetchSource = request.source().fetchSource()
-
-      val sourceFilteringResult = originalFetchSource.applyNewFields(fields)
-
-      request.source().fetchSource(sourceFilteringResult.modifiedContext)
-      request
+    def modifyFieldsInQuery(fieldsRestrictions: Option[FieldsRestrictions]): SearchRequest = {
+      fieldsRestrictions match {
+        case Some(definedFields) =>
+          val currentQuery = request.source().query()
+          val newQuery = QueryModifier.modifyForFLS(currentQuery, definedFields)
+          request.source().query(newQuery)
+          request
+        case None =>
+          request
+      }
     }
   }
 }

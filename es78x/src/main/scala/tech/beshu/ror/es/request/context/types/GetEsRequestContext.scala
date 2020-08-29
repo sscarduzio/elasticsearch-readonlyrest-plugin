@@ -17,27 +17,23 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.document.{DocumentField => EDF}
-import org.elasticsearch.common.xcontent.support.XContentMapValues
-import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.{FieldsRestrictions, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
-import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.{FieldsFiltering, RequestSeemsToBeInvalid}
+
+import scala.collection.JavaConverters._
 
 class GetEsRequestContext(actionRequest: GetRequest,
                           esContext: EsContext,
@@ -79,18 +75,14 @@ class GetEsRequestContext(actionRequest: GetRequest,
     }
   }
 
-  private def filterFieldsFromResponse(fields: Option[FieldsRestrictions])
+  private def filterFieldsFromResponse(fieldsRestrictions: Option[FieldsRestrictions])
                                       (actionResponse: ActionResponse): ActionResponse = {
-    (actionResponse, fields) match {
-      case (response: GetResponse, Some(definedFields)) if response.isExists && !response.isSourceEmpty =>
-        val (excluding, including) = splitFields(definedFields)
-        val filteredSource = XContentMapValues.filter(response.getSource, including.toArray, excluding.toArray)
-        val newContent = XContentFactory.contentBuilder(XContentType.JSON).map(filteredSource)
-        import scala.collection.JavaConverters._
+    (actionResponse, fieldsRestrictions) match {
+      case (response: GetResponse, Some(definedFieldsRestrictions)) if response.isExists =>
+        val newSource = response.provideNewSourceUsing(definedFieldsRestrictions)
+        val newFields = FieldsFiltering.provideFilteredDocumentFields(response.getFields.asScala.toMap, definedFieldsRestrictions)
 
-        val (metdataFields, nonMetadaDocumentFields) = splitFieldsByMetadata(response.getFields.asScala.toMap)
-
-        val result = new GetResult(
+        val newResult = new GetResult(
           response.getIndex,
           response.getType,
           response.getId,
@@ -98,25 +90,13 @@ class GetEsRequestContext(actionRequest: GetRequest,
           response.getPrimaryTerm,
           response.getVersion,
           true,
-          BytesReference.bytes(newContent),
-          nonMetadaDocumentFields.asJava,
-          metdataFields.asJava)
-        new GetResponse(result)
+          newSource,
+          newFields.documentFields.asJava,
+          newFields.metadataFields.asJava)
+        new GetResponse(newResult)
       case _ =>
         actionResponse
     }
-  }
-
-  def splitFieldsByMetadata(fields: Map[String, EDF]): (Map[String, EDF], Map[String, EDF]) = {
-    fields.partition {
-      case t if t._2.isMetadataField => true
-      case _ => false
-    }
-  }
-
-  private def splitFields(fields: FieldsRestrictions) = fields.mode match {
-    case AccessMode.Whitelist => (List.empty, fields.fields.map(_.value.value).toList)
-    case AccessMode.Blacklist => (fields.fields.map(_.value.value).toList, List.empty)
   }
 
   private def handleExistingResponse(response: GetResponse,
