@@ -36,11 +36,14 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
+import tech.beshu.ror.boot.RorInstance.IndexConfigReloadError.LoadingConfigError
+import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
+import tech.beshu.ror.configuration.loader.distributed.RawRorConfigLoadingAction
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedConfig, RorConfigurationIndex}
 import tech.beshu.ror.configuration.{RorProperties, _}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
@@ -81,23 +84,34 @@ trait ReadonlyRest extends Logging {
             auditSink: AuditSinkService,
             indexContentService: IndexJsonContentService)
            (implicit envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, RorInstance]] = {
+    val indexConfigManager = new IndexConfigManager(indexContentService)
     (for {
-      esConfig <- loadEsConfig(esConfigPath)
-      indexConfigManager = new IndexConfigManager(indexContentService)
+      esConfig <- loadEsConfig(esConfigPath, indexConfigManager)
       loadedRorConfig <- loadRorConfig(esConfigPath, esConfig, indexConfigManager)
       instance <- startRor(esConfig, loadedRorConfig, indexConfigManager, auditSink)
     } yield instance).value
   }
 
+  private def loadEsConfig(esConfigPath: Path,
+                           indexConfigManager: IndexConfigManager)
+                          (implicit envVarsProvider: EnvVarsProvider) = {
+    val action = ConfigLoading.loadEsConfig(esConfigPath)
+    runStartingFailureProgram(indexConfigManager, action)
+  }
   private def loadRorConfig(esConfigPath: Path,
                             esConfig: EsConfig,
                             indexConfigManager: IndexConfigManager)
                            (implicit envVarsProvider: EnvVarsProvider) = {
-    val compiler = ConfigLoadingInterpreter.create(indexConfigManager)
-    EitherT(LoadRawRorConfig.load(esConfigPath, esConfig, esConfig.rorIndex.index).foldMap(compiler))
-      .leftMap(toStartingFailure)
+    val action = LoadRawRorConfig.load(esConfigPath, esConfig, esConfig.rorIndex.index)
+    runStartingFailureProgram(indexConfigManager, action)
   }
 
+  private def runStartingFailureProgram[A](indexConfigManager: IndexConfigManager,
+                                           action: LoadRorConfig[ErrorOr[A]]) = {
+    val compiler = ConfigLoadingInterpreter.create(indexConfigManager)
+    EitherT(action.foldMap(compiler))
+      .leftMap(toStartingFailure)
+  }
   private def toStartingFailure(error: LoadedConfig.Error) = {
     error match {
       case LoadedConfig.FileParsingError(message) =>

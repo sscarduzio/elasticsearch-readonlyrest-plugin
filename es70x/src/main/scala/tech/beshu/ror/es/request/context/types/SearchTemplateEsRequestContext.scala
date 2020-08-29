@@ -66,13 +66,9 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
 }
 
 object SearchTemplateEsRequestContext {
-  def from(actionRequest: ActionRequest,
-           esContext: EsContext,
-           aclContext: AccessControlStaticContext,
-           clusterService: RorClusterService,
-           threadPool: ThreadPool): Option[SearchTemplateEsRequestContext] = {
-    if (actionRequest.getClass.getSimpleName.startsWith("SearchTemplateRequest")) {
-      Some(new SearchTemplateEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool))
+  def unapply(arg: ReflectionBasedActionRequest): Option[SearchTemplateEsRequestContext] = {
+    if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SearchTemplateRequest")) {
+      Some(new SearchTemplateEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
     } else {
       None
     }

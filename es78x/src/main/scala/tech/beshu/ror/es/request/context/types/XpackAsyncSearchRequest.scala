@@ -74,13 +74,9 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
 
 object XpackAsyncSearchRequest {
 
-  def from(actionRequest: ActionRequest,
-           esContext: EsContext,
-           aclContext: AccessControlStaticContext,
-           clusterService: RorClusterService,
-           threadPool: ThreadPool): Option[XpackAsyncSearchRequest] = {
-    if (actionRequest.getClass.getSimpleName.startsWith("SubmitAsyncSearchRequest")) {
-      Some(new XpackAsyncSearchRequest(actionRequest, esContext, aclContext, clusterService, threadPool))
+  def unapply(arg: ReflectionBasedActionRequest): Option[XpackAsyncSearchRequest] = {
+    if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SubmitAsyncSearchRequest")) {
+      Some(new XpackAsyncSearchRequest(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
     } else {
       None
     }

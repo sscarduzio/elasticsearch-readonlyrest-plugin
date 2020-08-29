@@ -63,13 +63,9 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
 
 object ReflectionBasedIndicesEsRequestContext {
 
-  def from(actionRequest: ActionRequest,
-           esContext: EsContext,
-           aclContext: AccessControlStaticContext,
-           clusterService: RorClusterService,
-           threadPool: ThreadPool): Option[ReflectionBasedIndicesEsRequestContext] = {
-    indicesFrom(actionRequest)
-      .map(new ReflectionBasedIndicesEsRequestContext(actionRequest, _, esContext, aclContext, clusterService, threadPool))
+  def unapply(arg: ReflectionBasedActionRequest): Option[ReflectionBasedIndicesEsRequestContext] = {
+    indicesFrom(arg.esContext.actionRequest)
+      .map(new ReflectionBasedIndicesEsRequestContext(arg.esContext.actionRequest, _, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
   }
 
   private def indicesFrom(request: ActionRequest) = {
