@@ -25,7 +25,7 @@ import org.elasticsearch.common.document.{DocumentField => EDF}
 import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.xcontent.support.XContentMapValues
 import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
-import org.elasticsearch.index.query.{AbstractQueryBuilder, MatchQueryBuilder, MultiTermQueryBuilder, QueryBuilders, SpanQueryBuilder, TermQueryBuilder}
+import org.elasticsearch.index.query.{AbstractQueryBuilder, BoolQueryBuilder, MatchQueryBuilder, MultiTermQueryBuilder, QueryBuilders, SpanQueryBuilder, TermQueryBuilder}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
@@ -34,6 +34,7 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.queries.QueryModifier
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -68,54 +69,29 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
 
     applyFieldsToQuery(request, fields)
 
-    ModificationResult.UpdateResponse(applyClientFiltering(fields))
+    ModificationResult.UpdateResponse(applyFieldsFiltering(fields))
   }
 
   private def applyFieldsToQuery(request: SearchRequest,
                                  fieldsRestrictions: Option[FieldsRestrictions]): SearchRequest = {
-
     fieldsRestrictions match {
       case Some(definedFields) =>
-        request.source().query() match {
-          case builder: TermQueryBuilder =>
-            val fieldsPolicy = new FieldsPolicy(definedFields)
-            if (fieldsPolicy.canKeep(builder.fieldName())) {
-              request
-            } else {
-              val someRandomShit = "ROR123123123123123"
-              val newQuery = QueryBuilders.termQuery(someRandomShit, builder.value())
-              request.source().query(newQuery)
-              request
-            }
-          case builder: MatchQueryBuilder =>
-            val fieldsPolicy = new FieldsPolicy(definedFields)
-            if (fieldsPolicy.canKeep(builder.fieldName())) {
-              request
-            } else {
-              val someRandomShit = "ROR123123123123123"
-              val newQuery = QueryBuilders.matchQuery(someRandomShit, builder.value())
-              request.source().query(newQuery)
-              request
-            }
-
-          case _ => request
-        }
-
+        val newQuery = QueryModifier.modifyForFLS(request.source().query(), definedFields)
+        request.source().query(newQuery)
+        request
       case None =>
         request
     }
   }
 
-  private def applyClientFiltering(fields: Option[FieldsRestrictions])
+  private def applyFieldsFiltering(fields: Option[FieldsRestrictions])
                                   (actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, fields) match {
       case (response: SearchResponse, Some(definedFields)) =>
-        println(response.getHits.getHits.length)
         response.getHits.getHits
           .foreach { hit =>
             val (excluding, including) = splitFields(definedFields)
             val responseSource = hit.getSourceAsMap
-
 
             //handle _source
             if (responseSource != null && responseSource.size() > 0) {

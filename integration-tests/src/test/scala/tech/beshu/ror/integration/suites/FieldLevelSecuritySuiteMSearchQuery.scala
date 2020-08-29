@@ -14,9 +14,21 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites
 
-import tech.beshu.ror.integration.suites.FieldLevelSecuritySuiteMSearch
-import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import org.scalatest.Matchers._
+import tech.beshu.ror.utils.containers.EsContainerCreator
 
-class FieldLevelSecurityMSearchPluginTests extends FieldLevelSecuritySuiteMSearch with SingletonPluginTestSupport
+trait FieldLevelSecuritySuiteMSearchQuery extends FieldLevelSecuritySuiteSearchQuery {
+  this: EsContainerCreator =>
+
+  override protected def assertNoSearchHitsReturnedFor(query: String) = {
+    val result = searchManager.mSearch("""{"index":"testfiltera"}""", query)
+
+    result.responseCode shouldBe 200
+    result.responses.size shouldBe 1
+    result.searchHitsForResponse(0).isEmpty shouldBe true
+  }
+}
+
+

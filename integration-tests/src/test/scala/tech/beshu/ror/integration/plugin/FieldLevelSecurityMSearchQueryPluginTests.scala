@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.FieldLevelSecuritySuiteWithSourceFiltering
+import tech.beshu.ror.integration.suites.FieldLevelSecuritySuiteMSearchQuery
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-class FieldLevelSecurityPluginTestsWithSourceFiltering extends FieldLevelSecuritySuiteWithSourceFiltering with SingletonPluginTestSupport
+class FieldLevelSecurityMSearchQueryPluginTests extends FieldLevelSecuritySuiteMSearchQuery with SingletonPluginTestSupport

@@ -22,14 +22,14 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 
-trait FieldLevelSecuritySuiteMSearch
+trait FieldLevelSecuritySuiteMSearchApi
   extends WordSpec
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/field_level_security/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(FieldLevelSecuritySuite.nodeDataInitializer())
+  override def nodeDataInitializer = Some(FieldLevelSecuritySuiteSearchApi.nodeDataInitializer())
 
   "A fields rule" should {
     "work for simple cases" when {

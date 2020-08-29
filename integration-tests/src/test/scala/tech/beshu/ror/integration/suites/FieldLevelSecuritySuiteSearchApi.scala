@@ -20,17 +20,17 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldLevelSecuritySuite
+trait FieldLevelSecuritySuiteSearchApi
   extends WordSpec
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/field_level_security/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(FieldLevelSecuritySuite.nodeDataInitializer())
+  override def nodeDataInitializer = Some(FieldLevelSecuritySuiteSearchApi.nodeDataInitializer())
 
   "A fields rule" should {
     "work for simple cases" when {
@@ -499,42 +499,41 @@ trait FieldLevelSecuritySuite
   }
 }
 
-object FieldLevelSecuritySuite {
+object FieldLevelSecuritySuiteSearchApi {
 
-  def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDocAndWaitForRefresh(
-      "/testfiltera/documents/1",
-      """{
-        | "~user": "~userValue",
-        | "user1": "user1Value",
-        | "user2": "user2Value",
-        | "user3": "user3Value",
-        | "user4": "user4Value",
-        | "user5": "user5Value",
-        | "user6": "user6Value",
-        | "counter": 7
-        |}""".stripMargin
-    )
-    documentManager.insertDocAndWaitForRefresh(
-      "/nestedtest/documents/1",
-      """
-        |{
-        |  "id":1,
-        |  "items": [
-        |    {"itemId": 1, "text":"text1", "startDate": "2019-05-22", "endDate": "2019-07-31"},
-        |    {"itemId": 2, "text":"text2", "startDate": "2019-05-22", "endDate": "2019-06-30"},
-        |    {"itemId": 3, "text":"text3", "startDate": "2019-05-22", "endDate": "2019-09-30"}
-        |  ],
-        |  "secrets": [
-        |    {"key":1, "text": "secret1"},
-        |    {"key":2, "text": "secret2"}
-        |  ],
-        |  "user": {
-        |     "name": "value1",
-        |     "age": "value2"
-        |  }
-        |}""".stripMargin
-    )
+  def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+
+    val doc1 = """{
+                 | "~user": "~userValue",
+                 | "user1": "user1Value",
+                 | "user2": "user2Value",
+                 | "user3": "user3Value",
+                 | "user4": "user4Value",
+                 | "user5": "user5Value",
+                 | "user6": "user6Value",
+                 | "counter": 7
+                 |}""".stripMargin
+
+    val doc2 = """
+                 |{
+                 |  "id":1,
+                 |  "items": [
+                 |    {"itemId": 1, "text":"text1", "startDate": "2019-05-22", "endDate": "2019-07-31"},
+                 |    {"itemId": 2, "text":"text2", "startDate": "2019-05-22", "endDate": "2019-06-30"},
+                 |    {"itemId": 3, "text":"text3", "startDate": "2019-05-22", "endDate": "2019-09-30"}
+                 |  ],
+                 |  "secrets": [
+                 |    {"key":1, "text": "secret1"},
+                 |    {"key":2, "text": "secret2"}
+                 |  ],
+                 |  "user": {
+                 |     "name": "value1",
+                 |     "age": "value2"
+                 |  }
+                 |}""".stripMargin
+
+    documentManager.createDoc("testfiltera", 1, ujson.read(doc1)).force()
+    documentManager.createDoc("nestedtest", 1, ujson.read(doc2)).force()
   }
 }
