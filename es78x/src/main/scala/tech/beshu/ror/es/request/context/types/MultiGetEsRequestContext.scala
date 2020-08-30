@@ -48,7 +48,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override val requiresContextHeader: Boolean = false
+  override val requiresContextHeaderForFLS: Boolean = false
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
@@ -123,6 +123,16 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     item.index(notExistingIndex.value.value)
   }
 
+  private def filterResponse(filter: Option[Filter])
+                            (actionResponse: ActionResponse): Task[ActionResponse] = {
+    (actionResponse, filter) match {
+      case (response: MultiGetResponse, Some(definedFilter)) =>
+        applyFilter(response, definedFilter)
+      case _ =>
+        Task.now(actionResponse)
+    }
+  }
+
   private def filterFieldsFromResponse(fieldsRestrictions: Option[FieldsRestrictions])
                                       (actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fieldsRestrictions) match {
@@ -151,16 +161,6 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
         new MultiGetResponse(newResponses)
       case _ =>
         actionResponse
-    }
-  }
-
-  private def filterResponse(filter: Option[Filter])
-                            (actionResponse: ActionResponse): Task[ActionResponse] = {
-    (actionResponse, filter) match {
-      case (response: MultiGetResponse, Some(definedFilter)) =>
-        applyFilter(response, definedFilter)
-      case _ =>
-        Task.now(actionResponse)
     }
   }
 

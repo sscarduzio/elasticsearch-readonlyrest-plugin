@@ -40,6 +40,16 @@ class FieldsPolicyTests extends WordSpec {
       matcher.canKeep("item.endDate.text") should be (false)
       matcher.canKeep("item.endDate1") should be (false)
     }
+    "work in whitelist mode2" in {
+      val fields = UniqueNonEmptyList.of(
+        DocumentField("_source".nonempty), DocumentField("allowedField".nonempty)
+      )
+      val fieldsRestrictions = FieldsRestrictions(fields, AccessMode.Whitelist)
+      val matcher = new FieldsPolicy(fieldsRestrictions)
+
+      matcher.canKeep("notAllowedField") should be (false)
+      matcher.canKeep("al*d") should be (false)
+    }
     "work in blacklist mode" in {
       val fields = UniqueNonEmptyList.of(
         DocumentField("it*re*bus1".nonempty), DocumentField("item.*Date".nonempty)

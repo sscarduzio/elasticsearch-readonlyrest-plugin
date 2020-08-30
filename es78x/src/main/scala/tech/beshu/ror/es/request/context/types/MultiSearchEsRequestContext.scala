@@ -33,6 +33,8 @@ import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
+import tech.beshu.ror.es.request.queries.BaseFLSQueryUpdater
+import tech.beshu.ror.es.request.queries.BaseFLSQueryUpdater.QueryModificationEligibility.{ModificationImpossible, ModificationPossible}
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
@@ -45,7 +47,15 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override val requiresContextHeader: Boolean = false
+  override val requiresContextHeaderForFLS: Boolean = {
+    actionRequest.requests().asScala
+      .map(_.source().query())
+      .map(BaseFLSQueryUpdater.resolveModificationEligibility)
+      .exists {
+        case ModificationImpossible => true
+        case _: ModificationPossible[_] => false
+      }
+  }
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,

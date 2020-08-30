@@ -137,7 +137,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override def requiresContextHeader: Boolean = true
+  override def requiresContextHeaderForFLS: Boolean = true
 
   override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 

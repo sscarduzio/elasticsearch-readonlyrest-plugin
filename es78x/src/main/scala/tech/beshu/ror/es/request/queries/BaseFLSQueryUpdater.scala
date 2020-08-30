@@ -3,9 +3,13 @@ package tech.beshu.ror.es.request.queries
 import org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder
 import org.elasticsearch.index.query._
 import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.es.request.queries.BaseQueryUpdater.QueryModificationEligibility.{ModificationImpossible, ModificationPossible}
+import tech.beshu.ror.es.request.queries.BaseFLSQueryUpdater.QueryModificationEligibility.{ModificationImpossible, ModificationPossible}
+import tech.beshu.ror.es.request.queries.compound.{BoolQueryFLSUpdater, BoostingQueryFLSUpdater, ConstantScoreQueryFLSUpdater, DisjunctionMaxQueryFLSUpdater}
+import tech.beshu.ror.es.request.queries.fulltext.{CommonTermsQueryFLSUpdater, MatchBoolPrefixQueryFLSUpdater, MatchPhrasePrefixQueryFLSUpdater, MatchPhraseQueryFLSUpdater, MatchQueryFLSUpdater}
+import tech.beshu.ror.es.request.queries.ops.hasWildcard
+import tech.beshu.ror.es.request.queries.termlevel.{ExistsQueryFLSUpdater, FuzzyQueryFLSUpdater, PrefixQueryFLSUpdater, RangeQueryFLSUpdater, RegexpQueryFLSUpdater, TermQueryFLSUpdater, TermsSetQueryFLSUpdater, WildcardQueryFLSUpdater}
 
-object BaseQueryUpdater extends QueryFLSUpdater[QueryBuilder] {
+object BaseFLSQueryUpdater extends QueryFLSUpdater[QueryBuilder] {
 
   sealed trait QueryModificationEligibility
   object QueryModificationEligibility {
@@ -37,7 +41,10 @@ object BaseQueryUpdater extends QueryFLSUpdater[QueryBuilder] {
     case builder: DisMaxQueryBuilder =>
       ModificationPossible(DisjunctionMaxQueryFLSUpdater, builder)
     case builder: ExistsQueryBuilder =>
-      ModificationPossible(ExistsQueryFLSUpdater, builder)
+      if (hasWildcard(builder.fieldName()))
+        ModificationImpossible
+      else
+        ModificationPossible(ExistsQueryFLSUpdater, builder)
     case builder: FuzzyQueryBuilder =>
       ModificationPossible(FuzzyQueryFLSUpdater, builder)
     case builder: MatchQueryBuilder =>

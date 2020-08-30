@@ -45,7 +45,7 @@ class FieldsRule(val settings: Settings)
           val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
 
           //hybrid approach
-          if (blockContext.requestContext.requiresContextHeader) {
+          if (blockContext.requestContext.requiresContextHeaderForFLS) {
             val transientFieldsHeader = new Header(
               Name.transientFields,
               transientFieldsToHeaderValue.toRawValue(FieldsRestrictions(resolvedFields, settings.accessMode))

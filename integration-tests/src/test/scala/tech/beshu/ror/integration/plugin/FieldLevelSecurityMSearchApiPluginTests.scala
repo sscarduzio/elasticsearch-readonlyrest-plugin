@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.FieldLevelSecuritySuiteMSearchApi
+import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuiteMSearchApi
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
 class FieldLevelSecurityMSearchApiPluginTests extends FieldLevelSecuritySuiteMSearchApi with SingletonPluginTestSupport

@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites
+package tech.beshu.ror.integration.suites.fields
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 
-trait FieldLevelSecuritySuiteMGetApi
+trait FieldLevelSecuritySuiteGetApi
   extends WordSpec
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
@@ -36,22 +36,11 @@ trait FieldLevelSecuritySuiteMGetApi
       "whitelist mode is used" in {
         val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
 
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("testfiltera", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{"user1":"user1Value"}"""))
       }
@@ -59,45 +48,21 @@ trait FieldLevelSecuritySuiteMGetApi
         val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
 
         val queryParams = Map("_source" -> "false")
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          ),
-          queryParams
-        )
+        val result = documentManager.get("testfiltera", 1, queryParams)
 
         result.responseCode shouldBe 200
 
-        result.docs(0).obj.get("_source") shouldBe None
+        result.responseJson.obj.get("_source") shouldBe None
       }
       "whitelist mode is used with included blacklisted field" in {
         val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
 
         val queryParams = Map("_source" -> "user2")
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          ),
-          queryParams
-        )
+        val result = documentManager.get("testfiltera", 1, queryParams)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{}"""))
       }
@@ -105,23 +70,11 @@ trait FieldLevelSecuritySuiteMGetApi
         val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
 
         val queryParams = Map("_source" -> "us*1")
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          ),
-          queryParams
-        )
+        val result = documentManager.get("testfiltera", 1, queryParams)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{"user1":"user1Value"}"""))
       }
@@ -129,86 +82,41 @@ trait FieldLevelSecuritySuiteMGetApi
         val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
 
         val queryParams = Map("_source_excludes" -> "user1")
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          ),
-          queryParams
-        )
+        val result = documentManager.get("testfiltera", 1, queryParams)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{}"""))
       }
       "whitelist mode with user variable is used " in {
         val documentManager = new DocumentManager(basicAuthClient("user2", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("testfiltera", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{"user2":"user2Value"}"""))
       }
       "whitelist mode with user variable is used and called by user with 'negated' value" in {
         val documentManager = new DocumentManager(basicAuthClient("~user", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("testfiltera", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{"~user":"~userValue"}"""))
       }
       "whitelist mode with wildcard is used" in {
         val documentManager = new DocumentManager(basicAuthClient("user3", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("testfiltera", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{"user3":"user3Value"}"""))
       }
@@ -216,45 +124,22 @@ trait FieldLevelSecuritySuiteMGetApi
         val documentManager = new DocumentManager(basicAuthClient("user2", "pass"), targetEs.esVersion)
 
         val queryParams = Map("_source_includes" -> "us*3")
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          ),
-          queryParams
-        )
+        val result = documentManager.get("testfiltera", 1, queryParams)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{}"""))
       }
 
       "blacklist mode is used" in {
         val documentManager = new DocumentManager(basicAuthClient("user4", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("testfiltera", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read(
           """|{
@@ -270,22 +155,11 @@ trait FieldLevelSecuritySuiteMGetApi
       }
       "blacklist mode with user variable is used " in {
         val documentManager = new DocumentManager(basicAuthClient("user5", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("testfiltera", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read(
           """|{
@@ -303,23 +177,11 @@ trait FieldLevelSecuritySuiteMGetApi
         val documentManager = new DocumentManager(basicAuthClient("user5", "pass"), targetEs.esVersion)
 
         val queryParams = Map("_source_includes" -> "user5")
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          ),
-          queryParams
-        )
+        val result = documentManager.get("testfiltera", 1, queryParams)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{}"""))
       }
@@ -327,44 +189,21 @@ trait FieldLevelSecuritySuiteMGetApi
         val documentManager = new DocumentManager(basicAuthClient("user5", "pass"), targetEs.esVersion)
 
         val queryParams = Map("_source_excludes" -> "*")
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          ),
-          queryParams
-        )
+        val result = documentManager.get("testfiltera", 1, queryParams)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read("""{}"""))
       }
       "blacklist mode with wildcard is used" in {
         val documentManager = new DocumentManager(basicAuthClient("user6", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"testfiltera",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("testfiltera", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read(
           """|{
@@ -382,22 +221,11 @@ trait FieldLevelSecuritySuiteMGetApi
     "work for nested fields" when {
       "whitelist mode is used" in {
         val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"nestedtest",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("nestedtest", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read(
           """
@@ -423,22 +251,10 @@ trait FieldLevelSecuritySuiteMGetApi
         val documentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
         val queryParams = Map("_source_includes" -> "secrets.key")
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"nestedtest",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          ),
-          queryParams
-        )
+        val result = documentManager.get("nestedtest", 1, queryParams)
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
         source should be(ujson.read(
           """
             |{
@@ -452,22 +268,11 @@ trait FieldLevelSecuritySuiteMGetApi
       }
       "whitelist mode with wildcard is used" in {
         val documentManager = new DocumentManager(basicAuthClient("user2", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"nestedtest",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("nestedtest", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read(
           s"""
@@ -491,22 +296,11 @@ trait FieldLevelSecuritySuiteMGetApi
       }
       "blacklist mode is used" in {
         val documentManager = new DocumentManager(basicAuthClient("user3", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"nestedtest",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("nestedtest", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read(
           """
@@ -522,22 +316,11 @@ trait FieldLevelSecuritySuiteMGetApi
       }
       "blacklist mode with wildcards is used" in {
         val documentManager = new DocumentManager(basicAuthClient("user4", "pass"), targetEs.esVersion)
-        val result = documentManager.mGet(
-          ujson.read(
-            """{
-              |  "docs":[
-              |    {
-              |      "_index":"nestedtest",
-              |      "_id":1
-              |    }
-              |  ]
-              |}""".stripMargin
-          )
-        )
+        val result = documentManager.get("nestedtest", 1)
 
         result.responseCode shouldBe 200
 
-        val source = result.docs(0)("_source")
+        val source = result.responseJson("_source")
 
         source should be(ujson.read(
           """

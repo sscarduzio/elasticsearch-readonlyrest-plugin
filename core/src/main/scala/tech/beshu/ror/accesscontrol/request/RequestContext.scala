@@ -75,7 +75,7 @@ trait RequestContext {
 
   def isAllowedForDLS: Boolean
 
-  def requiresContextHeader: Boolean
+  def requiresContextHeaderForFLS: Boolean
 
   def hasRemoteClusters: Boolean
 }

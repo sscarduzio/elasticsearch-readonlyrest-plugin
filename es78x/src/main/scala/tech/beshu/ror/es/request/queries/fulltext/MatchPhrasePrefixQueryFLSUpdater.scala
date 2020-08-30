@@ -1,7 +1,8 @@
-package tech.beshu.ror.es.request.queries
+package tech.beshu.ror.es.request.queries.fulltext
 
 import org.elasticsearch.index.query.{MatchPhrasePrefixQueryBuilder, QueryBuilders}
 import tech.beshu.ror.accesscontrol.domain
+import tech.beshu.ror.es.request.queries.QueryFLSUpdater
 import tech.beshu.ror.fls.FieldsPolicy
 
 object MatchPhrasePrefixQueryFLSUpdater extends QueryFLSUpdater[MatchPhrasePrefixQueryBuilder] {

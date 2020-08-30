@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites
+package tech.beshu.ror.integration.suites.fields
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
@@ -36,9 +36,9 @@ trait FieldLevelSecuritySuiteSearchQuery
 
   protected val searchManager = new SearchManager(basicAuthClient("user", "pass"))
 
-  "A fields rule" should {
+  "Search action" should {
     "not return any document" when {
-      "not allowed fields are used in query (new approach)" which {
+      "not allowed by rule fields are used in query (new approach)" which {
         "is 'term' query" in {
           val query =
             """
@@ -314,6 +314,36 @@ trait FieldLevelSecuritySuiteSearchQuery
               |      "notAllowedTextField": {
               |        "value": "not*"
               |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+      }
+      "not allowed fields are used (old approach with context) header" when {
+        "is 'exists' query with wildcard" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "exists": {
+              |      "field": "notAllowed*ld"
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is 'query_string' query with wildcard" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "query_string": {
+              |      "query": "notAllowed\\*:(not allowed*) OR 1"
               |    }
               |  }
               |}

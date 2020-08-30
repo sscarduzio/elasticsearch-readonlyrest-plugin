@@ -42,7 +42,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override val requiresContextHeader: Boolean = false
+  override val requiresContextHeaderForFLS: Boolean = false
 
   override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
     val indexName = IndexName
@@ -75,6 +75,15 @@ class GetEsRequestContext(actionRequest: GetRequest,
     }
   }
 
+  private def handleExistingResponse(response: GetResponse,
+                                     definedFilter: Filter) = {
+    clusterService.verifyDocumentAccessibility(response.asDocumentWithIndex, definedFilter, id)
+      .map {
+        case Inaccessible => GetApi.doesNotExistResponse(response)
+        case Accessible => response
+      }
+  }
+
   private def filterFieldsFromResponse(fieldsRestrictions: Option[FieldsRestrictions])
                                       (actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fieldsRestrictions) match {
@@ -97,14 +106,5 @@ class GetEsRequestContext(actionRequest: GetRequest,
       case _ =>
         actionResponse
     }
-  }
-
-  private def handleExistingResponse(response: GetResponse,
-                                     definedFilter: Filter) = {
-    clusterService.verifyDocumentAccessibility(response.asDocumentWithIndex, definedFilter, id)
-      .map {
-        case Inaccessible => GetApi.doesNotExistResponse(response)
-        case Accessible => response
-      }
   }
 }
