@@ -20,7 +20,6 @@ import cats.data.NonEmptyList
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
-import org.elasticsearch.index.query.TermQueryBuilder
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain._
@@ -29,6 +28,8 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.queries.BaseQueryUpdater
+import tech.beshu.ror.es.request.queries.BaseQueryUpdater.QueryModificationEligibility.{ModificationImpossible, ModificationPossible}
 import tech.beshu.ror.utils.ScalaOps._
 
 
@@ -40,9 +41,9 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override val requiresContextHeader: Boolean = {
-    actionRequest.source().query() match {
-      case _: TermQueryBuilder => false
-      case _ => false
+    BaseQueryUpdater.resolveModificationEligibility(actionRequest.source().query()) match {
+      case _: ModificationPossible[_] => false
+      case ModificationImpossible => false
     }
   }
 

@@ -38,7 +38,7 @@ trait FieldLevelSecuritySuiteSearchQuery
 
   "A fields rule" should {
     "not return any document" when {
-      "not allowed fields are used in query" which {
+      "not allowed fields are used in query (new approach)" which {
         "is term query" in {
           val query =
             """
@@ -84,6 +84,129 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
+        "is constant score query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "constant_score": {
+              |      "filter": {
+              |        "term": {"notAllowedField": 999}
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is boosting query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "boosting": {
+              |      "positive": {
+              |        "term": {
+              |          "notAllowedField": 999
+              |        }
+              |      },
+              |      "negative": {
+              |        "term": {
+              |          "allowedField": "allowedFieldValue"
+              |        }
+              |      },
+              |      "negative_boost": 0.5
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is disjuction max query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "dis_max": {
+              |      "queries": [
+              |        { "term": { "notAllowedField": 999 } },
+              |        { "match": { "notAllowedField": 10000 } }
+              |      ],
+              |      "tie_breaker": 0.7
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is match bool prefix query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "match_bool_prefix": {
+              |      "notAllowedTextField": "not allowed"
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is match phrase query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "match_phrase": {
+              |      "notAllowedTextField": {
+              |        "query": "NOT allowed"
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is match phrase prefix query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "match_phrase_prefix": {
+              |      "notAllowedTextField": {
+              |        "query": "not allowed"
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+
+
+        "is common terms query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "common": {
+              |      "notAllowedTextField": {
+              |        "query": "not",
+              |        "cutoff_frequency": 0.1
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
       }
     }
   }
@@ -97,7 +220,8 @@ object FieldLevelSecuritySuiteSearchQuery {
       """
         |{
         | "allowedField": "allowedFieldValue",
-        | "notAllowedField": 999
+        | "notAllowedField": 999,
+        | "notAllowedTextField": "not allowed text value"
         |}""".stripMargin
 
     documentManager.createDoc("test-index", 1, ujson.read(document)).force()

@@ -20,7 +20,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import tech.beshu.ror.accesscontrol.domain.{FieldsRestrictions, Filter}
-import tech.beshu.ror.es.request.queries.QueryModifier
+import tech.beshu.ror.es.request.queries.BaseQueryUpdater
 
 object SearchRequestOps extends Logging {
 
@@ -56,7 +56,7 @@ object SearchRequestOps extends Logging {
       fieldsRestrictions match {
         case Some(definedFields) =>
           val currentQuery = request.source().query()
-          val newQuery = QueryModifier.modifyForFLS(currentQuery, definedFields)
+          val newQuery = BaseQueryUpdater.adjustUsedFieldsIn(currentQuery, definedFields)
           request.source().query(newQuery)
           request
         case None =>
