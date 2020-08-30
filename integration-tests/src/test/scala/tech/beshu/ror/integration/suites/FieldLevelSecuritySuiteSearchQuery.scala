@@ -39,13 +39,13 @@ trait FieldLevelSecuritySuiteSearchQuery
   "A fields rule" should {
     "not return any document" when {
       "not allowed fields are used in query (new approach)" which {
-        "is term query" in {
+        "is 'term' query" in {
           val query =
             """
               |{
               |  "query": {
               |    "term": {
-              |      "notAllowedField": 999
+              |      "notAllowedField": 1
               |    }
               |  }
               |}
@@ -53,13 +53,13 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
-        "is match query" in {
+        "is 'match' query" in {
           val query =
             """
               |{
               |  "query": {
               |    "match": {
-              |      "notAllowedField": 999
+              |      "notAllowedField": 1
               |    }
               |  }
               |}
@@ -67,14 +67,14 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
-        "is bool query with term + match queries" in {
+        "is 'bool' query with term + match queries" in {
           val query =
             """
               |{
               |  "query": {
               |    "bool": {
               |      "must": [
-              |        {"term": {"notAllowedField": 999}},
+              |        {"term": {"notAllowedField": 1}},
               |        {"match": {"allowedField": "allowedFieldValue"}}
               |      ]
               |    }
@@ -84,14 +84,14 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
-        "is constant score query" in {
+        "is 'constant score' query" in {
           val query =
             """
               |{
               |  "query": {
               |    "constant_score": {
               |      "filter": {
-              |        "term": {"notAllowedField": 999}
+              |        "term": {"notAllowedField": 1}
               |      }
               |    }
               |  }
@@ -100,7 +100,7 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
-        "is boosting query" in {
+        "is 'boosting' query" in {
           val query =
             """
               |{
@@ -108,7 +108,7 @@ trait FieldLevelSecuritySuiteSearchQuery
               |    "boosting": {
               |      "positive": {
               |        "term": {
-              |          "notAllowedField": 999
+              |          "notAllowedField": 1
               |        }
               |      },
               |      "negative": {
@@ -124,14 +124,14 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
-        "is disjuction max query" in {
+        "is 'disjuction max' query" in {
           val query =
             """
               |{
               |  "query": {
               |    "dis_max": {
               |      "queries": [
-              |        { "term": { "notAllowedField": 999 } },
+              |        { "term": { "notAllowedField": 1 } },
               |        { "match": { "notAllowedField": 10000 } }
               |      ],
               |      "tie_breaker": 0.7
@@ -142,7 +142,7 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
-        "is match bool prefix query" in {
+        "is 'match bool prefix' query" in {
           val query =
             """
               |{
@@ -156,7 +156,7 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
-        "is match phrase query" in {
+        "is 'match phrase' query" in {
           val query =
             """
               |{
@@ -172,7 +172,7 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
-        "is match phrase prefix query" in {
+        "is 'match phrase prefix' query" in {
           val query =
             """
               |{
@@ -188,9 +188,7 @@ trait FieldLevelSecuritySuiteSearchQuery
 
           assertNoSearchHitsReturnedFor(query)
         }
-
-
-        "is common terms query" in {
+        "is 'common terms' query" in {
           val query =
             """
               |{
@@ -199,6 +197,122 @@ trait FieldLevelSecuritySuiteSearchQuery
               |      "notAllowedTextField": {
               |        "query": "not",
               |        "cutoff_frequency": 0.1
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+
+        //no wildcard!!
+        "is 'exists' query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "exists": {
+              |      "field": "notAllowedField"
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+
+        }
+        "is 'fuzzy' query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "fuzzy": {
+              |      "notAllowedTextField": {
+              |        "value": "not"
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+
+        "is 'prefix' query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "prefix": {
+              |      "notAllowedTextField": {
+              |        "value": "not"
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is 'range' query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "range": {
+              |      "notAllowedField": {
+              |        "gte": 10,
+              |        "lte": 1000
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is 'regexp' query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "regexp": {
+              |      "notAllowedTextField": {
+              |        "value": "no.*"
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is 'terms set' query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "terms_set": {
+              |      "notAllowedTextField": {
+              |        "terms": [ "not", "allowed" ],
+              |        "minimum_should_match_field": "notAllowedField"
+              |      }
+              |    }
+              |  }
+              |}
+              |""".stripMargin
+
+          assertNoSearchHitsReturnedFor(query)
+        }
+        "is 'wildcard' query" in {
+          val query =
+            """
+              |{
+              |  "query": {
+              |    "wildcard": {
+              |      "notAllowedTextField": {
+              |        "value": "not*"
               |      }
               |    }
               |  }
@@ -220,7 +334,7 @@ object FieldLevelSecuritySuiteSearchQuery {
       """
         |{
         | "allowedField": "allowedFieldValue",
-        | "notAllowedField": 999,
+        | "notAllowedField": 1,
         | "notAllowedTextField": "not allowed text value"
         |}""".stripMargin
 

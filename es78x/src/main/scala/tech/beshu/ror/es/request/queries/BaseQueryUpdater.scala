@@ -36,8 +36,10 @@ object BaseQueryUpdater extends QueryFLSUpdater[QueryBuilder] {
       ModificationPossible(ConstantScoreQueryFLSUpdater, builder)
     case builder: DisMaxQueryBuilder =>
       ModificationPossible(DisjunctionMaxQueryFLSUpdater, builder)
-    case _: FunctionScoreQueryBuilder =>
-      ModificationImpossible
+    case builder: ExistsQueryBuilder =>
+      ModificationPossible(ExistsQueryFLSUpdater, builder)
+    case builder: FuzzyQueryBuilder =>
+      ModificationPossible(FuzzyQueryFLSUpdater, builder)
     case builder: MatchQueryBuilder =>
       ModificationPossible(MatchQueryFLSUpdater, builder)
     case builder: MatchBoolPrefixQueryBuilder =>
@@ -46,17 +48,30 @@ object BaseQueryUpdater extends QueryFLSUpdater[QueryBuilder] {
       ModificationPossible(MatchPhraseQueryFLSUpdater, builder)
     case builder: MatchPhrasePrefixQueryBuilder =>
       ModificationPossible(MatchPhrasePrefixQueryFLSUpdater, builder)
-    case _: MultiMatchQueryBuilder =>
-      ModificationImpossible
+    case builder: PrefixQueryBuilder =>
+      ModificationPossible(PrefixQueryFLSUpdater, builder)
+    case builder: RangeQueryBuilder =>
+      ModificationPossible(RangeQueryFLSUpdater, builder)
+    case builder: RegexpQueryBuilder =>
+      ModificationPossible(RegexpQueryFLSUpdater, builder)
     case builder: TermQueryBuilder =>
       ModificationPossible(TermQueryFLSUpdater, builder)
+    case builder: TermsSetQueryBuilder =>
+      ModificationPossible(TermsSetQueryFLSUpdater, builder)
+    case builder: WildcardQueryBuilder =>
+      ModificationPossible(WildcardQueryFLSUpdater, builder)
+    case _: FunctionScoreQueryBuilder =>
+      ModificationImpossible
+    case _: MultiMatchQueryBuilder =>
+      ModificationImpossible
     case _: IntervalQueryBuilder =>
       ModificationImpossible
     case _: QueryStringQueryBuilder =>
       ModificationImpossible
     case _: SimpleQueryStringBuilder =>
       ModificationImpossible
-    case _ => ModificationImpossible
+    case _ =>
+      ModificationImpossible
   }
 
 }
