@@ -13,7 +13,7 @@ import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequ
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchResponse}
 import org.elasticsearch.client.Requests
 import org.elasticsearch.client.indices.GetIndexRequest
-import org.elasticsearch.cluster.metadata.{AliasMetaData, IndexMetaData, IndexTemplateMetaData}
+import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexMetadata, IndexTemplateMetadata}
 import org.elasticsearch.index.query.QueryBuilders
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
@@ -35,7 +35,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
     client
       .getIndex(new GetIndexRequest(indexOrAlias.value.value))
       .map { response =>
-        Option(response.getSetting(indexOrAlias.value.value, IndexMetaData.INDEX_UUID_NA_VALUE)).toSet
+        Option(response.getSetting(indexOrAlias.value.value, IndexMetadata.INDEX_UUID_NA_VALUE)).toSet
       }
       .runSyncUnsafe()
   }
@@ -97,7 +97,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .map(results => zip(results, documents))
   }
 
-  private def indexWithAliasesFrom(indexNameString: String, aliasMetadata: Set[AliasMetaData]) = {
+  private def indexWithAliasesFrom(indexNameString: String, aliasMetadata: Set[AliasMetadata]) = {
     IndexName
       .fromString(indexNameString)
       .map { index =>
@@ -105,7 +105,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       }
   }
 
-  private def templateFrom(metaData: IndexTemplateMetaData): Option[Template] = {
+  private def templateFrom(metaData: IndexTemplateMetadata): Option[Template] = {
     TemplateName
       .fromString(metaData.name())
       .flatMap { templateName =>
