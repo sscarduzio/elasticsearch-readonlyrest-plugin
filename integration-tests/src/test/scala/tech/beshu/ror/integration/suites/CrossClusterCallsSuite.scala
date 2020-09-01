@@ -97,14 +97,14 @@ trait CrossClusterCallsSuite
   "A cluster _async_search for given index" should {
     "return 200 and allow user to its content" when {
       "user has permission to do so" when {
-        "he queries local and remote indices" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+        "he queries local and remote indices" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, proxy) in {
           val result = user3SearchManager.asyncSearch("etl:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be(
             Set("metrics_monitoring_2020-03-26", "metrics_monitoring_2020-03-27", "etl:etl_usage_2020-03-26", "etl:etl_usage_2020-03-27")
           )
         }
-        "he queries remote indices only" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote indices only" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, proxy) in {
           val result = user1SearchManager.asyncSearch("odd:test1_index")
           result.responseCode should be(200)
           result.searchHits.arr.size should be(2)
@@ -113,12 +113,12 @@ trait CrossClusterCallsSuite
     }
     "return empty response" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices patterns" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+        "he queries local and remote indices patterns" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, proxy) in {
           val result = user2SearchManager.asyncSearch("etl:etl*", "metrics*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
         }
-        "he queries remote indices patterns only" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote indices patterns only" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, proxy) in {
           val result = user2SearchManager.asyncSearch("etl:etl*")
           result.responseCode should be(200)
           result.searchHits.map(i => i("_index").str).toSet should be (Set.empty)
@@ -127,11 +127,11 @@ trait CrossClusterCallsSuite
     }
     "return 404" when {
       "user has no permission to do so" when {
-        "he queries local and remote indices" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+        "he queries local and remote indices" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, proxy) in {
           val result = user2SearchManager.asyncSearch("etl:etl_usage_2020-03-26", "metrics_monitoring_2020-03-26")
           result.responseCode should be(404)
         }
-        "he queries remote indices only" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+        "he queries remote indices only" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x, proxy) in {
           val result = user2SearchManager.asyncSearch("odd:test1_index")
           result.responseCode should be(404)
         }
