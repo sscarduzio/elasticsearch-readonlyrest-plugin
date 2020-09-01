@@ -16,21 +16,21 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RepositoryRequestBlockContext, _}
 import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeRepositoryFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.{MatcherWithWildcards, ZeroKnowledgeIndexFilter}
 
 import scala.collection.JavaConverters._
 
@@ -38,7 +38,8 @@ class RepositoriesRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = RepositoriesRule.name
-  private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
+
+  private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     BlockContextUpdater[B] match {
@@ -79,16 +80,12 @@ class RepositoriesRule(val settings: Settings)
     if (allowedRepositories.contains(RepositoryName.all) || allowedRepositories.contains(RepositoryName.wildcard)) {
       Right(repositoriesToCheck)
     } else {
-      zeroKnowledgeMatchFilter.alterRepositoriesIfNecessary(
+      zeroKnowledgeMatchFilter.check(
         repositoriesToCheck,
         new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(allowedRepositories.map(_.value.value).asJava))
       ) match {
-        case NotAltered =>
-          Right(repositoriesToCheck)
-        case Altered(filteredRepositories) if filteredRepositories.nonEmpty && requestContext.isReadOnlyRequest =>
-          Right(filteredRepositories)
-        case Altered(_) =>
-          Left(())
+        case CheckResult.Ok(processedRepositories) => Right(processedRepositories)
+        case CheckResult.Failed => Left(())
       }
     }
   }

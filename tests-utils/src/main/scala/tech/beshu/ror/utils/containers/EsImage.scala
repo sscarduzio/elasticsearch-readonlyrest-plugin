@@ -66,6 +66,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .run(s"echo 'node.name: $nodeName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'network.host: 0.0.0.0' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'cluster.name: $clusterName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'path.repo: /tmp' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
             command = s"echo 'discovery.seed_hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml",
             orElse = s"echo 'discovery.zen.ping.unicast.hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml"
@@ -81,7 +82,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           "-Xmx512m",
           "-Djava.security.egd=file:/dev/./urandoms",
           "-Dcom.unboundid.ldap.sdk.debug.enabled=false",
-          "-Xdebug", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000",
+          "-Xdebug", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000", // todo:
           if (!configHotReloadingEnabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
         ).mkString(" ")
 
