@@ -55,7 +55,7 @@ final class ResponseBuilder(localNode: NodeId, channel: RestChannel) extends Res
       case _: TimeoutException =>
         NodeError.Timeout
       case _: ActionNotFoundTransportException =>
-        NodeError.ActionNotFound
+        NodeError.RorConfigActionNotFound
       case _ =>
         NodeError.Unknown(failedNodeException.getDetailedMessage)
     }

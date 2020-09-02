@@ -61,6 +61,6 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       clusterSettings)
   }
 }
-object EsWithRorPluginContainerCreator extends EsWithRorPluginContainerCreator {
-  override def isUsingXpackSupport: Boolean = false //TODO: ???
-}
+object EsWithRorPluginContainerCreator
+  extends EsWithRorPluginContainerCreator
+    with NoXpackSupport

@@ -20,21 +20,21 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 
 import scala.language.implicitConversions
 
-sealed trait LoadedConfig[A]
-object LoadedConfig {
-  final case class FileConfig[A](value: A) extends LoadedConfig[A]
-  final case class ForcedFileConfig[A](value: A) extends LoadedConfig[A]
-  final case class IndexConfig[A](indexName: RorConfigurationIndex, value: A) extends LoadedConfig[A]
+sealed trait LoadedRorConfig[A]
+object LoadedRorConfig {
+  final case class FileConfig[A](value: A) extends LoadedRorConfig[A]
+  final case class ForcedFileConfig[A](value: A) extends LoadedRorConfig[A]
+  final case class IndexConfig[A](indexName: RorConfigurationIndex, value: A) extends LoadedRorConfig[A]
 
   sealed trait Error
-  final case class FileParsingError(message: String) extends LoadedConfig.Error
-  final case class FileNotExist(path: Path) extends LoadedConfig.Error
-  final case class EsFileNotExist(path: Path) extends LoadedConfig.Error
-  final case class EsFileMalformed(path: Path, message: String) extends LoadedConfig.Error
+  final case class FileParsingError(message: String) extends LoadedRorConfig.Error
+  final case class FileNotExist(path: Path) extends LoadedRorConfig.Error
+  final case class EsFileNotExist(path: Path) extends LoadedRorConfig.Error
+  final case class EsFileMalformed(path: Path, message: String) extends LoadedRorConfig.Error
 
   sealed trait LoadingIndexError
-  final case class IndexParsingError(message: String) extends LoadedConfig.Error with LoadingIndexError
-  case object IndexUnknownStructure extends LoadedConfig.Error with LoadingIndexError
+  final case class IndexParsingError(message: String) extends LoadedRorConfig.Error with LoadingIndexError
+  case object IndexUnknownStructure extends LoadedRorConfig.Error with LoadingIndexError
   case object IndexNotExist  extends LoadingIndexError
 }
 final case class Path(value: String) extends AnyVal

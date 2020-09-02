@@ -17,7 +17,7 @@
 package tech.beshu.ror.configuration
 
 import cats.Functor
-import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, ForcedFileConfig, IndexConfig}
+import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 
 import language.implicitConversions
 
@@ -26,7 +26,7 @@ package object loader {
 
   implicit def toDomain(path: java.nio.file.Path): tech.beshu.ror.configuration.loader.Path = tech.beshu.ror.configuration.loader.Path(path.toString)
 
-  implicit class LoadedConfigOps[A](fa: LoadedConfig[A]) {
+  implicit class LoadedConfigOps[A](fa: LoadedRorConfig[A]) {
     lazy val value: A = fa match {
       case FileConfig(value) => value
       case ForcedFileConfig(value) => value
@@ -34,8 +34,8 @@ package object loader {
     }
   }
   
-  implicit val functorLoadedConfig: Functor[LoadedConfig] = new Functor[LoadedConfig] {
-    override def map[A, B](fa: LoadedConfig[A])(f: A => B): LoadedConfig[B] = fa match {
+  implicit val functorLoadedConfig: Functor[LoadedRorConfig] = new Functor[LoadedRorConfig] {
+    override def map[A, B](fa: LoadedRorConfig[A])(f: A => B): LoadedRorConfig[B] = fa match {
       case FileConfig(value) => FileConfig(f(value))
       case ForcedFileConfig(value) => ForcedFileConfig(f(value))
       case IndexConfig(indexName, value) => IndexConfig(indexName, f(value))

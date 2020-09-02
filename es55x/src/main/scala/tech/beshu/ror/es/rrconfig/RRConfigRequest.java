@@ -22,8 +22,6 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest;
 import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigRequestSerializer;
 
-
-
 import java.io.IOException;
 
 public class RRConfigRequest extends BaseNodeRequest {

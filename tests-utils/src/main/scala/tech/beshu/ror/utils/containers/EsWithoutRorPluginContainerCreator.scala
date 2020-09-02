@@ -48,6 +48,6 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
     )
   }
 }
-object EsWithoutRorPluginContainerCreator extends EsWithoutRorPluginContainerCreator {
-  override def isUsingXpackSupport: Boolean = false //TODO: ???
-}
+object EsWithoutRorPluginContainerCreator
+  extends EsWithoutRorPluginContainerCreator
+    with NoXpackSupport

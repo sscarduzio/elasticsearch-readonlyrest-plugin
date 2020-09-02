@@ -21,12 +21,12 @@ import tech.beshu.ror.configuration.ConfigLoading._
 import tech.beshu.ror.configuration.{EsConfig, RawRorConfig}
 
 import scala.language.implicitConversions
-import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, IndexConfig}
+import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, IndexConfig}
 
 object LoadRawRorConfig {
   def load(esConfigPath: Path,
            esConfig: EsConfig,
-           configurationIndex: RorConfigurationIndex): LoadRorConfig[ErrorOr[LoadedConfig[RawRorConfig]]] = {
+           configurationIndex: RorConfigurationIndex): LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]] = {
     LoadRawRorConfig.load(
       isLoadingFromFileForced = esConfig.rorEsLevelSettings.forceLoadRorFromFile,
       esConfigPath = esConfigPath,
@@ -38,33 +38,33 @@ object LoadRawRorConfig {
   def load(isLoadingFromFileForced: Boolean,
            esConfigPath: Path,
            configIndex: RorConfigurationIndex,
-           indexLoadingAttempts: Int): LoadRorConfig[ErrorOr[LoadedConfig[RawRorConfig]]] = {
+           indexLoadingAttempts: Int): LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]] = {
     for {
       loadedFileOrIndex <- if (isLoadingFromFileForced) {
-        forceLoadFromFile(esConfigPath)
+        forceLoadRorConfigFromFile(esConfigPath)
       } else {
-        attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts, loadFromFile(esConfigPath))
+        attemptLoadingConfigFromIndex(configIndex, indexLoadingAttempts, loadRorConfigFromFile(esConfigPath))
       }
     } yield loadedFileOrIndex
   }
 
   def attemptLoadingConfigFromIndex(index: RorConfigurationIndex,
                                     attempts: Int,
-                                    fallback: LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]]): LoadRorConfig[ErrorOr[LoadedConfig[RawRorConfig]]] = {
+                                    fallback: LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]]): LoadRorConfig[ErrorOr[LoadedRorConfig[RawRorConfig]]] = {
     if (attempts <= 0) {
       fallback.map(identity)
     } else {
       for {
-        result <- loadFromIndex(index)
+        result <- loadRorConfigFromIndex(index)
         rawRorConfig <- result match {
-          case Left(LoadedConfig.IndexNotExist) =>
+          case Left(LoadedRorConfig.IndexNotExist) =>
             Free.defer(attemptLoadingConfigFromIndex(index, attempts - 1, fallback))
-          case Left(error@LoadedConfig.IndexUnknownStructure) =>
-            Free.pure[LoadRorConfigAction, ErrorOr[LoadedConfig[RawRorConfig]]](Left(error))
-          case Left(error@LoadedConfig.IndexParsingError(_)) =>
-            Free.pure[LoadRorConfigAction, ErrorOr[LoadedConfig[RawRorConfig]]](Left(error))
+          case Left(error@LoadedRorConfig.IndexUnknownStructure) =>
+            Free.pure[LoadConfigAction, ErrorOr[LoadedRorConfig[RawRorConfig]]](Left(error))
+          case Left(error@LoadedRorConfig.IndexParsingError(_)) =>
+            Free.pure[LoadConfigAction, ErrorOr[LoadedRorConfig[RawRorConfig]]](Left(error))
           case Right(value) =>
-            Free.pure[LoadRorConfigAction, ErrorOr[LoadedConfig[RawRorConfig]]](Right(value))
+            Free.pure[LoadConfigAction, ErrorOr[LoadedRorConfig[RawRorConfig]]](Right(value))
         }
       } yield rawRorConfig
     }

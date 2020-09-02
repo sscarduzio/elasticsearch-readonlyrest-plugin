@@ -24,7 +24,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.configuration.loader.distributed.Summary.CurrentNodeHaveToProduceResult
-import tech.beshu.ror.configuration.loader.{LoadedConfig, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.{LoadedRorConfig, RorConfigurationIndex}
 
 import scala.language.postfixOps
 
@@ -40,7 +40,7 @@ class SummaryTest extends WordSpec {
     "there is no current node config" should {
       "throw no current node config error" in {
         assertThrows[CurrentNodeHaveToProduceResult.type] {
-          val conf = LoadedConfig.IndexConfig(configIndex("config-index"), "config")
+          val conf = LoadedRorConfig.IndexConfig(configIndex("config-index"), "config")
           Summary.create(NodeId(""), NodeResponse(NodeId("b"), conf asRight) :: Nil, Nil)
         }
       }
@@ -48,7 +48,7 @@ class SummaryTest extends WordSpec {
     "current node has no ror" should {
       "throw error" in {
         assertThrows[CurrentNodeHaveToProduceResult.type] {
-          Summary.create(NodeId("a"), Nil, NodeError(NodeId("a"), NodeError.ActionNotFound) :: Nil)
+          Summary.create(NodeId("a"), Nil, NodeError(NodeId("a"), NodeError.RorConfigActionNotFound) :: Nil)
         }
       }
     }
@@ -64,7 +64,7 @@ class SummaryTest extends WordSpec {
     }
     "only node returns config" should {
       "return current node config" in {
-        val conf = LoadedConfig.IndexConfig(configIndex("config-index"), "config")
+        val conf = LoadedRorConfig.IndexConfig(configIndex("config-index"), "config")
         Summary.create(NodeId("a"), NodeResponse(NodeId("a"), conf asRight) :: Nil, Nil) shouldBe
           Summary.Result(conf, Nil).asRight
       }
@@ -73,49 +73,49 @@ class SummaryTest extends WordSpec {
       "return that error" in {
         Summary.create(
           currentNodeId = NodeId("a"),
-          nodesResponses = NodeResponse(NodeId("a"), LoadedConfig.IndexUnknownStructure asLeft) :: Nil,
+          nodesResponses = NodeResponse(NodeId("a"), LoadedRorConfig.IndexUnknownStructure asLeft) :: Nil,
           failures = Nil,
         ) shouldBe
-          Summary.CurrentNodeConfigError(LoadedConfig.IndexUnknownStructure).asLeft
+          Summary.CurrentNodeConfigError(LoadedRorConfig.IndexUnknownStructure).asLeft
       }
     }
     "current node returns error" should {
       "return that error" in {
         Summary.create(
           currentNodeId = NodeId("a"),
-          nodesResponses = NodeResponse(NodeId("a"), LoadedConfig.IndexUnknownStructure asLeft) ::
-            NodeResponse(NodeId("b"), LoadedConfig.IndexConfig(configIndex("config-index"), "config") asRight) ::
+          nodesResponses = NodeResponse(NodeId("a"), LoadedRorConfig.IndexUnknownStructure asLeft) ::
+            NodeResponse(NodeId("b"), LoadedRorConfig.IndexConfig(configIndex("config-index"), "config") asRight) ::
             Nil,
           failures = Nil,
         ) shouldBe
-          Summary.CurrentNodeConfigError(LoadedConfig.IndexUnknownStructure).asLeft
+          Summary.CurrentNodeConfigError(LoadedRorConfig.IndexUnknownStructure).asLeft
       }
     }
     "other node returns error" should {
       "return config, and other node error as warning" in {
-        val conf = LoadedConfig.IndexConfig(configIndex("config-index"), "config")
+        val conf = LoadedRorConfig.IndexConfig(configIndex("config-index"), "config")
         Summary.create(
           currentNodeId = NodeId("b"),
-          nodesResponses = NodeResponse(NodeId("a"), LoadedConfig.IndexUnknownStructure asLeft) ::
+          nodesResponses = NodeResponse(NodeId("a"), LoadedRorConfig.IndexUnknownStructure asLeft) ::
             NodeResponse(NodeId("b"), conf asRight) ::
             Nil,
           failures = Nil,
         ) shouldBe
           Summary.Result(config = conf,
-            warnings = Summary.NodeReturnedConfigError(NodeId("a"), LoadedConfig.IndexUnknownStructure) :: Nil,
+            warnings = Summary.NodeReturnedConfigError(NodeId("a"), LoadedRorConfig.IndexUnknownStructure) :: Nil,
           ).asRight
       }
     }
     "current node is force loaded from file" should {
       "return config, and forced loading from file as warning" in {
-        val conf = LoadedConfig.ForcedFileConfig("config")
+        val conf = LoadedRorConfig.ForcedFileConfig("config")
         Summary.create(NodeId("a"), NodeResponse(NodeId("a"), conf asRight) :: Nil, Nil) shouldBe
           Summary.Result(conf, Summary.NodeForcedFileConfig(NodeId("a")) :: Nil).asRight
       }
     }
     "other node returned unknown error" should {
       "return config, and unknown error warning" in {
-        val conf = LoadedConfig.ForcedFileConfig("config")
+        val conf = LoadedRorConfig.ForcedFileConfig("config")
         Summary.create(
           currentNodeId = NodeId("a"),
           nodesResponses = NodeResponse(NodeId("a"), conf asRight) :: Nil,
@@ -130,10 +130,10 @@ class SummaryTest extends WordSpec {
     }
     "other node returned action not found" should {
       "ignore action not found error" in {
-        val conf = LoadedConfig.ForcedFileConfig("config")
+        val conf = LoadedRorConfig.ForcedFileConfig("config")
         Summary.create(currentNodeId = NodeId("a"),
           nodesResponses = NodeResponse(NodeId("a"), conf asRight) :: Nil,
-          failures = NodeError(NodeId("b"), NodeError.ActionNotFound) :: Nil,
+          failures = NodeError(NodeId("b"), NodeError.RorConfigActionNotFound) :: Nil,
         ) shouldBe
           Summary.Result(conf, Summary.NodeForcedFileConfig(NodeId("a")) :: Nil).asRight
       }
@@ -146,7 +146,7 @@ class SummaryTest extends WordSpec {
     }
     "other node has timeout" should {
       "return config, and warning" in {
-        val currentConfig = LoadedConfig.FileConfig("config1")
+        val currentConfig = LoadedRorConfig.FileConfig("config1")
         Summary.create(currentNodeId = NodeId("a"),
           nodesResponses = NodeResponse(NodeId("a"), currentConfig asRight) :: Nil,
           failures = NodeError(NodeId("b"), NodesResponse.NodeError.Timeout) :: Nil,
@@ -156,8 +156,8 @@ class SummaryTest extends WordSpec {
     }
     "other node has different config, than current node" should {
       "return config, and warning" in {
-        val currentConfig = LoadedConfig.FileConfig("config1")
-        val otherConfig = LoadedConfig.FileConfig("config2")
+        val currentConfig = LoadedRorConfig.FileConfig("config1")
+        val otherConfig = LoadedRorConfig.FileConfig("config2")
         Summary.create(
           currentNodeId = NodeId("a"),
           nodesResponses = NodeResponse(NodeId("a"), currentConfig asRight) ::

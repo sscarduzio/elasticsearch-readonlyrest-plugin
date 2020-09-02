@@ -44,7 +44,7 @@ import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
 import tech.beshu.ror.configuration.loader.distributed.RawRorConfigLoadingAction
-import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedConfig, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig, RorConfigurationIndex}
 import tech.beshu.ror.configuration.{RorProperties, _}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
@@ -108,43 +108,29 @@ trait ReadonlyRest extends Logging {
 
   private def runStartingFailureProgram[A](indexConfigManager: IndexConfigManager,
                                            action: LoadRorConfig[ErrorOr[A]]) = {
-    val compiler = ConfigLoadingInterpreter.create(indexConfigManager)
+    val compiler = ConfigLoadingInterpreter.create(indexConfigManager, RorProperties.rorIndexSettingLoadingDelay)
     EitherT(action.foldMap(compiler))
       .leftMap(toStartingFailure)
   }
-  private def toStartingFailure(error: LoadedConfig.Error) = {
+  private def toStartingFailure(error: LoadedRorConfig.Error) = {
     error match {
-      case LoadedConfig.FileParsingError(message) =>
+      case LoadedRorConfig.FileParsingError(message) =>
         StartingFailure(message)
-      case LoadedConfig.FileNotExist(path) =>
+      case LoadedRorConfig.FileNotExist(path) =>
         StartingFailure(s"Cannot find settings file: ${path.value}")
-      case LoadedConfig.EsFileNotExist(path) =>
+      case LoadedRorConfig.EsFileNotExist(path) =>
         StartingFailure(s"Cannot find elasticsearch settings file: [${path.value}]")
-      case LoadedConfig.EsFileMalformed(path, message) =>
+      case LoadedRorConfig.EsFileMalformed(path, message) =>
         StartingFailure(s"Settings file is malformed: [${path.value}], $message")
-      case LoadedConfig.IndexParsingError(message) =>
+      case LoadedRorConfig.IndexParsingError(message) =>
         StartingFailure(message)
-      case LoadedConfig.IndexUnknownStructure =>
+      case LoadedRorConfig.IndexUnknownStructure =>
         StartingFailure(s"Settings index is malformed")
     }
   }
 
-  private def loadEsConfig(esConfigPath: Path)
-                          (implicit envVarsProvider: EnvVarsProvider) = {
-    EitherT {
-      EsConfig
-        .from(esConfigPath)
-        .map(_.left.map {
-          case LoadEsConfigError.FileNotFound(file) =>
-            StartingFailure(s"Cannot find elasticsearch settings file: [${file.pathAsString}]")
-          case LoadEsConfigError.MalformedContent(file, msg) =>
-            StartingFailure(s"Settings file is malformed: [${file.pathAsString}], $msg")
-        })
-    }
-  }
-
   private def startRor(esConfig: EsConfig,
-                       loadedConfig: LoadedConfig[RawRorConfig],
+                       loadedConfig: LoadedRorConfig[RawRorConfig],
                        indexConfigManager: IndexConfigManager,
                        auditSink: AuditSinkService) = {
     for {
@@ -157,14 +143,14 @@ trait ReadonlyRest extends Logging {
                                 rorConfigurationIndex: RorConfigurationIndex,
                                 auditSink: AuditSinkService,
                                 engine: Engine,
-                                loadedConfig: LoadedConfig[RawRorConfig]) = {
+                                loadedConfig: LoadedRorConfig[RawRorConfig]) = {
     EitherT.right[StartingFailure] {
       loadedConfig match {
-        case LoadedConfig.FileConfig(config) =>
+        case LoadedRorConfig.FileConfig(config) =>
           RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
-        case LoadedConfig.ForcedFileConfig(config) =>
+        case LoadedRorConfig.ForcedFileConfig(config) =>
           RorInstance.createWithoutPeriodicIndexCheck(this, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
-        case LoadedConfig.IndexConfig(_, config) =>
+        case LoadedRorConfig.IndexConfig(_, config) =>
           RorInstance.createWithPeriodicIndexCheck(this, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
       }
     }

@@ -18,16 +18,18 @@ package tech.beshu.ror.configuration.loader.distributed
 
 import cats.data.EitherT
 import monix.eval.Task
-import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedConfig}
-import tech.beshu.ror.configuration.{ConfigLoading, IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
+import tech.beshu.ror.configuration.{ConfigLoading, IndexConfigManager, RawRorConfig, RorProperties}
 import tech.beshu.ror.es.IndexJsonContentService
-import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, PropertiesProvider}
 
 object RawRorConfigLoadingAction{
   def load(esConfigPath: java.nio.file.Path,
            indexJsonContentService: IndexJsonContentService)
-          (implicit envVarsProvider: EnvVarsProvider): Task[Either[LoadedConfig.Error, LoadedConfig[RawRorConfig]]] = {
-    val compiler = ConfigLoadingInterpreter.create(new IndexConfigManager(indexJsonContentService))
+          (implicit envVarsProvider: EnvVarsProvider,
+          propertiesProvider: PropertiesProvider): Task[Either[LoadedRorConfig.Error, LoadedRorConfig[RawRorConfig]]] = {
+
+    val compiler = ConfigLoadingInterpreter.create(new IndexConfigManager(indexJsonContentService), RorProperties.rorIndexSettingLoadingDelay)
     (for {
       esConfig <- EitherT(ConfigLoading.loadEsConfig(esConfigPath))
       loadedConfig <- EitherT(LoadRawRorConfig.load(esConfigPath, esConfig, esConfig.rorIndex.index))

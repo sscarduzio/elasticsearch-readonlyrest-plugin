@@ -21,24 +21,27 @@ import cats.~>
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.ConfigLoading.LoadRorConfigAction
+import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
+import tech.beshu.ror.configuration.RorProperties.LoadingDelay
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
 import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
-import tech.beshu.ror.configuration.loader.LoadedConfig._
+import tech.beshu.ror.configuration.loader.LoadedRorConfig._
 import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, IndexConfigManager}
 import tech.beshu.ror.providers.EnvVarsProvider
+
 import concurrent.duration._
 import language.postfixOps
 
 object ConfigLoadingInterpreter extends Logging {
 
-  def create(indexConfigManager: IndexConfigManager)
-            (implicit envVarsProvider: EnvVarsProvider): (LoadRorConfigAction ~> Task) = new (LoadRorConfigAction ~> Task) {
-    override def apply[A](fa: LoadRorConfigAction[A]): Task[A] = fa match {
-      case ConfigLoading.LoadRorConfigAction.LoadEsConfig(esConfigPath) =>
+  def create(indexConfigManager: IndexConfigManager, inIndexLoadingDelay: LoadingDelay)
+            (implicit envVarsProvider: EnvVarsProvider): (LoadConfigAction ~> Task) = new (LoadConfigAction ~> Task) {
+    override def apply[A](fa: LoadConfigAction[A]): Task[A] = fa match {
+      case ConfigLoading.LoadConfigAction.LoadEsConfig(esConfigPath) =>
+        logger.info(s"Loading Elasticsearch settings from file: $esConfigPath")
         EsConfig
           .from(esConfigPath)
           .map(_.left.map {
@@ -47,15 +50,15 @@ object ConfigLoadingInterpreter extends Logging {
             case LoadEsConfigError.MalformedContent(file, msg) =>
               EsFileMalformed(file.toJava.toPath, msg)
           })
-      case ConfigLoading.LoadRorConfigAction.ForceLoadFromFile(path) =>
-        logger.info(s"Loading ReadonlyREST settings from file: $path")
+      case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(path) =>
+        logger.info(s"Loading ReadonlyREST settings forced loading from file: $path")
         EitherT(FileConfigLoader.create(path).load())
           .bimap(convertFileError, ForcedFileConfig(_))
           .leftMap { error =>
             logger.error(s"Loading ReadonlyREST from file failed: ${error}")
             error
           }.value
-      case ConfigLoading.LoadRorConfigAction.LoadFromFile(path) =>
+      case ConfigLoading.LoadConfigAction.LoadRorConfigFromFile(path) =>
         logger.info(s"Loading ReadonlyREST settings from file: $path, because index not exist")
         EitherT(FileConfigLoader.create(path).load())
           .bimap(convertFileError, FileConfig(_))
@@ -64,9 +67,9 @@ object ConfigLoadingInterpreter extends Logging {
             error
           }
           .value
-      case ConfigLoading.LoadRorConfigAction.LoadFromIndex(index) =>
-        logger.info("[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ...")
-        loadFromIndex(indexConfigManager, index)
+      case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(index) =>
+        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ($index) ...")
+        loadFromIndex(indexConfigManager, index, inIndexLoadingDelay)
           .bimap(convertIndexError, IndexConfig(index, _))
           .leftMap { error =>
             logIndexLoadingError(error)
@@ -75,35 +78,37 @@ object ConfigLoadingInterpreter extends Logging {
     }
   }
 
-  private def logIndexLoadingError[A](error: LoadedConfig.LoadingIndexError): Unit = {
+  private def logIndexLoadingError[A](error: LoadedRorConfig.LoadingIndexError): Unit = {
     error match {
       case IndexParsingError(message) =>
         logger.error(s"Loading ReadonlyREST settings from index failed: $message")
-      case LoadedConfig.IndexUnknownStructure =>
+      case LoadedRorConfig.IndexUnknownStructure =>
         logger.info(s"Loading ReadonlyREST settings from index failed: index content malformed")
-      case LoadedConfig.IndexNotExist =>
+      case LoadedRorConfig.IndexNotExist =>
         logger.info(s"Loading ReadonlyREST settings from index failed: cannot find index")
     }
   }
 
-  private def loadFromIndex[A](indexConfigManager: IndexConfigManager, index: RorConfigurationIndex) = {
-    EitherT(indexConfigManager.load(index).delayExecution(5 second))
+  private def loadFromIndex[A](indexConfigManager: IndexConfigManager,
+                               index: RorConfigurationIndex,
+                               inIndexLoadingDelay: LoadingDelay) = {
+    EitherT(indexConfigManager.load(index).delayExecution(inIndexLoadingDelay.duration.value))
   }
 
-  private def convertFileError(error: ConfigLoaderError[FileConfigError]): LoadedConfig.Error = {
+  private def convertFileError(error: ConfigLoaderError[FileConfigError]): LoadedRorConfig.Error = {
     error match {
       case ParsingError(error) =>
         val show = error.show
-        LoadedConfig.FileParsingError(show)
-      case SpecializedError(FileConfigError.FileNotExist(file)) => LoadedConfig.FileNotExist(file.path)
+        LoadedRorConfig.FileParsingError(show)
+      case SpecializedError(FileConfigError.FileNotExist(file)) => LoadedRorConfig.FileNotExist(file.path)
     }
   }
 
   private def convertIndexError(error: ConfigLoaderError[IndexConfigManager.IndexConfigError])=
     error match {
-      case ParsingError(error) => LoadedConfig.IndexParsingError(error.show)
-      case SpecializedError(IndexConfigError.IndexConfigNotExist) => LoadedConfig.IndexNotExist
-      case SpecializedError(IndexConfigError.IndexConfigUnknownStructure) => LoadedConfig.IndexUnknownStructure
+      case ParsingError(error) => LoadedRorConfig.IndexParsingError(error.show)
+      case SpecializedError(IndexConfigError.IndexConfigNotExist) => LoadedRorConfig.IndexNotExist
+      case SpecializedError(IndexConfigError.IndexConfigUnknownStructure) => LoadedRorConfig.IndexUnknownStructure
     }
 
 }

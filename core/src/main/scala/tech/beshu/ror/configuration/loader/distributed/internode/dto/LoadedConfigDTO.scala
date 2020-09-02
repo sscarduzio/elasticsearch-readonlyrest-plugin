@@ -19,19 +19,19 @@ package tech.beshu.ror.configuration.loader.distributed.internode.dto
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.generic.extras.ConfiguredJsonCodec
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.configuration.loader.{LoadedConfig, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.{LoadedRorConfig, RorConfigurationIndex}
 
 @ConfiguredJsonCodec
 sealed trait LoadedConfigDTO
 
 object LoadedConfigDTO {
-  def create(o: LoadedConfig[String]): LoadedConfigDTO = o match {
-    case o: LoadedConfig.FileConfig[String] => FileConfigDTO.create(o)
-    case o: LoadedConfig.ForcedFileConfig[String] => ForcedFileConfigDTO.create(o)
-    case o: LoadedConfig.IndexConfig[String] => IndexConfigDTO.create(o)
+  def create(o: LoadedRorConfig[String]): LoadedConfigDTO = o match {
+    case o: LoadedRorConfig.FileConfig[String] => FileConfigDTO.create(o)
+    case o: LoadedRorConfig.ForcedFileConfig[String] => ForcedFileConfigDTO.create(o)
+    case o: LoadedRorConfig.IndexConfig[String] => IndexConfigDTO.create(o)
   }
 
-  def fromDto(o: LoadedConfigDTO): LoadedConfig[String] = o match {
+  def fromDto(o: LoadedConfigDTO): LoadedRorConfig[String] = o match {
     case o: IndexConfigDTO => IndexConfigDTO.fromDto(o)
     case o: FileConfigDTO => FileConfigDTO.fromDto(o)
     case o: ForcedFileConfigDTO => ForcedFileConfigDTO.fromDto(o)
@@ -39,46 +39,46 @@ object LoadedConfigDTO {
 
   final case class IndexConfigDTO(indexName: String, value: String) extends LoadedConfigDTO
   object IndexConfigDTO {
-    def create(o: LoadedConfig.IndexConfig[String]): IndexConfigDTO =
+    def create(o: LoadedRorConfig.IndexConfig[String]): IndexConfigDTO =
       new IndexConfigDTO(
         indexName = o.indexName.index.value.value,
         value = o.value,
       )
 
-    def fromDto(o: IndexConfigDTO): LoadedConfig.IndexConfig[String] = LoadedConfig.IndexConfig(
+    def fromDto(o: IndexConfigDTO): LoadedRorConfig.IndexConfig[String] = LoadedRorConfig.IndexConfig(
       indexName = RorConfigurationIndex(IndexName(NonEmptyString.unsafeFrom(o.indexName))),
       value = o.value,
     )
     implicit class Ops(o: IndexConfigDTO) {
-      implicit def fromDto: LoadedConfig.IndexConfig[String] = IndexConfigDTO.fromDto(o)
+      implicit def fromDto: LoadedRorConfig.IndexConfig[String] = IndexConfigDTO.fromDto(o)
     }
   }
   final case class FileConfigDTO(value: String) extends LoadedConfigDTO
   object FileConfigDTO {
-    def create(o: LoadedConfig.FileConfig[String]): FileConfigDTO =
+    def create(o: LoadedRorConfig.FileConfig[String]): FileConfigDTO =
       new FileConfigDTO(
         value = o.value,
       )
 
-    def fromDto(o: FileConfigDTO): LoadedConfig.FileConfig[String] = LoadedConfig.FileConfig(
+    def fromDto(o: FileConfigDTO): LoadedRorConfig.FileConfig[String] = LoadedRorConfig.FileConfig(
       value = o.value,
     )
     implicit class Ops(o: FileConfigDTO) {
-      implicit def fromDto: LoadedConfig.FileConfig[String] = FileConfigDTO.fromDto(o)
+      implicit def fromDto: LoadedRorConfig.FileConfig[String] = FileConfigDTO.fromDto(o)
     }
   }
   final case class ForcedFileConfigDTO(value: String) extends LoadedConfigDTO
   object ForcedFileConfigDTO {
-    def create(o: LoadedConfig.ForcedFileConfig[String]): ForcedFileConfigDTO =
+    def create(o: LoadedRorConfig.ForcedFileConfig[String]): ForcedFileConfigDTO =
       new ForcedFileConfigDTO(
         value = o.value,
       )
 
-    def fromDto(o: ForcedFileConfigDTO): LoadedConfig.ForcedFileConfig[String] = LoadedConfig.ForcedFileConfig(
+    def fromDto(o: ForcedFileConfigDTO): LoadedRorConfig.ForcedFileConfig[String] = LoadedRorConfig.ForcedFileConfig(
       value = o.value,
     )
     implicit class Ops(o: ForcedFileConfigDTO) {
-      implicit def fromDto: LoadedConfig.ForcedFileConfig[String] = ForcedFileConfigDTO.fromDto(o)
+      implicit def fromDto: LoadedRorConfig.ForcedFileConfig[String] = ForcedFileConfigDTO.fromDto(o)
     }
   }
 }

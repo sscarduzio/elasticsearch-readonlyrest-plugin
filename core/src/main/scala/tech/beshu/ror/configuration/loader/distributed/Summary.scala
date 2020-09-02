@@ -17,7 +17,7 @@
 package tech.beshu.ror.configuration.loader.distributed
 
 import cats.implicits._
-import tech.beshu.ror.configuration.loader.LoadedConfig
+import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 
 import scala.language.postfixOps
@@ -26,17 +26,17 @@ object Summary {
   case object CurrentNodeHaveToProduceResult extends Exception
 
   sealed trait Error
-  final case class CurrentNodeConfigError(error: LoadedConfig.Error) extends Error
+  final case class CurrentNodeConfigError(error: LoadedRorConfig.Error) extends Error
   final case class CurrentNodeResponseError(detailedMessage: String) extends Error
   case object CurrentNodeResponseTimeoutError extends Error
 
   sealed trait Warning
   final case class NodeResponseTimeoutWarning(nodeId: NodeId) extends Warning
-  final case class NodeReturnedConfigError(nodeId: NodeId, error: LoadedConfig.Error) extends Warning
+  final case class NodeReturnedConfigError(nodeId: NodeId, error: LoadedRorConfig.Error) extends Warning
   final case class NodeReturnedUnknownError(nodeId: NodeId, detailedMessage: String) extends Warning
   final case class NodeForcedFileConfig(nodeId: NodeId) extends Warning
-  final case class NodeReturnedDifferentConfig(nodeId: NodeId, loadedConfig: LoadedConfig[String]) extends Warning
-  final case class Result(config: LoadedConfig[String], warnings: List[Warning])
+  final case class NodeReturnedDifferentConfig(nodeId: NodeId, loadedConfig: LoadedRorConfig[String]) extends Warning
+  final case class Result(config: LoadedRorConfig[String], warnings: List[Warning])
 
 
   def create(currentNodeId: NodeId, nodesResponses: List[NodeResponse], failures: List[NodeError]): Either[Error, Result] = {
@@ -47,7 +47,7 @@ object Summary {
       case Some(NodeResponse(_, Left(error))) => CurrentNodeConfigError(error) asLeft
       case None => findCurrentNodeFailure(currentNodeId, failures) match {
         case Some(NodeError(_, cause)) => cause match {
-          case NodeError.ActionNotFound => throw CurrentNodeHaveToProduceResult
+          case NodeError.RorConfigActionNotFound => throw CurrentNodeHaveToProduceResult
           case NodeError.Timeout => CurrentNodeResponseTimeoutError asLeft
           case NodeError.Unknown(detailedMessage) => CurrentNodeResponseError(detailedMessage) asLeft
         }
@@ -57,7 +57,8 @@ object Summary {
   }
 
   private def createWarnings(nodesResponses: List[NodeResponse],
-                             loadedConfig: LoadedConfig[String], failures: List[NodeError]): List[Warning] = {
+                             loadedConfig: LoadedRorConfig[String],
+                             failures: List[NodeError]): List[Warning] = {
     createNodeErrorWarnings(nodesResponses) ++
       createNodeNodeForcedFileConfigWarnings(nodesResponses) ++
       createNodeReturnedDifferentConfigWarnings(loadedConfig, nodesResponses) ++
@@ -92,11 +93,11 @@ object Summary {
 
   private def createNodeNodeForcedFileConfigWarnings(otherResponses: List[NodeResponse]): List[NodeForcedFileConfig] =
     otherResponses.flatMap {
-      case NodeResponse(nodeId, Right(LoadedConfig.ForcedFileConfig(_))) => NodeForcedFileConfig(nodeId) :: Nil
+      case NodeResponse(nodeId, Right(LoadedRorConfig.ForcedFileConfig(_))) => NodeForcedFileConfig(nodeId) :: Nil
       case _ => Nil
     }
 
-  private def createNodeReturnedDifferentConfigWarnings(currentNodeConfig: LoadedConfig[String],
+  private def createNodeReturnedDifferentConfigWarnings(currentNodeConfig: LoadedRorConfig[String],
                                                         otherResponses: List[NodeResponse]): List[NodeReturnedDifferentConfig] = {
     otherResponses.foldLeft(List.empty[NodeReturnedDifferentConfig]) {
       case (warnings, NodeResponse(_, Right(`currentNodeConfig`))) => warnings

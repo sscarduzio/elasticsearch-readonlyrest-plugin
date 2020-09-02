@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.configuration.loader.distributed
 
-import tech.beshu.ror.configuration.loader.LoadedConfig
+import tech.beshu.ror.configuration.loader.LoadedRorConfig
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-final case class NodeConfig(loadedConfig: Either[LoadedConfig.Error, LoadedConfig[String]])
+final case class NodeConfig(loadedConfig: Either[LoadedRorConfig.Error, LoadedRorConfig[String]])
 final case class Timeout(nanos: Long) extends AnyVal
 final case class NodeConfigRequest(timeout: Timeout)
 object NodeConfigRequest {

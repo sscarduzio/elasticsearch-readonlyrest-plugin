@@ -17,33 +17,33 @@
 package tech.beshu.ror.configuration
 
 import cats.free.Free
-import tech.beshu.ror.configuration.loader.LoadedConfig.{FileConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{LoadedConfig, Path, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
+import tech.beshu.ror.configuration.loader.{LoadedRorConfig, Path, RorConfigurationIndex}
 
 import scala.language.higherKinds
 
 object ConfigLoading {
-  type ErrorOr[A] = LoadedConfig.Error Either A
-  type IndexErrorOr[A] = LoadedConfig.LoadingIndexError Either A
-  type LoadRorConfig[A] = Free[LoadRorConfigAction, A]
-  sealed trait LoadRorConfigAction[A]
-  object LoadRorConfigAction {
-    final case class LoadEsConfig(path: Path) extends LoadRorConfigAction[ErrorOr[EsConfig]]
-    final case class ForceLoadFromFile(path: Path) extends LoadRorConfigAction[ErrorOr[ForcedFileConfig[RawRorConfig]]]
-    final case class LoadFromFile(path: Path) extends LoadRorConfigAction[ErrorOr[FileConfig[RawRorConfig]]]
-    final case class LoadFromIndex(index: RorConfigurationIndex) extends LoadRorConfigAction[IndexErrorOr[IndexConfig[RawRorConfig]]]
+  type ErrorOr[A] = LoadedRorConfig.Error Either A
+  type IndexErrorOr[A] = LoadedRorConfig.LoadingIndexError Either A
+  type LoadRorConfig[A] = Free[LoadConfigAction, A]
+  sealed trait LoadConfigAction[A]
+  object LoadConfigAction {
+    final case class LoadEsConfig(path: Path) extends LoadConfigAction[ErrorOr[EsConfig]]
+    final case class ForceLoadRorConfigFromFile(path: Path) extends LoadConfigAction[ErrorOr[ForcedFileConfig[RawRorConfig]]]
+    final case class LoadRorConfigFromFile(path: Path) extends LoadConfigAction[ErrorOr[FileConfig[RawRorConfig]]]
+    final case class LoadRorConfigFromIndex(index: RorConfigurationIndex) extends LoadConfigAction[IndexErrorOr[IndexConfig[RawRorConfig]]]
   }
 
-  def loadFromIndex(index: RorConfigurationIndex): LoadRorConfig[IndexErrorOr[IndexConfig[RawRorConfig]]] =
-    Free.liftF(LoadRorConfigAction.LoadFromIndex(index))
+  def loadRorConfigFromIndex(index: RorConfigurationIndex): LoadRorConfig[IndexErrorOr[IndexConfig[RawRorConfig]]] =
+    Free.liftF(LoadConfigAction.LoadRorConfigFromIndex(index))
 
-  def loadFromFile(path: Path): LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]] =
-    Free.liftF(LoadRorConfigAction.LoadFromFile(path))
+  def loadRorConfigFromFile(path: Path): LoadRorConfig[ErrorOr[FileConfig[RawRorConfig]]] =
+    Free.liftF(LoadConfigAction.LoadRorConfigFromFile(path))
 
   def loadEsConfig(path: Path): LoadRorConfig[ErrorOr[EsConfig]] =
-    Free.liftF(LoadRorConfigAction.LoadEsConfig(path))
+    Free.liftF(LoadConfigAction.LoadEsConfig(path))
 
-  def forceLoadFromFile(path: Path): LoadRorConfig[ErrorOr[ForcedFileConfig[RawRorConfig]]] =
-    Free.liftF(LoadRorConfigAction.ForceLoadFromFile(path))
+  def forceLoadRorConfigFromFile(path: Path): LoadRorConfig[ErrorOr[ForcedFileConfig[RawRorConfig]]] =
+    Free.liftF(LoadConfigAction.ForceLoadRorConfigFromFile(path))
 
 }

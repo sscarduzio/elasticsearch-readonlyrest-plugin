@@ -20,7 +20,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}
 import cats.implicits._
 import org.scalatest.Matchers._
-import tech.beshu.ror.configuration.loader.LoadedConfig
+import tech.beshu.ror.configuration.loader.LoadedRorConfig
 
 import scala.language.postfixOps
 
@@ -29,7 +29,7 @@ class ResultDTOTest extends WordSpec {
     "result failed" should {
       "return current node " in {
         val expectedResult = ResultDTO(None, Nil, "current node returned error: index unknown structure" some)
-        ResultDTO.create(Summary.CurrentNodeConfigError(LoadedConfig.IndexUnknownStructure) asLeft) shouldEqual expectedResult
+        ResultDTO.create(Summary.CurrentNodeConfigError(LoadedRorConfig.IndexUnknownStructure) asLeft) shouldEqual expectedResult
       }
       "return current node failure" in {
         val expectedResult = ResultDTO(None, Nil, "current node response error: null pointer" some)
@@ -37,10 +37,10 @@ class ResultDTOTest extends WordSpec {
       }
     }
     "return result" should {
-      val warnings = Summary.NodeReturnedConfigError(NodesResponse.NodeId("n2"), LoadedConfig.IndexUnknownStructure) ::
+      val warnings = Summary.NodeReturnedConfigError(NodesResponse.NodeId("n2"), LoadedRorConfig.IndexUnknownStructure) ::
         Summary.NodeForcedFileConfig(NodesResponse.NodeId("n1")) ::
         Nil
-      val result = ResultDTO.create(Summary.Result(LoadedConfig.ForcedFileConfig("config"), warnings) asRight)
+      val result = ResultDTO.create(Summary.Result(LoadedRorConfig.ForcedFileConfig("config"), warnings) asRight)
       "be as DTO" in {
         val expectedResult = ResultDTO(
           config = LoadedConfigDTO.FORCED_FILE_CONFIG("config").some,

@@ -32,7 +32,7 @@ import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.configuration.loader.distributed.{RawRorConfigLoadingAction, NodeConfig, Timeout}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -66,6 +66,7 @@ class TransportRRConfigAction(setting: Settings,
   import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
 
   implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
 
   @Inject
   def this(setting: Settings,

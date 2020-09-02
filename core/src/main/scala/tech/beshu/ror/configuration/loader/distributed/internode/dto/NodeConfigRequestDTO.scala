@@ -26,12 +26,10 @@ object NodeConfigRequestDTO {
   def create(o: NodeConfigRequest): NodeConfigRequestDTO =
     new NodeConfigRequestDTO(
       nanos = o.timeout.nanos,
-
     )
 
   def fromDto(o: NodeConfigRequestDTO): NodeConfigRequest = NodeConfigRequest(
     timeout = Timeout(o.nanos),
-
   )
   implicit class Ops(o: NodeConfigRequestDTO) {
     implicit def fromDto: NodeConfigRequest = NodeConfigRequestDTO.fromDto(o)

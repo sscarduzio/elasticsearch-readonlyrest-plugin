@@ -16,8 +16,10 @@
  */
 package tech.beshu.ror.configuration.loader.distributed
 
+import cats.Eq
+import cats.implicits._
 import io.circe.syntax._
-import tech.beshu.ror.configuration.loader.LoadedConfig
+import tech.beshu.ror.configuration.loader.LoadedRorConfig
 import tech.beshu.ror.configuration.loader.distributed.dto.ResultDTO
 
 final case class NodesResponse private(resultDTO: ResultDTO) extends AnyVal
@@ -26,21 +28,23 @@ object NodesResponse {
   def create(localNode: NodeId,
              responses: List[NodeResponse],
              failures: List[NodeError],
-            ): NodesResponse =
-    {
-      NodesResponse(ResultDTO.create(Summary.create(localNode, responses, failures)))
-    }
+            ): NodesResponse = {
+    NodesResponse(ResultDTO.create(Summary.create(localNode, responses, failures)))
+  }
 
   implicit class Ops(nodesResponse: NodesResponse) {
     def toJson: String = nodesResponse.resultDTO.asJson.noSpaces
   }
 
   final case class NodeId(value: String) extends AnyVal
-  final case class NodeResponse(nodeId: NodeId, loadedConfig: Either[LoadedConfig.Error, LoadedConfig[String]])
+  object NodeId {
+    implicit val eqNodeId: Eq[NodeId] = Eq.by(_.value)
+  }
+  final case class NodeResponse(nodeId: NodeId, loadedConfig: Either[LoadedRorConfig.Error, LoadedRorConfig[String]])
   final case class NodeError(nodeId: NodeId, cause: NodeError.Cause)
   object NodeError {
     sealed trait Cause
-    case object ActionNotFound extends Cause
+    case object RorConfigActionNotFound extends Cause
     case object Timeout extends Cause
     final case class Unknown(detailedMessage: String) extends Cause
   }
