@@ -139,6 +139,14 @@ object domain {
     implicit val eqHeader: Eq[Header] = Eq.by(header => (header.name, header.value.value))
   }
 
+  sealed trait AccessRequirement[T] {
+    def value: T
+  }
+  object AccessRequirement {
+    final case class MustBePresent[T](override val value: T) extends AccessRequirement[T]
+    final case class MustBeAbsent[T](override val value: T) extends AccessRequirement[T]
+  }
+
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
   final case class BasicAuth private(credentials: Credentials) {
     def header: Header = new Header(
