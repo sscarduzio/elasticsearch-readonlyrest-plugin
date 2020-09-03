@@ -311,7 +311,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           .runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
-          failure.message should startWith ("Settings config content is malformed.")
+          failure.message should startWith ("Settings content is malformed.")
         }
       }
       "index config doesn't exist and file config cannot be loaded" in {
@@ -351,7 +351,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           .runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
-          failure.message should startWith ("Settings config content is malformed.")
+          failure.message should startWith ("Settings content is malformed.")
         }
       }
       "index config cannot be loaded" in {
