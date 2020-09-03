@@ -28,7 +28,7 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
 
   "A HeadersAndRule" should {
     "be able to be loaded from config" when {
-      "only one header is defined" in {
+      "only one header requirement is defined" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -41,11 +41,13 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.headers should be(NonEmptySet.one(headerFrom("X-Some-Header" -> "one")))
+            rule.settings.headerAccessRequirements should be(NonEmptySet.one(
+              requiredHeaderFrom("X-Some-Header" -> "one")
+            ))
           }
         )
       }
-      "several headers are defined" in {
+      "several header requirements are defined" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -58,8 +60,11 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
               |
               |""".stripMargin,
           assertion = rule => {
-            val headers = NonEmptySet.of(headerFrom("X-Some-Header1" -> "one"), headerFrom("X-Some-Header2" -> "two"))
-            rule.settings.headers should be(headers)
+            val headers = NonEmptySet.of(
+              requiredHeaderFrom("X-Some-Header1" -> "one"),
+              requiredHeaderFrom("X-Some-Header2" -> "two")
+            )
+            rule.settings.headerAccessRequirements should be(headers)
           }
         )
       }
@@ -76,7 +81,30 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.headers should be(NonEmptySet.one(headerFrom("X-Some-Header" -> "one")))
+            rule.settings.headerAccessRequirements should be(NonEmptySet.one(
+              requiredHeaderFrom("X-Some-Header" -> "one")
+            ))
+          }
+        )
+      }
+      "negation syntax is used" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    headers_and: ["~X-Some-Header1:one", "~X-Some-Header2:two"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            val headers = NonEmptySet.of(
+              forbiddenHeaderFrom("X-Some-Header1" -> "one"),
+              forbiddenHeaderFrom("X-Some-Header2" -> "two")
+            )
+            rule.settings.headerAccessRequirements should be(headers)
           }
         )
       }
@@ -98,6 +126,98 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
               """headers_and: null
+                |""".stripMargin
+            )))
+          }
+        )
+      }
+      "header requirement name is empty" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    headers_and: ["~X-Some-Header1:one", ":two"]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """|headers_and:
+                 |- "~X-Some-Header1:one"
+                 |- ":two"
+                 |""".stripMargin
+            )))
+          }
+        )
+      }
+      "header requirement negation is used without a name" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    headers_and: ["~X-Some-Header1:one", "~:two"]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """headers_and:
+                |- "~X-Some-Header1:one"
+                |- "~:two"
+                |""".stripMargin
+            )))
+          }
+        )
+      }
+      "header requirement has no value" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    headers_and: ["~X-Some-Header1:one", "test:"]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """headers_and:
+                |- "~X-Some-Header1:one"
+                |- "test:"
+                |""".stripMargin
+            )))
+          }
+        )
+      }
+      "header requirement has malformed syntax" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    headers_and: ["~X-Some-Header1:one", "two"]
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be (RulesLevelCreationError(MalformedValue(
+              """headers_and:
+                |- "~X-Some-Header1:one"
+                |- "two"
                 |""".stripMargin
             )))
           }

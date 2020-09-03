@@ -57,13 +57,6 @@ import scala.util.Try
 
 object header {
 
-  class FlatHeader(val header: Header) extends AnyVal {
-    def flatten: String = s"${header.name.value.value.toLowerCase()}:${header.value}"
-  }
-  object FlatHeader {
-    implicit def from(header: Header): FlatHeader = new FlatHeader(header)
-  }
-
   class ToTuple(val header: Header) extends AnyVal {
     def toTuple: (String, String) = (header.name.value.value, header.value.value)
   }
@@ -111,6 +104,10 @@ object orders {
   }
   implicit val repositoryOrder: Order[RepositoryName] = Order.by(_.value.value)
   implicit val snapshotOrder: Order[SnapshotName] = Order.by(_.value.value)
+  implicit def accessOrder[T : Order]: Order[AccessRequirement[T]] = Order.by {
+    case AccessRequirement.MustBePresent(value) => value
+    case AccessRequirement.MustBeAbsent(value) => value
+  }
 }
 
 object show {
@@ -266,6 +263,11 @@ object show {
       case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
       case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [$value]"
       case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [$value], reason: [$message]"
+    }
+
+    implicit def accessShow[T : Show]: Show[AccessRequirement[T]] = Show.show {
+      case AccessRequirement.MustBePresent(value) => value.show
+      case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
     }
   }
 }

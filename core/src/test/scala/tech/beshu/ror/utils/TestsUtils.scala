@@ -145,6 +145,14 @@ object TestsUtils {
     }
   }
 
+  def requiredHeaderFrom(nameAndValue: (String, String)): AccessRequirement[Header] = {
+    AccessRequirement.MustBePresent(headerFrom(nameAndValue))
+  }
+
+  def forbiddenHeaderFrom(nameAndValue: (String, String)): AccessRequirement[Header] = {
+    AccessRequirement.MustBeAbsent(headerFrom(nameAndValue))
+  }
+
   def headerNameFrom(name: String): Header.Name = {
     NonEmptyString.unapply(name) match {
       case Some(nameNes) => Header.Name(nameNes)
