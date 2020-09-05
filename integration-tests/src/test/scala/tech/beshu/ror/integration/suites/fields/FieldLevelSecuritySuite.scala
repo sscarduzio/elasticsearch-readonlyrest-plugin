@@ -19,8 +19,8 @@ package tech.beshu.ror.integration.suites.fields
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceParams
-import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceParams.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceOptions
+import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
@@ -37,16 +37,16 @@ trait FieldLevelSecuritySuite
 
   override def nodeDataInitializer = Some(FieldLevelSecuritySuite.nodeDataInitializer())
 
-  protected def callWith(client: RestClient,
-                         index: String,
-                         clientSourceParams: Option[ClientSourceParams]): CALL_RESULT
+  protected def fetchDocument(client: RestClient,
+                              index: String,
+                              clientSourceParams: Option[ClientSourceOptions]): CALL_RESULT
 
   protected def sourceOfFirstDoc(result: CALL_RESULT): Option[JSON]
 
   "A fields rule" should {
     "work for simple cases" when {
       "whitelist mode is used" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user1", "pass"),
           index = "testfiltera",
           clientSourceParams = None
@@ -58,7 +58,7 @@ trait FieldLevelSecuritySuite
         source shouldBe Some(ujson.read("""{"user1":"user1Value"}"""))
       }
       "whitelist mode is used when source should not be fetched" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user1", "pass"),
           index = "testfiltera",
           clientSourceParams = Some(DoNotFetchSource)
@@ -70,7 +70,7 @@ trait FieldLevelSecuritySuite
         source shouldBe None
       }
       "whitelist mode is used with included blacklisted field" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user1", "pass"),
           index = "testfiltera",
           clientSourceParams = Some(Include("user2"))
@@ -82,7 +82,7 @@ trait FieldLevelSecuritySuite
         source shouldBe Some(ujson.read("""{}"""))
       }
       "whitelist mode is used with excluded whitelisted field" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user1", "pass"),
           index = "testfiltera",
           clientSourceParams = Some(Exclude("user1"))
@@ -94,7 +94,7 @@ trait FieldLevelSecuritySuite
         source shouldBe Some(ujson.read("""{}"""))
       }
       "whitelist mode with user variable is used " in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user2", "pass"),
           index = "testfiltera",
           clientSourceParams = None
@@ -106,7 +106,7 @@ trait FieldLevelSecuritySuite
         source shouldBe Some(ujson.read("""{"user2":"user2Value"}"""))
       }
       "whitelist mode with user variable is used and called by user with 'negated' value" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("~user", "pass"),
           index = "testfiltera",
           clientSourceParams = None
@@ -118,7 +118,7 @@ trait FieldLevelSecuritySuite
         source shouldBe Some(ujson.read("""{"~user":"~userValue"}"""))
       }
       "whitelist mode with wildcard is used" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user3", "pass"),
           index = "testfiltera",
           clientSourceParams = None
@@ -130,7 +130,7 @@ trait FieldLevelSecuritySuite
         source shouldBe Some(ujson.read("""{"user3":"user3Value"}"""))
       }
       "whitelist mode is used with wildcard and with included blacklisted field" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user2", "pass"),
           index = "testfiltera",
           clientSourceParams = Some(Include("us*3"))
@@ -143,7 +143,7 @@ trait FieldLevelSecuritySuite
       }
 
       "blacklist mode is used" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user4", "pass"),
           index = "testfiltera",
           clientSourceParams = None
@@ -165,7 +165,7 @@ trait FieldLevelSecuritySuite
         )
       }
       "blacklist mode with user variable is used " in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user5", "pass"),
           index = "testfiltera",
           clientSourceParams = None
@@ -187,7 +187,7 @@ trait FieldLevelSecuritySuite
         )
       }
       "blacklist mode is used with included blacklisted field" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user5", "pass"),
           index = "testfiltera",
           clientSourceParams = Some(Include("user5"))
@@ -200,7 +200,7 @@ trait FieldLevelSecuritySuite
         source shouldBe Some(ujson.read("""{}"""))
       }
       "blacklist mode is used with excluded all fields" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user5", "pass"),
           index = "testfiltera",
           clientSourceParams = Some(Exclude("*"))
@@ -212,7 +212,7 @@ trait FieldLevelSecuritySuite
         source shouldBe Some(ujson.read("""{}"""))
       }
       "blacklist mode with wildcard is used" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user6", "pass"),
           index = "testfiltera",
           clientSourceParams = None
@@ -236,7 +236,7 @@ trait FieldLevelSecuritySuite
     }
     "work for nested fields" when {
       "whitelist mode is used" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user1", "pass"),
           index = "nestedtest",
           clientSourceParams = None
@@ -266,7 +266,7 @@ trait FieldLevelSecuritySuite
         ))
       }
       "whitelist mode is used with custom including" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = adminClient,
           index = "nestedtest",
           clientSourceParams = Some(Include("secrets.key"))
@@ -287,7 +287,7 @@ trait FieldLevelSecuritySuite
         ))
       }
       "whitelist mode with wildcard is used" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user2", "pass"),
           index = "nestedtest",
           clientSourceParams = None
@@ -317,7 +317,7 @@ trait FieldLevelSecuritySuite
         ))
       }
       "blacklist mode is used" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user3", "pass"),
           index = "nestedtest",
           clientSourceParams = None
@@ -339,7 +339,7 @@ trait FieldLevelSecuritySuite
         ))
       }
       "blacklist mode with wildcards is used" in {
-        val result = callWith(
+        val result = fetchDocument(
           client = basicAuthClient("user4", "pass"),
           index = "nestedtest",
           clientSourceParams = None
@@ -367,12 +367,12 @@ trait FieldLevelSecuritySuite
 
 object FieldLevelSecuritySuite {
 
-  sealed trait ClientSourceParams
+  sealed trait ClientSourceOptions
 
-  object ClientSourceParams {
-    case object DoNotFetchSource extends ClientSourceParams
-    final case class Exclude(field: String) extends ClientSourceParams
-    final case class Include(field: String) extends ClientSourceParams
+  object ClientSourceOptions {
+    case object DoNotFetchSource extends ClientSourceOptions
+    final case class Exclude(field: String) extends ClientSourceOptions
+    final case class Include(field: String) extends ClientSourceOptions
   }
 
   def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {

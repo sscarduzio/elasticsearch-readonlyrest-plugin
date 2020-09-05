@@ -18,34 +18,33 @@ package tech.beshu.ror.integration.suites.fields
 
 import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.SearchManager
-import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
+import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldLevelSecuritySuiteSearchGenericApi
+trait FieldLevelSecuritySuiteGetGenericApi
   extends FieldLevelSecuritySuite {
   this: EsContainerCreator =>
 
-  override protected type CALL_RESULT = SearchResult
+  override protected type CALL_RESULT = JsonResponse
 
   override protected def fetchDocument(client: RestClient,
                                        index: String,
-                                       clientSourceParams: Option[FieldLevelSecuritySuite.ClientSourceOptions]): SearchResult = {
-    val searchManager = new SearchManager(client)
+                                       clientSourceParams: Option[FieldLevelSecuritySuite.ClientSourceOptions]): JsonResponse = {
+    val documentManager = new DocumentManager(client, targetEs.esVersion)
 
-    val query = clientSourceParams match {
-      case Some(DoNotFetchSource) => """{ "_source": false }"""
-      case Some(Include(field)) => s"""{ "_source": { "includes": [ "$field" ] }}"""
-      case Some(Exclude(field)) => s"""{ "_source": { "excludes": [ "$field" ] }}"""
-      case None => """{}"""
+    val queryParams = clientSourceParams match {
+      case Some(DoNotFetchSource) => Map("_source" -> "false")
+      case Some(Include(field)) => Map("_source_includes" -> field)
+      case Some(Exclude(field)) => Map("_source_excludes" -> field)
+      case None => Map.empty[String, String]
     }
 
-    searchManager.search(index, ujson.read(query))
+    documentManager.get(index, 1, queryParams)
   }
 
-  override protected def sourceOfFirstDoc(result: SearchResult): Option[JSON] = {
-    result.searchHits(0).obj.get("_source")
+  override protected def sourceOfFirstDoc(result: JsonResponse): Option[JSON] = {
+    result.responseJson.obj.get("_source")
   }
 }
 
