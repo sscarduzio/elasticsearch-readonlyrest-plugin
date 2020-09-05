@@ -504,36 +504,38 @@ object FieldLevelSecuritySuiteSearchApi {
   def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
 
-    val doc1 = """{
-                 | "~user": "~userValue",
-                 | "user1": "user1Value",
-                 | "user2": "user2Value",
-                 | "user3": "user3Value",
-                 | "user4": "user4Value",
-                 | "user5": "user5Value",
-                 | "user6": "user6Value",
-                 | "counter": 7
-                 |}""".stripMargin
+    val simpleDoc =
+      """{
+        | "~user": "~userValue",
+        | "user1": "user1Value",
+        | "user2": "user2Value",
+        | "user3": "user3Value",
+        | "user4": "user4Value",
+        | "user5": "user5Value",
+        | "user6": "user6Value",
+        | "counter": 7
+        |}""".stripMargin
 
-    val doc2 = """
-                 |{
-                 |  "id":1,
-                 |  "items": [
-                 |    {"itemId": 1, "text":"text1", "startDate": "2019-05-22", "endDate": "2019-07-31"},
-                 |    {"itemId": 2, "text":"text2", "startDate": "2019-05-22", "endDate": "2019-06-30"},
-                 |    {"itemId": 3, "text":"text3", "startDate": "2019-05-22", "endDate": "2019-09-30"}
-                 |  ],
-                 |  "secrets": [
-                 |    {"key":1, "text": "secret1"},
-                 |    {"key":2, "text": "secret2"}
-                 |  ],
-                 |  "user": {
-                 |     "name": "value1",
-                 |     "age": "value2"
-                 |  }
-                 |}""".stripMargin
+    val nestedDoc =
+      """
+        |{
+        |  "id":1,
+        |  "items": [
+        |    {"itemId": 1, "text":"text1", "startDate": "2019-05-22", "endDate": "2019-07-31"},
+        |    {"itemId": 2, "text":"text2", "startDate": "2019-05-22", "endDate": "2019-06-30"},
+        |    {"itemId": 3, "text":"text3", "startDate": "2019-05-22", "endDate": "2019-09-30"}
+        |  ],
+        |  "secrets": [
+        |    {"key":1, "text": "secret1"},
+        |    {"key":2, "text": "secret2"}
+        |  ],
+        |  "user": {
+        |     "name": "value1",
+        |     "age": "value2"
+        |  }
+        |}""".stripMargin
 
-    documentManager.createDoc("testfiltera", 1, ujson.read(doc1)).force()
-    documentManager.createDoc("nestedtest", 1, ujson.read(doc2)).force()
+    documentManager.createDoc("testfiltera", 1, ujson.read(simpleDoc)).force()
+    documentManager.createDoc("nestedtest", 1, ujson.read(nestedDoc)).force()
   }
 }
