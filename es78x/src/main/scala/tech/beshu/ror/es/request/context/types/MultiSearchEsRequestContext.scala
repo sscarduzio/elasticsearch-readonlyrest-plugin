@@ -49,7 +49,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   override val requiresContextHeaderForFLS: Boolean = {
     actionRequest.requests().asScala
-      .map(_.source().query())
+      .flatMap(request => Option(request.source().query()))
       .map(BaseFLSQueryUpdater.resolveModificationEligibility)
       .exists {
         case ModificationImpossible => true

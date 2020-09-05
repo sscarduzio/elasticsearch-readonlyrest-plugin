@@ -41,10 +41,12 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override val requiresContextHeaderForFLS: Boolean = {
-    BaseFLSQueryUpdater.resolveModificationEligibility(actionRequest.source().query()) match {
-      case ModificationImpossible => true
-      case _: ModificationPossible[_] => false
-    }
+    Option(actionRequest.source().query())
+      .map(BaseFLSQueryUpdater.resolveModificationEligibility)
+      .exists {
+        case ModificationImpossible => true
+        case _: ModificationPossible[_] => false
+      }
   }
 
   override protected def indicesFrom(request: SearchRequest): Set[IndexName] = {
