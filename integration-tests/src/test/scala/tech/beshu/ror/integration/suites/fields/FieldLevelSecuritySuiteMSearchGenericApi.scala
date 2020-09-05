@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.suites.fields
 
+import org.scalatest.Matchers._
 import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
@@ -47,5 +48,23 @@ trait FieldLevelSecuritySuiteMSearchGenericApi
   override protected def sourceOfFirstDoc(result: MSearchResult): Option[JSON] = {
     val hits = result.searchHitsForResponse(0)
     hits(0).obj.get("_source")
+  }
+
+  "docvalue with not-allowed field in search request is used" in {
+    val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
+
+    val query = """{"docvalue_fields": ["counter"]}"""
+
+    val result = searchManager.mSearch("""{"index":"testfiltera"}""", query)
+
+    result.responseCode shouldBe 200
+    result.responses.size shouldBe 1
+    sourceOfFirstDoc(result) shouldBe Some(ujson.read(
+      """|{
+         | "user1": "user1Value"
+         |}""".stripMargin))
+
+    val hits = result.searchHitsForResponse(0)
+    hits(0).obj.get("fields") should be(None)
   }
 }
