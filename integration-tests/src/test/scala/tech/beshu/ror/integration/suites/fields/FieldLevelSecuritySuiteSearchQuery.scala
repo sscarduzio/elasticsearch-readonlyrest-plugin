@@ -32,7 +32,7 @@ trait FieldLevelSecuritySuiteSearchQuery
 
   override def nodeDataInitializer = Some(FieldLevelSecuritySuiteSearchQuery.nodeDataInitializer())
 
-  protected def assertNoSearchHitsReturnedFor(query: String): Unit
+  protected def assertNoSearchHitsReturnedFor(index: String, query: String): Unit
 
   protected val searchManager = new SearchManager(basicAuthClient("user", "pass"))
 
@@ -53,7 +53,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'exists' query without wildcard" in {
               val query =
@@ -67,7 +67,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'fuzzy' query" in {
               val query =
@@ -83,7 +83,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'prefix' query" in {
               val query =
@@ -99,7 +99,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'range' query" in {
               val query =
@@ -116,7 +116,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'regexp' query" in {
               val query =
@@ -132,7 +132,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'terms set' query" in {
               val query =
@@ -149,7 +149,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'wildcard' query" in {
               val query =
@@ -165,7 +165,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
           }
           "belongs to 'compound' group" which {
@@ -185,7 +185,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                     |}
                     |""".stripMargin
 
-                assertNoSearchHitsReturnedFor(query)
+                assertNoSearchHitsReturnedFor("test-index", query)
               }
               "is 'constant score' query with 'term' as filter" in {
                 val query =
@@ -201,7 +201,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                     |}
                     |""".stripMargin
 
-                assertNoSearchHitsReturnedFor(query)
+                assertNoSearchHitsReturnedFor("test-index", query)
               }
               "is 'boosting' query with 'term' as positive clause" in {
                 val query =
@@ -225,7 +225,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                     |}
                     |""".stripMargin
 
-                assertNoSearchHitsReturnedFor(query)
+                assertNoSearchHitsReturnedFor("test-index", query)
               }
               "is 'disjuction max' query with 'term' as one of inner queries" in {
                 val query =
@@ -243,7 +243,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                     |}
                     |""".stripMargin
 
-                assertNoSearchHitsReturnedFor(query)
+                assertNoSearchHitsReturnedFor("test-index", query)
               }
             }
           }
@@ -260,7 +260,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'match bool prefix' query" in {
               val query =
@@ -274,7 +274,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'match phrase' query" in {
               val query =
@@ -290,7 +290,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'match phrase prefix' query" in {
               val query =
@@ -306,7 +306,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
             "is 'common terms' query" in {
               val query =
@@ -323,7 +323,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
           }
         }
@@ -344,7 +344,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
           }
           "belongs to 'full text' group" which {
@@ -360,7 +360,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                   |}
                   |""".stripMargin
 
-              assertNoSearchHitsReturnedFor(query)
+              assertNoSearchHitsReturnedFor("test-index", query)
             }
           }
           "belongs to 'compound' group" which {
@@ -379,7 +379,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                     |}
                     |""".stripMargin
 
-                assertNoSearchHitsReturnedFor(query)
+                assertNoSearchHitsReturnedFor("test-index", query)
               }
               "is 'constant score' query with 'query_string' as filter" in {
                 val query =
@@ -395,7 +395,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                     |}
                     |""".stripMargin
 
-                assertNoSearchHitsReturnedFor(query)
+                assertNoSearchHitsReturnedFor("test-index", query)
               }
               "is 'boosting' query with 'query_string' as positive clause" in {
                 val query =
@@ -417,7 +417,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                     |}
                     |""".stripMargin
 
-                assertNoSearchHitsReturnedFor(query)
+                assertNoSearchHitsReturnedFor("test-index", query)
               }
               "is 'disjuction max' query with 'query_string' as one of inner queries" in {
                 val query =
@@ -435,7 +435,7 @@ trait FieldLevelSecuritySuiteSearchQuery
                     |}
                     |""".stripMargin
 
-                assertNoSearchHitsReturnedFor(query)
+                assertNoSearchHitsReturnedFor("test-index", query)
               }
             }
           }

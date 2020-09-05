@@ -22,9 +22,8 @@ import tech.beshu.ror.utils.containers.EsContainerCreator
 trait FieldLevelSecuritySuiteSimpleSearchQuery extends FieldLevelSecuritySuiteSearchQuery {
   this: EsContainerCreator =>
 
-  override protected def assertNoSearchHitsReturnedFor(query: String) = {
-    val result = searchManager.search("test-index", ujson.read(query))
-
+  override protected def assertNoSearchHitsReturnedFor(index: String, query: String) = {
+    val result = searchManager.search(index, ujson.read(query))
     result.responseCode shouldBe 200
     result.searchHits.isEmpty shouldBe true
   }

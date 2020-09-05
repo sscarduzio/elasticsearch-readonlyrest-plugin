@@ -22,8 +22,8 @@ import tech.beshu.ror.utils.containers.EsContainerCreator
 trait FieldLevelSecuritySuiteMSearchQuery extends FieldLevelSecuritySuiteSearchQuery {
   this: EsContainerCreator =>
 
-  override protected def assertNoSearchHitsReturnedFor(query: String) = {
-    val result = searchManager.mSearch("""{"index":"test-index"}""", query.replaceAll("\\n", ""))
+  override protected def assertNoSearchHitsReturnedFor(index: String, query: String) = {
+    val result = searchManager.mSearch(s"""{"index":"$index"}""", query.replaceAll("\\n", ""))
 
     result.responseCode shouldBe 200
     result.responses.size shouldBe 1
