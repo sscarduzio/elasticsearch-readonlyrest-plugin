@@ -28,8 +28,8 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.queries.BaseFLSQueryUpdater
-import tech.beshu.ror.es.request.queries.BaseFLSQueryUpdater.QueryModificationEligibility.{ModificationImpossible, ModificationPossible}
+import tech.beshu.ror.es.request.queries.QueryModificationEligibility
+import tech.beshu.ror.es.request.queries.QueryModificationEligibility.{ModificationImpossible, ModificationPossible}
 import tech.beshu.ror.utils.ScalaOps._
 
 
@@ -42,7 +42,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
 
   override val requiresContextHeaderForFLS: Boolean = {
     Option(actionRequest.source().query())
-      .map(BaseFLSQueryUpdater.resolveModificationEligibility)
+      .map(QueryModificationEligibility.resolveModificationEligibility)
       .exists {
         case ModificationImpossible => true
         case _: ModificationPossible[_] => false
