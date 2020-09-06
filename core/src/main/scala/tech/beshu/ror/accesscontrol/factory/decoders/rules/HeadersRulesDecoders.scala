@@ -51,7 +51,7 @@ private object HeadersHelper {
       .flatMap { case (first, second) =>
         if(first.value.startsWith("~")) {
           NonEmptyString.unapply(first.value.substring(1)) match {
-            case Some(name) => Right(AccessRequirement.MustBePresent(new Header(Name(name), second)))
+            case Some(name) => Right(AccessRequirement.MustBeAbsent(new Header(Name(name), second)))
             case None => Left(errorMessage(value))
           }
         } else {
