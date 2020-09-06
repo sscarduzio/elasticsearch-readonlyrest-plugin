@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites.fields
+package tech.beshu.ror.integration.suites.fields.querydsl
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
@@ -23,14 +23,14 @@ import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsCont
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldLevelSecuritySuiteSearchQuery
+trait FieldRuleQueryDSLSuite
   extends WordSpec
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/field_level_security_query/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(FieldLevelSecuritySuiteSearchQuery.nodeDataInitializer())
+  override def nodeDataInitializer = Some(FieldRuleQueryDSLSuite.nodeDataInitializer())
 
   protected def assertNoSearchHitsReturnedFor(index: String, query: String): Unit
 
@@ -445,7 +445,7 @@ trait FieldLevelSecuritySuiteSearchQuery
   }
 }
 
-object FieldLevelSecuritySuiteSearchQuery {
+object FieldRuleQueryDSLSuite {
 
   def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)

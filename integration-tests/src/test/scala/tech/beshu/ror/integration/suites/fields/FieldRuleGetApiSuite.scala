@@ -16,22 +16,21 @@
  */
 package tech.beshu.ror.integration.suites.fields
 
-import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.FieldRuleSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
-import tech.beshu.ror.utils.elasticsearch.DocumentManager.MGetResult
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldLevelSecuritySuiteMGetApi
-  extends FieldLevelSecuritySuite {
+trait FieldRuleGetApiSuite
+  extends FieldRuleSuite {
   this: EsContainerCreator =>
 
-  override protected type CALL_RESULT = MGetResult
+  override protected type CALL_RESULT = JsonResponse
 
   override protected def fetchDocument(client: RestClient,
                                        index: String,
-                                       clientSourceParams: Option[FieldLevelSecuritySuite.ClientSourceOptions]): MGetResult = {
+                                       clientSourceParams: Option[FieldRuleSuite.ClientSourceOptions]): JsonResponse = {
     val documentManager = new DocumentManager(client, targetEs.esVersion)
 
     val queryParams = clientSourceParams match {
@@ -41,22 +40,12 @@ trait FieldLevelSecuritySuiteMGetApi
       case None => Map.empty[String, String]
     }
 
-    documentManager.mGet(
-      ujson.read(
-        s"""{
-           |  "docs":[
-           |    {
-           |      "_index":"$index",
-           |      "_id":1
-           |    }
-           |  ]
-           |}""".stripMargin
-      ),
-      queryParams
-    )
+    documentManager.get(index, 1, queryParams)
   }
 
-  override protected def sourceOfFirstDoc(result: MGetResult): Option[JSON] = {
-    result.docs(0).obj.get("_source")
+  override protected def sourceOfFirstDoc(result: JsonResponse): Option[JSON] = {
+    result.responseJson.obj.get("_source")
   }
 }
+
+

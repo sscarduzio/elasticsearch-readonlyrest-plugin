@@ -17,22 +17,22 @@
 package tech.beshu.ror.integration.suites.fields
 
 import org.scalatest.Matchers._
-import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.FieldRuleSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
 import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldLevelSecuritySuiteSearchApi
-  extends FieldLevelSecuritySuite {
+trait FieldRuleSearchApiSuite
+  extends FieldRuleSuite {
   this: EsContainerCreator =>
 
   override protected type CALL_RESULT = SearchResult
 
   override protected def fetchDocument(client: RestClient,
                                        index: String,
-                                       clientSourceParams: Option[FieldLevelSecuritySuite.ClientSourceOptions]): SearchResult = {
+                                       clientSourceParams: Option[FieldRuleSuite.ClientSourceOptions]): SearchResult = {
     val searchManager = new SearchManager(client)
 
     val query = clientSourceParams match {

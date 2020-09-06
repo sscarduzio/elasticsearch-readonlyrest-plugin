@@ -19,14 +19,14 @@ package tech.beshu.ror.integration.suites.fields
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceOptions
-import tech.beshu.ror.integration.suites.fields.FieldLevelSecuritySuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.FieldRuleSuite.ClientSourceOptions
+import tech.beshu.ror.integration.suites.fields.FieldRuleSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldLevelSecuritySuite
+trait FieldRuleSuite
   extends WordSpec
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
@@ -35,7 +35,7 @@ trait FieldLevelSecuritySuite
 
   override implicit val rorConfigFileName = "/field_level_security/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(FieldLevelSecuritySuite.nodeDataInitializer())
+  override def nodeDataInitializer = Some(FieldRuleSuite.nodeDataInitializer())
 
   protected def fetchDocument(client: RestClient,
                               index: String,
@@ -365,7 +365,7 @@ trait FieldLevelSecuritySuite
   }
 }
 
-object FieldLevelSecuritySuite {
+object FieldRuleSuite {
 
   sealed trait ClientSourceOptions
 
