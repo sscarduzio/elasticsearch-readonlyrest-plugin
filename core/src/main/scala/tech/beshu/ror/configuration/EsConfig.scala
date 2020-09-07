@@ -26,6 +26,7 @@ import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.yaml.JsonFile
 
 final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
@@ -38,7 +39,7 @@ object EsConfig {
           (implicit envVarsProvider:EnvVarsProvider): Task[Either[LoadEsConfigError, EsConfig]] = {
     val configFile = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     (for {
-      _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
+      _ <- EitherT.fromEither[Task](Either.cond(doPrivileged(configFile.exists), (), FileNotFound(configFile)))
       rorEsLevelSettings <- parse(configFile)
       ssl <- loadSslSettings(esConfigFolderPath, configFile)
       rorIndex <- loadRorIndexNameConfiguration(configFile)

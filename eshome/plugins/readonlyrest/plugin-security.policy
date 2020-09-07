@@ -9,4 +9,6 @@ grant {
   permission java.io.FilePermission "/proc/sys/net/core/somaxconn","read";
   permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
   permission java.lang.RuntimePermission "setContextClassLoader";
+  permission java.lang.RuntimePermission "createSecurityManager";
+  permission java.lang.RuntimePermission "setSecurityManager";
 };

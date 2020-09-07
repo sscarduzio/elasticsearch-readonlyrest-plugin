@@ -26,6 +26,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
@@ -53,7 +54,7 @@ object RorSsl extends Logging {
                                   envVarsProvider: EnvVarsProvider) = {
     val rorConfig = FileConfigLoader.create(esConfigFolderPath).rawConfigFile
     logger.info(s"Cannot find SSL configuration in elasticsearch.yml, trying: ${rorConfig.pathAsString}")
-    if (rorConfig.exists) {
+    if (doPrivileged(rorConfig.exists)) {
       loadSslConfigFromFile(rorConfig)
     } else {
       Right(RorSsl.noSsl)

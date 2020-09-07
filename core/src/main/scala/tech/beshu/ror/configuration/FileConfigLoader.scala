@@ -27,6 +27,7 @@ import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
 import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError.FileNotExist
 import tech.beshu.ror.providers.{JvmPropertiesProvider, PropertiesProvider}
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 
 class FileConfigLoader(esConfigFile: File,
                        propertiesProvider: PropertiesProvider)
@@ -49,7 +50,7 @@ class FileConfigLoader(esConfigFile: File,
   }
 
   private def checkIfFileExist(file: File): EitherT[Task, ConfigLoaderError[FileConfigError], File] =
-    EitherT.cond(file.exists, file, SpecializedError(FileNotExist(file)))
+    EitherT.cond(doPrivileged(file.exists), file, SpecializedError(FileNotExist(file)))
 
   private def loadConfigFromFile(file: File): EitherT[Task, ConfigLoaderError[FileConfigError], RawRorConfig] = {
     EitherT(RawRorConfig.fromFile(file).map(_.left.map(ParsingError.apply)))
