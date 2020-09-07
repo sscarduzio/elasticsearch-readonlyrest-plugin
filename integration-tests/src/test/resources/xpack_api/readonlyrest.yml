@@ -25,18 +25,34 @@ readonlyrest:
       filter: '{"query_string":{"query":"name:(john)"}}'
       fields: ["_source", "name"]
 
+    - name: "test3"
+      indices: ["test3*", "rollup_test3_*"]
+      auth_key: dev3:test
+
+    - name: "test4"
+      indices: ["test4*", "rollup_test4_*"]
+      auth_key: dev4:test
+
+    - name: "test5"
+      indices: ["test5*", "rollup_test5_*"]
+      auth_key: dev5:test
+
+    - name: "test6"
+      indices: ["test6*", "rollup_test6_*"]
+      auth_key: dev6:test
+
     - name: "admin sql"
       verbosity: error
       type: allow
       indices: ["bookstore", "library", "bookshop"]
       auth_key: sqladmin:pass
 
-    - name: "dev3 sql"
-      auth_key: dev3:test
+    - name: "dev1 sql"
+      auth_key: dev1sql:test
       indices: ["bookstore"]
       fields: ["~price"]
 
     - name: "dev4 sql"
-      auth_key: dev4:test
+      auth_key: dev2sql:test
       indices: ["library"]
       fields: ["~internal_id"]

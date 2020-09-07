@@ -46,7 +46,8 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
             """^indices:data/read/get""".r,
             """^indices:data/read/get\[s\]$""".r,
             """^retention_lease_sync$""".r,
-            """^retention_lease_background_sync$""".r
+            """^retention_lease_background_sync$""".r,
+            """^xpack/rollup/.*$""".r,
           ))
         } match {
           case Failure(exception) => Failed(exception)

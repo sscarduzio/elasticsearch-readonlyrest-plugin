@@ -169,31 +169,16 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         }
       // rest
       case _ =>
-        handleSearchTemplateRequest(regularRequestHandler, esContext, aclContext) orElse
-          handleReflectionBasedIndicesRequest(regularRequestHandler, esContext, aclContext) getOrElse
-          handleGeneralNonIndexOperation(regularRequestHandler, esContext)
-    }
-  }
-
-  private def handleSearchTemplateRequest(regularRequestHandler: RegularRequestHandler,
-                                          esContext: EsContext,
-                                          aclContext: AccessControlStaticContext) = {
-    SearchTemplateEsRequestContext
-      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
-      .map(regularRequestHandler.handle(_))
-  }
-
-  private def handleReflectionBasedIndicesRequest(regularRequestHandler: RegularRequestHandler,
-                                                  esContext: EsContext,
-                                                  aclContext: AccessControlStaticContext) = {
-    ReflectionBasedIndicesEsRequestContext
-      .from(esContext.actionRequest, esContext, aclContext, clusterService, threadPool)
-      .map(regularRequestHandler.handle(_))
-  }
-
-  private def handleGeneralNonIndexOperation(regularRequestHandler: RegularRequestHandler, esContext: EsContext) = {
-    regularRequestHandler.handle {
-      new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, clusterService, threadPool)
+        ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
+          case SearchTemplateEsRequestContext(request) => regularRequestHandler.handle(request)
+          case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
+          case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
+          case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
+          case _ =>
+            regularRequestHandler.handle {
+              new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, clusterService, threadPool)
+            }
+        }
     }
   }
 }
