@@ -19,7 +19,7 @@ fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
     echo ">>> proxy => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es78x' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es79x" ]]; then
