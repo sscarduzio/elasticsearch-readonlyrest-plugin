@@ -21,6 +21,7 @@ import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action._
 import org.elasticsearch.action.admin.cluster.allocation.ClusterAllocationExplainRequest
+import org.elasticsearch.action.admin.cluster.repositories.cleanup.CleanupRepositoryRequest
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
 import org.elasticsearch.action.admin.cluster.repositories.get.GetRepositoriesRequest
 import org.elasticsearch.action.admin.cluster.repositories.put.PutRepositoryRequest
@@ -105,6 +106,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new DeleteRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
       case request: VerifyRepositoryRequest =>
         regularRequestHandler.handle(new VerifyRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: CleanupRepositoryRequest =>
+        regularRequestHandler.handle(new CleanupRepositoryEsRequestContext(request, esContext, clusterService, threadPool))
       // templates
       case request: GetIndexTemplatesRequest =>
         regularRequestHandler.handle(new GetTemplatesEsRequestContext(request, esContext, clusterService, threadPool))
