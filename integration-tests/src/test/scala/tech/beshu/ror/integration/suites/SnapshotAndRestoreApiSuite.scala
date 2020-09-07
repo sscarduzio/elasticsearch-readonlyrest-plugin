@@ -55,7 +55,7 @@ trait SnapshotAndRestoreApiSuite
       "allow him to do so" when {
         "block doesn't contains 'repositories' rule" in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev1-repo")
-          dev2SnapshotManager.putRepository(uniqueRepositoryName).force()
+          adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
           val result = dev1SnapshotManager.deleteRepository(uniqueRepositoryName)
 
@@ -63,15 +63,15 @@ trait SnapshotAndRestoreApiSuite
         }
         "user has access to repository name" in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev2-repo")
-          dev2SnapshotManager.putRepository(uniqueRepositoryName).force()
+          adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
           val result = dev2SnapshotManager.deleteRepository(uniqueRepositoryName)
 
           result.responseCode should be (200)
         }
         "user has access to repository pattern name" in {
-          dev2SnapshotManager.putRepository(RepositoryNameGenerator.next("dev2-repo-delete")).force()
-          dev2SnapshotManager.putRepository(RepositoryNameGenerator.next("dev2-repo-delete")).force()
+          adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev2-repo-delete")).force()
+          adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev2-repo-delete")).force()
 
           val result = dev2SnapshotManager.deleteRepository("dev2-repo-delete*")
 
@@ -84,15 +84,15 @@ trait SnapshotAndRestoreApiSuite
       "not allow him to do so" when {
         "user has no access to repository name" in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev1-repo")
-          dev2SnapshotManager.putRepository(uniqueRepositoryName).force()
+          adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
           val result = dev2SnapshotManager.deleteRepository(uniqueRepositoryName)
 
           result.responseCode should be (403)
         }
         "user has not access to repository name pattern" in {
-          dev2SnapshotManager.putRepository(RepositoryNameGenerator.next("dev2_forbid_delete")).force()
-          dev2SnapshotManager.putRepository(RepositoryNameGenerator.next("dev2_forbid_delete")).force()
+          adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev2_forbid_delete")).force()
+          adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev2_forbid_delete")).force()
 
           val result = dev2SnapshotManager.deleteRepository("dev2*")
 
