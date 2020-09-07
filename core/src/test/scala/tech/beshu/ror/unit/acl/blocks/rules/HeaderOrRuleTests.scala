@@ -21,70 +21,160 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.HeadersOrRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.TestsUtils.{requiredHeaderFrom, _}
 
 class HeaderOrRuleTests extends WordSpec with MockFactory {
 
   "A HeadersAndRule" should {
     "match" when {
-      "one header was configured and the headers was passed with request" in {
+      "one header was configured and the header was passed with request" in {
         assertMatchRule(
-          configuredHeaders = NonEmptySet.of(headerFrom("hkey1" -> "hvalue1")),
+          configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey1" -> "hvalue1")),
           requestHeaders = Set(headerFrom("hkey1" -> "hvalue1"))
         )
       }
-      "two headers was configured and only one was passed with request" in {
+      "two headers were configured and only one was passed with request" in {
         assertMatchRule(
-          configuredHeaders = NonEmptySet.of(headerFrom("hkey1" -> "hvalue1"), headerFrom("hkey2" -> "hvalue2")),
+          configuredHeaders = NonEmptySet.of(
+            requiredHeaderFrom("hkey1" -> "hvalue1"),
+            requiredHeaderFrom("hkey2" -> "hvalue2")
+          ),
           requestHeaders = Set(headerFrom("hkey1" -> "hvalue1"))
         )
       }
-      "two headers with same name, but different values was configured and one of them was passed with request" in {
+      "two headers with same name, but different values were configured and one of them was passed with request" in {
         assertMatchRule(
-          configuredHeaders = NonEmptySet.of(headerFrom("hkey" -> "hvalue1"), headerFrom("hkey" -> "hvalue2")),
+          configuredHeaders = NonEmptySet.of(
+            requiredHeaderFrom("hkey" -> "hvalue1"),
+            requiredHeaderFrom("hkey" -> "hvalue2")
+          ),
           requestHeaders = Set(headerFrom("hkey" -> "hvalue2"))
         )
       }
       "configured header has wildcard in value" in {
         assertMatchRule(
-          configuredHeaders = NonEmptySet.of(headerFrom("hkey" -> "hvalue*")),
-          requestHeaders = Set(headerFrom("hkey" -> "hvalue333"), headerFrom("hkey" -> "different"))
+          configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey" -> "hvalue*")),
+          requestHeaders = Set(
+            headerFrom("hkey" -> "hvalue333"),
+            headerFrom("hkey" -> "different")
+          )
         )
+      }
+      "first configured header is forbidden, second is required"  when {
+        "forbidden header was sent and required header was sent" in {
+          assertMatchRule(
+            configuredHeaders = NonEmptySet.of(
+              requiredHeaderFrom("hkey1" -> "*"),
+              forbiddenHeaderFrom("hkey2" -> "*")
+            ),
+            requestHeaders = Set(
+              headerFrom("hkey1" -> "test"),
+              headerFrom("hkey2" -> "test")
+            )
+          )
+        }
+        "forbidden header wasn't sent and required header wasn't sent" in {
+          assertMatchRule(
+            configuredHeaders = NonEmptySet.of(
+              requiredHeaderFrom("hkey1" -> "*"),
+              forbiddenHeaderFrom("hkey2" -> "*")
+            ),
+            requestHeaders = Set.empty
+          )
+        }
+        "forbidden header wasn't sent and required header was sent" in {
+          assertMatchRule(
+            configuredHeaders = NonEmptySet.of(
+              forbiddenHeaderFrom("hkey1" -> "value1"),
+              requiredHeaderFrom("hkey2" -> "*")
+            ),
+            requestHeaders = Set(
+              headerFrom("hkey2" -> "value1"),
+              headerFrom("hkey4" -> "hvalue3")
+            )
+          )
+        }
       }
     }
     "not match" when {
       "one header was configured and no headers was passed with request" in {
         assertNotMatchRule(
-          configuredHeaders = NonEmptySet.of(headerFrom("hkey1" -> "hvalue1")),
+          configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey1" -> "hvalue1")),
           requestHeaders = Set.empty
         )
       }
       "one header was configured and it wasn't passed with request headers" in {
         assertNotMatchRule(
-          configuredHeaders = NonEmptySet.of(headerFrom("hkey1" -> "hvalue1")),
-          requestHeaders = Set(headerFrom("hkey2" -> "hvalue2"), headerFrom("hkey3" -> "hvalue3"))
+          configuredHeaders = NonEmptySet.of(requiredHeaderFrom("hkey1" -> "hvalue1")),
+          requestHeaders = Set(
+            headerFrom("hkey2" -> "hvalue2"),
+            headerFrom("hkey3" -> "hvalue3")
+          )
         )
+      }
+      "two headers were configured and none of them was passed with the request" in {
+        assertNotMatchRule(
+          configuredHeaders = NonEmptySet.of(
+            requiredHeaderFrom("hkey1" -> "*"),
+            requiredHeaderFrom("hkey2" -> "*")
+          ),
+          requestHeaders = Set(
+            headerFrom("hkey3" -> "hvalue2"),
+            headerFrom("hkey4" -> "hvalue3")
+          )
+        )
+      }
+      "two configured headers are forbidden, and both was sent" in {
+        assertNotMatchRule(
+          configuredHeaders = NonEmptySet.of(
+            forbiddenHeaderFrom("hkey1" -> "*"),
+            forbiddenHeaderFrom("hkey2" -> "*")
+          ),
+          requestHeaders = Set(
+            headerFrom("hkey1" -> "hvalue1"),
+            headerFrom("hkey2" -> "hvalue2")
+          )
+        )
+      }
+      "first configured header is forbidden, second is required"  when {
+        "forbidden header was sent and required header wasn't sent" in {
+          assertNotMatchRule(
+            configuredHeaders = NonEmptySet.of(
+              forbiddenHeaderFrom("hkey1" -> "value1"),
+              requiredHeaderFrom("hkey2" -> "*")
+            ),
+            requestHeaders = Set(
+              headerFrom("hkey1" -> "value1"),
+              headerFrom("hkey3" -> "hvalue3")
+            )
+          )
+        }
       }
     }
   }
 
-  private def assertMatchRule(configuredHeaders: NonEmptySet[Header], requestHeaders: Set[Header]) =
+  private def assertMatchRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]],
+                              requestHeaders: Set[Header]) =
     assertRule(configuredHeaders, requestHeaders, isMatched = true)
 
-  private def assertNotMatchRule(configuredHeaders: NonEmptySet[Header], requestHeaders: Set[Header]) =
+  private def assertNotMatchRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]],
+                                 requestHeaders: Set[Header]) =
     assertRule(configuredHeaders, requestHeaders, isMatched = false)
 
-  private def assertRule(configuredHeaders: NonEmptySet[Header], requestHeaders: Set[Header], isMatched: Boolean) = {
+  private def assertRule(configuredHeaders: NonEmptySet[AccessRequirement[Header]],
+                         requestHeaders: Set[Header],
+                         isMatched: Boolean) = {
     val rule = new HeadersOrRule(HeadersOrRule.Settings(configuredHeaders))
     val requestContext = mock[RequestContext]
     (requestContext.headers _).expects().returning(requestHeaders)
+    (requestContext.id _).expects().returning(RequestContext.Id("1")).anyNumberOfTimes()
     val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
