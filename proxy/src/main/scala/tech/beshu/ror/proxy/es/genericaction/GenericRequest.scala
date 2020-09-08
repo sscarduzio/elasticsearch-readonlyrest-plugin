@@ -24,7 +24,7 @@ object GenericRequest {
     "/_autoscaling",
     "/_cat",
     "_cat/transforms",
-    "/_cluster",
+    "/_cluster", // todo: see ClusterApiProxyTests
     "/_ccr/",
     "/_enrich",
     "/_freeze", // todo: indices awareness
