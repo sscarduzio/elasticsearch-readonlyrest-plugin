@@ -16,15 +16,13 @@
  */
 package tech.beshu.ror.utils.yaml
 
-import better.files.File
 import io.circe.Decoder
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
-import tech.beshu.ror.utils.yaml
+import tech.beshu.ror.utils.{PrivilegedFile, yaml}
 
-class JsonFile(file: File) {
+class JsonFile(file: PrivilegedFile) {
 
   def parse[T](implicit decoder: Decoder[T]): Either[String, T] = {
-    doPrivileged(file.fileReader) { reader =>
+    file.fileReader { reader =>
       yaml
         .parser
         .parse(reader)

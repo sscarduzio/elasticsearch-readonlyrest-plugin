@@ -54,3 +54,6 @@ This project was incepted in [this StackOverflow thread](http://stackoverflow.co
 
 ## Credits
 Thanks Ivan Brusic for publishing [this guide](http://blog.brusic.com/2011/09/create-pluggable-rest-endpoints-in.html "Ivan Brusic blog")
+
+## Development guide
+Development guide is available [here](development.md)
