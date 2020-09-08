@@ -13,3 +13,4 @@ readonlyrest:
       indices: ["dev1*"]
       type: allow
       auth_key: dev1:test
+      headers: ["~x-forwarded-for:*"]

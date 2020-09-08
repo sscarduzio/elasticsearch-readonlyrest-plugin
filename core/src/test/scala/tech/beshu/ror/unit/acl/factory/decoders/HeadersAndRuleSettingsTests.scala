@@ -104,7 +104,7 @@ class HeadersAndRuleSettingsTests extends BaseRuleSettingsDecoderTest[HeadersAnd
               forbiddenHeaderFrom("X-Some-Header1" -> "one"),
               forbiddenHeaderFrom("X-Some-Header2" -> "two")
             )
-            rule.settings.headerAccessRequirements should be(headers)
+            rule.settings.headerAccessRequirements should be (headers)
           }
         )
       }
