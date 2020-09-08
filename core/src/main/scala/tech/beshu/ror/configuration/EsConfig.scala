@@ -16,17 +16,14 @@
  */
 package tech.beshu.ror.configuration
 
-
 import java.nio.file.Path
 
-import better.files.File
 import cats.data.EitherT
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.PrivilegedFile
 import tech.beshu.ror.utils.yaml.JsonFile
 
@@ -40,7 +37,7 @@ object EsConfig {
           (implicit envVarsProvider:EnvVarsProvider): Task[Either[LoadEsConfigError, EsConfig]] = {
     val configFile = PrivilegedFile(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     (for {
-      _ <- EitherT.fromEither[Task](Either.cond(doPrivileged(configFile.exists), (), FileNotFound(configFile)))
+      _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
       rorEsLevelSettings <- parse(configFile)
       ssl <- loadSslSettings(esConfigFolderPath, configFile)
       rorIndex <- loadRorIndexNameConfiguration(configFile)
