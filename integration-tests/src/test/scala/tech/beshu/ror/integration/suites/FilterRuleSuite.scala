@@ -18,7 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.suites.base.support.{BaseSingleNodeEsClusterTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -27,22 +27,13 @@ import tech.beshu.ror.utils.misc.Version
 
 trait FilterRuleSuite
   extends WordSpec
-    with BaseEsClusterIntegrationTest
+    with BaseSingleNodeEsClusterTest
     with SingleClientSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/filter_rules/readonlyrest.yml"
 
-  override lazy val targetEs = container.nodes.head
-
-  override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
-    EsClusterSettings(
-      name = "ROR1",
-      numberOfInstances = 2,
-      nodeDataInitializer = FilterRuleSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXpackSupport,
-    )
-  )
+  override def nodeDataInitializer: Option[ElasticsearchNodeDataInitializer] = Some(FilterRuleSuite.nodeDataInitializer())
 
   "A filter rule" should {
     "show only doc according to defined filter" when {
