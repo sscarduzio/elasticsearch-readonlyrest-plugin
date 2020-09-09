@@ -18,19 +18,18 @@ package tech.beshu.ror.configuration
 
 import java.io.StringReader
 
-import better.files.File
 import cats.effect.Resource
 import cats.{Eq, Show}
 import io.circe.{Json, ParsingFailure}
 import monix.eval.Task
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
-import tech.beshu.ror.utils.yaml
+import tech.beshu.ror.utils.{PrivilegedFile, yaml}
 
 final case class RawRorConfig(configJson: Json, raw: String)
 
 object RawRorConfig {
 
-  def fromFile(file: File): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
+  def fromFile(file: PrivilegedFile): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
     fromString(file.contentAsString)
   }
 

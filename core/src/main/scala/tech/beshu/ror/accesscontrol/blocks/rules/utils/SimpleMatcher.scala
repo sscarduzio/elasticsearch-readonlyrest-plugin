@@ -14,27 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.yaml
+package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
-import io.circe.Decoder
-import tech.beshu.ror.utils.{PrivilegedFile, yaml}
+import tech.beshu.ror.utils.MatcherWithWildcards
+import scala.collection.JavaConverters._
 
-class JsonFile(file: PrivilegedFile) {
+object SimpleMatcher {
 
-  def parse[T](implicit decoder: Decoder[T]): Either[String, T] = {
-    file.fileReader { reader =>
-      yaml
-        .parser
-        .parse(reader)
-        .left.map(_.message)
-        .right
-        .flatMap { json =>
-          decoder
-            .decodeJson(json)
-            .left.map(_.message)
-        }
-    }
+  def isMatched(pattern: String, value: String): Boolean = {
+    new MatcherWithWildcards(List(pattern).asJava).`match`(value)
   }
 }
-
-
