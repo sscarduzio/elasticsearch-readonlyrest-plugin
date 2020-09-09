@@ -41,6 +41,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
+import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain._
@@ -104,9 +105,11 @@ object orders {
   }
   implicit val repositoryOrder: Order[RepositoryName] = Order.by(_.value.value)
   implicit val snapshotOrder: Order[SnapshotName] = Order.by(_.value.value)
-  implicit def accessOrder[T : Order]: Order[AccessRequirement[T]] = Order.by {
-    case AccessRequirement.MustBePresent(value) => value
-    case AccessRequirement.MustBeAbsent(value) => value
+  implicit def accessOrder[T : Order]: Order[AccessRequirement[T]] = Order.from {
+    case (MustBeAbsent(v1), MustBeAbsent(v2)) => v1.compare(v2)
+    case (MustBePresent(v1), MustBePresent(v2)) => v1.compare(v2)
+    case (MustBePresent(_), _) => -1
+    case (_, MustBePresent(_)) => 1
   }
 }
 
@@ -266,7 +269,7 @@ object show {
     }
 
     implicit def accessShow[T : Show]: Show[AccessRequirement[T]] = Show.show {
-      case AccessRequirement.MustBePresent(value) => value.show
+      case MustBePresent(value) => value.show
       case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
     }
   }
