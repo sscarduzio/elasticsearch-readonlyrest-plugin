@@ -48,12 +48,17 @@ trait ClusterApiSuite
   private lazy val dev1ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esTargets.head.esVersion)
   private lazy val dev2ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev2", "test"), esVersion = esTargets.head.esVersion)
   private lazy val dev3ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev3", "test"), esVersion = esTargets.head.esVersion)
+  private lazy val dev4ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev4", "test"), esVersion = esTargets.head.esVersion)
 
   "Cluster allocation explain API" should {
     "allow to be used" when {
       "user has access to given index" in {
         val result = dev1ClusterManager.allocationExplain("test1_index")
         result.responseCode should be(200)
+      }
+      "no index is passed and block without no `indices` rule was matched" in {
+        val result = dev4ClusterManager.allocationExplain()
+        result.responseCode should not be (403)
       }
     }
     "not allow to be used (pretend that index doesn't exist)" when {

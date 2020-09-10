@@ -145,7 +145,6 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
         taskManager,
         esActionRequestHandler
       ),
-      taskManager,
       () => "ROR_proxy",
       null
     )
