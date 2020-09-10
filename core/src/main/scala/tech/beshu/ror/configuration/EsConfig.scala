@@ -16,16 +16,15 @@
  */
 package tech.beshu.ror.configuration
 
-
 import java.nio.file.Path
 
-import better.files.File
 import cats.data.EitherT
 import io.circe.Decoder
 import monix.eval.Task
 import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError.{FileNotFound, MalformedContent}
 import tech.beshu.ror.configuration.EsConfig.RorEsLevelSettings
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.PrivilegedFile
 import tech.beshu.ror.utils.yaml.JsonFile
 
 final case class EsConfig(rorEsLevelSettings: RorEsLevelSettings,
@@ -36,7 +35,7 @@ object EsConfig {
 
   def from(esConfigFolderPath: Path)
           (implicit envVarsProvider:EnvVarsProvider): Task[Either[LoadEsConfigError, EsConfig]] = {
-    val configFile = File(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
+    val configFile = PrivilegedFile(s"${esConfigFolderPath.toAbsolutePath}/elasticsearch.yml")
     (for {
       _ <- EitherT.fromEither[Task](Either.cond(configFile.exists, (), FileNotFound(configFile)))
       rorEsLevelSettings <- parse(configFile)
@@ -45,17 +44,17 @@ object EsConfig {
     } yield EsConfig(rorEsLevelSettings, ssl, rorIndex)).value
   }
 
-  private def parse(configFile: File): EitherT[Task, LoadEsConfigError, RorEsLevelSettings] = {
+  private def parse(configFile: PrivilegedFile): EitherT[Task, LoadEsConfigError, RorEsLevelSettings] = {
     import decoders._
     EitherT.fromEither[Task](new JsonFile(configFile).parse[RorEsLevelSettings].left.map(MalformedContent(configFile, _)))
   }
 
-  private def loadSslSettings(esConfigFolderPath: Path, configFile: File)
+  private def loadSslSettings(esConfigFolderPath: Path, configFile: PrivilegedFile)
                              (implicit envVarsProvider:EnvVarsProvider): EitherT[Task, LoadEsConfigError, RorSsl] = {
     EitherT(RorSsl.load(esConfigFolderPath).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
-  private def loadRorIndexNameConfiguration(configFile: File): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
+  private def loadRorIndexNameConfiguration(configFile: PrivilegedFile): EitherT[Task, LoadEsConfigError, RorIndexNameConfiguration] = {
     EitherT(RorIndexNameConfiguration.load(configFile).map(_.left.map(error => MalformedContent(configFile, error.message))))
   }
 
@@ -65,8 +64,8 @@ object EsConfig {
 
   sealed trait LoadEsConfigError
   object LoadEsConfigError {
-    final case class FileNotFound(file: File) extends LoadEsConfigError
-    final case class MalformedContent(file: File, message: String) extends LoadEsConfigError
+    final case class FileNotFound(file: PrivilegedFile) extends LoadEsConfigError
+    final case class MalformedContent(file: PrivilegedFile, message: String) extends LoadEsConfigError
   }
 
   private object decoders {
