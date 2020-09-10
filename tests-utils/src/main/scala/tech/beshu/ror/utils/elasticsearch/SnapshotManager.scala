@@ -34,7 +34,7 @@ class SnapshotManager(client: RestClient)
     )
   }
 
-  def getAllRepositories(): RepositoriesResult = {
+  def getAllRepositories: RepositoriesResult = {
     call(createGetRepositoriesRequest(Nil), new RepositoriesResult(_))
   }
 
@@ -56,6 +56,10 @@ class SnapshotManager(client: RestClient)
 
   def deleteAllSnapshots(): JsonResponse = {
     call(createDeleteAllSnapshotsRequest(), new JsonResponse(_))
+  }
+
+  def putSnapshot(repositoryName: String, snapshotName: String, index: String, otherIndices: String*): JsonResponse = {
+    call(createNewSnapshotRequest(repositoryName, snapshotName, index :: otherIndices.toList), new JsonResponse(_))
   }
 
   private def createNewRepositoryRequest(name: String) = {
@@ -95,6 +99,20 @@ class SnapshotManager(client: RestClient)
       case all => all.mkString(",")
     }
     new HttpGet(client.from(s"/_snapshot/$namesStr"))
+  }
+
+  private def createNewSnapshotRequest(repositoryName: String,
+                                       snapshotName: String,
+                                       indices: List[String]) = {
+    val request = new HttpPut(client.from(s"/_snapshot/$repositoryName/$snapshotName"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""
+         |{
+         |  "indices": "${indices.mkString(",")}"
+         |}""".stripMargin
+    ))
+    request
   }
 }
 

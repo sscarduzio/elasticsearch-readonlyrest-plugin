@@ -23,4 +23,5 @@ readonlyrest:
       indices: ["index2"]
       auth_key: dev2:test
       repositories: ["dev2-repo-*"]
+      snapshots: ["dev2-snap-*"]
 

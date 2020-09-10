@@ -3,7 +3,7 @@ package tech.beshu.ror.integration.suites
 import monix.execution.atomic.Atomic
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
-import tech.beshu.ror.integration.suites.SnapshotAndRestoreApiSuite.RepositoryNameGenerator
+import tech.beshu.ror.integration.suites.SnapshotAndRestoreApiSuite.{RepositoryNameGenerator, SnapshotNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SnapshotManager}
@@ -29,7 +29,7 @@ trait SnapshotAndRestoreApiSuite
   "Snapshot repository management API" when {
     "user creates a repository" should {
       "allow him to do so" when {
-        "block doesn't contains 'repositories' rule" in {
+        "block doesn't contain 'repositories' rule" in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev1-repo")
           val result = dev1SnapshotManager.putRepository(uniqueRepositoryName)
 
@@ -181,7 +181,7 @@ trait SnapshotAndRestoreApiSuite
           adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev1-repo")).force()
           adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev3-repo")).force()
 
-          val result = dev2SnapshotManager.getAllRepositories()
+          val result = dev2SnapshotManager.getAllRepositories
 
           result.responseCode should be (200)
           all(result.repositories.keys) should startWith ("dev2-repo")
@@ -246,6 +246,60 @@ trait SnapshotAndRestoreApiSuite
     }
   }
 
+  "Snapshot management API" when {
+    "user creates a snapshot" should {
+      "allow him to do so" when {
+        "block doesn't contain 'repositories' and 'snapshots' rules" in {
+          val repositoryName = RepositoryNameGenerator.next("dev1")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName = SnapshotNameGenerator.next("dev1")
+          val response = dev1SnapshotManager.putSnapshot(snapshotName, repositoryName, "index1")
+
+          response.responseCode should be (200)
+        }
+        "user has access to repository and snapshot name and all related indices" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo-")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName = SnapshotNameGenerator.next("dev2-snap-")
+          val response = dev2SnapshotManager.putSnapshot(snapshotName, repositoryName, "index2")
+
+          response.responseCode should be (200)
+        }
+      }
+      "not allow him to do so" when {
+        "user has no access to repository" in {
+          val repositoryName = RepositoryNameGenerator.next("dev1-repo-")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName = SnapshotNameGenerator.next("dev2-snap-")
+          val response = dev2SnapshotManager.putSnapshot(snapshotName, repositoryName, "index2")
+
+          response.responseCode should be (403)
+        }
+        "user has no access to snapshot" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo-")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName = SnapshotNameGenerator.next("dev1-snap-")
+          val response = dev2SnapshotManager.putSnapshot(snapshotName, repositoryName, "index2")
+
+          response.responseCode should be (403)
+        }
+        "user has no access to at least one index" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo-")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName = SnapshotNameGenerator.next("dev2-snap-")
+          val response = dev2SnapshotManager.putSnapshot(snapshotName, repositoryName, "index2", "index1")
+
+          response.responseCode should be (403)
+        }
+      }
+    }
+  }
+
   override protected def beforeEach(): Unit = {
     adminSnapshotManager.deleteAllSnapshots().force()
     super.beforeEach()
@@ -260,6 +314,10 @@ object SnapshotAndRestoreApiSuite {
   }
 
   private object RepositoryNameGenerator {
+    private val uniquePart = Atomic(0)
+    def next(prefix: String): String = s"$prefix-${uniquePart.incrementAndGet()}"
+  }
+  private object SnapshotNameGenerator {
     private val uniquePart = Atomic(0)
     def next(prefix: String): String = s"$prefix-${uniquePart.incrementAndGet()}"
   }
