@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.utils.{MatcherWithWildcards, ZeroKnowledgeIndexFilter}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeRepositoryFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeIndexFilterScalaAdapter, ZeroKnowledgeRepositoryFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
@@ -31,25 +31,25 @@ class ZeroKnowledgeIndexFilterTests extends WordSpec {
     "one element is passed" in {
       val matcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Sets.newHashSet("a*")))
 
-      val res1 = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
+      val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
         .check(Set(IndexName("*".nonempty)), matcher)
       res1 should be(CheckResult.Ok(Set(IndexName("a*".nonempty))))
 
-      val res2 = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
+      val res2 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
         .check(Set(IndexName("b".nonempty)), matcher)
       res2 should be(CheckResult.Failed)
     }
     "two elements are passed" in {
       val matcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Sets.newHashSet("a1*")))
 
-      val res1 = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
+      val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
         .check(Set(IndexName("a*".nonempty)), matcher)
       res1 should be(CheckResult.Ok(Set(IndexName("a1*".nonempty))))
     }
     "two patterns in matcher" in {
       val matcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Sets.newHashSet("b:*", "a*")))
 
-      val res1 = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
+      val res1 = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
         .check(Set(IndexName("*".nonempty)), matcher)
       res1 should be(CheckResult.Ok(Set(IndexName("a*".nonempty))))
     }

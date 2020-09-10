@@ -20,7 +20,7 @@ readonlyrest:
       auth_key: dev1:test
 
     - name: "dev2 block"
-      indices: ["index2"]
+      indices: ["index2*"]
       auth_key: dev2:test
       repositories: ["dev2-repo-*"]
-
+      snapshots: ["dev2-snap-*"]
