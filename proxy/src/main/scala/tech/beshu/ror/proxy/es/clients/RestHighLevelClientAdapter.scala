@@ -58,7 +58,6 @@ import org.elasticsearch.client._
 import org.elasticsearch.client.cluster.RemoteInfoRequest
 import org.elasticsearch.client.core.CountRequest
 import org.elasticsearch.client.indices._
-import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
 import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryRequest, ReindexRequest, UpdateByQueryRequest}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearchTemplateResponse, SearchTemplateRequest, SearchTemplateResponse}
@@ -223,7 +222,7 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.indices().getIndexTemplate(request.toGetTemplateRequest, RequestOptions.DEFAULT))
       .map(_.toGetTemplateResponse)
       .onErrorRecover { case ex: ElasticsearchStatusException if ex.status().getStatus == 404 =>
-        new AdminGetIndexTemplatesResponse(List.empty[IndexTemplateMetaData].asJava)
+        new AdminGetIndexTemplatesResponse(List.empty[org.elasticsearch.cluster.metadata.IndexTemplateMetadata].asJava)
       }
   }
 
