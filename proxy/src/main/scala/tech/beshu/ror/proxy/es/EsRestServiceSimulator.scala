@@ -231,7 +231,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                  indexNameExpressionResolver: IndexNameExpressionResolver,
                                  nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
       List[RestHandler](
-        new RestRRAdminAction(restController)
+        new RestRRAdminAction()
       ).asJava
     }
 
