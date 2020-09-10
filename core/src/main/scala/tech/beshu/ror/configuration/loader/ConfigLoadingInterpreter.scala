@@ -46,9 +46,9 @@ object ConfigLoadingInterpreter extends Logging {
           .from(esConfigPath)
           .map(_.left.map {
             case LoadEsConfigError.FileNotFound(file) =>
-              EsFileNotExist(file.toJava.toPath)
+              EsFileNotExist(Path(file.pathAsString))
             case LoadEsConfigError.MalformedContent(file, msg) =>
-              EsFileMalformed(file.toJava.toPath, msg)
+              EsFileMalformed(Path(file.pathAsString), msg)
           })
       case ConfigLoading.LoadConfigAction.ForceLoadRorConfigFromFile(path) =>
         logger.info(s"Loading ReadonlyREST settings forced loading from file: $path")
@@ -100,7 +100,7 @@ object ConfigLoadingInterpreter extends Logging {
       case ParsingError(error) =>
         val show = error.show
         LoadedRorConfig.FileParsingError(show)
-      case SpecializedError(FileConfigError.FileNotExist(file)) => LoadedRorConfig.FileNotExist(file.path)
+      case SpecializedError(FileConfigError.FileNotExist(file)) => LoadedRorConfig.FileNotExist(Path(file.pathAsString))
     }
   }
 
