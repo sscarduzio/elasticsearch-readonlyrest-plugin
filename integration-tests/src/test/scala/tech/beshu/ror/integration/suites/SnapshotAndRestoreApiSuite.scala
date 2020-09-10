@@ -69,7 +69,7 @@ trait SnapshotAndRestoreApiSuite
 
           result.responseCode should be (200)
         }
-        "user has access to repository pattern name" in {
+        "user has access to wider repository pattern name than the passed one" in {
           adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev2-repo-delete")).force()
           adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev2-repo-delete")).force()
 
@@ -80,6 +80,18 @@ trait SnapshotAndRestoreApiSuite
           val verificationResult = adminSnapshotManager.getRepository("dev2-repo-delete*")
           verificationResult.repositories.keys.toList should be (List.empty)
         }
+        "user has access to narrowed repository pattern name than the passed one" in {
+          adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev2-repo-delete")).force()
+          val notAccessibleRepoName = RepositoryNameGenerator.next("dev2-forbid-delete")
+          adminSnapshotManager.putRepository(notAccessibleRepoName).force()
+
+          val result = dev2SnapshotManager.deleteRepository("dev2*")
+
+          result.responseCode should be (200)
+
+          val verificationResult = adminSnapshotManager.getRepository("dev2*")
+          verificationResult.repositories.keys.toList should be (List(notAccessibleRepoName))
+        }
       }
       "not allow him to do so" when {
         "user has no access to repository name" in {
@@ -87,14 +99,6 @@ trait SnapshotAndRestoreApiSuite
           adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
           val result = dev2SnapshotManager.deleteRepository(uniqueRepositoryName)
-
-          result.responseCode should be (403)
-        }
-        "user has not access to repository name pattern" in {
-          adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev2_forbid_delete")).force()
-          adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev2_forbid_delete")).force()
-
-          val result = dev2SnapshotManager.deleteRepository("dev2*")
 
           result.responseCode should be (403)
         }
@@ -204,11 +208,11 @@ trait SnapshotAndRestoreApiSuite
         }
       }
       "return empty list" when {
-        "user has no access to repository name pattern" in {
-          val uniqueRepositoryName = RepositoryNameGenerator.next("dev3-repo")
+        "asked repository name pattern have to be narrowed" in {
+          val uniqueRepositoryName = RepositoryNameGenerator.next("dev2-forbidden")
           adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
-          val result = dev2SnapshotManager.getRepository("dev3*")
+          val result = dev2SnapshotManager.getRepository("dev2*")
 
           result.responseCode should be (200)
           result.repositories.keys.toList should be (List.empty)
@@ -227,6 +231,16 @@ trait SnapshotAndRestoreApiSuite
           val result = dev2SnapshotManager.getRepository(RepositoryNameGenerator.next("dev2-repo"))
 
           result.responseCode should be (404)
+        }
+      }
+      "not allow him to do so" when {
+        "user has no access to repository name pattern" in {
+          val uniqueRepositoryName = RepositoryNameGenerator.next("dev3-repo")
+          adminSnapshotManager.putRepository(uniqueRepositoryName).force()
+
+          val result = dev2SnapshotManager.getRepository("dev3*")
+
+          result.responseCode should be (403)
         }
       }
     }
