@@ -26,3 +26,6 @@ readonlyrest:
     - name: "test3"
       indices: ["test3_index"]
       auth_key: dev3:test
+
+    - name: "test4"
+      auth_key: dev4:test

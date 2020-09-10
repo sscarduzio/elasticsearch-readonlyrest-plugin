@@ -34,7 +34,8 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
                                                override val threadPool: ThreadPool)
   extends BaseIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def indicesFrom(request: ClusterAllocationExplainRequest): Set[IndexName] = getIndexFrom(request).toSet
+  override protected def indicesFrom(request: ClusterAllocationExplainRequest): Set[IndexName] =
+    getIndexFrom(request).toSet
 
   override protected def update(request: ClusterAllocationExplainRequest,
                                 indices: NonEmptyList[IndexName]): ModificationResult = {
@@ -45,8 +46,10 @@ class ClusterAllocationExplainEsRequestContext(actionRequest: ClusterAllocationE
         }
         updateIndexIn(request, indices.head)
         Modified
+      case None if indices.exists(_ === IndexName.wildcard) =>
+        Modified
       case None =>
-        logger.error(s"[${id.show}] Cluster allocation explain request without index name is unavailable")
+        logger.error(s"[${id.show}] Cluster allocation explain request without index name is unavailable when block contains `indices` rule")
         ShouldBeInterrupted
     }
   }
