@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, B
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, FieldsRestrictions, Header}
+import tech.beshu.ror.accesscontrol.fls.FLS.Strategy
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -44,26 +45,26 @@ class FieldsRule(val settings: Settings)
         case Some(resolvedFields) =>
           val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
 
-          //hybrid approach
-          if (blockContext.requestContext.requiresContextHeaderForFLS) {
-            val transientFieldsHeader = new Header(
-              Name.transientFields,
-              transientFieldsToHeaderValue.toRawValue(FieldsRestrictions(resolvedFields, settings.accessMode))
-            )
-            RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
-          } else {
-            BlockContextUpdater[B] match {
-              case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
-              case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
-              case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
-              case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
-              case TemplateRequestBlockContextUpdater => Fulfilled(blockContext)
-              case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
-              case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
-              case AliasRequestBlockContextUpdater => Fulfilled(blockContext)
-              case FilterableRequestBlockContextUpdater => addFields(blockContext, fieldsRestrictions)
-              case FilterableMultiRequestBlockContextUpdater => addFields(blockContext, fieldsRestrictions)
-            }
+          blockContext.requestContext.flsStrategy match {
+            case Strategy.LuceneLowLevelApproach =>
+              val transientFieldsHeader = new Header(
+                Name.transientFields,
+                transientFieldsToHeaderValue.toRawValue(FieldsRestrictions(resolvedFields, settings.accessMode))
+              )
+              RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
+            case _: Strategy.BasedOnESRequestContext =>
+              BlockContextUpdater[B] match {
+                case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
+                case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+                case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
+                case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
+                case TemplateRequestBlockContextUpdater => Fulfilled(blockContext)
+                case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+                case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+                case AliasRequestBlockContextUpdater => Fulfilled(blockContext)
+                case FilterableRequestBlockContextUpdater => addFields(blockContext, fieldsRestrictions)
+                case FilterableMultiRequestBlockContextUpdater => addFields(blockContext, fieldsRestrictions)
+              }
           }
         case _ =>
           RuleResult.Rejected()

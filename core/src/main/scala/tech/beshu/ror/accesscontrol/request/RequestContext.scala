@@ -28,9 +28,12 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.fls.FLS
+import tech.beshu.ror.accesscontrol.fls.FLS.Strategy
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
@@ -75,7 +78,7 @@ trait RequestContext {
 
   def isAllowedForDLS: Boolean
 
-  def requiresContextHeaderForFLS: Boolean
+  def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy
 
   def hasRemoteClusters: Boolean
 }

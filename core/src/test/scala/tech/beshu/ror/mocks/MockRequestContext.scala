@@ -23,7 +23,9 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.fls.FLS
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.fls.FieldsPolicy
 
 object MockRequestContext {
   def indices(implicit clock: Clock = Clock.systemUTC()): MockGeneralIndexRequestContext =
@@ -60,10 +62,11 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 override val hasRemoteClusters: Boolean = false,
-                                                override val requiresContextHeaderForFLS: Boolean = true,
                                                 indices: Set[IndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
+
+  override def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, Set.empty, indices
@@ -88,10 +91,11 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val isReadOnlyRequest: Boolean = true,
                                           override val isAllowedForDLS: Boolean = true,
                                           override val hasRemoteClusters: Boolean = false,
-                                          override val requiresContextHeaderForFLS: Boolean = true,
                                           indices: Set[IndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
+
+  override def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, Set.empty, indices, None
@@ -116,10 +120,11 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 override val hasRemoteClusters: Boolean = false,
-                                                override val requiresContextHeaderForFLS: Boolean = true,
                                                 repositories: Set[RepositoryName])
   extends RequestContext {
   override type BLOCK_CONTEXT = RepositoryRequestBlockContext
+
+  override def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, Set.empty, repositories
@@ -144,10 +149,11 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val isReadOnlyRequest: Boolean = true,
                                              override val isAllowedForDLS: Boolean = true,
                                              override val hasRemoteClusters: Boolean = false,
-                                             override val requiresContextHeaderForFLS: Boolean = true,
                                              snapshots: Set[SnapshotName])
   extends RequestContext {
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
+
+  override def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, Set.empty, snapshots, Set.empty, Set.empty
@@ -171,10 +177,11 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
-                                                override val hasRemoteClusters: Boolean = false,
-                                                override val requiresContextHeaderForFLS: Boolean = true)
+                                                override val hasRemoteClusters: Boolean = false)
   extends RequestContext {
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
+
+  override def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this, UserMetadata.empty, Set.empty, Set.empty

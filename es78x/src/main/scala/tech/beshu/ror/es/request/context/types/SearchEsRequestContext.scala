@@ -23,13 +23,16 @@ import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.fls.FLS
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.queries.QueryModificationEligibility
+import tech.beshu.ror.es.request.queries.{QueryModificationEligibility, ops}
 import tech.beshu.ror.es.request.queries.QueryModificationEligibility.{ModificationImpossible, ModificationPossible}
+import tech.beshu.ror.es.request.queries.ops.resolveFLSStrategy
+import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.ScalaOps._
 
 
@@ -40,9 +43,11 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                              override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override val requiresContextHeaderForFLS: Boolean = {
+  override def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy = {
+
+    val queryResult =
     Option(actionRequest.source().query())
-      .map(QueryModificationEligibility.resolveModificationEligibility)
+      .map(resolveFLSStrategy(fieldsPolicy))
       .exists {
         case ModificationImpossible => true
         case _: ModificationPossible[_] => false
