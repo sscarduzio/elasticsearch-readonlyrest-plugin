@@ -46,7 +46,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override def fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.UsingFields.CantExtractFields
+  override def fieldsUsage: FLS.RequestFieldsUsage = FLS.RequestFieldsUsage.UsingFields.CantExtractFields
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,

@@ -27,10 +27,10 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, B
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, Fields, FieldsRestrictions, Header}
-import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.UsingFields.FieldsExtractable.UsedField.{FieldWithWildcard, SpecificField}
-import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.UsingFields.{CantExtractFields, FieldsExtractable}
+import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.UsingFields.FieldsExtractable.UsedField.{FieldWithWildcard, SpecificField}
+import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.UsingFields.{CantExtractFields, FieldsExtractable}
 import tech.beshu.ror.accesscontrol.fls.FLS.Strategy.{BasedOnESRequestContext, LuceneLowLevelApproach}
-import tech.beshu.ror.accesscontrol.fls.FLS.{FieldsUsage, Strategy}
+import tech.beshu.ror.accesscontrol.fls.FLS.{RequestFieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.fls.FieldsPolicy
@@ -50,7 +50,7 @@ class FieldsRule(val settings: Settings)
         case Some(resolvedFields) =>
           val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
 
-          resolveFLSStrategy(blockContext.requestContext.fieldsUsage, fieldsRestrictions) match {
+          resolveFLSStrategy(blockContext.requestContext.requestFieldsUsage, fieldsRestrictions) match {
             case Strategy.LuceneLowLevelApproach =>
               val transientFieldsHeader = new Header(
                 Name.transientFields,
@@ -78,11 +78,11 @@ class FieldsRule(val settings: Settings)
     }
   }
 
-  def resolveFLSStrategy(fieldsUsage: FieldsUsage,
+  def resolveFLSStrategy(fieldsUsage: RequestFieldsUsage,
                          fieldsRestrictions: FieldsRestrictions): Strategy = fieldsUsage match {
     case CantExtractFields =>
       LuceneLowLevelApproach
-    case FieldsUsage.NotUsingFields =>
+    case RequestFieldsUsage.NotUsingFields =>
       BasedOnESRequestContext.NothingNotAllowedToModify
     case fieldsExtractable: FieldsExtractable =>
       val (specificFields, fieldsWithWildcard) = fieldsExtractable.usedFields.partitionEither {

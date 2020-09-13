@@ -66,7 +66,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
 
-  override def fieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
+  override def requestFieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, Set.empty, indices
@@ -95,7 +95,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
 
-  override def fieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
+  override def requestFieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, Set.empty, indices, None
@@ -124,7 +124,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
   extends RequestContext {
   override type BLOCK_CONTEXT = RepositoryRequestBlockContext
 
-  override def fieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
+  override def requestFieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, Set.empty, repositories
@@ -153,7 +153,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
   extends RequestContext {
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
 
-  override def fieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
+  override def requestFieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, Set.empty, snapshots, Set.empty, Set.empty
@@ -181,7 +181,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
   extends RequestContext {
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
 
-  override def fieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
+  override def requestFieldsUsage(): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
 
   override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this, UserMetadata.empty, Set.empty, Set.empty

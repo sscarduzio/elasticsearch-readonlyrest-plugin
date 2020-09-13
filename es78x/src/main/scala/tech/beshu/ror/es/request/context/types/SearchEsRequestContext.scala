@@ -23,7 +23,7 @@ import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage
+import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchHitOps._
@@ -40,19 +40,19 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                              override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override def fieldsUsage: FieldsUsage = {
+  override def requestFieldsUsage: RequestFieldsUsage = {
     Option(actionRequest.source().scriptFields()) match {
       case Some(scriptFields) if scriptFields.size() > 0 =>
-        FieldsUsage.UsingFields.CantExtractFields
+        RequestFieldsUsage.CantExtractFields
       case _ =>
         checkQueryFields()
     }
   }
 
-  def checkQueryFields(): FieldsUsage = {
+  def checkQueryFields(): RequestFieldsUsage = {
     Option(actionRequest.source().query())
       .map(resolveQueryFieldsUsageIn)
-      .getOrElse(FieldsUsage.NotUsingFields)
+      .getOrElse(RequestFieldsUsage.NotUsingFields)
   }
 
   override protected def indicesFrom(request: SearchRequest): Set[IndexName] = {
