@@ -23,16 +23,13 @@ import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.fls.FLS
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.queries.{QueryModificationEligibility, ops}
-import tech.beshu.ror.es.request.queries.QueryModificationEligibility.{ModificationImpossible, ModificationPossible}
-import tech.beshu.ror.es.request.queries.ops.resolveFLSStrategy
-import tech.beshu.ror.fls.FieldsPolicy
+import tech.beshu.ror.es.request.queries.QueryFLS.resolveQueryFieldsUsageIn
 import tech.beshu.ror.utils.ScalaOps._
 
 
@@ -43,15 +40,19 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                              override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy = {
+  override def fieldsUsage: FieldsUsage = {
+    Option(actionRequest.source().scriptFields()) match {
+      case Some(scriptFields) if scriptFields.size() > 0 =>
+        FieldsUsage.UsingFields.CantExtractFields
+      case _ =>
+        checkQueryFields()
+    }
+  }
 
-    val queryResult =
+  def checkQueryFields(): FieldsUsage = {
     Option(actionRequest.source().query())
-      .map(resolveFLSStrategy(fieldsPolicy))
-      .exists {
-        case ModificationImpossible => true
-        case _: ModificationPossible[_] => false
-      }
+      .map(resolveQueryFieldsUsageIn)
+      .getOrElse(FieldsUsage.NotUsingFields)
   }
 
   override protected def indicesFrom(request: SearchRequest): Set[IndexName] = {
@@ -61,16 +62,16 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
   override protected def update(request: SearchRequest,
                                 indices: NonEmptyList[IndexName],
                                 filter: Option[Filter],
-                                fieldsRestrictions: Option[FieldsRestrictions]): ModificationResult = {
+                                fields: Option[Fields]): ModificationResult = {
     request
       .applyFilterToQuery(filter)
-      .modifyFieldsInQuery(fieldsRestrictions)
+      .modifyFieldsInQuery(fields)
       .indices(indices.toList.map(_.value.value): _*)
 
-    ModificationResult.UpdateResponse(filterFieldsFromResponse(fieldsRestrictions))
+    ModificationResult.UpdateResponse(filterFieldsFromResponse(fields))
   }
 
-  private def filterFieldsFromResponse(fields: Option[FieldsRestrictions])
+  private def filterFieldsFromResponse(fields: Option[Fields])
                                       (actionResponse: ActionResponse): Task[ActionResponse] = {
 
     (actionResponse, fields) match {
@@ -78,8 +79,8 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
         response.getHits.getHits
           .foreach { hit =>
             hit
-              .modifySourceFieldsUsing(definedFields)
-              .modifyDocumentFieldsUsing(definedFields)
+              .modifySourceFieldsUsing(definedFields.restrictions)
+              .modifyDocumentFieldsUsing(definedFields.restrictions)
           }
         Task.now(response)
       case _ =>

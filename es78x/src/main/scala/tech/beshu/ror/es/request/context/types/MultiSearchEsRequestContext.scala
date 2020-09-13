@@ -25,7 +25,8 @@ import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.{FieldsRestrictions, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{Fields, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.fls.FLS
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -33,8 +34,6 @@ import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.es.request.queries.QueryModificationEligibility
-import tech.beshu.ror.es.request.queries.QueryModificationEligibility.{ModificationImpossible, ModificationPossible}
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
@@ -47,15 +46,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override val requiresContextHeaderForFLS: Boolean = {
-    actionRequest.requests().asScala
-      .flatMap(request => Option(request.source().query()))
-      .map(QueryModificationEligibility.resolveModificationEligibility)
-      .exists {
-        case ModificationImpossible => true
-        case _: ModificationPossible[_] => false
-      }
-  }
+  override def fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.UsingFields.CantExtractFields
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
@@ -74,9 +65,9 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       requests
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
-          updateRequest(request, pack, blockContext.filter, blockContext.fieldsRestrictions)
+          updateRequest(request, pack, blockContext.filter, blockContext.fields)
         }
-      ModificationResult.UpdateResponse(filterFieldsFromResponse(blockContext.fieldsRestrictions))
+      ModificationResult.UpdateResponse(filterFieldsFromResponse(blockContext.fields))
     } else {
       logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
@@ -84,7 +75,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
   }
 
-  private def filterFieldsFromResponse(fields: Option[FieldsRestrictions])
+  private def filterFieldsFromResponse(fields: Option[Fields])
                                       (actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, fields) match {
       case (response: MultiSearchResponse, Some(definedFields)) =>
@@ -93,8 +84,8 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
           .flatMap(_.getResponse.getHits.getHits)
           .foreach { hit =>
             hit
-              .modifySourceFieldsUsing(definedFields)
-              .modifyDocumentFieldsUsing(definedFields)
+              .modifySourceFieldsUsing(definedFields.restrictions)
+              .modifyDocumentFieldsUsing(definedFields.restrictions)
           }
         Task.now(response)
       case _ =>
@@ -123,7 +114,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   private def updateRequest(request: SearchRequest,
                             indexPack: Indices,
                             filter: Option[Filter],
-                            fields: Option[FieldsRestrictions]) = {
+                            fields: Option[Fields]) = {
     indexPack match {
       case Indices.Found(indices) =>
         updateRequestWithIndices(request, indices)

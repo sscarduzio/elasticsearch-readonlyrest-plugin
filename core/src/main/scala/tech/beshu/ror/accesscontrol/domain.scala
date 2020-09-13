@@ -30,6 +30,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
+import tech.beshu.ror.accesscontrol.fls.FLS
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
@@ -313,6 +314,9 @@ object domain {
 
   final case class FieldsRestrictions(fields: UniqueNonEmptyList[DocumentField],
                                       mode: AccessMode)
+
+  final case class Fields(restrictions: FieldsRestrictions,
+                          strategy: FLS.Strategy.BasedOnESRequestContext)
 
   object FieldsRestrictions {
 

@@ -78,7 +78,7 @@ trait RequestContext {
 
   def isAllowedForDLS: Boolean
 
-  def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy
+  def fieldsUsage: FLS.FieldsUsage
 
   def hasRemoteClusters: Boolean
 }

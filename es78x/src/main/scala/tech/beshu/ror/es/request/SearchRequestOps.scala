@@ -19,8 +19,9 @@ package tech.beshu.ror.es.request
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
-import tech.beshu.ror.accesscontrol.domain.{FieldsRestrictions, Filter}
-import tech.beshu.ror.es.request.queries.BaseFLSQueryUpdater
+import tech.beshu.ror.accesscontrol.domain.{Fields, Filter}
+import tech.beshu.ror.accesscontrol.fls.FLS.Strategy.BasedOnESRequestContext.{NotAllowedFieldsToModify, NothingNotAllowedToModify}
+import tech.beshu.ror.es.request.queries.QueryFLS
 
 object SearchRequestOps extends Logging {
 
@@ -52,13 +53,18 @@ object SearchRequestOps extends Logging {
 
   implicit class FieldsOps(val request: SearchRequest) extends AnyVal {
 
-    def modifyFieldsInQuery(fieldsRestrictions: Option[FieldsRestrictions]): SearchRequest = {
-      fieldsRestrictions match {
+    def modifyFieldsInQuery(fields: Option[Fields]): SearchRequest = {
+      fields match {
         case Some(definedFields) =>
-          val currentQuery = request.source().query()
-          val newQuery = BaseFLSQueryUpdater.adjustUsedFieldsIn(currentQuery, definedFields)
-          request.source().query(newQuery)
-          request
+          definedFields.strategy match {
+            case NotAllowedFieldsToModify(fields) =>
+              val currentQuery = request.source().query()
+              val newQuery = QueryFLS.modifyFieldsIn(currentQuery, fields)
+              request.source().query(newQuery)
+              request
+            case NothingNotAllowedToModify =>
+              request
+          }
         case None =>
           request
       }

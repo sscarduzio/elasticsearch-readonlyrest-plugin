@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
@@ -25,10 +26,14 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFieldsUpdater}
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{DocumentField, FieldsRestrictions, Header}
-import tech.beshu.ror.accesscontrol.fls.FLS.Strategy
+import tech.beshu.ror.accesscontrol.domain.{DocumentField, Fields, FieldsRestrictions, Header}
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.UsingFields.FieldsExtractable.UsedField.{FieldWithWildcard, SpecificField}
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.UsingFields.{CantExtractFields, FieldsExtractable}
+import tech.beshu.ror.accesscontrol.fls.FLS.Strategy.{BasedOnESRequestContext, LuceneLowLevelApproach}
+import tech.beshu.ror.accesscontrol.fls.FLS.{FieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class FieldsRule(val settings: Settings)
@@ -45,14 +50,15 @@ class FieldsRule(val settings: Settings)
         case Some(resolvedFields) =>
           val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
 
-          blockContext.requestContext.flsStrategy match {
+          resolveFLSStrategy(blockContext.requestContext.fieldsUsage, fieldsRestrictions) match {
             case Strategy.LuceneLowLevelApproach =>
               val transientFieldsHeader = new Header(
                 Name.transientFields,
                 transientFieldsToHeaderValue.toRawValue(FieldsRestrictions(resolvedFields, settings.accessMode))
               )
               RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
-            case _: Strategy.BasedOnESRequestContext =>
+            case strategy: Strategy.BasedOnESRequestContext =>
+              val fields = Fields(fieldsRestrictions, strategy)
               BlockContextUpdater[B] match {
                 case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
                 case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
@@ -62,8 +68,8 @@ class FieldsRule(val settings: Settings)
                 case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
                 case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
                 case AliasRequestBlockContextUpdater => Fulfilled(blockContext)
-                case FilterableRequestBlockContextUpdater => addFields(blockContext, fieldsRestrictions)
-                case FilterableMultiRequestBlockContextUpdater => addFields(blockContext, fieldsRestrictions)
+                case FilterableRequestBlockContextUpdater => addFields(blockContext, fields)
+                case FilterableMultiRequestBlockContextUpdater => addFields(blockContext, fields)
               }
           }
         case _ =>
@@ -72,8 +78,41 @@ class FieldsRule(val settings: Settings)
     }
   }
 
+  def resolveFLSStrategy(fieldsUsage: FieldsUsage,
+                         fieldsRestrictions: FieldsRestrictions): Strategy = fieldsUsage match {
+    case CantExtractFields =>
+      LuceneLowLevelApproach
+    case FieldsUsage.NotUsingFields =>
+      BasedOnESRequestContext.NothingNotAllowedToModify
+    case fieldsExtractable: FieldsExtractable =>
+      val (specificFields, fieldsWithWildcard) = fieldsExtractable.usedFields.partitionEither {
+        case specific: SpecificField => Left(specific)
+        case withWildcard: FieldWithWildcard => Right(withWildcard)
+      }
+      if (fieldsWithWildcard.nonEmpty) {
+        LuceneLowLevelApproach
+      } else {
+        verifyIfUsedFieldsAreAllowed(specificFields, fieldsRestrictions)
+      }
+  }
+
+
+  def verifyIfUsedFieldsAreAllowed(usedFields: List[SpecificField],
+                                   fieldsRestrictions: FieldsRestrictions): Strategy = {
+    val fieldsPolicy = new FieldsPolicy(fieldsRestrictions)
+    usedFields
+      .filterNot(field => fieldsPolicy.canKeep(field.value))
+      .toNel match {
+      case Some(notAllowedFields) =>
+        BasedOnESRequestContext.NotAllowedFieldsToModify(notAllowedFields)
+      case None =>
+        BasedOnESRequestContext.NothingNotAllowedToModify
+    }
+  }
+
+
   private def addFields[B <: BlockContext : BlockContextWithFieldsUpdater](blockContext: B,
-                                                                           fields: FieldsRestrictions) = {
+                                                                           fields: Fields) = {
     Fulfilled(blockContext.withFields(fields))
   }
 }

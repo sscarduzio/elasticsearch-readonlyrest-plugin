@@ -1,9 +1,10 @@
 package tech.beshu.ror.accesscontrol.fls
 
 import cats.data.NonEmptyList
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.UsingFields.FieldsExtractable.UsedField
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.UsingFields.FieldsExtractable.UsedField.SpecificField
 
 object FLS {
-
 
   sealed trait Strategy
   object Strategy {
@@ -11,24 +12,42 @@ object FLS {
     sealed trait BasedOnESRequestContext extends Strategy
 
     object BasedOnESRequestContext {
-      case object NoQuerySpecified extends BasedOnESRequestContext
-      sealed trait QuerySpecified extends BasedOnESRequestContext
+      case object NothingNotAllowedToModify extends BasedOnESRequestContext
+      final case class NotAllowedFieldsToModify(fields: NonEmptyList[SpecificField]) extends BasedOnESRequestContext
 
-      object QuerySpecified {
-        case object NoFieldsInQuery extends QuerySpecified
-        final case class QueryWithFields(fields: List[UsedField]) extends QuerySpecified
-
-        final case class UsedField(value: String) extends AnyVal
-      }
+      final case class NotAllowedField(value: String) extends AnyVal
     }
   }
 
-  sealed trait QueryNotAllowedFieldsDetectionResult
-  object QueryNotAllowedFieldsDetectionResult {
+  sealed trait FieldsUsage
 
-    case object DoesNotContainNotAllowedFields extends QueryNotAllowedFieldsDetectionResult
-    final case class ContainsNotAllowedFields(fields: NonEmptyList[NotAllowedField]) extends QueryNotAllowedFieldsDetectionResult
+  object FieldsUsage {
+    case object NotUsingFields extends FieldsUsage
+    sealed trait UsingFields extends FieldsUsage
 
-    final case class NotAllowedField(fieldName: String) extends AnyVal
+    object UsingFields {
+      case object CantExtractFields extends UsingFields
+      final case class FieldsExtractable(usedFields: List[UsedField]) extends UsingFields
+
+      object FieldsExtractable {
+        sealed trait UsedField {
+          def value: String
+        }
+
+        object UsedField {
+          final case class SpecificField private(value: String) extends UsedField
+          final case class FieldWithWildcard private(value: String) extends UsedField
+
+          def apply(value: String): UsedField = {
+            if (hasWildcard(value)) FieldWithWildcard(value)
+            else SpecificField(value)
+          }
+
+          private def hasWildcard(fieldName: String): Boolean = fieldName.contains("*")
+        }
+
+        def one(field: String): FieldsExtractable = FieldsExtractable(List(UsedField(field)))
+      }
+    }
   }
 }

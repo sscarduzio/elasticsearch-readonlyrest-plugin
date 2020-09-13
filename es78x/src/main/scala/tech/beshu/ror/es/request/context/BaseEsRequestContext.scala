@@ -139,7 +139,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override def flsStrategy(fieldsPolicy: FieldsPolicy): FLS.Strategy = FLS.Strategy.LuceneLowLevelApproach
+  override def fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.UsingFields.CantExtractFields
 
   override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 
