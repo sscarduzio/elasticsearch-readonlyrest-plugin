@@ -21,7 +21,8 @@ import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import tech.beshu.ror.accesscontrol.domain.{Fields, Filter}
 import tech.beshu.ror.accesscontrol.fls.FLS.Strategy.BasedOnESRequestContext.{NotAllowedFieldsToModify, NothingNotAllowedToModify}
-import tech.beshu.ror.es.request.queries.QueryFLS
+import tech.beshu.ror.es.request.queries.QueryWithModifiableFields._
+import tech.beshu.ror.es.request.queries.QueryWithModifiableFields.instances._
 
 object SearchRequestOps extends Logging {
 
@@ -57,9 +58,9 @@ object SearchRequestOps extends Logging {
       fields match {
         case Some(definedFields) =>
           definedFields.strategy match {
-            case NotAllowedFieldsToModify(fields) =>
+            case NotAllowedFieldsToModify(notAllowedFields) =>
               val currentQuery = request.source().query()
-              val newQuery = QueryFLS.modifyFieldsIn(currentQuery, fields)
+              val newQuery = currentQuery.handleNotAllowedFields(notAllowedFields)
               request.source().query(newQuery)
               request
             case NothingNotAllowedToModify =>

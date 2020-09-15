@@ -29,7 +29,8 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.queries.QueryFLS.resolveQueryFieldsUsageIn
+import tech.beshu.ror.es.request.queries.QueryFieldsUsage._
+import tech.beshu.ror.es.request.queries.QueryFieldsUsage.instances._
 import tech.beshu.ror.utils.ScalaOps._
 
 
@@ -51,7 +52,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
 
   def checkQueryFields(): RequestFieldsUsage = {
     Option(actionRequest.source().query())
-      .map(resolveQueryFieldsUsageIn)
+      .map(_.fieldsUsage)
       .getOrElse(RequestFieldsUsage.NotUsingFields)
   }
 
@@ -63,6 +64,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                                 indices: NonEmptyList[IndexName],
                                 filter: Option[Filter],
                                 fields: Option[Fields]): ModificationResult = {
+    optionallyDisableCaching()
     request
       .applyFilterToQuery(filter)
       .modifyFieldsInQuery(fields)
@@ -85,6 +87,13 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
         Task.now(response)
       case _ =>
         Task.now(actionResponse)
+    }
+  }
+
+  private def optionallyDisableCaching(): Unit = {
+    if (esContext.involvesFields) {
+      logger.debug("ACL involves fields, will disable request cache for SearchRequest")
+      actionRequest.requestCache(false)
     }
   }
 }

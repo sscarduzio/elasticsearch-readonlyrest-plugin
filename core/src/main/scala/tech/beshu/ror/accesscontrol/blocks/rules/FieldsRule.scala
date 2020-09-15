@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, B
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{DocumentField, Fields, FieldsRestrictions, Header}
-import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.UsingFields.FieldsExtractable.UsedField.{FieldWithWildcard, SpecificField}
-import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.UsingFields.{CantExtractFields, FieldsExtractable}
+import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.UsedField.{FieldWithWildcard, SpecificField}
+import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.accesscontrol.fls.FLS.Strategy.{BasedOnESRequestContext, LuceneLowLevelApproach}
 import tech.beshu.ror.accesscontrol.fls.FLS.{RequestFieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
@@ -78,27 +78,26 @@ class FieldsRule(val settings: Settings)
     }
   }
 
-  def resolveFLSStrategy(fieldsUsage: RequestFieldsUsage,
-                         fieldsRestrictions: FieldsRestrictions): Strategy = fieldsUsage match {
+  private def resolveFLSStrategy(fieldsUsage: RequestFieldsUsage,
+                                 fieldsRestrictions: FieldsRestrictions): Strategy = fieldsUsage match {
     case CantExtractFields =>
       LuceneLowLevelApproach
-    case RequestFieldsUsage.NotUsingFields =>
+    case NotUsingFields =>
       BasedOnESRequestContext.NothingNotAllowedToModify
-    case fieldsExtractable: FieldsExtractable =>
-      val (specificFields, fieldsWithWildcard) = fieldsExtractable.usedFields.partitionEither {
+    case UsingFields(usedFields) =>
+      val (specificFields, fieldsWithWildcard) = usedFields.toList.partitionEither {
         case specific: SpecificField => Left(specific)
         case withWildcard: FieldWithWildcard => Right(withWildcard)
       }
-      if (fieldsWithWildcard.nonEmpty) {
+      if (fieldsWithWildcard.nonEmpty)
         LuceneLowLevelApproach
-      } else {
+      else
         verifyIfUsedFieldsAreAllowed(specificFields, fieldsRestrictions)
-      }
   }
 
 
-  def verifyIfUsedFieldsAreAllowed(usedFields: List[SpecificField],
-                                   fieldsRestrictions: FieldsRestrictions): Strategy = {
+  private def verifyIfUsedFieldsAreAllowed(usedFields: List[SpecificField],
+                                           fieldsRestrictions: FieldsRestrictions): Strategy = {
     val fieldsPolicy = new FieldsPolicy(fieldsRestrictions)
     usedFields
       .filterNot(field => fieldsPolicy.canKeep(field.value))
@@ -109,7 +108,6 @@ class FieldsRule(val settings: Settings)
         BasedOnESRequestContext.NothingNotAllowedToModify
     }
   }
-
 
   private def addFields[B <: BlockContext : BlockContextWithFieldsUpdater](blockContext: B,
                                                                            fields: Fields) = {
