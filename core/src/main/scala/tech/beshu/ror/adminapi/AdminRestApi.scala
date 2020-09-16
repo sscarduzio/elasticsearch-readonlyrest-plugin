@@ -152,9 +152,9 @@ object AdminRestApi extends Logging {
 
   val forceReloadRorPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "refreshconfig"))
   val updateIndexConfigurationPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config" ))
-  @deprecated("use provideRorConfigPath instead")
+  //deprecated("use provideRorConfigPath instead")
   val provideRorFileConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config", "file"))
-  @deprecated("use provideRorConfigPath instead")
+  //deprecated("use provideRorConfigPath instead")
   val provideRorIndexConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config"))
   val provideRorConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config", "load"))
 
