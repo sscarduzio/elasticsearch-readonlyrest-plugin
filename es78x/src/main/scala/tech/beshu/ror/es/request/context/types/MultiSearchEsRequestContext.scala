@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBl
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.{Fields, Filter, IndexName}
-import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.{CantExtractFields, NotUsingFields}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -36,9 +36,9 @@ import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage._
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage.instances._
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
@@ -50,43 +50,6 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override def requestFieldsUsage: RequestFieldsUsage = {
-    NonEmptyList.fromList(actionRequest.requests().asScala.toList) match {
-      case Some(definedRequests) =>
-        val innerFieldsUsage = definedRequests.map(checkSingleSearchRequest)
-
-        if (innerFieldsUsage.exists(_ == CantExtractFields)) {
-          CantExtractFields
-        } else if (innerFieldsUsage.forall(_ == NotUsingFields)) {
-          NotUsingFields
-        } else {
-          val allUsedFields = innerFieldsUsage
-            .collect {
-              case usingFields: UsingFields => usingFields.usedFields
-            }
-
-          NonEmptyList.fromList(allUsedFields)
-            .map(_.flatMap(identity))
-            .map(UsingFields)
-            .getOrElse(NotUsingFields)
-        }
-      case None => NotUsingFields
-    }
-  }
-
-  def checkSingleSearchRequest(searchRequest: SearchRequest): RequestFieldsUsage =
-    Option(searchRequest.source().scriptFields()) match {
-      case Some(scriptFields) if scriptFields.size() > 0 =>
-        RequestFieldsUsage.CantExtractFields
-      case _ =>
-        checkQueryFieldsOf(searchRequest)
-    }
-
-  def checkQueryFieldsOf(searchRequest: SearchRequest): RequestFieldsUsage = {
-    Option(searchRequest.source().query())
-      .map(_.fieldsUsage)
-      .getOrElse(RequestFieldsUsage.NotUsingFields)
-  }
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
     UserMetadata.from(this),
@@ -112,6 +75,31 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
       ShouldBeInterrupted
     }
+  }
+
+  override def fieldsUsage: FieldsUsage = {
+    NonEmptyList.fromList(actionRequest.requests().asScala.toList) match {
+      case Some(definedRequests) =>
+        definedRequests
+          .map(checkFieldsUsageForSingleSearchRequest)
+          .combineAll
+      case None =>
+        NotUsingFields
+    }
+  }
+
+  private def checkFieldsUsageForSingleSearchRequest(searchRequest: SearchRequest): FieldsUsage =
+    Option(searchRequest.source().scriptFields()) match {
+      case Some(scriptFields) if scriptFields.size() > 0 =>
+        CantExtractFields
+      case _ =>
+        checkQueryFieldsIn(searchRequest)
+    }
+
+  private def checkQueryFieldsIn(searchRequest: SearchRequest): FieldsUsage = {
+    Option(searchRequest.source().query())
+      .map(_.fieldsUsage)
+      .getOrElse(NotUsingFields)
   }
 
   private def filterFieldsFromResponse(fields: Option[Fields])

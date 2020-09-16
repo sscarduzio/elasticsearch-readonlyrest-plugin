@@ -17,15 +17,17 @@
 package tech.beshu.ror.es.request.queries
 
 import cats.data.NonEmptyList
+import cats.implicits._
+
 import org.elasticsearch.index.query._
-import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.{CantExtractFields, NotUsingFields, UsedField, UsingFields}
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.{CantExtractFields, NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.es.request.queries.QueryType.instances._
 import tech.beshu.ror.es.request.queries.QueryType.{Compound, Leaf}
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 
 trait QueryFieldsUsage[QUERY <: QueryBuilder] {
-  def fieldsIn(query: QUERY): RequestFieldsUsage
+  def fieldsIn(query: QUERY): FieldsUsage
 }
 
 object QueryFieldsUsage {
@@ -88,28 +90,13 @@ object QueryFieldsUsage {
       leafQuery.fieldsUsage
     }
 
-    private def resolveFieldsUsageForCompoundQuery[QUERY <: QueryBuilder : Compound](compoundQuery: QUERY): RequestFieldsUsage = {
+    private def resolveFieldsUsageForCompoundQuery[QUERY <: QueryBuilder : Compound](compoundQuery: QUERY): FieldsUsage = {
       val innerQueries = Compound[QUERY].innerQueriesOf(compoundQuery)
-
       NonEmptyList.fromList(innerQueries) match {
         case Some(definedInnerQueries) =>
-          val innerQueriesFieldsUsage = definedInnerQueries.map(_.fieldsUsage)
-
-          if (innerQueriesFieldsUsage.exists(_ == CantExtractFields)) {
-            CantExtractFields
-          } else if (innerQueriesFieldsUsage.forall(_ == NotUsingFields)) {
-            NotUsingFields
-          } else {
-            val allUsedFields = innerQueriesFieldsUsage
-              .collect {
-                case usingFields: UsingFields => usingFields.usedFields
-              }
-
-            NonEmptyList.fromList(allUsedFields)
-              .map(_.flatMap(identity))
-              .map(UsingFields)
-              .getOrElse(NotUsingFields)
-          }
+          definedInnerQueries
+            .map(_.fieldsUsage)
+            .combineAll
         case None =>
           NotUsingFields
       }

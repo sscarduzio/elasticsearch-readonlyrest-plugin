@@ -19,8 +19,8 @@ package tech.beshu.ror.es.request.queries
 import cats.data.NonEmptyList
 import cats.syntax.list._
 import org.elasticsearch.index.query._
-import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
-import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.UsedField.SpecificField
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.es.request.queries.QueryType.{Compound, Leaf}
 
 import scala.collection.JavaConverters._

@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.DocumentField
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -41,6 +42,7 @@ class FieldsRuleTests extends WordSpec with MockFactory {
         val rule = new FieldsRule(FieldsRule.Settings(fields, AccessMode.Whitelist))
         val requestContext = mock[RequestContext]
         (requestContext.isReadOnlyRequest _).expects().returning(true)
+        (requestContext.fieldsUsage _).expects().returning(FieldsUsage.CantExtractFields)
 
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
 

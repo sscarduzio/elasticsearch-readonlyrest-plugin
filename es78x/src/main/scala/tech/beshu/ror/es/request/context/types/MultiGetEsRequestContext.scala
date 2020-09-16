@@ -49,7 +49,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override def requestFieldsUsage: FLS.RequestFieldsUsage = FLS.RequestFieldsUsage.NotUsingFields
+  override def fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.NotUsingFields
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,

@@ -139,7 +139,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override def requestFieldsUsage: FLS.RequestFieldsUsage = FLS.RequestFieldsUsage.CantExtractFields
+  override def fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.CantExtractFields
 
   override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 

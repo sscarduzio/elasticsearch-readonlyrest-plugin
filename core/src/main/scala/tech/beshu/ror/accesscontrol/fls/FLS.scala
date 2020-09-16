@@ -17,13 +17,14 @@
 package tech.beshu.ror.accesscontrol.fls
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.fls.FLS.RequestFieldsUsage.UsedField.SpecificField
+import cats.kernel.Monoid
+import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.UsedField.SpecificField
 
 object FLS {
 
   sealed trait Strategy
   object Strategy {
-    case object LuceneLowLevelApproach extends Strategy
+    case object LuceneContextHeaderApproach extends Strategy
     sealed trait BasedOnESRequestContext extends Strategy
 
     object BasedOnESRequestContext {
@@ -32,12 +33,12 @@ object FLS {
     }
   }
 
-  sealed trait RequestFieldsUsage
-  object RequestFieldsUsage {
+  sealed trait FieldsUsage
+  object FieldsUsage {
 
-    case object CantExtractFields extends RequestFieldsUsage
-    case object NotUsingFields extends RequestFieldsUsage
-    final case class UsingFields(usedFields: NonEmptyList[UsedField]) extends RequestFieldsUsage
+    case object CantExtractFields extends FieldsUsage
+    case object NotUsingFields extends FieldsUsage
+    final case class UsingFields(usedFields: NonEmptyList[UsedField]) extends FieldsUsage
 
     sealed trait UsedField {
       def value: String
@@ -46,6 +47,7 @@ object FLS {
     final case class ObfuscatedRandomField(value: String) extends AnyVal
     object ObfuscatedRandomField {
       def apply(from: SpecificField) = {
+        //TODO
         val randomValue = "ROR123123123123123"
         new ObfuscatedRandomField(randomValue)
       }
@@ -64,11 +66,21 @@ object FLS {
       final case class FieldWithWildcard private(value: String) extends UsedField
 
       def apply(value: String): UsedField = {
-        if (hasWildcard(value)) FieldWithWildcard(value)
-        else SpecificField(value)
+        if (hasWildcard(value))
+          FieldWithWildcard(value)
+        else
+          SpecificField(value)
       }
 
       private def hasWildcard(fieldName: String): Boolean = fieldName.contains("*")
     }
+
+    implicit val monoidInstance: Monoid[FieldsUsage] = Monoid.instance(NotUsingFields, {
+      case (CantExtractFields, _) => CantExtractFields
+      case (_, CantExtractFields) => CantExtractFields
+      case (other, NotUsingFields) => other
+      case (NotUsingFields, other) => other
+      case (UsingFields(firstFields), UsingFields(secondFields)) => UsingFields(firstFields ::: secondFields)
+    })
   }
 }
