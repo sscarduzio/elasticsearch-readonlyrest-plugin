@@ -20,7 +20,7 @@ import cats.Eq
 import cats.implicits._
 import io.circe.syntax._
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
-import tech.beshu.ror.configuration.loader.distributed.dto.ResultDTO
+import tech.beshu.ror.configuration.loader.external.dto.ResultDTO
 
 final case class NodesResponse private(resultDTO: ResultDTO) extends AnyVal
 
