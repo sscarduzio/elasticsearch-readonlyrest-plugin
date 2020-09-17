@@ -56,7 +56,7 @@ configurations {
 }
 
 dependencies {
-    compile  project(path: ':es74x')
+    compile  project(path: ':es78x')
 
     compile  group: 'org.elasticsearch.client',             name: 'elasticsearch-rest-high-level-client',   version: esVersion
     compile  group: 'org.javassist',                        name: 'javassist',                              version: '3.26.0-GA'

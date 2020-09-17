@@ -41,8 +41,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -57,13 +57,6 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 
 object header {
-
-  class FlatHeader(val header: Header) extends AnyVal {
-    def flatten: String = s"${header.name.value.value.toLowerCase()}:${header.value}"
-  }
-  object FlatHeader {
-    implicit def from(header: Header): FlatHeader = new FlatHeader(header)
-  }
 
   class ToTuple(val header: Header) extends AnyVal {
     def toTuple: (String, String) = (header.name.value.value, header.value.value)
@@ -112,6 +105,12 @@ object orders {
   }
   implicit val repositoryOrder: Order[RepositoryName] = Order.by(_.value.value)
   implicit val snapshotOrder: Order[SnapshotName] = Order.by(_.value.value)
+  implicit def accessOrder[T : Order]: Order[AccessRequirement[T]] = Order.from {
+    case (MustBeAbsent(v1), MustBeAbsent(v2)) => v1.compare(v2)
+    case (MustBePresent(v1), MustBePresent(v2)) => v1.compare(v2)
+    case (MustBePresent(_), _) => -1
+    case (_, MustBePresent(_)) => 1
+  }
 }
 
 object show {
@@ -267,6 +266,11 @@ object show {
       case AuthorizationValueError.EmptyAuthorizationValue => "Empty authorization value"
       case AuthorizationValueError.InvalidHeaderFormat(value) => s"Unexpected header format in ror_metadata: [$value]"
       case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [$value], reason: [$message]"
+    }
+
+    implicit def accessShow[T : Show]: Show[AccessRequirement[T]] = Show.show {
+      case MustBePresent(value) => value.show
+      case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
     }
   }
 }

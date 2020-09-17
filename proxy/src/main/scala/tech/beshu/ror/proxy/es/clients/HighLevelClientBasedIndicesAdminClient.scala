@@ -12,6 +12,7 @@ import org.elasticsearch.action.admin.indices.analyze.{AnalyzeAction, AnalyzeReq
 import org.elasticsearch.action.admin.indices.cache.clear.{ClearIndicesCacheAction, ClearIndicesCacheRequest, ClearIndicesCacheRequestBuilder, ClearIndicesCacheResponse}
 import org.elasticsearch.action.admin.indices.close.{CloseIndexAction, CloseIndexRequest, CloseIndexRequestBuilder, CloseIndexResponse}
 import org.elasticsearch.action.admin.indices.create.{CreateIndexAction, CreateIndexRequest, CreateIndexRequestBuilder, CreateIndexResponse}
+import org.elasticsearch.action.admin.indices.datastream.{CreateDataStreamAction, DeleteDataStreamAction, GetDataStreamsAction}
 import org.elasticsearch.action.admin.indices.delete.{DeleteIndexAction, DeleteIndexRequest, DeleteIndexRequestBuilder}
 import org.elasticsearch.action.admin.indices.exists.indices.{IndicesExistsAction, IndicesExistsRequest, IndicesExistsRequestBuilder, IndicesExistsResponse}
 import org.elasticsearch.action.admin.indices.exists.types.{TypesExistsRequest, TypesExistsRequestBuilder, TypesExistsResponse}
@@ -38,7 +39,7 @@ import org.elasticsearch.action.admin.indices.upgrade.post.{UpgradeRequest, Upgr
 import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryAction, ValidateQueryRequest, ValidateQueryRequestBuilder, ValidateQueryResponse}
 import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.IndicesAdminClient
-import org.elasticsearch.cluster.metadata.AliasMetaData
+import org.elasticsearch.cluster.metadata.AliasMetadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter
@@ -234,7 +235,7 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
             case Some(ex) => throw ex
             case None =>
               val aliases = ImmutableOpenMap
-                .builder[String, java.util.List[AliasMetaData]]()
+                .builder[String, java.util.List[AliasMetadata]]()
                 .putAll(resp.getAliases.asScala.mapValues(_.asScala.toList.asJava).asJava)
                 .build()
               new GetAliasesResponse(aliases)
@@ -362,13 +363,28 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
 
   override def prepareRolloverIndex(sourceAlias: String): RolloverRequestBuilder = throw NotDefinedForRorProxy
 
-  override def rolloversIndex(request: RolloverRequest): ActionFuture[RolloverResponse] = throw NotDefinedForRorProxy
+  override def rolloverIndex(request: RolloverRequest): ActionFuture[RolloverResponse] = throw NotDefinedForRorProxy
 
   override def rolloverIndex(request: RolloverRequest, listener: ActionListener[RolloverResponse]): Unit = {
     execute(RolloverAction.INSTANCE.name(), request, listener) {
       esClient.rolloverIndex
     }
   }
+
+  override def createDataStream(request: CreateDataStreamAction.Request,
+                                listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+
+  override def createDataStream(request: CreateDataStreamAction.Request): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
+
+  override def deleteDataStream(request: DeleteDataStreamAction.Request,
+                                listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+
+  override def deleteDataStream(request: DeleteDataStreamAction.Request): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
+
+  override def getDataStreams(request: GetDataStreamsAction.Request,
+                              listener: ActionListener[GetDataStreamsAction.Response]): Unit = throw NotDefinedForRorProxy
+
+  override def getDataStreams(request: GetDataStreamsAction.Request): ActionFuture[GetDataStreamsAction.Response] = throw NotDefinedForRorProxy
 
   override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response],
                                                                              request: Request): ActionFuture[Response] =
@@ -380,5 +396,4 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
     throw NotDefinedForRorProxy
 
   override def threadPool(): ThreadPool = throw NotDefinedForRorProxy
-
 }

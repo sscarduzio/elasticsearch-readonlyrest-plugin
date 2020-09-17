@@ -19,7 +19,12 @@ fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
     echo ">>> proxy => Running testcontainers.."
-    ./gradlew integration-tests:test '-PesModule=es74x' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
+    ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es79x" ]]; then
+    echo ">>> es78x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es79x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es78x" ]]; then
@@ -236,18 +241,11 @@ if [[ $TRAVIS_PULL_REQUEST = "false" ]] && [[ $ROR_TASK == "publish_artifacts" ]
     CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
     PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
 
-    # Check if this tag already exists, so we don't overwrite builds
-    if git tag --list | egrep -e "^v${PUBLISHED_PLUGIN_VER}_es" > /dev/null; then
-        echo "Skipping publishing audit module artifacts because GIT tag $PUBLISHED_PLUGIN_VER already exists, exiting."
-    else 
-      if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
-        echo ">>> Publishing audit module artifacts to sonatype repo"
-        ./gradlew audit:publishToSonatype
-        ./gradlew audit:closeAndReleaseRepository
-      else
-        echo ">>> Skipping publishing audit module artifacts"
-      fi
-    fi
-    
-    
+    if [[ $CURRENT_PLUGIN_VER == $PUBLISHED_PLUGIN_VER ]]; then
+      echo ">>> Publishing audit module artifacts to sonatype repo"
+      ./gradlew audit:publishToSonatype
+      ./gradlew audit:closeAndReleaseRepository
+    else
+      echo ">>> Skipping publishing audit module artifacts"
+    fi   
 fi

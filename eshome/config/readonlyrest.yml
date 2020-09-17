@@ -5,64 +5,24 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
+  prompt_for_basic_auth: false
+
   access_control_rules:
 
     # ES containter initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
-      auth_key: admin:container
       verbosity: error
+      type: allow
+      auth_key: admin:container
 
-    - name: whitelist_simple
-      auth_key: "user1:pass"
-      indices: ["testfiltera"]
-      fields: ["_source","user1"]
+    - name: "test1"
+      indices: ["test1_index"]
+      auth_key: dev1:test
 
-    - name: whitelist_with_variable
-      auth_key: "user2:pass"
-      indices: ["testfiltera"]
-      fields: ["_source","@{acl:user}"]
+    - name: "test2"
+      indices: ["test2_index"]
+      auth_key: dev2:test
 
-    - name: whitelist_with_variable_user_with_negated_value
-      auth_key: "~user:pass"
-      indices: ["testfiltera"]
-      fields: ["_source","@{acl:user}"]
-
-    - name: whitelist_wildcard
-      auth_key: "user3:pass"
-      indices: ["testfiltera"]
-      fields: ["_source","us*3"]
-
-    - name: blacklist_simple
-      auth_key: "user4:pass"
-      indices: ["testfiltera"]
-      fields: ["~user4"]
-
-    - name: blacklist_with_variable
-      auth_key: "user5:pass"
-      indices: ["testfiltera"]
-      fields: ["~@{acl:user}"]
-
-    - name: blacklist_wildcard
-      auth_key: "user6:pass"
-      indices: ["testfiltera"]
-      fields: ["~us*6"]
-
-    - name: Nested field test1
-      auth_key: "user1:pass"
-      indices: ["nestedtest"]
-      fields: ["_source", "items.endDate", "secrets", "user"]
-
-    - name: Nested field test2
-      auth_key: "user2:pass"
-      indices: ["nestedtest"]
-      fields: ["_source", "items.*Date", "secrets.*", "user.*"]
-
-    - name: Nested field test3
-      auth_key: "user3:pass"
-      indices: ["nestedtest"]
-      fields: ["~items.endDate", "~secrets", "~user"]
-
-    - name: Nested field test4
-      auth_key: "user4:pass"
-      indices: ["nestedtest"]
-      fields: ["~items.*Date", "~secrets.*", "~user.*"]
+    - name: "test3"
+      indices: ["test3_index"]
+      auth_key: dev3:test

@@ -19,13 +19,13 @@ package tech.beshu.ror.configuration
 import java.io.{File => JFile}
 import java.nio.file.{Path, Paths}
 
-import better.files._
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, InternodeSslConfiguration, KeystoreFile, TruststoreFile}
 import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.PrivilegedFile
 
 final case class RorSsl(externalSsl: Option[ExternalSslConfiguration],
                         interNodeSsl: Option[InternodeSslConfiguration])
@@ -37,7 +37,7 @@ object RorSsl extends Logging {
   def load(esConfigFolderPath: Path)
           (implicit envVarsProvider:EnvVarsProvider): Task[Either[MalformedSettings, RorSsl]] = Task {
     implicit val sslDecoder: Decoder[RorSsl] = SslDecoders.rorSslDecoder(esConfigFolderPath)
-    val esConfig = File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
+    val esConfig = PrivilegedFile(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath)
     loadSslConfigFromFile(esConfig)
       .fold(
         error => Left(error),
@@ -60,7 +60,7 @@ object RorSsl extends Logging {
     }
   }
 
-  private def loadSslConfigFromFile(config: File)
+  private def loadSslConfigFromFile(config: PrivilegedFile)
                                    (implicit rorSslDecoder: Decoder[RorSsl],
                                     envVarsProvider: EnvVarsProvider) = {
     new EsConfigFileLoader[RorSsl]().loadConfigFromFile(config, "ROR SSL")

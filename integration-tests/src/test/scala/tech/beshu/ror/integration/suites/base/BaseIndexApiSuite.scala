@@ -211,14 +211,6 @@ trait BaseIndexApiSuite
             aliasResponse.responseJson.obj.size should be(0)
           }
         }
-        "the full name alias is used" when {
-          "there is no matching alias" excludeES("^es55x$".r, allEs6x, allEs7x) in {
-            val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent")
-
-            aliasResponse.responseCode should be(200)
-            aliasResponse.responseJson.obj.size should be(0)
-          }
-        }
       }
       "pretend that index doesn't exist" when {
         "called index really doesn't exist" in {
@@ -232,7 +224,7 @@ trait BaseIndexApiSuite
           aliasResponse.responseCode should be(notFoundIndexStatusReturned)
         }
         "the alias name with wildcard is used" when {
-          "there is no matching alias" excludeES(allEs7x, "^es66x$".r) in {
+          "there is no matching alias" excludeES("^es66x$".r, allEs7x, rorProxy) in {
             val aliasResponse = dev1IndexManager.getAliasByName("index1", "nonexistent*")
 
             aliasResponse.responseCode should be(404)

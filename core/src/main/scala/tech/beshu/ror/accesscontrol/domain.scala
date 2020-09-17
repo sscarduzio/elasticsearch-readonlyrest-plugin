@@ -141,6 +141,14 @@ object domain {
     implicit val eqHeader: Eq[Header] = Eq.by(header => (header.name, header.value.value))
   }
 
+  sealed trait AccessRequirement[T] {
+    def value: T
+  }
+  object AccessRequirement {
+    final case class MustBePresent[T](override val value: T) extends AccessRequirement[T]
+    final case class MustBeAbsent[T](override val value: T) extends AccessRequirement[T]
+  }
+
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
   final case class BasicAuth private(credentials: Credentials) {
     def header: Header = new Header(
@@ -231,6 +239,7 @@ object domain {
     val mSearchAction = Action("indices:data/read/msearch")
     val fieldCapsAction = Action("indices:data/read/field_caps")
     val asyncSearchAction = Action("indices:data/read/async_search/submit")
+    val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }
