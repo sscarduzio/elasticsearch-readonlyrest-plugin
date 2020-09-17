@@ -20,6 +20,7 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly.{NotAllowedFieldsToModify, NothingNotAllowedToModify}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.LuceneContextHeaderApproach
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
 import tech.beshu.ror.es.request.queries.QueryWithModifiableFields._
 import tech.beshu.ror.es.request.queries.QueryWithModifiableFields.instances._
@@ -63,7 +64,7 @@ object SearchRequestOps extends Logging {
               val newQuery = currentQuery.handleNotAllowedFields(notAllowedFields)
               request.source().query(newQuery)
               request
-            case NothingNotAllowedToModify =>
+            case NothingNotAllowedToModify | LuceneContextHeaderApproach =>
               request
           }
         case None =>
