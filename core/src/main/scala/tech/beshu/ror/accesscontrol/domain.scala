@@ -411,7 +411,7 @@ object domain {
   }
 
   final case class FieldLevelSecurity(restrictions: FieldLevelSecurity.FieldsRestrictions,
-                                      strategy: FieldLevelSecurity.Strategy.BasedOnESBlockContext)
+                                      strategy: FieldLevelSecurity.Strategy)
 
   object FieldLevelSecurity {
 
@@ -431,11 +431,11 @@ object domain {
     sealed trait Strategy
     object Strategy {
       case object LuceneContextHeaderApproach extends Strategy
-      sealed trait BasedOnESBlockContext extends Strategy
+      sealed trait BasedOnBlockContextOnly extends Strategy
 
-      object BasedOnESBlockContext {
-        case object NothingNotAllowedToModify extends BasedOnESBlockContext
-        final case class NotAllowedFieldsToModify(fields: NonEmptyList[SpecificField]) extends BasedOnESBlockContext
+      object BasedOnBlockContextOnly {
+        case object NothingNotAllowedToModify extends BasedOnBlockContextOnly
+        final case class NotAllowedFieldsToModify(fields: NonEmptyList[SpecificField]) extends BasedOnBlockContextOnly
       }
     }
 

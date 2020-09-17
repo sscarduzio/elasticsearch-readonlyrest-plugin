@@ -23,7 +23,6 @@ import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.fls.FLS
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 object MockRequestContext {
