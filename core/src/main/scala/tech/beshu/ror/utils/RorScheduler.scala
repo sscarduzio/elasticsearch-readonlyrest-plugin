@@ -19,7 +19,7 @@ package tech.beshu.ror.utils
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 
-object SchedulerHelper {
+object RorScheduler {
   private def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {
     case e: SecurityException => default
   }) match {
@@ -29,7 +29,7 @@ object SchedulerHelper {
 
   private val cachedScheduler = Scheduler.cached("CustomThreadPoolExecutor", getInt("scala.concurrent.context.minThreads", "1"), getInt("scala.concurrent.context.maxThreads", "x1"))
 
-  def scheduler =
+  implicit lazy val scheduler =
     // This is hack for this specific version of java(1.8.0_262). There were permission issues when default scheduler was used.
     // Java 1.8.0_265 have that fixed, but we have found that using ThreadPoolExecutor instead of ForkJoinPool solves permission
     // issues with version 262.
