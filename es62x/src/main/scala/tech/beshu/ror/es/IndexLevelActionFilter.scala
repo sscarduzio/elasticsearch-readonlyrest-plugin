@@ -40,7 +40,7 @@ import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.AccessControllerHelper._
-import tech.beshu.ror.utils.RorInstanceSupplier
+import tech.beshu.ror.utils.{RorInstanceSupplier, SchedulerHelper}
 
 import scala.language.postfixOps
 
@@ -152,7 +152,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         val startingFailureException = StartingFailureException.from(ex)
         logger.error("ROR starting failure:", startingFailureException)
         rorInstanceState.set(RorInstanceStartingState.NotStarted(StartingFailureException.from(startingFailureException)))
-    }
+    }(SchedulerHelper.scheduler)
   }
 }
 
