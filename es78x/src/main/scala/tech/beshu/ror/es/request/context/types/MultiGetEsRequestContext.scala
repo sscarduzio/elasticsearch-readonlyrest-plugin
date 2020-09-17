@@ -29,7 +29,6 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.fls.FLS
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -49,7 +48,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override def fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.NotUsingFields
+  override def fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.NotUsingFields
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
@@ -68,12 +67,12 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       items
         .zip(modifiedPacksOfIndices)
         .foreach { case (item, pack) =>
-          updateItem(item, pack, blockContext.fields)
+          updateItem(item, pack)
         }
       val function = filterResponse(blockContext.filter) _
       val updateFunction =
         function
-          .andThen(_.map(filterFieldsFromResponse(blockContext.fields)))
+          .andThen(_.map(filterFieldsFromResponse(blockContext.fieldLevelSecurity)))
 
       ModificationResult.UpdateResponse(updateFunction)
     } else {
@@ -97,8 +96,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   }
 
   private def updateItem(item: MultiGetRequest.Item,
-                         indexPack: Indices,
-                         fields: Option[Fields]): Unit = {
+                         indexPack: Indices): Unit = {
     indexPack match {
       case Indices.Found(indices) =>
         updateItemWithIndices(item, indices)
@@ -134,16 +132,16 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     }
   }
 
-  private def filterFieldsFromResponse(fields: Option[Fields])
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
                                       (actionResponse: ActionResponse): ActionResponse = {
-    (actionResponse, fields) match {
-      case (response: MultiGetResponse, Some(definedFields)) =>
+    (actionResponse, fieldLevelSecurity) match {
+      case (response: MultiGetResponse, Some(definedFieldLevelSecurity)) =>
         val newResponses = response.getResponses
           .map {
             case multiGetItem if !multiGetItem.isFailed =>
               val getResponse = multiGetItem.getResponse
-              val newSource = getResponse.provideNewSourceUsing(definedFields.restrictions)
-              val newFields = FieldsFiltering.provideFilteredDocumentFields(getResponse.getFields.asScala.toMap, definedFields.restrictions)
+              val newSource = getResponse.provideNewSourceUsing(definedFieldLevelSecurity.restrictions)
+              val newFields = FieldsFiltering.provideFilteredDocumentFields(getResponse.getFields.asScala.toMap, definedFieldLevelSecurity.restrictions)
 
               val result = new GetResult(
                 getResponse.getIndex,

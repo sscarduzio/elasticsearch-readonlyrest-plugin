@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.{Fields, IndexName}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, IndexName}
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -49,7 +49,7 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
   override protected def update(request: ActionRequest,
                                 indices: NonEmptyList[domain.IndexName],
                                 filter: Option[domain.Filter],
-                                fields: Option[Fields]): ModificationResult = {
+                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     optionallyDisableCaching(searchRequest)
     searchRequest
       .applyFilterToQuery(filter)

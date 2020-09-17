@@ -25,8 +25,7 @@ import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.{Fields, Filter, IndexName}
-import tech.beshu.ror.accesscontrol.fls.FLS
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
@@ -43,7 +42,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override def fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.NotUsingFields
+  override def fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.NotUsingFields
 
   override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
     val indexName = IndexName
@@ -57,13 +56,13 @@ class GetEsRequestContext(actionRequest: GetRequest,
   override protected def update(request: GetRequest,
                                 indices: NonEmptyList[IndexName],
                                 filter: Option[Filter],
-                                fields: Option[Fields]): ModificationResult = {
+                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
     val function = filterResponse(filter) _
     val updateFunction =
       function
-        .andThen(_.map(filterFieldsFromResponse(fields)))
+        .andThen(_.map(filterFieldsFromResponse(fieldLevelSecurity)))
     ModificationResult.UpdateResponse(updateFunction)
   }
 
@@ -85,9 +84,9 @@ class GetEsRequestContext(actionRequest: GetRequest,
       }
   }
 
-  private def filterFieldsFromResponse(fields: Option[Fields])
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
                                       (actionResponse: ActionResponse): ActionResponse = {
-    (actionResponse, fields) match {
+    (actionResponse, fieldLevelSecurity) match {
       case (response: GetResponse, Some(definedFields)) if response.isExists =>
         val newSource = response.provideNewSourceUsing(definedFields.restrictions)
         val newFields = FieldsFiltering.provideFilteredDocumentFields(response.getFields.asScala.toMap, definedFields.restrictions)

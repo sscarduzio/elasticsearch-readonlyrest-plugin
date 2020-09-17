@@ -20,8 +20,8 @@ import org.elasticsearch.common.bytes.BytesReference
 import org.elasticsearch.common.document.{DocumentField => ESDocumentField}
 import org.elasticsearch.common.xcontent.support.XContentMapValues
 import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.AccessMode
 import tech.beshu.ror.fls.FieldsPolicy
 
 import scala.collection.JavaConverters._
@@ -61,7 +61,7 @@ object FieldsFiltering {
   }
 
   private def splitFields(fields: FieldsRestrictions) = fields.mode match {
-    case AccessMode.Whitelist => (List.empty, fields.fields.map(_.value.value).toList)
-    case AccessMode.Blacklist => (fields.fields.map(_.value.value).toList, List.empty)
+    case AccessMode.Whitelist => (List.empty, fields.documentFields.map(_.value.value).toList)
+    case AccessMode.Blacklist => (fields.documentFields.map(_.value.value).toList, List.empty)
   }
 }

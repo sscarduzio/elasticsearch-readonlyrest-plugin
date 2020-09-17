@@ -19,8 +19,8 @@ package tech.beshu.ror.es.request
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
-import tech.beshu.ror.accesscontrol.domain.{Fields, Filter}
-import tech.beshu.ror.accesscontrol.fls.FLS.Strategy.BasedOnESRequestContext.{NotAllowedFieldsToModify, NothingNotAllowedToModify}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnESBlockContext.{NotAllowedFieldsToModify, NothingNotAllowedToModify}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
 import tech.beshu.ror.es.request.queries.QueryWithModifiableFields._
 import tech.beshu.ror.es.request.queries.QueryWithModifiableFields.instances._
 
@@ -54,8 +54,8 @@ object SearchRequestOps extends Logging {
 
   implicit class FieldsOps(val request: SearchRequest) extends AnyVal {
 
-    def modifyFieldsInQuery(fields: Option[Fields]): SearchRequest = {
-      fields match {
+    def modifyFieldsInQuery(fieldLevelSecurity: Option[FieldLevelSecurity]): SearchRequest = {
+      fieldLevelSecurity match {
         case Some(definedFields) =>
           definedFields.strategy match {
             case NotAllowedFieldsToModify(notAllowedFields) =>

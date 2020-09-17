@@ -28,12 +28,10 @@ import org.elasticsearch.action.search.SearchRequest
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.fls.FLS
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
@@ -139,7 +137,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override def fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.CantExtractFields
+  override def fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.CantExtractFields
 
   override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 

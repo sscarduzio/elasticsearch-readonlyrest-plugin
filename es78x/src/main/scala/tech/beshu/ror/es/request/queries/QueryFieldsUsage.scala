@@ -18,10 +18,9 @@ package tech.beshu.ror.es.request.queries
 
 import cats.data.NonEmptyList
 import cats.implicits._
-
 import org.elasticsearch.index.query._
-import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage
-import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.{CantExtractFields, NotUsingFields, UsedField, UsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.{CantExtractFields, NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.es.request.queries.QueryType.instances._
 import tech.beshu.ror.es.request.queries.QueryType.{Compound, Leaf}
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached

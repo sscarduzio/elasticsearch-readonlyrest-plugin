@@ -25,13 +25,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFieldsUpdater}
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.UsedField.{FieldWithWildcard, SpecificField}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnESBlockContext, LuceneContextHeaderApproach}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, FieldsUsage, Strategy}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Header}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{DocumentField, Fields, FieldsRestrictions, Header}
-import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.UsedField.{FieldWithWildcard, SpecificField}
-import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
-import tech.beshu.ror.accesscontrol.fls.FLS.Strategy.{BasedOnESRequestContext, LuceneContextHeaderApproach}
-import tech.beshu.ror.accesscontrol.fls.FLS.{FieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.fls.FieldsPolicy
@@ -52,9 +52,9 @@ class FieldsRule(val settings: Settings)
           val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
 
           resolveFLSStrategy(blockContext.requestContext.fieldsUsage, fieldsRestrictions) match {
-            case Strategy.LuceneContextHeaderApproach =>
+            case LuceneContextHeaderApproach =>
               addContextHeader(blockContext, resolvedFields)
-            case strategy: Strategy.BasedOnESRequestContext =>
+            case strategy: Strategy.BasedOnESBlockContext =>
               addFieldsToBlockContext(blockContext, fieldsRestrictions, strategy)
           }
         case _ =>
@@ -68,7 +68,7 @@ class FieldsRule(val settings: Settings)
     case CantExtractFields =>
       LuceneContextHeaderApproach
     case NotUsingFields =>
-      BasedOnESRequestContext.NothingNotAllowedToModify
+      BasedOnESBlockContext.NothingNotAllowedToModify
     case UsingFields(usedFields) =>
       verifyUsedFields(fieldsRestrictions, usedFields)
   }
@@ -81,9 +81,9 @@ class FieldsRule(val settings: Settings)
     } else {
       extractSpecificNotAllowedFields(specificFields, fieldsRestrictions) match {
         case Some(notAllowedFields) =>
-          BasedOnESRequestContext.NotAllowedFieldsToModify(notAllowedFields)
+          BasedOnESBlockContext.NotAllowedFieldsToModify(notAllowedFields)
         case None =>
-          BasedOnESRequestContext.NothingNotAllowedToModify
+          BasedOnESBlockContext.NothingNotAllowedToModify
       }
     }
   }
@@ -96,7 +96,7 @@ class FieldsRule(val settings: Settings)
   }
 
   private def extractSpecificNotAllowedFields(usedFields: List[SpecificField],
-                                                  fieldsRestrictions: FieldsRestrictions) = {
+                                              fieldsRestrictions: FieldsRestrictions) = {
     val fieldsPolicy = new FieldsPolicy(fieldsRestrictions)
     usedFields
       .filterNot(field => fieldsPolicy.canKeep(field.value))
@@ -114,8 +114,8 @@ class FieldsRule(val settings: Settings)
 
   private def addFieldsToBlockContext[B <: BlockContext : BlockContextUpdater](blockContext: B,
                                                                                fieldsRestrictions: FieldsRestrictions,
-                                                                               strategy: BasedOnESRequestContext): RuleResult[B] = {
-    val fields = Fields(fieldsRestrictions, strategy)
+                                                                               strategy: BasedOnESBlockContext): RuleResult[B] = {
+    val fls = FieldLevelSecurity(fieldsRestrictions, strategy)
     BlockContextUpdater[B] match {
       case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
       case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
@@ -125,13 +125,13 @@ class FieldsRule(val settings: Settings)
       case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
       case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
       case AliasRequestBlockContextUpdater => Fulfilled(blockContext)
-      case FilterableRequestBlockContextUpdater => addFields(blockContext, fields)
-      case FilterableMultiRequestBlockContextUpdater => addFields(blockContext, fields)
+      case FilterableRequestBlockContextUpdater => addFields(blockContext, fls)
+      case FilterableMultiRequestBlockContextUpdater => addFields(blockContext, fls)
     }
   }
 
-  private def addFields[B <: BlockContext : BlockContextWithFieldsUpdater](blockContext: B, fields: Fields) = {
-    Fulfilled(blockContext.withFields(fields))
+  private def addFields[B <: BlockContext : BlockContextWithFieldsUpdater](blockContext: B, fieldLevelSecurity: FieldLevelSecurity) = {
+    Fulfilled(blockContext.withFields(fieldLevelSecurity))
   }
 }
 

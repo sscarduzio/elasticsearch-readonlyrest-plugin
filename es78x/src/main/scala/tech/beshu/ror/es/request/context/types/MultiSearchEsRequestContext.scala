@@ -26,9 +26,9 @@ import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.{Fields, Filter, IndexName}
-import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage
-import tech.beshu.ror.accesscontrol.fls.FLS.FieldsUsage.{CantExtractFields, NotUsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.{CantExtractFields, NotUsingFields}
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -67,9 +67,9 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       requests
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
-          updateRequest(request, pack, blockContext.filter, blockContext.fields)
+          updateRequest(request, pack, blockContext.filter, blockContext.fieldLevelSecurity)
         }
-      ModificationResult.UpdateResponse(filterFieldsFromResponse(blockContext.fields))
+      ModificationResult.UpdateResponse(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
     } else {
       logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
@@ -102,17 +102,17 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       .getOrElse(NotUsingFields)
   }
 
-  private def filterFieldsFromResponse(fields: Option[Fields])
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
                                       (actionResponse: ActionResponse): Task[ActionResponse] = {
-    (actionResponse, fields) match {
-      case (response: MultiSearchResponse, Some(definedFields)) =>
+    (actionResponse, fieldLevelSecurity) match {
+      case (response: MultiSearchResponse, Some(definedFieldLevelSecurity)) =>
         response.getResponses
           .filterNot(_.isFailure)
           .flatMap(_.getResponse.getHits.getHits)
           .foreach { hit =>
             hit
-              .modifySourceFieldsUsing(definedFields.restrictions)
-              .modifyDocumentFieldsUsing(definedFields.restrictions)
+              .modifySourceFieldsUsing(definedFieldLevelSecurity.restrictions)
+              .modifyDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
           }
         Task.now(response)
       case _ =>
@@ -141,7 +141,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   private def updateRequest(request: SearchRequest,
                             indexPack: Indices,
                             filter: Option[Filter],
-                            fields: Option[Fields]) = {
+                            fieldLevelSecurity: Option[FieldLevelSecurity]) = {
     indexPack match {
       case Indices.Found(indices) =>
         updateRequestWithIndices(request, indices)
@@ -150,7 +150,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
     request
       .applyFilterToQuery(filter)
-      .modifyFieldsInQuery(fields)
+      .modifyFieldsInQuery(fieldLevelSecurity)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[IndexName]) = {

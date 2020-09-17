@@ -17,7 +17,8 @@
 package tech.beshu.ror.es.request
 
 import org.elasticsearch.search.SearchHit
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
+
 import scala.collection.JavaConverters._
 
 object SearchHitOps {

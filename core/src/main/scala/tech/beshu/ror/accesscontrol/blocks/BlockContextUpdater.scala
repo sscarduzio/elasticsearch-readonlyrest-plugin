@@ -325,9 +325,9 @@ object BlockContextWithFilterUpdater {
   }
 }
 
-abstract class BlockContextWithFieldsUpdater[B <: BlockContext : HasFields] {
+abstract class BlockContextWithFieldsUpdater[B <: BlockContext : HasFieldsLevelSecurity] {
 
-  def withFields(blockContext: B, fields: Fields): B
+  def withFields(blockContext: B, fieldLevelSecurity: FieldLevelSecurity): B
 }
 
 object BlockContextWithFieldsUpdater {
@@ -337,15 +337,15 @@ object BlockContextWithFieldsUpdater {
     extends BlockContextWithFieldsUpdater[FilterableMultiRequestBlockContext] {
 
     def withFields(blockContext: FilterableMultiRequestBlockContext,
-                   fields: Fields): FilterableMultiRequestBlockContext =
-      blockContext.copy(fields = Some(fields))
+                   fieldLevelSecurity: FieldLevelSecurity): FilterableMultiRequestBlockContext =
+      blockContext.copy(fieldLevelSecurity = Some(fieldLevelSecurity))
   }
 
   implicit object FilterableBlockContextWithFieldsUpdater
     extends BlockContextWithFieldsUpdater[FilterableRequestBlockContext] {
 
     def withFields(blockContext: FilterableRequestBlockContext,
-                   fields: Fields): FilterableRequestBlockContext =
-      blockContext.copy(fields = Some(fields))
+                   fieldLevelSecurity: FieldLevelSecurity): FilterableRequestBlockContext =
+      blockContext.copy(fieldLevelSecurity = Some(fieldLevelSecurity))
   }
 }

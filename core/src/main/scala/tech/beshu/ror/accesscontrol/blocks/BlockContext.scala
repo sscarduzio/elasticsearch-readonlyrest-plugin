@@ -89,7 +89,7 @@ object BlockContext {
                                                  override val contextHeaders: Set[Header],
                                                  indices: Set[IndexName],
                                                  filter: Option[Filter],
-                                                 fields: Option[Fields] = None)
+                                                 fieldLevelSecurity: Option[FieldLevelSecurity] = None)
     extends BlockContext
 
 
@@ -99,7 +99,7 @@ object BlockContext {
                                                       override val contextHeaders: Set[Header],
                                                       indexPacks: List[Indices],
                                                       filter: Option[Filter],
-                                                      fields: Option[Fields] = None)
+                                                      fieldLevelSecurity: Option[FieldLevelSecurity] = None)
     extends BlockContext
 
   final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
@@ -181,23 +181,23 @@ object BlockContext {
     }
   }
 
-  trait HasFields[B <: BlockContext] {
-    def fields(blockContext: B): Option[Fields]
+  trait HasFieldsLevelSecurity[B <: BlockContext] {
+    def fieldsLevelSecurity(blockContext: B): Option[FieldLevelSecurity]
   }
-  object HasFields {
+  object HasFieldsLevelSecurity {
 
-    def apply[B <: BlockContext](implicit instance: HasFields[B]): HasFields[B] = instance
+    def apply[B <: BlockContext](implicit instance: HasFieldsLevelSecurity[B]): HasFieldsLevelSecurity[B] = instance
 
-    implicit val fieldsFromFilterableMultiBlockContext = new HasFields[FilterableMultiRequestBlockContext] {
-      override def fields(blockContext: FilterableMultiRequestBlockContext): Option[Fields] = blockContext.fields
+    implicit val fieldsFromFilterableMultiBlockContext = new HasFieldsLevelSecurity[FilterableMultiRequestBlockContext] {
+      override def fieldsLevelSecurity(blockContext: FilterableMultiRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
     }
 
-    implicit val fieldsFromFilterableRequestBlockContext = new HasFields[FilterableRequestBlockContext] {
-      override def fields(blockContext: FilterableRequestBlockContext): Option[Fields] = blockContext.fields
+    implicit val fieldsFromFilterableRequestBlockContext = new HasFieldsLevelSecurity[FilterableRequestBlockContext] {
+      override def fieldsLevelSecurity(blockContext: FilterableRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
     }
 
-    implicit class Ops[B <: BlockContext : HasFields](blockContext: B) {
-      def fields: Option[Fields] = HasFields[B].fields(blockContext)
+    implicit class Ops[B <: BlockContext : HasFieldsLevelSecurity](blockContext: B) {
+      def fieldsLevelSecurity: Option[FieldLevelSecurity] = HasFieldsLevelSecurity[B].fieldsLevelSecurity(blockContext)
     }
   }
 
@@ -247,7 +247,7 @@ object BlockContext {
   }
 
   implicit class BlockContextWithFieldsUpdaterOps[B <: BlockContext: BlockContextWithFieldsUpdater](blockContext: B) {
-    def withFields(fields: Fields): B = {
+    def withFields(fields: FieldLevelSecurity): B = {
       BlockContextWithFieldsUpdater[B].withFields(blockContext, fields)
     }
   }

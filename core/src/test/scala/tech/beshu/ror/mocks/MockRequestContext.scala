@@ -61,7 +61,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 override val hasRemoteClusters: Boolean = false,
-                                                override val fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.CantExtractFields,
+                                                override val fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.CantExtractFields,
                                                 indices: Set[IndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
@@ -89,7 +89,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val isReadOnlyRequest: Boolean = true,
                                           override val isAllowedForDLS: Boolean = true,
                                           override val hasRemoteClusters: Boolean = false,
-                                          override val fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.CantExtractFields,
+                                          override val fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.CantExtractFields,
                                           indices: Set[IndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
@@ -117,7 +117,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 override val hasRemoteClusters: Boolean = false,
-                                                override val fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.CantExtractFields,
+                                                override val fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.CantExtractFields,
                                                 repositories: Set[RepositoryName])
   extends RequestContext {
   override type BLOCK_CONTEXT = RepositoryRequestBlockContext
@@ -145,7 +145,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val isReadOnlyRequest: Boolean = true,
                                              override val isAllowedForDLS: Boolean = true,
                                              override val hasRemoteClusters: Boolean = false,
-                                             override val fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.CantExtractFields,
+                                             override val fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.CantExtractFields,
                                              snapshots: Set[SnapshotName])
   extends RequestContext {
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
@@ -173,7 +173,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 override val hasRemoteClusters: Boolean = false,
-                                                override val fieldsUsage: FLS.FieldsUsage = FLS.FieldsUsage.CantExtractFields)
+                                                override val fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.CantExtractFields)
   extends RequestContext {
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
 
