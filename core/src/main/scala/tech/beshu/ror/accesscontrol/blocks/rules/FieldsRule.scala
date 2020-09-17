@@ -45,20 +45,40 @@ class FieldsRule(val settings: Settings)
     if (!blockContext.requestContext.isReadOnlyRequest)
       RuleResult.Rejected()
     else {
-      val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
-      UniqueNonEmptyList.fromList(maybeResolvedFields) match {
-        case Some(resolvedFields) =>
-          val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
-          val strategy = resolveFLSStrategy(blockContext.requestContext.fieldsUsage, fieldsRestrictions)
-          val fieldLevelSecurity = FieldLevelSecurity(fieldsRestrictions, strategy)
-          val updatedBlockContext = updateBlockContext(blockContext, fieldLevelSecurity)
-
-          RuleResult.Fulfilled(updatedBlockContext)
-        case _ =>
-          RuleResult.Rejected()
-      }
+      handleReadOnlyRequest(blockContext)
     }
   }
+
+  private def handleReadOnlyRequest[B <: BlockContext : BlockContextUpdater](blockContext: B): RuleResult[B] = {
+    BlockContextUpdater[B] match {
+      case CurrentUserMetadataRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+      case GeneralNonIndexRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+      case RepositoryRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+      case SnapshotRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+      case TemplateRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+      case GeneralIndexRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+      case MultiIndexRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+      case AliasRequestBlockContextUpdater => RuleResult.Fulfilled(blockContext)
+      case FilterableRequestBlockContextUpdater => processFilterableBlockContext(blockContext)
+      case FilterableMultiRequestBlockContextUpdater => processFilterableBlockContext(blockContext)
+    }
+  }
+
+  private def processFilterableBlockContext[B <: BlockContext : BlockContextUpdater : BlockContextWithFieldsUpdater](blockContext: B): RuleResult[B] = {
+    val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
+    UniqueNonEmptyList.fromList(maybeResolvedFields) match {
+      case Some(resolvedFields) =>
+        val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
+        val strategy = resolveFLSStrategy(blockContext.requestContext.fieldsUsage, fieldsRestrictions)
+        val fieldLevelSecurity = FieldLevelSecurity(fieldsRestrictions, strategy)
+        val updatedBlockContext = updateFilterableBlockContext(blockContext, fieldLevelSecurity)
+
+        RuleResult.Fulfilled(updatedBlockContext)
+      case None =>
+        RuleResult.Rejected()
+    }
+  }
+
 
   private def resolveFLSStrategy(fieldsUsage: FieldsUsage,
                                  fieldsRestrictions: FieldsRestrictions): Strategy = fieldsUsage match {
@@ -98,22 +118,6 @@ class FieldsRule(val settings: Settings)
     usedFields
       .filterNot(field => fieldsPolicy.canKeep(field.value))
       .toNel
-  }
-
-  private def updateBlockContext[B <: BlockContext : BlockContextUpdater](blockContext: B,
-                                                                          fieldLevelSecurity: FieldLevelSecurity): B = {
-    BlockContextUpdater[B] match {
-      case CurrentUserMetadataRequestBlockContextUpdater => blockContext
-      case GeneralNonIndexRequestBlockContextUpdater => blockContext
-      case RepositoryRequestBlockContextUpdater => blockContext
-      case SnapshotRequestBlockContextUpdater => blockContext
-      case TemplateRequestBlockContextUpdater => blockContext
-      case GeneralIndexRequestBlockContextUpdater => blockContext
-      case MultiIndexRequestBlockContextUpdater => blockContext
-      case AliasRequestBlockContextUpdater => blockContext
-      case FilterableRequestBlockContextUpdater => updateFilterableBlockContext(blockContext, fieldLevelSecurity)
-      case FilterableMultiRequestBlockContextUpdater => updateFilterableBlockContext(blockContext, fieldLevelSecurity)
-    }
   }
 
   private def updateFilterableBlockContext[B <: BlockContext : BlockContextUpdater : BlockContextWithFieldsUpdater](blockContext: B,
