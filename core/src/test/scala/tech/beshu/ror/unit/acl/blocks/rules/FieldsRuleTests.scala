@@ -38,24 +38,15 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
   val fieldsAccessMode = AccessMode.Whitelist
   val whitelistedFields = NonEmptyList.of("_field1", "_field2")
 
-  val fields = whitelistedFields.map(field => AlreadyResolved(DocumentField(field.nonempty).nel))
-  val rule = new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(fields), fieldsAccessMode))
+  val resolvedFields = whitelistedFields.map(field => AlreadyResolved(DocumentField(field.nonempty).nel))
+  val rule = new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), fieldsAccessMode))
 
   "A FieldsRule" when {
     "request is readonly" should {
       "match and use lucene based strategy with context header" when {
         "fields can not be extracted" in {
           val requestContext = mock[RequestContext]
-
-          val incomingBlockContext = FilterableRequestBlockContext(
-            requestContext = requestContext,
-            userMetadata = UserMetadata.empty,
-            responseHeaders = Set.empty,
-            contextHeaders = Set.empty,
-            indices = Set.empty,
-            filter = None,
-            fieldLevelSecurity = None
-          )
+          val incomingBlockContext = emptyFilterableBlockContext(requestContext)
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
           (requestContext.fieldsUsage _).expects().returning(FieldsUsage.CantExtractFields)
@@ -69,16 +60,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         }
         "there is a used field with wildcard" in {
           val requestContext = mock[RequestContext]
-
-          val incomingBlockContext = FilterableRequestBlockContext(
-            requestContext = requestContext,
-            userMetadata = UserMetadata.empty,
-            responseHeaders = Set.empty,
-            contextHeaders = Set.empty,
-            indices = Set.empty,
-            filter = None,
-            fieldLevelSecurity = None
-          )
+          val incomingBlockContext = emptyFilterableBlockContext(requestContext)
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
           (requestContext.fieldsUsage _).expects().returning(FieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1"))))
@@ -95,16 +77,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
       "match and not use context header" when {
         "fields are not used" in {
           val requestContext = mock[RequestContext]
-
-          val incomingBlockContext = FilterableRequestBlockContext(
-            requestContext = requestContext,
-            userMetadata = UserMetadata.empty,
-            responseHeaders = Set.empty,
-            contextHeaders = Set.empty,
-            indices = Set.empty,
-            filter = None,
-            fieldLevelSecurity = None
-          )
+          val incomingBlockContext = emptyFilterableBlockContext(requestContext)
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
           (requestContext.fieldsUsage _).expects().returning(FieldsUsage.NotUsingFields)
@@ -118,16 +91,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         }
         "all used fields in request are allowed" in {
           val requestContext = mock[RequestContext]
-
-          val incomingBlockContext = FilterableRequestBlockContext(
-            requestContext = requestContext,
-            userMetadata = UserMetadata.empty,
-            responseHeaders = Set.empty,
-            contextHeaders = Set.empty,
-            indices = Set.empty,
-            filter = None,
-            fieldLevelSecurity = None
-          )
+          val incomingBlockContext = emptyFilterableBlockContext(requestContext)
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
           (requestContext.fieldsUsage _).expects().returning(FieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1"))))
@@ -141,16 +105,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         }
         "some field in request is not allowed" in {
           val requestContext = mock[RequestContext]
-
-          val incomingBlockContext = FilterableRequestBlockContext(
-            requestContext = requestContext,
-            userMetadata = UserMetadata.empty,
-            responseHeaders = Set.empty,
-            contextHeaders = Set.empty,
-            indices = Set.empty,
-            filter = None,
-            fieldLevelSecurity = None
-          )
+          val incomingBlockContext = emptyFilterableBlockContext(requestContext)
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
           (requestContext.fieldsUsage _).expects().returning(FieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField"))))
@@ -176,5 +131,17 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
     }
+  }
+
+  private def emptyFilterableBlockContext(requestContext: RequestContext) = {
+    FilterableRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.empty,
+      responseHeaders = Set.empty,
+      contextHeaders = Set.empty,
+      indices = Set.empty,
+      filter = None,
+      fieldLevelSecurity = None
+    )
   }
 }

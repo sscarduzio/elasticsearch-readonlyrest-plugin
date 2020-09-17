@@ -59,21 +59,16 @@ object QueryWithModifiableFields {
             .collect {
               case specificField: SpecificField => specificField
             }
-            .filter(isUsedFieldNotAllowed(notAllowedFields))
+            .filter(notAllowedFields.toList.contains)
             .toNel match {
-            case Some(notAllowedFields) =>
-              replace(query, notAllowedFields)
+            case Some(detectedNotAllowedFields) =>
+              replace(query, detectedNotAllowedFields)
             case None =>
               query
           }
         case CantExtractFields | NotUsingFields =>
           query
       }
-    }
-
-    private def isUsedFieldNotAllowed(notAllowedFields: NonEmptyList[SpecificField])
-                                     (usedField: SpecificField) = {
-      notAllowedFields.toList.contains(usedField)
     }
   }
 

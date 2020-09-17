@@ -64,7 +64,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                                 indices: NonEmptyList[IndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    optionallyDisableCaching()
+    optionallyDisableCaching(fieldLevelSecurity)
     request
       .applyFilterToQuery(filter)
       .modifyFieldsInQuery(fieldLevelSecurity)
@@ -90,10 +90,12 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
     }
   }
 
-  private def optionallyDisableCaching(): Unit = {
-    if (esContext.involvesFields) {
-      logger.debug("ACL involves fields, will disable request cache for SearchRequest")
-      actionRequest.requestCache(false)
+  private def optionallyDisableCaching(fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
+    fieldLevelSecurity.map(_.strategy) match {
+      case Some(FieldLevelSecurity.Strategy.LuceneContextHeaderApproach) =>
+        logger.debug("ACL uses context header for fields rule, will disable request cache for SearchRequest")
+        actionRequest.requestCache(false)
+      case _ =>
     }
   }
 }
