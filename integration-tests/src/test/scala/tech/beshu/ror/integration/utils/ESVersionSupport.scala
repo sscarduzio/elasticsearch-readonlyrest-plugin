@@ -32,6 +32,7 @@ trait ESVersionSupport extends WordSpecLike {
   val allEs7x = "^es7\\dx$".r
   val allEs7xExceptEs70x = "^es7(?!(?:0x)$)\\dx$".r
   val allEs7xBelowEs77x = "^es7[0-6]x$".r
+  val rorProxy = "^proxy$".r
 
   implicit final class ESVersionSupportOps(string: String) {
     def excludeES(esVersion: String, esVersions: String*): ResultOfTaggedAsInvocationOnString = {
@@ -39,8 +40,7 @@ trait ESVersionSupport extends WordSpecLike {
     }
 
     def excludeES(regex: Regex, regexArgs: Regex*): ResultOfTaggedAsInvocationOnString = {
-      val excludedModuleNames = RorPluginGradleProject
-        .availableEsModules
+      val excludedModuleNames = ("proxy" :: RorPluginGradleProject.availableEsModules)
         .filter { name =>
           (regex :: regexArgs.toList).exists(_.findFirstIn(name).isDefined)
         }

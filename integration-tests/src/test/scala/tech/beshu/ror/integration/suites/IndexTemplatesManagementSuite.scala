@@ -314,7 +314,7 @@ trait IndexTemplatesManagementSuite
             "custom_dev1_index_*" :: Nil
           )
         }
-        "template applies to generic index pattern (ES < 6.0.0)" excludeES (allEs7x, allEs6x) in {
+        "template applies to generic index pattern (ES < 6.0.0)" excludeES (allEs6x, allEs7x, rorProxy) in {
           val devTemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val result = devTemplateManager.insertTemplate("new_template", templateExample("custom_*"))
 
@@ -349,7 +349,7 @@ trait IndexTemplatesManagementSuite
             "dev1_index" :: Nil
           )
         }
-        "belongs to him (ES < 6.0.0)" excludeES (allEs7x, allEs6x) in {
+        "belongs to him (ES < 6.0.0)" excludeES (allEs6x, allEs7x, rorProxy) in {
           val dev1TemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
 
           val insert1Result =
