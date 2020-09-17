@@ -17,13 +17,11 @@ class IndicesYamlLoadedAccessControlTests  extends WordSpec with BaseYamlLoadedA
       |
       |  - name: "Forbidden for .readonlyrest index"
       |    type: "allow"
-      |    indices: [".readonlyrest"]
+      |    indices:
+      |      patterns: [".readonlyrest"]
+      |      must_involve_indices: true #( <true|false|any> normal behaviour without option = any)
       |
     """.stripMargin
-
-  //      |    indices:
-  //      |      patterns: [".readonlyrest"]
-  //      |      must_involve_indices: true #( <true|false|any> normal behaviour without option = any)
 
   "An ACL" when {
     "indices rule is defined with must_involve_indices: true flag" should {

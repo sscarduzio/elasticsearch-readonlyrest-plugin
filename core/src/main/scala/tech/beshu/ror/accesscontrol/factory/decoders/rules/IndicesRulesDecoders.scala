@@ -28,19 +28,48 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RepositoriesDecodersHelper._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.SnapshotDecodersHelper._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.IndicesDecodersHelper._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RepositoriesDecodersHelper._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.SnapshotDecodersHelper._
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 class IndicesRuleDecoders extends RuleDecoderWithoutAssociatedFields[IndicesRule](
-  DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
-    .map(indices => RuleWithVariableUsageDefinition.create(new IndicesRule(IndicesRule.Settings(indices, true)))) // todo:
+  IndicesRuleDecoders.indicesRuleSimpleDecoder.or(IndicesRuleDecoders.indicesRuleExtendedDecoder)
 )
+
+object IndicesRuleDecoders {
+
+  private val defaultMustInvolveIndicesValue = false
+
+  private lazy val indicesRuleSimpleDecoder: Decoder[RuleWithVariableUsageDefinition[IndicesRule]] =
+    DecoderHelpers
+      .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
+      .map(indices =>
+        RuleWithVariableUsageDefinition.create(
+          new IndicesRule(IndicesRule.Settings(indices, mustInvolveIndices = defaultMustInvolveIndicesValue))
+        )
+      )
+
+  private lazy val indicesRuleExtendedDecoder: Decoder[RuleWithVariableUsageDefinition[IndicesRule]] = {
+    Decoder.instance { c =>
+      for {
+        indices <- c.downField("patterns").as[NonEmptySet[RuntimeMultiResolvableVariable[IndexName]]]
+        mustInvolveIndices <- c.downFields("must_involve_indices").as[Option[Boolean]]
+      } yield {
+        RuleWithVariableUsageDefinition.create(
+          new IndicesRule(IndicesRule.Settings(indices, mustInvolveIndices.getOrElse(defaultMustInvolveIndicesValue)))
+        )
+      }
+    }
+  }
+
+  private implicit lazy val indexNameVariablesDecoder: Decoder[NonEmptySet[RuntimeMultiResolvableVariable[IndexName]]] = {
+    DecoderHelpers.decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
+  }
+}
 
 class SnapshotsRuleDecoder extends RuleDecoderWithoutAssociatedFields[SnapshotsRule](
   DecoderHelpers
