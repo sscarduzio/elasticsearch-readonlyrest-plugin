@@ -36,7 +36,7 @@ object RemoteInfo {
 
   private def toTransportModeInfo(modeInfo: ClusterModeInfo): TransportModeInfo = {
     modeInfo match {
-      case m: ClusterProxyModeInfo => new TransportProxyModeInfo(m.getAddress, m.getMaxSocketConnections, m.getNumSocketsConnected)
+      case m: ClusterProxyModeInfo => new TransportProxyModeInfo(m.getAddress, m.getServerName, m.getMaxSocketConnections, m.getNumSocketsConnected)
       case m: ClutserSniffModeInfo => new TransportSniffModeInfo(m.getSeedNodes, m.getMaxConnectionsPerCluster, m.getNumNodesConnected)
       case m => throw new IllegalStateException(s"Unknown mode info ${m.getClass.getName}")
     }

@@ -225,8 +225,6 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
     }
   }
 
-  override def prepareDeleteSnapshot(repository: String, snapshot: String): DeleteSnapshotRequestBuilder = throw NotDefinedForRorProxy
-
   override def restoreSnapshot(request: RestoreSnapshotRequest): ActionFuture[RestoreSnapshotResponse] = throw NotDefinedForRorProxy
 
   override def restoreSnapshot(request: RestoreSnapshotRequest, listener: ActionListener[RestoreSnapshotResponse]): Unit = {
@@ -242,6 +240,8 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
   override def pendingClusterTasks(request: PendingClusterTasksRequest): ActionFuture[PendingClusterTasksResponse] = throw NotDefinedForRorProxy
 
   override def preparePendingClusterTasks(): PendingClusterTasksRequestBuilder = throw NotDefinedForRorProxy
+
+  override def prepareDeleteSnapshot(repository: String, snapshot: String*): DeleteSnapshotRequestBuilder = throw NotDefinedForRorProxy
 
   override def snapshotsStatus(request: SnapshotsStatusRequest): ActionFuture[SnapshotsStatusResponse] = throw NotDefinedForRorProxy
 

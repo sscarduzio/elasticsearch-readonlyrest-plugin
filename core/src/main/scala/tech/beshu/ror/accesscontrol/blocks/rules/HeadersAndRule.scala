@@ -16,41 +16,43 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
+import cats.Show
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.HeadersAndRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.header.FlatHeader._
-import tech.beshu.ror.utils.MatcherWithWildcards
-
-import scala.collection.JavaConverters._
+import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
+import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.show.logs._
 
 /**
   * We match headers in a way that the header name is case insensitive, and the header value is case sensitive
   **/
 class HeadersAndRule(val settings: Settings)
-  extends RegularRule {
+  extends BaseHeaderRule with Logging {
 
   override val name: Rule.Name = HeadersAndRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    val headersSubset = blockContext
-      .requestContext
-      .headers
-      .filter(h => settings.headers.exists(_.name === h.name))
-    if (headersSubset.size != settings.headers.length)
-      RuleResult.Rejected()
-    else {
-      RuleResult.fromCondition(blockContext) {
-        new MatcherWithWildcards(settings.headers.toSortedSet.map(_.flatten).asJava)
-          .filter(headersSubset.map(_.flatten).asJava)
-          .size == settings.headers.length
-      }
+    RuleResult.fromCondition(blockContext) {
+      val requestHeaders = blockContext.requestContext.headers
+      settings
+        .headerAccessRequirements
+        .forall { headerAccessRequirement =>
+          val result = isFulfilled(headerAccessRequirement, requestHeaders)
+          if (!result) logAccessRequirementNotFulfilled(headerAccessRequirement, blockContext.requestContext)
+          result
+        }
     }
+  }
+
+  private def logAccessRequirementNotFulfilled(accessRequirement: AccessRequirement[Header],
+                                               requestContext: RequestContext): Unit = {
+    implicit val headerShowImplicit: Show[Header] = headerShow
+    logger.debug(s"[${requestContext.id.show}] Request headers don't fulfil given header access requirement: ${accessRequirement.show}")
   }
 }
 
@@ -58,6 +60,6 @@ object HeadersAndRule {
   val name = Rule.Name("headers_and")
   val deprecatedName = Rule.Name("headers")
 
-  final case class Settings(headers: NonEmptySet[Header])
+  final case class Settings(headerAccessRequirements: NonEmptySet[AccessRequirement[Header]])
 
 }

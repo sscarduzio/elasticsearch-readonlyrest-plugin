@@ -16,32 +16,50 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
+import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.{HeadersAndRule, HeadersOrRule}
-import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.HeadersHelper.headerFromString
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.HeadersHelper.headerAccessRequirementFromString
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.StringWiseSplitter._
 
 object HeadersAndRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySetE(headerFromString)
-    .map(headers => RuleWithVariableUsageDefinition.create(new HeadersAndRule(HeadersAndRule.Settings(headers))))
+    .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
+    .map { requirements =>
+      RuleWithVariableUsageDefinition.create(new HeadersAndRule(HeadersAndRule.Settings(requirements)))
+    }
 )
 
 object HeadersOrRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
-    .decodeStringLikeOrNonEmptySetE(headerFromString)
-    .map(headers => RuleWithVariableUsageDefinition.create(new HeadersOrRule(HeadersOrRule.Settings(headers))))
+    .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
+    .map { requirements =>
+      RuleWithVariableUsageDefinition.create(new HeadersOrRule(HeadersOrRule.Settings(requirements)))
+    }
 )
 
 private object HeadersHelper {
-  def headerFromString(value: String): Either[String, Header] =
+  def headerAccessRequirementFromString(value: String): Either[String, AccessRequirement[Header]] =
     value
       .toNonEmptyStringsTuple
-      .map { case (first, second) => Header(Name(first), second) }
-      .left.map(_ => s"Cannot convert $value to header")
+      .left.map(_ => errorMessage(value))
+      .flatMap { case (first, second) =>
+        if(first.value.startsWith("~")) {
+          NonEmptyString.unapply(first.value.substring(1)) match {
+            case Some(name) => Right(AccessRequirement.MustBeAbsent(new Header(Name(name), second)))
+            case None => Left(errorMessage(value))
+          }
+        } else {
+          Right(AccessRequirement.MustBePresent(new Header(Name(first), second)))
+        }
+      }
+
+  private def errorMessage(rawValue: String) = {
+    s"Cannot convert $rawValue to header access requirement (format: name:value_pattern or ~name:value_pattern - name and value_pattern cannot be empty)"
+  }
 }

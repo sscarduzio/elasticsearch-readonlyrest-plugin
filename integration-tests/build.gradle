@@ -54,13 +54,7 @@ test {
         }
     }
     outputs.upToDateWhen { false }
-
-//    testLogging {
-//        showStandardStreams = true
-//        exceptionFormat = 'full'
-//        events "standardOut", "started", "passed", "skipped", "failed"
-//    }
-
+    
     maxParallelForks = 1
 }
 

@@ -3,7 +3,7 @@
  */
 package tech.beshu.ror.proxy.es.clients.actions
 
-import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse.FieldMappingMetaData
+import org.elasticsearch.action.admin.indices.mapping.get.GetFieldMappingsResponse.FieldMappingMetadata
 import org.elasticsearch.action.admin.indices.mapping.get.{GetFieldMappingsRequest => AdminGetFieldMappingsRequest, GetFieldMappingsResponse => AdminGetFieldMappingsResponse}
 import org.elasticsearch.client.indices.{GetFieldMappingsRequest => ClientGetFieldMappingsRequest, GetFieldMappingsResponse => ClientGetFieldMappingsResponse}
 import org.joor.Reflect.{on, onClass}
@@ -29,7 +29,7 @@ object GetFieldMappings {
         .map { case (key, value) =>
           val newValue = value.asScala
             .map { case (innerKey, data) =>
-              (innerKey, new FieldMappingMetaData(data.fullName(), on(data).call("getSource").get()))
+              (innerKey, new FieldMappingMetadata(data.fullName(), on(data).call("getSource").get()))
             }
           (key, Map("mappings" -> newValue.asJava).asJava)
         }

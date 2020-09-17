@@ -5,9 +5,10 @@ package tech.beshu.ror.proxy.es.clients.actions
 
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
 import org.elasticsearch.client.indices.{GetIndexTemplatesRequest => ClientGetIndexTemplatesRequest, GetIndexTemplatesResponse => ClientGetIndexTemplatesResponse}
-import org.elasticsearch.cluster.metadata.IndexTemplateMetaData
+import org.elasticsearch.cluster.metadata.IndexTemplateMetadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.compress.CompressedXContent
+
 import scala.collection.JavaConverters._
 
 object GetTemplate {
@@ -26,7 +27,7 @@ object GetTemplate {
       val metadataList = response
         .getIndexTemplates.asScala
         .map { metadata =>
-          new IndexTemplateMetaData(
+          new IndexTemplateMetadata(
             metadata.name(),
             metadata.order(),
             metadata.version(),
