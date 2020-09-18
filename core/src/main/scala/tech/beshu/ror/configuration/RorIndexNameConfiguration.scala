@@ -19,6 +19,7 @@ package tech.beshu.ror.configuration
 import java.io.{File => JFile}
 import java.nio.file.Path
 
+import better.files.File
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
@@ -27,7 +28,6 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
 import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.providers.OsEnvVarsProvider
-import tech.beshu.ror.utils.PrivilegedFile
 
 final case class RorIndexNameConfiguration(index: RorConfigurationIndex)
 
@@ -36,10 +36,10 @@ object RorIndexNameConfiguration extends Logging {
   private val defaultIndexName = IndexName.fromUnsafeString(".readonlyrest")
 
   def load(esConfigFolderPath: Path): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = {
-    load(PrivilegedFile(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath))
+    load(File(new JFile(esConfigFolderPath.toFile, "elasticsearch.yml").toPath))
   }
 
-  def load(esConfig: PrivilegedFile): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = Task {
+  def load(esConfig: File): Task[Either[MalformedSettings, RorIndexNameConfiguration]] = Task {
     new EsConfigFileLoader[RorIndexNameConfiguration]().loadConfigFromFile(esConfig, "Custom ROR index name")
   }
 

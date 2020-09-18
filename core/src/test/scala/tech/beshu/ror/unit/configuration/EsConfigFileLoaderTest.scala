@@ -21,9 +21,8 @@ import cats.implicits._
 import io.circe.Decoder
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.configuration.{EsConfigFileLoader, MalformedSettings}
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.PrivilegedFile
+import tech.beshu.ror.configuration.{EsConfigFileLoader, MalformedSettings}
 
 import scala.language.postfixOps
 
@@ -53,7 +52,7 @@ class EsConfigFileLoaderTest extends WordSpec {
   private def loadFromTempFile[A: Decoder](content: String) =
     tempFile(content).map { file =>
       createFileConfigLoader[A]
-        .loadConfigFromFile(PrivilegedFile(file), "TEST")
+        .loadConfigFromFile(file, "TEST")
     }.get
 
   private def tempFile(content: String) = File.temporaryFile().map(_.write(content))

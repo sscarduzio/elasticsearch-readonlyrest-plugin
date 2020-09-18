@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es
 
-import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.Atomic
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
@@ -39,6 +38,7 @@ import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.RorInstanceSupplier
+import tech.beshu.ror.utils.RorScheduler.scheduler
 
 import scala.language.postfixOps
 
