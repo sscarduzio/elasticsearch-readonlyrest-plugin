@@ -309,7 +309,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
                          isMatched: Boolean,
                          modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext,
                          found: Set[IndexName]) = {
-    val rule = new IndicesRule(IndicesRule.Settings(configuredValues))
+    val rule = new IndicesRule(IndicesRule.Settings(configuredValues, mustInvolveIndices = false))
     val requestContext = modifyRequestContext apply MockRequestContext.indices
       .copy(
         indices = requestIndices,
