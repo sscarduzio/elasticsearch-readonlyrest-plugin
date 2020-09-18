@@ -47,6 +47,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           assertion = rule => {
             val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1".nonempty).nel))
             rule.settings.allowedIndices should be(indices)
+            rule.settings.mustInvolveIndices shouldBe false
           }
         )
       }
@@ -66,6 +67,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           assertion = rule => {
             rule.settings.allowedIndices.length should be (1)
             rule.settings.allowedIndices.head shouldBe a [ToBeResolved[_]]
+            rule.settings.mustInvolveIndices shouldBe false
           }
         )
       }
@@ -85,6 +87,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
             val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] =
               NonEmptySet.of(AlreadyResolved(IndexName("index1".nonempty).nel), AlreadyResolved(IndexName("index2".nonempty).nel))
             rule.settings.allowedIndices should be(indices)
+            rule.settings.mustInvolveIndices shouldBe false
           }
         )
       }
@@ -106,6 +109,54 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
 
             rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1".nonempty).nel))
             rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
+            rule.settings.mustInvolveIndices shouldBe false
+          }
+        )
+      }
+      "extended mode is used" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    auth_key: user:pass
+              |    indices:
+              |      patterns: [index1, "index_@{user}"]
+              |      must_involve_indices: true
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.allowedIndices.length == 2
+
+            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1".nonempty).nel))
+            rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
+            rule.settings.mustInvolveIndices shouldBe true
+          }
+        )
+      }
+      "extended mode is used but without `must_involve_indices` part" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    auth_key: user:pass
+              |    indices:
+              |      patterns: [index1, "index_@{user}"]
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.allowedIndices.length == 2
+
+            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1".nonempty).nel))
+            rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
+            rule.settings.mustInvolveIndices shouldBe false
           }
         )
       }
@@ -127,6 +178,31 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
             errors should have size 1
             errors.head should be(RulesLevelCreationError(MalformedValue(
               """indices: null
+                |""".stripMargin)))
+          }
+        )
+      }
+      "extended mode is used but with no indices" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    indices:
+              |      patterns:
+              |      must_involve_indices: true
+              |
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(MalformedValue(
+              """indices:
+                |  patterns: null
+                |  must_involve_indices: true
                 |""".stripMargin)))
           }
         )
