@@ -37,7 +37,8 @@ trait QueryAuditLogSerializerSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = QueryAuditLogSerializerSuite.nodeDataInitializer()
+      nodeDataInitializer = QueryAuditLogSerializerSuite.nodeDataInitializer(),
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

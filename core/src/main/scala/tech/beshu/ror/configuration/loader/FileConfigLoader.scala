@@ -14,18 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
-
-import java.nio.file.Path
+package tech.beshu.ror.configuration.loader
 
 import better.files.File
 import cats.Show
 import cats.data.EitherT
 import monix.eval.Task
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError
-import tech.beshu.ror.configuration.FileConfigLoader.FileConfigError.FileNotExist
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError
+import tech.beshu.ror.configuration.loader.FileConfigLoader.FileConfigError.FileNotExist
+import tech.beshu.ror.configuration.{RawRorConfig, RorProperties}
 import tech.beshu.ror.providers.{JvmPropertiesProvider, PropertiesProvider}
 
 class FileConfigLoader(esConfigFile: File,
@@ -67,5 +66,5 @@ object FileConfigLoader {
     }
   }
 
-  def create(esConfigFolderPath: Path): FileConfigLoader = new FileConfigLoader(esConfigFolderPath, JvmPropertiesProvider)
+  def create(esConfigFolderPath: Path): FileConfigLoader = new FileConfigLoader(File(esConfigFolderPath), JvmPropertiesProvider)
 }

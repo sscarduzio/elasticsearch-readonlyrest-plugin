@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCore
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
 import tech.beshu.ror.configuration.RorIndexNameConfiguration
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
@@ -60,7 +61,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -83,7 +84,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -108,7 +109,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -136,7 +137,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -164,7 +165,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -192,7 +193,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -222,7 +223,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )
@@ -251,7 +252,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
         val core = factory
           .createCoreFrom(
             config,
-            RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+            RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
             MockHttpClientsFactory,
             MockLdapConnectionPoolProvider
           )

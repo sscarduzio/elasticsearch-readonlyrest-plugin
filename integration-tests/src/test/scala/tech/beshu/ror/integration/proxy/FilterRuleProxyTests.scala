@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.FilterRuleSuite
-import tech.beshu.ror.integration.utils.ProxyTestSupport
+import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.utils.containers.XpackSupport
 
-class FilterRuleProxyTests extends FilterRuleSuite with ProxyTestSupport
+class FilterRuleProxyTests extends FilterRuleSuite with BasicClusterProxyTestSupport with XpackSupport

@@ -18,5 +18,6 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.HostsRuleSuite
 import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.utils.containers.XpackSupport
 
-class HostsRuleProxyTests extends HostsRuleSuite with BasicClusterProxyTestSupport
+class HostsRuleProxyTests extends HostsRuleSuite with BasicClusterProxyTestSupport with XpackSupport

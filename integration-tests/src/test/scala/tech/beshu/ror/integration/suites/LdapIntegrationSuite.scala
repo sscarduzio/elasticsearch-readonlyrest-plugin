@@ -41,7 +41,8 @@ trait LdapIntegrationSuite
         ldap(name = "LDAP1", ldapInitScript = "/ldap_integration/ldap.ldif"),
         ldap(name = "LDAP2", ldapInitScript = "/ldap_integration/ldap.ldif")
       ),
-      nodeDataInitializer = LdapIntegrationSuite.nodeDataInitializer()
+      nodeDataInitializer = LdapIntegrationSuite.nodeDataInitializer(),
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

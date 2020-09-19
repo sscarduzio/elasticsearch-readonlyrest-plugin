@@ -31,7 +31,7 @@ import collection.JavaConverters._
 import RestRequest.Method._
 
 @Inject
-class RestRRAdminAction(controller: RestController)
+class RestRRAdminAction()
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(

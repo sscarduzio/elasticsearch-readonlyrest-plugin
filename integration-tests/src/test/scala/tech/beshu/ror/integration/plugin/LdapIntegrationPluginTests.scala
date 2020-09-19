@@ -18,5 +18,6 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.LdapIntegrationSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.utils.containers.NoXpackSupport
 
-class LdapIntegrationPluginTests extends LdapIntegrationSuite with PluginTestSupport
+class LdapIntegrationPluginTests extends LdapIntegrationSuite with PluginTestSupport with NoXpackSupport

@@ -37,7 +37,8 @@ trait DynamicVariablesSuite
     EsClusterSettings(
       name = "ROR1",
       rorContainerSpecification = ContainerSpecification(Map("TEST_VAR" -> "dev")),
-      nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer()
+      nodeDataInitializer = DynamicVariablesSuite.nodeDataInitializer(),
+      xPackSupport = isUsingXpackSupport,
     )
   )
 
