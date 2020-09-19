@@ -72,7 +72,4 @@ trait FieldRuleSearchApiSuite
 
     result.searchHits(0).obj.get("fields") shouldBe None
   }
-
 }
-
-

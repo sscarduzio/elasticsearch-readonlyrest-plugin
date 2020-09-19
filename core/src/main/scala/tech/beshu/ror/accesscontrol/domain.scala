@@ -30,7 +30,7 @@ import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.UsedField.SpecificField
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
@@ -448,23 +448,15 @@ object domain {
       }
     }
 
-    sealed trait FieldsUsage
-    object FieldsUsage {
+    sealed trait RequestFieldsUsage
+    object RequestFieldsUsage {
 
-      case object CantExtractFields extends FieldsUsage
-      case object NotUsingFields extends FieldsUsage
-      final case class UsingFields(usedFields: NonEmptyList[UsedField]) extends FieldsUsage
+      case object CantExtractFields extends RequestFieldsUsage
+      case object NotUsingFields extends RequestFieldsUsage
+      final case class UsingFields(usedFields: NonEmptyList[UsedField]) extends RequestFieldsUsage
 
       sealed trait UsedField {
         def value: String
-      }
-
-      final case class ObfuscatedRandomField(value: String) extends AnyVal
-      object ObfuscatedRandomField {
-        def apply(from: SpecificField) = {
-          val randomValue = s"${from.value}${randomAlphanumeric(10)}"
-          new ObfuscatedRandomField(randomValue)
-        }
       }
 
       object UsedField {
@@ -489,7 +481,15 @@ object domain {
         private def hasWildcard(fieldName: String): Boolean = fieldName.contains("*")
       }
 
-      implicit val monoidInstance: Monoid[FieldsUsage] = Monoid.instance(NotUsingFields, {
+      final case class ObfuscatedRandomField(value: String) extends AnyVal
+      object ObfuscatedRandomField {
+        def apply(from: SpecificField) = {
+          val randomValue = s"${from.value}${randomAlphanumeric(10)}"
+          new ObfuscatedRandomField(randomValue)
+        }
+      }
+
+      implicit val monoidInstance: Monoid[RequestFieldsUsage] = Monoid.instance(NotUsingFields, {
         case (CantExtractFields, _) => CantExtractFields
         case (_, CantExtractFields) => CantExtractFields
         case (other, NotUsingFields) => other

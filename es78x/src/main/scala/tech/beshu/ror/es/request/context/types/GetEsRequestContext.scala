@@ -21,7 +21,6 @@ import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.index.IndexRequest
-import org.elasticsearch.index.get.GetResult
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
@@ -30,10 +29,8 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
+import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.{FieldsFiltering, RequestSeemsToBeInvalid}
-
-import scala.collection.JavaConverters._
 
 class GetEsRequestContext(actionRequest: GetRequest,
                           esContext: EsContext,
@@ -42,7 +39,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override def fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.NotUsingFields
+  override def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage = FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 
   override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
     val indexName = IndexName
@@ -59,15 +56,18 @@ class GetEsRequestContext(actionRequest: GetRequest,
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
-    val function = filterResponse(filter) _
-    val updateFunction =
-      function
-        .andThen(_.map(filterFieldsFromResponse(fieldLevelSecurity)))
-    ModificationResult.UpdateResponse(updateFunction)
+    ModificationResult.UpdateResponse(updateFunction(filter, fieldLevelSecurity))
   }
 
-  private def filterResponse(filter: Option[Filter])
+  private def updateFunction(filter: Option[Filter],
+                             fieldLevelSecurity: Option[FieldLevelSecurity])
                             (actionResponse: ActionResponse): Task[ActionResponse] = {
+    filterResponse(filter, actionResponse)
+      .map(response => filterFieldsFromResponse(fieldLevelSecurity, response))
+  }
+
+  private def filterResponse(filter: Option[Filter],
+                             actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, filter) match {
       case (response: GetResponse, Some(definedFilter)) if response.isExists =>
         handleExistingResponse(response, definedFilter)
@@ -84,25 +84,11 @@ class GetEsRequestContext(actionRequest: GetRequest,
       }
   }
 
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): ActionResponse = {
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity],
+                                       actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fieldLevelSecurity) match {
-      case (response: GetResponse, Some(definedFields)) if response.isExists =>
-        val newSource = response.provideNewSourceUsing(definedFields.restrictions)
-        val newFields = FieldsFiltering.provideFilteredDocumentFields(response.getFields.asScala.toMap, definedFields.restrictions)
-
-        val newResult = new GetResult(
-          response.getIndex,
-          response.getType,
-          response.getId,
-          response.getSeqNo,
-          response.getPrimaryTerm,
-          response.getVersion,
-          true,
-          newSource,
-          newFields.documentFields.asJava,
-          newFields.metadataFields.asJava)
-        new GetResponse(newResult)
+      case (response: GetResponse, Some(definedFieldLevelSecurity)) if response.isExists =>
+        response.filterFieldsUsing(definedFieldLevelSecurity.restrictions)
       case _ =>
         actionResponse
     }

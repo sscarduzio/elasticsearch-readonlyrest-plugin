@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.utils.ClaimsOps.CustomClaimValue.{Collection
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 
-private[runtime] trait RuntimeResolvableVariable[+VALUE] {
+private[runtime] trait RuntimeResolvableVariable[VALUE] {
 
   def resolve(blockContext: BlockContext): Either[Unresolvable, VALUE]
 }

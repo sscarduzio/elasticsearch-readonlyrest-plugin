@@ -460,5 +460,3 @@ object FieldRuleQueryDSLSuite {
     documentManager.createDoc("test-index", 1, ujson.read(document)).force()
   }
 }
-
-

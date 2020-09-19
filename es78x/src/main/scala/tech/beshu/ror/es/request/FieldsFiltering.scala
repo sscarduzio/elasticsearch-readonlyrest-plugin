@@ -33,9 +33,9 @@ object FieldsFiltering {
   final case class NewFilteredDocumentFields(documentFields: Map[String, ESDocumentField],
                                              metadataFields: Map[String, ESDocumentField])
 
-  def provideFilteredSource(sourceAsMap: Map[String, _],
-                            fieldsRestrictions: FieldsRestrictions): NewFilteredSource = {
-    val (excluding, including) = splitFields(fieldsRestrictions)
+  def filterSource(sourceAsMap: Map[String, _],
+                   fieldsRestrictions: FieldsRestrictions): NewFilteredSource = {
+    val (excluding, including) = splitFieldsByAccessMode(fieldsRestrictions)
     val filteredSource = XContentMapValues.filter(sourceAsMap.asJava, including.toArray, excluding.toArray)
     val newContent = XContentFactory
       .contentBuilder(XContentType.JSON)
@@ -43,24 +43,24 @@ object FieldsFiltering {
     NewFilteredSource(BytesReference.bytes(newContent))
   }
 
-  def provideFilteredDocumentFields(documentFields: Map[String, ESDocumentField],
-                                    fieldsRestrictions: FieldsRestrictions) = {
-    val (metdataFields, nonMetadaDocumentFields) = partitionFieldsByMetadata(documentFields)
+  def filterDocumentFields(documentFields: Map[String, ESDocumentField],
+                           fieldsRestrictions: FieldsRestrictions) = {
+    val (metadataFields, nonMetadataDocumentFields) = partitionFieldsByMetadata(documentFields)
     val policy = new FieldsPolicy(fieldsRestrictions)
-    val filteredDocumentFields = nonMetadaDocumentFields.filter {
+    val filteredDocumentFields = nonMetadataDocumentFields.filter {
       case (key, _) => policy.canKeep(key)
     }
-    NewFilteredDocumentFields(filteredDocumentFields, metdataFields)
+    NewFilteredDocumentFields(filteredDocumentFields, metadataFields)
   }
 
-  def partitionFieldsByMetadata(fields: Map[String, ESDocumentField]): (Map[String, ESDocumentField], Map[String, ESDocumentField]) = {
+  private def partitionFieldsByMetadata(fields: Map[String, ESDocumentField]) = {
     fields.partition {
       case t if t._2.isMetadataField => true
       case _ => false
     }
   }
 
-  private def splitFields(fields: FieldsRestrictions) = fields.mode match {
+  private def splitFieldsByAccessMode(fields: FieldsRestrictions) = fields.mode match {
     case AccessMode.Whitelist => (List.empty, fields.documentFields.map(_.value.value).toList)
     case AccessMode.Blacklist => (fields.documentFields.map(_.value.value).toList, List.empty)
   }

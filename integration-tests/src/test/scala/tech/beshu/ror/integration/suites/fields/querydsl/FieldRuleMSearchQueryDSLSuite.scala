@@ -30,5 +30,3 @@ trait FieldRuleMSearchQueryDSLSuite extends FieldRuleQueryDSLSuite {
     result.searchHitsForResponse(0).isEmpty shouldBe true
   }
 }
-
-

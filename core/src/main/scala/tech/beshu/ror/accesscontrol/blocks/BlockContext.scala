@@ -181,23 +181,23 @@ object BlockContext {
     }
   }
 
-  trait HasFieldsLevelSecurity[B <: BlockContext] {
-    def fieldsLevelSecurity(blockContext: B): Option[FieldLevelSecurity]
+  trait HasFieldLevelSecurity[B <: BlockContext] {
+    def fieldLevelSecurity(blockContext: B): Option[FieldLevelSecurity]
   }
-  object HasFieldsLevelSecurity {
+  object HasFieldLevelSecurity {
 
-    def apply[B <: BlockContext](implicit instance: HasFieldsLevelSecurity[B]): HasFieldsLevelSecurity[B] = instance
+    def apply[B <: BlockContext](implicit instance: HasFieldLevelSecurity[B]): HasFieldLevelSecurity[B] = instance
 
-    implicit val fieldsFromFilterableMultiBlockContext = new HasFieldsLevelSecurity[FilterableMultiRequestBlockContext] {
-      override def fieldsLevelSecurity(blockContext: FilterableMultiRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
+    implicit val flsFromFilterableMultiBlockContext = new HasFieldLevelSecurity[FilterableMultiRequestBlockContext] {
+      override def fieldLevelSecurity(blockContext: FilterableMultiRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
     }
 
-    implicit val fieldsFromFilterableRequestBlockContext = new HasFieldsLevelSecurity[FilterableRequestBlockContext] {
-      override def fieldsLevelSecurity(blockContext: FilterableRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
+    implicit val flsFromFilterableRequestBlockContext = new HasFieldLevelSecurity[FilterableRequestBlockContext] {
+      override def fieldLevelSecurity(blockContext: FilterableRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
     }
 
-    implicit class Ops[B <: BlockContext : HasFieldsLevelSecurity](blockContext: B) {
-      def fieldsLevelSecurity: Option[FieldLevelSecurity] = HasFieldsLevelSecurity[B].fieldsLevelSecurity(blockContext)
+    implicit class Ops[B <: BlockContext : HasFieldLevelSecurity](blockContext: B) {
+      def fieldLevelSecurity: Option[FieldLevelSecurity] = HasFieldLevelSecurity[B].fieldLevelSecurity(blockContext)
     }
   }
 
@@ -246,9 +246,9 @@ object BlockContext {
     }
   }
 
-  implicit class BlockContextWithFieldsUpdaterOps[B <: BlockContext: BlockContextWithFieldsUpdater](blockContext: B) {
+  implicit class BlockContextWithFLSUpdaterOps[B <: BlockContext: BlockContextWithFLSUpdater](blockContext: B) {
     def withFields(fields: FieldLevelSecurity): B = {
-      BlockContextWithFieldsUpdater[B].withFields(blockContext, fields)
+      BlockContextWithFLSUpdater[B].withFieldLevelSecurity(blockContext, fields)
     }
   }
 

@@ -27,8 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.UsedField
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsUsage, Strategy}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{RequestFieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
@@ -45,11 +45,11 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
   "A FieldsRule" when {
     "filterable request is readonly" should {
       "match and use lucene based strategy with context header" when {
-        "fields can not be extracted" in {
+        "request fields can not be extracted" in {
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.fieldsUsage _).expects().returning(FieldsUsage.CantExtractFields)
+          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CantExtractFields)
 
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
@@ -61,7 +61,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.fieldsUsage _).expects().returning(FieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1"))))
+          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1"))))
 
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
@@ -71,11 +71,11 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         }
       }
       "match and not use context header" when {
-        "fields are not used" in {
+        "request fields are not used" in {
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.fieldsUsage _).expects().returning(FieldsUsage.NotUsingFields)
+          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.NotUsingFields)
 
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
@@ -87,7 +87,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.fieldsUsage _).expects().returning(FieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1"))))
+          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1"))))
 
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
@@ -99,7 +99,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.fieldsUsage _).expects().returning(FieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField"))))
+          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField"))))
 
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
@@ -111,11 +111,11 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
     }
     "filterable multi request is readonly" should {
       "match and use lucene based strategy with context header" when {
-        "fields can not be extracted" in {
+        "request fields can not be extracted" in {
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.fieldsUsage _).expects().returning(FieldsUsage.CantExtractFields)
+          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CantExtractFields)
 
           assertRuleResultForMulti(
             incomingBlockContext = emptyFilterableMultiBlockContext(requestContext),
@@ -150,9 +150,9 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
     }
   }
 
-  def assertRuleResult(incomingBlockContext: FilterableRequestBlockContext,
-                       expectedContextHeaders: Set[Header],
-                       expectedStrategy: Strategy) = {
+  private def assertRuleResult(incomingBlockContext: FilterableRequestBlockContext,
+                               expectedContextHeaders: Set[Header],
+                               expectedStrategy: Strategy) = {
     inside(rule.check(incomingBlockContext).runSyncStep) {
       case Right(Fulfilled(outBlockContext)) =>
         outBlockContext.contextHeaders shouldBe expectedContextHeaders
@@ -161,9 +161,9 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
     }
   }
 
-  def assertRuleResultForMulti(incomingBlockContext: FilterableMultiRequestBlockContext,
-                               expectedContextHeaders: Set[Header],
-                               expectedStrategy: Strategy) = {
+  private def assertRuleResultForMulti(incomingBlockContext: FilterableMultiRequestBlockContext,
+                                       expectedContextHeaders: Set[Header],
+                                       expectedStrategy: Strategy) = {
     inside(rule.check(incomingBlockContext).runSyncStep) {
       case Right(Fulfilled(outBlockContext)) =>
         outBlockContext.contextHeaders shouldBe expectedContextHeaders

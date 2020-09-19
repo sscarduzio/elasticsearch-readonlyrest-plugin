@@ -70,22 +70,12 @@ class FieldsPolicy(fieldsRestrictions: FieldsRestrictions) {
 }
 
 object FieldsPolicy {
-
-  class EnhancedDocumentField(field: DocumentField) {
+  private class EnhancedDocumentField(field: DocumentField) {
     val fieldPartPatterns: List[Pattern] =
       field.value.value
         .split("\\.").toList
         .map { part =>
           Pattern.compile(s"^${part.replace("*", ".*")}$$")
         }
-
-    val fullPattern: Pattern =
-      Pattern.compile(s"^${
-        field.value.value
-          .replace(".", "\\.")
-          .replace("*", ".*")
-      }$$"
-      )
   }
-
 }

@@ -26,8 +26,8 @@ import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.{CantExtractFields, NotUsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CantExtractFields, NotUsingFields}
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
@@ -77,7 +77,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
   }
 
-  override def fieldsUsage: FieldsUsage = {
+  override def requestFieldsUsage: RequestFieldsUsage = {
     NonEmptyList.fromList(actionRequest.requests().asScala.toList) match {
       case Some(definedRequests) =>
         definedRequests
@@ -88,7 +88,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
   }
 
-  private def checkFieldsUsageForSingleSearchRequest(searchRequest: SearchRequest): FieldsUsage =
+  private def checkFieldsUsageForSingleSearchRequest(searchRequest: SearchRequest): RequestFieldsUsage =
     Option(searchRequest.source().scriptFields()) match {
       case Some(scriptFields) if scriptFields.size() > 0 =>
         CantExtractFields
@@ -96,7 +96,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         checkQueryFieldsIn(searchRequest)
     }
 
-  private def checkQueryFieldsIn(searchRequest: SearchRequest): FieldsUsage = {
+  private def checkQueryFieldsIn(searchRequest: SearchRequest): RequestFieldsUsage = {
     Option(searchRequest.source().query())
       .map(_.fieldsUsage)
       .getOrElse(NotUsingFields)
@@ -111,8 +111,8 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
           .flatMap(_.getResponse.getHits.getHits)
           .foreach { hit =>
             hit
-              .modifySourceFieldsUsing(definedFieldLevelSecurity.restrictions)
-              .modifyDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
+              .filterSourceFieldsUsing(definedFieldLevelSecurity.restrictions)
+              .filterDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
           }
         Task.now(response)
       case _ =>
@@ -150,7 +150,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
     request
       .applyFilterToQuery(filter)
-      .modifyFieldsInQuery(fieldLevelSecurity)
+      .applyFieldLevelSecurity(fieldLevelSecurity)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[IndexName]) = {

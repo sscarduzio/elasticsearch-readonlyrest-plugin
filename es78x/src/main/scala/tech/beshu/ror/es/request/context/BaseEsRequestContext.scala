@@ -142,8 +142,6 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
-  override def fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.CantExtractFields
-
   override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 
   protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {

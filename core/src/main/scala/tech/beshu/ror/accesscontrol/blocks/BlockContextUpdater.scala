@@ -325,27 +325,27 @@ object BlockContextWithFilterUpdater {
   }
 }
 
-abstract class BlockContextWithFieldsUpdater[B <: BlockContext : HasFieldsLevelSecurity] {
+abstract class BlockContextWithFLSUpdater[B <: BlockContext : HasFieldLevelSecurity] {
 
-  def withFields(blockContext: B, fieldLevelSecurity: FieldLevelSecurity): B
+  def withFieldLevelSecurity(blockContext: B, fieldLevelSecurity: FieldLevelSecurity): B
 }
 
-object BlockContextWithFieldsUpdater {
-  def apply[B <: BlockContext](implicit ev: BlockContextWithFieldsUpdater[B]) = ev
+object BlockContextWithFLSUpdater {
+  def apply[B <: BlockContext](implicit ev: BlockContextWithFLSUpdater[B]) = ev
 
   implicit object FilterableMultiRequestBlockContextWithFieldsUpdater
-    extends BlockContextWithFieldsUpdater[FilterableMultiRequestBlockContext] {
+    extends BlockContextWithFLSUpdater[FilterableMultiRequestBlockContext] {
 
-    def withFields(blockContext: FilterableMultiRequestBlockContext,
-                   fieldLevelSecurity: FieldLevelSecurity): FilterableMultiRequestBlockContext =
+    def withFieldLevelSecurity(blockContext: FilterableMultiRequestBlockContext,
+                               fieldLevelSecurity: FieldLevelSecurity): FilterableMultiRequestBlockContext =
       blockContext.copy(fieldLevelSecurity = Some(fieldLevelSecurity))
   }
 
   implicit object FilterableBlockContextWithFieldsUpdater
-    extends BlockContextWithFieldsUpdater[FilterableRequestBlockContext] {
+    extends BlockContextWithFLSUpdater[FilterableRequestBlockContext] {
 
-    def withFields(blockContext: FilterableRequestBlockContext,
-                   fieldLevelSecurity: FieldLevelSecurity): FilterableRequestBlockContext =
+    def withFieldLevelSecurity(blockContext: FilterableRequestBlockContext,
+                               fieldLevelSecurity: FieldLevelSecurity): FilterableRequestBlockContext =
       blockContext.copy(fieldLevelSecurity = Some(fieldLevelSecurity))
   }
 }

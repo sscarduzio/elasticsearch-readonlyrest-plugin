@@ -19,14 +19,14 @@ package tech.beshu.ror.es.request.queries
 import cats.data.NonEmptyList
 import cats.implicits._
 import org.elasticsearch.index.query._
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.{CantExtractFields, NotUsingFields, UsedField, UsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CantExtractFields, NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.es.request.queries.QueryType.instances._
 import tech.beshu.ror.es.request.queries.QueryType.{Compound, Leaf}
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 
 trait QueryFieldsUsage[QUERY <: QueryBuilder] {
-  def fieldsIn(query: QUERY): FieldsUsage
+  def fieldsIn(query: QUERY): RequestFieldsUsage
 }
 
 object QueryFieldsUsage {
@@ -89,7 +89,7 @@ object QueryFieldsUsage {
       leafQuery.fieldsUsage
     }
 
-    private def resolveFieldsUsageForCompoundQuery[QUERY <: QueryBuilder : Compound](compoundQuery: QUERY): FieldsUsage = {
+    private def resolveFieldsUsageForCompoundQuery[QUERY <: QueryBuilder : Compound](compoundQuery: QUERY): RequestFieldsUsage = {
       val innerQueries = Compound[QUERY].innerQueriesOf(compoundQuery)
       NonEmptyList.fromList(innerQueries) match {
         case Some(definedInnerQueries) =>

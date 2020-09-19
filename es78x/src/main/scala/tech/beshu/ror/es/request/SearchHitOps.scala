@@ -25,21 +25,21 @@ object SearchHitOps {
 
   implicit class Filtering(val searchHit: SearchHit) extends AnyVal {
 
-    def modifySourceFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
+    def filterSourceFieldsUsing(fieldsRestrictions: FieldsRestrictions): SearchHit = {
       Option(searchHit.getSourceAsMap)
         .map(_.asScala.toMap)
         .filter(_.nonEmpty)
-        .map(source => FieldsFiltering.provideFilteredSource(source, fieldsRestrictions))
+        .map(source => FieldsFiltering.filterSource(source, fieldsRestrictions))
         .foreach(newSource => searchHit.sourceRef(newSource.bytes))
 
       searchHit
     }
 
-    def modifyDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
+    def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions): SearchHit = {
       Option(searchHit.getFields)
         .map(_.asScala.toMap)
         .filter(_.nonEmpty)
-        .map(fields => FieldsFiltering.provideFilteredDocumentFields(fields, fieldsRestrictions))
+        .map(fields => FieldsFiltering.filterDocumentFields(fields, fieldsRestrictions))
         .map(newFields => newFields.documentFields ++ newFields.metadataFields)
         .foreach(allFields => searchHit.fields(allFields.asJava))
 

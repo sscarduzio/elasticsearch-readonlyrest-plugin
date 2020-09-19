@@ -412,7 +412,4 @@ object FieldRuleSuite {
     documentManager.createDoc("testfiltera", 1, ujson.read(simpleDoc)).force()
     documentManager.createDoc("nestedtest", 1, ujson.read(nestedDoc)).force()
   }
-
 }
-
-

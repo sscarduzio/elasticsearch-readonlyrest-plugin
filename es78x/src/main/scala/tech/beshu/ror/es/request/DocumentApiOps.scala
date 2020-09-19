@@ -49,17 +49,39 @@ object DocumentApiOps {
     implicit class GetResponseOps(val response: GetResponse) extends AnyVal {
       def asDocumentWithIndex = createDocumentWithIndex(response.getIndex, response.getId)
 
-      def provideNewSourceUsing(fieldsRestrictions: FieldsRestrictions) = {
+      def filterFieldsUsing(fieldsRestrictions: FieldsRestrictions): GetResponse = {
+        val newSource = filterSourceFieldsUsing(fieldsRestrictions)
+        val newFields = filterDocumentFieldsUsing(fieldsRestrictions)
+
+        val newResult = new GetResult(
+          response.getIndex,
+          response.getType,
+          response.getId,
+          response.getSeqNo,
+          response.getPrimaryTerm,
+          response.getVersion,
+          true,
+          newSource,
+          newFields.documentFields.asJava,
+          newFields.metadataFields.asJava
+        )
+        new GetResponse(newResult)
+      }
+
+      private def filterSourceFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
         Option(response.getSourceAsMap)
           .map(_.asScala.toMap)
           .filter(_.nonEmpty)
-          .map(source => FieldsFiltering.provideFilteredSource(source, fieldsRestrictions)) match {
+          .map(source => FieldsFiltering.filterSource(source, fieldsRestrictions)) match {
           case Some(value) => value.bytes
           case None => response.getSourceAsBytesRef
         }
       }
-    }
 
+      private def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
+        FieldsFiltering.filterDocumentFields(response.getFields.asScala.toMap, fieldsRestrictions)
+      }
+    }
   }
 
   object MultiGetApi {

@@ -23,12 +23,12 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBloc
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFieldsUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFLSUpdater}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.UsedField.{FieldWithWildcard, SpecificField}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.{FieldWithWildcard, SpecificField}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, LuceneContextHeaderApproach}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, FieldsUsage, Strategy}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, RequestFieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Header}
 import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
@@ -64,12 +64,12 @@ class FieldsRule(val settings: Settings)
     }
   }
 
-  private def processFilterableBlockContext[B <: BlockContext : BlockContextUpdater : BlockContextWithFieldsUpdater](blockContext: B): RuleResult[B] = {
+  private def processFilterableBlockContext[B <: BlockContext : BlockContextUpdater : BlockContextWithFLSUpdater](blockContext: B): RuleResult[B] = {
     val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
     UniqueNonEmptyList.fromList(maybeResolvedFields) match {
       case Some(resolvedFields) =>
         val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
-        val strategy = resolveFLSStrategy(blockContext.requestContext.fieldsUsage, fieldsRestrictions)
+        val strategy = resolveFLSStrategy(blockContext.requestContext.requestFieldsUsage, fieldsRestrictions)
         val fieldLevelSecurity = FieldLevelSecurity(fieldsRestrictions, strategy)
         val updatedBlockContext = updateFilterableBlockContext(blockContext, fieldLevelSecurity)
 
@@ -80,18 +80,18 @@ class FieldsRule(val settings: Settings)
   }
 
 
-  private def resolveFLSStrategy(fieldsUsage: FieldsUsage,
+  private def resolveFLSStrategy(fieldsUsage: RequestFieldsUsage,
                                  fieldsRestrictions: FieldsRestrictions): Strategy = fieldsUsage match {
     case CantExtractFields =>
       LuceneContextHeaderApproach
     case NotUsingFields =>
       BasedOnBlockContextOnly.NothingNotAllowedToModify
     case UsingFields(usedFields) =>
-      verifyUsedFields(fieldsRestrictions, usedFields)
+      resolveStrategyBasedOnUsedFields(fieldsRestrictions, usedFields)
   }
 
-  private def verifyUsedFields(fieldsRestrictions: FieldsRestrictions,
-                               usedFields: NonEmptyList[FieldsUsage.UsedField]) = {
+  private def resolveStrategyBasedOnUsedFields(fieldsRestrictions: FieldsRestrictions,
+                                               usedFields: NonEmptyList[RequestFieldsUsage.UsedField]) = {
     val (specificFields, fieldsWithWildcard) = extractSpecificAndWildcardFields(usedFields)
     if (fieldsWithWildcard.nonEmpty) {
       LuceneContextHeaderApproach
@@ -105,7 +105,7 @@ class FieldsRule(val settings: Settings)
     }
   }
 
-  private def extractSpecificAndWildcardFields(usedFields: NonEmptyList[FieldsUsage.UsedField]) = {
+  private def extractSpecificAndWildcardFields(usedFields: NonEmptyList[RequestFieldsUsage.UsedField]) = {
     usedFields.toList.partitionEither {
       case specific: SpecificField => Left(specific)
       case withWildcard: FieldWithWildcard => Right(withWildcard)
@@ -120,8 +120,8 @@ class FieldsRule(val settings: Settings)
       .toNel
   }
 
-  private def updateFilterableBlockContext[B <: BlockContext : BlockContextUpdater : BlockContextWithFieldsUpdater](blockContext: B,
-                                                                                                                    fieldLevelSecurity: FieldLevelSecurity) = {
+  private def updateFilterableBlockContext[B <: BlockContext : BlockContextUpdater : BlockContextWithFLSUpdater](blockContext: B,
+                                                                                                                 fieldLevelSecurity: FieldLevelSecurity) = {
 
     fieldLevelSecurity.strategy match {
       case LuceneContextHeaderApproach =>
@@ -146,5 +146,4 @@ object FieldsRule {
 
   final case class Settings(fields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[DocumentField]],
                             accessMode: AccessMode)
-
 }

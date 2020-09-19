@@ -20,8 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
-import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
-import org.elasticsearch.index.get.GetResult
+import org.elasticsearch.action.get.{MultiGetItemResponse, MultiGetRequest, MultiGetResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
@@ -35,7 +34,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
 import tech.beshu.ror.es.request.DocumentApiOps.MultiGetApi._
-import tech.beshu.ror.es.request.FieldsFiltering
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
@@ -48,7 +46,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override def fieldsUsage: FieldLevelSecurity.FieldsUsage = FieldLevelSecurity.FieldsUsage.NotUsingFields
+  override def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage = FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
@@ -69,12 +67,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
         .foreach { case (item, pack) =>
           updateItem(item, pack)
         }
-      val function = filterResponse(blockContext.filter) _
-      val updateFunction =
-        function
-          .andThen(_.map(filterFieldsFromResponse(blockContext.fieldLevelSecurity)))
-
-      ModificationResult.UpdateResponse(updateFunction)
+      ModificationResult.UpdateResponse(updateFunction(blockContext.filter, blockContext.fieldLevelSecurity))
     } else {
       logger.error(
         s"""[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different
@@ -122,44 +115,21 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     item.index(notExistingIndex.value.value)
   }
 
-  private def filterResponse(filter: Option[Filter])
+  private def updateFunction(filter: Option[Filter],
+                             fieldLevelSecurity: Option[FieldLevelSecurity])
                             (actionResponse: ActionResponse): Task[ActionResponse] = {
+    filterResponse(filter, actionResponse)
+      .map(response => filterFieldsFromResponse(fieldLevelSecurity, response))
+  }
+
+
+  private def filterResponse(filter: Option[Filter],
+                             actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, filter) match {
       case (response: MultiGetResponse, Some(definedFilter)) =>
         applyFilter(response, definedFilter)
       case _ =>
         Task.now(actionResponse)
-    }
-  }
-
-  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): ActionResponse = {
-    (actionResponse, fieldLevelSecurity) match {
-      case (response: MultiGetResponse, Some(definedFieldLevelSecurity)) =>
-        val newResponses = response.getResponses
-          .map {
-            case multiGetItem if !multiGetItem.isFailed =>
-              val getResponse = multiGetItem.getResponse
-              val newSource = getResponse.provideNewSourceUsing(definedFieldLevelSecurity.restrictions)
-              val newFields = FieldsFiltering.provideFilteredDocumentFields(getResponse.getFields.asScala.toMap, definedFieldLevelSecurity.restrictions)
-
-              val result = new GetResult(
-                getResponse.getIndex,
-                getResponse.getType,
-                getResponse.getId,
-                getResponse.getSeqNo,
-                getResponse.getPrimaryTerm,
-                getResponse.getVersion,
-                true,
-                newSource,
-                newFields.documentFields.asJava,
-                newFields.metadataFields.asJava)
-              new MultiGetItemResponse(new GetResponse(result), null)
-            case other => other
-          }
-        new MultiGetResponse(newResponses)
-      case _ =>
-        actionResponse
     }
   }
 
@@ -204,6 +174,23 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       case Some(Inaccessible) =>
         val newResponse = GetApi.doesNotExistResponse(original = item.getResponse)
         new MultiGetItemResponse(newResponse, null)
+    }
+  }
+
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity],
+                                       actionResponse: ActionResponse): ActionResponse = {
+    (actionResponse, fieldLevelSecurity) match {
+      case (response: MultiGetResponse, Some(definedFieldLevelSecurity)) =>
+        val newResponses = response.getResponses
+          .map {
+            case multiGetItem if !multiGetItem.isFailed =>
+              val newGetResponse = multiGetItem.getResponse.filterFieldsUsing(definedFieldLevelSecurity.restrictions)
+              new MultiGetItemResponse(newGetResponse, null)
+            case other => other
+          }
+        new MultiGetResponse(newResponses)
+      case _ =>
+        actionResponse
     }
   }
 }

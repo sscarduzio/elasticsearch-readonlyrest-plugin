@@ -47,5 +47,3 @@ trait FieldRuleGetApiSuite
     result.responseJson.obj.get("_source")
   }
 }
-
-

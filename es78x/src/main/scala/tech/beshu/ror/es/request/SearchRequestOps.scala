@@ -16,9 +16,11 @@
  */
 package tech.beshu.ror.es.request
 
+import cats.data.NonEmptyList
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly.{NotAllowedFieldsToModify, NothingNotAllowedToModify}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.LuceneContextHeaderApproach
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
@@ -55,21 +57,25 @@ object SearchRequestOps extends Logging {
 
   implicit class FieldsOps(val request: SearchRequest) extends AnyVal {
 
-    def modifyFieldsInQuery(fieldLevelSecurity: Option[FieldLevelSecurity]): SearchRequest = {
+    def applyFieldLevelSecurity(fieldLevelSecurity: Option[FieldLevelSecurity]): SearchRequest = {
       fieldLevelSecurity match {
         case Some(definedFields) =>
           definedFields.strategy match {
             case NotAllowedFieldsToModify(notAllowedFields) =>
-              val currentQuery = request.source().query()
-              val newQuery = currentQuery.handleNotAllowedFields(notAllowedFields)
-              request.source().query(newQuery)
-              request
+              modifyNotAllowedFieldsInQuery(notAllowedFields)
             case NothingNotAllowedToModify | LuceneContextHeaderApproach =>
               request
           }
         case None =>
           request
       }
+    }
+
+    private def modifyNotAllowedFieldsInQuery(notAllowedFields: NonEmptyList[UsedField.SpecificField]) = {
+      val currentQuery = request.source().query()
+      val newQuery = currentQuery.handleNotAllowedFields(notAllowedFields)
+      request.source().query(newQuery)
+      request
     }
   }
 }

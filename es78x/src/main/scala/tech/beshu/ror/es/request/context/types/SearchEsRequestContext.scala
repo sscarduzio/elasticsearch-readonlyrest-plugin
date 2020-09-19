@@ -22,7 +22,7 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -52,25 +52,25 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
     optionallyDisableCaching(fieldLevelSecurity)
     request
       .applyFilterToQuery(filter)
-      .modifyFieldsInQuery(fieldLevelSecurity)
+      .applyFieldLevelSecurity(fieldLevelSecurity)
       .indices(indices.toList.map(_.value.value): _*)
 
     ModificationResult.UpdateResponse(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
-  override def fieldsUsage: FieldsUsage = {
+  override def requestFieldsUsage: RequestFieldsUsage = {
     Option(actionRequest.source().scriptFields()) match {
       case Some(scriptFields) if scriptFields.size() > 0 =>
-        FieldsUsage.CantExtractFields
+        RequestFieldsUsage.CantExtractFields
       case _ =>
         checkQueryFields()
     }
   }
 
-  private def checkQueryFields(): FieldsUsage = {
+  private def checkQueryFields(): RequestFieldsUsage = {
     Option(actionRequest.source().query())
       .map(_.fieldsUsage)
-      .getOrElse(FieldsUsage.NotUsingFields)
+      .getOrElse(RequestFieldsUsage.NotUsingFields)
   }
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
@@ -81,8 +81,8 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
         response.getHits.getHits
           .foreach { hit =>
             hit
-              .modifySourceFieldsUsing(definedFieldLevelSecurity.restrictions)
-              .modifyDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
+              .filterSourceFieldsUsing(definedFieldLevelSecurity.restrictions)
+              .filterDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
           }
         Task.now(response)
       case _ =>
