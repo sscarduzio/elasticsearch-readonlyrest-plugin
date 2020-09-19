@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, IndexName}
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
@@ -27,11 +28,12 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.queries.QueryFieldsUsage._
+import tech.beshu.ror.es.request.queries.QueryFieldsUsage.instances._
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
 
-//TODO
 class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
                                       esContext: EsContext,
                                       aclContext: AccessControlStaticContext,
@@ -51,25 +53,39 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
                                 indices: NonEmptyList[domain.IndexName],
                                 filter: Option[domain.Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    optionallyDisableCaching(searchRequest)
+    optionallyDisableCaching(fieldLevelSecurity)
     searchRequest
       .applyFilterToQuery(filter)
       .indices(indices.toList.map(_.value.value): _*)
     Modified
   }
 
+  override def fieldsUsage: FieldsUsage = {
+    Option(searchRequest.source().scriptFields()) match {
+      case Some(scriptFields) if scriptFields.size() > 0 =>
+        FieldsUsage.CantExtractFields
+      case _ =>
+        checkQueryFields()
+    }
+  }
+
+  private def checkQueryFields(): FieldsUsage = {
+    Option(searchRequest.source().query())
+      .map(_.fieldsUsage)
+      .getOrElse(FieldsUsage.NotUsingFields)
+  }
   private def searchRequestFrom(request: ActionRequest) = {
     Option(invokeMethodCached(request, request.getClass, "getSearchRequest"))
       .collect { case sr: SearchRequest => sr }
       .getOrElse(throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot extract SearchRequest from SubmitAsyncSearchRequest request"))
   }
 
-  //TODO cache is now disabled only when 'fields' rule is used.
-  //Remove after 'fields' rule improvements.
-  private def optionallyDisableCaching(request: SearchRequest): Unit = {
-    if (esContext.involvesFields) {
-      logger.debug("ACL involves fields, will disable request cache for SearchRequest")
-      request.requestCache(false)
+  private def optionallyDisableCaching(fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
+    fieldLevelSecurity.map(_.strategy) match {
+      case Some(FieldLevelSecurity.Strategy.LuceneContextHeaderApproach) =>
+        logger.debug("ACL uses context header for fields rule, will disable request cache for SearchRequest")
+        searchRequest.requestCache(false)
+      case _ =>
     }
   }
 }

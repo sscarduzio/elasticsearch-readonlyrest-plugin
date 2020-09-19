@@ -41,21 +41,6 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                              override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override def fieldsUsage: FieldsUsage = {
-    Option(actionRequest.source().scriptFields()) match {
-      case Some(scriptFields) if scriptFields.size() > 0 =>
-        FieldsUsage.CantExtractFields
-      case _ =>
-        checkQueryFields()
-    }
-  }
-
-  def checkQueryFields(): FieldsUsage = {
-    Option(actionRequest.source().query())
-      .map(_.fieldsUsage)
-      .getOrElse(FieldsUsage.NotUsingFields)
-  }
-
   override protected def indicesFrom(request: SearchRequest): Set[IndexName] = {
     request.indices.asSafeSet.flatMap(IndexName.fromString)
   }
@@ -71,6 +56,21 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
       .indices(indices.toList.map(_.value.value): _*)
 
     ModificationResult.UpdateResponse(filterFieldsFromResponse(fieldLevelSecurity))
+  }
+
+  override def fieldsUsage: FieldsUsage = {
+    Option(actionRequest.source().scriptFields()) match {
+      case Some(scriptFields) if scriptFields.size() > 0 =>
+        FieldsUsage.CantExtractFields
+      case _ =>
+        checkQueryFields()
+    }
+  }
+
+  private def checkQueryFields(): FieldsUsage = {
+    Option(actionRequest.source().query())
+      .map(_.fieldsUsage)
+      .getOrElse(FieldsUsage.NotUsingFields)
   }
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
