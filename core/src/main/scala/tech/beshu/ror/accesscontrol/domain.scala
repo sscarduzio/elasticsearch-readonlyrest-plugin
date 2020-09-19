@@ -462,8 +462,7 @@ object domain {
       final case class ObfuscatedRandomField(value: String) extends AnyVal
       object ObfuscatedRandomField {
         def apply(from: SpecificField) = {
-          //TODO
-          val randomValue = "ROR123123123123123"
+          val randomValue = s"${from.value}${randomAlphanumeric(10)}"
           new ObfuscatedRandomField(randomValue)
         }
       }

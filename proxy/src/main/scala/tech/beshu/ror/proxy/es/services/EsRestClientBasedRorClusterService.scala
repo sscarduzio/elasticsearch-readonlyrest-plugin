@@ -13,7 +13,7 @@ import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequ
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchResponse}
 import org.elasticsearch.client.Requests
 import org.elasticsearch.client.indices.GetIndexRequest
-import org.elasticsearch.cluster.metadata.IndexMetadata
+import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexMetadata, IndexTemplateMetadata}
 import org.elasticsearch.index.query.QueryBuilders
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
