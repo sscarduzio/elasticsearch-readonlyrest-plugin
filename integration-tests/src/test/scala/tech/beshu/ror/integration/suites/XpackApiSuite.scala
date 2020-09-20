@@ -61,16 +61,16 @@ trait XpackApiSuite
   private lazy val dev4SqlManager = new SqlApiManager(basicAuthClient("dev2sql", "test"), container.esVersion)
 
   "Async search" should {
-    "be allowed for dev1 and test1_index" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
-      val result = dev1SearchManager.asyncSearch("test1_index")
+    "be allowed for dev1 and test1_index_a" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+      val result = dev1SearchManager.asyncSearch("test1_index_a")
 
       result.responseCode should be (200)
       result.searchHits.map(i => i("_index").str).toSet should be(
-        Set("test1_index")
+        Set("test1_index_a")
       )
     }
-    "not be allowed for dev2 and test1_index" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
-      val result = dev2SearchManager.asyncSearch("test1_index")
+    "not be allowed for dev2 and test1_index_a" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
+      val result = dev2SearchManager.asyncSearch("test1_index_a")
 
       result.responseCode should be (404)
     }
@@ -93,7 +93,7 @@ trait XpackApiSuite
         "mustache template can be used" in {
           val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
           val result = searchManager.searchTemplate(
-            index = "test1_index",
+            index = "test1_index*",
             query = ujson.read(
               s"""
                  |{
@@ -106,7 +106,8 @@ trait XpackApiSuite
           )
 
           result.responseCode shouldEqual 200
-          result.searchHits(0)("_source") should be(ujson.read("""{"hello":"world"}"""))
+          result.searchHits.map(_ ("_index").str).distinct should be(List("test1_index_a"))
+          result.searchHits.map(_ ("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
         }
       }
     }
@@ -798,7 +799,8 @@ object XpackApiSuite {
   }
 
   private def createDocs(documentManager: DocumentManager): Unit = {
-    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1_index_a", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test1_index_b", 1, ujson.read("""{"hello":"world"}""")).force()
 
     documentManager.createDoc("test2_index", 1, ujson.read("""{"name":"john", "age":33}""")).force()
     documentManager.createDoc("test2_index", 2, ujson.read("""{"name":"bill", "age":50}""")).force()

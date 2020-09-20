@@ -47,6 +47,7 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
   }
 
   override protected def update(request: ActionRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
+    logger.info(s"APPLYING INDICES: ${indices.toList}")
     searchRequest.indices(indices.toList.map(_.value.value): _*)
     Modified
   }
