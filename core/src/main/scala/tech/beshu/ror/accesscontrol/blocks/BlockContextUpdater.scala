@@ -273,6 +273,14 @@ object BlockContextWithIndicesUpdater {
                     indices: Set[IndexName]): GeneralIndexRequestBlockContext =
       blockContext.copy(indices = indices)
   }
+
+  implicit object SnapshotRequestBlockContextWithIndicesUpdater
+    extends BlockContextWithIndicesUpdater[SnapshotRequestBlockContext] {
+
+    def withIndices(blockContext: SnapshotRequestBlockContext,
+                    indices: Set[IndexName]): SnapshotRequestBlockContext =
+      blockContext.copy(indices = indices)
+  }
 }
 
 abstract class BlockContextWithIndexPacksUpdater[B <: BlockContext : HasIndexPacks] {

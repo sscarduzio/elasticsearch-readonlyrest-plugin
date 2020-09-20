@@ -22,6 +22,7 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.SnapshotManager.RepositoriesResult
 import tech.beshu.ror.utils.httpclient.RestClient
+import scala.collection.JavaConverters._
 
 class SnapshotManager(client: RestClient)
   extends BaseManager(client) {
@@ -104,7 +105,10 @@ class SnapshotManager(client: RestClient)
   private def createNewSnapshotRequest(repositoryName: String,
                                        snapshotName: String,
                                        indices: List[String]) = {
-    val request = new HttpPut(client.from(s"/_snapshot/$repositoryName/$snapshotName"))
+    val request = new HttpPut(client.from(
+      s"/_snapshot/$repositoryName/$snapshotName",
+      Map("wait_for_completion" -> "true").asJava
+    ))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
       s"""
