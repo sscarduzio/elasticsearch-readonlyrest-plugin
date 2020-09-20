@@ -87,32 +87,49 @@ trait XpackApiSuite
     }
   }
 
-  "Mustache lang" which {
-    "Search can be done" when {
-      "user uses local auth rule" when {
-        "mustache template can be used" in {
-          val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
-          val result = searchManager.searchTemplate(
-            index = "test1_index*",
-            query = ujson.read(
-              s"""
-                 |{
-                 |    "id": "template1",
-                 |    "params": {
-                 |        "query_string": "world"
-                 |    }
-                 |}""".stripMargin
-            )
+  "Mustache lang" when {
+    "search template is used" should {
+      "return only indices which user has access to" in {
+        val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
+        val result = searchManager.searchTemplate(
+          index = "test1_index*",
+          query = ujson.read(
+            s"""
+               |{
+               |    "id": "template1",
+               |    "params": {
+               |        "query_string": "world"
+               |    }
+               |}""".stripMargin
           )
+        )
 
-          result.responseCode shouldEqual 200
-          result.searchHits.map(_ ("_index").str).distinct should be(List("test1_index_a"))
-          result.searchHits.map(_ ("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
-        }
+        result.responseCode shouldEqual 200
+        result.searchHits.map(_ ("_index").str).distinct should be(List("test1_index_a"))
+        result.searchHits.map(_ ("_source")) should be(List(ujson.read("""{"hello":"world"}""")))
+      }
+      "return empty response for dev3" in {
+        val searchManager = new SearchManager(basicAuthClient("dev3", "test"))
+        val result = searchManager.searchTemplate(
+          index = "test1_index*",
+          query = ujson.read(
+            s"""
+               |{
+               |    "id": "template1",
+               |    "params": {
+               |        "query_string": "world"
+               |    }
+               |}""".stripMargin
+          )
+        )
+
+        result.responseCode shouldEqual 200
+        result.searchHits.map(_ ("_index").str).distinct should be(List.empty)
+        result.searchHits.map(_ ("_source")) should be(List.empty)
       }
     }
-    "Template rendering can be done" when {
-      "user uses local auth rule" in {
+    "render template is used" should {
+      "be allowed to be used for dev1" in {
         val searchManager = new SearchManager(basicAuthClient("dev1", "test"))
 
         val result = searchManager.renderTemplate(
