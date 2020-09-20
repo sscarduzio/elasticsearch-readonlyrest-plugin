@@ -28,9 +28,9 @@ class EsWithoutRorPluginContainer(name: String,
                                   esClusterSettings: EsClusterSettings,
                                   image: ImageFromDockerfile)
   extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
-  with StrictLogging {
-
+    with StrictLogging {
   logger.info(s"[$name] Creating ES without ROR plugin installed container ...")
+
   override val sslEnabled: Boolean = false
 }
 

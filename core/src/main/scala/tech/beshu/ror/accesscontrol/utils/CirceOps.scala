@@ -262,12 +262,12 @@ object CirceOps {
   object AclCreationErrorCoders {
     private implicit val config: Configuration = Configuration.default.withDiscriminator("type")
     implicit val aclCreationErrorEncoder: Encoder[AclCreationError] = {
-      implicit val _ = extras.semiauto.deriveEncoder[Reason]
-      extras.semiauto.deriveEncoder
+      implicit val _ = extras.semiauto.deriveConfiguredEncoder[Reason]
+      extras.semiauto.deriveConfiguredEncoder
     }
     implicit val aclCreationErrorDecoder: Decoder[AclCreationError] = {
-      implicit val _ = extras.semiauto.deriveDecoder[Reason]
-      extras.semiauto.deriveDecoder
+      implicit val _ = extras.semiauto.deriveConfiguredDecoder[Reason]
+      extras.semiauto.deriveConfiguredDecoder
     }
 
     def stringify(error: AclCreationError): String = Encoder[AclCreationError].apply(error).noSpaces

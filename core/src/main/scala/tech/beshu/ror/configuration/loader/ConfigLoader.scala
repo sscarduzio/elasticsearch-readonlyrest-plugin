@@ -14,12 +14,14 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.configuration.loader
 
 import cats.Show
 import monix.eval.Task
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import cats.implicits._
 
 trait ConfigLoader[SPECIALIZED_ERROR] {
 
@@ -36,7 +38,7 @@ object ConfigLoader {
 
     implicit def show[E: Show]: Show[ConfigLoaderError[E]] = Show.show {
       case ParsingError(error) => RawRorConfig.ParsingRorConfigError.show.show(error)
-      case SpecializedError(error) => implicitly[Show[E]].show(error)
+      case SpecializedError(error) => error.show
     }
   }
 

@@ -17,6 +17,7 @@
 package tech.beshu.ror.configuration
 
 import java.util.concurrent.TimeUnit
+import java.util.regex.Pattern.Pos
 
 import better.files.File
 import cats.Show
@@ -27,10 +28,10 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
+import shapeless.tag.@@
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.utils.PrivilegedFile
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -40,6 +41,7 @@ object RorProperties extends Logging {
 
   object defaults {
     val refreshInterval: FiniteDuration Refined Positive = refineV(5 second).right.get
+    val loadingDelay: FiniteDuration Refined Positive = refineV(5 second).right.get
     val esHost: String = "localhost"
     val esPort: Int = 9200
     val proxyPort: Int = 5000
@@ -48,15 +50,16 @@ object RorProperties extends Logging {
   object keys {
     val rorConfig: NonEmptyString = "com.readonlyrest.settings.file.path"
     val refreshInterval: NonEmptyString = "com.readonlyrest.settings.refresh.interval"
+    val loadingDelay: NonEmptyString = "com.readonlyrest.settings.loading.delay"
     val esHost: NonEmptyString = "com.readonlyrest.proxy.es.host"
     val esPort: NonEmptyString = "com.readonlyrest.proxy.es.port"
     val proxyPort: NonEmptyString = "com.readonlyrest.proxy.port"
   }
 
-  def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[PrivilegedFile] =
+  def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =
     propertiesProvider
       .getProperty(PropName(keys.rorConfig))
-      .map(PrivilegedFile(_))
+      .map(File(_))
 
   def rorProxyConfigFile(implicit propertiesProvider: PropertiesProvider): File =
     getProperty(keys.rorConfig, location => Try(File(location)))
@@ -68,9 +71,16 @@ object RorProperties extends Logging {
       RefreshInterval.Enabled(defaults.refreshInterval)
     )
 
+  def rorIndexSettingLoadingDelay(implicit propertiesProvider: PropertiesProvider): LoadingDelay =
+    getProperty(
+      keys.loadingDelay,
+      str => toLoadingDelay(str),
+      LoadingDelay(defaults.refreshInterval)
+    )
+
   def rorProxyEsHost(implicit provider: PropertiesProvider): String =
     getProperty(keys.esHost, str => Success(str), defaults.esHost)
-  
+
   def rorProxyEsPort(implicit provider: PropertiesProvider): Int =
     getProperty(keys.esPort, str => Try(Integer.valueOf(str)), defaults.esPort)
 
@@ -113,17 +123,30 @@ object RorProperties extends Logging {
       }
   }
 
-  private def toRefreshInterval(value: String): Try[RefreshInterval] = Try {
+  private def toRefreshInterval(value: String): Try[RefreshInterval] = toPositiveFiniteDuration(value).map {
+    case Some(value) => RefreshInterval.Enabled(value)
+    case None => RefreshInterval.Disabled
+  }
+
+  private def toLoadingDelay(value: String): Try[LoadingDelay] = toPositiveFiniteDuration(value).map {
+    case Some(value) => LoadingDelay(value)
+    case None => LoadingDelay(defaults.loadingDelay)
+  }
+
+  private def toPositiveFiniteDuration(value: String): Try[Option[FiniteDuration Refined Positive]] = Try {
     Try(Integer.valueOf(value)) match {
       case Success(interval) if interval == 0 =>
-        RefreshInterval.Disabled
+        None
       case Success(interval) if interval > 0 =>
-        RefreshInterval.Enabled(refineV[Positive](FiniteDuration(interval.toLong, TimeUnit.SECONDS)).right.get)
+        Some(refineV[Positive](FiniteDuration(interval.toLong, TimeUnit.SECONDS)).right.get)
       case Failure(_) =>
         throw new IllegalArgumentException(s"Cannot convert '$value' to finite positive duration")
     }
   }
-
+  final case class LoadingDelay(duration:FiniteDuration Refined Positive)
+  object LoadingDelay {
+    implicit val  showLoadingDelay:Show[LoadingDelay] = Show[FiniteDuration].contramap(_.duration.value)
+  }
   sealed trait RefreshInterval
   object RefreshInterval {
     case object Disabled extends RefreshInterval

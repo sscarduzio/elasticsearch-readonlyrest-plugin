@@ -296,8 +296,8 @@ class ExternalAuthenticationRuleSettingsTests
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(MalformedValue(
               """- authentication_endpoint: "http://localhost:8080/auth1"
-                |  success_status_code: 200.0
-                |  cache_ttl_in_sec: 60.0
+                |  success_status_code: 200
+                |  cache_ttl_in_sec: 60
                 |""".stripMargin
             )))
           }
@@ -356,8 +356,8 @@ class ExternalAuthenticationRuleSettingsTests
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(MalformedValue(
               """- name: "ext1"
-                |  success_status_code: 200.0
-                |  cache_ttl_in_sec: 60.0
+                |  success_status_code: 200
+                |  cache_ttl_in_sec: 60
                 |""".stripMargin
             )))
           }
@@ -411,7 +411,7 @@ class ExternalAuthenticationRuleSettingsTests
               """- name: "ext1"
                 |  authentication_endpoint: "http://localhost:8080/auth1"
                 |  success_status_code: "success"
-                |  cache_ttl_in_sec: 60.0
+                |  cache_ttl_in_sec: 60
                 |""".stripMargin
             )))
           }

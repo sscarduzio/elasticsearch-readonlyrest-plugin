@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.configuration
 
+import better.files.File
 import cats.Show
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -23,11 +24,11 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver
 import tech.beshu.ror.accesscontrol.factory.JsonConfigStaticVariableResolver.ResolvingError
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.{PrivilegedFile, yaml}
+import tech.beshu.ror.utils.yaml
 
 final class EsConfigFileLoader[CONFIG: Decoder]()(implicit envVarsProvider: EnvVarsProvider) {
 
-  def loadConfigFromFile(file: PrivilegedFile,
+  def loadConfigFromFile(file: File,
                          configName: String): Either[MalformedSettings, CONFIG] = {
     file.fileReader { reader =>
       yaml

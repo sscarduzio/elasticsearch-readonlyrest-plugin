@@ -37,6 +37,7 @@ import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertie
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.configuration.{RawRorConfig, RorIndexNameConfiguration}
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
 import tech.beshu.ror.providers._
@@ -170,7 +171,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
             |""".stripMargin)
         val acl = createCore(config)
         val headers = acl.right.get.aclStaticContext.obfuscatedHeaders
-        headers shouldBe 'empty
+        headers shouldBe empty
       }
       "the section exists, and obfuscated header is defined" in {
         val config = rorConfigFromUnsafe(
@@ -479,7 +480,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
     factory
       .createCoreFrom(
         config,
-        RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+        RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
         clientsFactory,
         MockLdapConnectionPoolProvider
       )

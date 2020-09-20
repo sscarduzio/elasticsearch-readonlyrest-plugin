@@ -64,9 +64,11 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .run("chown elasticsearch:elasticsearch config/*")
           .run("(egrep -v 'node\\.name|cluster\\.initial_master_nodes|cluster\\.name|network\\.host' /usr/share/elasticsearch/config/elasticsearch.yml || echo -n '') > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'node.name: $nodeName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run("echo 'path.repo: /tmp' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'network.host: 0.0.0.0' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'cluster.name: $clusterName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run("echo 'path.repo: /tmp' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .run(s"echo 'cluster.routing.allocation.disk.threshold_enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
             command = s"echo 'discovery.seed_hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml",
             orElse = s"echo 'discovery.zen.ping.unicast.hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml"
@@ -82,7 +84,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           "-Xmx512m",
           "-Djava.security.egd=file:/dev/./urandoms",
           "-Dcom.unboundid.ldap.sdk.debug.enabled=false",
-          "-Xdebug", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000", // todo:
+          "-Xdebug", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000",
           if (!configHotReloadingEnabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
         ).mkString(" ")
 

@@ -43,6 +43,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.configuration.{RawRorConfig, RorIndexNameConfiguration}
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
@@ -54,7 +55,7 @@ final case class CoreSettings(aclEngine: AccessControl,
 
 trait CoreFactory {
   def createCoreFrom(config: RawRorConfig,
-                     rorIndexNameConfiguration: RorIndexNameConfiguration,
+                     rorIndexNameConfiguration: RorConfigurationIndex,
                      httpClientFactory: HttpClientsFactory,
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
 }
@@ -65,7 +66,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
   extends CoreFactory with Logging {
 
   override def createCoreFrom(config: RawRorConfig,
-                              rorIndexNameConfiguration: RorIndexNameConfiguration,
+                              rorIndexNameConfiguration: RorConfigurationIndex,
                               httpClientFactory: HttpClientsFactory,
                               ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]] = {
     config.configJson \\ Attributes.rorSectionName match {
@@ -76,7 +77,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
   }
 
   private def createCoreFromRorSection(rorSection: Json,
-                                       rorIndexNameConfiguration: RorIndexNameConfiguration,
+                                       rorIndexNameConfiguration: RorConfigurationIndex,
                                        httpClientFactory: HttpClientsFactory,
                                        ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) = {
     JsonConfigStaticVariableResolver.resolve(rorSection) match {
@@ -93,7 +94,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
   }
 
   private def createFrom(settingsJson: Json,
-                         rorIndexNameConfiguration: RorIndexNameConfiguration,
+                         rorIndexNameConfiguration: RorConfigurationIndex,
                          httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) = {
     val decoder = for {
@@ -125,7 +126,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
   }
 
   private implicit def rulesNelDecoder(definitions: DefinitionsPack,
-                                       rorIndexNameConfiguration: RorIndexNameConfiguration): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
+                                       rorIndexNameConfiguration: RorConfigurationIndex): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Option[Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](None)
     val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
@@ -156,7 +157,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
 
   private def decodeRuleInCursorContext(name: String,
                                         definitions: DefinitionsPack,
-                                        rorIndexNameConfiguration: RorIndexNameConfiguration): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] =
+                                        rorIndexNameConfiguration: RorConfigurationIndex): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] =
     State(cursor => {
       if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
@@ -185,7 +186,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     })
 
   private def blockDecoder(definitions: DefinitionsPack,
-                           rorIndexNameConfiguration: RorIndexNameConfiguration)
+                           rorIndexNameConfiguration: RorConfigurationIndex)
                           (implicit loggingContext: LoggingContext): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
@@ -252,7 +253,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
 
   private def aclDecoder(httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                         rorIndexNameConfiguration: RorIndexNameConfiguration): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
+                         rorIndexNameConfiguration: RorConfigurationIndex): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)

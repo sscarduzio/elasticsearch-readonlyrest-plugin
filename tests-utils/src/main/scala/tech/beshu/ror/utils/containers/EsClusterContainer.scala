@@ -38,6 +38,7 @@ class EsClusterContainer private[containers](val rorContainerSpecification: Cont
   private var aStartedDependencies = StartedClusterDependencies(Nil)
 
   def nodes: List[EsContainer] = this.clusterNodes
+
   def startedDependencies: StartedClusterDependencies = aStartedDependencies
 
   def esVersion: String = nodes.headOption match {
@@ -126,13 +127,13 @@ final case class EsClusterSettings(name: String,
                                    nodeDataInitializer: ElasticsearchNodeDataInitializer = NoOpElasticsearchNodeDataInitializer,
                                    rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                    dependentServicesContainers: List[DependencyDef] = Nil,
-                                   xPackSupport: Boolean = false,
+                                   xPackSupport: Boolean,
                                    configHotReloadingEnabled: Boolean = true,
                                    customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false)(implicit val rorConfigFileName: String)
 
 object EsClusterSettings {
-  val basic = EsClusterSettings(name = "ROR_SINGLE")("/basic/readonlyrest.yml")
+  val basic = EsClusterSettings(name = "ROR_SINGLE", xPackSupport = false)("/basic/readonlyrest.yml")
 }
 
 final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]], originalPort: Int)

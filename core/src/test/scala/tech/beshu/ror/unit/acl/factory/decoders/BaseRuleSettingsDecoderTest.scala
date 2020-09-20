@@ -29,6 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.configuration.RorIndexNameConfiguration
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
@@ -63,7 +64,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+          RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )
@@ -84,7 +85,7 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
       aFactory
         .createCoreFrom(
           rorConfigFromUnsafe(yaml),
-          RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+          RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
           httpClientsFactory,
           ldapConnectionPoolProvider
         )

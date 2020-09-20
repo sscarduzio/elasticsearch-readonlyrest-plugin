@@ -37,7 +37,8 @@ trait MiscSuite
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
-      nodeDataInitializer = MiscSuite.nodeDataInitializer()
+      nodeDataInitializer = MiscSuite.nodeDataInitializer(),
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

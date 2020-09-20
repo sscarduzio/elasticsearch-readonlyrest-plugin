@@ -27,7 +27,8 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.boot.SchedulerPools
-import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RorIndexNameConfiguration}
+import tech.beshu.ror.configuration.loader.FileConfigLoader
+import tech.beshu.ror.configuration.{IndexConfigManager, RorIndexNameConfiguration}
 import tech.beshu.ror.utils.RorInstanceSupplier
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
@@ -60,7 +61,7 @@ class TransportRRAdminAction(transportService: TransportService,
     .map(_.fold(e => throw new ElasticsearchException(e.message), identity))
     .runSyncUnsafe(10 seconds)(adminRestApiScheduler, CanBlock.permit)
 
-  private val indexConfigManager = new IndexConfigManager(indexContentProvider, rorIndexNameConfig)
+  private val indexConfigManager = new IndexConfigManager(indexContentProvider)
   private val fileConfigLoader = new FileConfigLoader(env.configFile(), JvmPropertiesProvider)
 
   override def doExecute(task: Task, request: RRAdminRequest, listener: ActionListener[RRAdminResponse]): Unit = {
@@ -79,5 +80,5 @@ class TransportRRAdminAction(transportService: TransportService,
 
   private def getApi =
     RorInstanceSupplier.get()
-      .map(instance => new AdminRestApi(instance, indexConfigManager, fileConfigLoader))
+      .map(instance => new AdminRestApi(instance, indexConfigManager, fileConfigLoader, rorIndexNameConfig.index))
 }

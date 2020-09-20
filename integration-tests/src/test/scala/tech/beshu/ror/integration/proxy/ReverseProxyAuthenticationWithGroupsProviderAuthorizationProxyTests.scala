@@ -18,6 +18,7 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
+import tech.beshu.ror.utils.containers.XpackSupport
 
 class ReverseProxyAuthenticationWithGroupsProviderAuthorizationProxyTests
-  extends ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite with ProxyTestSupport
+  extends ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite with ProxyTestSupport with XpackSupport

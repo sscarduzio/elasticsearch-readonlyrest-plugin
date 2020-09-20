@@ -25,13 +25,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
 import tech.beshu.ror.configuration.RorIndexNameConfiguration
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.providers.UuidProvider
 
 object ruleDecoders {
 
   implicit def ruleDecoderBy(name: Rule.Name,
                              definitions: DefinitionsPack,
-                             rorIndexNameConfiguration: RorIndexNameConfiguration)
+                             rorIndexNameConfiguration: RorConfigurationIndex)
                             (implicit clock: Clock,
                              uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] =
     name match {

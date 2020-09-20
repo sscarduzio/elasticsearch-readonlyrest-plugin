@@ -18,18 +18,19 @@ package tech.beshu.ror.configuration
 
 import java.io.StringReader
 
+import better.files.File
 import cats.effect.Resource
 import cats.{Eq, Show}
 import io.circe.{Json, ParsingFailure}
 import monix.eval.Task
 import tech.beshu.ror.configuration.RawRorConfig.ParsingRorConfigError.{InvalidContent, MoreThanOneRorSection, NoRorSection}
-import tech.beshu.ror.utils.{PrivilegedFile, yaml}
+import tech.beshu.ror.utils.yaml
 
 final case class RawRorConfig(configJson: Json, raw: String)
 
 object RawRorConfig {
 
-  def fromFile(file: PrivilegedFile): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
+  def fromFile(file: File): Task[Either[ParsingRorConfigError, RawRorConfig]] = {
     fromString(file.contentAsString)
   }
 
@@ -64,7 +65,7 @@ object RawRorConfig {
     implicit val show: Show[ParsingRorConfigError] = Show.show {
       case NoRorSection => "Cannot find any 'readonlyrest' section in settings"
       case MoreThanOneRorSection => "Only one 'readonlyrest' section is required"
-      case InvalidContent(ex) => s"Settings file content is malformed. Details: ${ex.getMessage}"
+      case InvalidContent(ex) => s"Settings content is malformed. Details: ${ex.getMessage}"
     }
   }
 

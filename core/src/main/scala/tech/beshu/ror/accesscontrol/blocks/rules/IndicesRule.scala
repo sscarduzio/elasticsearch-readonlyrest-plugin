@@ -60,10 +60,10 @@ class IndicesRule(val settings: Settings)
     if (matchAll) Fulfilled(blockContext)
     else {
       BlockContextUpdater[B] match {
-        case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
-        case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
-        case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
-        case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
+        case CurrentUserMetadataRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
+        case GeneralNonIndexRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
+        case RepositoryRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
+        case SnapshotRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
         case GeneralIndexRequestBlockContextUpdater => processIndicesRequest(blockContext)
         case FilterableRequestBlockContextUpdater => processIndicesRequest(blockContext)
         case MultiIndexRequestBlockContextUpdater => processIndicesPacks(blockContext)
@@ -72,6 +72,11 @@ class IndicesRule(val settings: Settings)
         case AliasRequestBlockContextUpdater => processAliasRequest(blockContext)
       }
     }
+  }
+
+  private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): RuleResult[B] = {
+    if(settings.mustInvolveIndices) Rejected()
+    else Fulfilled(blockContext)
   }
 
   private def processIndicesRequest[B <: BlockContext: BlockContextWithIndicesUpdater](blockContext: B): RuleResult[B] = {
@@ -455,7 +460,8 @@ class IndicesRule(val settings: Settings)
 object IndicesRule {
   val name = Rule.Name("indices")
 
-  final case class Settings(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]])
+  final case class Settings(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                            mustInvolveIndices: Boolean)
 
   private sealed trait CanPass[+T]
   private object CanPass {

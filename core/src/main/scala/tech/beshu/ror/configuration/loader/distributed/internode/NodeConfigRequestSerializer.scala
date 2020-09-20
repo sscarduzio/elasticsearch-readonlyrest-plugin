@@ -14,36 +14,21 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils
+package tech.beshu.ror.configuration.loader.distributed.internode
 
-import java.io.FileReader
-import java.nio.file.Path
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
+import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest
+import tech.beshu.ror.configuration.loader.distributed.internode.dto.NodeConfigRequestDTO
 
-import better.files.{Dispose, File}
+object NodeConfigRequestSerializer {
 
-class PrivilegedFile(file: File) {
-  def exists: Boolean = {
-    doPrivileged(file.exists)
-  }
-  
-  def fileReader: Dispose[FileReader] = {
-    doPrivileged(file.fileReader)
+  import io.circe.parser
+  import io.circe.syntax._
+
+  def serialize(nodeConfigRequest: NodeConfigRequest): String = {
+    NodeConfigRequestDTO.create(nodeConfigRequest).asJson.noSpaces
   }
 
-  def contentAsString: String = {
-    doPrivileged(file.contentAsString)
+  def parse(str: String): NodeConfigRequest = {
+    parser.decode[NodeConfigRequestDTO](str).map(NodeConfigRequestDTO.fromDto).toTry.get
   }
-
-  def pathAsString: String = {
-    file.pathAsString
-  }
-}
-
-object PrivilegedFile {
-  def apply(file: File): PrivilegedFile = new PrivilegedFile(file)
-
-  def apply(path: Path): PrivilegedFile = new PrivilegedFile(File(path))
-
-  def apply(path: String): PrivilegedFile = new PrivilegedFile(File(path))
 }

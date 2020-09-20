@@ -30,6 +30,7 @@ trait CrossClusterCallsSuite
   extends WordSpec
     with BaseEsRemoteClusterIntegrationTest
     with SingleClientSupport
+    with XpackSupport
     with ESVersionSupport {
   this: EsContainerCreator =>
 
@@ -38,9 +39,9 @@ trait CrossClusterCallsSuite
   override lazy val targetEs = container.localCluster.nodes.head
 
   override val remoteClusterContainer: EsRemoteClustersContainer = createRemoteClustersContainer(
-    EsClusterSettings(name = "ROR1", nodeDataInitializer = localClusterNodeDataInitializer(), xPackSupport = true),
+    EsClusterSettings(name = "ROR1", nodeDataInitializer = localClusterNodeDataInitializer(), xPackSupport = isUsingXpackSupport),
     NonEmptyList.of(
-      EsClusterSettings(name = "ROR2", nodeDataInitializer = remoteClusterNodeDataInitializer(), xPackSupport = true),
+      EsClusterSettings(name = "ROR2", nodeDataInitializer = remoteClusterNodeDataInitializer(), xPackSupport = isUsingXpackSupport),
     ),
     remoteClusterSetup()
   )
