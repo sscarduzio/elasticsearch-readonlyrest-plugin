@@ -65,14 +65,17 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
 }
 
 object SqlIndicesEsRequestContext {
-  def from(actionRequest: ActionRequest with CompositeIndicesRequest,
-           esContext: EsContext,
-           aclContext: AccessControlStaticContext,
-           clusterService: RorClusterService,
-           threadPool: ThreadPool): Option[SqlIndicesEsRequestContext] = {
-    if (esContext.channel.request().path().startsWith("/_sql"))
-      Some(new SqlIndicesEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool))
-    else
+  def unapply(arg: ReflectionBasedActionRequest): Option[SqlIndicesEsRequestContext] = {
+    if (arg.esContext.channel.request().path().startsWith("/_sql")) {
+      Some(new SqlIndicesEsRequestContext(
+        arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
+        arg.esContext,
+        arg.aclContext,
+        arg.clusterService,
+        arg.threadPool
+      ))
+    } else {
       None
+    }
   }
 }

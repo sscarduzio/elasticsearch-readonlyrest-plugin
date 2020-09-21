@@ -16,7 +16,7 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "test1"
-      indices: ["test1_index"]
+      indices: ["test1_index_a"]
       auth_key: dev1:test
 
     - name: "test2"

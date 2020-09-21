@@ -28,6 +28,7 @@ import io.jsonwebtoken.Claims
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction}
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
@@ -231,6 +232,14 @@ object domain {
     def isRepository: Boolean = value.contains("/repository/")
     def isTemplate: Boolean = value.contains("/template/")
     def isPutTemplate: Boolean = value == "indices:admin/template/put"
+    def isSearchAction: Boolean = List(
+      searchAction,
+      mSearchAction,
+      fieldCapsAction,
+      asyncSearchAction,
+      rollupSearchAction,
+      searchTemplateAction
+    ).contains(this)
   }
   object Action {
     val searchAction = Action("indices:data/read/search")
@@ -238,6 +247,7 @@ object domain {
     val fieldCapsAction = Action("indices:data/read/field_caps")
     val asyncSearchAction = Action("indices:data/read/async_search/submit")
     val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
+    val searchTemplateAction = Action("indices:data/read/search/template")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }
