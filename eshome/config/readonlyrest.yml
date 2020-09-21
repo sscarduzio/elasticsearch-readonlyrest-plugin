@@ -5,24 +5,66 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
-  prompt_for_basic_auth: false
-
   access_control_rules:
-
-    # ES containter initializer need this rule to configure ES instance after startup
-    - name: "CONTAINER ADMIN"
+    - name: Super user access
       verbosity: error
       type: allow
-      auth_key: admin:container
+      groups: ["superuser"]
+      indices: ["*"]
+      actions: ["*"]
 
-    - name: "test1"
-      indices: ["test1_index"]
-      auth_key: dev1:test
+    - name: All ro access
+      type: allow
+      groups: ["allro"]
+      indices: ["*"]
+      actions: ["indices:data/read/*", "cluster:monitor/state", "indices:admin/get", "indices:admin/mappings/fields/get", "indices:admin/mappings/get", "indices:admin/aliases/get", "indices:admin/template/get"]
 
-    - name: "test2"
-      indices: ["test2_index"]
-      auth_key: dev2:test
+    - name: Kibana rw access
+      type: allow
+      groups: ["kibanarw"]
+      indices: [".kibana*"]
+      actions: ["indices:data/read/*","indices:data/write/*"]
 
-    - name: "test3"
-      indices: ["test3_index"]
-      auth_key: dev3:test
+    - name: Kibana ro access
+      type: allow
+      groups: ["kibanaro"]
+      indices: [".kibana*"]
+      actions: ["indices:data/read/*"]
+
+    - name: Logs all access
+      verbosity: error
+      type: allow
+      groups: ["logs"]
+      indices: ["logs*"]
+      actions: ["*"]
+
+    - name: Logs ro access
+      type: allow
+      groups: ["logsro"]
+      indices: ["logs*",".monitoring*"]
+      actions: ["indices:monitor/settings/get", "indices:data/read/*", "cluster:monitor/state", "indices:admin/get", "indices:admin/mappings/fields/get", "indices:admin/mappings/get", "indices:admin/aliases/get", "indices:admin/template/get"]
+
+    - name: Alibaba all access
+      type: allow
+      groups: ["alibaba"]
+      indices: ["alibaba*"]
+      actions: ["*"]
+
+  users:
+  - username: elastic
+    auth_key: elastic:test
+    groups: ["superuser"]
+
+  - username: kibana
+    auth_key: kibana:test
+    groups: ["superuser"]
+
+  - username: logstash
+    auth_key: logstash:test
+    groups: ["logs"]
+
+  - username: alibaba
+    auth_key: alibaba:test
+    groups: ["alibaba", "kibanarw", "logsro"]
+
+  obfuscated_headers: ["x-auth-key", "authorization"]

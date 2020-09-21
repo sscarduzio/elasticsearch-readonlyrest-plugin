@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect._
@@ -31,22 +31,25 @@ import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
 
-class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
+class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                              esContext: EsContext,
                                              aclContext: AccessControlStaticContext,
                                              clusterService: RorClusterService,
                                              override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](
+    actionRequest, esContext, aclContext, clusterService, threadPool
+  ) {
 
   private lazy val searchRequest = searchRequestFrom(actionRequest)
 
-  override protected def indicesFrom(request: ActionRequest): Set[IndexName] = {
+  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[IndexName] = {
     searchRequest
       .indices.asSafeSet
       .flatMap(IndexName.fromString)
   }
 
-  override protected def update(request: ActionRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
+  override protected def update(request: ActionRequest with CompositeIndicesRequest,
+                                indices: NonEmptyList[IndexName]): ModificationResult = {
     searchRequest.indices(indices.toList.map(_.value.value): _*)
     Modified
   }
@@ -68,7 +71,13 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest,
 object SearchTemplateEsRequestContext {
   def unapply(arg: ReflectionBasedActionRequest): Option[SearchTemplateEsRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SearchTemplateRequest")) {
-      Some(new SearchTemplateEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
+      Some(new SearchTemplateEsRequestContext(
+        arg.esContext.actionRequest.asInstanceOf[ActionRequest with CompositeIndicesRequest],
+        arg.esContext,
+        arg.aclContext,
+        arg.clusterService,
+        arg.threadPool
+      ))
     } else {
       None
     }
