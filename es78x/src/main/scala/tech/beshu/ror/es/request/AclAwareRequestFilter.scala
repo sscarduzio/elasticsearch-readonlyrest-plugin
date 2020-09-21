@@ -160,18 +160,17 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: ClusterRerouteRequest =>
         regularRequestHandler.handle(new ClusterRerouteEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: CompositeIndicesRequest =>
-        SqlIndicesEsRequestContext.from(request, esContext, aclContext, clusterService, threadPool) match {
-          case Some(sqlRequest) =>
-            regularRequestHandler.handle(sqlRequest)
-          case None =>
-            logger.error(s"Found an instance of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getSimpleName}")
+        ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
+          case SqlIndicesEsRequestContext(r) => regularRequestHandler.handle(r)
+          case SearchTemplateEsRequestContext(r) => regularRequestHandler.handle(r)
+          case _ =>
+            logger.error(s"Found an child request of CompositeIndicesRequest that could not be handled: report this as a bug immediately! ${request.getClass.getSimpleName}")
             regularRequestHandler.handle(new DummyCompositeIndicesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
         }
       // rest
       case _ =>
         ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
           case XpackAsyncSearchRequest(request) => regularRequestHandler.handle(request)
-          case SearchTemplateEsRequestContext(request) => regularRequestHandler.handle(request)
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)

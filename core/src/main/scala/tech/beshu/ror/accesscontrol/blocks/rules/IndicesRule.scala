@@ -182,8 +182,7 @@ class IndicesRule(val settings: Settings)
   }
 
   private def isSearchAction(requestContext: RequestContext): Boolean =
-    requestContext.isReadOnlyRequest &&
-      List(searchAction, mSearchAction, fieldCapsAction, asyncSearchAction, rollupSearchAction).contains(requestContext.action)
+    requestContext.isReadOnlyRequest && requestContext.action.isSearchAction
 
   private def canPass(requestContext: RequestContext,
                       indices: Set[IndexName],
