@@ -23,7 +23,6 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.client.node.NodeClient
-import org.elasticsearch.cluster.metadata.RepositoriesMetaData
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
@@ -42,8 +41,9 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     with Logging {
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
-    val repositoriesMetaData = clusterService.state.getMetaData.custom[RepositoriesMetaData](RepositoriesMetaData.TYPE)
-    repositoriesMetaData.repositories().asScala.head.
+    // todo: cleanup
+//    val repositoriesMetaData = clusterService.state.getMetaData.custom[RepositoriesMetaData](RepositoriesMetaData.TYPE)
+//    repositoriesMetaData.repositories().asScala.head.
 
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
     lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet

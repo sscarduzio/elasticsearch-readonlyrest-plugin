@@ -121,6 +121,10 @@ object BlockContextUpdater {
     def withRepositories(blockContext: SnapshotRequestBlockContext,
                          repositories: Set[RepositoryName]): SnapshotRequestBlockContext =
       blockContext.copy(repositories = repositories)
+
+    def withIndices(blockContext: SnapshotRequestBlockContext,
+                    indices: Set[IndexName]): SnapshotRequestBlockContext =
+      blockContext.copy(indices = indices)
   }
 
   implicit object TemplateRequestBlockContextUpdater
