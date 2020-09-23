@@ -36,7 +36,7 @@ import scala.collection.JavaConverters._
 class SnapshotsRule(val settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = RepositoriesRule.name
+  override val name: Rule.Name = SnapshotsRule.name
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {

@@ -21,7 +21,7 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, HasIndexPacks, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, HasIndexPacks, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
@@ -63,7 +63,7 @@ class IndicesRule(val settings: Settings)
         case CurrentUserMetadataRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
         case GeneralNonIndexRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
         case RepositoryRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
-        case SnapshotRequestBlockContextUpdater => processIndicesRequest(blockContext)
+        case SnapshotRequestBlockContextUpdater => processSnapshotRequest(blockContext)
         case GeneralIndexRequestBlockContextUpdater => processIndicesRequest(blockContext)
         case FilterableRequestBlockContextUpdater => processIndicesRequest(blockContext)
         case MultiIndexRequestBlockContextUpdater => processIndicesPacks(blockContext)
@@ -358,6 +358,11 @@ class IndicesRule(val settings: Settings)
       case CanPass.No(_) =>
         Rejected()
     }
+  }
+
+  private def processSnapshotRequest(blockContext: SnapshotRequestBlockContext): RuleResult[SnapshotRequestBlockContext] = {
+    if(blockContext.indices.isEmpty) processRequestWithoutIndices(blockContext)
+    else processIndicesRequest(blockContext)
   }
 
   private def canTemplatesReadOnlyRequestPass(blockContext: TemplateRequestBlockContext,

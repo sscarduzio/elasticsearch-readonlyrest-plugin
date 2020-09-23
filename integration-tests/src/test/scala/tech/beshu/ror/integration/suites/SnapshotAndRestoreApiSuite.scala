@@ -25,6 +25,7 @@ trait SnapshotAndRestoreApiSuite
   private lazy val adminSnapshotManager = new SnapshotManager(basicAuthClient("admin", "container"))
   private lazy val dev1SnapshotManager = new SnapshotManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SnapshotManager = new SnapshotManager(basicAuthClient("dev2", "test"))
+  private lazy val dev3SnapshotManager = new SnapshotManager(basicAuthClient("dev3", "test"))
 
   "Snapshot repository management API" when {
     "user creates a repository" should {
@@ -320,53 +321,318 @@ trait SnapshotAndRestoreApiSuite
     "user gets snapshots" should {
       "allow him to do so" when {
         "block doesn't contain repositories, snapshots, indices rules" in {
+          val repositoryName = RepositoryNameGenerator.next("dev3-repo-")
+          adminSnapshotManager.putRepository(repositoryName).force()
 
-        }
-        "all snapshots are requested" in {
+          val snapshotName1 = SnapshotNameGenerator.next("dev3-snap-")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
 
+          val snapshotName2 = SnapshotNameGenerator.next("dev3-snap-")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+          val result = dev3SnapshotManager.getAllSnapshotsOf(repositoryName)
+
+          result.responseCode should be (200)
+          result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1, snapshotName2))
         }
         "user has access to repository name" when {
           "has also access to snapshot name" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
 
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, snapshotName1)
+
+            result.responseCode should be (200)
+            result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1))
           }
-          "snapshot pattern have to be narrowed" in {
+          "has also access to one of requested snapshot names" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
 
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+
+            result.responseCode should be (200)
+            result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1))
           }
-          "snapshot pattern doesn't have to be narrowed" in{
+          "snapshot pattern has to be narrowed" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
 
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev2-forbidden")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
+
+            val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, "dev2*")
+
+            result.responseCode should be (200)
+            result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1))
           }
-        }
-        "user has access to full requested repository pattern" when {
-          "has also access to snapshot name" in {
+          "snapshot pattern doesn't have to be narrowed" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
 
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev2-forbidden")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
+
+            val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, "dev2-snap-*")
+
+            result.responseCode should be (200)
+            result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1))
           }
-          "snapshot pattern have to be narrowed" in {
+          "one of requested snapshot patterns is allowed" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
 
-          }
-          "snapshot pattern doesn't have to be narrowed" in{
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
 
-          }
-        }
-        "user has access to narrowed repository pattern" when {
-          "has also access to snapshot name" in {
+            val snapshotName2 = SnapshotNameGenerator.next("dev2-forbidden")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
 
-          }
-          "snapshot pattern have to be narrowed" in {
+            val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, "dev2*", "dev1*")
 
-          }
-          "snapshot pattern doesn't have to be narrowed" in{
-
+            result.responseCode should be (200)
+            result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1))
           }
         }
       }
-      "return empty list" when {
+      "not allow him to do so" when {
+        "user has no access to repository" in {
+          val repositoryName = RepositoryNameGenerator.next("dev1-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
 
+          val snapshotName1 = SnapshotNameGenerator.next("dev1-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
+
+          val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, "dev1*")
+
+          result.responseCode should be (403)
+        }
+        "user has no access to snapshot" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev1-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
+
+          val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, snapshotName1)
+
+          result.responseCode should be (403)
+        }
+        "user has no access to snapshot pattern" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev1-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
+
+          val result = dev2SnapshotManager.getSnapshotsOf(repositoryName, "dev1*")
+
+          result.responseCode should be (403)
+        }
+      }
+    }
+    "user gets snapshot statuses" should {
+      "allow him to do so" when {
+        "user has access to repository name" when {
+          "has also access to snapshot name" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = dev2SnapshotManager.getAllSnapshotStatusesOf(repositoryName, snapshotName1)
+
+            result.responseCode should be (200)
+            result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1))
+          }
+          "has also access to one of requested snapshot names" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = dev2SnapshotManager.getAllSnapshotStatusesOf(repositoryName, snapshotName1, snapshotName2)
+
+            result.responseCode should be (200)
+            result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1))
+          }
+        }
+      }
+      "not allow him to do so" when {
+        "user has no access to repository" in {
+          val repositoryName = RepositoryNameGenerator.next("dev1-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev1-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev1-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
+
+          val result = dev2SnapshotManager.getAllSnapshotStatusesOf(repositoryName, "dev1*")
+
+          result.responseCode should be (403)
+        }
+        "user has no access to snapshot" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev1-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
+
+          val result = dev2SnapshotManager.getAllSnapshotStatusesOf(repositoryName, snapshotName1)
+
+          result.responseCode should be (403)
+        }
+      }
+    }
+    "user deletes snapshots" should {
+      "be able to do so" when {
+        "block doesn't contain repositories, snapshots, indices rules" in {
+          val repositoryName = RepositoryNameGenerator.next("dev3-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev3-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev3-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+          val result = dev3SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+
+          result.responseCode should be (200)
+          val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+          verification.snapshots.map(_("snapshot").str) should be (List.empty)
+        }
+        "user has access to repository name" when {
+          "user has access to all requested snapshots" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+
+            result.responseCode should be (200)
+            val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+            verification.snapshots.map(_("snapshot").str) should be (List.empty)
+          }
+          "user has access to requested snapshot pattern" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, "dev2-snap-*")
+
+            result.responseCode should be (200)
+            val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+            verification.snapshots.map(_("snapshot").str) should be (List.empty)
+          }
+        }
+      }
+      "not be able to do so" when {
+        "user has no access to repository name" in {
+          val repositoryName = RepositoryNameGenerator.next("dev3-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+          val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+
+          result.responseCode should be (403)
+          val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+          verification.snapshots.map(_("snapshot").str) should be (List(snapshotName1, snapshotName2))
+        }
+        "user has no access to at least one requested snapshot name" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev3-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+          val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+
+          result.responseCode should be (403)
+          val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+          verification.snapshots.map(_("snapshot").str) should be (List(snapshotName1, snapshotName2))
+        }
+        "user has no access to requested snapshot name pattern" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+          val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, "dev2*")
+
+          result.responseCode should be (403)
+          val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+          verification.snapshots.map(_("snapshot").str) should be (List(snapshotName1, snapshotName2))
+        }
       }
     }
   }
 
   override protected def beforeEach(): Unit = {
-    adminSnapshotManager.deleteAllSnapshots().force()
+    adminSnapshotManager.deleteAllSnapshots()
+    adminSnapshotManager.deleteAllRepositories().force()
     super.beforeEach()
   }
 }

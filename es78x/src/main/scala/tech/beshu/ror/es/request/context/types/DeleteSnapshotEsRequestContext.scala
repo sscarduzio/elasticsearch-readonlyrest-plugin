@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.cluster.snapshots.create.CreateSnapshotRequest
@@ -46,7 +47,6 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
     }
   }
 
-
   override protected def repositoriesFrom(request: DeleteSnapshotRequest): Set[RepositoryName] = Set {
     NonEmptyString
       .from(request.repository())
@@ -58,14 +58,13 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
   }
 
 
-  override protected def indicesFrom(request: DeleteSnapshotRequest): Set[IndexName] =
-    Set(IndexName.wildcard)
+  override protected def indicesFrom(request: DeleteSnapshotRequest): Set[IndexName] = Set.empty
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {
-      snapshot <- snapshotFrom(blockContext)
+      snapshots <- snapshotsFrom(blockContext)
       repository <- repositoryFrom(blockContext)
-    } yield update(actionRequest, snapshot, repository)
+    } yield update(actionRequest, snapshots, repository)
     updateResult match {
       case Right(_) =>
         ModificationResult.Modified
@@ -75,17 +74,10 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
     }
   }
 
-  private def snapshotFrom(blockContext: SnapshotRequestBlockContext) = {
-    val snapshots = blockContext.snapshots.toList
-    snapshots match {
-      case Nil =>
-        Left(())
-      case snapshot :: rest =>
-        if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. Whole set of snapshots [${snapshots.mkString(",")}]")
-        }
-        Right(snapshot)
-    }
+  private def snapshotsFrom(blockContext: SnapshotRequestBlockContext) = {
+    NonEmptyList
+      .fromList(blockContext.snapshots.toList)
+      .toRight(())
   }
 
   private def repositoryFrom(blockContext: SnapshotRequestBlockContext) = {
@@ -102,9 +94,9 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
   }
 
   private def update(actionRequest: DeleteSnapshotRequest,
-                     snapshot: SnapshotName,
+                     snapshots: NonEmptyList[SnapshotName],
                      repository: RepositoryName) = {
-    actionRequest.snapshots(snapshot.value.value)
+    actionRequest.snapshots(snapshots.toList.map(_.value.value): _*)
     actionRequest.repository(repository.value.value)
   }
 }

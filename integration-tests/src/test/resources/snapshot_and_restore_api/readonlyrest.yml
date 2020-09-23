@@ -16,12 +16,14 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "dev1 block"
-      indices: ["index1"]
       auth_key: dev1:test
+      indices: ["index1"]
 
     - name: "dev2 block"
-      indices: ["index2*"]
       auth_key: dev2:test
+      indices: ["index2*"]
       repositories: ["dev2-repo-*"]
       snapshots: ["dev2-snap-*"]
 
+    - name: "dev3 block"
+      auth_key: dev3:test

@@ -44,7 +44,7 @@ object SingletonEsContainer
   def cleanUpContainer(): Unit = {
     indexManager.removeAll
     templateManager.deleteAllTemplates()
-    snapshotManager.deleteAllSnapshots()
+    snapshotManager.deleteAllRepositories()
   }
 
   def updateConfig(rorConfigFileName: String): Unit = {

@@ -20,8 +20,9 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
-import tech.beshu.ror.utils.elasticsearch.SnapshotManager.RepositoriesResult
+import tech.beshu.ror.utils.elasticsearch.SnapshotManager.{RepositoriesResult, SnapshotsResult}
 import tech.beshu.ror.utils.httpclient.RestClient
+
 import scala.collection.JavaConverters._
 
 class SnapshotManager(client: RestClient)
@@ -55,12 +56,40 @@ class SnapshotManager(client: RestClient)
     call(createCleanUpRepositoryRequest(repositoryName), new JsonResponse(_))
   }
 
-  def deleteAllSnapshots(): JsonResponse = {
-    call(createDeleteAllSnapshotsRequest(), new JsonResponse(_))
+  def deleteAllRepositories(): JsonResponse = {
+    call(createDeleteAllRepositoriesRequest(), new JsonResponse(_))
+  }
+
+  def getAllSnapshotsOf(repositoryName: String): SnapshotsResult = {
+    call(createGetSnapshotsRequest(repositoryName, Nil), new SnapshotsResult(_))
+  }
+
+  def getSnapshotsOf(repositoryName: String, snapshots: String*): SnapshotsResult = {
+    call(createGetSnapshotsRequest(repositoryName, snapshots.toList), new SnapshotsResult(_))
+  }
+
+  def getAllSnapshotStatusesOf(repositoryName: String, snapshot: String, snapshots: String*): SnapshotsResult = {
+    call(createGetSnapshotStatusesRequest(repositoryName, snapshot :: snapshots.toList), new SnapshotsResult(_))
   }
 
   def putSnapshot(repositoryName: String, snapshotName: String, index: String, otherIndices: String*): JsonResponse = {
     call(createNewSnapshotRequest(repositoryName, snapshotName, index :: otherIndices.toList), new JsonResponse(_))
+  }
+
+  def deleteSnapshotsOf(repositoryName: String, snapshots: String*): JsonResponse = {
+    call(createDeleteSnapshotsOfRequest(repositoryName, snapshots.toList), new JsonResponse(_))
+  }
+
+  def deleteSnapshotsOf(repositoryName: String): JsonResponse = {
+    call(createDeleteSnapshotsOfRequest(repositoryName, Nil), new JsonResponse(_))
+  }
+
+  def deleteAllSnapshots(): Unit = {
+    val result = getAllRepositories
+    result.force()
+    result.repositories.foreach { case (repository, _) =>
+      deleteSnapshotsOf(repository).force()
+    }
   }
 
   private def createNewRepositoryRequest(name: String) = {
@@ -90,16 +119,22 @@ class SnapshotManager(client: RestClient)
     new HttpPost(client.from(s"/_snapshot/$name/_cleanup"))
   }
 
-  private def createDeleteAllSnapshotsRequest() = {
+  private def createDeleteAllRepositoriesRequest() = {
     new HttpDelete(client.from("/_snapshot/*"))
   }
 
   private def createGetRepositoriesRequest(repositoriesPatterns: List[String]) = {
-    val namesStr = repositoriesPatterns match {
-      case Nil => "*"
-      case all => all.mkString(",")
-    }
-    new HttpGet(client.from(s"/_snapshot/$namesStr"))
+    new HttpGet(client.from(s"/_snapshot/${stringifyOrAll(repositoriesPatterns)}"))
+  }
+
+  private def createGetSnapshotsRequest(repositoryName: String,
+                                        snapshotsPatterns: List[String]) = {
+    new HttpGet(client.from(s"/_snapshot/$repositoryName/${stringifyOrAll(snapshotsPatterns)}"))
+  }
+
+  private def createGetSnapshotStatusesRequest(repositoryName: String,
+                                               snapshotsPatterns: List[String]) = {
+    new HttpGet(client.from(s"/_snapshot/$repositoryName/${stringifyOrAll(snapshotsPatterns)}/_status"))
   }
 
   private def createNewSnapshotRequest(repositoryName: String,
@@ -118,11 +153,30 @@ class SnapshotManager(client: RestClient)
     ))
     request
   }
+
+  private def createDeleteSnapshotsOfRequest(repositoryName: String, snapshots: List[String]) = {
+    new HttpDelete(client.from(s"/_snapshot/$repositoryName/${stringifyOrWildcard(snapshots)}"))
+  }
+
+  private def stringifyOrAll(list: List[String]) = stringifyOr(list, "_all")
+
+  private def stringifyOrWildcard(list: List[String]) = stringifyOr(list, "*")
+
+  private def stringifyOr(list: List[String], or: String) = {
+    list match {
+      case Nil => or
+      case all => all.mkString(",")
+    }
+  }
 }
 
 object SnapshotManager {
 
   class RepositoriesResult(response: HttpResponse) extends JsonResponse(response) {
     lazy val repositories: Map[String, JSON] = responseJson.obj.toMap
+  }
+
+  class SnapshotsResult(response: HttpResponse) extends JsonResponse(response) {
+    lazy val snapshots: List[JSON] = responseJson.obj("snapshots").arr.toList
   }
 }
