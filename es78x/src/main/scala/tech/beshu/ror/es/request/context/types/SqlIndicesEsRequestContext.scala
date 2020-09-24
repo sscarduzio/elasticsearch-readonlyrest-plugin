@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -35,7 +35,7 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
                                          aclContext: AccessControlStaticContext,
                                          clusterService: RorClusterService,
                                          override val threadPool: ThreadPool)
-  extends BaseIndicesEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+  extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   private lazy val sqlIndices = SqlRequestHelper
     .indicesFrom(actionRequest)
@@ -47,8 +47,11 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
   override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[IndexName] =
     sqlIndices.indices.flatMap(IndexName.fromString)
 
+  //TODO use provided filter and fields somehow.
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                indices: NonEmptyList[IndexName]): ModificationResult = {
+                                indices: NonEmptyList[IndexName],
+                                filter: Option[Filter],
+                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val indicesStrings = indices.map(_.value.value).toList.toSet
     if (indicesStrings != sqlIndices.indices) {
       SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings) match {

@@ -17,8 +17,9 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.ActionRequest
-import org.elasticsearch.action.search.SearchRequest
+import monix.eval.Task
+import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
+import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, IndexName}
@@ -26,11 +27,11 @@ import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage._
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage.instances._
-import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -56,8 +57,9 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
     optionallyDisableCaching(fieldLevelSecurity)
     searchRequest
       .applyFilterToQuery(filter)
+      .applyFieldLevelSecurity(fieldLevelSecurity)
       .indices(indices.toList.map(_.value.value): _*)
-    Modified
+    ModificationResult.UpdateResponse(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
   override def requestFieldsUsage: RequestFieldsUsage = {
@@ -78,6 +80,27 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
     Option(invokeMethodCached(request, request.getClass, "getSearchRequest"))
       .collect { case sr: SearchRequest => sr }
       .getOrElse(throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot extract SearchRequest from SubmitAsyncSearchRequest request"))
+  }
+
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
+                                      (actionResponse: ActionResponse): Task[ActionResponse] = {
+    (searchResponseFrom(actionResponse), fieldLevelSecurity) match {
+      case (Some(searchResponse), Some(definedFieldLevelSecurity)) =>
+        searchResponse.getHits.getHits
+          .foreach { hit =>
+            hit
+              .filterSourceFieldsUsing(definedFieldLevelSecurity.restrictions)
+              .filterDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
+          }
+        Task.now(actionResponse)
+      case _ =>
+        Task.now(actionResponse)
+    }
+  }
+
+  private def searchResponseFrom(response: ActionResponse) = {
+    Option(invokeMethodCached(response, response.getClass, "getSearchResponse"))
+      .collect { case sr: SearchResponse => sr }
   }
 
   private def optionallyDisableCaching(fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
