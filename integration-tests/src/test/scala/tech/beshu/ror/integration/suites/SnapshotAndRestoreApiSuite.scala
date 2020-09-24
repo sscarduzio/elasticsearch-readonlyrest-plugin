@@ -6,7 +6,7 @@ import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.SnapshotAndRestoreApiSuite.{RepositoryNameGenerator, SnapshotNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SnapshotManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SnapshotManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait SnapshotAndRestoreApiSuite
@@ -23,6 +23,7 @@ trait SnapshotAndRestoreApiSuite
   override def nodeDataInitializer = Some(SnapshotAndRestoreApiSuite.nodeDataInitializer())
 
   private lazy val adminSnapshotManager = new SnapshotManager(basicAuthClient("admin", "container"))
+  private lazy val adminIndexManager = new IndexManager(basicAuthClient("admin", "container"))
   private lazy val dev1SnapshotManager = new SnapshotManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SnapshotManager = new SnapshotManager(basicAuthClient("dev2", "test"))
   private lazy val dev3SnapshotManager = new SnapshotManager(basicAuthClient("dev3", "test"))
@@ -628,12 +629,113 @@ trait SnapshotAndRestoreApiSuite
         }
       }
     }
+    "user restores snapshot" should {
+      "be able to do so" when {
+        "block doesn't contain repositories, snapshots, indices rules" in {
+          val repositoryName = RepositoryNameGenerator.next("dev3-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev3-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index1").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("dev3-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2").force()
+
+          val result = dev3SnapshotManager.restoreSnapshot(repositoryName, snapshotName1)
+
+          result.responseCode should be (200)
+          val verification1 = adminIndexManager.getIndex("restored_index1")
+          verification1.responseCode should be (200)
+          val verification2 = adminIndexManager.getIndex("restored_index2")
+          verification2.responseCode should be (404)
+        }
+        "user has access to repository and snapshot name" when {
+          "all indices from snapshot are restored" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2*").force()
+
+            val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index2*")
+
+            result.responseCode should be (200)
+            val verification1 = adminIndexManager.getIndex("restored_index1")
+            verification1.responseCode should be (404)
+            val verification2 = adminIndexManager.getIndex("restored_index2")
+            verification2.responseCode should be (200)
+          }
+          "only one index from snapshot is restored" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "*").force()
+
+            val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index2")
+
+            result.responseCode should be (200)
+            val verification1 = adminIndexManager.getIndex("restored_index1")
+            verification1.responseCode should be (404)
+            val verification2 = adminIndexManager.getIndex("restored_index2")
+            verification2.responseCode should be (200)
+          }
+        }
+      }
+      "not be able to do so" when {
+        "user has no access to repository name" in {
+          val repositoryName = RepositoryNameGenerator.next("dev1-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2*").force()
+
+          val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index2*")
+
+          result.responseCode should be (403)
+        }
+        "user has no access to snapshot name" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev1-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index2*").force()
+
+          val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index2*")
+
+          result.responseCode should be (403)
+        }
+        "user has no access to index name" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index1").force()
+
+          val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "index1")
+
+          result.responseCode should be (403)
+        }
+        "user has no access to index pattern" in {
+          val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "*").force()
+
+          val result = dev2SnapshotManager.restoreSnapshot(repositoryName, snapshotName1, "*")
+
+          result.responseCode should be (403)
+        }
+      }
+    }
   }
 
   override protected def beforeEach(): Unit = {
     adminSnapshotManager.deleteAllSnapshots()
     adminSnapshotManager.deleteAllRepositories().force()
-    super.beforeEach()
+    adminIndexManager.removeIndex("restored_index1")
+    adminIndexManager.removeIndex("restored_index2")
   }
 }
 

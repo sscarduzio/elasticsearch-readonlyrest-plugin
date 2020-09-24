@@ -92,6 +92,10 @@ class SnapshotManager(client: RestClient)
     }
   }
 
+  def restoreSnapshot(repositoryName: String, snapshotName: String, indices: String*): JsonResponse = {
+    call(createRestoreSnapshotRequest(repositoryName, snapshotName, indices.toList), new JsonResponse(_))
+  }
+
   private def createNewRepositoryRequest(name: String) = {
     val request = new HttpPut(client.from(s"/_snapshot/$name"))
     request.addHeader("Content-Type", "application/json")
@@ -156,6 +160,35 @@ class SnapshotManager(client: RestClient)
 
   private def createDeleteSnapshotsOfRequest(repositoryName: String, snapshots: List[String]) = {
     new HttpDelete(client.from(s"/_snapshot/$repositoryName/${stringifyOrWildcard(snapshots)}"))
+  }
+
+  private def createRestoreSnapshotRequest(repositoryName: String, snapshotName: String, indices: List[String]) = {
+    val request = new HttpPost(client.from(
+      s"/_snapshot/$repositoryName/$snapshotName/_restore",
+      Map("wait_for_completion" -> "true").asJava
+    ))
+    request.addHeader("Content-Type", "application/json")
+    indices match {
+      case Nil =>
+        request.setEntity(new StringEntity(
+          s"""
+             |{
+             |  "rename_pattern": "(.+)",
+             |  "rename_replacement": "restored_$$1"
+             |}""".stripMargin
+        ))
+      case _ =>
+        request.setEntity(new StringEntity(
+          s"""
+             |{
+             |  "indices": "${indices.mkString(",")}",
+             |  "rename_pattern": "(.+)",
+             |  "rename_replacement": "restored_$$1"
+             |}""".stripMargin
+        ))
+    }
+    request
+
   }
 
   private def stringifyOrAll(list: List[String]) = stringifyOr(list, "_all")
