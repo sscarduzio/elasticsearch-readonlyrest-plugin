@@ -35,7 +35,6 @@ function processBuild {
 
     ES_VERSION=$(echo $PLUGIN_FILE_BASE | awk -F "_es" {'print $2'} | sed "s/\.zip//")
     echo "ES_VERSION: $ES_VERSION"
-#    generateActionListIfNecessary $ES_VERSION
 
     PLUGIN_VERSION=$(echo $PLUGIN_FILE_BASE | awk -F "_es" {'print $1'} | awk -F "readonlyrest-" {'print $2'})
     echo "PLUGIN_VERSION: $PLUGIN_VERSION"
