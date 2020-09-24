@@ -21,6 +21,7 @@ import org.scalatest.concurrent.{Eventually, IntegrationPatience}
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.SnapshotAndRestoreApiSuite.{RepositoryNameGenerator, SnapshotNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, SnapshotManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -31,7 +32,8 @@ trait SnapshotAndRestoreApiSuite
     with Eventually
     with IntegrationPatience
     with BeforeAndAfterEach
-    with Matchers {
+    with Matchers
+    with ESVersionSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/snapshot_and_restore_api/readonlyrest.yml"
@@ -154,7 +156,7 @@ trait SnapshotAndRestoreApiSuite
     }
     "user cleans up a repository" should {
       "allow him to do so" when {
-        "block doesn't contains 'repositories' rule" in {
+        "block doesn't contains 'repositories' rule" excludeES(allEs7xBelowEs74x) in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev1-repo")
           adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
@@ -162,7 +164,7 @@ trait SnapshotAndRestoreApiSuite
 
           result.responseCode should be (200)
         }
-        "user has access to repository name" in {
+        "user has access to repository name" excludeES(allEs7xBelowEs74x) in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev2-repo")
           adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
@@ -172,7 +174,7 @@ trait SnapshotAndRestoreApiSuite
         }
       }
       "not allow him to do so" when {
-        "user has no access to repository name" in {
+        "user has no access to repository name" excludeES(allEs7xBelowEs74x) in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev1-repo")
           adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
@@ -756,6 +758,7 @@ trait SnapshotAndRestoreApiSuite
 }
 
 object SnapshotAndRestoreApiSuite {
+
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager.createFirstDoc("index1", ujson.read("""{"hello":"world"}""")).force()

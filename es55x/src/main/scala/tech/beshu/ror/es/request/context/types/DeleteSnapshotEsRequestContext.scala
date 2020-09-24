@@ -54,7 +54,6 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
       )
   }
 
-
   override protected def indicesFrom(request: DeleteSnapshotRequest): Set[IndexName] =
     Set(IndexName.wildcard)
 
