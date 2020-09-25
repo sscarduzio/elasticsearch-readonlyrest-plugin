@@ -84,8 +84,12 @@ class RepositoriesRule(val settings: Settings)
         repositoriesToCheck,
         new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(allowedRepositories.map(_.value.value).asJava))
       ) match {
-        case CheckResult.Ok(processedRepositories) => Right(processedRepositories)
-        case CheckResult.Failed => Left(())
+        case CheckResult.Ok(processedRepositories) if requestContext.isReadOnlyRequest =>
+          Right(processedRepositories)
+        case CheckResult.Ok(processedRepositories) if processedRepositories.size == repositoriesToCheck.size =>
+          Right(processedRepositories)
+        case CheckResult.Ok(_) | CheckResult.Failed =>
+          Left(())
       }
     }
   }

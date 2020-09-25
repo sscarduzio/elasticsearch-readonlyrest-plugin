@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
@@ -26,7 +27,8 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import scala.collection.JavaConverters._
 
 class SnapshotManager(client: RestClient)
-  extends BaseManager(client) {
+  extends BaseManager(client)
+    with LazyLogging {
 
   def getRepository(repositoryNamePattern: String,
                     otherRepositoryNamePatterns: String*): RepositoriesResult = {
@@ -85,10 +87,17 @@ class SnapshotManager(client: RestClient)
   }
 
   def deleteAllSnapshots(): Unit = {
-    val result = getAllRepositories
-    result.force()
-    result.repositories.foreach { case (repository, _) =>
-      deleteSnapshotsOf(repository).force()
+    val repositoriesResult = getAllRepositories
+    repositoriesResult.force()
+    repositoriesResult.repositories.foreach { case (repository, _) =>
+      val snapshotsResult = getAllSnapshotsOf(repository)
+      snapshotsResult.force()
+      snapshotsResult
+        .snapshots
+        .map { json => json("snapshot").str }
+        .foreach { snapshot =>
+          deleteSnapshotsOf(repository, snapshot).force()
+        }
     }
   }
 

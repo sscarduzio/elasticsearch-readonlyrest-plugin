@@ -545,40 +545,70 @@ trait SnapshotAndRestoreApiSuite
     }
     "user deletes snapshots" should {
       "be able to do so" when {
-        "block doesn't contain repositories, snapshots, indices rules" in {
-          val repositoryName = RepositoryNameGenerator.next("dev3-repo")
-          adminSnapshotManager.putRepository(repositoryName).force()
-
-          val snapshotName1 = SnapshotNameGenerator.next("dev3-snap")
-          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
-
-          val snapshotName2 = SnapshotNameGenerator.next("dev3-snap")
-          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
-
-          val result = dev3SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
-
-          result.responseCode should be (200)
-          val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
-          verification.snapshots.map(_("snapshot").str) should be (List.empty)
-        }
-        "user has access to repository name" when {
-          "user has access to all requested snapshots" in {
-            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+        "block doesn't contain repositories, snapshots, indices rules" when {
+          "one snapshot is being removed" in {
+            val repositoryName = RepositoryNameGenerator.next("dev3-repo")
             adminSnapshotManager.putRepository(repositoryName).force()
 
-            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
-            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+            val snapshotName = SnapshotNameGenerator.next("dev3-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index1").force()
 
-            val snapshotName2 = SnapshotNameGenerator.next("dev2-snap")
-            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
-
-            val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+            val result = dev3SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName)
 
             result.responseCode should be (200)
             val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
             verification.snapshots.map(_("snapshot").str) should be (List.empty)
           }
-          "user has access to requested snapshot pattern" in {
+          "many snapshots are being removed" excludeES(allEs7xBelowEs74x) in {
+            val repositoryName = RepositoryNameGenerator.next("dev3-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev3-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev3-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = dev3SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+
+            result.responseCode should be (200)
+            val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+            verification.snapshots.map(_("snapshot").str) should be (List.empty)
+          }
+        }
+        "user has access to repository name" when {
+          "user has access to all requested snapshots" when {
+            "one snapshot is being removed" in {
+              val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+              adminSnapshotManager.putRepository(repositoryName).force()
+
+              val snapshotName = SnapshotNameGenerator.next("dev2-snap")
+              adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index2").force()
+
+              val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName)
+
+              result.responseCode should be(200)
+              val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+              verification.snapshots.map(_ ("snapshot").str) should be(List.empty)
+            }
+            "many snapshots are being removed" excludeES (allEs7xBelowEs74x) in {
+              val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+              adminSnapshotManager.putRepository(repositoryName).force()
+
+              val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+              adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+
+              val snapshotName2 = SnapshotNameGenerator.next("dev2-snap")
+              adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+              val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+
+              result.responseCode should be(200)
+              val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+              verification.snapshots.map(_ ("snapshot").str) should be(List.empty)
+            }
+          }
+          "user has access to requested snapshot pattern" excludeES(allEs7xBelowEs74x) in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
             adminSnapshotManager.putRepository(repositoryName).force()
 
@@ -590,9 +620,9 @@ trait SnapshotAndRestoreApiSuite
 
             val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, "dev2-snap-*")
 
-            result.responseCode should be (200)
+            result.responseCode should be(200)
             val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
-            verification.snapshots.map(_("snapshot").str) should be (List.empty)
+            verification.snapshots.map(_ ("snapshot").str) should be(List.empty)
           }
         }
       }
@@ -613,21 +643,36 @@ trait SnapshotAndRestoreApiSuite
           val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
           verification.snapshots.map(_("snapshot").str) should be (List(snapshotName1, snapshotName2))
         }
-        "user has no access to at least one requested snapshot name" in {
-          val repositoryName = RepositoryNameGenerator.next("dev2-repo")
-          adminSnapshotManager.putRepository(repositoryName).force()
+        "user has no access to at least one requested snapshot name" when {
+          "one snapshot is being removed" in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
 
-          val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
-          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+            val snapshotName = SnapshotNameGenerator.next("dev3-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName, "index1").force()
 
-          val snapshotName2 = SnapshotNameGenerator.next("dev3-snap")
-          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+            val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName)
 
-          val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+            result.responseCode should be(403)
+            val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+            verification.snapshots.map(_ ("snapshot").str) should be(List(snapshotName))
+          }
+          "many snapshots are being removed" excludeES(allEs7xBelowEs74x) in {
+            val repositoryName = RepositoryNameGenerator.next("dev2-repo")
+            adminSnapshotManager.putRepository(repositoryName).force()
 
-          result.responseCode should be (403)
-          val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
-          verification.snapshots.map(_("snapshot").str) should be (List(snapshotName1, snapshotName2))
+            val snapshotName1 = SnapshotNameGenerator.next("dev2-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index*").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev3-snap")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index1").force()
+
+            val result = dev2SnapshotManager.deleteSnapshotsOf(repositoryName, snapshotName1, snapshotName2)
+
+            result.responseCode should be(403)
+            val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
+            verification.snapshots.map(_ ("snapshot").str) should be(List(snapshotName1, snapshotName2))
+          }
         }
         "user has no access to requested snapshot name pattern" in {
           val repositoryName = RepositoryNameGenerator.next("dev2-repo")

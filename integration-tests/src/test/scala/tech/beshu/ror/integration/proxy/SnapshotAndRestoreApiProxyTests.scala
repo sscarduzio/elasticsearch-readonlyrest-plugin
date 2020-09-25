@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.SnapshotAndRestoreApiSuite
-import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
 
-class SnapshotAndRestoreApiProxyTests extends SnapshotAndRestoreApiSuite with SingletonPluginTestSupport
+class SnapshotAndRestoreApiProxyTests extends SnapshotAndRestoreApiSuite with BasicClusterProxyTestSupport
