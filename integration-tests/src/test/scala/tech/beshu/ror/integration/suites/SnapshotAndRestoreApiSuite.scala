@@ -156,7 +156,7 @@ trait SnapshotAndRestoreApiSuite
     }
     "user cleans up a repository" should {
       "allow him to do so" when {
-        "block doesn't contains 'repositories' rule" excludeES(allEs7xBelowEs74x) in {
+        "block doesn't contains 'repositories' rule" excludeES(allEs5x, allEs6x, allEs7xBelowEs74x) in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev1-repo")
           adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
@@ -164,7 +164,7 @@ trait SnapshotAndRestoreApiSuite
 
           result.responseCode should be (200)
         }
-        "user has access to repository name" excludeES(allEs7xBelowEs74x) in {
+        "user has access to repository name" excludeES(allEs5x, allEs6x, allEs7xBelowEs74x) in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev2-repo")
           adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
@@ -174,7 +174,7 @@ trait SnapshotAndRestoreApiSuite
         }
       }
       "not allow him to do so" when {
-        "user has no access to repository name" excludeES(allEs7xBelowEs74x) in {
+        "user has no access to repository name" excludeES(allEs5x, allEs6x, allEs7xBelowEs74x) in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev1-repo")
           adminSnapshotManager.putRepository(uniqueRepositoryName).force()
 
@@ -559,7 +559,7 @@ trait SnapshotAndRestoreApiSuite
             val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
             verification.snapshots.map(_("snapshot").str) should be (List.empty)
           }
-          "many snapshots are being removed" excludeES(allEs7xBelowEs74x) in {
+          "many snapshots are being removed" excludeES(allEs5x, allEs6x, allEs7xBelowEs78x) in {
             val repositoryName = RepositoryNameGenerator.next("dev3-repo")
             adminSnapshotManager.putRepository(repositoryName).force()
 
@@ -591,7 +591,7 @@ trait SnapshotAndRestoreApiSuite
               val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
               verification.snapshots.map(_ ("snapshot").str) should be(List.empty)
             }
-            "many snapshots are being removed" excludeES (allEs7xBelowEs74x) in {
+            "many snapshots are being removed" excludeES (allEs5x, allEs6x, allEs7xBelowEs78x) in {
               val repositoryName = RepositoryNameGenerator.next("dev2-repo")
               adminSnapshotManager.putRepository(repositoryName).force()
 
@@ -608,7 +608,7 @@ trait SnapshotAndRestoreApiSuite
               verification.snapshots.map(_ ("snapshot").str) should be(List.empty)
             }
           }
-          "user has access to requested snapshot pattern" excludeES(allEs7xBelowEs74x) in {
+          "user has access to requested snapshot pattern" excludeES(allEs5x, allEs6x, allEs7xBelowEs78x) in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
             adminSnapshotManager.putRepository(repositoryName).force()
 
@@ -657,7 +657,7 @@ trait SnapshotAndRestoreApiSuite
             val verification = adminSnapshotManager.getAllSnapshotsOf(repositoryName)
             verification.snapshots.map(_ ("snapshot").str) should be(List(snapshotName))
           }
-          "many snapshots are being removed" excludeES(allEs7xBelowEs74x) in {
+          "many snapshots are being removed" excludeES(allEs5x, allEs6x, allEs7xBelowEs78x) in {
             val repositoryName = RepositoryNameGenerator.next("dev2-repo")
             adminSnapshotManager.putRepository(repositoryName).force()
 
