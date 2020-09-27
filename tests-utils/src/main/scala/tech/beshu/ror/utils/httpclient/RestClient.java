@@ -54,6 +54,10 @@ public class RestClient {
   private final int port;
   private final boolean ssl;
 
+  static {
+    System.setProperty("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.NoOpLog");
+  }
+
   public RestClient(boolean ssl, String host, int port) {
     this.ssl = ssl;
     this.host = host;
