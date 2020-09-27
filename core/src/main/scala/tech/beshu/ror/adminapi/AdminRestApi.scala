@@ -32,15 +32,17 @@ import tech.beshu.ror.boot.RorInstance
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.SpecializedError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
-import tech.beshu.ror.configuration.{FileConfigLoader, IndexConfigManager, RawRorConfig}
+import tech.beshu.ror.configuration.loader.{FileConfigLoader, RorConfigurationIndex}
+import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.utils.ScalaOps._
 
 class AdminRestApi(rorInstance: RorInstance,
                    indexConfigManager: IndexConfigManager,
-                   fileConfigLoader: FileConfigLoader)
+                   fileConfigLoader: FileConfigLoader,
+                   rorConfigurationIndex: RorConfigurationIndex)
   extends EndpointModule[Task] {
 
   import AdminRestApi.encoders._
@@ -80,7 +82,7 @@ class AdminRestApi(rorInstance: RorInstance,
 
   private val provideRorIndexConfigEndpoint = get(provideRorIndexConfigPath.endpointPath) {
     indexConfigManager
-      .load()
+      .load(rorConfigurationIndex)
       .map {
         case Right(config) =>
           Ok[ApiCallResult](Success(config.raw))
@@ -150,8 +152,11 @@ object AdminRestApi extends Logging {
 
   val forceReloadRorPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "refreshconfig"))
   val updateIndexConfigurationPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config" ))
+  //deprecated("use provideRorConfigPath instead")
   val provideRorFileConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config", "file"))
+  //deprecated("use provideRorConfigPath instead")
   val provideRorIndexConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config"))
+  val provideRorConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config", "load"))
 
   final case class AdminRequest(method: String, uri: String, body: String)
   final case class AdminResponse(result: ApiCallResult)

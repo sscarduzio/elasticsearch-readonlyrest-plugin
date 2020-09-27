@@ -311,7 +311,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           .runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
-          failure.message should startWith ("Settings file content is malformed.")
+          failure.message should startWith ("Settings content is malformed.")
         }
       }
       "index config doesn't exist and file config cannot be loaded" in {
@@ -340,7 +340,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
         val indexConfigFile = "readonlyrest_index.yml"
 
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
-        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile, repeatedCount = 5)
+        mockIndexJsonContentManagerSourceOfCall(mockedIndexJsonContentManager, resourcesPath + indexConfigFile)
 
         val result = readonlyRestBoot(mock[CoreFactory])
           .start(
@@ -351,7 +351,7 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
           .runSyncUnsafe()
 
         inside(result) { case Left(failure) =>
-          failure.message should startWith ("Settings file content is malformed.")
+          failure.message should startWith ("Settings content is malformed.")
         }
       }
       "index config cannot be loaded" in {

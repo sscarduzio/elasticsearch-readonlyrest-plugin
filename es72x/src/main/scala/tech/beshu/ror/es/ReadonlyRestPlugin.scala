@@ -56,9 +56,11 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.configuration.RorSsl
-import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
+import tech.beshu.ror.es.rrconfig.rest.RestRRConfigAction
+import tech.beshu.ror.es.rrconfig.{RRConfigAction, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -187,7 +189,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
-      new ActionHandler(RRAdminAction.instance, classOf[TransportRRAdminAction])
+      new ActionHandler(RRAdminAction.instance, classOf[TransportRRAdminAction]),
+      new ActionHandler(RRConfigAction.instance, classOf[TransportRRConfigAction]),
     ).asJava
   }
 
@@ -199,7 +202,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
                                indexNameExpressionResolver: IndexNameExpressionResolver,
                                nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
     List[RestHandler](
-      new RestRRAdminAction(settings, restController)
+      new RestRRAdminAction(settings, restController),
+      new RestRRConfigAction(settings, restController, nodesInCluster),
     ).asJava
   }
 

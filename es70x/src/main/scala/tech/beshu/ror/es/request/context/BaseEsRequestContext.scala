@@ -35,7 +35,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -146,5 +145,13 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {
     if (indices.nonEmpty) indices else Set(IndexName.wildcard)
+  }
+
+  protected def repositoriesOrWildcard(repositories: Set[RepositoryName]): Set[RepositoryName] = {
+    if (repositories.nonEmpty) repositories else Set(RepositoryName.all)
+  }
+
+  protected def snapshotsOrWildcard(snapshots: Set[SnapshotName]): Set[SnapshotName] = {
+    if (snapshots.nonEmpty) snapshots else Set(SnapshotName.all)
   }
 }

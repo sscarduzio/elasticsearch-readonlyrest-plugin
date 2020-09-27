@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.util.Try
@@ -100,7 +101,7 @@ class KibanaAccessRule(val settings: Settings)
 
   private def isReadonlyrestAdmin(requestContext: RequestContext) = {
     val originRequestIndices = requestContext.initialBlockContext.indices
-    (originRequestIndices.isEmpty || originRequestIndices.contains(settings.rorIndex)) &&
+    (originRequestIndices.isEmpty || originRequestIndices.contains(settings.rorIndex.index)) &&
       settings.access === KibanaAccess.Admin &&
       Matchers.adminMatcher.`match`(requestContext.action)
   }
@@ -166,7 +167,7 @@ object KibanaAccessRule {
 
   final case class Settings(access: KibanaAccess,
                             kibanaIndex: RuntimeSingleResolvableVariable[IndexName],
-                            rorIndex: IndexName)
+                            rorIndex: RorConfigurationIndex)
 
   private object Matchers {
     val roMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RO_ACTIONS))

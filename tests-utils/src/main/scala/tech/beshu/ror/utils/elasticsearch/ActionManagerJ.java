@@ -24,6 +24,7 @@ import org.apache.http.entity.StringEntity;
 import tech.beshu.ror.utils.httpclient.RestClient;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 
 public class ActionManagerJ extends JBaseManager {
 
@@ -37,6 +38,10 @@ public class ActionManagerJ extends JBaseManager {
 
   public JsonResponse actionPost(String action) {
     return call(createPostActionRequest(action), JsonResponse::new);
+  }
+
+  public JsonResponse actionGet(String action, Map<String, String> queryParams) {
+    return call(createGetActionRequest(action, queryParams), JsonResponse::new);
   }
 
   public JsonResponse actionGet(String action) {
@@ -64,6 +69,10 @@ public class ActionManagerJ extends JBaseManager {
 
   private HttpUriRequest createGetActionRequest(String action) {
     return new HttpGet(restClient.from("/" + action));
+  }
+
+  private HttpUriRequest createGetActionRequest(String action, Map<String,String> params) {
+    return new HttpGet(restClient.from("/" + action, params));
   }
 
   private HttpUriRequest createDeleteActionRequest(String action) {

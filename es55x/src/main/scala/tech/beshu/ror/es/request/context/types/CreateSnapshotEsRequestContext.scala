@@ -29,6 +29,7 @@ import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.ScalaOps._
 
 class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
                                      esContext: EsContext,
@@ -56,8 +57,9 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
       )
   }
 
-  override protected def indicesFrom(request: CreateSnapshotRequest): Set[IndexName] =
-    Set(IndexName.wildcard)
+  override protected def indicesFrom(request: CreateSnapshotRequest): Set[IndexName] = {
+    indicesOrWildcard(request.indices().asSafeSet.flatMap(IndexName.fromString))
+  }
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {

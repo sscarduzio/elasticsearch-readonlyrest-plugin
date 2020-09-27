@@ -76,8 +76,11 @@ class IndexManager(client: RestClient,
     call(createPutSettingsRequest(indexName, allocationNodeNames.toList), new JsonResponse(_))
   }
 
-  def removeAll: SimpleResponse =
-    call(createDeleteIndicesRequest, new SimpleResponse(_))
+  def removeAllIndices: SimpleResponse =
+    call(createDeleteAllIndicesRequest, new SimpleResponse(_))
+
+  def removeIndex(indexName: String): SimpleResponse =
+    call(createDeleteIndexRequest(indexName), new SimpleResponse(_))
 
   def removeAllAliases: SimpleResponse =
     call(createDeleteAliasesRequest, new SimpleResponse(_))
@@ -127,8 +130,10 @@ class IndexManager(client: RestClient,
     new HttpGet(client.from(s"${indices.mkString(",")}/_settings"))
   }
 
-  private def createDeleteIndicesRequest = {
-    new HttpDelete(client.from("/_all"))
+  private def createDeleteAllIndicesRequest = createDeleteIndexRequest("_all")
+
+  private def createDeleteIndexRequest(indexName: String) = {
+    new HttpDelete(client.from(s"/$indexName"))
   }
 
   private def createDeleteAliasesRequest = {

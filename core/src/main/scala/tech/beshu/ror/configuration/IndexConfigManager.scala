@@ -19,22 +19,22 @@ package tech.beshu.ror.configuration
 import cats.Show
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError
-import tech.beshu.ror.configuration.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
-import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError, auditIndexConst}
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.{IndexConfigNotExist, IndexConfigUnknownStructure}
-import scala.collection.JavaConverters._
+import tech.beshu.ror.configuration.IndexConfigManager.{IndexConfigError, SavingIndexConfigError, auditIndexConst}
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.{ParsingError, SpecializedError}
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, CannotWriteToIndex, ContentNotFound}
 
-class IndexConfigManager(indexContentManager: IndexJsonContentService,
-                         val rorIndexNameConfiguration: RorIndexNameConfiguration)
-  extends ConfigLoader[IndexConfigError]
-    with Logging {
+import scala.collection.JavaConverters._
 
-  override def load(): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
-    indexContentManager
-      .sourceOf(rorIndexNameConfiguration.name, auditIndexConst.id)
+class IndexConfigManager(indexJsonContentService: IndexJsonContentService)
+  extends Logging {
+
+  def load(indexName: RorConfigurationIndex): Task[Either[ConfigLoaderError[IndexConfigError], RawRorConfig]] = {
+    indexJsonContentService
+      .sourceOf(indexName.index, auditIndexConst.id)
       .flatMap {
         case Right(source) =>
           source.asScala
@@ -49,10 +49,10 @@ class IndexConfigManager(indexContentManager: IndexJsonContentService,
       }
   }
 
-  def save(config: RawRorConfig): Task[Either[SavingIndexConfigError, Unit]] = {
-    indexContentManager
+  def save(config: RawRorConfig, rorConfigurationIndex: RorConfigurationIndex): Task[Either[SavingIndexConfigError, Unit]] = {
+    indexJsonContentService
       .saveContent(
-        rorIndexNameConfiguration.name,
+        rorConfigurationIndex.index,
         auditIndexConst.id,
         Map(auditIndexConst.settingsKey -> config.raw).asJava
       )

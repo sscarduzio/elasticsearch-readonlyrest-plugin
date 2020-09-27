@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.unit.acl.factory
 
+import io.circe.Json
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.yaml
 
 class YamlParserTests extends WordSpec with Inside with MockFactory {
 
@@ -164,5 +166,22 @@ class YamlParserTests extends WordSpec with Inside with MockFactory {
         }
       }
     }
+    "yaml parser relies on parsing numbers from yaml" when {
+      "is represented as float" in {
+        parseYaml("200.0") shouldEqual Json.fromBigDecimal(200)
+      }
+      "is represented as int" in {
+        parseYaml("200") shouldEqual Json.fromBigDecimal(200)
+      }
+    }
+    "yaml parser relies on stringifying parsed json" when {
+      "is represented as float" in {
+        parseYaml("200.0").noSpaces shouldEqual "200.0"
+      }
+      "is represented as int" in {
+        parseYaml("200").noSpaces shouldEqual "200"
+      }
+    }
   }
+  private def parseYaml(yamlContent:String): Json = yaml.parser.parse(yamlContent).right.get
 }

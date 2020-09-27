@@ -226,7 +226,7 @@ trait IndexAliasesManagementSuite
   }
 
   override protected def beforeEach(): Unit = {
-    adminIndexManager.removeAll.force()
+    adminIndexManager.removeAllIndices.force()
     adminIndexManager.removeAllAliases
   }
 

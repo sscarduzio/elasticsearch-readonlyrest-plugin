@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.FilterRuleSuite
-import tech.beshu.ror.integration.utils.PluginTestSupport
+import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-class FilterRulePluginTests extends FilterRuleSuite with PluginTestSupport
+class FilterRulePluginTests extends FilterRuleSuite with SingletonPluginTestSupport

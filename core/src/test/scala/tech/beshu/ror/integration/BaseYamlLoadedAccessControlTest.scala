@@ -29,6 +29,7 @@ import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
 
@@ -53,7 +54,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
       core <- factory
         .createCoreFrom(
           config,
-          RorIndexNameConfiguration(IndexName.fromUnsafeString(".readonlyrest")),
+          RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")),
           MockHttpClientsFactory,
           ldapConnectionPoolProvider
         )
