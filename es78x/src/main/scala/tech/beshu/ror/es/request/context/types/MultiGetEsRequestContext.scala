@@ -122,7 +122,6 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       .map(response => filterFieldsFromResponse(fieldLevelSecurity, response))
   }
 
-
   private def filterResponse(filter: Option[Filter],
                              actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, filter) match {

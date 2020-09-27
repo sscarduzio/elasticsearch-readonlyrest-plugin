@@ -39,7 +39,10 @@ object QueryFieldsUsage {
   def one[QUERY <: QueryBuilder](fieldNameExtractor: QUERY => String): QueryFieldsUsage[QUERY] =
     query => UsingFields(NonEmptyList.one(UsedField(fieldNameExtractor(query))))
 
+  def notUsing[QUERY <: QueryBuilder]: QueryFieldsUsage[QUERY] = _ => NotUsingFields
+
   object instances {
+    implicit val idsQueryFields: QueryFieldsUsage[IdsQueryBuilder] = QueryFieldsUsage.notUsing
 
     implicit val commonTermsQueryFields: QueryFieldsUsage[CommonTermsQueryBuilder] = QueryFieldsUsage.one(_.fieldName())
     implicit val matchBoolPrefixQueryFields: QueryFieldsUsage[MatchBoolPrefixQueryBuilder] = QueryFieldsUsage.one(_.fieldName())

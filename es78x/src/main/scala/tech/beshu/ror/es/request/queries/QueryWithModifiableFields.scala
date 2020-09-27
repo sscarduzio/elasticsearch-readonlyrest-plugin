@@ -206,21 +206,29 @@ object QueryWithModifiableFields {
     }
 
     //compound
-
     implicit val boolQueryHandler: QueryWithModifiableFields[BoolQueryBuilder] = QueryWithModifiableFields.instance { (query, notAllowedFields) =>
-      val newBoolQuery = QueryBuilders.boolQuery()
+      final case class ClauseHandler(extractor: BoolQueryBuilder => java.util.List[QueryBuilder],
+                                     creator: (BoolQueryBuilder, QueryBuilder) => BoolQueryBuilder)
 
-      val newMust = query.must().asScala.map(_.handleNotAllowedFields(notAllowedFields))
-      val newMustNot = query.mustNot().asScala.map(_.handleNotAllowedFields(notAllowedFields))
-      val newFilter = query.filter().asScala.map(_.handleNotAllowedFields(notAllowedFields))
-      val newShould = query.should().asScala.map(_.handleNotAllowedFields(notAllowedFields))
+      def handleNotAllowedFieldsInClause(boolClauseExtractor: BoolQueryBuilder => java.util.List[QueryBuilder]) = {
+        boolClauseExtractor(query).asScala.map(_.handleNotAllowedFields(notAllowedFields))
+      }
 
-      val o1 = newMust.foldLeft(newBoolQuery)(_ must _)
-      val o2 = newMustNot.foldLeft(o1)(_ mustNot _)
-      val o3 = newFilter.foldLeft(o2)(_ filter _)
-      val o4 = newShould.foldLeft(o3)(_ should _)
+      val clauseHandlers = List(
+        ClauseHandler(_.must(), _ must _),
+        ClauseHandler(_.mustNot(), _ must _),
+        ClauseHandler(_.filter(), _ filter _),
+        ClauseHandler(_.should(), _ should _)
+      )
 
-      o4
+      val boolQueryWithNewClauses = clauseHandlers
+        .map(clause => (handleNotAllowedFieldsInClause(clause.extractor), clause.creator))
+        .foldLeft(QueryBuilders.boolQuery()) {
+          case (modifiedBoolQuery, (modifiedClauses, clauseCreator)) =>
+            modifiedClauses.foldLeft(modifiedBoolQuery)(clauseCreator)
+        }
+
+      boolQueryWithNewClauses
         .minimumShouldMatch(query.minimumShouldMatch())
         .adjustPureNegative(query.adjustPureNegative())
         .boost(query.boost())

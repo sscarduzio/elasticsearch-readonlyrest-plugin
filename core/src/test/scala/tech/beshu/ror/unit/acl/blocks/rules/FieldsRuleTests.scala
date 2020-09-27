@@ -80,7 +80,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
             expectedContextHeaders = Set.empty,
-            expectedStrategy = Strategy.BasedOnBlockContextOnly.NothingNotAllowedToModify
+            expectedStrategy = Strategy.BasedOnBlockContextOnly.NothingNotAllowedUsed
           )
         }
         "all used fields in request are allowed" in {
@@ -92,7 +92,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
             expectedContextHeaders = Set.empty,
-            expectedStrategy = Strategy.BasedOnBlockContextOnly.NothingNotAllowedToModify
+            expectedStrategy = Strategy.BasedOnBlockContextOnly.NothingNotAllowedUsed
           )
         }
         "some field in request is not allowed" in {
@@ -104,7 +104,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
             expectedContextHeaders = Set.empty,
-            expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsToModify(NonEmptyList.one(UsedField.SpecificField("notAllowedField")))
+            expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField("notAllowedField")))
           )
         }
       }

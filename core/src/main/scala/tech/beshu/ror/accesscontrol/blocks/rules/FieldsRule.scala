@@ -85,7 +85,7 @@ class FieldsRule(val settings: Settings)
     case CantExtractFields =>
       LuceneContextHeaderApproach
     case NotUsingFields =>
-      BasedOnBlockContextOnly.NothingNotAllowedToModify
+      BasedOnBlockContextOnly.NothingNotAllowedUsed
     case UsingFields(usedFields) =>
       resolveStrategyBasedOnUsedFields(fieldsRestrictions, usedFields)
   }
@@ -98,9 +98,9 @@ class FieldsRule(val settings: Settings)
     } else {
       extractSpecificNotAllowedFields(specificFields, fieldsRestrictions) match {
         case Some(notAllowedFields) =>
-          BasedOnBlockContextOnly.NotAllowedFieldsToModify(notAllowedFields)
+          BasedOnBlockContextOnly.NotAllowedFieldsUsed(notAllowedFields)
         case None =>
-          BasedOnBlockContextOnly.NothingNotAllowedToModify
+          BasedOnBlockContextOnly.NothingNotAllowedUsed
       }
     }
   }
