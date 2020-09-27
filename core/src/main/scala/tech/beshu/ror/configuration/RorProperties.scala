@@ -30,7 +30,6 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.providers.PropertiesProvider
 import tech.beshu.ror.providers.PropertiesProvider.PropName
-import tech.beshu.ror.utils.PrivilegedFile
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -53,10 +52,10 @@ object RorProperties extends Logging {
     val proxyPort: NonEmptyString = "com.readonlyrest.proxy.port"
   }
 
-  def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[PrivilegedFile] =
+  def rorConfigCustomFile(implicit propertiesProvider: PropertiesProvider): Option[File] =
     propertiesProvider
       .getProperty(PropName(keys.rorConfig))
-      .map(PrivilegedFile(_))
+      .map(File(_))
 
   def rorProxyConfigFile(implicit propertiesProvider: PropertiesProvider): File =
     getProperty(keys.rorConfig, location => Try(File(location)))
