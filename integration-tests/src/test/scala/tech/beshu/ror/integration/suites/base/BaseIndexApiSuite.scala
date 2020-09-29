@@ -21,6 +21,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -45,6 +46,13 @@ trait BaseIndexApiSuite
     "Get index API is used" should {
       "allow user to get index data" when {
         "he has access to it" when {
+          "the index is called explicitly returned warning header" in {
+            val indexResponse = dev1IndexManager.getIndex("index1"::Nil, Map("include_type_name" -> "true"))
+
+            indexResponse.responseCode should be(200)
+            val warningHeader = indexResponse.headers.collectFirst { case SimpleHeader("Warning", value) => value }.get
+            warningHeader should include("[types removal] Using `include_type_name` in get indices requests is deprecated. The parameter will be removed in the next major version.")
+          }
           "the index is called explicitly" in {
             val indexResponse = dev1IndexManager.getIndex("index1")
 
