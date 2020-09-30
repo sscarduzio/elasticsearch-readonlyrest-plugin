@@ -39,6 +39,7 @@ import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.{Failure, Success, Try}
+import tech.beshu.ror.utils.JavaConverters
 
 class RegularRequestHandler(engine: Engine,
                             esContext: EsContext,
@@ -50,19 +51,13 @@ class RegularRequestHandler(engine: Engine,
     engine.accessControl
       .handleRegularRequest(request)
       .map { r =>
-        val responseHeaders = asScala(threadPool.getThreadContext.getResponseHeaders)
+        val responseHeaders = JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders)
         threadPool.getThreadContext.stashContext.bracket { _ =>
           val ctx = threadPool.getThreadContext
           responseHeaders.foreach { case (k, v) => ctx.addResponseHeader(k, v) }
           commitResult(r.result, request)
         }
       }
-  }
-
-  private def asScala[A,B](headers: java.util.Map[A, java.util.List[B]]): List[(A, B)] = {
-    import scala.collection.JavaConverters._
-    headers.asScala
-      .toList.flatMap { case (k, v) => v.asScala.toList.map(v => (k, v)) }
   }
 
   private def commitResult[B <: BlockContext : BlockContextUpdater](result: RegularRequestResult[B],
