@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Jwts
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -32,8 +33,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps.ClaimSearchResult.{Found, NotFound}
 import tech.beshu.ror.accesscontrol.utils.ClaimsOps._
-import tech.beshu.ror.utils.SecureStringHasher
-import tech.beshu.ror.utils.SecureStringHasher.Algorithm
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.util.Try
@@ -52,8 +51,6 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
     case Rsa(pubKey) => Jwts.parser.setSigningKey(pubKey)
     case Ec(pubKey) => Jwts.parser.setSigningKey(pubKey)
   }
-
-  private val hasher = new SecureStringHasher(Algorithm.Sha256)
 
   override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task
     .unit
@@ -93,7 +90,7 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
             settings.jwt.checkMethod match {
               case NoCheck(service) =>
                 service
-                  .authenticate(Credentials(User.Id(hasher.hash(token.value)), PlainTextSecret(token.value)))
+                  .authenticate(Credentials(User.Id(NonEmptyString.unsafeFrom("jwt")), PlainTextSecret(token.value)))
                   .map(RuleResult.fromCondition(modifiedBlockContext)(_))
               case Hmac(_) | Rsa(_) | Ec(_) =>
                 Task.now(Fulfilled(modifiedBlockContext))
