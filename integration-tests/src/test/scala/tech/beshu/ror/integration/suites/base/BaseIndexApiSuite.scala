@@ -46,8 +46,9 @@ trait BaseIndexApiSuite
     "Get index API is used" should {
       "allow user to get index data" when {
         "he has access to it" when {
-          "the index is called explicitly returned warning header" excludeES(allEs5x, allEs6x) in {
+          "the index is called explicitly returned warning header" excludeES(allEs5x, allEs6x, rorProxy) in {
             // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
+            // proxy cares waring printing it in logs, and it's not passed to ror.
             val indexResponse = dev1IndexManager.getIndex("index1"::Nil, Map("include_type_name" -> "true"))
 
             indexResponse.responseCode should be(200)
