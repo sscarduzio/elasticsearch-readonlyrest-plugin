@@ -24,6 +24,7 @@ import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.FLSMode
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -36,88 +37,195 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class FieldsRuleTests extends WordSpec with MockFactory with Inside {
 
-  val fieldsAccessMode = AccessMode.Whitelist
-  val whitelistedFields = NonEmptyList.of("_field1", "_field2")
-
-  val resolvedFields = whitelistedFields.map(field => AlreadyResolved(DocumentField(field.nonempty).nel))
-  val rule = new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), fieldsAccessMode))
-
   "A FieldsRule" when {
     "filterable request is readonly" should {
       "match and use lucene based strategy with context header" when {
-        "request fields can not be extracted" in {
+        "legacy fls mode is used" in {
+          val rule = createRule(
+            accessMode = AccessMode.Whitelist,
+            fields = NonEmptyList.of("_field1", "_field2"),
+            flsMode = FLSMode.Legacy
+          )
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CannotExtractFields)
 
           assertRuleResult(
+            rule = rule,
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
             expectedContextHeaders = Set(headerFrom("_fields" -> "eyJkb2N1bWVudEZpZWxkcyI6W3sidmFsdWUiOiJfZmllbGQxIn0seyJ2YWx1ZSI6Il9maWVsZDIifV0sIm1vZGUiOnsiJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5GaWVsZExldmVsU2VjdXJpdHkuRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19")),
             expectedStrategy = Strategy.FlsAtLuceneLevelApproach
           )
         }
-        "there is used field with wildcard" in {
-          val requestContext = mock[RequestContext]
+        "hybrid fls mode is used and" when {
+          "request fields can not be extracted" in {
+            val rule = createRule(
+              accessMode = AccessMode.Whitelist,
+              fields = NonEmptyList.of("_field1", "_field2"),
+              flsMode = FLSMode.Hybrid
+            )
+            val requestContext = mock[RequestContext]
 
-          (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1"))))
+            (requestContext.isReadOnlyRequest _).expects().returning(true)
+            (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CannotExtractFields)
 
-          assertRuleResult(
-            incomingBlockContext = emptyFilterableBlockContext(requestContext),
-            expectedContextHeaders = Set(headerFrom("_fields" -> "eyJkb2N1bWVudEZpZWxkcyI6W3sidmFsdWUiOiJfZmllbGQxIn0seyJ2YWx1ZSI6Il9maWVsZDIifV0sIm1vZGUiOnsiJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5GaWVsZExldmVsU2VjdXJpdHkuRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19")),
-            expectedStrategy = Strategy.FlsAtLuceneLevelApproach
-          )
+            assertRuleResult(
+              rule = rule,
+              incomingBlockContext = emptyFilterableBlockContext(requestContext),
+              expectedContextHeaders = Set(headerFrom("_fields" -> "eyJkb2N1bWVudEZpZWxkcyI6W3sidmFsdWUiOiJfZmllbGQxIn0seyJ2YWx1ZSI6Il9maWVsZDIifV0sIm1vZGUiOnsiJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5GaWVsZExldmVsU2VjdXJpdHkuRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19")),
+              expectedStrategy = Strategy.FlsAtLuceneLevelApproach
+            )
+          }
+          "there is used field with wildcard" in {
+            val rule = createRule(
+              accessMode = AccessMode.Whitelist,
+              fields = NonEmptyList.of("_field1", "_field2"),
+              flsMode = FLSMode.Hybrid
+            )
+            val requestContext = mock[RequestContext]
+
+            (requestContext.isReadOnlyRequest _).expects().returning(true)
+            (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1"))))
+
+            assertRuleResult(
+              rule = rule,
+              incomingBlockContext = emptyFilterableBlockContext(requestContext),
+              expectedContextHeaders = Set(headerFrom("_fields" -> "eyJkb2N1bWVudEZpZWxkcyI6W3sidmFsdWUiOiJfZmllbGQxIn0seyJ2YWx1ZSI6Il9maWVsZDIifV0sIm1vZGUiOnsiJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5GaWVsZExldmVsU2VjdXJpdHkuRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19")),
+              expectedStrategy = Strategy.FlsAtLuceneLevelApproach
+            )
+          }
         }
       }
       "match and not use context header" when {
-        "request fields are not used" in {
-          val requestContext = mock[RequestContext]
+        "hybrid fls mode is used and" when {
+          "request fields are not used" in {
+            val rule = createRule(
+              accessMode = AccessMode.Whitelist,
+              fields = NonEmptyList.of("_field1", "_field2"),
+              flsMode = FLSMode.Hybrid
+            )
+            val requestContext = mock[RequestContext]
 
-          (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.NotUsingFields)
+            (requestContext.isReadOnlyRequest _).expects().returning(true)
+            (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.NotUsingFields)
 
-          assertRuleResult(
-            incomingBlockContext = emptyFilterableBlockContext(requestContext),
-            expectedContextHeaders = Set.empty,
-            expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
-          )
+            assertRuleResult(
+              rule = rule,
+              incomingBlockContext = emptyFilterableBlockContext(requestContext),
+              expectedContextHeaders = Set.empty,
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
+            )
+          }
+          "all used fields in request are allowed" in {
+            val rule = createRule(
+              accessMode = AccessMode.Whitelist,
+              fields = NonEmptyList.of("_field1", "_field2"),
+              flsMode = FLSMode.Hybrid
+            )
+            val requestContext = mock[RequestContext]
+
+            (requestContext.isReadOnlyRequest _).expects().returning(true)
+            (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1"))))
+
+            assertRuleResult(
+              rule = rule,
+              incomingBlockContext = emptyFilterableBlockContext(requestContext),
+              expectedContextHeaders = Set.empty,
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
+            )
+          }
+          "some field in request is not allowed" in {
+            val rule = createRule(
+              accessMode = AccessMode.Whitelist,
+              fields = NonEmptyList.of("_field1", "_field2"),
+              flsMode = FLSMode.Hybrid
+            )
+            val requestContext = mock[RequestContext]
+
+            (requestContext.isReadOnlyRequest _).expects().returning(true)
+            (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField"))))
+
+            assertRuleResult(
+              rule = rule,
+              incomingBlockContext = emptyFilterableBlockContext(requestContext),
+              expectedContextHeaders = Set.empty,
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField("notAllowedField")))
+            )
+          }
         }
-        "all used fields in request are allowed" in {
-          val requestContext = mock[RequestContext]
+        "proxy fls mode is used and" when {
+          "request fields are not used" in {
+            val rule = createRule(
+              accessMode = AccessMode.Whitelist,
+              fields = NonEmptyList.of("_field1", "_field2"),
+              flsMode = FLSMode.Proxy
+            )
+            val requestContext = mock[RequestContext]
 
-          (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1"))))
+            (requestContext.isReadOnlyRequest _).expects().returning(true)
+            (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.NotUsingFields)
 
-          assertRuleResult(
-            incomingBlockContext = emptyFilterableBlockContext(requestContext),
-            expectedContextHeaders = Set.empty,
-            expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
-          )
-        }
-        "some field in request is not allowed" in {
-          val requestContext = mock[RequestContext]
+            assertRuleResult(
+              rule = rule,
+              incomingBlockContext = emptyFilterableBlockContext(requestContext),
+              expectedContextHeaders = Set.empty,
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
+            )
+          }
+          "all used fields in request are allowed" in {
+            val rule = createRule(
+              accessMode = AccessMode.Whitelist,
+              fields = NonEmptyList.of("_field1", "_field2"),
+              flsMode = FLSMode.Proxy
+            )
+            val requestContext = mock[RequestContext]
 
-          (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField"))))
+            (requestContext.isReadOnlyRequest _).expects().returning(true)
+            (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1"))))
 
-          assertRuleResult(
-            incomingBlockContext = emptyFilterableBlockContext(requestContext),
-            expectedContextHeaders = Set.empty,
-            expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField("notAllowedField")))
-          )
+            assertRuleResult(
+              rule = rule,
+              incomingBlockContext = emptyFilterableBlockContext(requestContext),
+              expectedContextHeaders = Set.empty,
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
+            )
+          }
+          "some field in request is not allowed" in {
+            val rule = createRule(
+              accessMode = AccessMode.Whitelist,
+              fields = NonEmptyList.of("_field1", "_field2"),
+              flsMode = FLSMode.Proxy
+            )
+            val requestContext = mock[RequestContext]
+
+            (requestContext.isReadOnlyRequest _).expects().returning(true)
+            (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField"))))
+
+            assertRuleResult(
+              rule = rule,
+              incomingBlockContext = emptyFilterableBlockContext(requestContext),
+              expectedContextHeaders = Set.empty,
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField("notAllowedField")))
+            )
+          }
         }
       }
     }
     "filterable multi request is readonly" should {
       "match and use lucene based strategy with context header" when {
         "request fields can not be extracted" in {
+          val rule = createRule(
+            accessMode = AccessMode.Whitelist,
+            fields = NonEmptyList.of("_field1", "_field2"),
+            flsMode = FLSMode.Hybrid
+          )
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
           (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CannotExtractFields)
 
           assertRuleResultForMulti(
+            rule = rule,
             incomingBlockContext = emptyFilterableMultiBlockContext(requestContext),
             expectedContextHeaders = Set(headerFrom("_fields" -> "eyJkb2N1bWVudEZpZWxkcyI6W3sidmFsdWUiOiJfZmllbGQxIn0seyJ2YWx1ZSI6Il9maWVsZDIifV0sIm1vZGUiOnsiJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5GaWVsZExldmVsU2VjdXJpdHkuRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19")),
             expectedStrategy = Strategy.FlsAtLuceneLevelApproach
@@ -127,6 +235,11 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
     }
     "some other non filterable request is readonly" should {
       "not update block context with fields security strategy" in {
+        val rule = createRule(
+          accessMode = AccessMode.Whitelist,
+          fields = NonEmptyList.of("_field1", "_field2"),
+          flsMode = FLSMode.Hybrid
+        )
         val requestContext = mock[RequestContext]
         val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
 
@@ -140,6 +253,11 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
     }
     "any request is not read only" should {
       "not match" in {
+        val rule = createRule(
+          accessMode = AccessMode.Whitelist,
+          fields = NonEmptyList.of("_field1", "_field2"),
+          flsMode = FLSMode.Hybrid
+        )
         val requestContext = mock[RequestContext]
 
         (requestContext.isReadOnlyRequest _).expects().returning(false)
@@ -148,9 +266,34 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
     }
+    "proxy fls mode is used and fields can not be extraced" should {
+      "not match" in {
+        val rule = createRule(
+          accessMode = AccessMode.Whitelist,
+          fields = NonEmptyList.of("_field1", "_field2"),
+          flsMode = FLSMode.Proxy
+        )
+        val requestContext = mock[RequestContext]
+
+        (requestContext.isReadOnlyRequest _).expects().returning(true)
+        (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CannotExtractFields)
+        (requestContext.id _).expects().returning(RequestContext.Id("1"))
+
+        val blockContext = emptyFilterableBlockContext(requestContext)
+        rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
+      }
+    }
   }
 
-  private def assertRuleResult(incomingBlockContext: FilterableRequestBlockContext,
+  private def createRule(accessMode: AccessMode,
+                         fields: NonEmptyList[String],
+                         flsMode: FLSMode) = {
+    val resolvedFields = fields.map(field => AlreadyResolved(DocumentField(field.nonempty).nel))
+    new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), accessMode, flsMode))
+  }
+
+  private def assertRuleResult(rule: FieldsRule,
+                               incomingBlockContext: FilterableRequestBlockContext,
                                expectedContextHeaders: Set[Header],
                                expectedStrategy: Strategy) = {
     inside(rule.check(incomingBlockContext).runSyncStep) {
@@ -161,7 +304,8 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
     }
   }
 
-  private def assertRuleResultForMulti(incomingBlockContext: FilterableMultiRequestBlockContext,
+  private def assertRuleResultForMulti(rule: FieldsRule,
+                                       incomingBlockContext: FilterableMultiRequestBlockContext,
                                        expectedContextHeaders: Set[Header],
                                        expectedStrategy: Strategy) = {
     inside(rule.check(incomingBlockContext).runSyncStep) {

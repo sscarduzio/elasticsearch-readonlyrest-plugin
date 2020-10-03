@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.FLSMode
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
@@ -43,6 +44,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
           assertion = rule => {
             rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
             rule.settings.accessMode should be(AccessMode.Whitelist)
+            rule.settings.flsMode should be(FLSMode.Hybrid)
           }
         )
       }
@@ -63,6 +65,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             decodedFields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
             decodedFields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
             rule.settings.accessMode should be(AccessMode.Whitelist)
+            rule.settings.flsMode should be(FLSMode.Hybrid)
           }
         )
       }
@@ -81,6 +84,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
           assertion = rule => {
             rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
             rule.settings.accessMode should be(AccessMode.Blacklist)
+            rule.settings.flsMode should be(FLSMode.Hybrid)
           }
         )
       }
@@ -101,6 +105,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             decodedFields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
             decodedFields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
             rule.settings.accessMode should be(AccessMode.Blacklist)
+            rule.settings.flsMode should be(FLSMode.Hybrid)
           }
         )
       }
@@ -117,13 +122,53 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.fields.head shouldBe a [ToBeResolved[_]]
+            rule.settings.fields.head shouldBe a[ToBeResolved[_]]
             rule.settings.fields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
             rule.settings.accessMode should be(AccessMode.Whitelist)
+            rule.settings.flsMode should be(FLSMode.Hybrid)
           }
         )
       }
-
+      "'legacy' fields mode is defined" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    fields: "field1"
+              |    fields_mode: "legacy"
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+            rule.settings.accessMode should be(AccessMode.Whitelist)
+            rule.settings.flsMode should be(FLSMode.Legacy)
+          }
+        )
+      }
+      "'proxy' fields mode is defined" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    fields: "field1"
+              |    fields_mode: "proxy"
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+            rule.settings.accessMode should be(AccessMode.Whitelist)
+            rule.settings.flsMode should be(FLSMode.Proxy)
+          }
+        )
+      }
     }
     "not be able to be loaded from config" when {
       "no field is defined" in {
@@ -226,6 +271,25 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
             errors.head should be(RulesLevelCreationError(Message(
               "The fields rule cannot contain always-allowed fields: _routing,_ttl,_index,_type,_size,_seq_no,_parent,_id,_uid,_version,_primary_term,_timestamp"
             )))
+          }
+        )
+      }
+      "unknown fls mode is used" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    fields: "field1"
+              |    fields_mode: "something"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(RulesLevelCreationError(Message("Unknown fls mode: 'something'. Supported: 'legacy', 'hybrid', 'proxy'.")))
           }
         )
       }
