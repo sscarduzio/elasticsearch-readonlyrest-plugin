@@ -17,7 +17,7 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import monix.eval.Task
+import cats.syntax.show._
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
@@ -32,7 +32,6 @@ import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage._
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage.instances._
 import tech.beshu.ror.utils.ScalaOps._
-
 
 class SearchEsRequestContext(actionRequest: SearchRequest,
                              esContext: EsContext,
@@ -55,13 +54,13 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
       .applyFieldLevelSecurity(fieldLevelSecurity)
       .indices(indices.toList.map(_.value.value): _*)
 
-    ModificationResult.UpdateResponse(filterFieldsFromResponse(fieldLevelSecurity))
+    ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
   override def requestFieldsUsage: RequestFieldsUsage = {
     Option(actionRequest.source().scriptFields()) match {
       case Some(scriptFields) if scriptFields.size() > 0 =>
-        RequestFieldsUsage.CantExtractFields
+        RequestFieldsUsage.CannotExtractFields
       case _ =>
         checkQueryFields()
     }
@@ -74,7 +73,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
   }
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): Task[ActionResponse] = {
+                                      (actionResponse: ActionResponse): ActionResponse = {
 
     (actionResponse, fieldLevelSecurity) match {
       case (response: SearchResponse, Some(definedFieldLevelSecurity)) =>
@@ -84,16 +83,16 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
               .filterSourceFieldsUsing(definedFieldLevelSecurity.restrictions)
               .filterDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
           }
-        Task.now(response)
+        response
       case _ =>
-        Task.now(actionResponse)
+        actionResponse
     }
   }
 
   private def optionallyDisableCaching(fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
     fieldLevelSecurity.map(_.strategy) match {
-      case Some(FieldLevelSecurity.Strategy.LuceneContextHeaderApproach) =>
-        logger.debug("ACL uses context header for fields rule, will disable request cache for SearchRequest")
+      case Some(FieldLevelSecurity.Strategy.FlsAtLuceneLevelApproach) =>
+        logger.debug(s"[${id.show}] ACL uses context header for fields rule, will disable request cache for SearchRequest")
         actionRequest.requestCache(false)
       case _ =>
     }

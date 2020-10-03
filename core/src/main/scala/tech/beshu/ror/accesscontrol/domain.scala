@@ -449,11 +449,11 @@ object domain {
 
     sealed trait Strategy
     object Strategy {
-      case object LuceneContextHeaderApproach extends Strategy
+      case object FlsAtLuceneLevelApproach extends Strategy
       sealed trait BasedOnBlockContextOnly extends Strategy
 
       object BasedOnBlockContextOnly {
-        case object NothingNotAllowedUsed extends BasedOnBlockContextOnly
+        case object EverythingAllowed extends BasedOnBlockContextOnly
         final case class NotAllowedFieldsUsed(fields: NonEmptyList[SpecificField]) extends BasedOnBlockContextOnly
       }
     }
@@ -461,7 +461,7 @@ object domain {
     sealed trait RequestFieldsUsage
     object RequestFieldsUsage {
 
-      case object CantExtractFields extends RequestFieldsUsage
+      case object CannotExtractFields extends RequestFieldsUsage
       case object NotUsingFields extends RequestFieldsUsage
       final case class UsingFields(usedFields: NonEmptyList[UsedField]) extends RequestFieldsUsage
 
@@ -493,15 +493,14 @@ object domain {
 
       final case class ObfuscatedRandomField(value: String) extends AnyVal
       object ObfuscatedRandomField {
-        def apply(from: SpecificField) = {
-          val randomValue = s"${from.value}${randomAlphanumeric(10)}"
-          new ObfuscatedRandomField(randomValue)
+        def apply(from: SpecificField): ObfuscatedRandomField = {
+          new ObfuscatedRandomField(s"${from.value}_ROR_${randomAlphanumeric(10)}")
         }
       }
 
       implicit val monoidInstance: Monoid[RequestFieldsUsage] = Monoid.instance(NotUsingFields, {
-        case (CantExtractFields, _) => CantExtractFields
-        case (_, CantExtractFields) => CantExtractFields
+        case (CannotExtractFields, _) => CannotExtractFields
+        case (_, CannotExtractFields) => CannotExtractFields
         case (other, NotUsingFields) => other
         case (NotUsingFields, other) => other
         case (UsingFields(firstFields), UsingFields(secondFields)) => UsingFields(firstFields ::: secondFields)

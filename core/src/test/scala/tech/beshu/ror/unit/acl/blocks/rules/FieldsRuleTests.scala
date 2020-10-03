@@ -49,12 +49,12 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CantExtractFields)
+          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CannotExtractFields)
 
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
             expectedContextHeaders = Set(headerFrom("_fields" -> "eyJkb2N1bWVudEZpZWxkcyI6W3sidmFsdWUiOiJfZmllbGQxIn0seyJ2YWx1ZSI6Il9maWVsZDIifV0sIm1vZGUiOnsiJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5GaWVsZExldmVsU2VjdXJpdHkuRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19")),
-            expectedStrategy = Strategy.LuceneContextHeaderApproach
+            expectedStrategy = Strategy.FlsAtLuceneLevelApproach
           )
         }
         "there is used field with wildcard" in {
@@ -66,7 +66,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
             expectedContextHeaders = Set(headerFrom("_fields" -> "eyJkb2N1bWVudEZpZWxkcyI6W3sidmFsdWUiOiJfZmllbGQxIn0seyJ2YWx1ZSI6Il9maWVsZDIifV0sIm1vZGUiOnsiJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5GaWVsZExldmVsU2VjdXJpdHkuRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19")),
-            expectedStrategy = Strategy.LuceneContextHeaderApproach
+            expectedStrategy = Strategy.FlsAtLuceneLevelApproach
           )
         }
       }
@@ -80,7 +80,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
             expectedContextHeaders = Set.empty,
-            expectedStrategy = Strategy.BasedOnBlockContextOnly.NothingNotAllowedUsed
+            expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
           )
         }
         "all used fields in request are allowed" in {
@@ -92,7 +92,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           assertRuleResult(
             incomingBlockContext = emptyFilterableBlockContext(requestContext),
             expectedContextHeaders = Set.empty,
-            expectedStrategy = Strategy.BasedOnBlockContextOnly.NothingNotAllowedUsed
+            expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
           )
         }
         "some field in request is not allowed" in {
@@ -115,12 +115,12 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           val requestContext = mock[RequestContext]
 
           (requestContext.isReadOnlyRequest _).expects().returning(true)
-          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CantExtractFields)
+          (requestContext.requestFieldsUsage _).expects().returning(RequestFieldsUsage.CannotExtractFields)
 
           assertRuleResultForMulti(
             incomingBlockContext = emptyFilterableMultiBlockContext(requestContext),
             expectedContextHeaders = Set(headerFrom("_fields" -> "eyJkb2N1bWVudEZpZWxkcyI6W3sidmFsdWUiOiJfZmllbGQxIn0seyJ2YWx1ZSI6Il9maWVsZDIifV0sIm1vZGUiOnsiJHR5cGUiOiJ0ZWNoLmJlc2h1LnJvci5hY2Nlc3Njb250cm9sLmRvbWFpbi5GaWVsZExldmVsU2VjdXJpdHkuRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19")),
-            expectedStrategy = Strategy.LuceneContextHeaderApproach
+            expectedStrategy = Strategy.FlsAtLuceneLevelApproach
           )
         }
       }

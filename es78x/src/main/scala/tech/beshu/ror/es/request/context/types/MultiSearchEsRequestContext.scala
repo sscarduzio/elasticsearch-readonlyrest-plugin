@@ -18,7 +18,6 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
@@ -27,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBl
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CantExtractFields, NotUsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields}
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
@@ -69,7 +68,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
         .foreach { case (request, pack) =>
           updateRequest(request, pack, blockContext.filter, blockContext.fieldLevelSecurity)
         }
-      ModificationResult.UpdateResponse(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
+      ModificationResult.UpdateResponse.using(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
     } else {
       logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
@@ -91,7 +90,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   private def checkFieldsUsageForSingleSearchRequest(searchRequest: SearchRequest): RequestFieldsUsage =
     Option(searchRequest.source().scriptFields()) match {
       case Some(scriptFields) if scriptFields.size() > 0 =>
-        CantExtractFields
+        CannotExtractFields
       case _ =>
         checkQueryFieldsIn(searchRequest)
     }
@@ -103,7 +102,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   }
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): Task[ActionResponse] = {
+                                      (actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fieldLevelSecurity) match {
       case (response: MultiSearchResponse, Some(definedFieldLevelSecurity)) =>
         response.getResponses
@@ -114,9 +113,9 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
               .filterSourceFieldsUsing(definedFieldLevelSecurity.restrictions)
               .filterDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
           }
-        Task.now(response)
+        response
       case _ =>
-        Task.now(actionResponse)
+        actionResponse
     }
   }
 

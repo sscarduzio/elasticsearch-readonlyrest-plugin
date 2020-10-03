@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import cats.syntax.list._
 import org.elasticsearch.index.query._
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.es.request.queries.QueryType.{Compound, Leaf}
 
 import scala.collection.JavaConverters._
@@ -33,15 +33,13 @@ trait QueryWithModifiableFields[QUERY <: QueryBuilder] {
 
 object QueryWithModifiableFields {
 
-  def apply[QUERY <: QueryBuilder](implicit ev: QueryWithModifiableFields[QUERY]) = ev
+  def apply[QUERY <: QueryBuilder](implicit ev: QueryWithModifiableFields[QUERY]): QueryWithModifiableFields[QUERY] = ev
 
-  def instance[QUERY <: QueryBuilder](f: (QUERY, NonEmptyList[SpecificField]) => QUERY) = new QueryWithModifiableFields[QUERY] {
-    override def handleNotAllowedFieldsIn(query: QUERY, notAllowedFields: NonEmptyList[SpecificField]): QUERY = f(query, notAllowedFields)
-  }
+  def instance[QUERY <: QueryBuilder](f: (QUERY, NonEmptyList[SpecificField]) => QUERY): QueryWithModifiableFields[QUERY] = f(_, _)
 
   implicit class Ops[QUERY <: QueryBuilder : QueryWithModifiableFields](val query: QUERY) {
 
-    def handleNotAllowedFields(notAllowedFields: NonEmptyList[SpecificField]) = {
+    def handleNotAllowedFields(notAllowedFields: NonEmptyList[SpecificField]): QUERY = {
       QueryWithModifiableFields[QUERY].handleNotAllowedFieldsIn(query, notAllowedFields)
     }
   }
@@ -66,7 +64,7 @@ object QueryWithModifiableFields {
             case None =>
               query
           }
-        case CantExtractFields | NotUsingFields =>
+        case CannotExtractFields | NotUsingFields =>
           query
       }
     }

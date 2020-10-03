@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
@@ -26,8 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFLSUpdater}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.{FieldWithWildcard, SpecificField}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CantExtractFields, NotUsingFields, UsingFields}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, LuceneContextHeaderApproach}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, RequestFieldsUsage, Strategy}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Header}
@@ -37,15 +38,16 @@ import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class FieldsRule(val settings: Settings)
-  extends RegularRule {
+  extends RegularRule
+    with Logging {
 
   override val name: Rule.Name = FieldsRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    if (!blockContext.requestContext.isReadOnlyRequest)
-      RuleResult.Rejected()
-    else {
+    if (blockContext.requestContext.isReadOnlyRequest) {
       handleReadOnlyRequest(blockContext)
+    } else {
+      RuleResult.Rejected()
     }
   }
 
@@ -75,6 +77,7 @@ class FieldsRule(val settings: Settings)
 
         RuleResult.Fulfilled(updatedBlockContext)
       case None =>
+        logger.warn(s"[${blockContext.requestContext.id.show}] Could not resolve any variable for field rule.")
         RuleResult.Rejected()
     }
   }
@@ -82,10 +85,10 @@ class FieldsRule(val settings: Settings)
 
   private def resolveFLSStrategy(fieldsUsage: RequestFieldsUsage,
                                  fieldsRestrictions: FieldsRestrictions): Strategy = fieldsUsage match {
-    case CantExtractFields =>
-      LuceneContextHeaderApproach
+    case CannotExtractFields =>
+      FlsAtLuceneLevelApproach
     case NotUsingFields =>
-      BasedOnBlockContextOnly.NothingNotAllowedUsed
+      BasedOnBlockContextOnly.EverythingAllowed
     case UsingFields(usedFields) =>
       resolveStrategyBasedOnUsedFields(fieldsRestrictions, usedFields)
   }
@@ -94,13 +97,13 @@ class FieldsRule(val settings: Settings)
                                                usedFields: NonEmptyList[RequestFieldsUsage.UsedField]) = {
     val (specificFields, fieldsWithWildcard) = extractSpecificAndWildcardFields(usedFields)
     if (fieldsWithWildcard.nonEmpty) {
-      LuceneContextHeaderApproach
+      FlsAtLuceneLevelApproach
     } else {
       extractSpecificNotAllowedFields(specificFields, fieldsRestrictions) match {
         case Some(notAllowedFields) =>
           BasedOnBlockContextOnly.NotAllowedFieldsUsed(notAllowedFields)
         case None =>
-          BasedOnBlockContextOnly.NothingNotAllowedUsed
+          BasedOnBlockContextOnly.EverythingAllowed
       }
     }
   }
@@ -124,7 +127,7 @@ class FieldsRule(val settings: Settings)
                                                                                                                  fieldLevelSecurity: FieldLevelSecurity) = {
 
     fieldLevelSecurity.strategy match {
-      case LuceneContextHeaderApproach =>
+      case FlsAtLuceneLevelApproach =>
         blockContext
           .withAddedContextHeader(createContextHeader(fieldLevelSecurity.restrictions))
           .withFields(fieldLevelSecurity)
@@ -143,6 +146,13 @@ class FieldsRule(val settings: Settings)
 
 object FieldsRule {
   val name = Rule.Name("fields")
+
+  sealed trait FLSMode
+  object FLSMode {
+    case object Old extends FLSMode
+    case object New extends FLSMode
+    case object Proxy extends FLSMode
+  }
 
   final case class Settings(fields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[DocumentField]],
                             accessMode: AccessMode)

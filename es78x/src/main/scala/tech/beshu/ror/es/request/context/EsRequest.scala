@@ -71,6 +71,12 @@ object ModificationResult {
   case object ShouldBeInterrupted extends ModificationResult
   final case class CustomResponse(response: ActionResponse) extends ModificationResult
   final case class UpdateResponse(update: ActionResponse => Task[ActionResponse]) extends ModificationResult
+
+  object UpdateResponse {
+    def using(update: ActionResponse => ActionResponse): UpdateResponse = {
+      UpdateResponse(response => Task.now(update(response)))
+    }
+  }
 }
 
 

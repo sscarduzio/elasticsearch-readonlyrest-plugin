@@ -18,9 +18,10 @@ package tech.beshu.ror.es.request.queries
 
 import cats.data.NonEmptyList
 import cats.implicits._
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.index.query._
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CantExtractFields, NotUsingFields, UsedField, UsingFields}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsedField, UsingFields}
 import tech.beshu.ror.es.request.queries.QueryType.instances._
 import tech.beshu.ror.es.request.queries.QueryType.{Compound, Leaf}
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
@@ -29,11 +30,11 @@ trait QueryFieldsUsage[QUERY <: QueryBuilder] {
   def fieldsIn(query: QUERY): RequestFieldsUsage
 }
 
-object QueryFieldsUsage {
-  def apply[QUERY <: QueryBuilder](implicit ev: QueryFieldsUsage[QUERY]) = ev
+object QueryFieldsUsage extends Logging {
+  def apply[QUERY <: QueryBuilder](implicit ev: QueryFieldsUsage[QUERY]): QueryFieldsUsage[QUERY] = ev
 
   implicit class Ops[QUERY <: QueryBuilder : QueryFieldsUsage](val query: QUERY) {
-    def fieldsUsage = QueryFieldsUsage[QUERY].fieldsIn(query)
+    def fieldsUsage: RequestFieldsUsage = QueryFieldsUsage[QUERY].fieldsIn(query)
   }
 
   def one[QUERY <: QueryBuilder](fieldNameExtractor: QUERY => String): QueryFieldsUsage[QUERY] =
@@ -60,7 +61,9 @@ object QueryFieldsUsage {
     implicit val termsSetQueryFields: QueryFieldsUsage[TermsSetQueryBuilder] = query => {
       Option(invokeMethodCached(query, query.getClass, "getFieldName")) match {
         case Some(fieldName: String) => UsingFields(NonEmptyList.one(UsedField(fieldName)))
-        case _ => CantExtractFields
+        case _ =>
+          logger.warn(s"Cannot extract fields for terms set query")
+          CannotExtractFields
       }
     }
 
@@ -85,7 +88,9 @@ object QueryFieldsUsage {
       case builder: TermQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder: TermsSetQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder: WildcardQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
-      case _ => CantExtractFields
+      case builder =>
+        logger.warn(s"Cannot extract fields for query: ${builder.getName}")
+        CannotExtractFields
     }
 
     private def resolveFieldsUsageForLeafQuery[QUERY <: QueryBuilder : QueryFieldsUsage : Leaf](leafQuery: QUERY) = {

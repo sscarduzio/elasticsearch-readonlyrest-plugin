@@ -21,8 +21,8 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly.{NotAllowedFieldsUsed, NothingNotAllowedUsed}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.LuceneContextHeaderApproach
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly.{NotAllowedFieldsUsed, EverythingAllowed}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.FlsAtLuceneLevelApproach
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
 import tech.beshu.ror.es.request.queries.QueryWithModifiableFields._
 import tech.beshu.ror.es.request.queries.QueryWithModifiableFields.instances._
@@ -63,7 +63,8 @@ object SearchRequestOps extends Logging {
           definedFields.strategy match {
             case NotAllowedFieldsUsed(notAllowedFields) =>
               modifyNotAllowedFieldsInQuery(notAllowedFields)
-            case NothingNotAllowedUsed | LuceneContextHeaderApproach =>
+            case EverythingAllowed | FlsAtLuceneLevelApproach =>
+
               request
           }
         case None =>

@@ -44,7 +44,7 @@ object FieldsFiltering {
   }
 
   def filterDocumentFields(documentFields: Map[String, ESDocumentField],
-                           fieldsRestrictions: FieldsRestrictions) = {
+                           fieldsRestrictions: FieldsRestrictions): NewFilteredDocumentFields = {
     val (metadataFields, nonMetadataDocumentFields) = partitionFieldsByMetadata(documentFields)
     val policy = new FieldsPolicy(fieldsRestrictions)
     val filteredDocumentFields = nonMetadataDocumentFields.filter {

@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
+import cats.syntax.show._
 import monix.eval.Task
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
@@ -65,7 +66,7 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
   override def requestFieldsUsage: RequestFieldsUsage = {
     Option(searchRequest.source().scriptFields()) match {
       case Some(scriptFields) if scriptFields.size() > 0 =>
-        RequestFieldsUsage.CantExtractFields
+        RequestFieldsUsage.CannotExtractFields
       case _ =>
         checkQueryFields()
     }
@@ -76,6 +77,7 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
       .map(_.fieldsUsage)
       .getOrElse(RequestFieldsUsage.NotUsingFields)
   }
+
   private def searchRequestFrom(request: ActionRequest) = {
     Option(invokeMethodCached(request, request.getClass, "getSearchRequest"))
       .collect { case sr: SearchRequest => sr }
@@ -105,8 +107,8 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
 
   private def optionallyDisableCaching(fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
     fieldLevelSecurity.map(_.strategy) match {
-      case Some(FieldLevelSecurity.Strategy.LuceneContextHeaderApproach) =>
-        logger.debug("ACL uses context header for fields rule, will disable request cache for SearchRequest")
+      case Some(FieldLevelSecurity.Strategy.FlsAtLuceneLevelApproach) =>
+        logger.debug(s"[${id.show}] ACL uses context header for fields rule, will disable request cache for SearchRequest")
         searchRequest.requestCache(false)
       case _ =>
     }

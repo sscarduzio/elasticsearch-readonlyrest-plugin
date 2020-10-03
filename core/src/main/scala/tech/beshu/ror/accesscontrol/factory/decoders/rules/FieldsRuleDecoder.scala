@@ -19,25 +19,34 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
+import cats.data.NonEmptySet
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.FLSMode
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-
+import FieldsRuleDecoderHelper.flsModeDecoder
 import scala.collection.JavaConverters._
 
-object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(FieldsRuleDecoderHelper.fieldsRuleDecoder)
+object FieldsRuleDecoder extends RuleDecoderWithAssociatedFields[FieldsRule, FLSMode](
+  ruleDecoderCreator = mode => FieldsRuleDecoderHelper.fieldsRuleDecoder(mode),
+  associatedFields = NonEmptySet.of("fields_mode"),
+  associatedFieldsDecoder =
+    Decoder.instance(_.downField("fields_mode").as[FLSMode])
+  or Decoder.
+  )
 
 private object FieldsRuleDecoderHelper {
 
@@ -50,11 +59,24 @@ private object FieldsRuleDecoderHelper {
   private val configuredFieldsDecoder = DecoderHelpers
     .decodeStringLikeOrUniqueNonEmptyListE(convertToConfiguredField)
 
-  val fieldsRuleDecoder = for {
-    configuredFields <- configuredFieldsDecoder
-    accessMode <- accessModeDecoder(configuredFields)
-    documentFields <- documentFieldsDecoder(configuredFields)
-  } yield RuleWithVariableUsageDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode)))
+  implicit val flsModeDecoder: Decoder[FLSMode] = DecoderHelpers
+    .decodeStringLike
+    .toSyncDecoder
+    .emapE[FLSMode] {
+      case "old" => Right(FLSMode.Old)
+      case "new" => Right(FLSMode.New)
+      case "proxy" => Right(FLSMode.Proxy)
+      case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown fls mode: '$unknown'")))
+    }
+    .decoder
+
+  def fieldsRuleDecoder(FLSMode: FLSMode) = {
+    for {
+      configuredFields <- configuredFieldsDecoder
+      accessMode <- accessModeDecoder(configuredFields)
+      documentFields <- documentFieldsDecoder(configuredFields)
+    } yield RuleWithVariableUsageDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode)))
+  }
 
   private def convertToConfiguredField: String => Either[String, ConfiguredField] = str => {
     if (str.startsWith("~")) {
