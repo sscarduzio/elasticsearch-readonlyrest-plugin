@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -36,6 +37,8 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
                                          clusterService: RorClusterService,
                                          override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[ActionRequest with CompositeIndicesRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
+
+  override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields
 
   private lazy val sqlIndices = SqlRequestHelper
     .indicesFrom(actionRequest)

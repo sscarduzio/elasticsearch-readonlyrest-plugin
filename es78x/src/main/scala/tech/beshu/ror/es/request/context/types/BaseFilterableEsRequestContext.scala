@@ -23,6 +23,7 @@ import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -49,7 +50,8 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
       indices
     },
     None,
-    None
+    None,
+    requestFieldsUsage
   )
 
   override def modifyWhenIndexNotFound: ModificationResult = {
@@ -86,4 +88,6 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
                        indices: NonEmptyList[IndexName],
                        filter: Option[Filter],
                        fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult
+
+  protected def requestFieldsUsage: RequestFieldsUsage
 }

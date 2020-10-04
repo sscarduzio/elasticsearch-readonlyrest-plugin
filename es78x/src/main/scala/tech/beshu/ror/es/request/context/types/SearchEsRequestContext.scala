@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import cats.syntax.show._
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
@@ -29,8 +28,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.queries.QueryFieldsUsage._
-import tech.beshu.ror.es.request.queries.QueryFieldsUsage.instances._
 import tech.beshu.ror.utils.ScalaOps._
 
 class SearchEsRequestContext(actionRequest: SearchRequest,
@@ -40,6 +37,8 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                              override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
+  override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
+
   override protected def indicesFrom(request: SearchRequest): Set[IndexName] = {
     request.indices.asSafeSet.flatMap(IndexName.fromString)
   }
@@ -48,28 +47,12 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                                 indices: NonEmptyList[IndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    optionallyDisableCaching(fieldLevelSecurity)
     request
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity)
+      .applyFieldLevelSecurity(fieldLevelSecurity, id)
       .indices(indices.toList.map(_.value.value): _*)
 
     ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
-  }
-
-  override def requestFieldsUsage: RequestFieldsUsage = {
-    Option(actionRequest.source().scriptFields()) match {
-      case Some(scriptFields) if scriptFields.size() > 0 =>
-        RequestFieldsUsage.CannotExtractFields
-      case _ =>
-        checkQueryFields()
-    }
-  }
-
-  private def checkQueryFields(): RequestFieldsUsage = {
-    Option(actionRequest.source().query())
-      .map(_.fieldsUsage)
-      .getOrElse(RequestFieldsUsage.NotUsingFields)
   }
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
@@ -86,15 +69,6 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
         response
       case _ =>
         actionResponse
-    }
-  }
-
-  private def optionallyDisableCaching(fieldLevelSecurity: Option[FieldLevelSecurity]): Unit = {
-    fieldLevelSecurity.map(_.strategy) match {
-      case Some(FieldLevelSecurity.Strategy.FlsAtLuceneLevelApproach) =>
-        logger.debug(s"[${id.show}] ACL uses context header for fields rule, will disable request cache for SearchRequest")
-        actionRequest.requestCache(false)
-      case _ =>
     }
   }
 }

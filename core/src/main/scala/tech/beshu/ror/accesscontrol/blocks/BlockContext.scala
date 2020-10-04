@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
@@ -89,7 +90,8 @@ object BlockContext {
                                                  override val contextHeaders: Set[Header],
                                                  indices: Set[IndexName],
                                                  filter: Option[Filter],
-                                                 fieldLevelSecurity: Option[FieldLevelSecurity] = None)
+                                                 fieldLevelSecurity: Option[FieldLevelSecurity] = None,
+                                                 requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
     extends BlockContext
 
 
@@ -99,7 +101,8 @@ object BlockContext {
                                                       override val contextHeaders: Set[Header],
                                                       indexPacks: List[Indices],
                                                       filter: Option[Filter],
-                                                      fieldLevelSecurity: Option[FieldLevelSecurity] = None)
+                                                      fieldLevelSecurity: Option[FieldLevelSecurity] = None,
+                                                      requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
     extends BlockContext
 
   final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
@@ -198,6 +201,26 @@ object BlockContext {
 
     implicit class Ops[B <: BlockContext : HasFieldLevelSecurity](blockContext: B) {
       def fieldLevelSecurity: Option[FieldLevelSecurity] = HasFieldLevelSecurity[B].fieldLevelSecurity(blockContext)
+    }
+  }
+
+  trait AllowsFieldsInRequest[B <: BlockContext] {
+    def requestFieldsUsage(blockContext: B): RequestFieldsUsage
+  }
+  object AllowsFieldsInRequest {
+
+    def apply[B <: BlockContext](implicit instance: AllowsFieldsInRequest[B]): AllowsFieldsInRequest[B] = instance
+
+    implicit val fieldsFromFilterableMultiBlockContext = new AllowsFieldsInRequest[FilterableMultiRequestBlockContext] {
+      override def requestFieldsUsage(blockContext: FilterableMultiRequestBlockContext): RequestFieldsUsage = blockContext.requestFieldsUsage
+    }
+
+    implicit val fieldsFromFilterableRequestBlockContext = new AllowsFieldsInRequest[FilterableRequestBlockContext] {
+      override def requestFieldsUsage(blockContext: FilterableRequestBlockContext): RequestFieldsUsage = blockContext.requestFieldsUsage
+    }
+
+    implicit class Ops[B <: BlockContext : AllowsFieldsInRequest](blockContext: B) {
+      def requestFieldsUsage: RequestFieldsUsage = AllowsFieldsInRequest[B].requestFieldsUsage(blockContext)
     }
   }
 

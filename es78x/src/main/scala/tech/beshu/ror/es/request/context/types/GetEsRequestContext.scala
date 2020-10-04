@@ -24,6 +24,7 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -39,7 +40,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage = FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
+  override protected val requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
   override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
     val indexName = IndexName

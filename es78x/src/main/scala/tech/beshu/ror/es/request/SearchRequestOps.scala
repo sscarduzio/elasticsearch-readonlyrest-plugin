@@ -17,15 +17,20 @@
 package tech.beshu.ror.es.request
 
 import cats.data.NonEmptyList
+import cats.syntax.show._
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly.{NotAllowedFieldsUsed, EverythingAllowed}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly.{EverythingAllowed, NotAllowedFieldsUsed}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.FlsAtLuceneLevelApproach
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
-import tech.beshu.ror.es.request.queries.QueryWithModifiableFields._
+import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.es.request.queries.QueryFieldsUsage.instances._
+import tech.beshu.ror.es.request.queries.QueryFieldsUsage.{Ops => QueryFieldsUsageOps}
 import tech.beshu.ror.es.request.queries.QueryWithModifiableFields.instances._
+import tech.beshu.ror.es.request.queries.QueryWithModifiableFields.{Ops => QueryWithModifiableFieldsOps}
 
 object SearchRequestOps extends Logging {
 
@@ -57,18 +62,29 @@ object SearchRequestOps extends Logging {
 
   implicit class FieldsOps(val request: SearchRequest) extends AnyVal {
 
-    def applyFieldLevelSecurity(fieldLevelSecurity: Option[FieldLevelSecurity]): SearchRequest = {
+    def applyFieldLevelSecurity(fieldLevelSecurity: Option[FieldLevelSecurity],
+                                requestId: RequestContext.Id): SearchRequest = {
       fieldLevelSecurity match {
         case Some(definedFields) =>
           definedFields.strategy match {
+            case FlsAtLuceneLevelApproach =>
+              optionallyDisableCaching(requestId)
             case NotAllowedFieldsUsed(notAllowedFields) =>
               modifyNotAllowedFieldsInQuery(notAllowedFields)
-            case EverythingAllowed | FlsAtLuceneLevelApproach =>
-
+            case EverythingAllowed=>
               request
           }
         case None =>
           request
+      }
+    }
+
+    def checkFieldsUsage(): RequestFieldsUsage = {
+      Option(request.source().scriptFields()) match {
+        case Some(scriptFields) if scriptFields.size() > 0 =>
+          RequestFieldsUsage.CannotExtractFields
+        case _ =>
+          checkQueryFields()
       }
     }
 
@@ -77,6 +93,17 @@ object SearchRequestOps extends Logging {
       val newQuery = currentQuery.handleNotAllowedFields(notAllowedFields)
       request.source().query(newQuery)
       request
+    }
+
+    private def checkQueryFields(): RequestFieldsUsage = {
+      Option(request.source().query())
+        .map(_.fieldsUsage)
+        .getOrElse(RequestFieldsUsage.NotUsingFields)
+    }
+
+    private def optionallyDisableCaching(requestId: RequestContext.Id) = {
+      logger.debug(s"[${requestId.show}] ACL uses context header for fields rule, will disable request cache for SearchRequest")
+      request.requestCache(false)
     }
   }
 }

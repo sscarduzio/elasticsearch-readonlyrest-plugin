@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
@@ -46,7 +47,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
-  override def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage = FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
+  private val requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
@@ -55,7 +56,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     Set.empty,
     indexPacksFrom(actionRequest),
     None,
-    None
+    None,
+    requestFieldsUsage
   )
 
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {

@@ -75,8 +75,6 @@ trait RequestContext {
 
   def isAllowedForDLS: Boolean
 
-  def requestFieldsUsage: FieldLevelSecurity.RequestFieldsUsage = FieldLevelSecurity.RequestFieldsUsage.CannotExtractFields
-
   def hasRemoteClusters: Boolean
 }
 

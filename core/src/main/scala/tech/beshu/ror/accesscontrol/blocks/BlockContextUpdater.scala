@@ -215,7 +215,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[FilterableRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: FilterableRequestBlockContext): FilterableRequestBlockContext =
-      FilterableRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+      FilterableRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None, None)
 
     override def withUserMetadata(blockContext: FilterableRequestBlockContext,
                                   userMetadata: UserMetadata): FilterableRequestBlockContext =
