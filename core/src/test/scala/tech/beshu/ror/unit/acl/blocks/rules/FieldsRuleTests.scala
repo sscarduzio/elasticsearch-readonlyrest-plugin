@@ -242,13 +242,13 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           flsMode = FLSMode.Hybrid
         )
         val requestContext = mock[RequestContext]
-        val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
 
         (requestContext.isReadOnlyRequest _).expects().returning(true)
 
         inside(rule.check(incomingBlockContext).runSyncStep) {
           case Right(Fulfilled(outBlockContext)) =>
-            outBlockContext.contextHeaders shouldBe Set.empty
+            outBlockContext shouldBe incomingBlockContext
         }
       }
     }
@@ -263,7 +263,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
 
         (requestContext.isReadOnlyRequest _).expects().returning(false)
 
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
     }
@@ -299,7 +299,6 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
                                expectedStrategy: Strategy) = {
     inside(rule.check(incomingBlockContext).runSyncStep) {
       case Right(Fulfilled(outBlockContext)) =>
-        outBlockContext.contextHeaders shouldBe expectedContextHeaders
         outBlockContext.fieldLevelSecurity.isDefined shouldBe true
         outBlockContext.fieldLevelSecurity.get.strategy shouldBe expectedStrategy
     }
@@ -311,7 +310,6 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
                                        expectedStrategy: Strategy) = {
     inside(rule.check(incomingBlockContext).runSyncStep) {
       case Right(Fulfilled(outBlockContext)) =>
-        outBlockContext.contextHeaders shouldBe expectedContextHeaders
         outBlockContext.fieldLevelSecurity.isDefined shouldBe true
         outBlockContext.fieldLevelSecurity.get.strategy shouldBe expectedStrategy
     }
@@ -323,7 +321,6 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
       requestContext = requestContext,
       userMetadata = UserMetadata.empty,
       responseHeaders = Set.empty,
-      contextHeaders = Set.empty,
       indices = Set.empty,
       filter = None,
       fieldLevelSecurity = None,
@@ -337,7 +334,6 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
       requestContext = requestContext,
       userMetadata = UserMetadata.empty,
       responseHeaders = Set.empty,
-      contextHeaders = Set.empty,
       indexPacks = List.empty,
       filter = None,
       fieldLevelSecurity = None,

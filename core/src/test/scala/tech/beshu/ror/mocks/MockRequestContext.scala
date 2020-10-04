@@ -65,7 +65,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
 
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, Set.empty, indices
+    this, UserMetadata.from(this), Set.empty, indices
   )
 }
 
@@ -92,7 +92,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
 
   override def initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, Set.empty, indices, None
+    this, UserMetadata.from(this), Set.empty, indices, None
   )
 }
 
@@ -119,7 +119,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = RepositoryRequestBlockContext
 
   override def initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, Set.empty, repositories
+    this, UserMetadata.from(this), Set.empty, repositories
   )
 }
 
@@ -146,7 +146,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
 
   override def initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, Set.empty, snapshots, Set.empty, Set.empty
+    this, UserMetadata.from(this), Set.empty, snapshots, Set.empty, Set.empty
   )
 }
 
@@ -172,6 +172,6 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
 
   override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
-    this, UserMetadata.empty, Set.empty, Set.empty
+    this, UserMetadata.empty, Set.empty
   )
 }

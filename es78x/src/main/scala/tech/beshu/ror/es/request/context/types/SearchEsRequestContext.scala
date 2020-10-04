@@ -49,7 +49,7 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     request
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity, id)
+      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
       .indices(indices.toList.map(_.value.value): _*)
 
     ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))

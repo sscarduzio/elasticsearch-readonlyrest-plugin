@@ -51,7 +51,6 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     this,
     UserMetadata.from(this),
     Set.empty,
-    Set.empty,
     indexPacksFrom(actionRequest),
     None,
     None,
@@ -134,7 +133,7 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     }
     request
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity, id)
+      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[IndexName]) = {

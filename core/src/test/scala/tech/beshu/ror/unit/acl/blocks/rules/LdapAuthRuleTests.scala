@@ -157,7 +157,7 @@ class LdapAuthRuleTests
                          assertionType: AssertionType): Unit = {
     val rule = new LdapAuthRule(new LdapAuthenticationRule(authenticationSettings), new LdapAuthorizationRule(authorizationSettings))
     val requestContext = MockRequestContext.indices.copy(headers = basicHeader.toSet)
-    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, Set.empty, Set.empty)
+    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, Set.empty)
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))
     assertionType match {
       case AssertionType.RuleFulfilled(blockContextAssertion) =>

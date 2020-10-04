@@ -99,7 +99,7 @@ class HostsRuleTests extends WordSpec with MockFactory {
       remoteAddress = address,
       headers = Set.empty
     )
-    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

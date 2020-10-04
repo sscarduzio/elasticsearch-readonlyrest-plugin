@@ -153,7 +153,6 @@ object show {
           showTraversable("indices", bc.indices) ::
           showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
           showTraversable("response_hdr", bc.responseHeaders) ::
-          showTraversable("context_hdr", bc.contextHeaders) ::
           showTraversable("repositories", bc.repositories) ::
           showTraversable("snapshots", bc.snapshots) ::
           Nil flatten) mkString ";"

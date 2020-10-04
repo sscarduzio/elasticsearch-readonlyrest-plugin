@@ -44,13 +44,12 @@ class FilterRuleTests extends WordSpec with MockFactory {
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
           val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-          val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+          val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, None)
 
           rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
             BlockContext.FilterableRequestBlockContext(
               requestContext,
               UserMetadata.empty,
-              Set.empty,
               Set.empty,
               Set.empty,
               Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}")))
@@ -61,13 +60,12 @@ class FilterRuleTests extends WordSpec with MockFactory {
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
           val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-          val blockContext = FilterableMultiRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty, None)
+          val blockContext = FilterableMultiRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, None)
 
           rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
             BlockContext.FilterableMultiRequestBlockContext(
               requestContext,
               UserMetadata.empty,
-              Set.empty,
               Set.empty,
               List.empty,
               Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}")))
@@ -84,7 +82,6 @@ class FilterRuleTests extends WordSpec with MockFactory {
           UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob".nonempty))),
           Set.empty,
           Set.empty,
-          Set.empty,
           None
         )
 
@@ -92,7 +89,6 @@ class FilterRuleTests extends WordSpec with MockFactory {
           FilterableRequestBlockContext(
             requestContext,
             UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob".nonempty))),
-            Set.empty,
             Set.empty,
             Set.empty,
             Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"bob\"}}}]}}")))
@@ -105,7 +101,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"User\":{\"value\":\"@{user}\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-        val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+        val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
@@ -113,7 +109,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
         val requestContext = MockRequestContext.indices.copy(isAllowedForDLS = false)
-        val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None)
+        val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }

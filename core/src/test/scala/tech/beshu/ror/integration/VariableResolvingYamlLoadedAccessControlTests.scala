@@ -223,7 +223,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
                 .withJwtToken(JwtTokenPayload(claims))
             )
             blockContext.indices should be(Set(IndexName("gj1".nonempty)))
-            blockContext.contextHeaders should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
           }
         }
@@ -256,7 +255,6 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
                 .withJwtToken(JwtTokenPayload(claims))
             )
             blockContext.indices should be(Set(IndexName("gj0".nonempty)))
-            blockContext.contextHeaders should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
           }
         }

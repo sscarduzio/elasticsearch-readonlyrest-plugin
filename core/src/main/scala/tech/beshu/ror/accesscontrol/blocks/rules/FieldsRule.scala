@@ -21,23 +21,21 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest._
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.{FLSMode, Settings}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFLSUpdater}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.{FieldWithWildcard, SpecificField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, RequestFieldsUsage, Strategy}
-import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Header}
-import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import AllowsFieldsInRequest._
 
 class FieldsRule(val settings: Settings)
   extends RegularRule
@@ -68,7 +66,7 @@ class FieldsRule(val settings: Settings)
     }
   }
 
-  private def processFilterableBlockContext[B <: BlockContext : BlockContextUpdater : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B): RuleResult[B] = {
+  private def processFilterableBlockContext[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B): RuleResult[B] = {
     val maybeResolvedFields = resolveAll(settings.fields.toNonEmptyList, blockContext)
     UniqueNonEmptyList.fromList(maybeResolvedFields) match {
       case Some(resolvedFields) =>
@@ -79,8 +77,8 @@ class FieldsRule(val settings: Settings)
     }
   }
 
-  private def processBlockContextUsingDefinedFLSMode[B <: BlockContext : BlockContextUpdater : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
-                                                                                                                                                   resolvedFields: UniqueNonEmptyList[DocumentField]): RuleResult[B] = {
+  private def processBlockContextUsingDefinedFLSMode[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
+                                                                                                                             resolvedFields: UniqueNonEmptyList[DocumentField]): RuleResult[B] = {
     val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
 
     settings.flsMode match {
@@ -94,22 +92,22 @@ class FieldsRule(val settings: Settings)
     }
   }
 
-  private def processProxyMode[B <: BlockContext : BlockContextUpdater : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
-                                                                                                                             fieldsRestrictions: FieldsRestrictions): RuleResult[B] = {
+  private def processProxyMode[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
+                                                                                                       fieldsRestrictions: FieldsRestrictions): RuleResult[B] = {
     resolveFLSStrategyBasedOnFieldsUsage(blockContext.requestFieldsUsage, fieldsRestrictions) match {
       case basedOnBlockContext: BasedOnBlockContextOnly =>
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy = basedOnBlockContext)
       case Strategy.FlsAtLuceneLevelApproach =>
-        logger.warn(s"[${blockContext.requestContext.id.show}] Could not use fls at lucene level in proxy mode.")
+        logger.warn(s"[${blockContext.requestContext.id.show}] Could not use fls at lucene level in proxy mode. Rejected.")
         RuleResult.Rejected()
     }
   }
 
-  private def fulfillRuleWithResolvedStrategy[B <: BlockContext : BlockContextUpdater : BlockContextWithFLSUpdater](blockContext: B,
-                                                                                                                    fieldsRestrictions: FieldsRestrictions,
-                                                                                                                    resolvedStrategy: Strategy): RuleResult[B] = {
+  private def fulfillRuleWithResolvedStrategy[B <: BlockContext : BlockContextWithFLSUpdater](blockContext: B,
+                                                                                              fieldsRestrictions: FieldsRestrictions,
+                                                                                              resolvedStrategy: Strategy): RuleResult[B] = {
     val fieldLevelSecurity = FieldLevelSecurity(fieldsRestrictions, resolvedStrategy)
-    val updatedBlockContext = updateFilterableBlockContext(blockContext, fieldLevelSecurity)
+    val updatedBlockContext = blockContext.withFields(fieldLevelSecurity)
     RuleResult.Fulfilled(updatedBlockContext)
   }
 
@@ -154,25 +152,6 @@ class FieldsRule(val settings: Settings)
       .filterNot(field => fieldsPolicy.canKeep(field.value))
       .toNel
   }
-
-  private def updateFilterableBlockContext[B <: BlockContext : BlockContextUpdater : BlockContextWithFLSUpdater](blockContext: B,
-                                                                                                                 fieldLevelSecurity: FieldLevelSecurity) = {
-    fieldLevelSecurity.strategy match {
-      case FlsAtLuceneLevelApproach =>
-        blockContext
-          .withAddedContextHeader(createContextHeader(fieldLevelSecurity.restrictions))
-          .withFields(fieldLevelSecurity)
-      case _: BasedOnBlockContextOnly =>
-        blockContext.withFields(fieldLevelSecurity)
-    }
-  }
-
-  private def createContextHeader(fieldsRestrictions: FieldsRestrictions) = {
-    new Header(
-      Name.transientFields,
-      transientFieldsToHeaderValue.toRawValue(fieldsRestrictions)
-    )
-  }
 }
 
 object FieldsRule {
@@ -190,4 +169,5 @@ object FieldsRule {
   final case class Settings(fields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[DocumentField]],
                             accessMode: AccessMode,
                             flsMode: FLSMode)
+
 }

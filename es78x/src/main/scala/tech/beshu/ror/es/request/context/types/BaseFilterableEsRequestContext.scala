@@ -42,7 +42,6 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     this,
     UserMetadata.from(this),
     Set.empty,
-    Set.empty,
     {
       import tech.beshu.ror.accesscontrol.show.logs._
       val indices = indicesOrWildcard(indicesFrom(actionRequest))

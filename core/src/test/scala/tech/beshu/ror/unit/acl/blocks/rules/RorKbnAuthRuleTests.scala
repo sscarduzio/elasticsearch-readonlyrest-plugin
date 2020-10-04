@@ -271,7 +271,7 @@ class RorKbnAuthRuleTests
                          blockContextAssertion: Option[BlockContext => Unit]) = {
     val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups))
     val requestContext = MockRequestContext.metadata.copy(headers = Set(tokenHeader))
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, Set.empty)
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>

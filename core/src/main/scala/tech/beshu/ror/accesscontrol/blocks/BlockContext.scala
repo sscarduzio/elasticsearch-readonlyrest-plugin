@@ -29,34 +29,28 @@ sealed trait BlockContext {
   def userMetadata: UserMetadata
 
   def responseHeaders: Set[Header]
-
-  def contextHeaders: Set[Header]
 }
 object BlockContext {
 
   final case class CurrentUserMetadataRequestBlockContext(override val requestContext: RequestContext,
                                                           override val userMetadata: UserMetadata,
-                                                          override val responseHeaders: Set[Header],
-                                                          override val contextHeaders: Set[Header])
+                                                          override val responseHeaders: Set[Header])
     extends BlockContext
 
   final case class GeneralNonIndexRequestBlockContext(override val requestContext: RequestContext,
                                                       override val userMetadata: UserMetadata,
-                                                      override val responseHeaders: Set[Header],
-                                                      override val contextHeaders: Set[Header])
+                                                      override val responseHeaders: Set[Header])
     extends BlockContext
 
   final case class RepositoryRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
-                                                 override val contextHeaders: Set[Header],
                                                  repositories: Set[RepositoryName])
     extends BlockContext
 
   final case class SnapshotRequestBlockContext(override val requestContext: RequestContext,
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
-                                               override val contextHeaders: Set[Header],
                                                snapshots: Set[SnapshotName],
                                                repositories: Set[RepositoryName],
                                                indices: Set[IndexName])
@@ -65,7 +59,6 @@ object BlockContext {
   final case class AliasRequestBlockContext(override val requestContext: RequestContext,
                                             override val userMetadata: UserMetadata,
                                             override val responseHeaders: Set[Header],
-                                            override val contextHeaders: Set[Header],
                                             aliases: Set[IndexName],
                                             indices: Set[IndexName])
     extends BlockContext
@@ -73,21 +66,18 @@ object BlockContext {
   final case class TemplateRequestBlockContext(override val requestContext: RequestContext,
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
-                                               override val contextHeaders: Set[Header],
                                                templates: Set[Template])
     extends BlockContext
 
   final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
                                                    override val userMetadata: UserMetadata,
                                                    override val responseHeaders: Set[Header],
-                                                   override val contextHeaders: Set[Header],
                                                    indices: Set[IndexName])
     extends BlockContext
 
   final case class FilterableRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
-                                                 override val contextHeaders: Set[Header],
                                                  indices: Set[IndexName],
                                                  filter: Option[Filter],
                                                  fieldLevelSecurity: Option[FieldLevelSecurity] = None,
@@ -98,7 +88,6 @@ object BlockContext {
   final case class FilterableMultiRequestBlockContext(override val requestContext: RequestContext,
                                                       override val userMetadata: UserMetadata,
                                                       override val responseHeaders: Set[Header],
-                                                      override val contextHeaders: Set[Header],
                                                       indexPacks: List[Indices],
                                                       filter: Option[Filter],
                                                       fieldLevelSecurity: Option[FieldLevelSecurity] = None,
@@ -108,7 +97,6 @@ object BlockContext {
   final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
-                                                 override val contextHeaders: Set[Header],
                                                  indexPacks: List[Indices])
     extends BlockContext
 
@@ -227,9 +215,6 @@ object BlockContext {
   implicit class BlockContextUpdaterOps[B <: BlockContext : BlockContextUpdater](val blockContext: B) {
     def withUserMetadata(update: UserMetadata => UserMetadata): B =
       BlockContextUpdater[B].withUserMetadata(blockContext, update(blockContext.userMetadata))
-
-    def withAddedContextHeader(header: Header): B =
-      BlockContextUpdater[B].withAddedContextHeader(blockContext, header)
 
     def withAddedResponseHeader(header: Header): B =
       BlockContextUpdater[B].withAddedResponseHeader(blockContext, header)

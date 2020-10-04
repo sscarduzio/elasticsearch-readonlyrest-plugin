@@ -56,7 +56,7 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     searchRequest
       .applyFilterToQuery(filter)
-      .applyFieldLevelSecurity(fieldLevelSecurity, id)
+      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
       .indices(indices.toList.map(_.value.value): _*)
 
     ModificationResult.UpdateResponse(filterFieldsFromResponse(fieldLevelSecurity))

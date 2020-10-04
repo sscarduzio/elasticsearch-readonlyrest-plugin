@@ -100,7 +100,6 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
 
             blockContext.userMetadata should be(UserMetadata.empty)
             blockContext.indices should be(Set.empty)
-            blockContext.contextHeaders should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
         }
       }
@@ -130,7 +129,6 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
 
           blockContext.userMetadata should be(UserMetadata.empty)
           blockContext.indices should be(Set.empty)
-          blockContext.contextHeaders should be(Set.empty)
           blockContext.responseHeaders should be(Set.empty)
       }
     }
@@ -166,7 +164,6 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
               .withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))
           )
           blockContext.indices should be(Set(IndexName("idx1".nonempty)))
-          blockContext.contextHeaders should be(Set.empty)
           blockContext.responseHeaders should be(Set.empty)
       }
     }

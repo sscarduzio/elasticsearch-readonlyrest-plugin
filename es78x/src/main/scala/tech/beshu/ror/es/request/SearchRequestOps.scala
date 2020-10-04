@@ -21,11 +21,13 @@ import cats.syntax.show._
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly.{EverythingAllowed, NotAllowedFieldsUsed}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.FlsAtLuceneLevelApproach
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, RequestFieldsUsage}
+import tech.beshu.ror.accesscontrol.domain.Header.Name
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, Header}
+import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage.instances._
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage.{Ops => QueryFieldsUsageOps}
@@ -63,15 +65,17 @@ object SearchRequestOps extends Logging {
   implicit class FieldsOps(val request: SearchRequest) extends AnyVal {
 
     def applyFieldLevelSecurity(fieldLevelSecurity: Option[FieldLevelSecurity],
+                                threadPool: ThreadPool,
                                 requestId: RequestContext.Id): SearchRequest = {
       fieldLevelSecurity match {
         case Some(definedFields) =>
           definedFields.strategy match {
             case FlsAtLuceneLevelApproach =>
-              optionallyDisableCaching(requestId)
-            case NotAllowedFieldsUsed(notAllowedFields) =>
+              addContextHeader(threadPool, definedFields.restrictions, requestId)
+              disableCaching(requestId)
+            case BasedOnBlockContextOnly.NotAllowedFieldsUsed(notAllowedFields) =>
               modifyNotAllowedFieldsInQuery(notAllowedFields)
-            case EverythingAllowed=>
+            case BasedOnBlockContextOnly.EverythingAllowed=>
               request
           }
         case None =>
@@ -95,13 +99,30 @@ object SearchRequestOps extends Logging {
       request
     }
 
+
     private def checkQueryFields(): RequestFieldsUsage = {
       Option(request.source().query())
         .map(_.fieldsUsage)
         .getOrElse(RequestFieldsUsage.NotUsingFields)
     }
 
-    private def optionallyDisableCaching(requestId: RequestContext.Id) = {
+    private def addContextHeader(threadPool: ThreadPool,
+                                 fieldsRestrictions: FieldsRestrictions,
+                                 requestId: RequestContext.Id): Unit = {
+      val threadContext = threadPool.getThreadContext
+      val header = createContextHeader(fieldsRestrictions)
+      logger.debug(s"[${requestId.show}] Adding thread context header required by lucene. Header Value: '${header.value.value}'")
+      threadContext.putHeader(header.name.value.value, header.value.value)
+    }
+
+    private def createContextHeader(fieldsRestrictions: FieldsRestrictions) = {
+      new Header(
+        Name.transientFields,
+        transientFieldsToHeaderValue.toRawValue(fieldsRestrictions)
+      )
+    }
+
+    private def disableCaching(requestId: RequestContext.Id) = {
       logger.debug(s"[${requestId.show}] ACL uses context header for fields rule, will disable request cache for SearchRequest")
       request.requestCache(false)
     }
