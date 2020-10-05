@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-
+import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
@@ -43,4 +44,12 @@ class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
   )
 
   override protected def modifyRequest(blockContext: CurrentUserMetadataRequestBlockContext): ModificationResult = Modified
+
+  override def correlationId: Option[domain.CorrelationId] = Some {
+    super
+      .correlationId
+      .getOrElse {
+        domain.CorrelationId(NonEmptyString.unsafeFrom(initialBlockContext.userMetadata.loggingId.value.toString))
+      }
+  }
 }

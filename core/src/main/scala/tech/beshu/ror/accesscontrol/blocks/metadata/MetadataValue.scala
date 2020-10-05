@@ -46,7 +46,7 @@ object MetadataValue {
   }
 
   private def loggingId(userMetadata: UserMetadata) = {
-    Map(Constants.HEADER_LOGGING_ID -> MetadataString(userMetadata.logId.value.toString))
+    Map(Constants.HEADER_LOGGING_ID -> MetadataString(userMetadata.loggingId.value.toString))
   }
 
   private def userOrigin(userMetadata: UserMetadata) = {

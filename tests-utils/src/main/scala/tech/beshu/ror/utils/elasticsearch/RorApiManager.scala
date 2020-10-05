@@ -20,7 +20,8 @@ import org.apache.http.client.methods.HttpGet
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
 import tech.beshu.ror.utils.httpclient.RestClient
 
-class RorApiManager(client: RestClient)
+class RorApiManager(client: RestClient,
+                    override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
   def fetchMetadata(): JsonResponse = {

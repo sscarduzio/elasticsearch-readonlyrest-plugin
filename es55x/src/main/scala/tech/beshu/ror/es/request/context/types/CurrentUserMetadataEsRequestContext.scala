@@ -47,7 +47,7 @@ class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
     super
       .correlationId
       .getOrElse {
-        CorrelationId(NonEmptyString.unsafeFrom(initialBlockContext.userMetadata.logId.value.toString))
+        CorrelationId(NonEmptyString.unsafeFrom(initialBlockContext.userMetadata.loggingId.value.toString))
       }
   }
 

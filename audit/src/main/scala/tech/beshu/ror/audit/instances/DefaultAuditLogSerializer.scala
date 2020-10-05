@@ -60,7 +60,7 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       .put("id", requestContext.id)
       .put("final_state", finalState)
       .put("@timestamp", timestampFormatter.format(requestContext.timestamp))
-      .put("correlationId", requestContext.correlationId.orNull)
+      .put("correlation_id", requestContext.correlationId.orNull)
       .put("processingMillis", duration.toMillis)
       .put("error_type", error.map(_.getClass.getSimpleName).orNull)
       .put("error_message", error.map(_.getMessage).orNull)

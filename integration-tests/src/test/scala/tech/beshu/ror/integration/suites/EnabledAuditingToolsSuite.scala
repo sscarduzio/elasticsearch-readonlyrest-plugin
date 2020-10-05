@@ -16,10 +16,12 @@
  */
 package tech.beshu.ror.integration.suites
 
+import java.util.UUID
+
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait EnabledAuditingToolsSuite
@@ -51,7 +53,7 @@ trait EnabledAuditingToolsSuite
 
   "Request" should {
     "be audited" when {
-      "rule 1 is matching with logged user" in {
+      "rule 1 is matched with logged user" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"))
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
@@ -64,9 +66,10 @@ trait EnabledAuditingToolsSuite
         firstEntry.get("user") shouldBe "username"
         firstEntry.get("block").asInstanceOf[String].contains("name: 'Rule 1'") shouldBe true
       }
-
-      "no rule is matching with username from auth header" in {
-        val indexManager = new IndexManager(basicAuthClient("username", "wrong"))
+      "no rule is matched with username from auth header" in {
+        val indexManager = new IndexManager(
+          basicAuthClient("username", "wrong")
+        )
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
@@ -77,8 +80,7 @@ trait EnabledAuditingToolsSuite
         firstEntry.get("final_state") shouldBe "FORBIDDEN"
         firstEntry.get("user") shouldBe "username"
       }
-
-      "no rule is matching with raw auth header as user" in {
+      "no rule is matched with raw auth header as user" in {
         val indexManager = new IndexManager(tokenAuthClient("user_token"))
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
@@ -90,9 +92,76 @@ trait EnabledAuditingToolsSuite
         firstEntry.get("final_state") shouldBe "FORBIDDEN"
         firstEntry.get("user") shouldBe "user_token"
       }
+      "rule 1 is matched" when {
+        "two requests were sent and correlationId is the same for both of them" in {
+          val correlationId = UUID.randomUUID().toString
+          val indexManager = new IndexManager(
+            basicAuthClient("username", "dev"),
+            additionalHeaders = Map("x-ror-correlation-id" -> correlationId)
+          )
+
+          val response1 = indexManager.getIndex("twitter")
+          response1.responseCode shouldBe 200
+
+          val response2 = indexManager.getIndex("twitter")
+          response2.responseCode shouldBe 200
+
+          val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+          auditEntries.size shouldBe 2
+
+          auditEntries.get(0).get("correlation_id") shouldBe correlationId
+          auditEntries.get(1).get("correlation_id") shouldBe correlationId
+        }
+        "two requests were sent and the first one is user metadata request" in {
+          val userMetadataManager = new RorApiManager(basicAuthClient("username", "dev"))
+          val userMetadataResponse = userMetadataManager.fetchMetadata()
+
+          userMetadataResponse.responseCode should be (200)
+          val correlationId = userMetadataResponse.responseJson("x-ror-logging-id").str
+
+          val indexManager = new IndexManager(
+            basicAuthClient("username", "dev"),
+            additionalHeaders = Map("x-ror-correlation-id" -> correlationId)
+          )
+
+          val getIndexResponse = indexManager.getIndex("twitter")
+          getIndexResponse.responseCode shouldBe 200
+
+          val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+          auditEntries.size shouldBe 2
+
+          auditEntries.get(0).get("correlation_id") shouldBe correlationId
+          auditEntries.get(1).get("correlation_id") shouldBe correlationId
+        }
+        "two metadata requests were sent, one with correlationId" in {
+          def fetchMetadata(correlationId: Option[String] = None) = {
+            val userMetadataManager = new RorApiManager(
+              basicAuthClient("username", "dev"),
+              additionalHeaders = correlationId.map(("x-ror-correlation-id", _)).toMap
+            )
+            userMetadataManager.fetchMetadata()
+          }
+
+          val response1 = fetchMetadata()
+          response1.responseCode should be (200)
+          val loggingId1 = response1.responseJson("x-ror-logging-id").str
+
+          val response2 = fetchMetadata(correlationId = Some(loggingId1))
+          response2.responseCode should be (200)
+          val loggingId2 = response2.responseJson("x-ror-logging-id").str
+
+          loggingId1 shouldNot be (loggingId2)
+
+          val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+          auditEntries.size shouldBe 2
+
+          auditEntries.get(0).get("correlation_id") shouldBe loggingId1
+          auditEntries.get(1).get("correlation_id") shouldBe loggingId1
+        }
+      }
     }
     "not be audited" when {
-      "rule 2 is matching" in {
+      "rule 2 is matched" in {
         val indexManager = new IndexManager(basicAuthClient("username", "dev"))
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
