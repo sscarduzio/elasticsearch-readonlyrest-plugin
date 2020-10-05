@@ -22,12 +22,10 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.query.{QueryBuilder, QueryBuilders}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
-import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, RequestFieldsUsage}
-import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, Header}
-import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage.instances._
 import tech.beshu.ror.es.request.queries.QueryFieldsUsage.{Ops => QueryFieldsUsageOps}
@@ -71,11 +69,11 @@ object SearchRequestOps extends Logging {
         case Some(definedFields) =>
           definedFields.strategy match {
             case FlsAtLuceneLevelApproach =>
-              addContextHeader(threadPool, definedFields.restrictions, requestId)
+              FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions, requestId)
               disableCaching(requestId)
             case BasedOnBlockContextOnly.NotAllowedFieldsUsed(notAllowedFields) =>
               modifyNotAllowedFieldsInQuery(notAllowedFields)
-            case BasedOnBlockContextOnly.EverythingAllowed=>
+            case BasedOnBlockContextOnly.EverythingAllowed =>
               request
           }
         case None =>
@@ -104,22 +102,6 @@ object SearchRequestOps extends Logging {
       Option(request.source().query())
         .map(_.fieldsUsage)
         .getOrElse(RequestFieldsUsage.NotUsingFields)
-    }
-
-    private def addContextHeader(threadPool: ThreadPool,
-                                 fieldsRestrictions: FieldsRestrictions,
-                                 requestId: RequestContext.Id): Unit = {
-      val threadContext = threadPool.getThreadContext
-      val header = createContextHeader(fieldsRestrictions)
-      logger.debug(s"[${requestId.show}] Adding thread context header required by lucene. Header Value: '${header.value.value}'")
-      threadContext.putHeader(header.name.value.value, header.value.value)
-    }
-
-    private def createContextHeader(fieldsRestrictions: FieldsRestrictions) = {
-      new Header(
-        Name.transientFields,
-        transientFieldsToHeaderValue.toRawValue(fieldsRestrictions)
-      )
     }
 
     private def disableCaching(requestId: RequestContext.Id) = {

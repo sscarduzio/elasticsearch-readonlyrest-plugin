@@ -21,12 +21,13 @@ import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.{CannotModify, Modified}
+import tech.beshu.ror.es.request.{FLSContextHeaderHandler, RequestSeemsToBeInvalid}
 import tech.beshu.ror.es.utils.SqlRequestHelper
 
 import scala.util.{Failure, Success}
@@ -59,13 +60,30 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     if (indicesStrings != sqlIndices.indices) {
       SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings) match {
         case Success(_) =>
+          applyFieldLevelSecurity(request, fieldLevelSecurity)
           Modified
         case Failure(ex) =>
           logger.error("Cannot modify SQL indices of incoming request", ex)
           CannotModify
       }
     } else {
+      applyFieldLevelSecurity(request, fieldLevelSecurity)
       Modified
+    }
+  }
+
+  private def applyFieldLevelSecurity(request: ActionRequest with CompositeIndicesRequest,
+                                      fieldLevelSecurity: Option[FieldLevelSecurity]) =  {
+    fieldLevelSecurity match {
+      case Some(definedFields) =>
+        definedFields.strategy match {
+          case FlsAtLuceneLevelApproach =>
+            FLSContextHeaderHandler.addContextHeader(threadPool, definedFields.restrictions, id)
+          case BasedOnBlockContextOnly.NotAllowedFieldsUsed(_) | BasedOnBlockContextOnly.EverythingAllowed =>
+            request
+        }
+      case None =>
+        request
     }
   }
 }
