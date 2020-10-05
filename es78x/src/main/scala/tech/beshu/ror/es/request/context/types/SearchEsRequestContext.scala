@@ -22,6 +22,7 @@ import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -59,12 +60,12 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                                       (actionResponse: ActionResponse): ActionResponse = {
 
     (actionResponse, fieldLevelSecurity) match {
-      case (response: SearchResponse, Some(definedFieldLevelSecurity)) =>
+      case (response: SearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly)))  =>
         response.getHits.getHits
           .foreach { hit =>
             hit
-              .filterSourceFieldsUsing(definedFieldLevelSecurity.restrictions)
-              .filterDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
+              .filterSourceFieldsUsing(restrictions)
+              .filterDocumentFieldsUsing(restrictions)
           }
         response
       case _ =>

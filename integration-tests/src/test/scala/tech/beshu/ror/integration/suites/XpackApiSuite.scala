@@ -58,6 +58,7 @@ trait XpackApiSuite
   private lazy val adminSqlManager = new SqlApiManager(basicAuthClient("sqladmin", "pass"), container.esVersion)
   private lazy val dev3SqlManager = new SqlApiManager(basicAuthClient("dev1sql", "test"), container.esVersion)
   private lazy val dev4SqlManager = new SqlApiManager(basicAuthClient("dev2sql", "test"), container.esVersion)
+  private lazy val dev5SqlManager = new SqlApiManager(basicAuthClient("dev5sql", "test"), container.esVersion)
 
   "Async search" should {
     "be allowed for dev1 and test1_index_a" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {
@@ -461,6 +462,15 @@ trait XpackApiSuite
             result.rows.size should be(3)
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
             result.column("price").toList should contain only Null
+          }
+          //fixme: filter rule doesn't work now for sql api.
+          "filter in rule is used" excludeES("es55x", "es60x", "es61x", "es62x") ignore {
+            val result = dev5SqlManager.execute("""SELECT * FROM bookstore""")
+            result.isSuccess should be(true)
+            result.queryResult.size should be(4)
+            result.columnNames should contain only("author", "name", "price", "release_date")
+            result.rows.size should be(1)
+            result.column("author").toList should contain only Str("Frank Herbert")
           }
         }
       }

@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
 import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
@@ -88,14 +89,14 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
                                       (actionResponse: ActionResponse): ActionResponse = {
     (actionResponse, fieldLevelSecurity) match {
-      case (response: MultiSearchResponse, Some(definedFieldLevelSecurity)) =>
+      case (response: MultiSearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
         response.getResponses
           .filterNot(_.isFailure)
           .flatMap(_.getResponse.getHits.getHits)
           .foreach { hit =>
             hit
-              .filterSourceFieldsUsing(definedFieldLevelSecurity.restrictions)
-              .filterDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
+              .filterSourceFieldsUsing(restrictions)
+              .filterDocumentFieldsUsing(restrictions)
           }
         response
       case _ =>

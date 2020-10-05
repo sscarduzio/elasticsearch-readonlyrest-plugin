@@ -51,7 +51,10 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
   override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[IndexName] =
     sqlIndices.indices.flatMap(IndexName.fromString)
 
-  //TODO use provided filter and fields somehow.
+  /** fixme: filter is not applied.
+      If there is no way to apply filter to request (see e.g. SearchEsRequestContext),
+      it can be handled just as in GET/MGET (see e.g. GetEsRequestContext) using ModificationResult.UpdateResponse.
+   **/
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
                                 indices: NonEmptyList[IndexName],
                                 filter: Option[Filter],
@@ -72,6 +75,10 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     }
   }
 
+  /**  TODO fls works because 'CannotExtractFields' value is always returned for sql request,
+   * so fls at lucene level is used. Maybe there is a way to modify used fields in query (see e.g. SearchEsRequestContext)
+   * and abandon lucene approach.
+   */
   private def applyFieldLevelSecurity(request: ActionRequest with CompositeIndicesRequest,
                                       fieldLevelSecurity: Option[FieldLevelSecurity]) =  {
     fieldLevelSecurity match {
