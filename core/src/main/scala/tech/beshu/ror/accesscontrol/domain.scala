@@ -17,12 +17,13 @@
 package tech.beshu.ror.accesscontrol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.{Base64, Locale}
+import java.util.{Base64, Locale, UUID}
 
 import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
@@ -39,6 +40,13 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.util.Try
 
 object domain {
+
+  final case class LoggingId private(value: UUID) extends AnyVal
+  object LoggingId {
+    def random: LoggingId = new LoggingId(UUID.randomUUID())
+  }
+
+  final case class CorrelationId(value: NonEmptyString)
 
   sealed trait LoggedUser {
     def id: User.Id
@@ -63,21 +71,22 @@ object domain {
   object Header {
     final case class Name(value: NonEmptyString)
     object Name {
-      val xApiKeyHeaderName = Header.Name(NonEmptyString.unsafeFrom("X-Api-Key"))
-      val xForwardedFor = Name(NonEmptyString.unsafeFrom("X-Forwarded-For"))
-      val xForwardedUser = Name(NonEmptyString.unsafeFrom("X-Forwarded-User"))
-      val xUserOrigin = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ORIGIN))
-      val kibanaHiddenApps = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_HIDDEN_APPS))
-      val cookie = Name(NonEmptyString.unsafeFrom("Cookie"))
-      val setCookie = Name(NonEmptyString.unsafeFrom("Set-Cookie"))
-      val transientFields = Name(NonEmptyString.unsafeFrom(Constants.FIELDS_TRANSIENT))
-      val currentGroup = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUP_CURRENT))
-      val availableGroups = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUPS_AVAILABLE))
-      val userAgent = Name(NonEmptyString.unsafeFrom("User-Agent"))
-      val authorization = Name(NonEmptyString.unsafeFrom("Authorization"))
-      val rorUser = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ROR))
-      val kibanaAccess = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_ACCESS))
-      val impersonateAs = Name(NonEmptyString.unsafeFrom("impersonate_as"))
+      val xApiKeyHeaderName = Header.Name("X-Api-Key")
+      val xForwardedFor = Name("X-Forwarded-For")
+      val xForwardedUser = Name("X-Forwarded-User")
+      val xUserOrigin = Name(Constants.HEADER_USER_ORIGIN)
+      val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
+      val cookie = Name("Cookie")
+      val setCookie = Name("Set-Cookie")
+      val transientFields = Name(Constants.FIELDS_TRANSIENT)
+      val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
+      val availableGroups = Name(Constants.HEADER_GROUPS_AVAILABLE)
+      val userAgent = Name("User-Agent")
+      val authorization = Name("Authorization")
+      val rorUser = Name(Constants.HEADER_USER_ROR)
+      val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)
+      val impersonateAs = Name("impersonate_as")
+      val correlationId = Name(Constants.HEADER_CORRELATION_ID)
 
       implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
     }

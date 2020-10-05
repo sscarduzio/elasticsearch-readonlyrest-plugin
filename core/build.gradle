@@ -113,7 +113,7 @@ dependencies {
     testCompile group: 'org.scalamock',                     name: 'scalamock_2.12',                         version: '3.6.0'
     testCompile group: 'org.scalamock',                     name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
     testCompile group: 'org.scalatest',                     name: 'scalatest_2.12',                         version: '3.0.8'
-    testCompile group: 'com.dimafeng',                      name: 'testcontainers-scala_2.12',              version: '0.25.0'
+    testCompile group: 'com.dimafeng',                      name: 'testcontainers-scala_2.12',              version: '0.38.4'
 
 }
 

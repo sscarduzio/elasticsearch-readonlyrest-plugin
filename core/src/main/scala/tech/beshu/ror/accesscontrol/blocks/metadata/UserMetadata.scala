@@ -21,7 +21,8 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.{RequestContext, RequestContextOps}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
-final case class UserMetadata private(loggedUser: Option[LoggedUser],
+final case class UserMetadata private(logId: LoggingId = LoggingId.random,
+                                      loggedUser: Option[LoggedUser],
                                       currentGroup: Option[Group],
                                       availableGroups: UniqueList[Group],
                                       kibanaIndex: Option[IndexName],

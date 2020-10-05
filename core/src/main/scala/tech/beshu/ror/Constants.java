@@ -37,14 +37,16 @@ public class Constants {
 
   public static final String AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd";
 
-  public static final String HEADER_GROUPS_AVAILABLE = "x-ror-available-groups";
-  public static final String HEADER_GROUP_CURRENT = "x-ror-current-group";
-  public static final String HEADER_USER_ROR = "x-ror-username";
-  public static final String HEADER_KIBANA_HIDDEN_APPS = "x-ror-kibana-hidden-apps";
-  public static final String HEADER_KIBANA_ACCESS = "x-ror-kibana_access";
-  public static final String HEADER_KIBANA_INDEX = "x-ror-kibana_index";
+  public static final String HEADER_LOGGING_ID            = "x-ror-logging-id";
+  public static final String HEADER_GROUPS_AVAILABLE      = "x-ror-available-groups";
+  public static final String HEADER_GROUP_CURRENT         = "x-ror-current-group";
+  public static final String HEADER_USER_ROR              = "x-ror-username";
+  public static final String HEADER_KIBANA_HIDDEN_APPS    = "x-ror-kibana-hidden-apps";
+  public static final String HEADER_KIBANA_ACCESS         = "x-ror-kibana_access";
+  public static final String HEADER_KIBANA_INDEX          = "x-ror-kibana_index";
   public static final String HEADER_KIBANA_TEMPLATE_INDEX = "x-ror-kibana_template_index";
-  public static final String HEADER_USER_ORIGIN = "x-ror-origin";
+  public static final String HEADER_USER_ORIGIN           = "x-ror-origin";
+  public static final String HEADER_CORRELATION_ID        = "x-ror-correlation-id";
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(
       "indices:admin/exists",

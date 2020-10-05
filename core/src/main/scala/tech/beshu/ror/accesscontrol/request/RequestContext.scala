@@ -76,6 +76,12 @@ trait RequestContext {
   def isAllowedForDLS: Boolean
 
   def hasRemoteClusters: Boolean
+
+  def correlationId: Option[CorrelationId] =
+    headers
+      .find(_.name === Header.Name.correlationId)
+      .map(_.value)
+      .map(CorrelationId.apply)
 }
 
 object RequestContext extends Logging {
