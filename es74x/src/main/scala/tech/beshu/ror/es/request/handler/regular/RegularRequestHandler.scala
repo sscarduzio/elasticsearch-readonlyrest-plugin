@@ -40,6 +40,7 @@ import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.{Failure, Success, Try}
 import tech.beshu.ror.utils.JavaConverters
+import tech.beshu.ror.es.utils.ThreadContextOps._
 
 class RegularRequestHandler(engine: Engine,
                             esContext: EsContext,
@@ -51,10 +52,7 @@ class RegularRequestHandler(engine: Engine,
     engine.accessControl
       .handleRegularRequest(request)
       .map { r =>
-        val responseHeaders = JavaConverters.flattenPair(threadPool.getThreadContext.getResponseHeaders)
-        threadPool.getThreadContext.stashContext.bracket { _ =>
-          val ctx = threadPool.getThreadContext
-          responseHeaders.foreach { case (k, v) => ctx.addResponseHeader(k, v) }
+        threadPool.getThreadContext.stashAndMergeResponseHeaders().bracket { _ =>
           commitResult(r.result, request)
         }
       }
