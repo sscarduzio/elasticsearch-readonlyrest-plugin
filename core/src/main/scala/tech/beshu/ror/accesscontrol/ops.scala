@@ -22,7 +22,7 @@ import java.util.regex.Pattern
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.{Order, Show}
-import com.softwaremill.sttp.{Method, Uri}
+import sttp.model.{Header => _, _}
 import eu.timepit.refined.api.Validate
 import eu.timepit.refined.numeric.Greater
 import eu.timepit.refined.types.string.NonEmptyString
@@ -85,7 +85,7 @@ object orders {
     case Address.Ip(value) => value.toString()
     case Address.Name(value) => value.toString
   }
-  implicit val methodOrder: Order[Method] = Order.by(_.m)
+  implicit val methodOrder: Order[Method] = Order.by(_.method)
   implicit val userIdOrder: Order[User.Id] = Order.by(_.value)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
@@ -124,7 +124,7 @@ object show {
       case Address.Ip(value) => value.toString
       case Address.Name(value) => value.toString
     }
-    implicit val methodShow: Show[Method] = Show.show(_.m)
+    implicit val methodShow: Show[Method] = Show.show(_.method)
     implicit val jsonPathShow: Show[JsonPath] = Show.show(_.getPath)
     implicit val uriShow: Show[Uri] = Show.show(_.toJavaUri.toString())
     implicit val lemonUriShow: Show[LemonUri] = Show.show(_.toString())

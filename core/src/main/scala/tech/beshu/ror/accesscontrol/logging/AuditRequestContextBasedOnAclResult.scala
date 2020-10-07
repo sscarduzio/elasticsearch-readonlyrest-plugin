@@ -64,7 +64,7 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
   }
   override val `type`: String = requestContext.`type`.value
   override val taskId: Long = requestContext.taskId
-  override val httpMethod: String = requestContext.method.m
+  override val httpMethod: String = requestContext.method.method
   override val loggedInUserName: Option[String] = blockContext.flatMap(_.userMetadata.loggedUser.map(_.id.value.value))
   override val impersonatedByUserName: Option[String] =
     blockContext

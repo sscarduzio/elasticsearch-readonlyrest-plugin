@@ -17,7 +17,8 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptySet
-import com.softwaremill.sttp.Method
+import sttp.model.{Header => _, _}
+import sttp.client._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._

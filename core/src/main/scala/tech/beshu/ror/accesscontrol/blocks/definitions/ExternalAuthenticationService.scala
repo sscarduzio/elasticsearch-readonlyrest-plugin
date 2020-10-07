@@ -21,7 +21,8 @@ import java.nio.charset.Charset
 import cats.implicits._
 import cats.{Eq, Show}
 import com.google.common.hash.Hashing
-import com.softwaremill.sttp._
+import sttp.model.{Header => _, _}
+import sttp.client._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.eval.Task
@@ -59,8 +60,8 @@ class BasicAuthHttpExternalAuthenticationService(override val id: ExternalAuthen
   override def authenticate(credentials: Credentials): Task[Boolean] = {
     val basicAuthHeader = BasicAuth(credentials).header
     httpClient
-      .send(sttp.get(uri).header(basicAuthHeader.name.value.value, basicAuthHeader.value.value))
-      .map(_.code === successStatusCode)
+      .send(basicRequest.get(uri).header(basicAuthHeader.name.value.value, basicAuthHeader.value.value))
+      .map(_.code.code === successStatusCode)
   }
 }
 
@@ -72,8 +73,8 @@ class JwtExternalAuthenticationService(override val id: ExternalAuthenticationSe
 
   override def authenticate(credentials: Credentials): Task[Boolean] = {
     httpClient
-      .send(sttp.get(uri).header(Header.Name.authorization.value.value, s"Bearer ${credentials.secret.value}"))
-      .map(_.code === successStatusCode)
+      .send(basicRequest.get(uri).header(Header.Name.authorization.value.value, s"Bearer ${credentials.secret.value}"))
+      .map(_.code.code === successStatusCode)
   }
 }
 

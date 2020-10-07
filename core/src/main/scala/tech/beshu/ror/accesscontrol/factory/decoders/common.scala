@@ -23,7 +23,7 @@ import cats.Show
 import cats.data.NonEmptySet
 import cats.implicits._
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
-import com.softwaremill.sttp.Uri
+import sttp.model.Uri
 import eu.timepit.refined.api.{Refined, Validate}
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV

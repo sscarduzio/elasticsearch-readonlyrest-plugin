@@ -20,7 +20,8 @@ import java.time._
 import java.time.format.DateTimeFormatter
 
 import cats.data.{NonEmptyList, NonEmptySet}
-import com.softwaremill.sttp.Method
+import sttp.model.{Header => _, _}
+import sttp.client._
 import monix.execution.Scheduler.Implicits.global
 import org.json.JSONObject
 import org.scalamock.scalatest.MockFactory

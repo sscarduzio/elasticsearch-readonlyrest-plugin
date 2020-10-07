@@ -18,7 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.implicits._
 import cats.data.NonEmptySet
-import com.softwaremill.sttp.Method
+import sttp.model.{Header => _, _}
+import sttp.client._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule.Settings

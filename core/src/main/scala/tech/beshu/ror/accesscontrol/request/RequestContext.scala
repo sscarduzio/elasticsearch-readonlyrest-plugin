@@ -20,7 +20,8 @@ import java.time.Instant
 
 import cats.implicits._
 import cats.{Monoid, Show}
-import com.softwaremill.sttp.Method
+import sttp.model.{Header => _, _}
+import sttp.client._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging

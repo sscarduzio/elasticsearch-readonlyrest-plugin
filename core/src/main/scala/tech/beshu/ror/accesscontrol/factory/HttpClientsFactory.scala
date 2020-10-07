@@ -18,8 +18,8 @@ package tech.beshu.ror.accesscontrol.factory
 
 import java.util.concurrent.CopyOnWriteArrayList
 
-import com.softwaremill.sttp.asynchttpclient.cats.AsyncHttpClientCatsBackend
-import com.softwaremill.sttp.{MonadError, Request, Response, SttpBackend}
+import sttp.model.{Header => _, _}
+import sttp.client._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
@@ -28,9 +28,13 @@ import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.refined._
-import org.asynchttpclient.Dsl.asyncHttpClient
+import org.asynchttpclient.Dsl.{asyncHttpClient, delete}
 import org.asynchttpclient.netty.channel.DefaultChannelPool
 import org.asynchttpclient.{AsyncHttpClient, DefaultAsyncHttpClientConfig}
+import sttp.client.SttpBackend
+import sttp.client.asynchttpclient.cats.AsyncHttpClientCatsBackend
+import sttp.client.monad.MonadError
+import sttp.client.ws.WebSocketResponse
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.{Config, HttpClient}
 
 import scala.collection.JavaConverters._
@@ -45,7 +49,7 @@ trait HttpClientsFactory {
 }
 
 object HttpClientsFactory {
-  type HttpClient = SttpBackend[Task, Nothing]
+  type HttpClient = SttpBackend[Task, Nothing, NothingT]
 
   final case class Config(connectionTimeout: FiniteDuration Refined Positive,
                           requestTimeout: FiniteDuration Refined Positive,
@@ -96,8 +100,8 @@ class AsyncHttpClientsFactory extends HttpClientsFactory {
   }
 }
 
-private class LoggingSttpBackend[R[_], S](delegate: SttpBackend[R, S])
-  extends SttpBackend[R, S]
+private class LoggingSttpBackend[R[_], S](delegate: SttpBackend[R, S, NothingT])
+  extends SttpBackend[R, S, NothingT]
     with Logging {
 
   override def send[T](request: Request[T, S]): R[Response[T]] = {
@@ -119,7 +123,9 @@ private class LoggingSttpBackend[R[_], S](delegate: SttpBackend[R, S])
       }
   }
 
-  override def close(): Unit = delegate.close()
+  override def close(): R[Unit] = delegate.close()
 
   override def responseMonad: MonadError[R] = delegate.responseMonad
+
+  override def openWebsocket[T, WS_RESULT](request: Request[T, S], handler: NothingT[WS_RESULT]): R[WebSocketResponse[WS_RESULT]] = delegate.openWebsocket(request, handler)
 }

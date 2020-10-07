@@ -18,7 +18,8 @@ package tech.beshu.ror.mocks
 
 import java.time.{Clock, Instant}
 
-import com.softwaremill.sttp.Method
+import sttp.model.{Header => _, _}
+import sttp.client._
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata

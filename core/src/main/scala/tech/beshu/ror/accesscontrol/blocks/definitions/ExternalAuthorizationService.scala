@@ -18,7 +18,8 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.implicits._
 import cats.{Eq, Show}
-import com.softwaremill.sttp._
+import sttp.model.{Header => _, _}
+import sttp.client._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
@@ -85,11 +86,11 @@ class HttpExternalAuthorizationService(override val id: ExternalAuthorizationSer
     val uriWithParams = uri.params(queryParams(loggedUser.id))
     method match {
       case SupportedHttpMethod.Get =>
-        sttp
+        basicRequest
           .get(uriWithParams)
           .headers(headersMap(loggedUser.id))
       case SupportedHttpMethod.Post =>
-        sttp
+        basicRequest
           .post(uriWithParams)
           .headers(headersMap(loggedUser.id))
     }
