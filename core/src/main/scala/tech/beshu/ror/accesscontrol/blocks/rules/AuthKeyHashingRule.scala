@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.Sha1SuppressDeprecation
 import tech.beshu.ror.accesscontrol.domain._
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
@@ -82,7 +83,7 @@ object AuthKeyHashingRule {
 
 class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
                       override val impersonators: List[ImpersonatorDef])
-  extends AuthKeyHashingRule(settings, hashFunction = Hashing.sha1()) {
+  extends AuthKeyHashingRule(settings, hashFunction = Sha1SuppressDeprecation.sha1) {
 
   override val name: Rule.Name = AuthKeySha1Rule.name
 }

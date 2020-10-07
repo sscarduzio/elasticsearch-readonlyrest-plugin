@@ -30,6 +30,7 @@ buildscript {
     }
     dependencies {
         classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
+        classpath 'org.owasp:dependency-check-gradle:6.0.2'
     }
 }
 
@@ -44,6 +45,7 @@ def pluginFullName = pluginName + '-' + version
 apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: "com.github.hierynomus.license"
+apply plugin: 'org.owasp.dependencycheck'
 
 compileScala {
     sourceCompatibility = 1.8

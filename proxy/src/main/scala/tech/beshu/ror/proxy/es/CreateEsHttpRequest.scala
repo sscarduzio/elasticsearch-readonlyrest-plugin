@@ -7,6 +7,7 @@ import java.util
 
 import com.twitter.finagle.http.{Fields, Method, Request, Version}
 import io.lemonlabs.uri.config.UriConfig
+import io.lemonlabs.uri.parsing.UrlParser
 import io.lemonlabs.uri.{AbsolutePath, RelativeUrl, UrlPath}
 import io.netty.handler.codec.http.HttpHeaderNames
 import io.netty.handler.codec.http.cookie.{ServerCookieDecoder, ServerCookieEncoder}
@@ -36,7 +37,7 @@ object CreateEsHttpRequest {
       RelativeUrl.parseOption(request.uri) match {
         case Some(url) if slashOrEmpty(url.path) =>
           // GET / response is rendered as GET /?pretty - proxy wants to reproduce this strange ES behaviour
-          url.copy(query = url.query.addParam("pretty")).toString()
+          url.copy(query = url.query.addParam(UrlParser.parseQueryParam("pretty").get)).toString()
         case _ =>
           request.uri
       }
