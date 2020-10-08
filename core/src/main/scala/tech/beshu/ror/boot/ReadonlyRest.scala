@@ -221,6 +221,9 @@ trait ReadonlyRest extends Logging {
               httpClientsFactory = httpClientsFactory,
               ldapConnectionPoolProvider
             )
+            if (engine.context.involvesFields) {
+              logger.warn("ACL contains fields rule. To make it work well, all nodes should have ROR plugin installed.")
+            }
             engine
           }
           .left

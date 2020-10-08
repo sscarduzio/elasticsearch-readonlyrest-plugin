@@ -40,7 +40,7 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected val requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
+  override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
 
   override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
     val indexName = IndexName
