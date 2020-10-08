@@ -39,6 +39,8 @@ import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.util.{Failure, Success, Try}
+import tech.beshu.ror.utils.JavaConverters
+import tech.beshu.ror.es.utils.ThreadContextOps._
 
 class RegularRequestHandler(engine: Engine,
                             esContext: EsContext,
@@ -50,7 +52,7 @@ class RegularRequestHandler(engine: Engine,
     engine.accessControl
       .handleRegularRequest(request)
       .map { r =>
-        threadPool.getThreadContext.stashContext.bracket { _ =>
+        threadPool.getThreadContext.stashAndMergeResponseHeaders().bracket { _ =>
           commitResult(r.result, request)
         }
       }
