@@ -18,6 +18,8 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import java.security.Key
 
+import eu.timepit.refined.numeric.Positive
+import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.Keys
@@ -27,15 +29,17 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
-import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef}
-import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
+import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod
+import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService, JwtDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils
@@ -112,6 +116,41 @@ class JwtAuthRuleTests
             jwt = Some(JwtTokenPayload(new DefaultClaims(Map[String, AnyRef]("sub" -> "test").asJava)))
           )(blockContext)
         }
+      }
+      "token has no signature and external auth service state is cached" in {
+        val validToken = Jwts.builder.setSubject("test").compact
+        val invalidToken = Jwts.builder.setClaims(new DefaultClaims(Map[String, AnyRef]("user" -> "testuser").asJava)).compact
+        val authService = cachedAuthService(validToken, invalidToken)
+        val jwtDef = JwtDef(
+          JwtDef.Name("test".nonempty),
+          AuthorizationTokenDef(Header.Name.authorization, "Bearer "),
+          SignatureCheckMethod.NoCheck(authService),
+          userClaim = None,
+          groupsClaim = None
+        )
+        def checkValidToken = assertMatchRule(
+          configuredJwtDef = jwtDef,
+          tokenHeader = new Header(
+            Header.Name.authorization,
+            NonEmptyString.unsafeFrom(s"Bearer $validToken")
+          )
+        ) {
+          blockContext => assertBlockContext(
+            jwt = Some(JwtTokenPayload(new DefaultClaims(Map[String, AnyRef]("sub" -> "test").asJava)))
+          )(blockContext)
+        }
+        def checkInvalidToken = assertNotMatchRule(
+          configuredJwtDef = jwtDef,
+          tokenHeader = new Header(
+            Header.Name.authorization,
+            NonEmptyString.unsafeFrom(s"Bearer $invalidToken")
+          )
+        )
+
+        checkValidToken
+        checkValidToken
+        checkInvalidToken
+        checkValidToken
       }
       "user claim name is defined and userId is passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
@@ -484,5 +523,20 @@ class JwtAuthRuleTests
       .expects(where { credentials: Credentials => credentials.secret === PlainTextSecret(rawToken.nonempty) })
       .returning(Task.now(authenticated))
     service
+  }
+
+  private def cachedAuthService(authenticatedToken: String, unauthenticatedToken: String) = {
+    val service = mock[ExternalAuthenticationService]
+    (service.authenticate _)
+      .expects(where { credentials: Credentials => credentials.secret === PlainTextSecret(authenticatedToken.nonempty) })
+      .returning(Task.now(true))
+    (service.authenticate _)
+      .expects(where { credentials: Credentials => credentials.secret === PlainTextSecret(unauthenticatedToken.nonempty) })
+      .returning(Task.now(false))
+    (service.id _)
+      .expects()
+      .returning(Name("external_service"))
+    val ttl = refineV[Positive](1 hour).fold(str => throw new Exception(str), identity)
+    new CacheableExternalAuthenticationServiceDecorator(service, ttl)
   }
 }
