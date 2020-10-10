@@ -15,24 +15,40 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es66x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es78x'
-include 'es79x'
-include 'proxy'
-include 'tests-utils'
-include 'integration-tests'
-include 'sttp-fatjar'
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.4'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'java'
+apply plugin: 'maven'
+
+configurations {
+    shadowCompile
+    compile.extendsFrom(shadowCompile)
+    all*.exclude group: 'org.scala-lang'
+}
+
+compileJava {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
+dependencies {
+    shadowCompile     group: 'com.softwaremill.sttp.client',          name: 'core_2.12',                              version: '2.2.9'
+
+}
+
+shadowJar {
+    configurations = [project.configurations.shadowCompile]
+}
