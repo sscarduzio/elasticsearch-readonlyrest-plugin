@@ -240,9 +240,9 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
     }
   }
 
-  private def assertRejectRule[B <: BlockContext : BlockContextUpdater : HasFieldLevelSecurity](config: Configuration,
-                                                                                                requestContext: RequestContextCreator[B],
-                                                                                                incomingBlockContext: BlockContextCreator[B]) = {
+  private def assertRejectRule[B <: BlockContext : BlockContextUpdater](config: Configuration,
+                                                                        requestContext: RequestContextCreator[B],
+                                                                        incomingBlockContext: BlockContextCreator[B]) = {
 
     val rule = createRule(config)
     val incomingRequest = requestContext(incomingBlockContext)
