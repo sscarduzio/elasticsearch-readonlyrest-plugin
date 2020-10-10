@@ -42,6 +42,7 @@ dependencies {
     compile group: 'com.typesafe.scala-logging',     name: 'scala-logging_2.12',            version: '3.9.2'
     compile group: 'org.scalatest',                  name: 'scalatest_2.12',                version: '3.0.8'
     compile group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.38.4'
+    // todo: remove when testcontainers-scala will be upgraded to 1.15.0 or above
     compile group: 'org.testcontainers',             name: 'testcontainers',                version: "1.15.0-rc2"
     compile group: 'com.unboundid',                  name: 'unboundid-ldapsdk',             version: '4.0.9'
     compile group: 'com.mashape.unirest',            name: 'unirest-java',                  version: '1.4.9'

@@ -51,7 +51,7 @@ abstract class EsContainer(val name: String,
 
   def sslEnabled: Boolean
 
-  override def host: String = container.getContainerIpAddress
+  def ip: String = container.getContainerIpAddress
 
   def port: Integer = container.getMappedPort(9200)
 
