@@ -71,8 +71,7 @@ object RorProxyInstance extends LazyLogging {
         s"-Dcom.readonlyrest.proxy.es.host=$esHost",
         s"-Dcom.readonlyrest.proxy.es.port=$esPort",
         s"-Dcom.readonlyrest.proxy.port=$proxyPort",
-        s"-Dcom.readonlyrest.settings.loading.delay=0",
-        s"-Dcom.readonlyrest.settings.refresh.interval=0",
+        s"-Dcom.readonlyrest.settings.loading.delay=1",
         s"-Dio.netty.tryReflectionSetAccessible=true",
         s"-Xdebug", "-Xrunjdwp:transport=dt_socket,address=8000,server=y,suspend=n",
         s"-jar", proxyJar.pathAsString)
