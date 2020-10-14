@@ -18,10 +18,10 @@ package tech.beshu.ror.configuration.loader
 
 import cats.free.Free
 import tech.beshu.ror.configuration.ConfigLoading._
+import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
 import tech.beshu.ror.configuration.{EsConfig, RawRorConfig}
 
 import scala.language.implicitConversions
-import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, IndexConfig}
 
 object LoadRawRorConfig {
   def load(esConfigPath: Path,
