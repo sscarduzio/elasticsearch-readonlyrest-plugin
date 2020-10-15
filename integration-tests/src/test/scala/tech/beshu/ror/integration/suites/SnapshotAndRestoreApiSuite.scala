@@ -195,7 +195,18 @@ trait SnapshotAndRestoreApiSuite
           result.responseCode should be (200)
           result.repositories.keys.toList should be (List(uniqueRepositoryName))
         }
-        "all repositories are requested" in {
+        "all repositories are requested (calling _all explicitly)" in {
+          val uniqueRepositoryName = RepositoryNameGenerator.next("dev2-repo")
+          adminSnapshotManager.putRepository(uniqueRepositoryName).force()
+          adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev1-repo")).force()
+          adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev3-repo")).force()
+
+          val result = dev2SnapshotManager.getRepository("_all")
+
+          result.responseCode should be (200)
+          all(result.repositories.keys) should startWith ("dev2-repo")
+        }
+        "all repositories are requested (without calling _all explicitly)" in {
           val uniqueRepositoryName = RepositoryNameGenerator.next("dev2-repo")
           adminSnapshotManager.putRepository(uniqueRepositoryName).force()
           adminSnapshotManager.putRepository(RepositoryNameGenerator.next("dev1-repo")).force()

@@ -137,7 +137,11 @@ class SnapshotManager(client: RestClient)
   }
 
   private def createGetRepositoriesRequest(repositoriesPatterns: List[String]) = {
-    new HttpGet(client.from(s"/_snapshot/${stringifyOrAll(repositoriesPatterns)}"))
+    val endpoint = repositoriesPatterns match {
+      case Nil => "/_snapshot"
+      case list => s"/_snapshot/${stringifyOrAll(list)}"
+    }
+    new HttpGet(client.from(endpoint))
   }
 
   private def createGetSnapshotsRequest(repositoryName: String,
