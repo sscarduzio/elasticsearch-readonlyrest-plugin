@@ -125,7 +125,7 @@ class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKey
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(Message(
-              "SHA credentials malformed (expected two non-empty values separated with colon)"
+              "Auth key rule credentials malformed (expected two non-empty values separated with colon)"
             )))
           }
         )
@@ -145,7 +145,7 @@ class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKey
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(Message(
-              "SHA credentials malformed (expected two non-empty values separated with colon)"
+              "Auth key rule credentials malformed (expected two non-empty values separated with colon)"
             )))
           }
         )

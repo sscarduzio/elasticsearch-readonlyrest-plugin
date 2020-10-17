@@ -18,17 +18,18 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeySha1Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyPBKDF2WithHmacSHA512Rule
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.TestsUtils._
 
-class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha1Rule] {
+class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
+  extends BaseRuleSettingsDecoderTest[AuthKeyPBKDF2WithHmacSHA512Rule] {
 
-  "An AuthKeySha1Rule" should {
+  "An AuthKeyPBKDF2WithHmacSHA512Rule" should {
     "be able to be loaded from config" when {
-      "SHA1 auth key is defined (all hashed syntax)" in {
+      "PBKDF2 auth key is defined (all hashed syntax)" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -37,17 +38,17 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    auth_key_sha1: "d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+              |    auth_key_pbkdf2: "KhIxF5EEYkH5GPX51zTRIR4cHqhpRVALSmTaWE18mZEL2KqCkRMeMU4GR848mGq4SDtNvsybtJ/sZBuX6oFaSg=="
               |
               |""".stripMargin,
           assertion = rule => {
             rule.settings.credentials should be {
-              HashedCredentials.HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty)
+              HashedCredentials.HashedUserAndPassword("KhIxF5EEYkH5GPX51zTRIR4cHqhpRVALSmTaWE18mZEL2KqCkRMeMU4GR848mGq4SDtNvsybtJ/sZBuX6oFaSg==".nonempty)
             }
           }
         )
       }
-      "SHA1 auth key is defined (password hashed syntax)" in {
+      "PBKDF2 auth key is defined (password hashed syntax)" in {
         assertDecodingSuccess(
           yaml =
             """
@@ -56,19 +57,19 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    auth_key_sha1: "user1:d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+              |    auth_key_pbkdf2: "user1:JltDNAoXNtc7MIBs2FYlW0o1f815ucj+bel3drdAk2yOufg2PNfQ51qr0EQ6RSkojw/DzrDLFDeXONumzwKjOA=="
               |
               |""".stripMargin,
           assertion = rule => {
             rule.settings.credentials should be {
-              HashedCredentials.HashedOnlyPassword(User.Id("user1".nonempty), "d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty)
+              HashedCredentials.HashedOnlyPassword(User.Id("user1".nonempty), "JltDNAoXNtc7MIBs2FYlW0o1f815ucj+bel3drdAk2yOufg2PNfQ51qr0EQ6RSkojw/DzrDLFDeXONumzwKjOA==".nonempty)
             }
           }
         )
       }
     }
     "not be able to be loaded from config" when {
-      "no SHA1 auth key is defined" in {
+      "no PBKDF2 auth key is defined" in {
         assertDecodingFailure(
           yaml =
             """
@@ -77,19 +78,19 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    auth_key_sha1:
+              |    auth_key_pbkdf2:
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
-              """auth_key_sha1: null
+              """auth_key_pbkdf2: null
                 |""".stripMargin
             )))
           }
         )
       }
-      "SHA1 auth key is empty" in {
+      "PBKDF2 auth key is empty" in {
         assertDecodingFailure(
           yaml =
             """
@@ -98,19 +99,19 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    auth_key_sha1: ""
+              |    auth_key_pbkdf2: ""
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
             errors.head should be (RulesLevelCreationError(MalformedValue(
-              """auth_key_sha1: ""
+              """auth_key_pbkdf2: ""
                 |""".stripMargin
             )))
           }
         )
       }
-      "SHA1 auth user part is empty" in {
+      "PBKDF2 auth user part is empty" in {
         assertDecodingFailure(
           yaml =
             """
@@ -119,7 +120,7 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    auth_key_sha1: ":d27aaf7fa3c1603948bb29b7339f2559dc02019a"
+              |    auth_key_pbkdf2: ":JltDNAoXNtc7MIBs2FYlW0o1f815ucj+bel3drdAk2yOufg2PNfQ51qr0EQ6RSkojw/DzrDLFDeXONumzwKjOA=="
               |
               |""".stripMargin,
           assertion = errors => {
@@ -130,7 +131,7 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
           }
         )
       }
-      "SHA1 auth secret part is empty" in {
+      "PBKDF2 auth secret part is empty" in {
         assertDecodingFailure(
           yaml =
             """
@@ -139,7 +140,7 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
               |  access_control_rules:
               |
               |  - name: test_block1
-              |    auth_key_sha1: "user1:"
+              |    auth_key_pbkdf2: "user1:"
               |
               |""".stripMargin,
           assertion = errors => {
