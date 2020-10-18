@@ -33,12 +33,17 @@ import scala.concurrent.{Future, Promise}
 import scala.language.{higherKinds, implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
+import scala.collection.JavaConverters._
 
 object ScalaOps {
 
   implicit class TryOps[T](val `try`: Try[T]) extends AnyVal {
 
     def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
+  }
+
+  implicit class JavaListOps[T : ClassTag](val list: java.util.List[T]) {
+    def asSafeList: List[T] = Option(list).map(_.asScala.toList).getOrElse(Nil)
   }
 
   implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
