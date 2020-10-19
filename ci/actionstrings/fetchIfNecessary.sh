@@ -11,6 +11,6 @@ fi
 
 echo "processing ES action extractions for: $FILENAME"
 ci/actionstrings/fetch.sh "v$ES_VERSION" > $FILENAME
-head $FILENAME
+head -3 $FILENAME
 echo "..."
-tail $FILENAME
+tail -3 $FILENAME
