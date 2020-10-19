@@ -27,7 +27,9 @@ jobs:
           ls main
           echo "\n---------------"
           mv docs main/readonlyrest-docs
-          cd main
+          cd main && echo "in main now" && ls
+          
+          echo "whats in ci?" && find ci
           bash -x ci/actionstrings/run.sh
           git ls-files --others --error-unmatch . >/dev/null 2>&1; ec=$?
           if test "$ec" = 0; then
