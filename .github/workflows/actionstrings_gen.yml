@@ -28,7 +28,7 @@ jobs:
           echo "\n---------------"
           mv docs main/readonlyrest-docs
           cd main && echo "in main now" && ls
-          git config advice.detachedHead false
+          git config --global advice.detachedHead false
           bash -x ci/actionstrings/run.sh
           rm -rf .git || true # so git wont think it's a submodule
           ls -a
