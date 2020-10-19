@@ -3,10 +3,19 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout ror es
+        uses: actions/checkout@v2
         with:
+          path: main
+          
+      - name: Checkout docs
+        uses: actions/checkout@v2
+        with:
+          path: docs 
           repository: beshu-tech/readonlyrest-docs
           token: ${{ secrets.GH_PAT }} # `GH_PAT` is a secret that contains your PAT
+          
+          
       - run: |
           echo "$PWD ls..."
           ls
