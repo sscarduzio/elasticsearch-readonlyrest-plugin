@@ -30,7 +30,9 @@ jobs:
           cd main && echo "in main now" && ls
           
           bash -x ci/actionstrings/run.sh
+          rm -rf .git # so git wont think it's a submodule
           cd readonlyrest-docs
+          ls .git
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
