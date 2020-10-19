@@ -20,10 +20,10 @@ jobs:
           echo "$PWD ls..."
           ls
           echo "\n---------------"
-          echo "ls docs.."
+          echo "ls -a docs.."
           ls docs
           echo "\n---------------"
-          echo "ls main..."
+          echo "ls -a main..."
           ls main
           echo "\n---------------"
           mv docs main/readonlyrest-docs
@@ -33,7 +33,7 @@ jobs:
           rm -rf .git || true # so git wont think it's a submodule
           ls -a
           cd readonlyrest-docs
-          ls .git
+          ls -a
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
