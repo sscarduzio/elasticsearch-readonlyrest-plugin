@@ -28,9 +28,10 @@ jobs:
           echo "\n---------------"
           mv docs main/readonlyrest-docs
           cd main && echo "in main now" && ls
-          
+          git config advice.detachedHead false
           bash -x ci/actionstrings/run.sh
-          rm -rf .git # so git wont think it's a submodule
+          rm -rf .git || true # so git wont think it's a submodule
+          ls -a
           cd readonlyrest-docs
           ls .git
           git config user.name github-actions
