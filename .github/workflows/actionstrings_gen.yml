@@ -1,0 +1,26 @@
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: beshu-tech/readonlyrest-docs
+          token: ${{ secrets.GH_PAT }} # `GH_PAT` is a secret that contains your PAT
+          path: docs
+      - run: |
+          cd docs
+          bash -x ci/actionstrings/run.sh
+          git ls-files --others --error-unmatch . >/dev/null 2>&1; ec=$?
+          if test "$ec" = 0; then
+           echo fund some new files files
+           git config user.name github-actions
+           git config user.email github-actions@github.com
+           git add .
+           git commit -m "changing anoher repo"
+           git push
+          elif test "$ec" = 1; then
+              echo "no untracked files"
+          else
+              echo "error from ls-files $ec"
+          fi
