@@ -31,7 +31,7 @@ jobs:
           bash -x ci/actionstrings/run.sh
           git ls-files --others --error-unmatch . >/dev/null 2>&1; ec=$?
           if test "$ec" = 0; then
-           echo fund some new files files
+           echo found some new files
            git config user.name github-actions
            git config user.email github-actions@github.com
            git add .
