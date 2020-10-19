@@ -30,6 +30,7 @@ jobs:
           cd main && echo "in main now" && ls
           
           bash -x ci/actionstrings/run.sh
+          cd readonlyrest-docs
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
