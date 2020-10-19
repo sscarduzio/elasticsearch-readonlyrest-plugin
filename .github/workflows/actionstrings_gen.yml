@@ -29,7 +29,7 @@ jobs:
           rm -rf .git || true # so git wont think it's a submodule
           ls -a
           cd readonlyrest-docs
-          ls -a
+          echo "now in readonlyrest-docs" && find .
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
