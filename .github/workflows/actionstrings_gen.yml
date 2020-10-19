@@ -7,12 +7,11 @@ jobs:
         with:
           repository: beshu-tech/readonlyrest-docs
           token: ${{ secrets.GH_PAT }} # `GH_PAT` is a secret that contains your PAT
+          path: "docs"
       - run: |
           echo "$PWD ls..."
           ls
-          echo "root..."
-          ls /
-          cd readonlyrest-docs
+          cd ..
           bash -x ci/actionstrings/run.sh
           git ls-files --others --error-unmatch . >/dev/null 2>&1; ec=$?
           if test "$ec" = 0; then
