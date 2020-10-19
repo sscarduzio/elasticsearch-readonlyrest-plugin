@@ -12,7 +12,4 @@ fi
 echo "processing ES action extractions for: $FILENAME"
 ci/actionstrings/fetch.sh "v$ES_VERSION" > $FILENAME
 cat $FILENAME
-git add $FILENAME
-git commit $FILENAME -m "adding actions list for ES $ES_VERSION"
-git push
 
