@@ -20,12 +20,8 @@ jobs:
           echo "$PWD ls..."
           ls
           echo "\n---------------"
-          echo "ls -a docs.."
-          ls docs
-          echo "\n---------------"
-          echo "ls -a main..."
-          ls main
-          echo "\n---------------"
+          echo "ls -a docs.." && ls -a docs && echo "\n---------------"
+          echo "ls -a main..." && ls -a main && echo "\n---------------"
           mv docs main/readonlyrest-docs
           cd main && echo "in main now" && ls
           git config --global advice.detachedHead false
