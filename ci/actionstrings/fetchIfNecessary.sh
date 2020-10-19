@@ -1,6 +1,6 @@
 ES_VERSION=$1
 
-DEST_DIR="docs/actionstrings"
+DEST_DIR="readonlyrest-docs/actionstrings"
 mkdir -p $DEST_DIR || echo "$DEST_DIR already present."
 
 FILENAME="$DEST_DIR/action_strings_es$ES_VERSION.txt"
