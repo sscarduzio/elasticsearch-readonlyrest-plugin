@@ -130,9 +130,12 @@ class RepositoriesRuleTests extends WordSpec with Inside {
           requestRepositories = Set(RepositoryName("x_public-asd".nonempty))
         )
       }
-      "write request with configured several repositorys and several repositorys in request" in {
+      "write request with configured several repositories and several repositories in request" in {
         assertNotMatchRule(
-          configuredRepositories = NonEmptySet.of(AlreadyResolved(RepositoryName("public-*".nonempty).nel), AlreadyResolved(RepositoryName("n".nonempty).nel)),
+          configuredRepositories = NonEmptySet.of(
+            AlreadyResolved(RepositoryName("public-*".nonempty).nel),
+            AlreadyResolved(RepositoryName("n".nonempty).nel)
+          ),
           requestAction = Action("cluster:admin/repository/resolve"),
           requestRepositories = Set(RepositoryName("public-asd".nonempty), RepositoryName("q".nonempty))
         )

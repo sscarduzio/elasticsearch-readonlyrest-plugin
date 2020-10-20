@@ -55,7 +55,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
   }
 
   override protected def indicesFrom(request: RestoreSnapshotRequest): Set[domain.IndexName] =
-    request.indices.asSafeSet.flatMap(IndexName.fromString)
+    indicesOrWildcard(request.indices.asSafeSet.flatMap(IndexName.fromString))
 
   override protected def modifyRequest(blockContext: BlockContext.SnapshotRequestBlockContext): ModificationResult = {
     val updateResult = for {

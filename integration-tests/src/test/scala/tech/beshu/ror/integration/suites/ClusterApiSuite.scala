@@ -38,7 +38,8 @@ trait ClusterApiSuite
     EsClusterSettings(
       name = "ROR1",
       numberOfInstances = 2,
-      nodeDataInitializer = ClusterApiSuite.nodeDataInitializer()
+      nodeDataInitializer = ClusterApiSuite.nodeDataInitializer(),
+      xPackSupport = isUsingXpackSupport,
     )
   )
 

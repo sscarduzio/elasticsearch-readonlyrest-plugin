@@ -127,6 +127,10 @@ object BlockContext {
       override def indices(blockContext: AliasRequestBlockContext): Set[IndexName] = blockContext.indices
     }
 
+    implicit val indicesFromSnapshotRequestBlockContext = new HasIndices[SnapshotRequestBlockContext] {
+      override def indices(blockContext: SnapshotRequestBlockContext): Set[IndexName] = blockContext.indices
+    }
+
     implicit class Ops[B <: BlockContext : HasIndices](blockContext: B) {
       def indices: Set[IndexName] = HasIndices[B].indices(blockContext)
     }

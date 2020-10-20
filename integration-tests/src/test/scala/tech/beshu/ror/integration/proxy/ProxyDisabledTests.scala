@@ -18,5 +18,6 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.RorDisabledSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
+import tech.beshu.ror.utils.containers.XpackSupport
 
-class ProxyDisabledTests extends RorDisabledSuite with ProxyTestSupport
+class ProxyDisabledTests extends RorDisabledSuite with ProxyTestSupport with XpackSupport

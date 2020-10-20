@@ -28,8 +28,12 @@ class IndexManager(client: RestClient,
                    override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
+  def getIndex(indices: List[String], params:Map[String,String]): JsonResponse = {
+    call(getIndexRequest(indices.toSet, params), new JsonResponse(_))
+  }
+
   def getIndex(indices: String*): JsonResponse = {
-    call(getIndexRequest(indices.toSet), new JsonResponse(_))
+    call(getIndexRequest(indices.toSet, Map.empty), new JsonResponse(_))
   }
 
   def getAliases: AliasesResponse = {
@@ -76,8 +80,11 @@ class IndexManager(client: RestClient,
     call(createPutSettingsRequest(indexName, allocationNodeNames.toList), new JsonResponse(_))
   }
 
-  def removeAll: SimpleResponse =
-    call(createDeleteIndicesRequest, new SimpleResponse(_))
+  def removeAllIndices: SimpleResponse =
+    call(createDeleteAllIndicesRequest, new SimpleResponse(_))
+
+  def removeIndex(indexName: String): SimpleResponse =
+    call(createDeleteIndexRequest(indexName), new SimpleResponse(_))
 
   def removeAllAliases: SimpleResponse =
     call(createDeleteAliasesRequest, new SimpleResponse(_))
@@ -111,8 +118,9 @@ class IndexManager(client: RestClient,
     new HttpGet(client.from(path))
   }
 
-  private def getIndexRequest(indices: Set[String]) = {
-    new HttpGet(client.from(indices.mkString(",")))
+  private def getIndexRequest(indices: Set[String], params:Map[String,String]) = {
+    import scala.collection.JavaConverters._
+    new HttpGet(client.from(indices.mkString(","), params.asJava))
   }
 
   private def createAliasRequest(index: String, alias: String) = {
@@ -127,8 +135,10 @@ class IndexManager(client: RestClient,
     new HttpGet(client.from(s"${indices.mkString(",")}/_settings"))
   }
 
-  private def createDeleteIndicesRequest = {
-    new HttpDelete(client.from("/_all"))
+  private def createDeleteAllIndicesRequest = createDeleteIndexRequest("_all")
+
+  private def createDeleteIndexRequest(indexName: String) = {
+    new HttpDelete(client.from(s"/$indexName"))
   }
 
   private def createDeleteAliasesRequest = {

@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.Constants.{ADMIN_ACTIONS, RO_ACTIONS, RW_ACTIONS, CLUSTER_ACTIONS}
+import tech.beshu.ror.Constants.{ADMIN_ACTIONS, CLUSTER_ACTIONS, RO_ACTIONS, RW_ACTIONS}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, StringOps}
 
@@ -258,7 +259,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
   }
 
   private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana".nonempty)) = {
-    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), IndexName.fromUnsafeString(".readonlyrest"))
+    KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")))
   }
 
   private def defaultOutputBlockContextAssertion(settings: KibanaAccessRule.Settings, indices: Set[IndexName]): BlockContext => Unit =

@@ -66,9 +66,9 @@ object parser {
     }
   }
 
-  private[this] val flattener: FlatteningConstructor = new FlatteningConstructor
-
   private[this] def yamlToJson(node: Node): Either[ParsingFailure, Json] = {
+    // Isn't thread-safe internally, may hence not be shared
+    val flattener: FlatteningConstructor = new FlatteningConstructor
 
     def convertScalarNode(node: ScalarNode) = Either.catchNonFatal(node.getTag match {
       case Tag.INT | Tag.FLOAT => JsonNumber.fromString(node.getValue).map(Json.fromJsonNumber).getOrElse {

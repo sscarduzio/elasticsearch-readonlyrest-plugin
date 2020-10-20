@@ -37,8 +37,8 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
     UserMetadata.from(this),
     Set.empty,
     Set.empty,
-    snapshotsFrom(actionRequest),
-    repositoriesFrom(actionRequest),
+    snapshotsOrWildcard(snapshotsFrom(actionRequest)),
+    repositoriesOrWildcard(repositoriesFrom(actionRequest)),
     indicesFrom(actionRequest)
   )
 

@@ -38,7 +38,7 @@ abstract class BaseSnapshotEsRequestContext[T <: ActionRequest](actionRequest: T
     Set.empty,
     snapshotsOrWildcard(snapshotsFrom(actionRequest)),
     repositoriesOrWildcard(repositoriesFrom(actionRequest)),
-    indicesOrWildcard(indicesFrom(actionRequest))
+    indicesFrom(actionRequest)
   )
 
   protected def snapshotsFrom(request: T): Set[SnapshotName]

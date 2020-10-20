@@ -1,5 +1,3 @@
-package tech.beshu.ror.utils.gradle
-
 /*
  *    This file is part of ReadonlyREST.
  *
@@ -16,11 +14,12 @@ package tech.beshu.ror.utils.gradle
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.utils.gradle
 
-import java.nio.file.Paths
-import better.files._
 import java.io.{File => JFile}
+import java.nio.file.Paths
 
+import better.files._
 import org.gradle.tooling.GradleConnector
 
 import scala.util.Try

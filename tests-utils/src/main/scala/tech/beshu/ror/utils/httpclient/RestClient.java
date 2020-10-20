@@ -54,6 +54,10 @@ public class RestClient {
   private final int port;
   private final boolean ssl;
 
+  static {
+    System.setProperty("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.NoOpLog");
+  }
+
   public RestClient(boolean ssl, String host, int port) {
     this.ssl = ssl;
     this.host = host;
@@ -136,14 +140,18 @@ public class RestClient {
   }
 
   public URI from(String path) {
-    try {
       return from(path, Maps.newHashMap());
-    } catch (URISyntaxException e) {
+  }
+
+  public URI from(String path, Map<String, String> queryParams) {
+    try {
+      return buildUri(path, queryParams);
+    } catch (URISyntaxException e){
       throw new IllegalStateException(e);
     }
   }
 
-  public URI from(String path, Map<String, String> queryParams) throws URISyntaxException {
+  private URI buildUri(String path, Map<String, String> queryParams) throws URISyntaxException {
     URIBuilder uriBuilder = new URIBuilder();
     uriBuilder
         .setScheme(ssl ? "https" : "http")
@@ -158,7 +166,6 @@ public class RestClient {
       );
     }
     return uriBuilder.build();
-
   }
 
   public CloseableHttpResponse execute(HttpUriRequest req) {
