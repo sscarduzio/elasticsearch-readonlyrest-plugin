@@ -13,25 +13,16 @@ jobs:
         with:
           path: docs 
           repository: beshu-tech/readonlyrest-docs
-          token: ${{ secrets.GH_PAT }} # `GH_PAT` is a secret that contains your PAT
-          
+          token: ${{ secrets.GH_PAT }}
           
       - run: |
-          echo "$PWD ls..."
-          ls
-          echo "\n---------------"
-          echo "ls -a docs.." && ls -a docs && echo "\n---------------"
-          echo "ls -a main..." && ls -a main && echo "\n---------------"
           mv docs main/readonlyrest-docs
-          cd main && echo "in main now" && ls
+          cd main 
           git config --global advice.detachedHead false
           bash -x ci/actionstrings/run.sh
-          rm -rf .git || true # so git wont think it's a submodule
-          ls -a
           cd readonlyrest-docs
-          echo "now in readonlyrest-docs" && find .
           git config user.name github-actions
           git config user.email github-actions@github.com
           git add .
-          git commit -m "changing anoher repo" || true
+          git commit -m "commit new action strings" || true
           git push || true
