@@ -7,11 +7,13 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect._
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -28,10 +30,15 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     request.indices().asSafeList.flatMap(IndexName.fromString).toSet
   }
 
-  override protected def update(request: ResolveIndexAction.Request,
-                                indices: NonEmptyList[domain.IndexName]): ModificationResult = {
-    request.indices(indices.toList.map(_.value.value): _*)
-    ModificationResult.UpdateResponse(filterResponse(_, indices))
+  override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
+    NonEmptyList.fromList(blockContext.filteredIndices.toList) match {
+      case Some(indices) =>
+        actionRequest.indices(indices.toList.map(_.value.value): _*)
+        ModificationResult.UpdateResponse(filterResponse(_, blockContext.allAllowedIndices))
+      case None =>
+        logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
+        ShouldBeInterrupted
+    }
   }
 
   private def filterResponse(response: ActionResponse, indices: NonEmptyList[IndexName]): Task[ActionResponse] = {

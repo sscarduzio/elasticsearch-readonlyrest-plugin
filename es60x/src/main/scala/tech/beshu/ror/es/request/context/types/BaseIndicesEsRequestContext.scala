@@ -66,7 +66,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
   }
 
   override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
-    NonEmptyList.fromList(blockContext.indices.toList) match {
+    NonEmptyList.fromList(blockContext.filteredIndices.toList) match {
       case Some(indices) =>
         update(actionRequest, indices)
       case None =>
