@@ -48,8 +48,8 @@ class IndicesAliasesEsRequestContext(actionRequest: IndicesAliasesRequest,
   override protected def indicesFrom(request: IndicesAliasesRequest): Set[IndexName] = originIndices
 
   override protected def update(request: IndicesAliasesRequest,
-                                indices: NonEmptyList[IndexName]): ModificationResult = {
-    if(originIndices == indices.toList.toSet) {
+                                filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    if(originIndices == filteredIndices.toList.toSet) {
       Modified
     } else {
       logger.error(s"[${id.show}] Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")

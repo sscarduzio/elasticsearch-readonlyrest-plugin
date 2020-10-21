@@ -48,6 +48,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
       logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
       indices
     },
+    Set(IndexName.wildcard),
     None
   )
 

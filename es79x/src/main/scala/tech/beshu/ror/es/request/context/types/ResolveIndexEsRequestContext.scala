@@ -7,14 +7,11 @@ import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction.{ResolvedAlias, ResolvedIndex}
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect._
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
-import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
@@ -30,29 +27,22 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
     request.indices().asSafeList.flatMap(IndexName.fromString).toSet
   }
 
-  override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
-    NonEmptyList.fromList(blockContext.filteredIndices.toList) match {
-      case Some(indices) =>
-        actionRequest.indices(indices.toList.map(_.value.value): _*)
-        ModificationResult.UpdateResponse(filterResponse(_, blockContext.allAllowedIndices))
-      case None =>
-        logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
-        ShouldBeInterrupted
-    }
+  override protected def update(request: ResolveIndexAction.Request,
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    request.indices(filteredIndices.toList.map(_.value.value): _*)
+    ModificationResult.UpdateResponse(resp => Task.now(filterResponse(resp, allAllowedIndices)))
   }
 
-  private def filterResponse(response: ActionResponse, indices: NonEmptyList[IndexName]): Task[ActionResponse] = {
+  private def filterResponse(response: ActionResponse, indices: NonEmptyList[IndexName]): ActionResponse = {
     response match {
-      case r: ResolveIndexAction.Response => Task.now {
-        doPrivileged { // todo: remove
-          new ResolveIndexAction.Response(
-            r.getIndices.asSafeList.flatMap(secureResolvedIndex(_, indices)).asJava,
-            r.getAliases.asSafeList.flatMap(secureResolvedAlias(_, indices)).asJava,
-            r.getDataStreams
-          )
-        }
-      }
-      case r => Task.now(r)
+      case r: ResolveIndexAction.Response =>
+        new ResolveIndexAction.Response(
+          r.getIndices.asSafeList.flatMap(secureResolvedIndex(_, indices)).asJava,
+          r.getAliases.asSafeList.flatMap(secureResolvedAlias(_, indices)).asJava,
+          r.getDataStreams
+        )
+      case r => r
     }
   }
 
@@ -102,4 +92,5 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
       .create(alias, indices.toArray)
       .get[ResolvedAlias]()
   }
+
 }
