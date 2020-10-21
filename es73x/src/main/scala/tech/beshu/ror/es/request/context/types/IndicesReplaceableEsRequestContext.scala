@@ -17,8 +17,8 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.IndicesRequest.Replaceable
 import org.elasticsearch.action.{ActionRequest, IndicesRequest}
+import org.elasticsearch.action.IndicesRequest.Replaceable
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
