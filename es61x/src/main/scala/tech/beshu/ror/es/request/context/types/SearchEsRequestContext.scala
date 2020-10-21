@@ -17,15 +17,18 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.search.SearchRequest
+import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._
 
 class SearchEsRequestContext(actionRequest: SearchRequest,
@@ -35,26 +38,38 @@ class SearchEsRequestContext(actionRequest: SearchRequest,
                              override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[SearchRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
+  override protected def requestFieldsUsage: RequestFieldsUsage = actionRequest.checkFieldsUsage()
+
   override protected def indicesFrom(request: SearchRequest): Set[IndexName] = {
     request.indices.asSafeSet.flatMap(IndexName.fromString)
   }
 
   override protected def update(request: SearchRequest,
                                 indices: NonEmptyList[IndexName],
-                                filter: Option[Filter]): ModificationResult = {
-    optionallyDisableCaching()
+                                filter: Option[Filter],
+                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     request
       .applyFilterToQuery(filter)
+      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
       .indices(indices.toList.map(_.value.value): _*)
-    Modified
+
+    ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
-  //TODO cache is now disabled only when 'fields' rule is used.
-  //Remove after 'fields' rule improvements.
-  private def optionallyDisableCaching(): Unit = {
-    if (esContext.involvesFields) {
-      logger.debug("ACL involves fields, will disable request cache for SearchRequest")
-      actionRequest.requestCache(false)
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
+                                      (actionResponse: ActionResponse): ActionResponse = {
+
+    (actionResponse, fieldLevelSecurity) match {
+      case (response: SearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly)))  =>
+        response.getHits.getHits
+          .foreach { hit =>
+            hit
+              .filterSourceFieldsUsing(restrictions)
+              .filterDocumentFieldsUsing(restrictions)
+          }
+        response
+      case _ =>
+        actionResponse
     }
   }
 }
