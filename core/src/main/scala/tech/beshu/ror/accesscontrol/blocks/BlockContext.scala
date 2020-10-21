@@ -84,7 +84,6 @@ object BlockContext {
                                                  requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
     extends BlockContext
 
-
   final case class FilterableMultiRequestBlockContext(override val requestContext: RequestContext,
                                                       override val userMetadata: UserMetadata,
                                                       override val responseHeaders: Set[Header],

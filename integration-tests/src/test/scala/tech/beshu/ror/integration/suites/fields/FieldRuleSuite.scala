@@ -348,18 +348,35 @@ trait FieldRuleSuite
         result.responseCode shouldBe 200
 
         val source = sourceOfFirstDoc(result)
-        source shouldBe Some(ujson.read(
-          """
-            |{
-            |  "id":1,
-            |  "items":[
-            |    {"itemId":1,"text":"text1"},
-            |    {"itemId":2,"text":"text2"},
-            |    {"itemId":3,"text":"text3"}
-            |  ],
-            |  "user":{}
-            |}""".stripMargin
-        ))
+        //since ES 7.9.0 empty json array is included even when all its items are blacklisted
+
+        val expectedSource =
+          if (targetEs.esVersion >= "7.9.0") {
+            """
+              |{
+              |  "id":1,
+              |  "items":[
+              |    {"itemId":1,"text":"text1"},
+              |    {"itemId":2,"text":"text2"},
+              |    {"itemId":3,"text":"text3"}
+              |  ],
+              |  "secrets": [],
+              |  "user":{}
+              |}""".stripMargin
+          } else {
+            """
+              |{
+              |  "id":1,
+              |  "items":[
+              |    {"itemId":1,"text":"text1"},
+              |    {"itemId":2,"text":"text2"},
+              |    {"itemId":3,"text":"text3"}
+              |  ],
+              |  "user":{}
+              |}""".stripMargin
+          }
+
+        source shouldBe Some(ujson.read(expectedSource))
       }
     }
   }
