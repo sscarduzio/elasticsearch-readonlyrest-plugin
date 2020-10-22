@@ -50,7 +50,7 @@ object DocumentApiOps {
 
       def filterFieldsUsing(fieldsRestrictions: FieldsRestrictions): GetResponse = {
         val newSource = filterSourceFieldsUsing(fieldsRestrictions)
-        val newFields = filterDocumentFieldsUsing(fieldsRestrictions)
+        val allNewFields = filterDocumentFieldsUsing(fieldsRestrictions)
 
         val newResult = new GetResult(
           response.getIndex,
@@ -61,7 +61,7 @@ object DocumentApiOps {
           response.getVersion,
           true,
           newSource,
-          newFields.documentFields.asJava
+          allNewFields.asJava
         )
         new GetResponse(newResult)
       }
@@ -77,7 +77,8 @@ object DocumentApiOps {
       }
 
       private def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
-        FieldsFiltering.filterDocumentFields(response.getFields.asScala.toMap, fieldsRestrictions)
+        val newFields = FieldsFiltering.filterDocumentFields(response.getFields.asScala.toMap, fieldsRestrictions)
+        newFields.metadataFields ++ newFields.documentFields
       }
     }
   }

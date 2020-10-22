@@ -47,10 +47,6 @@ object FieldsFiltering {
   def filterDocumentFields(documentFields: Map[String, ESDocumentField],
                            fieldsRestrictions: FieldsRestrictions): NewFilteredDocumentFields = {
     val (metadataFields, nonMetadataDocumentFields) = partitionFieldsByMetadata(documentFields)
-
-    metadataFields.keys.foreach(println)
-    nonMetadataDocumentFields.keys.foreach(println)
-
     val policy = new FieldsPolicy(fieldsRestrictions)
     val filteredDocumentFields = nonMetadataDocumentFields.filter {
       case (key, _) => policy.canKeep(key)

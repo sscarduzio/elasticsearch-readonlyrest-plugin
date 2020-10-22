@@ -17,21 +17,16 @@
 package tech.beshu.ror.es.request
 
 import org.elasticsearch.common.bytes.BytesReference
-import org.elasticsearch.common.document.{DocumentField => ESDocumentField}
 import org.elasticsearch.common.xcontent.support.XContentMapValues
-import org.elasticsearch.common.xcontent.{XContentBuilder, XContentFactory, XContentType}
+import org.elasticsearch.common.xcontent.{XContentFactory, XContentType}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.AccessMode
-import tech.beshu.ror.fls.FieldsPolicy
 
 import scala.collection.JavaConverters._
 
 object FieldsFiltering {
 
   final case class NewFilteredSource(bytes: BytesReference)
-
-  final case class NewFilteredDocumentFields(documentFields: Map[String, ESDocumentField],
-                                             metadataFields: Map[String, ESDocumentField])
 
   def filterSource(sourceAsMap: Map[String, _],
                    fieldsRestrictions: FieldsRestrictions): NewFilteredSource = {
@@ -42,23 +37,6 @@ object FieldsFiltering {
       .map(filteredSource)
 
     NewFilteredSource(newContent.bytes())
-  }
-
-  def filterDocumentFields(documentFields: Map[String, ESDocumentField],
-                           fieldsRestrictions: FieldsRestrictions): NewFilteredDocumentFields = {
-    val (metadataFields, nonMetadataDocumentFields) = partitionFieldsByMetadata(documentFields)
-    val policy = new FieldsPolicy(fieldsRestrictions)
-    val filteredDocumentFields = nonMetadataDocumentFields.filter {
-      case (key, _) => policy.canKeep(key)
-    }
-    NewFilteredDocumentFields(filteredDocumentFields, metadataFields)
-  }
-
-  private def partitionFieldsByMetadata(fields: Map[String, ESDocumentField]) = {
-    fields.partition {
-      case t if t._2.isMetadataField => true
-      case _ => false
-    }
   }
 
   private def splitFieldsByAccessMode(fields: FieldsRestrictions) = fields.mode match {
