@@ -373,26 +373,59 @@ trait BaseIndexApiSuite
         "user has access to the requested index" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index7-000001")
 
+          result.responseCode should be (200)
+
           result.indices.size should be (1)
           result.indices.head.name should be ("index7-000001")
-          result.indices.head.aliases should be (List.empty)
+          result.indices.head.aliases should be (List("index7"))
+
+          result.aliases.size should be (0)
         }
         "user has access to the requested index pattern" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+          val result = dev7IndexManager.resolve("index7*")
 
+          result.responseCode should be (200)
+
+          result.indices.size should be (2)
+          result.indices.head.name should be ("index7-000001")
+          result.indices.head.aliases should be (List("index7"))
+          result.indices(1).name should be ("index7-000002")
+          result.indices(1).aliases should be (List.empty)
+
+          result.aliases.size should be (1)
+          result.aliases.head.name should be ("index7")
+          result.aliases.head.indices should be (List("index7-000001"))
         }
         "user has access to narrowed index pattern" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+          val result = dev7IndexManager.resolve("*")
 
+          result.responseCode should be (200)
+
+          result.indices.size should be (2)
+          result.indices.head.name should be ("index7-000001")
+          result.indices.head.aliases should be (List("index7"))
+          result.indices(1).name should be ("index7-000002")
+          result.indices(1).aliases should be (List.empty)
+
+          result.aliases.size should be (1)
+          result.aliases.head.name should be ("index7")
+          result.aliases.head.indices should be (List("index7-000001"))
         }
-        "user has access only to one alias of the requested pattern" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+      }
+      "return empty result" when {
+        "user has no access to requested index pattern" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+          val result = dev7IndexManager.resolve("index2*")
 
+          result.responseCode should be (200)
+          result.indices.size should be (0)
+          result.aliases.size should be (0)
         }
       }
       "not be allowed" when {
         "user has no access to the requested index" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
+          val result = dev7IndexManager.resolve("index2")
 
-        }
-        "user has no access to requested index pattern" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
-
+          result.responseCode should be (forbiddenStatusReturned)
         }
       }
     }
