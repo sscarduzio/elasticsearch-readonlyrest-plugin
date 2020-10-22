@@ -26,8 +26,6 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import monix.catnap.Semaphore
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
-import monix.execution.Scheduler.{global => scheduler}
 import monix.execution.atomic.Atomic
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
@@ -36,16 +34,13 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
-import tech.beshu.ror.boot.RorInstance.IndexConfigReloadError.LoadingConfigError
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
-import tech.beshu.ror.configuration.EsConfig.LoadEsConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
-import tech.beshu.ror.configuration.loader.distributed.RawRorConfigLoadingAction
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig, RorConfigurationIndex}
-import tech.beshu.ror.configuration.{RorProperties, _}
+import tech.beshu.ror.configuration._
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value
@@ -55,6 +50,7 @@ import scala.language.{implicitConversions, postfixOps}
 
 class Ror(override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
           override val propertiesProvider: PropertiesProvider = JvmPropertiesProvider)
+         (implicit override val scheduler: Scheduler)
   extends ReadonlyRest {
 
   override protected implicit val clock: Clock = Clock.systemUTC()
@@ -66,13 +62,11 @@ class Ror(override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
   }
 }
 
-object Ror {
-  val blockingScheduler: Scheduler = Scheduler.io("blocking-index-content-provider")
-}
-
 trait ReadonlyRest extends Logging {
 
   protected def coreFactory: CoreFactory
+
+  protected implicit def scheduler: Scheduler
 
   protected implicit def envVarsProvider: EnvVarsProvider
 
@@ -204,7 +198,8 @@ class RorInstance private(boot: ReadonlyRest,
                           indexConfigManager: IndexConfigManager,
                           rorConfigurationIndex: RorConfigurationIndex,
                           auditSink: AuditSinkService)
-                         (implicit propertiesProvider: PropertiesProvider)
+                         (implicit propertiesProvider: PropertiesProvider,
+                         scheduler: Scheduler)
   extends Logging {
 
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
@@ -400,7 +395,8 @@ object RorInstance {
                                    indexConfigManager: IndexConfigManager,
                                    rorConfigurationIndex: RorConfigurationIndex,
                                    auditSink: AuditSinkService)
-                                  (implicit propertiesProvider: PropertiesProvider): Task[RorInstance] = {
+                                  (implicit propertiesProvider: PropertiesProvider,
+                                  scheduler: Scheduler): Task[RorInstance] = {
     create(boot, Mode.WithPeriodicIndexCheck, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
   }
 
@@ -410,7 +406,8 @@ object RorInstance {
                                       indexConfigManager: IndexConfigManager,
                                       rorConfigurationIndex: RorConfigurationIndex,
                                       auditSink: AuditSinkService)
-                                     (implicit propertiesProvider: PropertiesProvider): Task[RorInstance] = {
+                                     (implicit propertiesProvider: PropertiesProvider,
+                                      scheduler: Scheduler): Task[RorInstance] = {
     create(boot, Mode.NoPeriodicIndexCheck, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
   }
 
@@ -421,7 +418,8 @@ object RorInstance {
                      indexConfigManager: IndexConfigManager,
                      rorConfigurationIndex: RorConfigurationIndex,
                      auditSink: AuditSinkService)
-                    (implicit propertiesProvider: PropertiesProvider) = {
+                    (implicit propertiesProvider: PropertiesProvider,
+                     scheduler: Scheduler) = {
     Semaphore[Task](1)
       .map { isReloadInProgressSemaphore =>
         new RorInstance(boot, mode, (engine, config), isReloadInProgressSemaphore, indexConfigManager, rorConfigurationIndex, auditSink)
@@ -442,7 +440,8 @@ final case class StartingFailure(message: String, throwable: Option[Throwable] =
 final class Engine(val accessControl: AccessControl,
                    val context: AccessControlStaticContext,
                    httpClientsFactory: AsyncHttpClientsFactory,
-                   ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) {
+                   ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider)
+                  (implicit scheduler: Scheduler) {
 
   private[ror] def shutdown(): Unit = {
     httpClientsFactory.shutdown()

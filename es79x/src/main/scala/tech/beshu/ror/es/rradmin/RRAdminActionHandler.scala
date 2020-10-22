@@ -23,7 +23,7 @@ import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.ActionListener
 import tech.beshu.ror.adminapi.AdminRestApi
-import tech.beshu.ror.boot.SchedulerPools
+import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RorIndexNameConfiguration}
 import tech.beshu.ror.es.IndexJsonContentService
@@ -37,7 +37,7 @@ import scala.language.postfixOps
 class RRAdminActionHandler(indexContentProvider: IndexJsonContentService,
                            esConfigFile: Path) {
 
-  private implicit val adminRestApiScheduler: Scheduler = SchedulerPools.adminRestApiScheduler
+  private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.adminRestApiScheduler
 
   private val rorIndexNameConfig = RorIndexNameConfiguration
     .load(esConfigFile)

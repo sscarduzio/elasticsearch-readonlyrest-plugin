@@ -38,3 +38,6 @@ readonlyrest:
       indices: ["index2_alias"]
       auth_key: dev6:test
 
+    - name: "dev7 - resolve index API"
+      indices: ["index7*"]
+      auth_key: dev7:test
