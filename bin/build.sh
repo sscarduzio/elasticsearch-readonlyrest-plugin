@@ -12,7 +12,7 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "license" ]]; then
     ./gradlew license
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "cve" ]]; then
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "cve_check" ]]; then
     echo ">>> Running unit tests.."
     ./gradlew --stacktrace dependencyCheckAnalyze
 fi

@@ -24,7 +24,7 @@ deploy:
 env:
   matrix:
   - ROR_TASK="license"
-  - ROR_TASK="cve"
+  - ROR_TASK="cve_check"
   - ROR_TASK="unit"
   - ROR_TASK="integration_proxy"
   - ROR_TASK="integration_es79x"
