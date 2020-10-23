@@ -339,6 +339,23 @@ object BlockContext {
     }
   }
 
+  implicit class FieldLevelSecurityFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def fieldLevelSecurity: Option[FieldLevelSecurity] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => None
+        case _: GeneralNonIndexRequestBlockContext => None
+        case _: RepositoryRequestBlockContext => None
+        case _: SnapshotRequestBlockContext => None
+        case _: TemplateRequestBlockContext => None
+        case _: AliasRequestBlockContext => None
+        case _: GeneralIndexRequestBlockContext => None
+        case _: MultiIndexRequestBlockContext => None
+        case bc: FilterableRequestBlockContext => bc.fieldLevelSecurity
+        case bc: FilterableMultiRequestBlockContext => bc.fieldLevelSecurity
+      }
+    }
+  }
+
   implicit class RandomIndexBasedOnBlockContextIndices[B <: BlockContext: HasIndices](blockContext: B) {
 
     def randomNonexistentIndex(): IndexName = {
