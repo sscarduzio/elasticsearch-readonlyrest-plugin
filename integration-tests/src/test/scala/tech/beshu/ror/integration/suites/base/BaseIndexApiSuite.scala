@@ -420,12 +420,12 @@ trait BaseIndexApiSuite
           result.indices.size should be (0)
           result.aliases.size should be (0)
         }
-      }
-      "not be allowed" when {
         "user has no access to the requested index" excludeES (allEs5x, allEs6x, allEs7xBelowEs79x) in {
           val result = dev7IndexManager.resolve("index2")
 
-          result.responseCode should be (forbiddenStatusReturned)
+          result.responseCode should be (200)
+          result.indices.size should be (0)
+          result.aliases.size should be (0)
         }
       }
     }

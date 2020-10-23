@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
@@ -48,6 +49,12 @@ class ResolveIndexEsRequestContext(actionRequest: ResolveIndexAction.Request,
                                 allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
     request.indices(filteredIndices.toList.map(_.value.value): _*)
     ModificationResult.UpdateResponse(resp => Task.now(filterResponse(resp, allAllowedIndices)))
+  }
+
+  override def modifyWhenIndexNotFound: ModificationResult = {
+    val randomNonexistingIndex = initialBlockContext.randomNonexistentIndex()
+    update(actionRequest, NonEmptyList.of(randomNonexistingIndex), NonEmptyList.of(randomNonexistingIndex))
+    Modified
   }
 
   private def filterResponse(response: ActionResponse, indices: NonEmptyList[IndexName]): ActionResponse = {
