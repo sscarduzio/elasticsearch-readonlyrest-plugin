@@ -19,13 +19,15 @@ package tech.beshu.ror.integration.suites.fields.querydsl
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait FieldRuleQueryDSLSuite
   extends WordSpec
-    with BaseSingleNodeEsClusterTest {
+    with BaseSingleNodeEsClusterTest
+    with ESVersionSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/field_level_security_query/readonlyrest.yml"
@@ -134,7 +136,7 @@ trait FieldRuleQueryDSLSuite
 
               assertNoSearchHitsReturnedFor("test-index", query)
             }
-            "is 'terms set' query" in {
+            "is 'terms set' query" excludeES("es55x", "es60x") in  {
               val query =
                 """
                   |{
@@ -262,7 +264,7 @@ trait FieldRuleQueryDSLSuite
 
               assertNoSearchHitsReturnedFor("test-index", query)
             }
-            "is 'match bool prefix' query" in {
+            "is 'match bool prefix' query" excludeES(allEs5x, allEs6x, "es70x".r)in {
               val query =
                 """
                   |{
