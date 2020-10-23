@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.variables.runtime
 
 import cats.data.NonEmptyList
-import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyPBKDF2WithHmacSHA512Rule, _}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.MultiExtractable.SingleExtractableWrapper
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage.UsingVariable
 
@@ -64,6 +64,7 @@ object VariableContext {
     implicit val authKeySha1Rule: VariableUsage[AuthKeySha1Rule] = NotUsingVariable
     implicit val authKeySha256Rule: VariableUsage[AuthKeySha256Rule] = NotUsingVariable
     implicit val authKeySha512Rule: VariableUsage[AuthKeySha512Rule] = NotUsingVariable
+    implicit val authKeyPBKDF2WithHmacSHA512Rule: VariableUsage[AuthKeyPBKDF2WithHmacSHA512Rule] = NotUsingVariable
     implicit val authKeyRule: VariableUsage[AuthKeyRule] = NotUsingVariable
     implicit val authKeyUnixRule: VariableUsage[AuthKeyUnixRule] = NotUsingVariable
     implicit val externalAuthenticationRule: VariableUsage[ExternalAuthenticationRule] = NotUsingVariable
