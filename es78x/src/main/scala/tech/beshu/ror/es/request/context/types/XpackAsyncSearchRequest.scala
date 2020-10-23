@@ -59,7 +59,7 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
       .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
       .indices(indices.toList.map(_.value.value): _*)
 
-    ModificationResult.UpdateResponse(filterFieldsFromResponse(fieldLevelSecurity))
+    ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
   private def searchRequestFrom(request: ActionRequest) = {
@@ -69,7 +69,7 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
   }
 
   private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
-                                      (actionResponse: ActionResponse): Task[ActionResponse] = {
+                                      (actionResponse: ActionResponse): ActionResponse = {
     (searchResponseFrom(actionResponse), fieldLevelSecurity) match {
       case (Some(searchResponse), Some(definedFieldLevelSecurity)) =>
         searchResponse.getHits.getHits
@@ -78,9 +78,9 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
               .filterSourceFieldsUsing(definedFieldLevelSecurity.restrictions)
               .filterDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
           }
-        Task.now(actionResponse)
+        actionResponse
       case _ =>
-        Task.now(actionResponse)
+        actionResponse
     }
   }
 
