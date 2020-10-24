@@ -53,10 +53,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     if (aclContext.doesRequirePassword) {
       val nonExistentIndex = initialBlockContext.randomNonexistentIndex()
       if (nonExistentIndex.hasWildcard) {
-        val nonExistingIndices = NonEmptyList
-          .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
-          .getOrElse(NonEmptyList.of(nonExistentIndex))
-        update(actionRequest, nonExistingIndices)
+        update(actionRequest, NonEmptyList.of(nonExistentIndex))
         Modified
       } else {
         ShouldBeInterrupted

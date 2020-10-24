@@ -264,7 +264,7 @@ trait FieldRuleQueryDSLSuite
 
               assertNoSearchHitsReturnedFor("test-index", query)
             }
-            "is 'match bool prefix' query" excludeES(allEs5x, allEs6x, "es70x".r)in {
+            "is 'match bool prefix' query" excludeES(allEs5x, allEs6x, "^es70x$".r)in {
               val query =
                 """
                   |{
@@ -334,7 +334,7 @@ trait FieldRuleQueryDSLSuite
       "old approach with context header is used" when {
         "not allowed fields are used in unmodifiable by new approach query" that {
           "belongs to 'term-level' group" which {
-            "is 'exists' query with wildcard" in {
+            "is 'exists' query with wildcard" excludeES "es55x" in {
               val query =
                 """
                   |{
@@ -356,7 +356,7 @@ trait FieldRuleQueryDSLSuite
                   |{
                   |  "query": {
                   |    "query_string": {
-                  |      "query": "notAllowed\\*:(not allowed*) OR 1"
+                  |      "query": "notAllowed\\*: 1"
                   |    }
                   |  }
                   |}
@@ -374,7 +374,7 @@ trait FieldRuleQueryDSLSuite
                     |  "query": {
                     |    "bool": {
                     |      "must": [
-                    |        {"query_string": {"query": "notAllowed\\*:(not allowed*) OR 1"}}
+                    |        {"query_string": {"query": "notAllowed\\*: 1"}}
                     |      ]
                     |    }
                     |  }
@@ -390,7 +390,7 @@ trait FieldRuleQueryDSLSuite
                     |  "query": {
                     |    "constant_score": {
                     |      "filter": {
-                    |        "query_string": {"query": "notAllowed\\*:(not allowed*) OR 1"}
+                    |        "query_string": {"query": "notAllowed\\*: 1"}
                     |      }
                     |    }
                     |  }
@@ -406,7 +406,7 @@ trait FieldRuleQueryDSLSuite
                     |  "query": {
                     |    "boosting": {
                     |      "positive": {
-                    |        "query_string": {"query": "notAllowed\\*:(not allowed*) OR 1"}
+                    |        "query_string": {"query": "notAllowed\\*: 1"}
                     |      },
                     |      "negative": {
                     |        "term": {
@@ -429,7 +429,7 @@ trait FieldRuleQueryDSLSuite
                     |    "dis_max": {
                     |      "queries": [
                     |        { "term": { "notAllowedField": 1 } },
-                    |        { "query_string": {"query": "notAllowed\\*:(not allowed*) OR 1"}}
+                    |        { "query_string": {"query": "notAllowed\\*: 1"}}
                     |      ],
                     |      "tie_breaker": 0.7
                     |    }
