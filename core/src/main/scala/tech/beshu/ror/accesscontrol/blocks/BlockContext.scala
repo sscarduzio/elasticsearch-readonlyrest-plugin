@@ -73,7 +73,6 @@ object BlockContext {
   final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
                                                    override val userMetadata: UserMetadata,
                                                    override val responseHeaders: Set[Header],
-                                                   override val contextHeaders: Set[Header],
                                                    filteredIndices: Set[IndexName],
                                                    allAllowedIndices: Set[IndexName])
     extends BlockContext
@@ -81,7 +80,6 @@ object BlockContext {
   final case class FilterableRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
-                                                 override val contextHeaders: Set[Header],
                                                  filteredIndices: Set[IndexName],
                                                  allAllowedIndices: Set[IndexName],
                                                  filter: Option[Filter],

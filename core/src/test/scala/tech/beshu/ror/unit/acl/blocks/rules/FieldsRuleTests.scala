@@ -261,7 +261,8 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
       requestContext = requestContext,
       userMetadata = UserMetadata.empty,
       responseHeaders = Set.empty,
-      indices = Set.empty,
+      filteredIndices = Set.empty,
+      allAllowedIndices = Set.empty,
       filter = None,
       fieldLevelSecurity = None,
       requestFieldsUsage = requestFieldsUsage

@@ -50,6 +50,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
     },
     Set(IndexName.wildcard),
     None,
+    None,
     requestFieldsUsage
   )
 
