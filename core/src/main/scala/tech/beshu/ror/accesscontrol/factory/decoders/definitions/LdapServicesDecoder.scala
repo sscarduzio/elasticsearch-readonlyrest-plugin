@@ -41,7 +41,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils._
-import tech.beshu.ror.boot.SchedulerPools
+import tech.beshu.ror.boot.RorSchedulers
 
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.language.postfixOps
@@ -100,7 +100,7 @@ object LdapServicesDecoder {
         ldapConnectionPoolProvider,
         connectionConfig,
         userSearchFiler,
-        SchedulerPools.ldapUnboundIdBlockingScheduler
+        RorSchedulers.ldapUnboundIdBlockingScheduler
       )
       ldapServiceDecodingResult match {
         case Left(error) => Task.now(Left(error))
@@ -128,7 +128,7 @@ object LdapServicesDecoder {
         connectionConfig,
         userSearchFiler,
         userGroupsSearchFilter,
-        SchedulerPools.ldapUnboundIdBlockingScheduler
+        RorSchedulers.ldapUnboundIdBlockingScheduler
       )
       ldapServiceDecodingResult match {
         case Left(error) => Task.now(Left(error))

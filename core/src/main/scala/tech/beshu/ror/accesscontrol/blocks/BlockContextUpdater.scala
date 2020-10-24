@@ -86,7 +86,7 @@ object BlockContextUpdater {
   implicit object SnapshotRequestBlockContextUpdater
     extends BlockContextUpdater[SnapshotRequestBlockContext] {
     override def emptyBlockContext(blockContext: SnapshotRequestBlockContext): SnapshotRequestBlockContext =
-      SnapshotRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, Set.empty)
+      SnapshotRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, Set.empty, Set.empty)
 
     override def withUserMetadata(blockContext: SnapshotRequestBlockContext,
                                   userMetadata: UserMetadata): SnapshotRequestBlockContext =
@@ -106,7 +106,7 @@ object BlockContextUpdater {
 
     def withIndices(blockContext: SnapshotRequestBlockContext,
                     indices: Set[IndexName]): SnapshotRequestBlockContext =
-      blockContext.copy(indices = indices)
+      blockContext.copy(filteredIndices = indices)
   }
 
   implicit object TemplateRequestBlockContextUpdater
@@ -155,7 +155,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[GeneralIndexRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: GeneralIndexRequestBlockContext): GeneralIndexRequestBlockContext =
-      GeneralIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty)
+      GeneralIndexRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
 
     override def withUserMetadata(blockContext: GeneralIndexRequestBlockContext,
                                   userMetadata: UserMetadata): GeneralIndexRequestBlockContext =
@@ -186,7 +186,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[FilterableRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: FilterableRequestBlockContext): FilterableRequestBlockContext =
-      FilterableRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, None, None)
+      FilterableRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, None, None)
 
     override def withUserMetadata(blockContext: FilterableRequestBlockContext,
                                   userMetadata: UserMetadata): FilterableRequestBlockContext =
@@ -215,7 +215,7 @@ object BlockContextUpdater {
 
 abstract class BlockContextWithIndicesUpdater[B <: BlockContext: HasIndices] {
 
-  def withIndices(blockContext: B, indices: Set[IndexName]): B
+  def withIndices(blockContext: B, filteredIndices: Set[IndexName], allAllowedIndices: Set[IndexName]): B
 }
 
 object BlockContextWithIndicesUpdater {
@@ -225,24 +225,27 @@ object BlockContextWithIndicesUpdater {
     extends BlockContextWithIndicesUpdater[FilterableRequestBlockContext] {
 
     def withIndices(blockContext: FilterableRequestBlockContext,
-                    indices: Set[IndexName]): FilterableRequestBlockContext =
-      blockContext.copy(indices = indices)
+                    filteredIndices: Set[IndexName],
+                    allAllowedIndices: Set[IndexName]): FilterableRequestBlockContext =
+      blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
   }
 
   implicit object GeneralIndexRequestBlockContextWithIndicesUpdater
     extends BlockContextWithIndicesUpdater[GeneralIndexRequestBlockContext] {
 
     def withIndices(blockContext: GeneralIndexRequestBlockContext,
-                    indices: Set[IndexName]): GeneralIndexRequestBlockContext =
-      blockContext.copy(indices = indices)
+                    filteredIndices: Set[IndexName],
+                    allAllowedIndices: Set[IndexName]): GeneralIndexRequestBlockContext =
+      blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
   }
 
   implicit object SnapshotRequestBlockContextWithIndicesUpdater
     extends BlockContextWithIndicesUpdater[SnapshotRequestBlockContext] {
 
     def withIndices(blockContext: SnapshotRequestBlockContext,
-                    indices: Set[IndexName]): SnapshotRequestBlockContext =
-      blockContext.copy(indices = indices)
+                    filteredIndices: Set[IndexName],
+                    allAllowedIndices: Set[IndexName]): SnapshotRequestBlockContext =
+      blockContext.copy(filteredIndices = filteredIndices, allAllowedIndices = allAllowedIndices)
   }
 }
 

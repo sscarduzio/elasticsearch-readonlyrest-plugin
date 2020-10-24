@@ -99,7 +99,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
   }
 
   private def indicesFrom(blockContext: SnapshotRequestBlockContext) = {
-    NonEmptyList.fromList(blockContext.indices.toList) match {
+    NonEmptyList.fromList(blockContext.filteredIndices.toList) match {
       case None => Left(())
       case Some(indices) => Right(indices)
     }

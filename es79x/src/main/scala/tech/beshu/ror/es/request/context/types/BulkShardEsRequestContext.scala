@@ -44,8 +44,10 @@ class BulkShardEsRequestContext(actionRequest: BulkShardRequest,
     request.indices().asSafeSet.flatMap(IndexName.fromString)
   }
 
-  override protected def update(request: BulkShardRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
-    tryUpdate(request, indices) match {
+  override protected def update(request: BulkShardRequest,
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    tryUpdate(request, filteredIndices) match {
       case Success(_) =>
         Modified
       case Failure(ex) =>

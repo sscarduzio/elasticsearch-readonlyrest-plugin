@@ -243,10 +243,10 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
     val rule = new KibanaAccessRule(settings)
     val requestContext = MockRequestContext.indices.copy(
       action = action,
-      indices = indices,
+      filteredIndices = indices,
       uriPath = uriPath.getOrElse(UriPath(""))
     )
-    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, indices)
+    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, indices, Set.empty)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>

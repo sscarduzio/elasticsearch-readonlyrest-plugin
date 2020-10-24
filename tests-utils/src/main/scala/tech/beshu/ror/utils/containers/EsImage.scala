@@ -78,24 +78,36 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           )
           .applyTo(builder)
 
-        val javaOpts = List(
-          "-Xms512m",
-          "-Xmx512m",
-          "-Djava.security.egd=file:/dev/./urandoms",
-          "-Dcom.unboundid.ldap.sdk.debug.enabled=false",
-          "-Xdebug", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000",
-          if (!configHotReloadingEnabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else ""
-        ).mkString(" ")
+        val javaOpts = {
+          xmJavaOptions() ++
+            urandomJavaOption() ++
+            unboundidDebug(false) ++
+            rorHotReloading(configHotReloadingEnabled) ++
+            xDebugJavaOptions(esVersion)
+        }.mkString(" ")
 
         builder
           .user("elasticsearch")
-          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts ) asJava)
+          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts) asJava)
 
         install(builder, config)
 
         logger.info("Dockerfile\n" + builder.build)
       })
   }
+
+  private def xmJavaOptions() = List("-Xms512m", "-Xmx512m")
+
+  private def urandomJavaOption() = List("-Djava.security.egd=file:/dev/./urandoms")
+
+  private def unboundidDebug(enabled: Boolean) = List(s"-Dcom.unboundid.ldap.sdk.debug.enabled=${if(enabled) true else false}")
+
+  private def xDebugJavaOptions(esVersion: String) = {
+    val address = if (Version.greaterOrEqualThan(esVersion, 6, 3, 0)) "*:8000" else "8000"
+    List("-Xdebug", s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$address")
+  }
+
+  private def rorHotReloading(enabled: Boolean) = List(if(!enabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else "")
 
   private def shouldUseEsOssImage(config: Config) = {
     !config.xPackSupport && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)

@@ -110,15 +110,15 @@ object TestsUtils {
         case bc: SnapshotRequestBlockContext =>
           bc.snapshots should be (snapshots)
           bc.repositories should be (repositories)
-          bc.indices should be (indices)
+          bc.filteredIndices should be (indices)
         case bc: TemplateRequestBlockContext =>
           bc.templates  should be (templates)
         case bc: GeneralIndexRequestBlockContext =>
-          bc.indices should be (indices)
+          bc.filteredIndices should be (indices)
         case bc: MultiIndexRequestBlockContext =>
           bc.indices should be (indices)
         case bc: FilterableRequestBlockContext =>
-          bc.indices should be (indices)
+          bc.filteredIndices should be (indices)
         case bc: FilterableMultiRequestBlockContext =>
           bc.indices should be (indices)
         case bc: AliasRequestBlockContext =>

@@ -35,7 +35,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherW
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
-import tech.beshu.ror.accesscontrol.domain.Action._
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -80,13 +79,10 @@ class IndicesRule(val settings: Settings)
   }
 
   private def processIndicesRequest[B <: BlockContext: BlockContextWithIndicesUpdater](blockContext: B): RuleResult[B] = {
-    val result = processIndices(
-      blockContext.requestContext,
-      resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet,
-      blockContext.indices
-    )
+    val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
+    val result = processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices)
     result match {
-      case ProcessResult.Ok(indices) => Fulfilled(blockContext.withIndices(indices))
+      case ProcessResult.Ok(filteredIndices) => Fulfilled(blockContext.withIndices(filteredIndices, allAllowedIndices))
       case ProcessResult.Failed(cause) => Rejected(cause)
     }
   }
@@ -361,7 +357,7 @@ class IndicesRule(val settings: Settings)
   }
 
   private def processSnapshotRequest(blockContext: SnapshotRequestBlockContext): RuleResult[SnapshotRequestBlockContext] = {
-    if(blockContext.indices.isEmpty) processRequestWithoutIndices(blockContext)
+    if(blockContext.filteredIndices.isEmpty) processRequestWithoutIndices(blockContext)
     else processIndicesRequest(blockContext)
   }
 

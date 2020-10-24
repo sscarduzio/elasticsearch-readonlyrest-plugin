@@ -56,10 +56,11 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
       it can be handled just as in GET/MGET (see e.g. GetEsRequestContext) using ModificationResult.UpdateResponse.
    **/
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                indices: NonEmptyList[IndexName],
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    val indicesStrings = indices.map(_.value.value).toList.toSet
+    val indicesStrings = filteredIndices.map(_.value.value).toList.toSet
     if (indicesStrings != sqlIndices.indices) {
       SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings) match {
         case Success(_) =>

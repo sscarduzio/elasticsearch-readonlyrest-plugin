@@ -28,10 +28,10 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 
 object MockRequestContext {
   def indices(implicit clock: Clock = Clock.systemUTC()): MockGeneralIndexRequestContext =
-    MockGeneralIndexRequestContext(timestamp = clock.instant(), indices = Set.empty)
+    MockGeneralIndexRequestContext(timestamp = clock.instant(), filteredIndices = Set.empty, allAllowedIndices = Set.empty)
 
   def search(implicit clock: Clock = Clock.systemUTC()): MockSearchRequestContext =
-    MockSearchRequestContext(timestamp = clock.instant(), indices = Set.empty)
+    MockSearchRequestContext(timestamp = clock.instant(), indices = Set.empty, allAllowedIndices = Set.empty)
 
   def repositories(implicit clock: Clock = Clock.systemUTC()): MockRepositoriesRequestContext =
     MockRepositoriesRequestContext(timestamp = clock.instant(), repositories = Set.empty)
@@ -67,12 +67,13 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
                                                 override val hasRemoteClusters: Boolean = false,
-                                                indices: Set[IndexName])
+                                                filteredIndices: Set[IndexName],
+                                                allAllowedIndices: Set[IndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
 
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, indices
+    this, UserMetadata.from(this), Set.empty, filteredIndices, allAllowedIndices
   )
 }
 
@@ -94,12 +95,13 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val isReadOnlyRequest: Boolean = true,
                                           override val isAllowedForDLS: Boolean = true,
                                           override val hasRemoteClusters: Boolean = false,
-                                          indices: Set[IndexName])
+                                          indices: Set[IndexName],
+                                          allAllowedIndices: Set[IndexName])
   extends RequestContext {
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
 
   override def initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, indices, None
+    this, UserMetadata.from(this), Set.empty, indices, allAllowedIndices, None
   )
 }
 
@@ -153,7 +155,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
 
   override def initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, snapshots, Set.empty, Set.empty
+    this, UserMetadata.from(this), Set.empty, snapshots, Set.empty, Set.empty, Set.empty
   )
 }
 

@@ -21,6 +21,7 @@ import java.time.Clock
 import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
@@ -37,7 +38,6 @@ import tech.beshu.ror.configuration.SslConfiguration.{ExternalSslConfiguration, 
 import tech.beshu.ror.configuration.{MalformedSettings, RawRorConfig, RorSsl}
 import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, ContentNotFound, WriteError}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
-import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.{StringOps, getResourceContent, getResourcePath, rorConfigFromResource}
@@ -515,8 +515,11 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
                                refreshInterval: Option[FiniteDuration] = None) = {
     new ReadonlyRest {
       override implicit protected val clock: Clock = Clock.systemUTC()
+      override implicit protected val scheduler: Scheduler = monix.execution.Scheduler.global
+
       override protected val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
       override protected def coreFactory: CoreFactory = factory
+
       override implicit protected def propertiesProvider: PropertiesProvider =
         TestsPropertiesProvider.usingMap(
           refreshInterval match {

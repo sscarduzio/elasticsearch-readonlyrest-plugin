@@ -48,7 +48,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
       logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
       indices
     },
-    None,
+    Set(IndexName.wildcard),
     None,
     requestFieldsUsage
   )
@@ -72,7 +72,7 @@ abstract class BaseFilterableEsRequestContext[R <: ActionRequest](actionRequest:
   }
 
   override protected def modifyRequest(blockContext: FilterableRequestBlockContext): ModificationResult = {
-    NonEmptyList.fromList(blockContext.indices.toList) match {
+    NonEmptyList.fromList(blockContext.filteredIndices.toList) match {
       case Some(indices) =>
         update(actionRequest, indices, blockContext.filter, blockContext.fieldLevelSecurity)
       case None =>
