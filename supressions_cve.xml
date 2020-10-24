@@ -2,6 +2,12 @@
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.1.xsd">
     <suppress>
         <notes><![CDATA[
+    because of https://bitbucket.org/asomov/snakeyaml/issues/462/memory-leak
+   ]]></notes>
+        <cve>CVE-2017-18640</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[
    async client is upgraded to
    group: 'org.asynchttpclient', name: 'async-http-client', version: '2.10.5'
    don't know, why plugin still finds vulnerability

@@ -14,7 +14,7 @@ fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "cve_check" ]]; then
     echo ">>> Running unit tests.."
-    ./gradlew --stacktrace dependencyCheckAnalyze
+    ./gradlew dependencyCheckAnalyze
 fi
 
 if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
