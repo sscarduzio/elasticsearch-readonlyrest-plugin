@@ -28,6 +28,8 @@ import io.jsonwebtoken.Claims
 import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction}
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
@@ -253,9 +255,15 @@ object domain {
   }
 
   final case class IndexName(value: NonEmptyString) {
+    private lazy val matcher = MatcherWithWildcardsScalaAdapter.create(this :: Nil)
+
     def isClusterIndex: Boolean = value.value.contains(":")
     def hasPrefix(prefix: String): Boolean = value.value.startsWith(prefix)
     def hasWildcard: Boolean = value.value.contains("*")
+    def matches(indexName: IndexName): Boolean = {
+      if(hasWildcard) matcher.`match`(indexName)
+      else this == indexName
+    }
   }
   object IndexName {
     val wildcard: IndexName = fromUnsafeString("*")

@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, IndexWithAliases}
@@ -44,7 +45,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           modifyRequestContext = _.copy(
             allIndicesAndAliases = Set(IndexWithAliases(IndexName("test".nonempty), Set.empty))
           ),
-          found = Set(IndexName("test".nonempty))
+          found = Set(IndexName("test".nonempty)),
         )
       }
       "'_all' passed, one is configured, there is one real index" in {
@@ -312,7 +313,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     val rule = new IndicesRule(IndicesRule.Settings(configuredValues, mustInvolveIndices = false))
     val requestContext = modifyRequestContext apply MockRequestContext.indices
       .copy(
-        indices = requestIndices,
+        filteredIndices = requestIndices,
         action = Action("indices:data/read/search"),
         isReadOnlyRequest = true,
         hasRemoteClusters = true,
@@ -329,7 +330,8 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       UserMetadata.from(requestContext),
       Set.empty,
       Set.empty,
-      requestIndices
+      requestIndices,
+      Set.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(GeneralIndexRequestBlockContext(
@@ -337,7 +339,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
         UserMetadata.from(requestContext),
         Set.empty,
         Set.empty,
-        found
+        found,
+        configuredValues
+          .toNonEmptyList.toList
+          .collect { case a: AlreadyResolved[IndexName] => a }
+          .flatMap(_.value.toList)
+          .toSet
       ))
       else Rejected(Some(Cause.IndexNotFound))
     }

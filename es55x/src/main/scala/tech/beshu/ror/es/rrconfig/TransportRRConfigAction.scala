@@ -63,11 +63,6 @@ class TransportRRConfigAction(setting: Settings,
     nodeResponseClass
   ) {
 
-  import tech.beshu.ror.boot.SchedulerPools.adminRestApiScheduler
-
-  implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
-  implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-
   @Inject
   def this(setting: Settings,
            actionName: String,
@@ -93,6 +88,11 @@ class TransportRRConfigAction(setting: Settings,
       classOf[RRConfig],
       ()
     )
+
+  import tech.beshu.ror.boot.RorSchedulers.Implicits.adminApiScheduler
+
+  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  private implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
 
   override def newResponse(request: RRConfigsRequest, responses: util.List[RRConfig], failures: util.List[FailedNodeException]): RRConfigsResponse = {
     new RRConfigsResponse(clusterService.getClusterName, responses, failures)

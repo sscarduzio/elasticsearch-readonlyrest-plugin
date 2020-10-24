@@ -99,7 +99,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
             historyItems(2).result shouldBe a[RuleResult.Rejected[_]]
 
             blockContext.userMetadata should be(UserMetadata.empty)
-            blockContext.indices should be(Set.empty)
+            blockContext.filteredIndices should be(Set.empty)
             blockContext.contextHeaders should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
         }
@@ -129,7 +129,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           historyItems(2).result shouldBe a[RuleResult.Fulfilled[_]]
 
           blockContext.userMetadata should be(UserMetadata.empty)
-          blockContext.indices should be(Set.empty)
+          blockContext.filteredIndices should be(Set.empty)
           blockContext.contextHeaders should be(Set.empty)
           blockContext.responseHeaders should be(Set.empty)
       }
@@ -143,7 +143,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty))))) ::
             passingRule("r2") ::
-            passingRule("r3", _.withIndices(Set(IndexName("idx1".nonempty)))) ::
+            passingRule("r3", _.withIndices(Set(IndexName("idx1".nonempty)), Set(IndexName("idx*".nonempty)))) ::
             Nil
         )
       )
@@ -165,7 +165,8 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
               .empty
               .withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))
           )
-          blockContext.indices should be(Set(IndexName("idx1".nonempty)))
+          blockContext.filteredIndices should be(Set(IndexName("idx1".nonempty)))
+          blockContext.allAllowedIndices should be(Set(IndexName("idx*".nonempty)))
           blockContext.contextHeaders should be(Set.empty)
           blockContext.responseHeaders should be(Set.empty)
       }

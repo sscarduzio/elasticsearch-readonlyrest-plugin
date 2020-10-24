@@ -48,8 +48,8 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
     sqlIndices.indices.flatMap(IndexName.fromString)
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                indices: NonEmptyList[IndexName]): ModificationResult = {
-    val indicesStrings = indices.map(_.value.value).toList.toSet
+                                filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    val indicesStrings = filteredIndices.map(_.value.value).toList.toSet
     if (indicesStrings != sqlIndices.indices) {
       SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings) match {
         case Success(_) =>

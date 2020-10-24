@@ -29,7 +29,7 @@ import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.common.xcontent.XContentType
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.boot.Ror
+import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.IndexJsonContentService._
 
@@ -65,7 +65,7 @@ class EsIndexJsonContentService(client: NodeClient,
             Right(Maps.newHashMap[String, AnyRef]())
         }
       }
-      .executeOn(Ror.blockingScheduler)
+      .executeOn(RorSchedulers.blockingScheduler)
       .onErrorRecover {
         case _: ResourceNotFoundException => Left(ContentNotFound)
         case ex =>
@@ -100,7 +100,7 @@ class EsIndexJsonContentService(client: NodeClient,
             Left(CannotWriteToIndex)
         }
       }
-      .executeOn(Ror.blockingScheduler)
+      .executeOn(RorSchedulers.blockingScheduler)
       .onErrorRecover {
         case ex =>
           logger.error(s"Cannot write to document [${index.show} ID=$id]", ex)
