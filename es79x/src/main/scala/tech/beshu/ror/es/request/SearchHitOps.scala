@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.utils.ReflecUtils
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 object SearchHitOps {
 
@@ -40,11 +41,7 @@ object SearchHitOps {
     }
 
     def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions): SearchHit = {
-      val documentFields = Option(ReflecUtils.getField(searchHit, searchHit.getClass, "documentFields"))
-        .collect {
-          case fieldsMap: util.Map[String, DocumentField] => fieldsMap
-        }
-        .getOrElse(throw new IllegalStateException("Could not access document fields in search hit."))
+      val documentFields = extractDocumentFields(searchHit)
 
       Option(documentFields)
         .map(fields => FieldsFiltering.NonMetadataDocumentFields(fields.asScala.toMap))
@@ -56,5 +53,13 @@ object SearchHitOps {
         }
       searchHit
     }
+  }
+
+  private def extractDocumentFields(searchHit: SearchHit) = {
+    Try {
+      ReflecUtils.getField(searchHit, searchHit.getClass, "documentFields")
+        .asInstanceOf[util.Map[String, DocumentField]]
+    }
+      .getOrElse(throw new IllegalStateException("Could not access document fields in search hit."))
   }
 }
