@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.fields.FieldRuleGetApiSuite
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSearchApiSourceFilteringSuite
 import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
 
-class FieldRuleGetApiPluginTests extends FieldRuleGetApiSuite with SingletonPluginTestSupport
+class FieldRuleSourceFilteringSearchApiPluginTests extends FieldRuleSearchApiSourceFilteringSuite with SingletonPluginTestSupport

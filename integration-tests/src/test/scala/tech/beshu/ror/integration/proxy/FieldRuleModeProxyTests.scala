@@ -14,9 +14,9 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.proxy
 
-import tech.beshu.ror.integration.suites.fields.FieldRuleSearchApiSuite
-import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import tech.beshu.ror.integration.suites.fields.mode.FieldRuleModeSuite
+import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
 
-class FieldRuleSearchApiPluginTests extends FieldRuleSearchApiSuite with SingletonPluginTestSupport
+class FieldRuleModeProxyTests extends FieldRuleModeSuite with BasicClusterProxyTestSupport

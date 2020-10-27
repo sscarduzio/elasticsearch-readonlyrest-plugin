@@ -14,19 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites.fields
+package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.integration.suites.fields.FieldRuleSuite.ClientSourceOptions
-import tech.beshu.ror.integration.suites.fields.FieldRuleSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldRuleSuite
+trait FieldRuleSourceFilteringSuite
   extends WordSpec
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
@@ -35,7 +35,7 @@ trait FieldRuleSuite
 
   override implicit val rorConfigFileName = "/field_level_security/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(FieldRuleSuite.nodeDataInitializer())
+  override def nodeDataInitializer = Some(FieldRuleSourceFilteringSuite.nodeDataInitializer())
 
   protected def fetchDocument(client: RestClient,
                               index: String,
@@ -382,7 +382,7 @@ trait FieldRuleSuite
   }
 }
 
-object FieldRuleSuite {
+object FieldRuleSourceFilteringSuite {
 
   sealed trait ClientSourceOptions
 

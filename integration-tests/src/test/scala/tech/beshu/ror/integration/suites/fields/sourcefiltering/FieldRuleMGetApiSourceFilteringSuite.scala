@@ -14,24 +14,24 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites.fields
+package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
-import tech.beshu.ror.integration.suites.fields.FieldRuleSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.elasticsearch.DocumentManager.MGetResult
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldRuleMGetApiSuite
-  extends FieldRuleSuite {
+trait FieldRuleMGetApiSourceFilteringSuite
+  extends FieldRuleSourceFilteringSuite {
   this: EsContainerCreator =>
 
   override protected type CALL_RESULT = MGetResult
 
   override protected def fetchDocument(client: RestClient,
                                        index: String,
-                                       clientSourceParams: Option[FieldRuleSuite.ClientSourceOptions]): MGetResult = {
+                                       clientSourceParams: Option[FieldRuleSourceFilteringSuite.ClientSourceOptions]): MGetResult = {
     val documentManager = new DocumentManager(client, targetEs.esVersion)
 
     val queryParams = clientSourceParams match {

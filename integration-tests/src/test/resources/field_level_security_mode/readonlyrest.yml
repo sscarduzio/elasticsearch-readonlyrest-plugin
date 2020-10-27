@@ -1,0 +1,32 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      auth_key: admin:container
+      verbosity: error
+
+    - name: fls_mode_default
+      auth_key: "user1:pass"
+      fields: ["_source","allowedField"]
+
+    - name: fls_mode_hybrid_explicit
+      auth_key: "user2:pass"
+      fields: ["_source","allowedField"]
+      fields_mode: "hybrid"
+
+    - name: fls_mode_legacy_explicit
+      auth_key: "user3:pass"
+      fields: ["_source","allowedField"]
+      fields_mode: "legacy"
+
+    - name: fls_mode_proxy_explicit
+      auth_key: "user4:pass"
+      fields: ["_source","allowedField"]
+      fields_mode: "proxy"

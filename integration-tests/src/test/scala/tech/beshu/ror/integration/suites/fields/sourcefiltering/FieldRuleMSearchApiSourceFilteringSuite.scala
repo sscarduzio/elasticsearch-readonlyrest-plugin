@@ -14,25 +14,25 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites.fields
+package tech.beshu.ror.integration.suites.fields.sourcefiltering
 
 import org.scalatest.Matchers._
-import tech.beshu.ror.integration.suites.fields.FieldRuleSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSourceFilteringSuite.ClientSourceOptions.{DoNotFetchSource, Exclude, Include}
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.SearchManager
-import tech.beshu.ror.utils.elasticsearch.SearchManager.SearchResult
+import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldRuleSearchApiSuite
-  extends FieldRuleSuite {
+trait FieldRuleMSearchApiSourceFilteringSuite
+  extends FieldRuleSourceFilteringSuite {
   this: EsContainerCreator =>
 
-  override protected type CALL_RESULT = SearchResult
+  override protected type CALL_RESULT = MSearchResult
 
   override protected def fetchDocument(client: RestClient,
                                        index: String,
-                                       clientSourceParams: Option[FieldRuleSuite.ClientSourceOptions]): SearchResult = {
+                                       clientSourceParams: Option[FieldRuleSourceFilteringSuite.ClientSourceOptions]): MSearchResult = {
     val searchManager = new SearchManager(client)
 
     val query = clientSourceParams match {
@@ -42,34 +42,29 @@ trait FieldRuleSearchApiSuite
       case None => """{}"""
     }
 
-    searchManager.search(index, ujson.read(query))
+    searchManager.mSearch(s"""{"index":"$index"}""", query)
   }
 
-  override protected def sourceOfFirstDoc(result: SearchResult): Option[JSON] = {
-    result.searchHits(0).obj.get("_source")
+  override protected def sourceOfFirstDoc(result: MSearchResult): Option[JSON] = {
+    val hits = result.searchHitsForResponse(0)
+    hits(0).obj.get("_source")
   }
 
   "docvalue with not-allowed field in search request is used" in {
     val searchManager = new SearchManager(basicAuthClient("user1", "pass"))
 
-    val query = ujson.read(
-      """
-        |{
-        |  "docvalue_fields": ["counter"]
-        |}
-        |""".stripMargin
-    )
+    val query = """{"docvalue_fields": ["counter"]}"""
 
-    val result = searchManager.search("testfiltera", query)
+    val result = searchManager.mSearch("""{"index":"testfiltera"}""", query)
 
     result.responseCode shouldBe 200
-
+    result.responses.size shouldBe 1
     sourceOfFirstDoc(result) shouldBe Some(ujson.read(
       """|{
          | "user1": "user1Value"
-         |}""".stripMargin
-    ))
+         |}""".stripMargin))
 
-    result.searchHits(0).obj.get("fields") shouldBe None
+    val hits = result.searchHitsForResponse(0)
+    hits(0).obj.get("fields") should be(None)
   }
 }

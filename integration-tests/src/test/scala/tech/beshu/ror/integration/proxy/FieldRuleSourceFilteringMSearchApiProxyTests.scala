@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.proxy
 
+import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleMSearchApiSourceFilteringSuite
+import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
 
-// todo: enable when proxy supports fields rule
-//class FieldLevelSecurityProxyTests extends FieldLevelSecuritySuite with BasicClusterProxyTestSupport
+class FieldRuleSourceFilteringMSearchApiProxyTests extends FieldRuleMSearchApiSourceFilteringSuite with BasicClusterProxyTestSupport
