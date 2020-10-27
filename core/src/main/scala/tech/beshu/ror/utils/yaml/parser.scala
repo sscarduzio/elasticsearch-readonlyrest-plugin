@@ -93,12 +93,8 @@ object parser {
     } else {
       node match {
         case mapping: MappingNode =>
-          val duplicatedKeyOrEmptyJson = mapping.getValue.asScala.foldLeft(Set[String]().asRight[ParsingFailure]) {
-            (acc, tuple) =>
-              acc.flatMap { keys =>
-                findDuplicatedKey(tuple, keys)
-              }
-          }
+          val duplicatedKeyOrEmptyJson = mapping.getValue.asScala
+            .foldLeft(Set[String]().asRight[ParsingFailure])(findDuplicatedKey)
             .map(_ => JsonObject.empty)
           flattener.flatten(mapping).getValue.asScala
             .foldLeft(duplicatedKeyOrEmptyJson) {
@@ -122,12 +118,15 @@ object parser {
     }
   }
 
-  private def findDuplicatedKey(tuple: NodeTuple, keys: Set[String]) = {
-    val key = convertKeyNode(tuple.getKeyNode).right.get
-    if (keys contains key)
-      ParsingFailure(s"Duplicated key: '$key'", DuplicatedKeyException(key)).asLeft
-    else
-      (keys + key).asRight
+  private def findDuplicatedKey(acc: Either[ParsingFailure, Set[String]],
+                                tuple: NodeTuple) = {
+    acc.flatMap { keys =>
+      val key = convertKeyNode(tuple.getKeyNode).right.get
+      if (keys contains key)
+        ParsingFailure(s"Duplicated key: '$key'", DuplicatedKeyException(key)).asLeft
+      else
+        (keys + key).asRight
+    }
   }
 
   private def convertKeyNode(node: Node) = node match {
@@ -138,7 +137,5 @@ object parser {
   }
 
   final case class YamlParserException(message: String) extends Exception
-
   final case class DuplicatedKeyException(key: String) extends Exception
-
 }
