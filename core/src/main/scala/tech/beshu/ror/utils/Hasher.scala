@@ -31,7 +31,7 @@ object Hasher {
 
   object Sha1 extends Hasher {
     override def hashString(input: String): String = {
-      Hashing.sha1().hashString(input, Charset.defaultCharset).toString
+      SuppressSha1Deprecation.sha1().hashString(input, Charset.defaultCharset).toString
     }
   }
 
