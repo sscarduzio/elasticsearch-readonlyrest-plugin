@@ -56,7 +56,6 @@ object SearchHitOps {
       metadataFields ++ filteredDocumentFields
     }
 
-
     private def partitionFieldsByMetadata(fields: Map[String, SearchHitField]) = {
       fields.partition {
         case t if t._2.isMetadataField => true

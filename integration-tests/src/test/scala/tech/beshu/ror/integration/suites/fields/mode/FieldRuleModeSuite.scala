@@ -59,7 +59,7 @@ trait FieldRuleModeSuite
     }
     "explicit 'legacy' FLS mode is used" should {
       "match and return filtered document source with fallback to lucene regardless of passed query" when {
-        "modifiable at ES level query using not allowed field is passed in request" in {
+        "modifiable at ES level query using not allowed field is passed in request" excludeES "proxy" in {
           assertNoSearchHitsReturnedFor("user3", modifiableAtEsLevelQuery)
         }
         "unmodifiable at ES level query using not allowed field is passed in request" excludeES "proxy" in {

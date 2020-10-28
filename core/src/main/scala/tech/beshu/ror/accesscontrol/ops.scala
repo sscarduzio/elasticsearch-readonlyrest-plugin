@@ -180,8 +180,8 @@ object show {
 
     implicit val flsStrategyShow: Show[FieldLevelSecurity] = Show.show[FieldLevelSecurity] { fls =>
       fls.strategy match {
-        case Strategy.FlsAtLuceneLevelApproach => "fls_at_lucene_level"
-        case Strategy.BasedOnBlockContextOnly.EverythingAllowed => "fls_at_es_level"
+        case Strategy.FlsAtLuceneLevelApproach => "[strategy: fls_at_lucene_level]"
+        case Strategy.BasedOnBlockContextOnly.EverythingAllowed => "[strategy: fls_at_es_level]"
         case Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(fields) => s"[strategy: fls_at_es_level, ${showNonEmptyList("not_allowed_fields_used", fields)}]"
       }
     }

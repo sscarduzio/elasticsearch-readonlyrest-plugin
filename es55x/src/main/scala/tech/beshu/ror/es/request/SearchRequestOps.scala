@@ -97,7 +97,6 @@ object SearchRequestOps extends Logging {
       request
     }
 
-
     private def checkQueryFields(): RequestFieldsUsage = {
       Option(request.source().query())
         .map(_.fieldsUsage)
