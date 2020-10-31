@@ -5,6 +5,10 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
+  audit_collector: true
+  audit_index_template: "'audit_index'"
+  audit_serializer: "tech.beshu.ror.requestcontext.QueryAuditLogSerializer"
+
   access_control_rules:
 
     # ES containter initializer need this rule to configure ES instance after startup
@@ -41,6 +45,11 @@ readonlyrest:
       kibana_index: "user4_group5_kibana_index"
       groups: [group5]
 
+    - name: "Allowed only for group1"
+      groups: [group1]
+      type: allow
+      indices: ["*"]
+
     - name: "User 4 - index2"
       users: ["user4"]
       actions: ["cluster:admin/rradmin/refreshsettings"]
@@ -61,3 +70,14 @@ readonlyrest:
     - username: user4
       groups: ["group5", "group6"]
       auth_key: "user4:pass"
+
+    - username: user1-proxy-id
+      groups: ["group1"]
+      proxy_auth:
+        proxy_auth_config: "proxy1"
+        users: ["user1-proxy-id"]
+
+  proxy_auth_configs:
+
+    - name: "proxy1"
+      user_id_header: "X-Auth-Token"

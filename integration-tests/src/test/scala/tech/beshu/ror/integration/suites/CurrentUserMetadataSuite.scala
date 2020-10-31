@@ -21,7 +21,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.RorApiManager
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, RorApiManager}
 import ujson.Str
 
 trait CurrentUserMetadataSuite
@@ -30,10 +30,31 @@ trait CurrentUserMetadataSuite
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/current_user_metadata/readonlyrest.yml"
+  private lazy val auditIndexManager = new AuditIndexManagerJ(basicAuthClient("admin", "container"), "audit_index")
 
   "An ACL" when {
     "handling current user metadata kibana plugin request" should {
       "allow to proceed" when {
+        "using proxy auth" in {
+          val user1MetadataManager = new RorApiManager(authHeader("X-Auth-Token","user1-proxy-id"))
+
+          val result = user1MetadataManager.fetchMetadata()
+
+          assertEquals(200, result.responseCode)
+          result.responseJson.obj.size should be(3)
+          result.responseJson("x-ror-username").str should be("user1-proxy-id")
+          result.responseJson("x-ror-current-group").str should be("group1")
+          result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
+
+          val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+          auditEntries.size shouldBe 1
+
+          val firstEntry = auditEntries.get(0)
+          firstEntry.get("user") should be ("user1-proxy-id")
+          firstEntry.get("final_state") shouldBe "ALLOWED"
+          firstEntry.get("block").asInstanceOf[String].contains("""name: 'Allowed only for group1'""") shouldBe true
+          firstEntry.get("content") shouldBe ""
+        }
         "several blocks are matched" in {
           val user1MetadataManager = new RorApiManager(basicAuthClient("user1", "pass"))
 

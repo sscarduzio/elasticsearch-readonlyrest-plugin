@@ -55,21 +55,21 @@ class AuditingTool(settings: Settings,
     responseContext match {
       case allowedBy: ResponseContext.AllowedBy[B] =>
         AuditResponseContext.Allowed(
-          toAuditRequestContext(allowedBy.requestContext, Some(allowedBy.blockContext), allowedBy.history),
-          toAuditVerbosity(allowedBy.block.verbosity),
-          allowedBy.block.show
+          requestContext = toAuditRequestContext(allowedBy.requestContext, Some(allowedBy.blockContext), allowedBy.history),
+          verbosity = toAuditVerbosity(allowedBy.block.verbosity),
+          reason = allowedBy.block.show
         )
       case allow: ResponseContext.Allow[B] =>
         AuditResponseContext.Allowed(
-          toAuditRequestContext(allow.requestContext, None, allow.history),
-          toAuditVerbosity(Block.Verbosity.Info),
-          allow.block.show
+          requestContext = toAuditRequestContext(allow.requestContext, allow.history.collectFirst { case History(allow.block.name, _, blockContext) => blockContext }, allow.history),
+          verbosity = toAuditVerbosity(Block.Verbosity.Info),
+          reason = allow.block.show
         )
       case forbiddenBy: ResponseContext.ForbiddenBy[B] =>
         AuditResponseContext.ForbiddenBy(
-          toAuditRequestContext(forbiddenBy.requestContext, Some(forbiddenBy.blockContext), forbiddenBy.history),
-          toAuditVerbosity(forbiddenBy.block.verbosity),
-          forbiddenBy.block.show
+          requestContext = toAuditRequestContext(forbiddenBy.requestContext, Some(forbiddenBy.blockContext), forbiddenBy.history),
+          verbosity = toAuditVerbosity(forbiddenBy.block.verbosity),
+          reason = forbiddenBy.block.show
         )
       case forbidden: ResponseContext.Forbidden[B] =>
         AuditResponseContext.Forbidden(toAuditRequestContext(forbidden.requestContext, None, forbidden.history))

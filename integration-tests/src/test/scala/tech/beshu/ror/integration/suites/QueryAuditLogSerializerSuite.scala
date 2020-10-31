@@ -60,6 +60,7 @@ trait QueryAuditLogSerializerSuite
         auditEntries.size shouldBe 1
 
         val firstEntry = auditEntries.get(0)
+        firstEntry.get("user") should be ("user")
         firstEntry.get("final_state") shouldBe "ALLOWED"
         firstEntry.get("block").asInstanceOf[String].contains("name: 'Rule 1'") shouldBe true
         firstEntry.get("content") shouldBe ""
