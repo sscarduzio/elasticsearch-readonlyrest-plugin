@@ -73,6 +73,7 @@ object domain {
       val cookie = Name(NonEmptyString.unsafeFrom("Cookie"))
       val setCookie = Name(NonEmptyString.unsafeFrom("Set-Cookie"))
       val transientFields = Name(NonEmptyString.unsafeFrom(Constants.FIELDS_TRANSIENT))
+      val transientResponseFields = Name(NonEmptyString.unsafeFrom(Constants.RESPONSE_FIELDS_TRANSIENT))
       val currentGroup = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUP_CURRENT))
       val availableGroups = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUPS_AVAILABLE))
       val userAgent = Name(NonEmptyString.unsafeFrom("User-Agent"))

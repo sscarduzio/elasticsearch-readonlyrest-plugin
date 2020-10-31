@@ -70,6 +70,7 @@ object VariableContext {
     implicit val externalAuthenticationRule: VariableUsage[ExternalAuthenticationRule] = NotUsingVariable
     implicit val externalAuthorizationRule: VariableUsage[ExternalAuthorizationRule] = NotUsingVariable
     implicit val fieldsRule: VariableUsage[FieldsRule] = NotUsingVariable
+    implicit val responseFieldsRule: VariableUsage[ResponseFieldsRule] = NotUsingVariable
     implicit val headersAndRule: VariableUsage[HeadersAndRule] = NotUsingVariable
     implicit val headersOrRule: VariableUsage[HeadersOrRule] = NotUsingVariable
     implicit val jwtAuthRule: VariableUsage[JwtAuthRule] = NotUsingVariable

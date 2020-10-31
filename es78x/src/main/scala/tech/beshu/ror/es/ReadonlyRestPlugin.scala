@@ -20,6 +20,7 @@ import java.nio.file.Path
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
 
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
 import org.elasticsearch.ElasticsearchException
@@ -37,7 +38,11 @@ import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings._
 import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.{BigArrays, PageCacheRecycler}
-import org.elasticsearch.common.xcontent.NamedXContentRegistry
+import org.elasticsearch.common.xcontent.cbor.CborXContent
+import org.elasticsearch.common.xcontent.json.JsonXContent
+import org.elasticsearch.common.xcontent.smile.SmileXContent
+import org.elasticsearch.common.xcontent.yaml.YamlXContent
+import org.elasticsearch.common.xcontent.{DeprecationHandler, LoggingDeprecationHandler, NamedXContentRegistry, XContentBuilder, XContentParser, XContentType}
 import org.elasticsearch.env.{Environment, NodeEnvironment}
 import org.elasticsearch.http.HttpServerTransport
 import org.elasticsearch.index.IndexModule
@@ -46,18 +51,20 @@ import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
 import org.elasticsearch.repositories.RepositoriesService
-import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
+import org.elasticsearch.rest.{AbstractRestChannel, BytesRestResponse, RestChannel, RestController, RestHandler, RestRequest, RestResponse}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.headerValues.transientFieldsFromHeaderValue
 import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminActionType, TransportRRAdminAction}
-import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
+import tech.beshu.ror.es.dlsfls.{DocumentFieldReader, RoleIndexSearcherWrapper}
 import tech.beshu.ror.es.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.rrconfig.{RRConfigAction, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
@@ -65,10 +72,13 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper.logger
+import tech.beshu.ror.es.request.RestChannelFilteringDecorator
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.{Failure, Success, Try}
 
 @Inject
 class ReadonlyRestPlugin(s: Settings, p: Path)
@@ -208,8 +218,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
     restHandler: RestHandler =>
       (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-        ThreadRepo.setRestChannel(channel)
-        restHandler.handleRequest(request, channel, client)
+        val filteredRestChannel = new RestChannelFilteringDecorator(channel, request, threadContext, false)
+        ThreadRepo.setRestChannel(filteredRestChannel)
+        restHandler.handleRequest(request, filteredRestChannel, client)
       }
   }
 
