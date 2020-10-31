@@ -61,7 +61,7 @@ class AuditingTool(settings: Settings,
         )
       case allow: ResponseContext.Allow[B] =>
         AuditResponseContext.Allowed(
-          requestContext = toAuditRequestContext(allow.requestContext, allow.history.collectFirst { case History(allow.block.name, _, blockContext) => blockContext }, allow.history),
+          requestContext = toAuditRequestContext(allow.requestContext, allow.blockContext.some, allow.history),
           verbosity = toAuditVerbosity(Block.Verbosity.Info),
           reason = allow.block.show
         )

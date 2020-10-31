@@ -24,7 +24,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
-import tech.beshu.ror.accesscontrol.blocks.Block.Verbosity
+import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -39,7 +39,7 @@ import scala.util.{Failure, Success}
 
 class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool: Option[AuditingTool])
                                    (implicit loggingContext: LoggingContext,
-                                   scheduler: Scheduler)
+                                    scheduler: Scheduler)
   extends AccessControl with Logging {
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {
@@ -76,8 +76,9 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       .andThen {
         case Success(resultWithHistory) =>
           resultWithHistory.result match {
-            case UserMetadataRequestResult.Allow(userMetadata, block) =>
-              log(Allow(requestContext, userMetadata, block, resultWithHistory.history))
+            case UserMetadataRequestResult.Allow(_, block) =>
+              val blockContext = resultWithHistory.history.collectFirst(matchingBlockContext(block.name)).get
+              log(Allow(requestContext, block, blockContext, resultWithHistory.history))
             case UserMetadataRequestResult.Forbidden =>
               log(Forbidden(requestContext, resultWithHistory.history))
             case UserMetadataRequestResult.PassedThrough =>
@@ -86,6 +87,10 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
         case Failure(ex) =>
           logger.error("Request handling unexpected failure", ex)
       }
+  }
+
+  private def matchingBlockContext[B <: BlockContext](blockName: Block.Name): PartialFunction[History[B], B] = {
+    case History(`blockName`, _, blockContext) => blockContext
   }
 
   private def log[B <: BlockContext](responseContext: ResponseContext[B]): Unit = {
@@ -135,7 +140,7 @@ object AccessControlLoggingDecorator {
         s"""${Constants.ANSI_CYAN}ALLOWED by ${allowedBy.block.show} req=${allowedBy.requestContext.show}${Constants.ANSI_RESET}"""
       case allow: Allow[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(
-          allow.userMetadata.loggedUser, allow.userMetadata.kibanaIndex, allow.history
+          allow.blockContext.userMetadata.loggedUser, allow.blockContext.userMetadata.kibanaIndex, allow.history
         )
         s"""${Constants.ANSI_CYAN}ALLOWED by ${allow.block.show} req=${allow.requestContext.show}${Constants.ANSI_RESET}"""
       case forbiddenBy: ForbiddenBy[B] =>

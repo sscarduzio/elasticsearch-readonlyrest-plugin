@@ -30,8 +30,8 @@ object ResponseContext {
     extends ResponseContext[B]
 
   final case class Allow[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                            userMetadata: UserMetadata,
                                             block: Block,
+                                            blockContext: B,
                                             history: Vector[Block.History[B]])
     extends ResponseContext[B]
 
