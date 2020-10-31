@@ -88,7 +88,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
         builder
           .user("elasticsearch")
-          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts ) asJava)
+          .env(config.envs + ("ES_JAVA_OPTS" -> javaOpts) asJava)
 
         install(builder, config)
 
