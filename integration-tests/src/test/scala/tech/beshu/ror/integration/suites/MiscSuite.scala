@@ -51,36 +51,37 @@ trait MiscSuite
     esVersion = targetEs.esVersion)
   private lazy val dev1IndexManager = new IndexManager(basicAuthClient("admin", "container"))
 
-//  "An x_forwarded_for" should {
-//    "block the request because hostname is not resolvable" in {
-//      val response = userClusterStateManager.healthCheck()
-//
-//      response.responseCode should be(401)
-//    }
-//  }
-//  "Warning response header" should {
-//    "be exposed in ror response" excludeES(allEs5x, allEs6x, rorProxy) in {
-//      // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
-//      // proxy cares waring printing it in logs, and it's not passed to ror.
-//      val indexResponse = dev1IndexManager.getIndex("index1" :: Nil, Map("include_type_name" -> "true"))
-//
-//      indexResponse.responseCode should be(200)
-//      val warningHeader = indexResponse.headers.collectFirst { case SimpleHeader("Warning", value) => value }.get
-//      warningHeader should include("[types removal] Using `include_type_name` in get indices requests is deprecated. The parameter will be removed in the next major version.")
-//    }
-//  }
-//  "JWT auth and filter variable case" in {
-//    val searchManager = new SearchManager(tokenAuthClient(
-//      """Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwidXNlcklkIjoidXNlcjUiLCJ1c2VyX2lkX2xpc3QiOlsiYWxpY2UiLCJib2IiXX0.aPtoDBPTVhtLPmwSKO6g41NEs7qhEeDG53e4aeHMQ66avoBblkUuDYBB2nFlQCxi90lfwXRzdkFYvjhtqijBP98uz6-bs8HmlfOG6_DoZRlWy5FLtdAS7F7UReqKtQ36KjNI7-YJtSTyaiDwymXPxiP44e4jJ3kJy1yx7r3ALmX7wbys1JGrUTddWQW0GWY8p2bf-hpmUmuu8AUGjfIOqYBBFWLT-NyuTYTMGUZlF8yxoBlp8twMVrqqT6ejLRQwgVxIoFL1g04uMwXUDit2dCzk5qTMAim3U-8Cgol7gi_yR-23BPY_pOejK9QPseXhpKQ9sW7v_jnLMuaI86jLhA"""
-//    ))
-//    val result = searchManager.search(
-//      ujson.read("""{"query": {"terms":{"user_id": ["alice", "bob"]}}}""")
-//    )
-//
-//    result.responseCode should be(200)
-//    result.searchHits.size should be(1)
-//    result.searchHits(0)("_source")("user_id").str should be("alice")
-//  }
+  "An x_forwarded_for" should {
+    "block the request because hostname is not resolvable" in {
+      val response = userClusterStateManager.healthCheck()
+
+      response.responseCode should be(401)
+    }
+  }
+  "Warning response header" should {
+    "be exposed in ror response" excludeES(allEs5x, allEs6x, rorProxy) in {
+      // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
+      // proxy cares waring printing it in logs, and it's not passed to ror.
+      val indexResponse = dev1IndexManager.getIndex("index1" :: Nil, Map("include_type_name" -> "true"))
+
+      indexResponse.responseCode should be(200)
+      val warningHeader = indexResponse.headers.collectFirst { case SimpleHeader("Warning", value) => value }.get
+      warningHeader should include("[types removal] Using `include_type_name` in get indices requests is deprecated. The parameter will be removed in the next major version.")
+    }
+  }
+  "JWT auth and filter variable case" in {
+    val searchManager = new SearchManager(tokenAuthClient(
+      """Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwidXNlcklkIjoidXNlcjUiLCJ1c2VyX2lkX2xpc3QiOlsiYWxpY2UiLCJib2IiXX0.aPtoDBPTVhtLPmwSKO6g41NEs7qhEeDG53e4aeHMQ66avoBblkUuDYBB2nFlQCxi90lfwXRzdkFYvjhtqijBP98uz6-bs8HmlfOG6_DoZRlWy5FLtdAS7F7UReqKtQ36KjNI7-YJtSTyaiDwymXPxiP44e4jJ3kJy1yx7r3ALmX7wbys1JGrUTddWQW0GWY8p2bf-hpmUmuu8AUGjfIOqYBBFWLT-NyuTYTMGUZlF8yxoBlp8twMVrqqT6ejLRQwgVxIoFL1g04uMwXUDit2dCzk5qTMAim3U-8Cgol7gi_yR-23BPY_pOejK9QPseXhpKQ9sW7v_jnLMuaI86jLhA"""
+    ))
+    val result = searchManager.search(
+      ujson.read("""{"query": {"terms":{"user_id": ["alice", "bob"]}}}""")
+    )
+
+    result.responseCode should be(200)
+    result.searchHits.size should be(1)
+    result.searchHits(0)("_source")("user_id").str should be("alice")
+  }
+
   "Cluster health response using response_fields rule should be filtered" in {
     val dev1ClusterStateManager = new ClusterManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esTargets.head.esVersion)
     val healthCheck = dev1ClusterStateManager.health()
