@@ -111,7 +111,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
         }
     }) map { case (maybeGroup, Matched(block, blockContext)) =>
       val allGroups = UniqueList.fromList(allGroupsWithRelatedResults.map(_._1))
-      val userMetadata = createUserMetadata(blockContext, maybeGroup, allGroups)
+      val userMetadata = updateUserMetadataGroups(blockContext, maybeGroup, allGroups)
       (userMetadata, block)
     }
   }
@@ -127,9 +127,9 @@ class AccessControlList(val blocks: NonEmptyList[Block])
 
   private def someFirst[A, B](t: (A, B)): (Some[A], B) = (Some(t._1), t._2)
 
-  private def createUserMetadata(blockContext: CurrentUserMetadataRequestBlockContext,
-                                 currentGroup: Option[Group],
-                                 availableGroups: UniqueList[Group]) = {
+  private def updateUserMetadataGroups(blockContext: CurrentUserMetadataRequestBlockContext,
+                                       currentGroup: Option[Group],
+                                       availableGroups: UniqueList[Group]) = {
     currentGroup
       .foldLeft(blockContext.userMetadata.withAvailableGroups(availableGroups)) {
         case (userMetadata, group) => userMetadata.withCurrentGroup(group)
