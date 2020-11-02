@@ -25,9 +25,9 @@ import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.es.rradmin.RRAdminRequest
+import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 
-class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
+class CurrentUserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
                                           esContext: EsContext,
                                           clusterService: RorClusterService,
                                           override val threadPool: ThreadPool)

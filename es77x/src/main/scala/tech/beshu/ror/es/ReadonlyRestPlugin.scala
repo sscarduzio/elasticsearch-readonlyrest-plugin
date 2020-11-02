@@ -54,11 +54,11 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.configuration.RorSsl
-import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
-import tech.beshu.ror.es.rradmin.{RRAdminActionType, TransportRRAdminAction}
+import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
+import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
-import tech.beshu.ror.es.rrconfig.rest.RestRRConfigAction
-import tech.beshu.ror.es.rrconfig.{RRConfigAction, TransportRRConfigAction}
+import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
+import tech.beshu.ror.es.actions.rrconfig.{RRConfigAction, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo

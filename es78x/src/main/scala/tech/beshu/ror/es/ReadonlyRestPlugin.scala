@@ -55,16 +55,18 @@ import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
 import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.configuration.RorSsl
-import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
-import tech.beshu.ror.es.rradmin.{RRAdminActionType, TransportRRAdminAction}
+import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
+import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
-import tech.beshu.ror.es.rrconfig.rest.RestRRConfigAction
-import tech.beshu.ror.es.rrconfig.{RRConfigAction, TransportRRConfigAction}
+import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
+import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
+import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -188,7 +190,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
-      new ActionHandler(RRConfigAction.instance, classOf[TransportRRConfigAction]),
+      new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
+      new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
     ).asJava
   }
 
@@ -202,6 +205,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
     List[RestHandler](
       new RestRRAdminAction(),
       new RestRRConfigAction(nodesInCluster),
+      new RestRRUserMetadataAction(),
     ).asJava
   }
 

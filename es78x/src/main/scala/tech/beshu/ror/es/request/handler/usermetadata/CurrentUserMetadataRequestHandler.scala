@@ -20,10 +20,12 @@ import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
-import org.elasticsearch.threadpool.ThreadPool
+import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.common.io.stream.StreamOutput
+import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -31,11 +33,11 @@ import tech.beshu.ror.es.request.context.EsRequest
 import tech.beshu.ror.es.request.{ForbiddenResponse, RorNotAvailableResponse}
 import tech.beshu.ror.utils.LoggerOps._
 
+import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
 
 class CurrentUserMetadataRequestHandler(engine: Engine,
-                                        esContext: EsContext,
-                                        threadPool: ThreadPool)
+                                        esContext: EsContext)
                                        (implicit scheduler: Scheduler)
   extends Logging {
 
@@ -65,8 +67,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def onAllow(requestContext: RequestContext, userMetadata: UserMetadata): Unit = {
-    val responseActionListener = new CurrentUserMetadataResponseActionListener(requestContext, esContext.listener, userMetadata)
-    esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, responseActionListener)
+    esContext.listener.onResponse(new RRMetadataResponse(userMetadata))
   }
 
   private def onForbidden(): Unit = {
@@ -75,4 +76,16 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
 
   private def onPassThrough(): Unit =
     esContext.channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(esContext.channel))
+}
+
+private class RRMetadataResponse(userMetadata: UserMetadata)
+  extends ActionResponse with ToXContentObject {
+
+  override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
+    val sourceMap: Map[String, _] = MetadataValue.read(userMetadata).mapValues(MetadataValue.toAny)
+    builder.map(sourceMap.asJava)
+    builder
+  }
+
+  override def writeTo(out: StreamOutput): Unit = ()
 }

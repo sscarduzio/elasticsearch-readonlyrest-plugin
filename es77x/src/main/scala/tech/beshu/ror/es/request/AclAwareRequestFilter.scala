@@ -58,7 +58,7 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.handler.usermetadata.CurrentUserMetadataRequestHandler
-import tech.beshu.ror.es.rradmin.RRAdminRequest
+import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.{RorClusterService, RorRestChannel}
 
 import scala.language.postfixOps
