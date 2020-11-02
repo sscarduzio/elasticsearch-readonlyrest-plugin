@@ -37,10 +37,10 @@ import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
+import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig, RorConfigurationIndex}
-import tech.beshu.ror.configuration._
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value
@@ -48,7 +48,8 @@ import tech.beshu.ror.utils.ScalaOps.value
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
-class Ror(override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
+class Ror(mode: RorMode,
+          override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
           override val propertiesProvider: PropertiesProvider = JvmPropertiesProvider)
          (implicit override val scheduler: Scheduler)
   extends ReadonlyRest {
@@ -58,7 +59,7 @@ class Ror(override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
   override protected lazy val coreFactory: CoreFactory = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val envVarsProviderImplicit: EnvVarsProvider = envVarsProvider
-    new RawRorConfigBasedCoreFactory
+    new RawRorConfigBasedCoreFactory(mode)
   }
 }
 
@@ -439,6 +440,13 @@ object RorInstance {
 }
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
+
+sealed trait RorMode
+
+object RorMode {
+  case object Plugin extends RorMode
+  case object Proxy extends RorMode
+}
 
 final class Engine(val accessControl: AccessControl,
                    val context: AccessControlStaticContext,

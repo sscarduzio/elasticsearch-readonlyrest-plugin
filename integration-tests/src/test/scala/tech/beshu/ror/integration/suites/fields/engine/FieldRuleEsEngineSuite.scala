@@ -14,9 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.integration.suites.fields.engine
 
-import tech.beshu.ror.integration.suites.fields.mode.FieldRuleModeSuite
-import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+import org.scalatest.Assertion
+import tech.beshu.ror.utils.containers.EsContainerCreator
 
-class FieldRuleModePluginTests extends FieldRuleModeSuite with SingletonPluginTestSupport
+trait FieldRuleEsEngineSuite extends FieldRuleEngineSuite {
+  this: EsContainerCreator =>
+
+  override implicit val rorConfigFileName = "/field_level_security_engine/readonlyrest_fls_engine_es.yml"
+
+  protected def unmodifableQueryAssertion(user: String, query: String): Assertion =
+    assertOperationNotAllowed(user, query)
+}

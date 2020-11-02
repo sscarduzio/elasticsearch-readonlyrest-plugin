@@ -21,6 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 
 trait AccessControlStaticContext {
   def involvesFields: Boolean
@@ -30,11 +31,11 @@ trait AccessControlStaticContext {
 }
 
 class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
-                                        showBasicAuthPrompt: Boolean,
-                                        val forbiddenRequestMessage: String,
-                                        override val obfuscatedHeaders: Set[Header.Name],
-                                       )
+                                        globalSettings: GlobalSettings,
+                                        override val obfuscatedHeaders: Set[Header.Name])
   extends AccessControlStaticContext {
+
+  override val forbiddenRequestMessage: String = globalSettings.forbiddenRequestMessage
 
   val involvesFields: Boolean = {
     blocks
@@ -46,7 +47,7 @@ class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
   }
 
   val doesRequirePassword: Boolean = {
-    showBasicAuthPrompt &&
+    globalSettings.showBasicAuthPrompt &&
       blocks
         .find(_
           .rules

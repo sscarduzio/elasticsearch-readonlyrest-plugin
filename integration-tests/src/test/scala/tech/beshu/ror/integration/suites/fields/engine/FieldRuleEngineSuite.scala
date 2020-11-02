@@ -14,68 +14,39 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.suites.fields.mode
+package tech.beshu.ror.integration.suites.fields.engine
 
 import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.{Assertion, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait FieldRuleModeSuite
+trait FieldRuleEngineSuite
   extends WordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupport {
   this: EsContainerCreator =>
 
-  import FieldRuleModeSuite.QueriesUsingNotAllowedField._
+  import FieldRuleEngineSuite.QueriesUsingNotAllowedField._
 
-  override implicit val rorConfigFileName = "/field_level_security_mode/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(FieldRuleModeSuite.nodeDataInitializer())
+  override def nodeDataInitializer = Some(FieldRuleEngineSuite.nodeDataInitializer())
+
+  protected def unmodifableQueryAssertion(user: String, query: String): Assertion
 
   "Search request with field rule defined" when {
-    "default (hybrid) FLS mode is used"  should {
+    "specifc FLS engine is used" should {
       "match and return filtered document source" when {
         "modifiable at ES level query using not allowed field is passed in request" in {
-          assertNoSearchHitsReturnedFor("user1", modifiableAtEsLevelQuery)
-        }
-        "unmodifiable at ES level query using not allowed field is passed in request (fallback to lucene)" excludeES "proxy" in {
-          assertNoSearchHitsReturnedFor("user1", unmodifiableAtEsLevelQuery)
+          assertNoSearchHitsReturnedFor("user", modifiableAtEsLevelQuery)
         }
       }
-    }
-    "explicit 'hybrid' FLS mode is used" should {
-      "match and return filtered document source" when {
-        "modifiable at ES level query using not allowed field is passed in request" in {
-          assertNoSearchHitsReturnedFor("user2", modifiableAtEsLevelQuery)
-        }
-        "unmodifiable at ES level query using not allowed field is passed in request (fallback to lucene)" excludeES "proxy" in {
-          assertNoSearchHitsReturnedFor("user2", unmodifiableAtEsLevelQuery)
-        }
-      }
-    }
-    "explicit 'legacy' FLS mode is used" should {
-      "match and return filtered document source with fallback to lucene regardless of passed query" when {
-        "modifiable at ES level query using not allowed field is passed in request" excludeES "proxy" in {
-          assertNoSearchHitsReturnedFor("user3", modifiableAtEsLevelQuery)
-        }
-        "unmodifiable at ES level query using not allowed field is passed in request" excludeES "proxy" in {
-          assertNoSearchHitsReturnedFor("user3", unmodifiableAtEsLevelQuery)
-        }
-      }
-    }
-    "explicit 'proxy' FLS mode is used" should {
-      "match and return filtered document source" when {
-        "modifiable at ES level query using not allowed field is passed in request" in {
-          assertNoSearchHitsReturnedFor("user4", modifiableAtEsLevelQuery)
-        }
-      }
-      "not match" when {
-        "unmodifiable at ES level query using not allowed field is passed in request" in {
-          assertOperationNotAllowed("user4", unmodifiableAtEsLevelQuery)
+      "handle unmodifiable at ES level query" when {
+        "using not allowed field is passed in request" in {
+          unmodifableQueryAssertion("user", unmodifiableAtEsLevelQuery)
         }
       }
     }
@@ -96,7 +67,7 @@ trait FieldRuleModeSuite
   }
 }
 
-object FieldRuleModeSuite {
+object FieldRuleEngineSuite {
 
   object QueriesUsingNotAllowedField {
     val modifiableAtEsLevelQuery =

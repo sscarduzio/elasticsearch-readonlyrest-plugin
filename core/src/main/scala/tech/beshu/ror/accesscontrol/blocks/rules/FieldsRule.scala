@@ -23,7 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest._
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
-import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.{FLSMode, Settings}
+import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFLSUpdater}
@@ -33,6 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.{CannotExtractFields, NotUsingFields, UsingFields}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.{BasedOnBlockContextOnly, FlsAtLuceneLevelApproach}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, RequestFieldsUsage, Strategy}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -81,24 +82,24 @@ class FieldsRule(val settings: Settings)
                                                                                                                              resolvedFields: UniqueNonEmptyList[DocumentField]): RuleResult[B] = {
     val fieldsRestrictions = FieldsRestrictions(resolvedFields, settings.accessMode)
 
-    settings.flsMode match {
-      case FLSMode.Legacy =>
+    settings.flsEngine match {
+      case FlsEngine.Lucene =>
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy = FlsAtLuceneLevelApproach)
-      case FLSMode.Hybrid =>
+      case FlsEngine.ESWithLucene =>
         val resolvedStrategy = resolveFLSStrategyBasedOnFieldsUsage(blockContext.requestFieldsUsage, fieldsRestrictions)
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy)
-      case FLSMode.Proxy =>
-        processProxyMode(blockContext, fieldsRestrictions)
+      case FlsEngine.ES =>
+        processRuleWithEsEngine(blockContext, fieldsRestrictions)
     }
   }
 
-  private def processProxyMode[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
-                                                                                                       fieldsRestrictions: FieldsRestrictions): RuleResult[B] = {
+  private def processRuleWithEsEngine[B <: BlockContext : BlockContextWithFLSUpdater : AllowsFieldsInRequest](blockContext: B,
+                                                                                                              fieldsRestrictions: FieldsRestrictions): RuleResult[B] = {
     resolveFLSStrategyBasedOnFieldsUsage(blockContext.requestFieldsUsage, fieldsRestrictions) match {
       case basedOnBlockContext: BasedOnBlockContextOnly =>
         fulfillRuleWithResolvedStrategy(blockContext, fieldsRestrictions, resolvedStrategy = basedOnBlockContext)
       case Strategy.FlsAtLuceneLevelApproach =>
-        logger.warn(s"[${blockContext.requestContext.id.show}] Could not use fls at lucene level in proxy mode. Rejected.")
+        logger.warn(s"[${blockContext.requestContext.id.show}] Could not use fls at lucene level with ES engine. Rejected.")
         RuleResult.Rejected()
     }
   }
@@ -157,17 +158,8 @@ class FieldsRule(val settings: Settings)
 object FieldsRule {
   val name = Rule.Name("fields")
 
-  sealed trait FLSMode
-  object FLSMode {
-    case object Legacy extends FLSMode
-    case object Hybrid extends FLSMode
-    case object Proxy extends FLSMode
-
-    val default = Hybrid
-  }
-
   final case class Settings(fields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[DocumentField]],
                             accessMode: AccessMode,
-                            flsMode: FLSMode)
+                            flsEngine: FlsEngine)
 
 }

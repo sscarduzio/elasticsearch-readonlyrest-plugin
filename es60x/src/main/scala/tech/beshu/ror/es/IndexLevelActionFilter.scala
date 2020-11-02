@@ -28,7 +28,7 @@ import org.elasticsearch.env.Environment
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
+import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -145,7 +145,7 @@ class IndexLevelActionFilter(settings: Settings,
   private def startRorInstance() = {
     val startResult = for {
       _ <- EsInitListenerSingleton.waitUntilReady
-      result <- new Ror().start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
+      result <- new Ror(RorMode.Plugin).start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>

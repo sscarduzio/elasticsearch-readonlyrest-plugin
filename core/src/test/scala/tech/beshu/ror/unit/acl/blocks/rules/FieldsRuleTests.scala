@@ -25,13 +25,13 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestB
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.FLSMode
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{RequestFieldsUsage, Strategy}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.{MockRequestContext, MockSimpleRequestContext}
 import tech.beshu.ror.unit.acl.blocks.rules.FieldsRuleTests.{BlockContextCreator, Configuration, Fields, RequestContextCreator}
@@ -43,10 +43,10 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
   "A FieldsRule" when {
     "filterable request is readonly" should {
       "match and use lucene based strategy" when {
-        "legacy fls mode is used" in {
+        "'lucene' fls engine is used" in {
           assertMatchRule(
             config = Configuration(
-              mode = FLSMode.Legacy,
+              flsEngine = FlsEngine.Lucene,
               fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
             ),
             requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -54,11 +54,11 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
             expectedStrategy = Strategy.FlsAtLuceneLevelApproach
           )
         }
-        "hybrid fls mode is used and" when {
+        "'es_with_lucene' fls engine is used and" when {
           "request fields can not be extracted" in {
             assertMatchRule(
               config = Configuration(
-                mode = FLSMode.Hybrid,
+                flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -69,7 +69,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           "there is used field with wildcard" in {
             assertMatchRule(
               config = Configuration(
-                mode = FLSMode.Hybrid,
+                flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -80,11 +80,11 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         }
       }
       "match and not use lucene strategy" when {
-        "hybrid fls mode is used and" when {
+        "'es_with_lucene' fls engine is used and" when {
           "request fields are not used" in {
             assertMatchRule(
               config = Configuration(
-                mode = FLSMode.Hybrid,
+                flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -95,7 +95,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           "all used fields in request are allowed" in {
             assertMatchRule(
               config = Configuration(
-                mode = FLSMode.Hybrid,
+                flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -106,7 +106,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           "some field in request is not allowed" in {
             assertMatchRule(
               config = Configuration(
-                mode = FLSMode.Hybrid,
+                flsEngine = FlsEngine.ESWithLucene,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -115,11 +115,11 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
             )
           }
         }
-        "proxy fls mode is used and" when {
+        "es' fls engine is used and" when {
           "request fields are not used" in {
             assertMatchRule(
               config = Configuration(
-                mode = FLSMode.Proxy,
+                flsEngine = FlsEngine.ES,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -130,7 +130,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           "all used fields in request are allowed" in {
             assertMatchRule(
               config = Configuration(
-                mode = FLSMode.Proxy,
+                flsEngine = FlsEngine.ES,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -141,7 +141,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           "some field in request is not allowed" in {
             assertMatchRule(
               config = Configuration(
-                mode = FLSMode.Proxy,
+                flsEngine = FlsEngine.ES,
                 fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
               ),
               requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -152,12 +152,12 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         }
       }
     }
-    "proxy fls mode" should {
+    "'es' fls engine' is used" should {
       "not match" when {
         "used fields can not be extracted" in {
           assertRejectRule(
             config = Configuration(
-              mode = FLSMode.Proxy,
+              flsEngine = FlsEngine.ES,
               fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
             ),
             requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -167,7 +167,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         "there is used field with wildcard" in {
           assertRejectRule(
             config = Configuration(
-              mode = FLSMode.Proxy,
+              flsEngine = FlsEngine.ES,
               fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
             ),
             requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
@@ -181,7 +181,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         "request fields can not be extracted" in {
           assertMatchRule(
             config = Configuration(
-              mode = FLSMode.Hybrid,
+              flsEngine = FlsEngine.ESWithLucene,
               fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
             ),
             requestContext = MockRequestContext.readOnly[FilterableMultiRequestBlockContext],
@@ -195,7 +195,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
       "not match" in {
         assertRejectRule(
           config = Configuration(
-            mode = FLSMode.Hybrid,
+            flsEngine = FlsEngine.ESWithLucene,
             fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
           ),
           requestContext = MockRequestContext.notReadOnly[FilterableRequestBlockContext],
@@ -207,7 +207,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
       "not update block context with fields security strategy" in {
         val rule = createRule(
           Configuration(
-            mode = FLSMode.Hybrid,
+            flsEngine = FlsEngine.ESWithLucene,
             fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
           )
         )
@@ -252,7 +252,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
 
   private def createRule(configuredFLS: Configuration) = {
     val resolvedFields = configuredFLS.fields.values.map(field => AlreadyResolved(DocumentField(field.nonempty).nel))
-    new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), configuredFLS.fields.accessMode, configuredFLS.mode))
+    new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), configuredFLS.fields.accessMode, configuredFLS.flsEngine))
   }
 
   private def emptyFilterable(requestFieldsUsage: RequestFieldsUsage)
@@ -289,5 +289,5 @@ object FieldsRuleTests {
 
   final case class Fields(values: NonEmptyList[String], accessMode: AccessMode)
 
-  final case class Configuration(fields: Fields, mode: FLSMode)
+  final case class Configuration(fields: Fields, flsEngine: FlsEngine)
 }

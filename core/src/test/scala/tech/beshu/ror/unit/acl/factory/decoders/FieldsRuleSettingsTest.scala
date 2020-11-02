@@ -18,156 +18,185 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalatest.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.FLSMode
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{GeneralReadonlyrestSettingsError, RulesLevelCreationError}
+import tech.beshu.ror.boot.RorMode
 import tech.beshu.ror.utils.TestsUtils._
 
 class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
 
   "A FieldsRule" should {
     "be able to be loaded from config" when {
-      "only one field is defined" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    fields: "field1"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
-            rule.settings.accessMode should be(AccessMode.Whitelist)
-            rule.settings.flsMode should be(FLSMode.Hybrid)
-          }
-        )
+      "ror is run in plugin mode and" when {
+        "only one field is defined" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    fields: "field1"
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              rule.settings.accessMode should be(AccessMode.Whitelist)
+              rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
+            }
+          )
+        }
+        "two fields are defined" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    fields: [field1, field2]
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              val decodedFields = rule.settings.fields
+              decodedFields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              decodedFields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
+              rule.settings.accessMode should be(AccessMode.Whitelist)
+              rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
+            }
+          )
+        }
+        "only one blacklisted field is defined" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    fields: "~field1"
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              rule.settings.accessMode should be(AccessMode.Blacklist)
+              rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
+            }
+          )
+        }
+        "two blacklisted fields are defined" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    fields: [~field1, ~field2]
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              val decodedFields = rule.settings.fields
+              decodedFields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              decodedFields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
+              rule.settings.accessMode should be(AccessMode.Blacklist)
+              rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
+            }
+          )
+        }
+        "field is defined with variable" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    fields: ["@{user}", "field2"]
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.fields.head shouldBe a[ToBeResolved[_]]
+              rule.settings.fields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
+              rule.settings.accessMode should be(AccessMode.Whitelist)
+              rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
+            }
+          )
+        }
+        "'lucene' fls engine is defined" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  fls_engine: "lucene"
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    fields: "field1"
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              rule.settings.accessMode should be(AccessMode.Whitelist)
+              rule.settings.flsEngine should be(FlsEngine.Lucene)
+            }
+          )
+        }
+        "'es' fls engine is defined" in {
+          assertDecodingSuccess(
+            yaml =
+              """
+                |readonlyrest:
+                |
+                |  fls_engine: "es"
+                |
+                |  access_control_rules:
+                |
+                |  - name: test_block1
+                |    fields: "field1"
+                |
+                |""".stripMargin,
+            assertion = rule => {
+              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              rule.settings.accessMode should be(AccessMode.Whitelist)
+              rule.settings.flsEngine should be(FlsEngine.ES)
+            }
+          )
+        }
       }
-      "two fields are defined" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    fields: [field1, field2]
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            val decodedFields = rule.settings.fields
-            decodedFields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
-            decodedFields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
-            rule.settings.accessMode should be(AccessMode.Whitelist)
-            rule.settings.flsMode should be(FLSMode.Hybrid)
+      "ror is run in proxy mode" should {
+        "use 'es' fls engine" when {
+          "only one field is defined" in {
+            assertDecodingSuccess(
+              yaml =
+                """
+                  |readonlyrest:
+                  |
+                  |  access_control_rules:
+                  |
+                  |  - name: test_block1
+                  |    fields: "field1"
+                  |
+                  |""".stripMargin,
+              assertion = rule => {
+                rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+                rule.settings.accessMode should be(AccessMode.Whitelist)
+                rule.settings.flsEngine should be(FlsEngine.ES)
+              },
+              aFactory = factory(rorMode = RorMode.Proxy)
+            )
           }
-        )
-      }
-      "only one blacklisted field is defined" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    fields: "~field1"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
-            rule.settings.accessMode should be(AccessMode.Blacklist)
-            rule.settings.flsMode should be(FLSMode.Hybrid)
-          }
-        )
-      }
-      "two blacklisted fields are defined" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    fields: [~field1, ~field2]
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            val decodedFields = rule.settings.fields
-            decodedFields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
-            decodedFields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
-            rule.settings.accessMode should be(AccessMode.Blacklist)
-            rule.settings.flsMode should be(FLSMode.Hybrid)
-          }
-        )
-      }
-      "field is defined with variable" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    fields: ["@{user}", "field2"]
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.fields.head shouldBe a[ToBeResolved[_]]
-            rule.settings.fields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
-            rule.settings.accessMode should be(AccessMode.Whitelist)
-            rule.settings.flsMode should be(FLSMode.Hybrid)
-          }
-        )
-      }
-      "'legacy' fields mode is defined" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    fields: "field1"
-              |    fields_mode: "legacy"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
-            rule.settings.accessMode should be(AccessMode.Whitelist)
-            rule.settings.flsMode should be(FLSMode.Legacy)
-          }
-        )
-      }
-      "'proxy' fields mode is defined" in {
-        assertDecodingSuccess(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    fields: "field1"
-              |    fields_mode: "proxy"
-              |
-              |""".stripMargin,
-          assertion = rule => {
-            rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
-            rule.settings.accessMode should be(AccessMode.Whitelist)
-            rule.settings.flsMode should be(FLSMode.Proxy)
-          }
-        )
+        }
       }
     }
     "not be able to be loaded from config" when {
@@ -274,23 +303,45 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
           }
         )
       }
-      "unknown fls mode is used" in {
+      "unknown fls engine is used" in {
         assertDecodingFailure(
           yaml =
             """
               |readonlyrest:
               |
+              |  fls_engine: "something"
+              |
               |  access_control_rules:
               |
               |  - name: test_block1
               |    fields: "field1"
-              |    fields_mode: "something"
               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("Unknown fls mode: 'something'. Supported: 'legacy', 'hybrid', 'proxy'.")))
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Unknown fls engine: 'something'. Supported: 'es_with_lucene', 'es'.")))
           }
+        )
+      }
+      "ror is run in proxy mode and unsupported by proxy fls engine is defined" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  fls_engine: "lucene"
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    fields: "field1"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(GeneralReadonlyrestSettingsError(Message("Fls engine: 'lucene' is not allowed for ROR proxy")))
+          },
+          aFactory = factory(rorMode = RorMode.Proxy)
         )
       }
     }

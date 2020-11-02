@@ -12,7 +12,7 @@ import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.boot.{Engine, Ror, RorInstance, StartingFailure}
+import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode, StartingFailure}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse.createRorNotReadyYetResponse
@@ -101,7 +101,10 @@ object ProxyIndexLevelActionFilter {
              envVarsProvider: EnvVarsProvider): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
     val result = for {
       instance <- EitherT(
-        new Ror(envVarsProvider = envVarsProvider)
+        new Ror(
+          mode = RorMode.Proxy,
+          envVarsProvider = envVarsProvider
+        )
           .start(configFile, ProxyAuditSinkService, ProxyIndexJsonContentService)
       )
       _ = RorInstanceSupplier.update(instance)

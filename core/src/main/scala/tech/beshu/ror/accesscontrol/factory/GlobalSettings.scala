@@ -14,9 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.accesscontrol.factory
 
-import tech.beshu.ror.integration.suites.fields.mode.FieldRuleModeSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+final case class GlobalSettings(showBasicAuthPrompt: Boolean,
+                                forbiddenRequestMessage: String,
+                                flsEngine: GlobalSettings.FlsEngine)
 
-class FieldRuleModeProxyTests extends FieldRuleModeSuite with BasicClusterProxyTestSupport
+object GlobalSettings {
+
+  sealed trait FlsEngine
+  object FlsEngine {
+    case object Lucene extends FlsEngine
+    case object ESWithLucene extends FlsEngine
+    case object ES extends FlsEngine
+
+    val default = ESWithLucene
+  }
+}
