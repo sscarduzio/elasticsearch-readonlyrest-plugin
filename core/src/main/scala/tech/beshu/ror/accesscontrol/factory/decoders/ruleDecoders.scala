@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
-import tech.beshu.ror.configuration.RorIndexNameConfiguration
 import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.providers.UuidProvider
 
@@ -84,6 +83,7 @@ object ruleDecoders {
       case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions))
       case AuthKeySha256Rule.name => Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions))
       case AuthKeySha512Rule.name => Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions))
+      case AuthKeyPBKDF2WithHmacSHA512Rule.name => Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions))
       case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions))
       case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions))
       case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(jwtDefinitions))

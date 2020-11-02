@@ -57,8 +57,8 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
     }
   }
 
-  override protected def update(request: ReindexRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
-    modifyIndicesOf(actionRequest, indices) match {
+  override protected def update(request: ReindexRequest, filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    modifyIndicesOf(actionRequest, filteredIndices) match {
       case Success(modificationResult) =>
         modificationResult
       case Failure(ex) =>

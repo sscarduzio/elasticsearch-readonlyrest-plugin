@@ -40,6 +40,7 @@ trait BaseIndexApiSuite
   private lazy val dev3IndexManager = new IndexManager(basicAuthClient("dev3", "test"))
   private lazy val dev5IndexManager = new IndexManager(basicAuthClient("dev5", "test"))
   private lazy val dev6IndexManager = new IndexManager(basicAuthClient("dev6", "test"))
+  private lazy val dev7IndexManager = new IndexManager(basicAuthClient("dev7", "test"))
 
   "ROR" when {
     "Get index API is used" should {
@@ -367,6 +368,67 @@ trait BaseIndexApiSuite
         }
       }
     }
+    "Resolve index API is used" should { // todo: remove rorProxy when we migrate to 7.9.x
+      "be allowed" when {
+        "user has access to the requested index" excludeES (rorProxy, allEs5x, allEs6x, allEs7xBelowEs79x) in {
+          val result = dev7IndexManager.resolve("index7-000001")
+
+          result.responseCode should be (200)
+
+          result.indices.size should be (1)
+          result.indices.head.name should be ("index7-000001")
+          result.indices.head.aliases should be (List("index7"))
+
+          result.aliases.size should be (0)
+        }
+        "user has access to the requested index pattern" excludeES (rorProxy, allEs5x, allEs6x, allEs7xBelowEs79x) in {
+          val result = dev7IndexManager.resolve("index7*")
+
+          result.responseCode should be (200)
+
+          result.indices.size should be (2)
+          result.indices.head.name should be ("index7-000001")
+          result.indices.head.aliases should be (List("index7"))
+          result.indices(1).name should be ("index7-000002")
+          result.indices(1).aliases should be (List.empty)
+
+          result.aliases.size should be (1)
+          result.aliases.head.name should be ("index7")
+          result.aliases.head.indices should be (List("index7-000001"))
+        }
+        "user has access to narrowed index pattern" excludeES (rorProxy, allEs5x, allEs6x, allEs7xBelowEs79x) in {
+          val result = dev7IndexManager.resolve("*")
+
+          result.responseCode should be (200)
+
+          result.indices.size should be (2)
+          result.indices.head.name should be ("index7-000001")
+          result.indices.head.aliases should be (List("index7"))
+          result.indices(1).name should be ("index7-000002")
+          result.indices(1).aliases should be (List.empty)
+
+          result.aliases.size should be (1)
+          result.aliases.head.name should be ("index7")
+          result.aliases.head.indices should be (List("index7-000001"))
+        }
+      }
+      "return empty result" when {
+        "user has no access to requested index pattern" excludeES (rorProxy, allEs5x, allEs6x, allEs7xBelowEs79x) in {
+          val result = dev7IndexManager.resolve("index2*")
+
+          result.responseCode should be (200)
+          result.indices.size should be (0)
+          result.aliases.size should be (0)
+        }
+        "user has no access to the requested index" excludeES (rorProxy, allEs5x, allEs6x, allEs7xBelowEs79x) in {
+          val result = dev7IndexManager.resolve("index2")
+
+          result.responseCode should be (200)
+          result.indices.size should be (0)
+          result.aliases.size should be (0)
+        }
+      }
+    }
   }
 }
 
@@ -384,5 +446,10 @@ object BaseIndexApiSuite {
 
     documentManager.createDoc("index5-000001", 1, ujson.read("""{"hello":"world"}""")).force()
     indexManager.createAliasOf("index5-000001", "index5").force()
+
+    documentManager.createDoc("index7-000001", 1, ujson.read("""{"hello":"world"}""")).force()
+    indexManager.createAliasOf("index7-000001", "index7").force()
+    indexManager.createAliasOf("index7-000001", "special_index7").force()
+    documentManager.createDoc("index7-000002", 1, ujson.read("""{"hello":"world"}""")).force()
   }
 }

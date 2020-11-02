@@ -28,6 +28,7 @@ import scala.collection.JavaConverters._
 object parser {
   /**
     * Parse YAML from the given [[Reader]], returning either [[ParsingFailure]] or [[Json]]
+    *
     * @param yaml
     * @return
     */
@@ -87,50 +88,54 @@ object parser {
         ParsingFailure(err.getMessage, err)
     }
 
-    def convertKeyNode(node: Node) = node match {
-      case scalar: ScalarNode => Right(scalar.getValue)
-      case _ =>
-        val message = "Only string keys can be represented in JSON"
-        Left(ParsingFailure(message, YamlParserException(message)))
-    }
-
-    def checkDuplicates(jsonObject: JsonObject, key: String): Either[ParsingFailure, String] = {
-      Either.cond(
-        test = !jsonObject.contains(key),
-        right = key,
-        left = {
-          val message = s"Duplicated key: '$key'"
-          ParsingFailure(message, YamlParserException(message))
-        })
-    }
-
     if (node == null) {
       Right(Json.False)
     } else {
       node match {
         case mapping: MappingNode =>
-          flattener.flatten(mapping).getValue.asScala.foldLeft(
-            Either.right[ParsingFailure, JsonObject](JsonObject.empty)
-          ) {
-            (objEither, tup) =>
-              for {
-                obj <- objEither
-                key <- convertKeyNode(tup.getKeyNode)
-                value <- yamlToJson(tup.getValueNode)
-                uniqueKey <- checkDuplicates(obj, key)
-              } yield obj.add(uniqueKey, value)
-          }.map(Json.fromJsonObject)
+          val duplicatedKeyOrEmptyJson = mapping.getValue.asScala
+            .foldLeft(Set[String]().asRight[ParsingFailure])(findDuplicatedKey)
+            .map(_ => JsonObject.empty)
+          flattener.flatten(mapping).getValue.asScala
+            .foldLeft(duplicatedKeyOrEmptyJson) {
+              (objEither, tup) =>
+                for {
+                  obj <- objEither
+                  key <- convertKeyNode(tup.getKeyNode)
+                  value <- yamlToJson(tup.getValueNode)
+                } yield obj.add(key, value)
+            }.map(Json.fromJsonObject)
         case sequence: SequenceNode =>
           sequence.getValue.asScala.foldLeft(Either.right[ParsingFailure, List[Json]](List.empty[Json])) {
-            (arrEither, node) => for {
-              arr <- arrEither
-              value <- yamlToJson(node)
-            } yield value :: arr
+            (arrEither, node) =>
+              for {
+                arr <- arrEither
+                value <- yamlToJson(node)
+              } yield value :: arr
           }.map(arr => Json.fromValues(arr.reverse))
         case scalar: ScalarNode => convertScalarNode(scalar)
       }
     }
   }
 
+  private def findDuplicatedKey(acc: Either[ParsingFailure, Set[String]],
+                                tuple: NodeTuple) = {
+    acc.flatMap { keys =>
+      val key = convertKeyNode(tuple.getKeyNode).right.get
+      if (keys contains key)
+        ParsingFailure(s"Duplicated key: '$key'", DuplicatedKeyException(key)).asLeft
+      else
+        (keys + key).asRight
+    }
+  }
+
+  private def convertKeyNode(node: Node) = node match {
+    case scalar: ScalarNode => Right(scalar.getValue)
+    case _ =>
+      val message = "Only string keys can be represented in JSON"
+      Left(ParsingFailure(message, YamlParserException(message)))
+  }
+
   final case class YamlParserException(message: String) extends Exception
+  final case class DuplicatedKeyException(key: String) extends Exception
 }

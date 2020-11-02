@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.request.handler.regular
 
-import cats.implicits._
 import cats.data.NonEmptyList
+import cats.implicits._
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -35,6 +35,8 @@ import tech.beshu.ror.es.request.ForbiddenResponse
 import tech.beshu.ror.es.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.request.context.{EsRequest, ModificationResult}
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, fromMismatchedCause}
+import tech.beshu.ror.es.utils.ThreadContextOps._
+import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -50,7 +52,7 @@ class RegularRequestHandler(engine: Engine,
     engine.accessControl
       .handleRegularRequest(request)
       .map { r =>
-        threadPool.getThreadContext.stashContext.bracket { _ =>
+        threadPool.getThreadContext.stashAndMergeResponseHeaders().bracket { _ =>
           commitResult(r.result, request)
         }
       }
@@ -189,7 +191,7 @@ class RegularRequestHandler(engine: Engine,
   }
 
   private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {
-    override def onResponse(response: ActionResponse): Unit = {
+    override def onResponse(response: ActionResponse): Unit = doPrivileged {
       update(response) runAsync {
         case Right(updatedResponse) => esContext.listener.onResponse(updatedResponse)
         case Left(ex) => onFailure(new Exception(ex))

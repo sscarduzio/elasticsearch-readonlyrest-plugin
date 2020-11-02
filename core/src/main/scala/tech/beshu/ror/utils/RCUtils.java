@@ -51,7 +51,8 @@ public class RCUtils {
       "indices:monitor/*",
       "cluster:admin/*/get",
       "cluster:admin/*/status",
-      "indices:admin/xpack/rollup/search"
+      "indices:admin/xpack/rollup/search",
+      "indices:admin/resolve/index"
   ));
 
   public static boolean isReadRequest(String action) {

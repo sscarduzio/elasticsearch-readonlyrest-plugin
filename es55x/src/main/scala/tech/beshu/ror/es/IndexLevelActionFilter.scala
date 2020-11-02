@@ -38,7 +38,7 @@ import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.RorInstanceSupplier
-import tech.beshu.ror.utils.RorScheduler.scheduler
+import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 
 import scala.language.postfixOps
 

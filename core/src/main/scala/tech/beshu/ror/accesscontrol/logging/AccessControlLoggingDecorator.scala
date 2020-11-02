@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.logging
 import cats.Show
 import cats.implicits._
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.AccessControl
@@ -38,7 +38,8 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool: Option[AuditingTool])
-                                   (implicit loggingContext: LoggingContext)
+                                   (implicit loggingContext: LoggingContext,
+                                   scheduler: Scheduler)
   extends AccessControl with Logging {
 
   override def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]] = {

@@ -208,7 +208,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
                 val jwtBuilder = Jwts.builder.signWith(secret).setSubject("test").setClaims(claims)
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
-            indices = Set(IndexName("gj1".nonempty))
+            filteredIndices = Set(IndexName("gj1".nonempty))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -222,7 +222,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3".nonempty)))
                 .withJwtToken(JwtTokenPayload(claims))
             )
-            blockContext.indices should be(Set(IndexName("gj1".nonempty)))
+            blockContext.filteredIndices should be(Set(IndexName("gj1".nonempty)))
             blockContext.contextHeaders should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
           }
@@ -240,7 +240,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
                 val jwtBuilder = Jwts.builder.signWith(secret).setSubject("test").setClaims(claims)
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
-            indices = Set(IndexName("gj0".nonempty)),
+            filteredIndices = Set(IndexName("gj0".nonempty)),
             allIndicesAndAliases = Set(IndexWithAliases(IndexName("gj0".nonempty), Set.empty))
           )
 
@@ -255,7 +255,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user4".nonempty)))
                 .withJwtToken(JwtTokenPayload(claims))
             )
-            blockContext.indices should be(Set(IndexName("gj0".nonempty)))
+            blockContext.filteredIndices should be(Set(IndexName("gj0".nonempty)))
             blockContext.contextHeaders should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
           }
@@ -288,7 +288,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user5".nonempty)))
                 .withJwtToken(JwtTokenPayload(claims))
             )
-            blockContext.indices should be(Set.empty)
+            blockContext.filteredIndices should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
             blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}""".nonempty)))
           }
