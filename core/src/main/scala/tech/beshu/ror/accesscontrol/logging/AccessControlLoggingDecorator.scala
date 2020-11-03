@@ -76,9 +76,9 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
       .andThen {
         case Success(resultWithHistory) =>
           resultWithHistory.result match {
-            case UserMetadataRequestResult.Allow(_, block) =>
+            case UserMetadataRequestResult.Allow(userMetadata, block) =>
               val blockContext = resultWithHistory.history.collectFirst(matchingBlockContext(block.name)).get
-              log(Allow(requestContext, block, blockContext, resultWithHistory.history))
+              log(Allow(requestContext, userMetadata, block, resultWithHistory.history))
             case UserMetadataRequestResult.Forbidden =>
               log(Forbidden(requestContext, resultWithHistory.history))
             case UserMetadataRequestResult.PassedThrough =>
@@ -140,7 +140,7 @@ object AccessControlLoggingDecorator {
         s"""${Constants.ANSI_CYAN}ALLOWED by ${allowedBy.block.show} req=${allowedBy.requestContext.show}${Constants.ANSI_RESET}"""
       case allow: Allow[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(
-          allow.blockContext.userMetadata.loggedUser, allow.blockContext.userMetadata.kibanaIndex, allow.history
+          allow.userMetadata.loggedUser, allow.userMetadata.kibanaIndex, allow.history
         )
         s"""${Constants.ANSI_CYAN}ALLOWED by ${allow.block.show} req=${allow.requestContext.show}${Constants.ANSI_RESET}"""
       case forbiddenBy: ForbiddenBy[B] =>

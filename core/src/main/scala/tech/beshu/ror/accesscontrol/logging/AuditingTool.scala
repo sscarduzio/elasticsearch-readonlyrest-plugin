@@ -22,6 +22,7 @@ import java.time.{Clock, Instant}
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -55,30 +56,56 @@ class AuditingTool(settings: Settings,
     responseContext match {
       case allowedBy: ResponseContext.AllowedBy[B] =>
         AuditResponseContext.Allowed(
-          requestContext = toAuditRequestContext(allowedBy.requestContext, Some(allowedBy.blockContext), allowedBy.history),
+          requestContext = toAuditRequestContext(
+            requestContext = allowedBy.requestContext,
+            blockContext = Some(allowedBy.blockContext),
+            userMetadata = Some(allowedBy.blockContext.userMetadata),
+            historyEntries = allowedBy.history),
           verbosity = toAuditVerbosity(allowedBy.block.verbosity),
           reason = allowedBy.block.show
         )
       case allow: ResponseContext.Allow[B] =>
         AuditResponseContext.Allowed(
-          requestContext = toAuditRequestContext(allow.requestContext, allow.blockContext.some, allow.history),
+          requestContext = toAuditRequestContext(
+            requestContext = allow.requestContext,
+            blockContext = None,
+            userMetadata = Some(allow.userMetadata),
+            historyEntries = allow.history),
           verbosity = toAuditVerbosity(Block.Verbosity.Info),
           reason = allow.block.show
         )
       case forbiddenBy: ResponseContext.ForbiddenBy[B] =>
         AuditResponseContext.ForbiddenBy(
-          requestContext = toAuditRequestContext(forbiddenBy.requestContext, Some(forbiddenBy.blockContext), forbiddenBy.history),
+          requestContext = toAuditRequestContext(
+            requestContext = forbiddenBy.requestContext,
+            blockContext = Some(forbiddenBy.blockContext),
+            userMetadata = Some(forbiddenBy.blockContext.userMetadata),
+            historyEntries = forbiddenBy.history),
           verbosity = toAuditVerbosity(forbiddenBy.block.verbosity),
           reason = forbiddenBy.block.show
         )
       case forbidden: ResponseContext.Forbidden[B] =>
-        AuditResponseContext.Forbidden(toAuditRequestContext(forbidden.requestContext, None, forbidden.history))
+        AuditResponseContext.Forbidden(toAuditRequestContext(
+          requestContext = forbidden.requestContext,
+          blockContext = None,
+          userMetadata = None,
+          historyEntries = forbidden.history))
       case requestedIndexNotExist: ResponseContext.RequestedIndexNotExist[B] =>
         AuditResponseContext.RequestedIndexNotExist(
-          toAuditRequestContext(requestedIndexNotExist.requestContext, None, requestedIndexNotExist.history)
+          toAuditRequestContext(
+            requestContext = requestedIndexNotExist.requestContext,
+            blockContext = None,
+            userMetadata = None,
+            historyEntries = requestedIndexNotExist.history)
         )
       case errored: ResponseContext.Errored[B] =>
-        AuditResponseContext.Errored(toAuditRequestContext(errored.requestContext, None, Vector.empty), errored.cause)
+        AuditResponseContext.Errored(
+          requestContext = toAuditRequestContext(
+            requestContext = errored.requestContext,
+            blockContext = None,
+            userMetadata = None,
+            historyEntries = Vector.empty),
+          cause = errored.cause)
     }
   }
 
@@ -89,9 +116,13 @@ class AuditingTool(settings: Settings,
 
   private def toAuditRequestContext[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                        blockContext: Option[B],
+                                                       userMetadata: Option[UserMetadata],
                                                        historyEntries: Vector[History[B]]): AuditRequestContext = {
-    new AuditRequestContextBasedOnAclResult(requestContext, blockContext, historyEntries, loggingContext)
+    new AuditRequestContextBasedOnAclResult(requestContext, userMetadata, historyEntries, loggingContext, hasIndices(blockContext))
   }
+
+  private def hasIndices[B <: BlockContext](blockContext: Option[B]) =
+    blockContext.exists(AuditRequestContextBasedOnAclResult.inspectIndices)
 
 }
 
