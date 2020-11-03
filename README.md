@@ -2,6 +2,7 @@
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12)
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
 [![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/readonlyrest)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsscarduzio%2Felasticsearch-readonlyrest-plugin.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsscarduzio%2Felasticsearch-readonlyrest-plugin?ref=badge_shield)
 
 
 |  Supporters | Sponsored link |
@@ -48,6 +49,9 @@ You confirm that you are able to grant us these rights. You represent that You a
 You represent that the Contributions are Your original works of authorship, and to Your knowledge, no other person claims, or has the right to claim, any right in any invention or patent related to the Contributions. You also represent that You are not legally obligated, whether by entering into an agreement or otherwise, in any way that conflicts with the terms of this license.
 
 The owner of the ReadonlyREST project Simone Scarduzio acknowledges that, except as explicitly described in this Agreement, any Contribution which you provide is on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fsscarduzio%2Felasticsearch-readonlyrest-plugin.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fsscarduzio%2Felasticsearch-readonlyrest-plugin?ref=badge_large)
 
 ## History
 This project was incepted in [this StackOverflow thread](http://stackoverflow.com/questions/20406707/using-cloudfront-to-expose-elasticsearch-rest-api-in-read-only-get-head "StackOverflow").
