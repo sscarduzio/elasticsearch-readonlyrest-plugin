@@ -30,6 +30,7 @@ import monix.execution.atomic.Atomic
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
@@ -173,8 +174,11 @@ trait ReadonlyRest extends Logging {
               httpClientsFactory = httpClientsFactory,
               ldapConnectionPoolProvider
             )
-            if (engine.context.involvesFields) {
-              logger.warn("ACL contains fields rule. To make it work well, all nodes should have ROR plugin installed.")
+            engine.context.usedFlsEngineInFieldsRule.foreach {
+              case FlsEngine.Lucene | FlsEngine.ESWithLucene =>
+                logger.warn("Defined fls engine relies on lucene. To make it work well, all nodes should have ROR plugin installed.")
+              case FlsEngine.ES =>
+                logger.warn("Defined fls engine relies on ES only. This engine doesn't provide full FLS functionality hence some requests may be rejected.")
             }
             engine
           }

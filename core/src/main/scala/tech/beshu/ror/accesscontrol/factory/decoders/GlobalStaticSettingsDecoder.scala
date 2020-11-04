@@ -69,7 +69,8 @@ object GlobalStaticSettingsDecoder {
       Right(GlobalSettings.FlsEngine.ES)
     case Some(definedFlsEngine) =>
       flsEngineFromString(definedFlsEngine) match {
-        case Right(FlsEngine.ES) => Right(FlsEngine.ES)
+        case Right(FlsEngine.ES) =>
+          Right(FlsEngine.ES)
         case _ =>
           Left(AclCreationError.GeneralReadonlyrestSettingsError(Message(s"Fls engine: '$definedFlsEngine' is not allowed for ROR proxy")))
       }
@@ -82,6 +83,6 @@ object GlobalStaticSettingsDecoder {
     case unknown => Left(UnknownFlsEngine(unknown))
   }
 
-  final case class UnknownFlsEngine(value: String)
+  private final case class UnknownFlsEngine(value: String)
 
 }

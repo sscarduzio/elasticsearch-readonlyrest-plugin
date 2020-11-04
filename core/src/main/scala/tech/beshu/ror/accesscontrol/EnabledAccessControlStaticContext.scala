@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 
 trait AccessControlStaticContext {
-  def involvesFields: Boolean
+  def usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine]
   def doesRequirePassword: Boolean
   def forbiddenRequestMessage: String
   def obfuscatedHeaders: Set[Header.Name]
@@ -37,13 +37,13 @@ class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
 
   override val forbiddenRequestMessage: String = globalSettings.forbiddenRequestMessage
 
-  val involvesFields: Boolean = {
+  val usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = {
     blocks
       .flatMap(_.rules)
-      .exists {
-        case _: FieldsRule => true
-        case _ => false
+      .collect {
+        case rule: FieldsRule => rule.settings.flsEngine
       }
+      .headOption
   }
 
   val doesRequirePassword: Boolean = {
@@ -62,7 +62,7 @@ class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
 }
 
 object DisabledAccessControlStaticContext$ extends AccessControlStaticContext {
-  override val involvesFields: Boolean = false
+  override val usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = None
   override val doesRequirePassword: Boolean = false
   override val forbiddenRequestMessage: String = ""
   override val obfuscatedHeaders: Set[Header.Name] = Set.empty

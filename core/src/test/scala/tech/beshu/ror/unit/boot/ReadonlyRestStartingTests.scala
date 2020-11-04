@@ -571,10 +571,10 @@ class ReadonlyRestStartingTests extends WordSpec with Inside with MockFactory wi
       .once()
       .returns(Set.empty)
 
-    (mockedContext.involvesFields _)
+    (mockedContext.usedFlsEngineInFieldsRule _)
       .expects()
       .once()
-      .returns(true)
+      .returns(None)
     mockedContext
   }
   private def mockCoreFactory(mockedCoreFactory: CoreFactory,
