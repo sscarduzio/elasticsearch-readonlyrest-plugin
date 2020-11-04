@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.configuration.RorIndexNameConfiguration
+import tech.beshu.ror.boot.RorMode
 import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers._
@@ -49,11 +49,12 @@ abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpe
 
   protected implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
-  protected def factory(propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default) = {
+  protected def factory(propertiesProvider: TestsPropertiesProvider = TestsPropertiesProvider.default,
+                        rorMode: RorMode = RorMode.Plugin) = {
     implicit val _ = propertiesProvider
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    new RawRorConfigBasedCoreFactory
+    new RawRorConfigBasedCoreFactory(rorMode)
   }
 
   def assertDecodingSuccess(yaml: String,

@@ -24,7 +24,8 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
@@ -39,6 +40,8 @@ class GetEsRequestContext(actionRequest: GetRequest,
                           override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[GetRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
+  override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
+
   override protected def indicesFrom(request: GetRequest): Set[IndexName] = {
     val indexName = IndexName
       .fromString(request.index())
@@ -50,14 +53,22 @@ class GetEsRequestContext(actionRequest: GetRequest,
 
   override protected def update(request: GetRequest,
                                 indices: NonEmptyList[IndexName],
-                                filter: Option[Filter]): ModificationResult = {
+                                filter: Option[Filter],
+                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     val indexName = indices.head
     request.index(indexName.value.value)
-    ModificationResult.UpdateResponse(filterResponse(filter))
+    ModificationResult.UpdateResponse(updateFunction(filter, fieldLevelSecurity))
   }
 
-  private def filterResponse(filter: Option[Filter])
+  private def updateFunction(filter: Option[Filter],
+                             fieldLevelSecurity: Option[FieldLevelSecurity])
                             (actionResponse: ActionResponse): Task[ActionResponse] = {
+    filterResponse(filter, actionResponse)
+      .map(response => filterFieldsFromResponse(fieldLevelSecurity, response))
+  }
+
+  private def filterResponse(filter: Option[Filter],
+                             actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, filter) match {
       case (response: GetResponse, Some(definedFilter)) if response.isExists =>
         handleExistingResponse(response, definedFilter)
@@ -72,5 +83,15 @@ class GetEsRequestContext(actionRequest: GetRequest,
         case Inaccessible => GetApi.doesNotExistResponse(response)
         case Accessible => response
       }
+  }
+
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity],
+                                       actionResponse: ActionResponse): ActionResponse = {
+    (actionResponse, fieldLevelSecurity) match {
+      case (response: GetResponse, Some(definedFieldLevelSecurity)) if response.isExists =>
+        response.filterFieldsUsing(definedFieldLevelSecurity.restrictions)
+      case _ =>
+        actionResponse
+    }
   }
 }

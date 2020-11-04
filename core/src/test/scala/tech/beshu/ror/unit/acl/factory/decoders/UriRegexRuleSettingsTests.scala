@@ -48,7 +48,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
           assertion = rule => {
             val resolvedPatten = rule.settings
               .uriPatterns.head
-              .resolve(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty, Set.empty))
+              .resolve(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty))
               .map(_.head.pattern())
 
             resolvedPatten shouldBe Right("^/secret-idx/.*")
@@ -71,7 +71,7 @@ class UriRegexRuleSettingsTests extends BaseRuleSettingsDecoderTest[UriRegexRule
             val patternsAsStrings = rule
               .settings.uriPatterns
               .map(_
-                .resolve(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty, Set.empty))
+                .resolve(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty))
                 .map(_.head.pattern)
                 .right.get
               )

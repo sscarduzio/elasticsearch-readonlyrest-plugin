@@ -34,7 +34,7 @@ class EsWithoutRorPluginContainer(name: String,
   override val sslEnabled: Boolean = false
 }
 
-object EsWithoutRorPluginContainer {
+object EsWithoutRorPluginContainer extends StrictLogging {
 
   final case class Config(clusterName: String,
                           nodeName: String,
@@ -58,7 +58,7 @@ object EsWithoutRorPluginContainer {
       esClusterSettings,
       ESWithoutRorPluginImage.create(config)
     )
-    EsContainer.init(esContainer, config, initializer)
+    EsContainer.init(esContainer, config, initializer, logger)
   }
 }
 

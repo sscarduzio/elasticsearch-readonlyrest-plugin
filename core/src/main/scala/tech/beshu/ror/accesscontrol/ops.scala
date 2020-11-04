@@ -42,7 +42,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableV
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -151,8 +152,8 @@ object show {
           showTraversable("av_groups", bc.userMetadata.availableGroups) ::
           showTraversable("indices", bc.indices) ::
           showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
+          showOption("fls", bc.fieldLevelSecurity) ::
           showTraversable("response_hdr", bc.responseHeaders) ::
-          showTraversable("context_hdr", bc.contextHeaders) ::
           showTraversable("repositories", bc.repositories) ::
           showTraversable("snapshots", bc.snapshots) ::
           Nil flatten) mkString ";"
@@ -176,6 +177,16 @@ object show {
         showOption("user_origin", u.userOrigin) ::
         Nil flatten) mkString ";"
     }
+
+    implicit val flsStrategyShow: Show[FieldLevelSecurity] = Show.show[FieldLevelSecurity] { fls =>
+      fls.strategy match {
+        case Strategy.FlsAtLuceneLevelApproach => "[strategy: fls_at_lucene_level]"
+        case Strategy.BasedOnBlockContextOnly.EverythingAllowed => "[strategy: fls_at_es_level]"
+        case Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(fields) => s"[strategy: fls_at_es_level, ${showNonEmptyList("not_allowed_fields_used", fields)}]"
+      }
+    }
+
+    implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
 
     implicit def historyItemShow[B <: BlockContext]: Show[HistoryItem[B]] = Show.show { hi =>
@@ -256,6 +267,10 @@ object show {
     private def showTraversable[T: Show](name: String, traversable: Traversable[T]) = {
       if (traversable.isEmpty) None
       else Some(s"$name=${traversable.map(_.show).mkString(",")}")
+    }
+
+    private def showNonEmptyList[T: Show](name: String, nonEmptyList: NonEmptyList[T]) = {
+      s"$name=${nonEmptyList.map(_.show).toList.mkString(",")}"
     }
 
     private def showOption[T: Show](name: String, option: Option[T]) = {

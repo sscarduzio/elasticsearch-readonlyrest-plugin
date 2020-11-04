@@ -30,6 +30,7 @@ import monix.execution.atomic.Atomic
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
@@ -37,10 +38,10 @@ import tech.beshu.ror.accesscontrol.{AccessControl, AccessControlStaticContext}
 import tech.beshu.ror.configuration.ConfigLoading.{ErrorOr, LoadRorConfig}
 import tech.beshu.ror.configuration.IndexConfigManager.SavingIndexConfigError
 import tech.beshu.ror.configuration.RorProperties.RefreshInterval
+import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
 import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig, RorConfigurationIndex}
-import tech.beshu.ror.configuration._
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value
@@ -48,7 +49,8 @@ import tech.beshu.ror.utils.ScalaOps.value
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
-class Ror(override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
+class Ror(mode: RorMode,
+          override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
           override val propertiesProvider: PropertiesProvider = JvmPropertiesProvider)
          (implicit override val scheduler: Scheduler)
   extends ReadonlyRest {
@@ -58,7 +60,7 @@ class Ror(override val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider,
   override protected lazy val coreFactory: CoreFactory = {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val envVarsProviderImplicit: EnvVarsProvider = envVarsProvider
-    new RawRorConfigBasedCoreFactory
+    new RawRorConfigBasedCoreFactory(mode)
   }
 }
 
@@ -172,6 +174,12 @@ trait ReadonlyRest extends Logging {
               httpClientsFactory = httpClientsFactory,
               ldapConnectionPoolProvider
             )
+            engine.context.usedFlsEngineInFieldsRule.foreach {
+              case FlsEngine.Lucene | FlsEngine.ESWithLucene =>
+                logger.warn("Defined fls engine relies on lucene. To make it work well, all nodes should have ROR plugin installed.")
+              case FlsEngine.ES =>
+                logger.warn("Defined fls engine relies on ES only. This engine doesn't provide full FLS functionality hence some requests may be rejected.")
+            }
             engine
           }
           .left
@@ -436,6 +444,13 @@ object RorInstance {
 }
 
 final case class StartingFailure(message: String, throwable: Option[Throwable] = None)
+
+sealed trait RorMode
+
+object RorMode {
+  case object Plugin extends RorMode
+  case object Proxy extends RorMode
+}
 
 final class Engine(val accessControl: AccessControl,
                    val context: AccessControlStaticContext,

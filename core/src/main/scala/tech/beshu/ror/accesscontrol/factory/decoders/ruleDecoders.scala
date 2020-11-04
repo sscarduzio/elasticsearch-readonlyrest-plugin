@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
 import tech.beshu.ror.configuration.loader.RorConfigurationIndex
@@ -31,14 +32,15 @@ object ruleDecoders {
 
   implicit def ruleDecoderBy(name: Rule.Name,
                              definitions: DefinitionsPack,
-                             rorIndexNameConfiguration: RorConfigurationIndex)
+                             rorIndexNameConfiguration: RorConfigurationIndex,
+                             globalSettings: GlobalSettings)
                             (implicit clock: Clock,
                              uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] =
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
       case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(definitions.authorizationServices))
-      case FieldsRule.name => Some(FieldsRuleDecoder)
+      case FieldsRule.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine))
       case FilterRule.name => Some(new FilterRuleDecoder)
       case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users))
       case HeadersAndRule.name | HeadersAndRule.deprecatedName => Some(HeadersAndRuleDecoder)

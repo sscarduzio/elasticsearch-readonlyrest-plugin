@@ -104,7 +104,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
             Block.Verbosity.Info,
             NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
           ),
-          GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, Set.empty),
+          GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty),
           Vector.empty
         )
 
@@ -159,7 +159,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
         verbosity,
         NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET))))
       ),
-      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty, Set.empty),
+      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty),
       Vector.empty
     )
   }

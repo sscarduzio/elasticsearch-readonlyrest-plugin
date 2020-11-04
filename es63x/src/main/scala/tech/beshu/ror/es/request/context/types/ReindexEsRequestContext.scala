@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.NonEmptyList
 import cats.implicits._
+import cats.data.NonEmptyList
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.SearchRequest
 import org.elasticsearch.index.reindex.ReindexRequest

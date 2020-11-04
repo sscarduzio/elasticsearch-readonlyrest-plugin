@@ -41,7 +41,6 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     this,
     UserMetadata.from(this),
     Set.empty,
-    Set.empty,
     {
       import tech.beshu.ror.accesscontrol.show.logs._
       val indices = indicesOrWildcard(indicesFrom(actionRequest))
