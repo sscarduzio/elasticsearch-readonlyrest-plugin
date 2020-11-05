@@ -65,6 +65,8 @@ import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
+import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 
@@ -192,6 +194,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
       new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
       new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
+      new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
     ).asJava
   }
 
@@ -206,6 +209,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
       new RestRRAdminAction(),
       new RestRRConfigAction(nodesInCluster),
       new RestRRUserMetadataAction(),
+      new RestRRAuditEventAction()
     ).asJava
   }
 

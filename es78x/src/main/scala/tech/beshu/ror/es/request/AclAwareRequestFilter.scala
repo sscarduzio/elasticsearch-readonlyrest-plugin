@@ -61,6 +61,7 @@ import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.handler.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
+import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 
 import scala.language.postfixOps
@@ -89,6 +90,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
     esContext.actionRequest match {
       case request: RRAdminRequest =>
         regularRequestHandler.handle(new GeneralNonIndexEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: RRAuditEventRequest =>
+        regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))
       // snapshots
       case request: GetSnapshotsRequest =>
         regularRequestHandler.handle(new GetSnapshotsEsRequestContext(request, esContext, clusterService, threadPool))

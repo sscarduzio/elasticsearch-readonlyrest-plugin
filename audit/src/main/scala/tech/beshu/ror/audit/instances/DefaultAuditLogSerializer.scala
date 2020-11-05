@@ -79,5 +79,6 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       .put("action", requestContext.action)
       .put("indices", if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava)
       .put("acl_history", requestContext.history)
+      .put("", new JSONObject().toMap)
   }
 }

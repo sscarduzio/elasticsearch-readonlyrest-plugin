@@ -11,7 +11,7 @@ object RRUserMetadataActionType {
   val name = "cluster:ror/user_metadata/get"
   val instance = new RRUserMetadataActionType()
 
-  final case object RRAdminActionCannotBeTransported extends Exception
+  final case object RRUserMetadataActionCannotBeTransported extends Exception
 
-  private [rrmetadata] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAdminActionCannotBeTransported
+  private [rrmetadata] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRUserMetadataActionCannotBeTransported
 }

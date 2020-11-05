@@ -24,6 +24,7 @@ import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
+import org.json.JSONObject
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
@@ -76,6 +77,8 @@ trait RequestContext {
   def isAllowedForDLS: Boolean
 
   def hasRemoteClusters: Boolean
+
+  def additionalAuditFields: Map[String, JSONObject] = Map.empty
 
   def correlationId: CorrelationId =
     headers

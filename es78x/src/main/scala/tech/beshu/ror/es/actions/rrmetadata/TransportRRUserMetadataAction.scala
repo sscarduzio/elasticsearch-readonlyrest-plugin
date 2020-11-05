@@ -19,6 +19,6 @@ class TransportRRUserMetadataAction(transportService: TransportService,
     this(transportService, actionFilters, ())
 
   override def doExecute(task: Task, request: RRUserMetadataRequest, listener: ActionListener[RRUserMetadataResponse]): Unit = {
-    //execute(task, request, listener)
+    // nothing to do here
   }
 }

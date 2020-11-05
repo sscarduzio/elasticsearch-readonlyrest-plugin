@@ -52,7 +52,7 @@ class RestRRConfigAction(nodesInCluster: Supplier[DiscoveryNodes])
     )
     channel => {
       val localNodeId = NodeId(client.getLocalNodeId)
-      client.execute(new RRConfigActionType, new RRConfigsRequest(requestConfig, nodes.toArray: _*), new ResponseBuilder(localNodeId, channel))
+      client.execute(new RRConfigActionType, new RRConfigsRequest(requestConfig, nodes.toArray: _*), new RestRRConfigActionResponseBuilder(localNodeId, channel))
     }
   }
 
