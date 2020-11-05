@@ -81,6 +81,7 @@ class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlT
              |  "indices":[],
              |  "@timestamp":"2020-01-01T00:00:00Z",
              |  "content_len_kb":0,
+             |  "correlation_id":"${captureCorrelationId(jsonString)}",
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
              |  "action":"default-action",
@@ -117,6 +118,7 @@ class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlT
              |  "indices":[],
              |  "@timestamp":"2020-01-01T00:00:00Z",
              |  "content_len_kb":0,
+             |  "correlation_id":"${captureCorrelationId(jsonString)}",
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
              |  "action":"default-action",
@@ -145,6 +147,13 @@ class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlT
       .findFirstMatchIn(jsonString)
       .getOrElse(throw new IllegalStateException("no processingMillis pattern matched"))
       .group(1).toLong
+  }
+
+  private def captureCorrelationId(jsonString: String) = {
+    "\"correlation_id\":\"((\\d|\\w|-)*)\",".r
+      .findFirstMatchIn(jsonString)
+      .getOrElse(throw new IllegalStateException("no correlation_id pattern matched"))
+      .group(1)
   }
 
   private class MockedAuditSinkService extends AuditSinkService {

@@ -26,6 +26,7 @@ import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContent
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
+import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -67,7 +68,7 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
   }
 
   private def onAllow(requestContext: RequestContext, userMetadata: UserMetadata): Unit = {
-    esContext.listener.onResponse(new RRMetadataResponse(userMetadata))
+    esContext.listener.onResponse(new RRMetadataResponse(userMetadata, requestContext.correlationId))
   }
 
   private def onForbidden(): Unit = {
@@ -78,11 +79,12 @@ class CurrentUserMetadataRequestHandler(engine: Engine,
     esContext.channel.sendResponse(RorNotAvailableResponse.createRorNotEnabledResponse(esContext.channel))
 }
 
-private class RRMetadataResponse(userMetadata: UserMetadata)
+private class RRMetadataResponse(userMetadata: UserMetadata,
+                                 correlationId: CorrelationId)
   extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val sourceMap: Map[String, _] = MetadataValue.read(userMetadata).mapValues(MetadataValue.toAny)
+    val sourceMap: Map[String, _] = MetadataValue.read(userMetadata, correlationId).mapValues(MetadataValue.toAny)
     builder.map(sourceMap.asJava)
     builder
   }

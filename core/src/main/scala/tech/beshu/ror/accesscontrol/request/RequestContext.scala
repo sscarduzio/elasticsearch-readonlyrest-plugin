@@ -77,11 +77,12 @@ trait RequestContext {
 
   def hasRemoteClusters: Boolean
 
-  def correlationId: Option[CorrelationId] =
+  def correlationId: CorrelationId =
     headers
       .find(_.name === Header.Name.correlationId)
       .map(_.value)
       .map(CorrelationId.apply)
+      .getOrElse(CorrelationId.random)
 }
 
 object RequestContext extends Logging {

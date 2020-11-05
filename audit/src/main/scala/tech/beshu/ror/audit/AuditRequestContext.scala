@@ -41,5 +41,5 @@ trait AuditRequestContext {
   def involvesIndices: Boolean
   def attemptedUserName: Option[String]
   def rawAuthHeader: Option[String]
-  def correlationId: Option[String]
+  def correlationId: String
 }

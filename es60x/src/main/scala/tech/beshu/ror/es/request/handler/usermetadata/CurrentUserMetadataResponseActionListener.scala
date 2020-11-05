@@ -20,6 +20,7 @@ import org.elasticsearch.action.{ActionListener, ActionResponse}
 import org.elasticsearch.common.io.stream.StreamOutput
 import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 import tech.beshu.ror.accesscontrol.blocks.metadata.{MetadataValue, UserMetadata}
+import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
 import scala.collection.JavaConverters._
@@ -31,7 +32,7 @@ class CurrentUserMetadataResponseActionListener(requestContext: RequestContext,
 
   override def onResponse(response: ActionResponse): Unit = {
     if(requestContext.uriPath.isCurrentUserMetadataPath)
-      baseListener.onResponse(new RRMetadataResponse(userMetadata))
+      baseListener.onResponse(new RRMetadataResponse(userMetadata, requestContext.correlationId))
     else
       baseListener.onResponse(response)
   }
@@ -40,11 +41,12 @@ class CurrentUserMetadataResponseActionListener(requestContext: RequestContext,
 
 }
 
-private class RRMetadataResponse(userMetadata: UserMetadata)
+private class RRMetadataResponse(userMetadata: UserMetadata,
+                                 correlationId: CorrelationId)
   extends ActionResponse with ToXContentObject {
 
   override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = {
-    val sourceMap: Map[String, _] = MetadataValue.read(userMetadata).mapValues(MetadataValue.toAny)
+    val sourceMap: Map[String, _] = MetadataValue.read(userMetadata, correlationId).mapValues(MetadataValue.toAny)
     builder.map(sourceMap.asJava)
     builder
   }

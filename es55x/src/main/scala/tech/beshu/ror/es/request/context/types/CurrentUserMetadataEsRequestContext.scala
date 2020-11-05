@@ -16,16 +16,14 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import eu.timepit.refined.types.all.NonEmptyString
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
-import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 
 class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
                                           esContext: EsContext,
@@ -42,14 +40,6 @@ class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
     Set.empty,
     Set.empty
   )
-
-  override val correlationId: Option[CorrelationId] = Some {
-    super
-      .correlationId
-      .getOrElse {
-        CorrelationId(NonEmptyString.unsafeFrom(initialBlockContext.userMetadata.loggingId.value.toString))
-      }
-  }
 
   override protected def modifyRequest(blockContext: CurrentUserMetadataRequestBlockContext): ModificationResult = Modified
 }

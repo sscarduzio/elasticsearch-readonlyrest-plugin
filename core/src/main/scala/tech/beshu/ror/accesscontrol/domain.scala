@@ -43,12 +43,10 @@ import scala.util.Try
 
 object domain {
 
-  final case class LoggingId private(value: UUID) extends AnyVal
-  object LoggingId {
-    def random: LoggingId = new LoggingId(UUID.randomUUID())
-  }
-
   final case class CorrelationId(value: NonEmptyString)
+  object CorrelationId {
+    def random: CorrelationId = new CorrelationId(NonEmptyString.unsafeFrom(UUID.randomUUID().toString))
+  }
 
   sealed trait LoggedUser {
     def id: User.Id
