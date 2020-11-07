@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.logging
 import java.time.Instant
 
 import cats.Show
+import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
@@ -80,4 +81,5 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
   }
   override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
   override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
+  override val generalAuditEvents: JSONObject = requestContext.generalAuditEvents
 }

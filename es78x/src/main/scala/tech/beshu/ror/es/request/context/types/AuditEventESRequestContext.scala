@@ -24,7 +24,7 @@ class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
     Set.empty
   )
 
-  override val additionalAuditFields: Map[String, JSONObject] = actionRequest.eventsJsons
+  override val generalAuditEvents: JSONObject = actionRequest.auditEvents
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = Modified
 }

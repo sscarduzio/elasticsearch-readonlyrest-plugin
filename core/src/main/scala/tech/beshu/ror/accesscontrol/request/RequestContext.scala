@@ -78,7 +78,7 @@ trait RequestContext {
 
   def hasRemoteClusters: Boolean
 
-  def additionalAuditFields: Map[String, JSONObject] = Map.empty
+  def generalAuditEvents: JSONObject = new JSONObject()
 
   def correlationId: CorrelationId =
     headers
