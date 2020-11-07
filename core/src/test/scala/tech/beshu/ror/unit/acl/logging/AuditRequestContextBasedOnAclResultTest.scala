@@ -33,11 +33,11 @@ class AuditRequestContextBasedOnAclResultTest extends WordSpec with MockFactory 
   }
   "find HasIndices" in {
     implicitly[HasIndices[BlockContext.SnapshotRequestBlockContext]]
-    val bc: BlockContext.SnapshotRequestBlockContext = BlockContext.SnapshotRequestBlockContext(null, null, null, null, null, null, null, null)
+    val bc: BlockContext.SnapshotRequestBlockContext = BlockContext.SnapshotRequestBlockContext(null, null, null, null, null, null, null)
     AuditRequestContextBasedOnAclResult.inspectIndices(bc) shouldEqual true
   }
   "not find any  indices" in {
-    val bc: BlockContext.CurrentUserMetadataRequestBlockContext = BlockContext.CurrentUserMetadataRequestBlockContext(null, null, null, null)
+    val bc: BlockContext.CurrentUserMetadataRequestBlockContext = BlockContext.CurrentUserMetadataRequestBlockContext(null, null, null)
     AuditRequestContextBasedOnAclResult.inspectIndices(bc) shouldEqual false
   }
 }
