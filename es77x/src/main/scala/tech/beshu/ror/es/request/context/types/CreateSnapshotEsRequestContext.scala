@@ -70,7 +70,8 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
     updateResult match {
       case Right(_) =>
         ModificationResult.Modified
-      case Left(_) => logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
+      case Left(_) =>
+        logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
     }
   }

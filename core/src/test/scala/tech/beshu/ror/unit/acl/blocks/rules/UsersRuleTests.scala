@@ -88,7 +88,6 @@ class UsersRuleTests extends WordSpec with MockFactory {
         case Some(user) => UserMetadata.from(requestContext).withLoggedUser(user)
         case None => UserMetadata.from(requestContext)
       },
-      Set.empty,
       Set.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {

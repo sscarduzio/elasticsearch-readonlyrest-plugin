@@ -34,8 +34,17 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     call(createMGetRequest(query), new MGetResult(_))
   }
 
+  def mGet(query: JSON, queryParams: Map[String, String]): MGetResult = {
+    call(createMGetRequest(query, queryParams), new MGetResult(_))
+  }
+
   def get(index: String, id: Int): JsonResponse = {
     call(new HttpGet(restClient.from(createDocPathWithDefaultType(index, s"$id"))), new JsonResponse(_))
+  }
+
+  def get(index: String, id: Int, queryParams: Map[String, String]): JsonResponse = {
+    val uri = restClient.from(createDocPathWithDefaultType(index, s"$id"), queryParams.asJava)
+    call(new HttpGet(uri), new JsonResponse(_))
   }
 
   def createFirstDoc(index: String, content: JSON): JsonResponse = {
@@ -107,8 +116,8 @@ class DocumentManager(restClient: RestClient, esVersion: String)
     else Map.empty[String, String]
   }
 
-  private def createMGetRequest(query: JSON): HttpUriRequest = {
-    val request = new HttpGetWithEntity(restClient.from("_mget"))
+  private def createMGetRequest(query: JSON, queryParams: Map[String, String] = Map.empty): HttpUriRequest = {
+    val request = new HttpGetWithEntity(restClient.from("_mget", queryParams.asJava))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(query)))
     request

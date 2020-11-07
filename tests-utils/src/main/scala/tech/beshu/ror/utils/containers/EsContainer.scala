@@ -21,7 +21,7 @@ import java.util.function.Consumer
 
 import cats.data.NonEmptyList
 import com.dimafeng.testcontainers.SingleContainer
-import com.typesafe.scalalogging.StrictLogging
+import com.typesafe.scalalogging.Logger
 import monix.eval.Coeval
 import org.apache.http.message.BasicHeader
 import org.testcontainers.containers.output.{OutputFrame, Slf4jLogConsumer}
@@ -44,8 +44,7 @@ abstract class EsContainer(val name: String,
                            val esClusterSettings: EsClusterSettings,
                            image: ImageFromDockerfile)
   extends SingleContainer[GenericContainer[_]]
-    with ClientProvider
-    with StrictLogging {
+    with ClientProvider {
 
   override implicit val container = new org.testcontainers.containers.GenericContainer(image)
 
@@ -63,7 +62,7 @@ abstract class EsContainer(val name: String,
   }
 }
 
-object EsContainer extends StrictLogging {
+object EsContainer {
   trait Config {
     def clusterName: String
     def nodeName: String
@@ -79,7 +78,8 @@ object EsContainer extends StrictLogging {
 
   def init(esContainer: EsContainer,
            config: EsContainer.Config,
-           initializer: ElasticsearchNodeDataInitializer): EsContainer = {
+           initializer: ElasticsearchNodeDataInitializer,
+           logger: Logger): EsContainer = {
 
     val logConsumer: Consumer[OutputFrame] = new Slf4jLogConsumer(logger.underlying)
     esContainer.container.setLogConsumers((logConsumer :: Nil).asJava)

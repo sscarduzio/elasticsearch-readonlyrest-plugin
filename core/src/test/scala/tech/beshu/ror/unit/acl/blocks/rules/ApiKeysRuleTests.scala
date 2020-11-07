@@ -39,7 +39,7 @@ class ApiKeysRuleTests extends WordSpec with MockFactory {
     "match" when {
       "x-api-key header contains defined in settings value" in {
         val requestContext = mock[RequestContext]
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
         (requestContext.headers _).expects().returning(Set(headerFrom("X-Api-Key" -> "1234567890")))
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
       }
@@ -48,13 +48,13 @@ class ApiKeysRuleTests extends WordSpec with MockFactory {
     "not match" when {
       "x-api-key header contains not defined in settings value" in {
         val requestContext = mock[RequestContext]
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
         (requestContext.headers _).expects().returning(Set(headerFrom("X-Api-Key" -> "x")))
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
       "x-api-key header is absent" in {
         val requestContext = mock[RequestContext]
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
         (requestContext.headers _).expects().returning(Set.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }

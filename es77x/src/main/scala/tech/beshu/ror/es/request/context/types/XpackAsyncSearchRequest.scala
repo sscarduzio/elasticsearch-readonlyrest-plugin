@@ -17,17 +17,19 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.ActionRequest
-import org.elasticsearch.action.search.SearchRequest
+import monix.eval.Task
+import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
+import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, IndexName}
 import tech.beshu.ror.accesscontrol.{AccessControlStaticContext, domain}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
+import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -40,6 +42,8 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
 
   private lazy val searchRequest = searchRequestFrom(actionRequest)
 
+  override protected def requestFieldsUsage: RequestFieldsUsage = searchRequest.checkFieldsUsage()
+
   override protected def indicesFrom(request: ActionRequest): Set[domain.IndexName] = {
     searchRequest
       .indices.asSafeSet
@@ -48,12 +52,14 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
 
   override protected def update(request: ActionRequest,
                                 indices: NonEmptyList[domain.IndexName],
-                                filter: Option[domain.Filter]): ModificationResult = {
-    optionallyDisableCaching(searchRequest)
+                                filter: Option[domain.Filter],
+                                fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
     searchRequest
       .applyFilterToQuery(filter)
+      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
       .indices(indices.toList.map(_.value.value): _*)
-    Modified
+
+    ModificationResult.UpdateResponse.using(filterFieldsFromResponse(fieldLevelSecurity))
   }
 
   private def searchRequestFrom(request: ActionRequest) = {
@@ -62,13 +68,25 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
       .getOrElse(throw new RequestSeemsToBeInvalid[ActionRequest]("Cannot extract SearchRequest from SubmitAsyncSearchRequest request"))
   }
 
-  //TODO cache is now disabled only when 'fields' rule is used.
-  //Remove after 'fields' rule improvements.
-  private def optionallyDisableCaching(request: SearchRequest): Unit = {
-    if (esContext.involvesFields) {
-      logger.debug("ACL involves fields, will disable request cache for SearchRequest")
-      request.requestCache(false)
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
+                                      (actionResponse: ActionResponse): ActionResponse = {
+    (searchResponseFrom(actionResponse), fieldLevelSecurity) match {
+      case (Some(searchResponse), Some(definedFieldLevelSecurity)) =>
+        searchResponse.getHits.getHits
+          .foreach { hit =>
+            hit
+              .filterSourceFieldsUsing(definedFieldLevelSecurity.restrictions)
+              .filterDocumentFieldsUsing(definedFieldLevelSecurity.restrictions)
+          }
+        actionResponse
+      case _ =>
+        actionResponse
     }
+  }
+
+  private def searchResponseFrom(response: ActionResponse) = {
+    Option(invokeMethodCached(response, response.getClass, "getSearchResponse"))
+      .collect { case sr: SearchResponse => sr }
   }
 }
 

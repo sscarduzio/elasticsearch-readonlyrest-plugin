@@ -45,7 +45,6 @@ class GetAliasesEsRequestContext(actionRequest: GetAliasesRequest,
     this,
     UserMetadata.from(this),
     Set.empty,
-    Set.empty,
     {
       val indices = aliasesFrom(actionRequest)
       logger.debug(s"[${id.show}] Discovered aliases: ${indices.map(_.show).mkString(",")}")
