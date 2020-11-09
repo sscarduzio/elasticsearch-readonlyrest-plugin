@@ -19,6 +19,7 @@ import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.common.xcontent.ToXContent
 import org.elasticsearch.index.reindex.{DeleteByQueryRequest, ReindexRequest, UpdateByQueryRequest}
 import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, SearchTemplateRequest}
+import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult.{Handled, PassItThrough}
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
@@ -35,6 +36,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
   }
 
   private def tryToHandle: PartialFunction[ActionRequest, Task[ActionResponse with ToXContent]] = {
+    case request: RRAuditEventRequest => esClient.putRorAuditEvent(request)
     case request: MainRequest => esClient.main(request)
     case request: RemoteInfoRequest => esClient.remoteInfo(request)
     case request: IndexRequest => esClient.getIndex(request)

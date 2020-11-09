@@ -61,7 +61,7 @@ trait QueryAuditLogSerializerSuite
 
         val firstEntry = auditEntries(0)
         firstEntry("final_state").str shouldBe "ALLOWED"
-        firstEntry("block").str should contain ("name: 'Rule 1'")
+        firstEntry("block").str should include ("name: 'Rule 1'")
         firstEntry("content").str shouldBe ""
       }
 
@@ -84,8 +84,8 @@ trait QueryAuditLogSerializerSuite
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
-        val auditEntries = auditIndexManager.getEntries.jsons
-        auditEntries.size shouldBe 0
+        val auditEntriesResponse = auditIndexManager.getEntries
+        auditEntriesResponse.responseCode should be (404)
       }
     }
   }

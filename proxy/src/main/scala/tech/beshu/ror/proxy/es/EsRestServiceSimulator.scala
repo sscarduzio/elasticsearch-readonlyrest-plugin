@@ -37,7 +37,7 @@ import tech.beshu.ror.boot.StartingFailure
 import tech.beshu.ror.es.actions.rradmin._
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
-import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionHandler, RRAuditEventActionType, RRAuditEventRequest, RRAuditEventResponse, TransportRRAuditEventAction}
 import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
@@ -196,6 +196,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
             (request, listener) match {
               case (req: RRAdminRequest, resp: ActionListener[RRAdminResponse]) =>
                 rrAdminActionHandler.handle(req, resp)
+              case (req: RRAuditEventRequest, resp: ActionListener[RRAuditEventResponse]) =>
+                RRAuditEventActionHandler.handle(req, resp)
               case _ =>
                 handleEsAction(esActionRequestHandler, request, listener, proxyRestChannel)
             }
