@@ -26,3 +26,7 @@ readonlyrest:
       methods: GET
       auth_key: username:dev
       indices: ["facebook"]
+
+    - name: "Rule 3"
+      methods: POST
+      auth_key: username:dev

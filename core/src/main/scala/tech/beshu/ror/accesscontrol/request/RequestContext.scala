@@ -80,7 +80,7 @@ trait RequestContext {
 
   def generalAuditEvents: JSONObject = new JSONObject()
 
-  def correlationId: CorrelationId =
+  lazy val correlationId: CorrelationId =
     headers
       .find(_.name === Header.Name.correlationId)
       .map(_.value)

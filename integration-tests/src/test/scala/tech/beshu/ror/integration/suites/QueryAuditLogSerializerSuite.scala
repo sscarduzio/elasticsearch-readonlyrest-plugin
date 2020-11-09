@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait QueryAuditLogSerializerSuite
@@ -42,11 +42,11 @@ trait QueryAuditLogSerializerSuite
     )
   )
 
-  private lazy val auditIndexManager = new AuditIndexManagerJ(basicAuthClient("admin", "container"), "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManager(adminClient, "audit_index")
 
-  override def beforeEach() = {
+  override def beforeEach(): Unit = {
     super.beforeEach()
-    auditIndexManager.cleanAuditIndex
+    auditIndexManager.truncate
   }
 
   "Request" should {
@@ -56,13 +56,13 @@ trait QueryAuditLogSerializerSuite
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
 
-        val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+        val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
 
-        val firstEntry = auditEntries.get(0)
-        firstEntry.get("final_state") shouldBe "ALLOWED"
-        firstEntry.get("block").asInstanceOf[String].contains("name: 'Rule 1'") shouldBe true
-        firstEntry.get("content") shouldBe ""
+        val firstEntry = auditEntries(0)
+        firstEntry("final_state").str shouldBe "ALLOWED"
+        firstEntry("block").str should contain ("name: 'Rule 1'")
+        firstEntry("content").str shouldBe ""
       }
 
       "no rule is matching" in {
@@ -70,12 +70,12 @@ trait QueryAuditLogSerializerSuite
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
-        val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+        val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
 
-        val firstEntry = auditEntries.get(0)
-        firstEntry.get("final_state") shouldBe "FORBIDDEN"
-        firstEntry.get("content") shouldBe ""
+        val firstEntry = auditEntries(0)
+        firstEntry("final_state").str shouldBe "FORBIDDEN"
+        firstEntry("content").str shouldBe ""
       }
     }
     "not be audited" when {
@@ -84,7 +84,7 @@ trait QueryAuditLogSerializerSuite
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
-        val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+        val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 0
       }
     }
