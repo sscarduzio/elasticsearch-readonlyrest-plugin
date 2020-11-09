@@ -65,7 +65,6 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
         sr
     }
   }
-
 }
 
 object SearchTemplateEsRequestContext {

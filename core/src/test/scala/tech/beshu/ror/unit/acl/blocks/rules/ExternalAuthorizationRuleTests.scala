@@ -207,7 +207,6 @@ class ExternalAuthorizationRuleTests
         case Some(user) => UserMetadata.from(requestContext).withLoggedUser(DirectlyLoggedUser(user))
         case None => UserMetadata.from(requestContext)
       },
-      Set.empty,
       Set.empty
     )
     val result = rule.check(blockContext).runSyncUnsafe(1 second)

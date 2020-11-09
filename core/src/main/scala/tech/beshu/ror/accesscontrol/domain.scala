@@ -22,6 +22,7 @@ import java.util.{Base64, Locale, UUID}
 import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
+import cats.kernel.Monoid
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -32,7 +33,8 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction}
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
@@ -345,20 +347,6 @@ object domain {
 
   final case class UserOrigin(value: NonEmptyString)
 
-  final case class FieldsRestrictions(fields: UniqueNonEmptyList[DocumentField],
-                                      mode: AccessMode)
-
-  object FieldsRestrictions {
-
-    sealed trait AccessMode
-    object AccessMode {
-      case object Whitelist extends AccessMode
-      case object Blacklist extends AccessMode
-    }
-  }
-
-  final case class DocumentField(value: NonEmptyString)
-
   final case class Type(value: String) extends AnyVal
 
   final case class Filter(value: NonEmptyString)
@@ -454,5 +442,84 @@ object domain {
   object DocumentAccessibility {
     case object Accessible extends DocumentAccessibility
     case object Inaccessible extends DocumentAccessibility
+  }
+
+  final case class FieldLevelSecurity(restrictions: FieldLevelSecurity.FieldsRestrictions,
+                                      strategy: FieldLevelSecurity.Strategy)
+
+  object FieldLevelSecurity {
+
+    final case class FieldsRestrictions(documentFields: UniqueNonEmptyList[DocumentField],
+                                        mode: AccessMode)
+
+    object FieldsRestrictions {
+      final case class DocumentField(value: NonEmptyString)
+
+      sealed trait AccessMode
+      object AccessMode {
+        case object Whitelist extends AccessMode
+        case object Blacklist extends AccessMode
+      }
+    }
+
+    sealed trait Strategy
+    object Strategy {
+      case object FlsAtLuceneLevelApproach extends Strategy
+      sealed trait BasedOnBlockContextOnly extends Strategy
+
+      object BasedOnBlockContextOnly {
+        case object EverythingAllowed extends BasedOnBlockContextOnly
+        final case class NotAllowedFieldsUsed(fields: NonEmptyList[SpecificField]) extends BasedOnBlockContextOnly
+      }
+    }
+
+    sealed trait RequestFieldsUsage
+    object RequestFieldsUsage {
+
+      case object CannotExtractFields extends RequestFieldsUsage
+      case object NotUsingFields extends RequestFieldsUsage
+      final case class UsingFields(usedFields: NonEmptyList[UsedField]) extends RequestFieldsUsage
+
+      sealed trait UsedField {
+        def value: String
+      }
+
+      object UsedField {
+
+        final case class SpecificField private(value: String) extends UsedField
+
+        object SpecificField {
+          implicit class Ops (val specificField: SpecificField) extends AnyVal {
+            def obfuscate: ObfuscatedRandomField = ObfuscatedRandomField(specificField)
+          }
+        }
+
+        final case class FieldWithWildcard private(value: String) extends UsedField
+
+        def apply(value: String): UsedField = {
+          if (hasWildcard(value))
+            FieldWithWildcard(value)
+          else
+            SpecificField(value)
+        }
+
+        private def hasWildcard(fieldName: String): Boolean = fieldName.contains("*")
+      }
+
+      final case class ObfuscatedRandomField(value: String) extends AnyVal
+      object ObfuscatedRandomField {
+        def apply(from: SpecificField): ObfuscatedRandomField = {
+          new ObfuscatedRandomField(s"${from.value}_ROR_${randomAlphanumeric(10)}")
+        }
+      }
+
+      implicit val monoidInstance: Monoid[RequestFieldsUsage] = Monoid.instance(NotUsingFields, {
+        case (CannotExtractFields, _) => CannotExtractFields
+        case (_, CannotExtractFields) => CannotExtractFields
+        case (other, NotUsingFields) => other
+        case (NotUsingFields, other) => other
+        case (UsingFields(firstFields), UsingFields(secondFields)) => UsingFields(firstFields ::: secondFields)
+      })
+    }
   }
 }

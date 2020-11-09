@@ -16,17 +16,23 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.data.NonEmptyList
 import cats.implicits._
-import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
+import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.FilterableMultiRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.{Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.NotUsingFields
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.Strategy.BasedOnBlockContextOnly
+import tech.beshu.ror.accesscontrol.domain.{FieldLevelSecurity, Filter, IndexName}
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.SearchHitOps._
 import tech.beshu.ror.es.request.SearchRequestOps._
 import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -46,9 +52,10 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
     this,
     UserMetadata.from(this),
     Set.empty,
-    Set.empty,
     indexPacksFrom(actionRequest),
-    None
+    None,
+    None,
+    requestFieldsUsage
   )
 
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
@@ -58,13 +65,42 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
       requests
         .zip(modifiedPacksOfIndices)
         .foreach { case (request, pack) =>
-          updateRequest(request, pack, blockContext.filter)
+          updateRequest(request, pack, blockContext.filter, blockContext.fieldLevelSecurity)
         }
-      Modified
+      ModificationResult.UpdateResponse.using(filterFieldsFromResponse(blockContext.fieldLevelSecurity))
     } else {
       logger.error(s"[${id.show}] Cannot alter MultiSearchRequest request, because origin request contained different number of" +
         s" inner requests, than altered one. This can be security issue. So, it's better for forbid the request")
       ShouldBeInterrupted
+    }
+  }
+
+  private def requestFieldsUsage: RequestFieldsUsage = {
+    NonEmptyList.fromList(actionRequest.requests().asScala.toList) match {
+      case Some(definedRequests) =>
+        definedRequests
+          .map(_.checkFieldsUsage())
+          .combineAll
+      case None =>
+        NotUsingFields
+    }
+  }
+
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity])
+                                      (actionResponse: ActionResponse): ActionResponse = {
+    (actionResponse, fieldLevelSecurity) match {
+      case (response: MultiSearchResponse, Some(FieldLevelSecurity(restrictions, _: BasedOnBlockContextOnly))) =>
+        response.getResponses
+          .filterNot(_.isFailure)
+          .flatMap(_.getResponse.getHits.getHits)
+          .foreach { hit =>
+            hit
+              .filterSourceFieldsUsing(restrictions)
+              .filterDocumentFieldsUsing(restrictions)
+          }
+        response
+      case _ =>
+        actionResponse
     }
   }
 
@@ -88,14 +124,17 @@ class MultiSearchEsRequestContext(actionRequest: MultiSearchRequest,
 
   private def updateRequest(request: SearchRequest,
                             indexPack: Indices,
-                            filter: Option[Filter]) = {
+                            filter: Option[Filter],
+                            fieldLevelSecurity: Option[FieldLevelSecurity]) = {
     indexPack match {
       case Indices.Found(indices) =>
         updateRequestWithIndices(request, indices)
       case Indices.NotFound =>
         updateRequestWithNonExistingIndex(request)
     }
-    request.applyFilterToQuery(filter)
+    request
+      .applyFilterToQuery(filter)
+      .applyFieldLevelSecurity(fieldLevelSecurity, threadPool, id)
   }
 
   private def updateRequestWithIndices(request: SearchRequest, indices: Set[IndexName]) = {

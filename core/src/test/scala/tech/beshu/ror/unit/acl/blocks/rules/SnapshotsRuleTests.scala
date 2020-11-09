@@ -177,7 +177,7 @@ class SnapshotsRuleTests extends WordSpec with Inside {
       isReadOnlyRequest = readonlyRequest
     )
     val blockContext = SnapshotRequestBlockContext(
-      requestContext, UserMetadata.empty, Set.empty, Set.empty, requestSnapshots, Set.empty, Set.empty, Set.empty
+      requestContext, UserMetadata.empty, Set.empty, requestSnapshots, Set.empty, Set.empty, Set.empty
     )
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {

@@ -29,7 +29,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
-import tech.beshu.ror.boot.{Engine, EsInitListener, Ror, RorInstance}
+import tech.beshu.ror.boot.{Engine, EsInitListener, Ror, RorInstance, RorMode}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -122,7 +122,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
         aclAwareRequestFilter
           .handle(
             engine,
-            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled, engine.context.involvesFields)
+            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled)
           )
           .runAsync {
             case Right(_) =>
@@ -136,7 +136,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
   private def startRorInstance() = {
     val startResult = for {
       _ <- esInitListener.waitUntilReady
-      result <- new Ror().start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
+      result <- new Ror(RorMode.Plugin).start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
     } yield result
     startResult.runAsync {
       case Right(Right(instance)) =>

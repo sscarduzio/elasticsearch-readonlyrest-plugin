@@ -27,11 +27,13 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockCo
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
-import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, DocumentWithIndex, Filter, IndexName}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.DocumentApiOps.GetApi
+import tech.beshu.ror.es.request.DocumentApiOps.GetApi._
 import tech.beshu.ror.es.request.DocumentApiOps.MultiGetApi._
 import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
@@ -45,13 +47,16 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
   extends BaseEsRequestContext[FilterableMultiRequestBlockContext](esContext, clusterService)
     with EsRequest[FilterableMultiRequestBlockContext] {
 
+  private val requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.NotUsingFields
+
   override lazy val initialBlockContext: FilterableMultiRequestBlockContext = FilterableMultiRequestBlockContext(
     this,
     UserMetadata.from(this),
     Set.empty,
-    Set.empty,
     indexPacksFrom(actionRequest),
-    None
+    None,
+    None,
+    requestFieldsUsage
   )
 
   override protected def modifyRequest(blockContext: FilterableMultiRequestBlockContext): ModificationResult = {
@@ -63,7 +68,7 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
         .foreach { case (item, pack) =>
           updateItem(item, pack)
         }
-      ModificationResult.UpdateResponse(filterResponse(blockContext.filter))
+      ModificationResult.UpdateResponse(updateFunction(blockContext.filter, blockContext.fieldLevelSecurity))
     } else {
       logger.error(
         s"""[${id.show}] Cannot alter MultiGetRequest request, because origin request contained different
@@ -84,7 +89,8 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     indicesOrWildcard(requestIndices)
   }
 
-  private def updateItem(item: MultiGetRequest.Item, indexPack: Indices): Unit = {
+  private def updateItem(item: MultiGetRequest.Item,
+                         indexPack: Indices): Unit = {
     indexPack match {
       case Indices.Found(indices) =>
         updateItemWithIndices(item, indices)
@@ -110,8 +116,15 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
     item.index(notExistingIndex.value.value)
   }
 
-  private def filterResponse(filter: Option[Filter])
+  private def updateFunction(filter: Option[Filter],
+                             fieldLevelSecurity: Option[FieldLevelSecurity])
                             (actionResponse: ActionResponse): Task[ActionResponse] = {
+    filterResponse(filter, actionResponse)
+      .map(response => filterFieldsFromResponse(fieldLevelSecurity, response))
+  }
+
+  private def filterResponse(filter: Option[Filter],
+                             actionResponse: ActionResponse): Task[ActionResponse] = {
     (actionResponse, filter) match {
       case (response: MultiGetResponse, Some(definedFilter)) =>
         applyFilter(response, definedFilter)
@@ -161,6 +174,23 @@ class MultiGetEsRequestContext(actionRequest: MultiGetRequest,
       case Some(Inaccessible) =>
         val newResponse = GetApi.doesNotExistResponse(original = item.getResponse)
         new MultiGetItemResponse(newResponse, null)
+    }
+  }
+
+  private def filterFieldsFromResponse(fieldLevelSecurity: Option[FieldLevelSecurity],
+                                       actionResponse: ActionResponse): ActionResponse = {
+    (actionResponse, fieldLevelSecurity) match {
+      case (response: MultiGetResponse, Some(definedFieldLevelSecurity)) =>
+        val newResponses = response.getResponses
+          .map {
+            case multiGetItem if !multiGetItem.isFailed =>
+              val newGetResponse = multiGetItem.getResponse.filterFieldsUsing(definedFieldLevelSecurity.restrictions)
+              new MultiGetItemResponse(newGetResponse, null)
+            case other => other
+          }
+        new MultiGetResponse(newResponses)
+      case _ =>
+        actionResponse
     }
   }
 }
