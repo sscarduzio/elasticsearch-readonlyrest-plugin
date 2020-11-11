@@ -14,9 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.proxy
+package tech.beshu.ror.integration.suites.fields.querydsl
 
-import tech.beshu.ror.integration.suites.FieldLevelSecuritySuite
+import org.scalatest.Matchers._
+import tech.beshu.ror.utils.containers.EsContainerCreator
 
-// todo: enable when proxy supports fields rule
-//class FieldLevelSecurityProxyTests extends FieldLevelSecuritySuite with BasicClusterProxyTestSupport
+trait FieldRuleSearchQueryDSLSuite extends FieldRuleQueryDSLSuite {
+  this: EsContainerCreator =>
+
+  override protected def assertNoSearchHitsReturnedFor(index: String, query: String) = {
+    val result = searchManager.search(index, ujson.read(query))
+    result.responseCode shouldBe 200
+    result.searchHits.isEmpty shouldBe true
+  }
+}

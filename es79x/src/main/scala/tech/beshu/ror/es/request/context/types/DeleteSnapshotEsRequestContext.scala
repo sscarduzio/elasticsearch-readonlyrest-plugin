@@ -56,7 +56,8 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
         identity
       )
   }
-  
+
+
   override protected def indicesFrom(request: DeleteSnapshotRequest): Set[IndexName] = Set.empty
 
   override protected def modifyRequest(blockContext: SnapshotRequestBlockContext): ModificationResult = {

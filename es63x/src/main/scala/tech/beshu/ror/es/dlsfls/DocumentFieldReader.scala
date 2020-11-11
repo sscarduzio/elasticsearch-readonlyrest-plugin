@@ -28,7 +28,7 @@ import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
 import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XContentType}
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader
 import tech.beshu.ror.fls.FieldsPolicy
 import ujson._

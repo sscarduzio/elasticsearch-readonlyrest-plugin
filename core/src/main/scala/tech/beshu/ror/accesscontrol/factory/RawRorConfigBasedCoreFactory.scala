@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.accesscontrol.factory.decoders.AuditingSettingsDecoder
+import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, GlobalStaticSettingsDecoder}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.accesscontrol.logging.{AuditingTool, LoggingContext}
@@ -43,8 +43,9 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
+import tech.beshu.ror.boot.RorMode
 import tech.beshu.ror.configuration.loader.RorConfigurationIndex
-import tech.beshu.ror.configuration.{RawRorConfig, RorIndexNameConfiguration}
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.yaml.YamlOps
@@ -60,7 +61,8 @@ trait CoreFactory {
                      ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[NonEmptyList[AclCreationError], CoreSettings]]
 }
 
-class RawRorConfigBasedCoreFactory(implicit clock: Clock,
+class RawRorConfigBasedCoreFactory(rorMode: RorMode)
+                                  (implicit clock: Clock,
                                    uuidProvider: UuidProvider,
                                    envVarProvider: EnvVarsProvider)
   extends CoreFactory with Logging {
@@ -105,12 +107,15 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
           .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
       } else {
         for {
-          aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, rorIndexNameConfiguration)
+          globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorMode))
+          aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, rorIndexNameConfiguration, globalSettings)
           (acl, context) = aclAndContext
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
-        } yield CoreSettings(aclEngine = acl,
+        } yield CoreSettings(
+          aclEngine = acl,
           aclStaticContext = context,
-          auditingSettings = auditingTools)
+          auditingSettings = auditingTools
+        )
       }
     } yield core
 
@@ -126,13 +131,14 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
   }
 
   private implicit def rulesNelDecoder(definitions: DefinitionsPack,
-                                       rorIndexNameConfiguration: RorConfigurationIndex): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
+                                       rorIndexNameConfiguration: RorConfigurationIndex,
+                                       globalSettings: GlobalSettings): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Option[Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](None)
     val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
         for {
           last <- collectedRuleResults
-          current <- decodeRuleInCursorContext(currentRuleName, definitions, rorIndexNameConfiguration).map(_.map(_.map(_ :: Nil)))
+          current <- decodeRuleInCursorContext(currentRuleName, definitions, rorIndexNameConfiguration, globalSettings).map(_.map(_.map(_ :: Nil)))
         } yield Monoid.combine(last, current)
       }
       .run(c)
@@ -157,11 +163,12 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
 
   private def decodeRuleInCursorContext(name: String,
                                         definitions: DefinitionsPack,
-                                        rorIndexNameConfiguration: RorConfigurationIndex): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] =
+                                        rorIndexNameConfiguration: RorConfigurationIndex,
+                                        globalSettings: GlobalSettings): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] =
     State(cursor => {
       if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
-        ruleDecoderBy(Rule.Name(name), definitions, rorIndexNameConfiguration) match {
+        ruleDecoderBy(Rule.Name(name), definitions, rorIndexNameConfiguration, globalSettings) match {
           case Some(decoder) =>
             val decodingResult = decoder.decode(
               cursor.downField(name),
@@ -172,7 +179,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
                 .associatedFields
                 .foldLeft(json.remove(name)) {
                   case (currentJson, field) =>
-                    ruleDecoderBy(Rule.Name(field), definitions, rorIndexNameConfiguration) match {
+                    ruleDecoderBy(Rule.Name(field), definitions, rorIndexNameConfiguration, globalSettings) match {
                       case Some(_) => currentJson
                       case None => currentJson.remove(field)
                     }
@@ -186,7 +193,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
     })
 
   private def blockDecoder(definitions: DefinitionsPack,
-                           rorIndexNameConfiguration: RorConfigurationIndex)
+                           rorIndexNameConfiguration: RorConfigurationIndex,
+                           globalSettings: GlobalSettings)
                           (implicit loggingContext: LoggingContext): Decoder[Block] = {
     implicit val nameDecoder: Decoder[Block.Name] = DecoderHelpers.decodeStringLike.map(Block.Name.apply)
     implicit val policyDecoder: Decoder[Block.Policy] =
@@ -215,7 +223,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
           name <- c.downField(Attributes.Block.name).as[Block.Name]
           policy <- c.downField(Attributes.Block.policy).as[Option[Block.Policy]]
           verbosity <- c.downField(Attributes.Block.verbosity).as[Option[Block.Verbosity]]
-          rules <- rulesNelDecoder(definitions, rorIndexNameConfiguration)
+          rules <- rulesNelDecoder(definitions, rorIndexNameConfiguration, globalSettings)
             .toSyncDecoder
             .decoder
             .tryDecode(c.withFocus(
@@ -230,19 +238,14 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
       }
   }
 
-  private def aclStaticContextDecoder(blocks: NonEmptyList[Block],
-                                      obfuscatedHeaders:Set[Header.Name]): Decoder[EnabledAccessControlStaticContext] = {
-    Decoder.instance { c =>
-      for {
-        basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
-        forbiddenMessage <- c.downField("response_if_req_forbidden").as[Option[String]]
-      } yield new EnabledAccessControlStaticContext(
+  private def aclStaticContextCreator(blocks: NonEmptyList[Block],
+                                      obfuscatedHeaders:Set[Header.Name],
+                                      globalSettings: GlobalSettings): EnabledAccessControlStaticContext = {
+      new EnabledAccessControlStaticContext(
         blocks,
-        basicAuthPrompt.getOrElse(true),
-        forbiddenMessage.getOrElse("forbidden"),
-        obfuscatedHeaders,
+        globalSettings,
+        obfuscatedHeaders
       )
-    }
   }
 
   private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
@@ -253,7 +256,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
 
   private def aclDecoder(httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
-                         rorIndexNameConfiguration: RorConfigurationIndex): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
+                         rorIndexNameConfiguration: RorConfigurationIndex,
+                         globalSettings: GlobalSettings): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
@@ -279,7 +283,8 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
               ldaps = ldapServices,
               impersonators = impersonationDefs
               ),
-              rorIndexNameConfiguration
+              rorIndexNameConfiguration,
+              globalSettings
             )
           }
           DecoderHelpers
@@ -298,7 +303,7 @@ class RawRorConfigBasedCoreFactory(implicit clock: Clock,
                 }
             }
         }
-        staticContext <- AsyncDecoderCreator.from(aclStaticContextDecoder(blocks, obfuscatedHeaders))
+        staticContext = aclStaticContextCreator(blocks, obfuscatedHeaders, globalSettings)
         acl = {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
           val upgradedBlocks = CrossBlockContextBlocksUpgrade.upgrade(blocks)

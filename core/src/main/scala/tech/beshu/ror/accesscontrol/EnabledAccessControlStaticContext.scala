@@ -21,32 +21,33 @@ import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 
 trait AccessControlStaticContext {
-  def involvesFields: Boolean
+  def usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine]
   def doesRequirePassword: Boolean
   def forbiddenRequestMessage: String
   def obfuscatedHeaders: Set[Header.Name]
 }
 
 class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
-                                        showBasicAuthPrompt: Boolean,
-                                        val forbiddenRequestMessage: String,
-                                        override val obfuscatedHeaders: Set[Header.Name],
-                                       )
+                                        globalSettings: GlobalSettings,
+                                        override val obfuscatedHeaders: Set[Header.Name])
   extends AccessControlStaticContext {
 
-  val involvesFields: Boolean = {
+  override val forbiddenRequestMessage: String = globalSettings.forbiddenRequestMessage
+
+  val usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = {
     blocks
       .flatMap(_.rules)
-      .exists {
-        case _: FieldsRule => true
-        case _ => false
+      .collect {
+        case rule: FieldsRule => rule.settings.flsEngine
       }
+      .headOption
   }
 
   val doesRequirePassword: Boolean = {
-    showBasicAuthPrompt &&
+    globalSettings.showBasicAuthPrompt &&
       blocks
         .find(_
           .rules
@@ -61,7 +62,7 @@ class EnabledAccessControlStaticContext(blocks: NonEmptyList[Block],
 }
 
 object DisabledAccessControlStaticContext$ extends AccessControlStaticContext {
-  override val involvesFields: Boolean = false
+  override val usedFlsEngineInFieldsRule: Option[GlobalSettings.FlsEngine] = None
   override val doesRequirePassword: Boolean = false
   override val forbiddenRequestMessage: String = ""
   override val obfuscatedHeaders: Set[Header.Name] = Set.empty
