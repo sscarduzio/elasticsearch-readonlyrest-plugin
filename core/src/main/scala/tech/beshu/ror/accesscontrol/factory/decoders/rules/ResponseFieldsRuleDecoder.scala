@@ -29,11 +29,8 @@ private object ResponseFieldsRuleDecoderHelper extends FieldsFilteringRuleBase {
 
   private implicit val convertible: Convertible[ResponseField] = AlwaysRightConvertible.from(ResponseField.apply)
 
-  implicit val accessModeConverter: ResponseFieldsRuleDecoderHelper.AccessModeConverter[AccessMode] = new AccessModeConverter[AccessMode] {
-    override def whitelist: AccessMode = AccessMode.Whitelist
-
-    override def blacklist: AccessMode = AccessMode.Blacklist
-  }
+  implicit val accessModeConverter: AccessModeConverter[AccessMode] =
+    AccessModeConverter.create(whitelistElement = AccessMode.Whitelist, blacklistElement = AccessMode.Blacklist)
 
   val fieldsRuleDecoder = for {
     configuredFields <- configuredFieldsDecoder

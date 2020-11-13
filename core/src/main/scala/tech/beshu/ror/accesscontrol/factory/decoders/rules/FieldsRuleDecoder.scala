@@ -16,113 +16,32 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
-import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-
-import scala.collection.JavaConverters._
 
 class FieldsRuleDecoder(flsEngine: FlsEngine)
   extends RuleDecoderWithoutAssociatedFields[FieldsRule](FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine))
 
-private object FieldsRuleDecoderHelper {
+private object FieldsRuleDecoderHelper extends FieldsFilteringRuleBase {
 
   private implicit val convertible: Convertible[DocumentField] = AlwaysRightConvertible.from(DocumentField.apply)
 
-  final case class ConfiguredField(fieldName: NonEmptyString,
-                                   rawValue: String,
-                                   isNegated: Boolean)
-
-  private val configuredFieldsDecoder = DecoderHelpers
-    .decodeStringLikeOrUniqueNonEmptyListE(convertToConfiguredField)
+  implicit val accessModeConverter: AccessModeConverter[AccessMode] =
+    AccessModeConverter.create(whitelistElement = AccessMode.Whitelist, blacklistElement = AccessMode.Blacklist)
 
   def fieldsRuleDecoder(flsEngine: FlsEngine): Decoder[RuleWithVariableUsageDefinition[FieldsRule]] = {
     for {
       configuredFields <- configuredFieldsDecoder
-      accessMode <- accessModeDecoder(configuredFields)
-      documentFields <- documentFieldsDecoder(configuredFields)
+      accessMode <- accessModeDecoder[AccessMode](configuredFields)
+      documentFields <- documentFieldsDecoder[DocumentField](configuredFields, checkForAlwaysAllowedFields = true)
     } yield RuleWithVariableUsageDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode, flsEngine)))
   }
 
-  private def convertToConfiguredField: String => Either[String, ConfiguredField] = str => {
-    if (str.startsWith("~")) {
-      NonEmptyString.from(str.substring(1)) match {
-        case Right(nes) => Right(ConfiguredField(nes, str, isNegated = true))
-        case Left(_) => Left("There was no name passed for blacklist field (~ only is forbidden)")
-      }
-    } else {
-      NonEmptyString.from(str) match {
-        case Right(nes) => Right(ConfiguredField(nes, str, isNegated = false))
-        case Left(_) => Left("Field cannot be empty string")
-      }
-    }
-  }
 
-  private def accessModeDecoder(configuredFields: UniqueNonEmptyList[ConfiguredField]) =
-    fromConfiguredFieldsDecoder(configuredFields, createAccessMode)
-
-  private def documentFieldsDecoder(configuredFields: UniqueNonEmptyList[ConfiguredField]) =
-    fromConfiguredFieldsDecoder(configuredFields, createDocumentFields)
-
-  private def fromConfiguredFieldsDecoder[ITEM](configuredFields: UniqueNonEmptyList[ConfiguredField],
-                                                creator: UniqueNonEmptyList[ConfiguredField] => Either[AclCreationError, ITEM]) =
-    Decoder.const(configuredFields)
-      .toSyncDecoder
-      .emapE(creator)
-      .decoder
-
-  private def createAccessMode(fields: UniqueNonEmptyList[ConfiguredField]) = {
-    if (areDifferentAccessModesUsedSimultaneously(fields)) {
-      val rawValues = fields.map(field => s"'${field.rawValue}'").mkString(",")
-      Left(RulesLevelCreationError(Message(s"fields should all be negated (i.e. '~field1') or all without negation (i.e. 'field1') Found: $rawValues")))
-    } else {
-      val usedAccessModes: AccessMode = if (fields.head.isNegated) AccessMode.Blacklist else AccessMode.Whitelist
-      Right(usedAccessModes)
-    }
-  }
-
-  private def createDocumentFields(fields: UniqueNonEmptyList[ConfiguredField]) = {
-    if (containsAlwaysAllowedFields(fields)) {
-      Left(RulesLevelCreationError(Message(s"The fields rule cannot contain always-allowed fields: ${Constants.FIELDS_ALWAYS_ALLOW.asScala.mkString(",")}")))
-    } else {
-      fields
-        .toNonEmptyList
-        .traverse(createRuntimeVariable)
-        .map(UniqueNonEmptyList.fromNonEmptyList)
-    }
-  }
-
-  private def areDifferentAccessModesUsedSimultaneously(allFields: UniqueNonEmptyList[ConfiguredField]): Boolean = {
-    val (negatedFields, nonNegatedFields) = allFields.partition(_.isNegated)
-    negatedFields.nonEmpty && nonNegatedFields.nonEmpty
-  }
-
-  private def containsAlwaysAllowedFields(fields: UniqueNonEmptyList[ConfiguredField]): Boolean = {
-    fields
-      .map(_.fieldName)
-      .intersect(Constants.FIELDS_ALWAYS_ALLOW.asScala.map(NonEmptyString.unsafeFrom).toSet)
-      .nonEmpty
-  }
-
-  private def createRuntimeVariable(field: ConfiguredField) = {
-    RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom[DocumentField](field.fieldName)
-      .left.map(error => RulesLevelCreationError(Message(error.show)))
-  }
 }

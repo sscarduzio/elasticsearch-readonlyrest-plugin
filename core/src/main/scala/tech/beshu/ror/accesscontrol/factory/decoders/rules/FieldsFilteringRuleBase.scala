@@ -117,6 +117,14 @@ trait FieldsFilteringRuleBase {
       .left.map(error => RulesLevelCreationError(Message(error.show)))
   }
 
+  object AccessModeConverter {
+    def create[A](whitelistElement: A, blacklistElement: A): AccessModeConverter[A] = new AccessModeConverter[A] {
+      override def whitelist: A = whitelistElement
+
+      override def blacklist: A = blacklistElement
+    }
+  }
+
   trait AccessModeConverter[A] {
     def whitelist: A
     def blacklist: A
