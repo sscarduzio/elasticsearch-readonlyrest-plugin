@@ -44,7 +44,8 @@ class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
           UserMetadata
             .empty
             .withLoggedUser(DirectlyLoggedUser(Id("user1".nonempty))),
-          Set.empty
+          Set.empty,
+          List.empty
         )
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
           CurrentUserMetadataRequestBlockContext(
@@ -53,19 +54,21 @@ class KibanaHideAppsRuleTests extends WordSpec with MockFactory {
               .empty
               .withLoggedUser(DirectlyLoggedUser(Id("user1".nonempty)))
               .withHiddenKibanaApps(NonEmptySet.one(KibanaApp("app1".nonempty))),
-            Set.empty
+            Set.empty,
+            List.empty
           )
         ))
       }
       "not set kibana app header if user is not logged" in {
         val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1".nonempty))))
         val requestContext = mock[RequestContext]
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
           CurrentUserMetadataRequestBlockContext(
             requestContext,
             UserMetadata.empty,
-            Set.empty
+            Set.empty,
+            List.empty
           )
         ))
       }

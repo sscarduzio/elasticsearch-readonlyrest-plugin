@@ -86,7 +86,6 @@ trait MiscSuite
     val dev1ClusterStateManager = new ClusterManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esTargets.head.esVersion)
     val healthCheck = dev1ClusterStateManager.health()
 
-    println(healthCheck.responseJson.toString())
     healthCheck.responseJson.obj.isDefinedAt("cluster_name") should equal(true)
     healthCheck.responseJson.obj.isDefinedAt("number_of_nodes") should equal(false)
   }
@@ -95,7 +94,6 @@ trait MiscSuite
     val dev1ClusterStateManager = new CatManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esTargets.head.esVersion)
     val healthCheck = dev1ClusterStateManager.healthCheck()
 
-    println(healthCheck.responseJson.toString())
     healthCheck.responseJson.arr.head.obj.isDefinedAt("status") should equal(true)
     healthCheck.responseJson.arr.head.obj.isDefinedAt("cluster") should equal(false)
   }

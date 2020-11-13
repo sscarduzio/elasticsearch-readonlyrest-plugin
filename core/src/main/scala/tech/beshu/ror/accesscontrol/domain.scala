@@ -75,7 +75,6 @@ object domain {
       val cookie = Name(NonEmptyString.unsafeFrom("Cookie"))
       val setCookie = Name(NonEmptyString.unsafeFrom("Set-Cookie"))
       val transientFields = Name(NonEmptyString.unsafeFrom(Constants.FIELDS_TRANSIENT))
-      val transientResponseFields = Name(NonEmptyString.unsafeFrom(Constants.RESPONSE_FIELDS_TRANSIENT))
       val currentGroup = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUP_CURRENT))
       val availableGroups = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUPS_AVAILABLE))
       val userAgent = Name(NonEmptyString.unsafeFrom("User-Agent"))
@@ -431,6 +430,20 @@ object domain {
   final case class DocumentId(value: String) extends AnyVal
 
   final case class DocumentWithIndex(index: IndexName, documentId: DocumentId)
+
+  object ResponseFieldsFiltering {
+
+    final case class ResponseFieldsRestrictions(documentFields: UniqueNonEmptyList[ResponseField],
+                                                mode: AccessMode)
+
+    final case class ResponseField(value: NonEmptyString)
+
+    sealed trait AccessMode
+    object AccessMode {
+      case object Whitelist extends AccessMode
+      case object Blacklist extends AccessMode
+    }
+  }
 
   sealed trait DocumentAccessibility
   object DocumentAccessibility {

@@ -23,14 +23,13 @@ import org.elasticsearch.common.xcontent.json.JsonXContent
 import org.elasticsearch.common.xcontent.smile.SmileXContent
 import org.elasticsearch.common.xcontent.yaml.YamlXContent
 import org.elasticsearch.common.xcontent.{LoggingDeprecationHandler, NamedXContentRegistry, XContentBuilder, XContentType}
-import org.elasticsearch.rest.{AbstractRestChannel, BytesRestResponse, RestChannel, RestRequest, RestResponse}
+import org.elasticsearch.rest._
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
-import tech.beshu.ror.accesscontrol.headerValues.transientFieldsFromHeaderValue
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
+import tech.beshu.ror.accesscontrol.headerValues._
 
-import scala.util.{Failure, Success}
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success}
 
 class RestChannelFilteringDecorator(channel: RestChannel, request: RestRequest, threadContext: ThreadContext, detailedErrorsEnabled: Boolean)
   extends AbstractRestChannel(request, detailedErrorsEnabled) {
@@ -38,7 +37,7 @@ class RestChannelFilteringDecorator(channel: RestChannel, request: RestRequest, 
   override def sendResponse(response: RestResponse): Unit = {
     response match {
       case bytesRestResponse: BytesRestResponse =>
-        Option(threadContext.getHeader(Constants.RESPONSE_FIELDS_TRANSIENT)) match {
+        Option(threadContext.getHeader(Constants.FILTERED_RESPONSE_FIELDS_FIELD)) match {
           case Some(fieldsHeader) =>
             fieldsFromHeaderValue(fieldsHeader) match {
               case Success(fieldsRestrictions) =>
@@ -53,12 +52,12 @@ class RestChannelFilteringDecorator(channel: RestChannel, request: RestRequest, 
     }
   }
 
-  private def filterBytesRestResponse(response: BytesRestResponse, fieldsRestrictions: FieldsRestrictions): BytesRestResponse = {
+  private def filterBytesRestResponse(response: BytesRestResponse, fieldsRestrictions: ResponseFieldsRestrictions): BytesRestResponse = {
     val (includes, excludes) = fieldsRestrictions.mode match {
       case AccessMode.Whitelist =>
-        (fieldsRestrictions.fields.map(_.value.value), Set.empty[String])
+        (fieldsRestrictions.documentFields.map(_.value.value), Set.empty[String])
       case AccessMode.Blacklist =>
-        (Set.empty[String], fieldsRestrictions.fields.map(_.value.value))
+        (Set.empty[String], fieldsRestrictions.documentFields.map(_.value.value))
     }
     val xContent =
       if(response.contentType().equals(XContentType.JSON.mediaType())) JsonXContent.jsonXContent
@@ -78,7 +77,7 @@ class RestChannelFilteringDecorator(channel: RestChannel, request: RestRequest, 
     lazy val failure = Failure(new IllegalStateException("Couldn't extract response_fields from ThreadContext"))
     for {
       nel <- NonEmptyString.from(value).fold(_ => failure, Success(_))
-      fields <- transientFieldsFromHeaderValue.fromRawValue(nel).fold(_ => failure, Success(_))
+      fields <- filteredResponseFieldsFromHeaderValue.fromRawValue(nel).fold(_ => failure, Success(_))
     } yield fields
   }
 }

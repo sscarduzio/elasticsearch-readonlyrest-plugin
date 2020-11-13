@@ -21,7 +21,10 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, FilteredResponseFields}
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
+import tech.beshu.ror.accesscontrol.headerValues.filteredResponseFieldsToHeaderValue
 
 import scala.util.Try
 
@@ -52,6 +55,11 @@ trait EsRequest[B <: BlockContext] extends Logging {
 
   private def modifyResponseHeaders(blockContext: B): Unit = {
     val threadContext = threadPool.getThreadContext
+    blockContext.responseTransformations.collect {
+      case FilteredResponseFields(responseFields, accessMode) =>
+        threadContext.putHeader(Constants.FILTERED_RESPONSE_FIELDS_FIELD,
+          filteredResponseFieldsToHeaderValue.toRawValue(ResponseFieldsRestrictions(responseFields, accessMode)).value)
+    }
     blockContext.responseHeaders.foreach(header =>
       threadContext.addResponseHeader(header.name.value.value, header.value.value))
   }

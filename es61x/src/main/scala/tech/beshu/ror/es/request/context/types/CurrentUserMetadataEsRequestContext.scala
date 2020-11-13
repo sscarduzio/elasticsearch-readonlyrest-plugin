@@ -38,7 +38,8 @@ class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
   override val initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this,
     UserMetadata.from(this),
-    Set.empty
+    Set.empty,
+    List.empty
   )
 
   override protected def modifyRequest(blockContext: CurrentUserMetadataRequestBlockContext): ModificationResult = Modified

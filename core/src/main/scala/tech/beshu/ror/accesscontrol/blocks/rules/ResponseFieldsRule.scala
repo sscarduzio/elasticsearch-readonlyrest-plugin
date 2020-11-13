@@ -20,11 +20,8 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.ResponseFieldsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
-import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.domain.{DocumentField, FieldsRestrictions, Header}
-import tech.beshu.ror.accesscontrol.headerValues.transientFieldsToHeaderValue
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields}
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -34,15 +31,11 @@ class ResponseFieldsRule(val settings: Settings)
   override val name: Rule.Name = ResponseFieldsRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    val maybeResolvedFields = resolveAll(settings.response_fields.toNonEmptyList, blockContext)
+    val maybeResolvedFields = resolveAll(settings.responseFields.toNonEmptyList, blockContext)
     UniqueNonEmptyList.fromList(maybeResolvedFields) match {
       case Some(resolvedFields) =>
-        val transientFieldsHeader = new Header(
-          Name.transientResponseFields,
-          transientFieldsToHeaderValue.toRawValue(FieldsRestrictions(resolvedFields, settings.accessMode))
-        )
-        RuleResult.Fulfilled(blockContext.withAddedContextHeader(transientFieldsHeader))
-      case _ =>
+        RuleResult.Fulfilled(blockContext.withAddedResponseTransformation(FilteredResponseFields(resolvedFields, settings.accessMode)))
+      case None =>
         RuleResult.Rejected()
     }
   }
@@ -52,6 +45,6 @@ class ResponseFieldsRule(val settings: Settings)
 object ResponseFieldsRule {
   val name = Rule.Name("response_fields")
 
-  final case class Settings(response_fields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[DocumentField]],
+  final case class Settings(responseFields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[ResponseField]],
                             accessMode: AccessMode)
 }
