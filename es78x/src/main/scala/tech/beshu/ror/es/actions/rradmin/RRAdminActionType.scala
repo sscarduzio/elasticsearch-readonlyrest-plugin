@@ -25,7 +25,7 @@ class RRAdminActionType extends ActionType[RRAdminResponse](
 )
 
 object RRAdminActionType {
-  val name = "cluster:admin/rradmin/refreshsettings"
+  val name = "cluster:ror/config/refreshsettings"
   val instance = new RRAdminActionType()
   final case object RRAdminActionCannotBeTransported extends Exception
   def exceptionReader[A]: Writeable.Reader[A] =

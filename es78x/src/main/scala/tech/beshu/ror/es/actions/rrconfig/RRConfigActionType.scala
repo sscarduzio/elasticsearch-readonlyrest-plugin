@@ -22,7 +22,7 @@ import org.elasticsearch.common.io.stream.Writeable
 class RRConfigActionType extends ActionType[RRConfigsResponse](RRConfigActionType.name, RRConfigActionType.reader)
 
 object RRConfigActionType {
-  val name = "cluster:admin/rrconfig/config"
+  val name = "cluster:ror/config/manage"
   val instance = new RRConfigActionType
   val reader: Writeable.Reader[RRConfigsResponse] = new RRConfigsResponse(_)
 }
