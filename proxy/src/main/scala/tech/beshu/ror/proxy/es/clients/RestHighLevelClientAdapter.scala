@@ -35,6 +35,7 @@ import org.elasticsearch.action.admin.indices.mapping.get.{GetFieldMappingsReque
 import org.elasticsearch.action.admin.indices.mapping.put.{PutMappingRequest => AdminPutMappingRequest}
 import org.elasticsearch.action.admin.indices.open.{OpenIndexRequest, OpenIndexResponse}
 import org.elasticsearch.action.admin.indices.refresh.{RefreshRequest, RefreshResponse}
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.rollover.{RolloverRequest, RolloverResponse}
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest
@@ -298,6 +299,11 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.indices().rollover(request, RequestOptions.DEFAULT))
   }
 
+  def resolveIndex(request: ResolveIndexAction.Request): Task[ResolveIndexAction.Response] = {
+    // todo: find a way to provide real implementation
+    Task.now(new ResolveIndexAction.Response(List.empty.asJava, List.empty.asJava, List.empty.asJava))
+  }
+
   def getSnapshots(request: GetSnapshotsRequest): Task[GetSnapshotsResponse] = {
     executeAsync(client.snapshot().get(request, RequestOptions.DEFAULT))
   }
@@ -377,7 +383,7 @@ object RestHighLevelClientAdapter {
 
   implicit class TaskOps[A](val task: Task[A]) extends AnyVal {
 
-    def recoverWithSpecializedException =
+    def recoverWithSpecializedException: Task[A] =
       task.onErrorRecover {
         case ex: ElasticsearchStatusException =>
           throw ex.toSpecializedException
