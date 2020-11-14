@@ -64,6 +64,7 @@ import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearchTemplateResponse, SearchTemplateRequest, SearchTemplateResponse}
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter._
+import tech.beshu.ror.proxy.es.clients.actions.ResolveIndex._
 import tech.beshu.ror.proxy.es.exceptions._
 import tech.beshu.ror.proxy.es.genericaction.{GenericRequest, GenericResponse}
 
@@ -300,8 +301,13 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   }
 
   def resolveIndex(request: ResolveIndexAction.Request): Task[ResolveIndexAction.Response] = {
-    // todo: find a way to provide real implementation
-    Task.now(new ResolveIndexAction.Response(List.empty.asJava, List.empty.asJava, List.empty.asJava))
+    executeAsync(
+      client
+        .getLowLevelClient
+        .performRequest(request.toLowLevel)
+        .toResponse
+        .get
+    )
   }
 
   def getSnapshots(request: GetSnapshotsRequest): Task[GetSnapshotsResponse] = {
