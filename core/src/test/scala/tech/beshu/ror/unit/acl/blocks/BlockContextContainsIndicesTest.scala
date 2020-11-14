@@ -14,30 +14,29 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.acl.logging
+package tech.beshu.ror.unit.acl.blocks
 
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, HasIndices}
-import tech.beshu.ror.accesscontrol.logging.AuditRequestContextBasedOnAclResult
 
-class AuditRequestContextBasedOnAclResultTest extends WordSpec with MockFactory {
+class BlockContextContainsIndicesTest extends WordSpec with MockFactory {
 
   import org.scalatest.Matchers._
 
   "find HasIndexPacks" in {
     implicitly[HasIndexPacks[BlockContext.FilterableMultiRequestBlockContext]]
     val bc: BlockContext.FilterableMultiRequestBlockContext = BlockContext.FilterableMultiRequestBlockContext(null, null, null, null, null, null)
-    AuditRequestContextBasedOnAclResult.inspectIndices(bc) shouldEqual true
+    bc.containsIndices shouldEqual true
   }
   "find HasIndices" in {
     implicitly[HasIndices[BlockContext.SnapshotRequestBlockContext]]
     val bc: BlockContext.SnapshotRequestBlockContext = BlockContext.SnapshotRequestBlockContext(null, null, null, null, null, null, null)
-    AuditRequestContextBasedOnAclResult.inspectIndices(bc) shouldEqual true
+    bc.containsIndices shouldEqual true
   }
   "not find any  indices" in {
     val bc: BlockContext.CurrentUserMetadataRequestBlockContext = BlockContext.CurrentUserMetadataRequestBlockContext(null, null, null)
-    AuditRequestContextBasedOnAclResult.inspectIndices(bc) shouldEqual false
+    bc.containsIndices shouldEqual false
   }
 }

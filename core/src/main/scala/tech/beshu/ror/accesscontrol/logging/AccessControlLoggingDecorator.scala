@@ -77,7 +77,6 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
         case Success(resultWithHistory) =>
           resultWithHistory.result match {
             case UserMetadataRequestResult.Allow(userMetadata, block) =>
-              val blockContext = resultWithHistory.history.collectFirst(matchingBlockContext(block.name)).get
               log(Allow(requestContext, userMetadata, block, resultWithHistory.history))
             case UserMetadataRequestResult.Forbidden =>
               log(Forbidden(requestContext, resultWithHistory.history))
@@ -87,10 +86,6 @@ class AccessControlLoggingDecorator(val underlying: AccessControl, auditingTool:
         case Failure(ex) =>
           logger.error("Request handling unexpected failure", ex)
       }
-  }
-
-  private def matchingBlockContext[B <: BlockContext](blockName: Block.Name): PartialFunction[History[B], B] = {
-    case History(`blockName`, _, blockContext) => blockContext
   }
 
   private def log[B <: BlockContext](responseContext: ResponseContext[B]): Unit = {

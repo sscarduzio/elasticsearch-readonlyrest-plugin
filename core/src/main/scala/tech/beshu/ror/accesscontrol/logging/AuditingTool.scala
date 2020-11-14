@@ -122,7 +122,7 @@ class AuditingTool(settings: Settings,
   }
 
   private def hasIndices[B <: BlockContext](blockContext: Option[B]) =
-    blockContext.exists(AuditRequestContextBasedOnAclResult.inspectIndices)
+    blockContext.exists(_.containsIndices)
 
 }
 

@@ -96,7 +96,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
 
   private def userMetadataFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]],
                                preferredGroup: Option[Group]): Option[(UserMetadata, Block)] = {
-    val allGroupsWithRelatedResults = flatGroupWittMatchedCurrentMetadata(matchedResults)
+    val allGroupsWithRelatedResults = flatGroupWithMatchedCurrentMetadata(matchedResults)
     (preferredGroup match {
       case Some(preferredGroup) =>
         allGroupsWithRelatedResults
@@ -116,7 +116,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     }
   }
 
-  private def flatGroupWittMatchedCurrentMetadata(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
+  private def flatGroupWithMatchedCurrentMetadata(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
     matchedResults
       .toList
       .foldLeft(List.empty[(Group, Matched[CurrentUserMetadataRequestBlockContext])]) {

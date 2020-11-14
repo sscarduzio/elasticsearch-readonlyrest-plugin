@@ -372,4 +372,24 @@ object BlockContext {
       ))
     }
   }
+  implicit class ContainsIndices[B<:BlockContext](b:B){
+    val containsIndices: Boolean = b match {
+      case bc: BlockContext.CurrentUserMetadataRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.GeneralNonIndexRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.RepositoryRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.SnapshotRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.AliasRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.TemplateRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.GeneralIndexRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.FilterableRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.FilterableMultiRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.MultiIndexRequestBlockContext => hasIndices(bc)
+    }
+
+    implicit private def toOption[A](implicit a: A): Option[A] = Some(a)
+
+    private def hasIndices[B <: BlockContext](bc: B)(implicit hasIndices: Option[HasIndices[B]] = None,
+                                                     hasIndexPacks: Option[HasIndexPacks[B]] = None) = hasIndices.nonEmpty || hasIndexPacks.nonEmpty
+
+  }
 }

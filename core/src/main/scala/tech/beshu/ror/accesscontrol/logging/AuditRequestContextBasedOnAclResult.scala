@@ -42,7 +42,7 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
 
   implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
 
-  private val maybeLoggedUser: Option[domain.LoggedUser] = userMetadata
+  private val loggedUser: Option[domain.LoggedUser] = userMetadata
     .flatMap(_.loggedUser)
 
   override val timestamp: Instant = requestContext.timestamp
@@ -74,9 +74,9 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
   override val `type`: String = requestContext.`type`.value
   override val taskId: Long = requestContext.taskId
   override val httpMethod: String = requestContext.method.m
-  override val loggedInUserName: Option[String] = maybeLoggedUser.map(_.id.value.value)
+  override val loggedInUserName: Option[String] = loggedUser.map(_.id.value.value)
   override val impersonatedByUserName: Option[String] =
-    maybeLoggedUser
+    loggedUser
       .flatMap {
         case DirectlyLoggedUser(_) => None
         case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
@@ -84,25 +84,4 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
 
   override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
   override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
-}
-
-object AuditRequestContextBasedOnAclResult {
-  def inspectIndices(arg: BlockContext): Boolean = arg match {
-    case bc: BlockContext.CurrentUserMetadataRequestBlockContext => hasIndices(bc)
-    case bc: BlockContext.GeneralNonIndexRequestBlockContext => hasIndices(bc)
-    case bc: BlockContext.RepositoryRequestBlockContext => hasIndices(bc)
-    case bc: BlockContext.SnapshotRequestBlockContext => hasIndices(bc)
-    case bc: BlockContext.AliasRequestBlockContext => hasIndices(bc)
-    case bc: BlockContext.TemplateRequestBlockContext => hasIndices(bc)
-    case bc: BlockContext.GeneralIndexRequestBlockContext => hasIndices(bc)
-    case bc: BlockContext.FilterableRequestBlockContext => hasIndices(bc)
-    case bc: BlockContext.FilterableMultiRequestBlockContext => hasIndices(bc)
-    case bc: BlockContext.MultiIndexRequestBlockContext => hasIndices(bc)
-  }
-
-  implicit private def toOption[A](implicit a: A): Option[A] = Some(a)
-
-  private def hasIndices[B <: BlockContext](bc: B)(implicit hasIndices: Option[HasIndices[B]] = None,
-                                                   hasIndexPacks: Option[HasIndexPacks[B]] = None) = hasIndices.nonEmpty || hasIndexPacks.nonEmpty
-
 }
