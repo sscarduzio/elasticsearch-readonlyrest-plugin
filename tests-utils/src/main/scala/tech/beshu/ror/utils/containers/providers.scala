@@ -21,7 +21,7 @@ import java.util.Optional
 import cats.data.NonEmptyList
 import org.apache.http.message.BasicHeader
 import tech.beshu.ror.utils.containers.EsContainer.Credentials
-import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Token}
+import tech.beshu.ror.utils.containers.EsContainer.Credentials.{BasicAuth, Header, Token}
 import tech.beshu.ror.utils.containers.providers.ClientProvider.adminCredentials
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Tuple
@@ -33,6 +33,8 @@ object providers {
     def basicAuthClient(user: String, pass: String): RestClient = client(Credentials.BasicAuth(user, pass))
 
     def tokenAuthClient(token: String): RestClient = client(Credentials.Token(token))
+
+    def authHeader(header:String, value:String): RestClient = client(Credentials.Header(header, value))
 
     def noBasicAuthClient: RestClient = client(Credentials.None)
 
@@ -92,6 +94,7 @@ object providers {
     private def createProxyClient(port: Int): ClientProvider = {
       case BasicAuth(user, password) => new RestClient(false, "localhost", port, Optional.of(Tuple.from(user, password)))
       case Token(token) => new RestClient(false, "localhost", port, Optional.empty[Tuple[String, String]](), new BasicHeader("Authorization", token))
+      case Header(name, value) => new RestClient(false, "localhost", port, Optional.empty[Tuple[String, String]](), new BasicHeader(name, value))
       case Credentials.None => new RestClient(false, "localhost", port, Optional.empty[Tuple[String, String]]())
     }
   }
