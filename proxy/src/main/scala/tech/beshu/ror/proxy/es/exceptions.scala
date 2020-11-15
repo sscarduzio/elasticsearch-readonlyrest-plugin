@@ -26,6 +26,8 @@ object exceptions {
     def wrap(throwable: Throwable): RorProxyException = RorProxyException("ROR proxy internal error", throwable)
   }
 
+  case object RorInternalException extends ElasticsearchException("ROR internal issue. Please report it")
+
   implicit class ElasticsearchExceptionOps(exception: Exception) {
 
     def toSpecializedException: Exception = {
