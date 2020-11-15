@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.request
 
-import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.common.util.concurrent.ThreadContext
 import org.elasticsearch.common.xcontent.cbor.CborXContent
 import org.elasticsearch.common.xcontent.json.JsonXContent
@@ -24,27 +23,25 @@ import org.elasticsearch.common.xcontent.smile.SmileXContent
 import org.elasticsearch.common.xcontent.yaml.YamlXContent
 import org.elasticsearch.common.xcontent.{LoggingDeprecationHandler, NamedXContentRegistry, XContentBuilder, XContentType}
 import org.elasticsearch.rest._
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
-import tech.beshu.ror.accesscontrol.headerValues._
 
 import scala.collection.JavaConverters._
-import scala.util.{Failure, Success}
 
 class RestChannelFilteringDecorator(channel: RestChannel, request: RestRequest, threadContext: ThreadContext, detailedErrorsEnabled: Boolean)
   extends AbstractRestChannel(request, detailedErrorsEnabled) {
 
+  private var responseFieldsRestrictions: Option[ResponseFieldsRestrictions] = None
+
+  def setResponseFieldRestrictions(responseFieldsRestrictions: ResponseFieldsRestrictions): Unit = {
+    this.responseFieldsRestrictions = Some(responseFieldsRestrictions)
+  }
+
   override def sendResponse(response: RestResponse): Unit = {
     response match {
       case bytesRestResponse: BytesRestResponse =>
-        Option(threadContext.getHeader(Constants.FILTERED_RESPONSE_FIELDS_FIELD)) match {
-          case Some(fieldsHeader) =>
-            fieldsFromHeaderValue(fieldsHeader) match {
-              case Success(fieldsRestrictions) =>
-                channel.sendResponse(filterBytesRestResponse(bytesRestResponse, fieldsRestrictions))
-              case Failure(ex) =>
-                throw ex
-            }
+        responseFieldsRestrictions match {
+          case Some(fieldsRestrictions) =>
+            channel.sendResponse(filterBytesRestResponse(bytesRestResponse, fieldsRestrictions))
           case None =>
             channel.sendResponse(bytesRestResponse)
         }
@@ -73,11 +70,4 @@ class RestChannelFilteringDecorator(channel: RestChannel, request: RestRequest, 
     new BytesRestResponse(response.status(), contentBuilder)
   }
 
-  private def fieldsFromHeaderValue(value: String) = {
-    lazy val failure = Failure(new IllegalStateException("Couldn't extract response_fields from ThreadContext"))
-    for {
-      nel <- NonEmptyString.from(value).fold(_ => failure, Success(_))
-      fields <- filteredResponseFieldsFromHeaderValue.fromRawValue(nel).fold(_ => failure, Success(_))
-    } yield fields
-  }
 }

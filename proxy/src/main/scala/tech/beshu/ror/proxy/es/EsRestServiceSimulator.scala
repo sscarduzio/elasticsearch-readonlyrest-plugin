@@ -238,7 +238,7 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
       restHandler: RestHandler =>
         (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-          ThreadRepo.setRestChannel(channel)
+//          ThreadRepo.setRestChannel(channel)
           consumeAllRequestParams(request)
           restHandler.handleRequest(request, channel, client)
         }

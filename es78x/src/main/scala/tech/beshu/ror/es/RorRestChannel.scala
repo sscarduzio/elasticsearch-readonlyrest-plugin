@@ -19,8 +19,10 @@ package tech.beshu.ror.es
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import org.elasticsearch.tasks.Task
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
+import tech.beshu.ror.es.request.RestChannelFilteringDecorator
 
-class RorRestChannel(underlying: RestChannel, task: Task)
+class RorRestChannel(underlying: RestChannelFilteringDecorator, task: Task)
   extends AbstractRestChannel(underlying.request(), false)
     with Logging {
 
@@ -30,5 +32,9 @@ class RorRestChannel(underlying: RestChannel, task: Task)
       case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
     }
     underlying.sendResponse(response)
+  }
+
+  def setResponseFieldRestrictions(responseFieldsRestrictions: ResponseFieldsRestrictions): Unit = {
+    underlying.setResponseFieldRestrictions(responseFieldsRestrictions)
   }
 }

@@ -55,11 +55,6 @@ trait EsRequest[B <: BlockContext] extends Logging {
 
   private def modifyResponseHeaders(blockContext: B): Unit = {
     val threadContext = threadPool.getThreadContext
-    blockContext.responseTransformations.collect {
-      case FilteredResponseFields(responseFields, accessMode) =>
-        threadContext.putHeader(Constants.FILTERED_RESPONSE_FIELDS_FIELD,
-          filteredResponseFieldsToHeaderValue.toRawValue(ResponseFieldsRestrictions(responseFields, accessMode)).value)
-    }
     blockContext.responseHeaders.foreach(header =>
       threadContext.addResponseHeader(header.name.value.value, header.value.value))
   }

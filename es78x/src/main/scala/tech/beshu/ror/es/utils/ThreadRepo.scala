@@ -19,12 +19,13 @@ package tech.beshu.ror.es.utils
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import tech.beshu.ror.es.RorRestChannel
+import tech.beshu.ror.es.request.RestChannelFilteringDecorator
 import tech.beshu.ror.exceptions.SecurityPermissionException
 
 object ThreadRepo {
-  private val threadLocalChannel = new ThreadLocal[RestChannel]
+  private val threadLocalChannel = new ThreadLocal[RestChannelFilteringDecorator]
 
-  def setRestChannel(restChannel: RestChannel): Unit = {
+  def setRestChannel(restChannel: RestChannelFilteringDecorator): Unit = {
     threadLocalChannel.set(restChannel)
   }
 
