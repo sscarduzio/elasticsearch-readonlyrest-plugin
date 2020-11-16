@@ -30,7 +30,7 @@ class RRConfigAction extends Action[RRConfigsRequest, RRConfigsResponse, RRConfi
 object RRConfigAction {
   class RequestBuilder(client: ElasticsearchClient, rRConfigAction: RRConfigAction, request: RRConfigsRequest)
     extends ActionRequestBuilder[RRConfigsRequest, RRConfigsResponse, RequestBuilder](client, rRConfigAction, request)
-  val name = "cluster:admin/rrconfig/config"
+  val name = "cluster:ror/config/manage"
   val instance = new RRConfigAction
   val reader: Writeable.Reader[RRConfigsResponse] = RRConfigsResponseReader
 }

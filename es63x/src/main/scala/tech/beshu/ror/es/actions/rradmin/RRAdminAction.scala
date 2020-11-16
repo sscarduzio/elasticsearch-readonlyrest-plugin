@@ -29,6 +29,6 @@ class RRAdminAction extends Action[RRAdminRequest, RRAdminResponse, RRAdminReque
   }
 }
 object RRAdminAction {
-  val name = "cluster:admin/rradmin/refreshsettings"
+  val name = "cluster:ror/config/refreshsettings"
   val instance = new RRAdminAction()
 }

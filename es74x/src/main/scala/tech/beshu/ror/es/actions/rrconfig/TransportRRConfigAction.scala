@@ -28,7 +28,7 @@ import org.elasticsearch.common.io.stream.{StreamInput, Writeable}
 import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
-import tech.beshu.ror.configuration.loader.distributed.{RawRorConfigLoadingAction, NodeConfig, Timeout}
+import tech.beshu.ror.configuration.loader.distributed.{NodeConfig, RawRorConfigLoadingAction, Timeout}
 import tech.beshu.ror.es.IndexJsonContentService
 import tech.beshu.ror.es.services.EsIndexJsonContentService
 import tech.beshu.ror.providers.{EnvVarsProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider}
@@ -75,7 +75,7 @@ class TransportRRConfigAction(actionName: String,
            indexContentProvider: EsIndexJsonContentService,
           ) =
     this(
-      RRConfigAction.name,
+      RRConfigActionType.name,
       threadPool,
       clusterService,
       transportService,
@@ -99,7 +99,9 @@ class TransportRRConfigAction(actionName: String,
   override def newNodeResponse(in: StreamInput): RRConfig =
     new RRConfig(in)
 
-  private def loadConfig() = RawRorConfigLoadingAction.load(env.configFile(), indexContentProvider)
+  private def loadConfig() =
+    RawRorConfigLoadingAction
+      .load(env.configFile(), indexContentProvider)
       .map(_.map(_.map(_.raw)))
 
   override def nodeOperation(request: RRConfigRequest): RRConfig = {

@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
-import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
 import org.elasticsearch.rest.RestRequest
 import tech.beshu.ror.adminapi.AdminRestApi
 
@@ -32,5 +32,5 @@ class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
 
   val getAdminRequest: AdminRestApi.AdminRequest = request
 
-  override def validate() = null
+  override def validate(): ActionRequestValidationException = null
 }

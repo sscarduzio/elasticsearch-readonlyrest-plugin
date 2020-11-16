@@ -72,7 +72,7 @@ class TransportRRConfigAction(actionName: String,
            indexContentProvider: EsIndexJsonContentService,
           ) =
     this(
-      RRConfigAction.name,
+      RRConfigActionType.name,
       threadPool,
       clusterService,
       transportService,

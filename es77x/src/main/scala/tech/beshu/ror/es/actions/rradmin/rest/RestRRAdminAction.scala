@@ -22,24 +22,23 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.action.RestToXContentListener
+import org.elasticsearch.rest.RestRequest.Method._
 import org.elasticsearch.rest._
-import tech.beshu.ror.Constants
+import org.elasticsearch.rest.action.RestToXContentListener
 import tech.beshu.ror.adminapi._
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
-import collection.JavaConverters._
-import RestRequest.Method._
+
+import scala.collection.JavaConverters._
 
 @Inject
 class RestRRAdminAction()
-  extends BaseRestHandler {
+  extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
     new Route(POST, AdminRestApi.forceReloadRorPath.endpointString),
     new Route(GET, AdminRestApi.provideRorIndexConfigPath.endpointString),
     new Route(POST, AdminRestApi.updateIndexConfigurationPath.endpointString),
-    new Route(GET, AdminRestApi.provideRorFileConfigPath.endpointString),
-    new Route(GET, Constants.CURRENT_USER_METADATA_PATH)
+    new Route(GET, AdminRestApi.provideRorFileConfigPath.endpointString)
   ).asJava
 
   override val getName: String = "ror-admin-handler"
