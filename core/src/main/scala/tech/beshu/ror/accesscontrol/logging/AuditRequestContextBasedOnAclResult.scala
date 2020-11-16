@@ -22,7 +22,9 @@ import cats.Show
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, HasIndices}
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
 import tech.beshu.ror.accesscontrol.domain.{Address, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -30,13 +32,20 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs.{historyShow, obfuscatedHeaderShow}
 import tech.beshu.ror.audit.{AuditRequestContext, Headers}
 
+import scala.language.implicitConversions
+
 class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: RequestContext.Aux[B],
-                                                             blockContext: Option[B],
+                                                             userMetadata: Option[UserMetadata],
                                                              historyEntries: Vector[History[B]],
-                                                             loggingContext: LoggingContext)
+                                                             loggingContext: LoggingContext,
+                                                             override val involvesIndices: Boolean)
   extends AuditRequestContext {
 
   implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
+
+  private val loggedUser: Option[domain.LoggedUser] = userMetadata
+    .flatMap(_.loggedUser)
+
   override val timestamp: Instant = requestContext.timestamp
   override val id: String = requestContext.id.value
   override val correlationId: String = requestContext.correlationId.value.value
@@ -67,18 +76,14 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
   override val `type`: String = requestContext.`type`.value
   override val taskId: Long = requestContext.taskId
   override val httpMethod: String = requestContext.method.m
-  override val loggedInUserName: Option[String] = blockContext.flatMap(_.userMetadata.loggedUser.map(_.id.value.value))
+  override val loggedInUserName: Option[String] = loggedUser.map(_.id.value.value)
   override val impersonatedByUserName: Option[String] =
-    blockContext
-      .flatMap(_.userMetadata.loggedUser)
+    loggedUser
       .flatMap {
         case DirectlyLoggedUser(_) => None
         case ImpersonatedUser(_, impersonatedBy) => Some(impersonatedBy.value.value)
       }
-  override val involvesIndices: Boolean = blockContext match {
-    case Some(_: GeneralIndexRequestBlockContext | _: TemplateRequestBlockContext | _: SnapshotRequestBlockContext) => true
-    case _ => false
-  }
+
   override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
   override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
   override val generalAuditEvents: JSONObject = requestContext.generalAuditEvents

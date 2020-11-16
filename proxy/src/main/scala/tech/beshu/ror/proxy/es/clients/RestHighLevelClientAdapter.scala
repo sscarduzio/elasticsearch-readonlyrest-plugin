@@ -36,6 +36,7 @@ import org.elasticsearch.action.admin.indices.mapping.get.{GetFieldMappingsReque
 import org.elasticsearch.action.admin.indices.mapping.put.{PutMappingRequest => AdminPutMappingRequest}
 import org.elasticsearch.action.admin.indices.open.{OpenIndexRequest, OpenIndexResponse}
 import org.elasticsearch.action.admin.indices.refresh.{RefreshRequest, RefreshResponse}
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.rollover.{RolloverRequest, RolloverResponse}
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest
@@ -66,6 +67,7 @@ import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearc
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventRequest, RRAuditEventResponse}
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter._
+import tech.beshu.ror.proxy.es.clients.actions.ResolveIndex._
 import tech.beshu.ror.proxy.es.exceptions._
 import tech.beshu.ror.proxy.es.genericaction.{GenericRequest, GenericResponse}
 
@@ -301,6 +303,16 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def rolloverIndex(request: RolloverRequest): Task[RolloverResponse] = {
     executeAsync(client.indices().rollover(request, RequestOptions.DEFAULT))
+  }
+
+  def resolveIndex(request: ResolveIndexAction.Request): Task[ResolveIndexAction.Response] = {
+    executeAsync(
+      client
+        .getLowLevelClient
+        .performRequest(request.toLowLevel)
+        .toResponse
+        .get
+    )
   }
 
   def getSnapshots(request: GetSnapshotsRequest): Task[GetSnapshotsResponse] = {

@@ -14,23 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.actions.rrconfig
 
-import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
-import org.elasticsearch.rest.RestRequest
-import tech.beshu.ror.adminapi.AdminRestApi
+import org.elasticsearch.action.ActionType
+import org.elasticsearch.common.io.stream.Writeable
 
-class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
+class RRConfigActionType extends ActionType[RRConfigsResponse](RRConfigActionType.name, RRConfigActionType.reader)
 
-  def this(request: RestRequest) = {
-    this(AdminRestApi.AdminRequest(request.method.name, request.path, request.content.utf8ToString))
-  }
-
-  def this() = {
-    this(null: AdminRestApi.AdminRequest)
-  }
-
-  val getAdminRequest: AdminRestApi.AdminRequest = request
-
-  override def validate(): ActionRequestValidationException = null
+object RRConfigActionType {
+  val name = "cluster:ror/config/manage"
+  val instance = new RRConfigActionType
+  val reader: Writeable.Reader[RRConfigsResponse] = new RRConfigsResponse(_)
 }

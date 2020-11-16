@@ -58,10 +58,12 @@ import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.types.{ReflectionBasedIndicesEsRequestContext, _}
+import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.handler.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
+import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
+import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 
 import scala.language.postfixOps
 import scala.reflect.ClassTag
@@ -74,8 +76,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
   def handle(engine: Engine,
              esContext: EsContext): Task[Unit] = {
     esContext.actionRequest match {
-      case request: RRAdminRequest =>
-        val handler = new CurrentUserMetadataRequestHandler(engine, esContext, threadPool)
+      case request: RRUserMetadataRequest =>
+        val handler = new CurrentUserMetadataRequestHandler(engine, esContext)
         handler.handle(new CurrentUserMetadataEsRequestContext(request, esContext, clusterService, threadPool))
       case _ =>
         val regularRequestHandler = new RegularRequestHandler(engine, esContext, threadPool)
@@ -87,6 +89,10 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
                                      esContext: EsContext,
                                      aclContext: AccessControlStaticContext) = {
     esContext.actionRequest match {
+      case request: RRAdminRequest =>
+        regularRequestHandler.handle(new GeneralNonIndexEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: RRAuditEventRequest =>
+        regularRequestHandler.handle(new AuditEventESRequestContext(request, esContext, clusterService, threadPool))
       // snapshots
       case request: GetSnapshotsRequest =>
         regularRequestHandler.handle(new GetSnapshotsEsRequestContext(request, esContext, clusterService, threadPool))

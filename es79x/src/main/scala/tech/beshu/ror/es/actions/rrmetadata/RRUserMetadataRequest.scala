@@ -14,23 +14,10 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.actions.rrmetadata
 
 import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
-import org.elasticsearch.rest.RestRequest
-import tech.beshu.ror.adminapi.AdminRestApi
 
-class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
-
-  def this(request: RestRequest) = {
-    this(AdminRestApi.AdminRequest(request.method.name, request.path, request.content.utf8ToString))
-  }
-
-  def this() = {
-    this(null: AdminRestApi.AdminRequest)
-  }
-
-  val getAdminRequest: AdminRestApi.AdminRequest = request
-
+class RRUserMetadataRequest extends ActionRequest {
   override def validate(): ActionRequestValidationException = null
 }

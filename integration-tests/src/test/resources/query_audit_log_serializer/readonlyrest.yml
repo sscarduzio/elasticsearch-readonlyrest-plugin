@@ -28,3 +28,19 @@ readonlyrest:
       methods: GET
       auth_key: user:dev
       indices: ["facebook"]
+
+    - name: "Allowed only for group1"
+      groups: [group1]
+      type: allow
+      indices: ["*"]
+
+  users:
+    - username: user1-proxy-id
+      groups: ["group1"]
+      proxy_auth:
+        proxy_auth_config: "proxy1"
+        users: ["user1-proxy-id"]
+
+  proxy_auth_configs:
+    - name: "proxy1"
+      user_id_header: "X-Auth-Token"

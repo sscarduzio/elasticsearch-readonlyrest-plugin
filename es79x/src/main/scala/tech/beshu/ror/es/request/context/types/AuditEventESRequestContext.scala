@@ -17,31 +17,29 @@
 package tech.beshu.ror.es.request.context.types
 
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import org.json.JSONObject
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
+import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
-class CurrentUserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
-                                          esContext: EsContext,
-                                          clusterService: RorClusterService,
-                                          override val threadPool: ThreadPool)
-  extends BaseEsRequestContext[CurrentUserMetadataRequestBlockContext](esContext, clusterService)
-    with EsRequest[CurrentUserMetadataRequestBlockContext] {
+class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
+                                 esContext: EsContext,
+                                 clusterService: RorClusterService,
+                                 override val threadPool: ThreadPool)
+  extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext, clusterService)
+    with EsRequest[GeneralNonIndexRequestBlockContext] {
 
-  override lazy val isReadOnlyRequest: Boolean = true
-
-  override lazy val correlationId: CorrelationId = CorrelationId.random
-
-  override val initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
+  override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
     this,
     UserMetadata.from(this),
     Set.empty
   )
 
-  override protected def modifyRequest(blockContext: CurrentUserMetadataRequestBlockContext): ModificationResult = Modified
+  override val generalAuditEvents: JSONObject = actionRequest.auditEvents
+
+  override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = Modified
 }

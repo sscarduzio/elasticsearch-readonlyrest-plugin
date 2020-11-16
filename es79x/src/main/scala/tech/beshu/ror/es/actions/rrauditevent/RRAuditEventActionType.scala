@@ -14,23 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin
+package tech.beshu.ror.es.actions.rrauditevent
 
-import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
-import org.elasticsearch.rest.RestRequest
-import tech.beshu.ror.adminapi.AdminRestApi
+import org.elasticsearch.action.ActionType
+import org.elasticsearch.common.io.stream.Writeable
 
-class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
+class RRAuditEventActionType extends ActionType[RRAuditEventResponse](
+  RRAuditEventActionType.name, RRAuditEventActionType.exceptionReader
+)
 
-  def this(request: RestRequest) = {
-    this(AdminRestApi.AdminRequest(request.method.name, request.path, request.content.utf8ToString))
-  }
+object RRAuditEventActionType {
+  val name = "cluster:ror/audit_event/put"
+  val instance = new RRAuditEventActionType()
 
-  def this() = {
-    this(null: AdminRestApi.AdminRequest)
-  }
+  final case object RRAuditEventActionTypeBeTransported extends Exception
 
-  val getAdminRequest: AdminRestApi.AdminRequest = request
-
-  override def validate(): ActionRequestValidationException = null
+  private [rrauditevent] def exceptionReader[A]: Writeable.Reader[A] = _ => throw RRAuditEventActionTypeBeTransported
 }

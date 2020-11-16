@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.actions.rradmin.rest
+package tech.beshu.ror.es.actions.rrmetadata.rest
 
 import java.util
 
@@ -22,28 +22,25 @@ import org.elasticsearch.client.node.NodeClient
 import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest.RestHandler.Route
-import org.elasticsearch.rest.RestRequest.Method._
-import org.elasticsearch.rest._
+import org.elasticsearch.rest.RestRequest.Method.GET
 import org.elasticsearch.rest.action.RestToXContentListener
-import tech.beshu.ror.adminapi._
-import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
+import org.elasticsearch.rest.{BaseRestHandler, RestChannel, RestHandler, RestRequest}
+import tech.beshu.ror.Constants
+import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, RRUserMetadataRequest, RRUserMetadataResponse}
 
 import scala.collection.JavaConverters._
 
 @Inject
-class RestRRAdminAction()
+class RestRRUserMetadataAction()
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(POST, AdminRestApi.forceReloadRorPath.endpointString),
-    new Route(GET, AdminRestApi.provideRorIndexConfigPath.endpointString),
-    new Route(POST, AdminRestApi.updateIndexConfigurationPath.endpointString),
-    new Route(GET, AdminRestApi.provideRorFileConfigPath.endpointString)
+    new Route(GET, Constants.CURRENT_USER_METADATA_PATH)
   ).asJava
 
-  override val getName: String = "ror-admin-handler"
+  override val getName: String = "ror-user-metadata-handler"
 
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    client.execute(new RRAdminActionType, new RRAdminRequest(request), new RestToXContentListener[RRAdminResponse](channel))
+    client.execute(new RRUserMetadataActionType, new RRUserMetadataRequest, new RestToXContentListener[RRUserMetadataResponse](channel))
   }
 }
