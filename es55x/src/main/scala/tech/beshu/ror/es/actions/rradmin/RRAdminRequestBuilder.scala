@@ -19,5 +19,5 @@ package tech.beshu.ror.es.actions.rradmin
 import org.elasticsearch.action.ActionRequestBuilder
 import org.elasticsearch.client.ElasticsearchClient
 
-class RRAdminRequestBuilder(client: ElasticsearchClient, action: RRAdminAction)
+class RRAdminRequestBuilder(client: ElasticsearchClient, action: RRAdminActionType)
   extends ActionRequestBuilder[RRAdminRequest, RRAdminResponse, RRAdminRequestBuilder](client, action, new RRAdminRequest)

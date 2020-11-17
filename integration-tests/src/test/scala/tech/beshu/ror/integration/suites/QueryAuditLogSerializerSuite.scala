@@ -22,6 +22,7 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.Str
 
 trait QueryAuditLogSerializerSuite
@@ -29,7 +30,8 @@ trait QueryAuditLogSerializerSuite
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with BeforeAndAfterEach
-    with Matchers {
+    with Matchers
+    with CustomScalaTestMatchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/query_audit_log_serializer/readonlyrest.yml"

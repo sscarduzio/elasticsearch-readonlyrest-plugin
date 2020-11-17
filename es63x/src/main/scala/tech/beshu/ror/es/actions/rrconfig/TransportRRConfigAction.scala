@@ -81,7 +81,7 @@ class TransportRRConfigAction(setting: Settings,
           ) =
     this(
       setting,
-      RRConfigAction.name,
+      RRConfigActionType.name,
       threadPool,
       clusterService,
       transportService,

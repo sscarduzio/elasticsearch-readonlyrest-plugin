@@ -16,17 +16,17 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.CorrelationId
 import tech.beshu.ror.es.RorClusterService
-import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
+import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
-class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
+class CurrentUserMetadataEsRequestContext(actionRequest: RRUserMetadataRequest,
                                           esContext: EsContext,
                                           clusterService: RorClusterService,
                                           override val threadPool: ThreadPool)
@@ -34,6 +34,8 @@ class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
     with EsRequest[CurrentUserMetadataRequestBlockContext] {
 
   override lazy val isReadOnlyRequest: Boolean = true
+
+  override lazy val correlationId: CorrelationId = CorrelationId.random
 
   override val initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this,

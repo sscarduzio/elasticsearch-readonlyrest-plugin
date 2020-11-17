@@ -28,7 +28,7 @@ import org.elasticsearch.rest._
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
-import tech.beshu.ror.es.actions.rrconfig.{RRConfigAction, RRConfigsRequest}
+import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
@@ -48,7 +48,7 @@ class RestRRConfigAction(settings: Settings,
     )
     channel => {
       val localNodeId = NodeId(client.getLocalNodeId)
-      client.execute(new RRConfigAction, new RRConfigsRequest(requestConfig, nodes.toArray: _*), new ResponseBuilder(localNodeId, channel))
+      client.execute(new RRConfigActionType, new RRConfigsRequest(requestConfig, nodes.toArray: _*), new ResponseBuilder(localNodeId, channel))
     }
   }
 

@@ -48,7 +48,7 @@ class TransportRRAdminAction(settings: Settings,
                              indexContentProvider: EsIndexJsonContentService,
                              ignore: Unit) // hack!
   extends HandledTransportAction[RRAdminRequest, RRAdminResponse](
-    settings, RRAdminAction.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAdminRequest
+    settings, RRAdminActionType.name, threadPool, transportService, actionFilters, indexNameExpressionResolver, () => new RRAdminRequest
   ) {
 
   @Inject
