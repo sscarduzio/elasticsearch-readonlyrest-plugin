@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.actions.rradmin
 
 import org.elasticsearch.action.ActionType
+import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.common.io.stream.Writeable
 
 class RRAdminActionType extends ActionType[RRAdminResponse](
@@ -25,7 +26,7 @@ class RRAdminActionType extends ActionType[RRAdminResponse](
 )
 
 object RRAdminActionType {
-  val name = "cluster:ror/config/refreshsettings"
+  val name = domain.Action.rorOldConfigAction.value
   val instance = new RRAdminActionType()
   final case object RRAdminActionCannotBeTransported extends Exception
   def exceptionReader[A]: Writeable.Reader[A] =

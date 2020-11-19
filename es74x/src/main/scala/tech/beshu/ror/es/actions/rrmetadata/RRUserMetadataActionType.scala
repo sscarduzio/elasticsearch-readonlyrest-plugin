@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.actions.rrmetadata
 
 import org.elasticsearch.action.ActionType
+import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.common.io.stream.Writeable
 
 class RRUserMetadataActionType extends ActionType[RRUserMetadataResponse](
@@ -24,7 +25,7 @@ class RRUserMetadataActionType extends ActionType[RRUserMetadataResponse](
 )
 
 object RRUserMetadataActionType {
-  val name = "cluster:ror/user_metadata/get"
+  val name = domain.Action.rorUserMetadataAction.value
   val instance = new RRUserMetadataActionType()
 
   final case object RRUserMetadataActionCannotBeTransported extends Exception

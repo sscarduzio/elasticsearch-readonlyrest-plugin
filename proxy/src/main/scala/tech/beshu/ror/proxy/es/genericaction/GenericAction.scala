@@ -4,6 +4,7 @@
 package tech.beshu.ror.proxy.es.genericaction
 
 import org.elasticsearch.action.ActionType
+import tech.beshu.ror.accesscontrol.domain.Action
 import org.elasticsearch.common.io.stream.Writeable
 
 class GenericAction

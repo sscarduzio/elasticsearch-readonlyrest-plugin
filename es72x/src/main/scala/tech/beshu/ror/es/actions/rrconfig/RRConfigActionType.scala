@@ -16,15 +16,17 @@
  */
 package tech.beshu.ror.es.actions.rrconfig
 
+import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.action.Action
 import org.elasticsearch.common.io.stream.Writeable
+import tech.beshu.ror.accesscontrol.domain
 
 class RRConfigActionType extends Action[RRConfigsResponse](RRConfigActionType.name) {
   override def newResponse(): RRConfigsResponse = new RRConfigsResponse
 }
 
 object RRConfigActionType {
-  val name = "cluster:ror/config/manage"
+  val name = domain.Action.rorConfigAction.value
   val instance = new RRConfigActionType
   val reader: Writeable.Reader[RRConfigsResponse] = RRConfigsResponseReader
 }

@@ -18,6 +18,7 @@ package tech.beshu.ror.es.actions.rrmetadata
 
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
+import tech.beshu.ror.accesscontrol.domain
 
 class RRUserMetadataActionType
   extends Action[RRUserMetadataRequest, RRUserMetadataResponse, RRUserMetadataActionType.RequestBuilder](RRUserMetadataActionType.name) {
@@ -29,9 +30,10 @@ class RRUserMetadataActionType
 }
 
 object RRUserMetadataActionType {
+
   class RequestBuilder(client: ElasticsearchClient, actionType: RRUserMetadataActionType, request: RRUserMetadataRequest)
     extends ActionRequestBuilder[RRUserMetadataRequest, RRUserMetadataResponse, RequestBuilder](client, actionType, request)
 
-  val name = "cluster:ror/user_metadata/get"
+  val name = domain.Action.rorUserMetadataAction.value
   val instance = new RRUserMetadataActionType()
 }

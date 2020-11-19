@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.actions.rrauditevent
 
 import org.elasticsearch.action.ActionType
+import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.common.io.stream.Writeable
 
 class RRAuditEventActionType extends ActionType[RRAuditEventResponse](
@@ -24,7 +25,7 @@ class RRAuditEventActionType extends ActionType[RRAuditEventResponse](
 )
 
 object RRAuditEventActionType {
-  val name = "cluster:ror/audit_event/put"
+  val name = domain.Action.rorAuditEventAction.value
   val instance = new RRAuditEventActionType()
 
   final case object RRAuditEventActionTypeBeTransported extends Exception

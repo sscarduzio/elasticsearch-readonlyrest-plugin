@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.es.actions.rradmin
 
+import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.action.Action
+import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.adminapi.AdminRestApi
 
 class RRAdminActionType extends Action[RRAdminResponse](RRAdminActionType.name) {
@@ -24,6 +26,6 @@ class RRAdminActionType extends Action[RRAdminResponse](RRAdminActionType.name) 
     new RRAdminResponse(AdminRestApi.AdminResponse.notAvailable)
 }
 object RRAdminActionType {
-  val name = "cluster:ror/config/refreshsettings"
+  val name = domain.Action.rorOldConfigAction.value
   val instance = new RRAdminActionType()
 }

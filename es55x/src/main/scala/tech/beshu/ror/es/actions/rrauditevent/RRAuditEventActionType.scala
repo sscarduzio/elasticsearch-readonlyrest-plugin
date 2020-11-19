@@ -18,6 +18,7 @@ package tech.beshu.ror.es.actions.rrauditevent
 
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
+import tech.beshu.ror.accesscontrol.domain
 
 class RRAuditEventActionType
   extends Action[RRAuditEventRequest, RRAuditEventResponse, RRAuditEventActionType.RequestBuilder](RRAuditEventActionType.name) {
@@ -32,6 +33,6 @@ object RRAuditEventActionType {
   class RequestBuilder(client: ElasticsearchClient, actionType: RRAuditEventActionType, request: RRAuditEventRequest)
     extends ActionRequestBuilder[RRAuditEventRequest, RRAuditEventResponse, RequestBuilder](client, actionType, request)
 
-  val name = "cluster:ror/audit_event/put"
+  val name = domain.Action.rorAuditEventAction.value
   val instance = new RRAuditEventActionType()
 }

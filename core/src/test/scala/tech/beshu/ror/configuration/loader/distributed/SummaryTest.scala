@@ -21,10 +21,10 @@ import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.configuration.loader.distributed.Summary.CurrentNodeHaveToProduceResult
-import tech.beshu.ror.configuration.loader.{LoadedRorConfig, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.LoadedRorConfig
 
 import scala.language.postfixOps
 

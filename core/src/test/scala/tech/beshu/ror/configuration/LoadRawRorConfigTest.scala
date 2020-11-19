@@ -20,10 +20,10 @@ import cats.{Id, ~>}
 import io.circe.Json
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig, Path, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig, Path}
 
 import scala.language.existentials
 

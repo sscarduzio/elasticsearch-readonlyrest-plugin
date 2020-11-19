@@ -17,6 +17,8 @@
 package tech.beshu.ror.accesscontrol
 
 import java.nio.charset.StandardCharsets.UTF_8
+import java.time.{Instant, ZoneId}
+import java.time.format.DateTimeFormatter
 import java.util.{Base64, Locale, UUID}
 
 import cats.Eq
@@ -31,8 +33,8 @@ import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
+import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, searchAction, searchTemplateAction}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
@@ -41,7 +43,7 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object domain {
 
@@ -251,6 +253,11 @@ object domain {
       rollupSearchAction,
       searchTemplateAction
     ).contains(this)
+    def isRorInternalAction: Boolean = List(
+      rorConfigAction,
+      rorOldConfigAction,
+      rorAuditEventAction
+    ).contains(this)
   }
   object Action {
     val searchAction = Action("indices:data/read/search")
@@ -259,6 +266,10 @@ object domain {
     val asyncSearchAction = Action("indices:data/read/async_search/submit")
     val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
     val searchTemplateAction = Action("indices:data/read/search/template")
+    val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
+    val rorConfigAction = Action("cluster:ror/config/manage")
+    val rorAuditEventAction = Action("cluster:ror/audit_event/put")
+    val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }
@@ -304,6 +315,41 @@ object domain {
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
     def all: Set[IndexName] = aliases + index
+  }
+
+  final case class RorConfigurationIndex(index: IndexName) extends AnyVal
+
+  final case class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
+                                                 private val rawPattern: String) {
+
+    def indexName(instant: Instant): IndexName = {
+      IndexName.fromUnsafeString(nameFormatter.format(instant))
+    }
+
+    def conforms(index: IndexName): Boolean = {
+      if(index.hasWildcard) {
+        IndicesMatcher
+          .create(Set(index))
+          .`match`(IndexName.fromUnsafeString(rawPattern))
+      } else {
+        Try(nameFormatter.parse(index.value.value)).isSuccess
+      }
+    }
+  }
+  object RorAuditIndexTemplate {
+    def apply(value: String): Either[CreationError, RorAuditIndexTemplate] = from(value)
+
+    def from(value: String): Either[CreationError, RorAuditIndexTemplate] = {
+      Try(DateTimeFormatter.ofPattern(value).withZone(ZoneId.of("UTC"))) match {
+        case Success(formatter) => Right(new RorAuditIndexTemplate(formatter, value.replaceAll("'", "")))
+        case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
+      }
+    }
+
+    sealed trait CreationError
+    object CreationError {
+      final case class ParsingError(msg: String) extends CreationError
+    }
   }
 
   final case class RepositoryName(value: NonEmptyString)

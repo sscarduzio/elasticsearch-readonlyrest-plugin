@@ -18,8 +18,8 @@ package tech.beshu.ror.configuration.loader.distributed.internode.dto
 
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.generic.extras.ConfiguredJsonCodec
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.configuration.loader.{LoadedRorConfig, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.LoadedRorConfig
 
 @ConfiguredJsonCodec
 sealed trait LoadedConfigDTO

@@ -242,25 +242,25 @@ object BlockContext {
     }
   }
 
-  implicit class BlockContextWithIndicesUpdaterOps[B <: BlockContext: BlockContextWithIndicesUpdater](blockContext: B) {
+  implicit class BlockContextWithIndicesUpdaterOps[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B) {
     def withIndices(filteredIndices: Set[IndexName], allAllowedIndices: Set[IndexName]): B = {
       BlockContextWithIndicesUpdater[B].withIndices(blockContext, filteredIndices, allAllowedIndices)
     }
   }
 
-  implicit class BlockContextWithIndexPacksUpdaterOps[B <: BlockContext: BlockContextWithIndexPacksUpdater](blockContext: B) {
+  implicit class BlockContextWithIndexPacksUpdaterOps[B <: BlockContext : BlockContextWithIndexPacksUpdater](blockContext: B) {
     def withIndicesPacks(indexPacks: List[Indices]): B = {
       BlockContextWithIndexPacksUpdater[B].withIndexPacks(blockContext, indexPacks)
     }
   }
 
-  implicit class BlockContextWithFilterUpdaterOps[B <: BlockContext: BlockContextWithFilterUpdater](blockContext: B) {
+  implicit class BlockContextWithFilterUpdaterOps[B <: BlockContext : BlockContextWithFilterUpdater](blockContext: B) {
     def withFilter(filter: Filter): B = {
       BlockContextWithFilterUpdater[B].withFilter(blockContext, filter)
     }
   }
 
-  implicit class BlockContextWithFLSUpdaterOps[B <: BlockContext: BlockContextWithFLSUpdater](blockContext: B) {
+  implicit class BlockContextWithFLSUpdaterOps[B <: BlockContext : BlockContextWithFLSUpdater](blockContext: B) {
     def withFields(fields: FieldLevelSecurity): B = {
       BlockContextWithFLSUpdater[B].withFieldLevelSecurity(blockContext, fields)
     }
@@ -359,7 +359,7 @@ object BlockContext {
     }
   }
 
-  implicit class RandomIndexBasedOnBlockContextIndices[B <: BlockContext: HasIndices](blockContext: B) {
+  implicit class RandomIndexBasedOnBlockContextIndices[B <: BlockContext : HasIndices](blockContext: B) {
 
     def randomNonexistentIndex(): IndexName = {
       import tech.beshu.ror.accesscontrol.utils.IndicesListOps._
@@ -372,24 +372,55 @@ object BlockContext {
       ))
     }
   }
-  implicit class ContainsIndices[B<:BlockContext](b:B){
-    val containsIndices: Boolean = b match {
-      case bc: BlockContext.CurrentUserMetadataRequestBlockContext => hasIndices(bc)
-      case bc: BlockContext.GeneralNonIndexRequestBlockContext => hasIndices(bc)
-      case bc: BlockContext.RepositoryRequestBlockContext => hasIndices(bc)
-      case bc: BlockContext.SnapshotRequestBlockContext => hasIndices(bc)
-      case bc: BlockContext.AliasRequestBlockContext => hasIndices(bc)
-      case bc: BlockContext.TemplateRequestBlockContext => hasIndices(bc)
-      case bc: BlockContext.GeneralIndexRequestBlockContext => hasIndices(bc)
-      case bc: BlockContext.FilterableRequestBlockContext => hasIndices(bc)
-      case bc: BlockContext.FilterableMultiRequestBlockContext => hasIndices(bc)
-      case bc: BlockContext.MultiIndexRequestBlockContext => hasIndices(bc)
+
+  implicit class ContainsIndices(val b: BlockContext) extends AnyVal {
+    def containsIndices: Boolean = b match {
+      case _: CurrentUserMetadataRequestBlockContext => hasIndices[CurrentUserMetadataRequestBlockContext]
+      case _: GeneralNonIndexRequestBlockContext => hasIndices[GeneralNonIndexRequestBlockContext]
+      case _: RepositoryRequestBlockContext => hasIndices[RepositoryRequestBlockContext]
+      case _: SnapshotRequestBlockContext => hasIndices[SnapshotRequestBlockContext]
+      case _: AliasRequestBlockContext => hasIndices[AliasRequestBlockContext]
+      case _: TemplateRequestBlockContext => hasIndices[TemplateRequestBlockContext]
+      case _: GeneralIndexRequestBlockContext => hasIndices[GeneralIndexRequestBlockContext]
+      case _: FilterableRequestBlockContext => hasIndices[FilterableRequestBlockContext]
+      case _: FilterableMultiRequestBlockContext => hasIndices[FilterableMultiRequestBlockContext]
+      case _: MultiIndexRequestBlockContext => hasIndices[MultiIndexRequestBlockContext]
     }
 
-    implicit private def toOption[A](implicit a: A): Option[A] = Some(a)
+    private implicit def toOption[A](implicit a: A): Option[A] = Some(a)
 
-    private def hasIndices[B <: BlockContext](bc: B)(implicit hasIndices: Option[HasIndices[B]] = None,
-                                                     hasIndexPacks: Option[HasIndexPacks[B]] = None) = hasIndices.nonEmpty || hasIndexPacks.nonEmpty
+    private def hasIndices[B <: BlockContext](implicit hasIndices: Option[HasIndices[B]] = None,
+                                              hasIndexPacks: Option[HasIndexPacks[B]] = None) =
+      hasIndices.nonEmpty || hasIndexPacks.nonEmpty
+  }
 
+  implicit class IndicesFrom(val b: BlockContext) extends AnyVal {
+
+    def allUsedIndices: Set[IndexName] = b match {
+      case _: CurrentUserMetadataRequestBlockContext => Set.empty
+      case _: GeneralNonIndexRequestBlockContext => Set.empty
+      case _: RepositoryRequestBlockContext => Set.empty
+      case bc: SnapshotRequestBlockContext => bc.filteredIndices
+      case bc: AliasRequestBlockContext => bc.aliases ++ bc.indices
+      case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
+      case bc: GeneralIndexRequestBlockContext => bc.filteredIndices
+      case bc: FilterableRequestBlockContext => bc.filteredIndices
+      case bc: FilterableMultiRequestBlockContext =>
+        bc
+          .indexPacks
+          .flatMap {
+            case Indices.Found(indices) => indices.toList
+            case Indices.NotFound => List.empty
+          }
+          .toSet
+      case bc: MultiIndexRequestBlockContext =>
+        bc
+          .indexPacks
+          .flatMap {
+            case Indices.Found(indices) => indices.toList
+            case Indices.NotFound => List.empty
+          }
+          .toSet
+    }
   }
 }

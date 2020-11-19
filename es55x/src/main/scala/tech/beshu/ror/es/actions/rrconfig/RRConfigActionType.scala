@@ -19,6 +19,7 @@ package tech.beshu.ror.es.actions.rrconfig
 import org.elasticsearch.action.{Action, ActionRequestBuilder}
 import org.elasticsearch.client.ElasticsearchClient
 import org.elasticsearch.common.io.stream.Writeable
+import tech.beshu.ror.accesscontrol.domain
 
 class RRConfigActionType extends Action[RRConfigsRequest, RRConfigsResponse, RRConfigActionType.RequestBuilder](RRConfigActionType.name) {
   override def newResponse(): RRConfigsResponse = new RRConfigsResponse
@@ -30,7 +31,8 @@ class RRConfigActionType extends Action[RRConfigsRequest, RRConfigsResponse, RRC
 object RRConfigActionType {
   class RequestBuilder(client: ElasticsearchClient, rRConfigAction: RRConfigActionType, request: RRConfigsRequest)
     extends ActionRequestBuilder[RRConfigsRequest, RRConfigsResponse, RequestBuilder](client, rRConfigAction, request)
-  val name = "cluster:ror/config/manage"
+
+  val name = domain.Action.rorConfigAction.value
   val instance = new RRConfigActionType
   val reader: Writeable.Reader[RRConfigsResponse] = RRConfigsResponseReader
 }

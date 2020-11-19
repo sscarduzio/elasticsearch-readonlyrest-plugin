@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.actions.rrmetadata
 
+import tech.beshu.ror.accesscontrol.domain
 import org.elasticsearch.action.Action
 
 class RRUserMetadataActionType extends Action[RRUserMetadataResponse](RRUserMetadataActionType.name) {
@@ -23,6 +24,6 @@ class RRUserMetadataActionType extends Action[RRUserMetadataResponse](RRUserMeta
 }
 
 object RRUserMetadataActionType {
-  val name = "cluster:ror/user_metadata/get"
+  val name = domain.Action.rorUserMetadataAction.value
   val instance = new RRUserMetadataActionType()
 }
