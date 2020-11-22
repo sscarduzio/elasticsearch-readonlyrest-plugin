@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMet
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Group
@@ -94,45 +95,41 @@ class AccessControlList(val blocks: NonEmptyList[Block])
   }
 
   private def userMetadataFrom(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]],
-                               preferredGroup: Option[Group]) = {
-    val allGroupsWithRelatedResults =
-      matchedResults
-        .toList
-        .foldLeft(List.empty[(Group, Matched[CurrentUserMetadataRequestBlockContext])]) {
-          case (acc, m@Matched(_, blockContext)) =>
-            acc ::: blockContext.userMetadata.availableGroups.toList.map((_, m))
-          case (acc, _) => acc
-        }
-    preferredGroup match {
-      case Some(pg) =>
+                               preferredGroup: Option[Group]): Option[(UserMetadata, Block)] = {
+    val allGroupsWithRelatedResults = flatGroupWithMatchedCurrentMetadata(matchedResults)
+    (preferredGroup match {
+      case Some(preferredGroup) =>
         allGroupsWithRelatedResults
-          .find { case (group, _) => group == pg }
-          .map { case (currentGroup, Matched(block, blockContext)) =>
-            val allGroups = UniqueList.fromList(allGroupsWithRelatedResults.map(_._1))
-            val userMetadata = createUserMetadata(blockContext, Some(currentGroup), allGroups)
-            (userMetadata, block)
-          }
+          .find {
+            case (`preferredGroup`, _) => true
+            case _ => false
+          }.map(someFirst)
       case None =>
         Some {
-          allGroupsWithRelatedResults
-            .headOption
-            .map { case (currentGroup, Matched(block, blockContext)) =>
-              val allGroups = UniqueList.fromList(allGroupsWithRelatedResults.map(_._1))
-              val userMetadata = createUserMetadata(blockContext, Some(currentGroup), allGroups)
-              (userMetadata, block)
-            }
-            .getOrElse {
-              val Matched(block, blockContext) = matchedResults.head
-              val userMetadata = createUserMetadata(blockContext, None, UniqueList.empty)
-              (userMetadata, block)
-            }
+          allGroupsWithRelatedResults.headOption.map(someFirst)
+            .getOrElse((None, matchedResults.head))
         }
+    }) map { case (maybeGroup, Matched(block, blockContext)) =>
+      val allGroups = UniqueList.fromList(allGroupsWithRelatedResults.map(_._1))
+      val userMetadata = updateUserMetadataGroups(blockContext, maybeGroup, allGroups)
+      (userMetadata, block)
     }
   }
 
-  private def createUserMetadata(blockContext: CurrentUserMetadataRequestBlockContext,
-                                 currentGroup: Option[Group],
-                                 availableGroups: UniqueList[Group]) = {
+  private def flatGroupWithMatchedCurrentMetadata(matchedResults: NonEmptyList[Matched[CurrentUserMetadataRequestBlockContext]]) = {
+    matchedResults
+      .toList
+      .foldLeft(List.empty[(Group, Matched[CurrentUserMetadataRequestBlockContext])]) {
+        case (acc, matched) =>
+          acc ::: matched.blockContext.userMetadata.availableGroups.toList.map((_, matched))
+      }
+  }
+
+  private def someFirst[A, B](t: (A, B)): (Some[A], B) = (Some(t._1), t._2)
+
+  private def updateUserMetadataGroups(blockContext: CurrentUserMetadataRequestBlockContext,
+                                       currentGroup: Option[Group],
+                                       availableGroups: UniqueList[Group]) = {
     currentGroup
       .foldLeft(blockContext.userMetadata.withAvailableGroups(availableGroups)) {
         case (userMetadata, group) => userMetadata.withCurrentGroup(group)

@@ -34,7 +34,9 @@ class GetRepositoriesEsRequestContext(actionRequest: GetRepositoriesRequest,
   extends BaseRepositoriesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
   override protected def repositoriesFrom(request: GetRepositoriesRequest): Set[RepositoryName] = {
-    request.repositories().asSafeSet.flatMap(NonEmptyString.unapply).map(RepositoryName.apply)
+    repositoriesOrWildcard {
+      request.repositories().asSafeSet.flatMap(NonEmptyString.unapply).map(RepositoryName.apply)
+    }
   }
 
   override protected def update(request: GetRepositoriesRequest,

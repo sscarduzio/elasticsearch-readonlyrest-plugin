@@ -61,13 +61,12 @@ class FilterRuleTests extends WordSpec with MockFactory {
           val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
           val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
           val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
-          val blockContext = FilterableMultiRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, List.empty, None)
+          val blockContext = FilterableMultiRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, None)
 
           rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
             BlockContext.FilterableMultiRequestBlockContext(
               requestContext,
               UserMetadata.empty,
-              Set.empty,
               Set.empty,
               List.empty,
               Some(Filter(NonEmptyString.unsafeFrom("{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}")))

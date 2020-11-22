@@ -28,7 +28,7 @@ import org.elasticsearch.env.Environment
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.boot.{Engine, Ror, RorInstance}
+import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
@@ -38,7 +38,7 @@ import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.RorInstanceSupplier
-import tech.beshu.ror.utils.RorScheduler.scheduler
+import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 
 import scala.language.postfixOps
 
@@ -131,7 +131,7 @@ class IndexLevelActionFilter(settings: Settings,
         aclAwareRequestFilter
           .handle(
             engine,
-            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled, engine.context.involvesFields)
+            EsContext(channel, task, action, request, listener, chain, remoteClusterService.isCrossClusterSearchEnabled)
           )
           .runAsync {
             case Right(_) =>
@@ -143,7 +143,7 @@ class IndexLevelActionFilter(settings: Settings,
   }
 
   private def startRorInstance() = doPrivileged {
-    new Ror()
+    new Ror(RorMode.Plugin)
       .start(env.configFile, new EsAuditSinkService(client), new EsIndexJsonContentService(client))
       .runAsync {
         case Right(Right(instance)) =>

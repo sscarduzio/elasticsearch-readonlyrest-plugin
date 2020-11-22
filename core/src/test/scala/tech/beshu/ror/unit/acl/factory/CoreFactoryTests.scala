@@ -28,18 +28,13 @@ import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{Header, IndexName}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory.HttpClient
-import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
-import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
-import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.accesscontrol.acl.AccessControlList
-import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{BlocksLevelCreationError, DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
+import tech.beshu.ror.boot.RorMode
+import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.configuration.loader.RorConfigurationIndex
-import tech.beshu.ror.configuration.{RawRorConfig, RorIndexNameConfiguration}
-import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient}
+import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithFixedHttpClient, MockLdapConnectionPoolProvider}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
 
@@ -50,7 +45,7 @@ class CoreFactoryTests extends WordSpec with Inside with MockFactory {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
     implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-    new RawRorConfigBasedCoreFactory
+    new RawRorConfigBasedCoreFactory(RorMode.Plugin)
   }
 
   "A RorAclFactory" should {

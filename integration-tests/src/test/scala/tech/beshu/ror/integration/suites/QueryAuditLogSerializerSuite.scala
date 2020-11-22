@@ -16,11 +16,13 @@
  */
 package tech.beshu.ror.integration.suites
 
+import org.junit.Assert.assertEquals
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import ujson.Str
 
 trait QueryAuditLogSerializerSuite
   extends WordSpec
@@ -51,6 +53,25 @@ trait QueryAuditLogSerializerSuite
 
   "Request" should {
     "be audited" when {
+      "user metadata context" in {
+        val user1MetadataManager = new RorApiManager(authHeader("X-Auth-Token", "user1-proxy-id"))
+
+        val result = user1MetadataManager.fetchMetadata()
+
+        assertEquals(200, result.responseCode)
+        result.responseJson.obj.size should be(3)
+        result.responseJson("x-ror-username").str should be("user1-proxy-id")
+        result.responseJson("x-ror-current-group").str should be("group1")
+        result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
+        val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+        auditEntries.size shouldBe 1
+
+        val firstEntry = auditEntries.get(0)
+        firstEntry.get("user") should be("user1-proxy-id")
+        firstEntry.get("final_state") shouldBe "ALLOWED"
+        firstEntry.get("block").asInstanceOf[String].contains("""name: 'Allowed only for group1'""") shouldBe true
+        firstEntry.get("content") shouldBe ""
+      }
       "rule 1 is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "dev"))
         val response = indexManager.getIndex("twitter")
@@ -60,6 +81,7 @@ trait QueryAuditLogSerializerSuite
         auditEntries.size shouldBe 1
 
         val firstEntry = auditEntries.get(0)
+        firstEntry.get("user") should be ("user")
         firstEntry.get("final_state") shouldBe "ALLOWED"
         firstEntry.get("block").asInstanceOf[String].contains("name: 'Rule 1'") shouldBe true
         firstEntry.get("content") shouldBe ""

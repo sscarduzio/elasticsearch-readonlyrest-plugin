@@ -29,6 +29,7 @@ import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
 import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 import monix.execution.Scheduler.Implicits.global
+import tech.beshu.ror.boot.RorMode
 import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 
 trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
@@ -42,7 +43,7 @@ trait BaseYamlLoadedAccessControlTest extends BlockContextAssertion {
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
-    new RawRorConfigBasedCoreFactory
+    new RawRorConfigBasedCoreFactory(RorMode.Plugin)
   }
   protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = MockLdapConnectionPoolProvider
 

@@ -21,7 +21,7 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, ResolveResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class IndexManager(client: RestClient,
@@ -80,13 +80,13 @@ class IndexManager(client: RestClient,
     call(createPutSettingsRequest(indexName, allocationNodeNames.toList), new JsonResponse(_))
   }
 
-  def removeAllIndices: SimpleResponse =
+  def removeAllIndices(): SimpleResponse =
     call(createDeleteAllIndicesRequest, new SimpleResponse(_))
 
   def removeIndex(indexName: String): SimpleResponse =
     call(createDeleteIndexRequest(indexName), new SimpleResponse(_))
 
-  def removeAllAliases: SimpleResponse =
+  def removeAllAliases(): SimpleResponse =
     call(createDeleteAliasesRequest, new SimpleResponse(_))
 
   def getMapping(indexName: String, field: String): JsonResponse = {
@@ -99,6 +99,10 @@ class IndexManager(client: RestClient,
 
   def rollover(target: String): JsonResponse = {
     call(createRolloverRequest(target, None), new JsonResponse(_))
+  }
+
+  def resolve(indexPattern: String, otherIndexPatterns: String*): ResolveResponse = {
+    call(createResolveRequest(indexPattern :: otherIndexPatterns.toList), new ResolveResponse(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -189,6 +193,10 @@ class IndexManager(client: RestClient,
         |}""".stripMargin))
     request
   }
+
+  private def createResolveRequest(indicesPatterns: List[String]) = {
+    new HttpGet(client.from(s"/_resolve/index/${indicesPatterns.mkString(",")}"))
+  }
 }
 
 object IndexManager {
@@ -205,5 +213,33 @@ object IndexManager {
         val aliases = json("aliases").obj.keys.toList
         (indexName, aliases)
       }
+  }
+
+  class ResolveResponse(response: HttpResponse) extends JsonResponse(response) {
+    lazy val indices: List[IndexDescription] =
+      responseJson
+        .obj.toMap.get("indices")
+        .map(_.arr.toList).getOrElse(List.empty)
+        .map { vJson =>
+          IndexDescription(
+            vJson("name").str,
+            vJson.obj.get("aliases").map(_.arr.toList).getOrElse(List.empty).map(_.str),
+            vJson.obj.get("attributes").map(_.arr.toList).getOrElse(List.empty).map(_.str)
+          )
+        }
+
+    lazy val aliases: List[AliasDescription] =
+      responseJson
+        .obj.toMap.get("aliases")
+        .map(_.arr.toList).getOrElse(List.empty)
+        .map { vJson =>
+          AliasDescription(
+            vJson("name").str,
+            vJson.obj.get("indices").map(_.arr.toList).getOrElse(List.empty).map(_.str)
+          )
+        }
+
+    sealed case class IndexDescription(name: String, aliases: List[String], attributes: List[String])
+    sealed case class AliasDescription(name: String, indices: List[String])
   }
 }

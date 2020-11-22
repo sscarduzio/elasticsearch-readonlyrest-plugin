@@ -55,6 +55,12 @@ class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
     .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeySha512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil))))
 )
 
+class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+  AuthKeyDecodersHelper
+    .hashedCredentialsDecoder
+    .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeyPBKDF2WithHmacSHA512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil))))
+)
+
 class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .unixHashedCredentialsDecoder
@@ -73,7 +79,7 @@ private object AuthKeyDecodersHelper {
           case Left(StringWiseSplitter.Error.CannotSplitUsingColon) =>
             Right(AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword(str))
           case Left(StringWiseSplitter.Error.TupleMemberCannotBeEmpty) =>
-            Left(RulesLevelCreationError(Message(s"SHA credentials malformed (expected two non-empty values separated with colon)")))
+            Left(RulesLevelCreationError(Message(s"Auth key rule credentials malformed (expected two non-empty values separated with colon)")))
         }
       }
       .map(identity[AuthKeyHashingRule.HashedCredentials])

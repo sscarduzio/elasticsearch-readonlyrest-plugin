@@ -12,7 +12,6 @@ import org.elasticsearch.action.admin.indices.analyze.{AnalyzeAction, AnalyzeReq
 import org.elasticsearch.action.admin.indices.cache.clear.{ClearIndicesCacheAction, ClearIndicesCacheRequest, ClearIndicesCacheRequestBuilder, ClearIndicesCacheResponse}
 import org.elasticsearch.action.admin.indices.close.{CloseIndexAction, CloseIndexRequest, CloseIndexRequestBuilder, CloseIndexResponse}
 import org.elasticsearch.action.admin.indices.create.{CreateIndexAction, CreateIndexRequest, CreateIndexRequestBuilder, CreateIndexResponse}
-import org.elasticsearch.action.admin.indices.datastream.{CreateDataStreamAction, DeleteDataStreamAction, GetDataStreamsAction}
 import org.elasticsearch.action.admin.indices.delete.{DeleteIndexAction, DeleteIndexRequest, DeleteIndexRequestBuilder}
 import org.elasticsearch.action.admin.indices.exists.indices.{IndicesExistsAction, IndicesExistsRequest, IndicesExistsRequestBuilder, IndicesExistsResponse}
 import org.elasticsearch.action.admin.indices.exists.types.{TypesExistsRequest, TypesExistsRequestBuilder, TypesExistsResponse}
@@ -22,8 +21,10 @@ import org.elasticsearch.action.admin.indices.get.{GetIndexAction, GetIndexReque
 import org.elasticsearch.action.admin.indices.mapping.get._
 import org.elasticsearch.action.admin.indices.mapping.put.{PutMappingAction, PutMappingRequest, PutMappingRequestBuilder}
 import org.elasticsearch.action.admin.indices.open.{OpenIndexAction, OpenIndexRequest, OpenIndexRequestBuilder, OpenIndexResponse}
+import org.elasticsearch.action.admin.indices.readonly.{AddIndexBlockRequest, AddIndexBlockRequestBuilder, AddIndexBlockResponse}
 import org.elasticsearch.action.admin.indices.recovery.{RecoveryRequest, RecoveryRequestBuilder, RecoveryResponse}
 import org.elasticsearch.action.admin.indices.refresh.{RefreshAction, RefreshRequest, RefreshRequestBuilder, RefreshResponse}
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.rollover.{RolloverAction, RolloverRequest, RolloverRequestBuilder, RolloverResponse}
 import org.elasticsearch.action.admin.indices.segments.{IndicesSegmentResponse, IndicesSegmentsRequest, IndicesSegmentsRequestBuilder}
 import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsAction, GetSettingsRequest, GetSettingsRequestBuilder, GetSettingsResponse}
@@ -39,7 +40,7 @@ import org.elasticsearch.action.admin.indices.upgrade.post.{UpgradeRequest, Upgr
 import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryAction, ValidateQueryRequest, ValidateQueryRequestBuilder, ValidateQueryResponse}
 import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.IndicesAdminClient
-import org.elasticsearch.cluster.metadata.AliasMetadata
+import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexMetadata}
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.proxy.es.ProxyIndexLevelActionFilter
@@ -371,20 +372,20 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
     }
   }
 
-  override def createDataStream(request: CreateDataStreamAction.Request,
-                                listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def resolveIndex(request: ResolveIndexAction.Request, listener: ActionListener[ResolveIndexAction.Response]): Unit = {
+    execute(ResolveIndexAction.INSTANCE.name(), request, listener) {
+      esClient.resolveIndex
+    }
+  }
 
-  override def createDataStream(request: CreateDataStreamAction.Request): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
+  override def resolveIndex(request: ResolveIndexAction.Request): ActionFuture[ResolveIndexAction.Response] =
+    throw NotDefinedForRorProxy
 
-  override def deleteDataStream(request: DeleteDataStreamAction.Request,
-                                listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+  override def prepareAddBlock(block: IndexMetadata.APIBlock, indices: String*): AddIndexBlockRequestBuilder =
+    throw NotDefinedForRorProxy
 
-  override def deleteDataStream(request: DeleteDataStreamAction.Request): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
-
-  override def getDataStreams(request: GetDataStreamsAction.Request,
-                              listener: ActionListener[GetDataStreamsAction.Response]): Unit = throw NotDefinedForRorProxy
-
-  override def getDataStreams(request: GetDataStreamsAction.Request): ActionFuture[GetDataStreamsAction.Response] = throw NotDefinedForRorProxy
+  override def addBlock(request: AddIndexBlockRequest, listener: ActionListener[AddIndexBlockResponse]): Unit =
+    throw NotDefinedForRorProxy
 
   override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response],
                                                                              request: Request): ActionFuture[Response] =
@@ -396,4 +397,5 @@ class HighLevelClientBasedIndicesAdminClient(esClient: RestHighLevelClientAdapte
     throw NotDefinedForRorProxy
 
   override def threadPool(): ThreadPool = throw NotDefinedForRorProxy
+
 }

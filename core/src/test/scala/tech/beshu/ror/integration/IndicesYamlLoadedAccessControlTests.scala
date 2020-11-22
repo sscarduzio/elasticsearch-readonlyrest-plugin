@@ -43,7 +43,7 @@ class IndicesYamlLoadedAccessControlTests  extends WordSpec with BaseYamlLoadedA
     "indices rule is defined with must_involve_indices: true flag" should {
       "allow to proceed" when {
         "it is an indices request and the requested index is on the configured list" in {
-          val request = MockRequestContext.indices.copy(indices = Set(IndexName(".readonlyrest".nonempty)))
+          val request = MockRequestContext.indices.copy(filteredIndices = Set(IndexName(".readonlyrest".nonempty)))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(_, _) => }

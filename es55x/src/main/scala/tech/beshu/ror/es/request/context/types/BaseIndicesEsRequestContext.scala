@@ -41,13 +41,13 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
     this,
     UserMetadata.from(this),
     Set.empty,
-    Set.empty,
     {
       import tech.beshu.ror.accesscontrol.show.logs._
       val indices = indicesOrWildcard(indicesFrom(actionRequest))
       logger.debug(s"[${id.show}] Discovered indices: ${indices.map(_.show).mkString(",")}")
       indices
-    }
+    },
+    Set(IndexName.wildcard),
   )
 
   override def modifyWhenIndexNotFound: ModificationResult = {
@@ -66,7 +66,7 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
   }
 
   override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
-    NonEmptyList.fromList(blockContext.indices.toList) match {
+    NonEmptyList.fromList(blockContext.filteredIndices.toList) match {
       case Some(indices) =>
         update(actionRequest, indices)
       case None =>

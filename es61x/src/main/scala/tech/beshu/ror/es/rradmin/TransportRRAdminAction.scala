@@ -28,7 +28,7 @@ import org.elasticsearch.env.Environment
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.TransportService
 import tech.beshu.ror.adminapi.AdminRestApi
-import tech.beshu.ror.boot.SchedulerPools
+import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RorIndexNameConfiguration}
 import tech.beshu.ror.utils.RorInstanceSupplier
@@ -62,7 +62,7 @@ class TransportRRAdminAction(settings: Settings,
     this(settings, threadPool, transportService, actionFilters, indexNameExpressionResolver, env, indexContentProvider, ())
   }
 
-  private implicit val adminRestApiScheduler: Scheduler = SchedulerPools.adminRestApiScheduler
+  private implicit val adminRestApiScheduler: Scheduler = RorSchedulers.adminRestApiScheduler
 
   private val rorIndexNameConfig = RorIndexNameConfiguration
     .load(env.configFile)

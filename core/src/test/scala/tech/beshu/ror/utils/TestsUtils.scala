@@ -69,7 +69,6 @@ object TestsUtils {
         userOrigin = expected.userMetadata.userOrigin,
         jwt = expected.userMetadata.jwtToken,
         responseHeaders = expected.responseHeaders,
-        contextHeaders = expected.contextHeaders,
         indices = expected.indices,
         repositories = expected.repositories,
         snapshots = expected.snapshots) {
@@ -87,7 +86,6 @@ object TestsUtils {
                            userOrigin: Option[UserOrigin] = None,
                            jwt: Option[JwtTokenPayload] = None,
                            responseHeaders: Set[Header] = Set.empty,
-                           contextHeaders: Set[Header] = Set.empty,
                            indices: Set[IndexName] = Set.empty,
                            aliases: Set[IndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
@@ -104,7 +102,6 @@ object TestsUtils {
       blockContext.userMetadata.userOrigin should be(userOrigin)
       blockContext.userMetadata.jwtToken should be(jwt)
       blockContext.responseHeaders should be(responseHeaders)
-      blockContext.contextHeaders should be(contextHeaders)
       blockContext match {
         case _: CurrentUserMetadataRequestBlockContext =>
         case _: GeneralNonIndexRequestBlockContext =>
@@ -113,15 +110,15 @@ object TestsUtils {
         case bc: SnapshotRequestBlockContext =>
           bc.snapshots should be (snapshots)
           bc.repositories should be (repositories)
-          bc.indices should be (indices)
+          bc.filteredIndices should be (indices)
         case bc: TemplateRequestBlockContext =>
           bc.templates  should be (templates)
         case bc: GeneralIndexRequestBlockContext =>
-          bc.indices should be (indices)
+          bc.filteredIndices should be (indices)
         case bc: MultiIndexRequestBlockContext =>
           bc.indices should be (indices)
         case bc: FilterableRequestBlockContext =>
-          bc.indices should be (indices)
+          bc.filteredIndices should be (indices)
         case bc: FilterableMultiRequestBlockContext =>
           bc.indices should be (indices)
         case bc: AliasRequestBlockContext =>

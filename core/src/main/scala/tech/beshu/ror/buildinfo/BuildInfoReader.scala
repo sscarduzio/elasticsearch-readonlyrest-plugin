@@ -21,6 +21,8 @@ import java.util.{Objects, Properties}
 
 import cats.effect.Resource
 import monix.eval.Task
+import monix.execution.Scheduler
+import tech.beshu.ror.boot.RorSchedulers
 
 import scala.util.Try
 
@@ -28,8 +30,8 @@ final case class BuildInfo(esVersion: String, pluginVersion: String)
 object BuildInfoReader {
   private val filename = "/ror-build-info.properties"
 
-  def create(filename: String = filename): Try[BuildInfo] = Try{
-    import monix.execution.Scheduler.Implicits.global
+  def create(filename: String = filename): Try[BuildInfo] = Try {
+    implicit val scheduler: Scheduler = RorSchedulers.blockingScheduler
     createBuildInfoTask(filename).runSyncUnsafe()
   }
 
