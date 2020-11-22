@@ -51,17 +51,16 @@ import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
 import org.elasticsearch.index.reindex.ReindexRequest
-import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.{RorClusterService, RorRestChannel}
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.types.{ReflectionBasedIndicesEsRequestContext, _}
 import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler
 import tech.beshu.ror.es.request.handler.usermetadata.CurrentUserMetadataRequestHandler
 import tech.beshu.ror.es.rradmin.RRAdminRequest
+import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService, RorRestChannel}
 
 import scala.language.postfixOps
 import scala.reflect.ClassTag
@@ -191,7 +190,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 }
 
 object AclAwareRequestFilter {
-  final case class EsContext(channel: RorRestChannel,
+  final case class EsContext(channel: RorRestChannel with ResponseFieldsFiltering,
                              task: EsTask,
                              actionType: String,
                              actionRequest: ActionRequest,

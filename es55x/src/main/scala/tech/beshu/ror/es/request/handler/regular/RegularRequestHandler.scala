@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields, ResponseTransformation}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -87,6 +87,7 @@ class RegularRequestHandler(engine: Engine,
 
   private def onAllow[B <: BlockContext](request: EsRequest[B] with RequestContext.Aux[B],
                                          blockContext: B): Unit = {
+    configureResponseTransformations(blockContext.responseTransformations)
     request.modifyUsing(blockContext) match {
       case ModificationResult.Modified =>
         proceed()
@@ -140,6 +141,13 @@ class RegularRequestHandler(engine: Engine,
            TemplateRequestBlockContextUpdater |
            MultiIndexRequestBlockContextUpdater =>
         onForbidden(NonEmptyList.one(OperationNotAllowed))
+    }
+  }
+
+  private def configureResponseTransformations(responseTransformations: List[ResponseTransformation]): Unit = {
+    responseTransformations.collect {
+      case FilteredResponseFields(responseFieldsRestrictions) =>
+        esContext.channel.setResponseFieldRestrictions(responseFieldsRestrictions)
     }
   }
 

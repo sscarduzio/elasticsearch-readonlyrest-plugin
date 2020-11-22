@@ -20,15 +20,24 @@ import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import org.elasticsearch.tasks.Task
 
-class RorRestChannel(underlying: RestChannel, task: Task)
+class RorRestChannel(underlying: RestChannel)
   extends AbstractRestChannel(underlying.request(), false)
+    with ResponseFieldsFiltering
     with Logging {
 
+  private var maybeTask: Option[Task] = None
+
+  def setTask(task: Task): Unit = {
+    maybeTask = Some(task)
+  }
+
   override def sendResponse(response: RestResponse): Unit = {
-    TransportServiceInterceptor.taskManagerSupplier.get() match {
-      case Some(taskManager) => taskManager.unregister(task)
-      case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
+    maybeTask.foreach { task =>
+      TransportServiceInterceptor.taskManagerSupplier.get() match {
+        case Some(taskManager) => taskManager.unregister(task)
+        case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
+      }
     }
-    underlying.sendResponse(response)
+    underlying.sendResponse(filterRestResponse(response))
   }
 }
