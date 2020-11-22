@@ -352,49 +352,5 @@ object headerValues {
     ))
   }
 
-
-  implicit val filteredResponseFieldsToHeaderValue: ToHeaderValue[ResponseFieldsRestrictions] = ToHeaderValue { fieldsRestrictions =>
-    import upickle.default
-    import default._
-
-    implicit val nesW: Writer[NonEmptyString] = StringWriter.comap(_.value)
-    implicit val accessModeW: Writer[ResponseFieldsFiltering.AccessMode] = Writer.merge(
-      macroW[ResponseFieldsFiltering.AccessMode.Whitelist.type],
-      macroW[ResponseFieldsFiltering.AccessMode.Blacklist.type]
-    )
-    implicit val documentFieldW: Writer[ResponseField] = macroW
-    implicit val setW: Writer[UniqueNonEmptyList[ResponseField]] =
-      SeqLikeWriter[UniqueNonEmptyList, ResponseField]
-
-    implicit val fieldsRestrictionsW: Writer[ResponseFieldsRestrictions] = macroW
-
-    val fieldsJsonString = upickle.default.write(fieldsRestrictions)
-    NonEmptyString.unsafeFrom(
-      Base64.getEncoder.encodeToString(fieldsJsonString.getBytes("UTF-8"))
-    )
-  }
-
-  implicit val filteredResponseFieldsFromHeaderValue: FromHeaderValue[ResponseFieldsRestrictions] = (value: NonEmptyString) => {
-    import upickle.default
-    import default._
-
-    implicit val nesR: Reader[NonEmptyString] = StringReader.map(NonEmptyString.unsafeFrom)
-    implicit val accessModeR: Reader[ResponseFieldsFiltering.AccessMode] = Reader.merge(
-      macroR[ResponseFieldsFiltering.AccessMode.Whitelist.type],
-      macroR[ResponseFieldsFiltering.AccessMode.Blacklist.type]
-    )
-    implicit val documentFieldR: Reader[ResponseField] = macroR
-
-    implicit val setR: Reader[UniqueNonEmptyList[ResponseField]] =
-      SeqLikeReader[List, ResponseField]
-        .map(UniqueNonEmptyList.unsafeFromList)
-
-    implicit val fieldsRestrictionsR: Reader[ResponseFieldsRestrictions] = macroR
-
-    Try(upickle.default.read[ResponseFieldsRestrictions](
-      new String(Base64.getDecoder.decode(value.value), "UTF-8")
-    ))
-  }
-
   implicit val groupHeaderValue: ToHeaderValue[Group] = ToHeaderValue(_.value)
 }

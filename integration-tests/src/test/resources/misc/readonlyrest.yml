@@ -21,16 +21,6 @@ readonlyrest:
       jwt_auth: "jwt1"
       indices: ["index1"]
 
-    - name: "Filter cluster health response"
-      auth_key: dev1:test
-      uri_re: "^/_cluster.*$"
-      response_fields: ["cluster_name"]
-
-    - name: "Filter cat health response"
-      auth_key: dev1:test
-      uri_re: "^/_cat.*$"
-      response_fields: ["~cluster"]
-
   jwt:
     - name: "jwt1"
       signature_algo: "RSA"

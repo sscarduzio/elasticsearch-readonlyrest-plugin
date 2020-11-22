@@ -19,22 +19,25 @@ package tech.beshu.ror.es
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import org.elasticsearch.tasks.Task
-import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
-import tech.beshu.ror.es.request.RestChannelFilteringDecorator
 
-class RorRestChannel(underlying: RestChannelFilteringDecorator, task: Task)
+class RorRestChannel(underlying: RestChannel)
   extends AbstractRestChannel(underlying.request(), false)
+    with ResponseFieldsFiltering
     with Logging {
 
-  override def sendResponse(response: RestResponse): Unit = {
-    TransportServiceInterceptor.taskManagerSupplier.get() match {
-      case Some(taskManager) => taskManager.unregister(task)
-      case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
-    }
-    underlying.sendResponse(response)
+  private var maybeTask: Option[Task] = None
+
+  def setTask(task: Task): Unit = {
+    maybeTask = Some(task)
   }
 
-  def setResponseFieldRestrictions(responseFieldsRestrictions: ResponseFieldsRestrictions): Unit = {
-    underlying.setResponseFieldRestrictions(responseFieldsRestrictions)
+  override def sendResponse(response: RestResponse): Unit = {
+    maybeTask.foreach { task =>
+      TransportServiceInterceptor.taskManagerSupplier.get() match {
+        case Some(taskManager) => taskManager.unregister(task)
+        case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
+      }
+    }
+    underlying.sendResponse(filterRestResponse(response))
   }
 }

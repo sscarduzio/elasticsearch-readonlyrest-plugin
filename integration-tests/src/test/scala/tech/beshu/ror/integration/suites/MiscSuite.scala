@@ -82,21 +82,6 @@ trait MiscSuite
     result.searchHits(0)("_source")("user_id").str should be("alice")
   }
 
-  "Cluster health response using response_fields rule should be filtered" in {
-    val dev1ClusterStateManager = new ClusterManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esTargets.head.esVersion)
-    val healthCheck = dev1ClusterStateManager.health()
-
-    healthCheck.responseJson.obj.isDefinedAt("cluster_name") should equal(true)
-    healthCheck.responseJson.obj.isDefinedAt("number_of_nodes") should equal(false)
-  }
-
-  "Cat health response using response_fields rule should be filtered" in {
-    val dev1ClusterStateManager = new CatManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esTargets.head.esVersion)
-    val healthCheck = dev1ClusterStateManager.healthCheck()
-
-    healthCheck.responseJson.arr.head.obj.isDefinedAt("status") should equal(true)
-    healthCheck.responseJson.arr.head.obj.isDefinedAt("cluster") should equal(false)
-  }
 }
 
 object MiscSuite {

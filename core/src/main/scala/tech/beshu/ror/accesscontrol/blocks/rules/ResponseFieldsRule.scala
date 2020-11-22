@@ -34,12 +34,11 @@ class ResponseFieldsRule(val settings: Settings)
     val maybeResolvedFields = resolveAll(settings.responseFields.toNonEmptyList, blockContext)
     UniqueNonEmptyList.fromList(maybeResolvedFields) match {
       case Some(resolvedFields) =>
-        RuleResult.Fulfilled(blockContext.withAddedResponseTransformation(FilteredResponseFields(resolvedFields, settings.accessMode)))
+        RuleResult.Fulfilled(blockContext.withAddedResponseTransformation(FilteredResponseFields(ResponseFieldsRestrictions(resolvedFields, settings.accessMode))))
       case None =>
         RuleResult.Rejected()
     }
   }
-
 }
 
 object ResponseFieldsRule {

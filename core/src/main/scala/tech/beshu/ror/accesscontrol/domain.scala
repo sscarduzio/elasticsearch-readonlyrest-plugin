@@ -433,7 +433,7 @@ object domain {
 
   object ResponseFieldsFiltering {
 
-    final case class ResponseFieldsRestrictions(documentFields: UniqueNonEmptyList[ResponseField],
+    final case class ResponseFieldsRestrictions(responseFields: UniqueNonEmptyList[ResponseField],
                                                 mode: AccessMode)
 
     final case class ResponseField(value: NonEmptyString)

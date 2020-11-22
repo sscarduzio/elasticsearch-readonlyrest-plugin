@@ -57,7 +57,6 @@ import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
-import tech.beshu.ror.es.request.RestChannelFilteringDecorator
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.rradmin.{RRAdminActionType, TransportRRAdminAction}
 import tech.beshu.ror.es.rrconfig.rest.RestRRConfigAction
@@ -209,9 +208,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
     restHandler: RestHandler =>
       (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-        val filteredRestChannel = new RestChannelFilteringDecorator(channel, request, threadContext, false)
-        ThreadRepo.setRestChannel(filteredRestChannel)
-        restHandler.handleRequest(request, filteredRestChannel, client)
+        val rorRestChannel = new RorRestChannel(channel)
+        ThreadRepo.setRestChannel(rorRestChannel)
+        restHandler.handleRequest(request, rorRestChannel, client)
       }
   }
 

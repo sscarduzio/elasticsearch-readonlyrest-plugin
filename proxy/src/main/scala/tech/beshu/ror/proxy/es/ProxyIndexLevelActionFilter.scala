@@ -81,14 +81,14 @@ class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
                             channel: ProxyRestChannel): Unit = {
     aclAwareRequestFilter
-//      .handle(
-//        engine,
-//        EsContext(channel, task, action, request, listener, chain, crossClusterSearchEnabled = true)
-//      )
-//      .runAsync {
-//        case Right(_) =>
-//        case Left(ex) => channel.sendFailureResponse(ex)
-//      }
+      .handle(
+        engine,
+        EsContext(channel, task, action, request, listener, chain, crossClusterSearchEnabled = true)
+      )
+      .runAsync {
+        case Right(_) =>
+        case Left(ex) => channel.sendFailureResponse(ex)
+      }
   }
 }
 

@@ -21,10 +21,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, FilteredResponseFields}
-import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
-import tech.beshu.ror.accesscontrol.headerValues.filteredResponseFieldsToHeaderValue
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 
 import scala.util.Try
 

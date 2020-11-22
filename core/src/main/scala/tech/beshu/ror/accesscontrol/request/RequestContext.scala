@@ -25,8 +25,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, FilteredResponseFields, ResponseTransformation}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -89,7 +90,8 @@ object RequestContext extends Logging {
 
   def show[B <: BlockContext](loggedUser: Option[LoggedUser],
                               kibanaIndex: Option[IndexName],
-                              history: Vector[Block.History[B]])
+                              history: Vector[Block.History[B]],
+                              responseTransformations: List[ResponseTransformation])
                              (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] =
     Show.show { r =>
       def stringifyUser = {
@@ -111,6 +113,14 @@ object RequestContext extends Logging {
         if (idx.isEmpty) "<N/A>"
         else idx.mkString(",")
       }
+
+      def stringifyResponseTransformations: String = {
+        responseTransformations.map {
+          case FilteredResponseFields(ResponseFieldsRestrictions(fields, mode)) =>
+            val commaSeparatedFields = fields.map(_.value.value).toList.mkString(",")
+            s"ResponseFieldsTransformation(fields=[$commaSeparatedFields],mode=$mode)"
+        }.mkString("[", ",", "]")
+      }
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
@@ -127,7 +137,8 @@ object RequestContext extends Logging {
          | PTH:${r.uriPath.show},
          | CNT:$stringifyContentLength,
          | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
-         | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")}
+         | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")},
+         | RT:$stringifyResponseTransformations
          | }""".stripMargin.replaceAll("\n", " ")
     }
 }

@@ -33,7 +33,6 @@ public class Constants {
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
   public final static String CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user";
   public final static String FIELDS_TRANSIENT = "_fields";
-  public final static String FILTERED_RESPONSE_FIELDS_FIELD = "_response_fields";
 
   public final static Set<String> FIELDS_ALWAYS_ALLOW = Sets.newHashSet("_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index");
 

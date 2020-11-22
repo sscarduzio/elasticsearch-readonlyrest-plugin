@@ -130,27 +130,27 @@ object AccessControlLoggingDecorator {
     Show.show[ResponseContext[B]] {
       case allowedBy: AllowedBy[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(
-          allowedBy.blockContext.userMetadata.loggedUser, allowedBy.blockContext.userMetadata.kibanaIndex, allowedBy.history
+          allowedBy.blockContext.userMetadata.loggedUser, allowedBy.blockContext.userMetadata.kibanaIndex, allowedBy.history, allowedBy.blockContext.responseTransformations
         )
         s"""${Constants.ANSI_CYAN}ALLOWED by ${allowedBy.block.show} req=${allowedBy.requestContext.show}${Constants.ANSI_RESET}"""
       case allow: Allow[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(
-          allow.userMetadata.loggedUser, allow.userMetadata.kibanaIndex, allow.history
+          allow.userMetadata.loggedUser, allow.userMetadata.kibanaIndex, allow.history, List.empty
         )
         s"""${Constants.ANSI_CYAN}ALLOWED by ${allow.block.show} req=${allow.requestContext.show}${Constants.ANSI_RESET}"""
       case forbiddenBy: ForbiddenBy[B] =>
         implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(
-          forbiddenBy.blockContext.userMetadata.loggedUser, forbiddenBy.blockContext.userMetadata.kibanaIndex, forbiddenBy.history
+          forbiddenBy.blockContext.userMetadata.loggedUser, forbiddenBy.blockContext.userMetadata.kibanaIndex, forbiddenBy.history, forbiddenBy.blockContext.responseTransformations
         )
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by ${forbiddenBy.block.show} req=${forbiddenBy.requestContext.show}${Constants.ANSI_RESET}"""
       case forbidden: Forbidden[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(None, None, forbidden.history)
+        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(None, None, forbidden.history, List.empty)
         s"""${Constants.ANSI_PURPLE}FORBIDDEN by default req=${forbidden.requestContext.show}${Constants.ANSI_RESET}"""
       case requestedIndexNotExist: RequestedIndexNotExist[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(None, None, requestedIndexNotExist.history)
+        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(None, None, requestedIndexNotExist.history, List.empty)
         s"""${Constants.ANSI_PURPLE}INDEX NOT FOUND req=${requestedIndexNotExist.requestContext.show}${Constants.ANSI_RESET}"""
       case errored: Errored[B] =>
-        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(None, None, Vector.empty)
+        implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show(None, None, Vector.empty, List.empty)
         s"""${Constants.ANSI_YELLOW}ERRORED by error req=${errored.requestContext.show}${Constants.ANSI_RESET}"""
     }
   }
