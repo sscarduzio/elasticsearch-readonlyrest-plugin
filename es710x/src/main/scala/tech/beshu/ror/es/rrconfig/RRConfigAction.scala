@@ -14,26 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
+package tech.beshu.ror.es.rrconfig
 
-rootProject.name = 'readonlyrest'
-include 'ror-shadowed-libs'
-include 'audit'
-include 'core'
-include 'es55x'
-include 'es60x'
-include 'es61x'
-include 'es62x'
-include 'es63x'
-include 'es66x'
-include 'es70x'
-include 'es72x'
-include 'es73x'
-include 'es74x'
-include 'es77x'
-include 'es78x'
-include 'es79x'
-include 'es710x'
-include 'proxy'
-include 'tests-utils'
-include 'integration-tests'
-include 'eshome'
+import org.elasticsearch.action.ActionType
+import org.elasticsearch.common.io.stream.Writeable
+
+class RRConfigAction extends ActionType[RRConfigsResponse](RRConfigAction.name, RRConfigAction.reader)
+
+object RRConfigAction {
+  val name = "cluster:admin/rrconfig/config"
+  val instance = new RRConfigAction
+  val reader: Writeable.Reader[RRConfigsResponse] = new RRConfigsResponse(_)
+}

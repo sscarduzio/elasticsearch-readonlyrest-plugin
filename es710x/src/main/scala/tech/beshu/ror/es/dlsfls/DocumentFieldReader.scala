@@ -21,15 +21,18 @@ import java.util.{Iterator => JavaIterator}
 
 import com.google.common.collect.Iterators
 import org.apache.logging.log4j.scala.Logging
+import org.apache.lucene.codecs.StoredFieldsReader
 import org.apache.lucene.index.StoredFieldVisitor.Status
 import org.apache.lucene.index._
 import org.apache.lucene.util.Bits
 import org.elasticsearch.ExceptionsHelper
 import org.elasticsearch.common.bytes.{BytesArray, BytesReference}
+import org.elasticsearch.common.lucene.index.SequentialStoredFieldsLeafReader
 import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper, XContentType}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions
 import tech.beshu.ror.es.dlsfls.DocumentFieldDirectoryReader.DocumentFieldDirectorySubReader
+import tech.beshu.ror.es.dlsfls.DocumentFieldReader.UnderlyingReaderShouldBeSequentialStoredFieldsLeafReader
 import tech.beshu.ror.fls.FieldsPolicy
 import ujson._
 
@@ -37,7 +40,7 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: FieldsRestrictions)
-  extends FilterLeafReader(reader) with Logging {
+  extends SequentialStoredFieldsLeafReader(reader) with Logging {
 
   private val policy = new FieldsPolicy(fieldsRestrictions)
   private val remainingFieldsInfo = {
@@ -200,9 +203,16 @@ private class DocumentFieldReader(reader: LeafReader, fieldsRestrictions: Fields
 
   override def getReaderCacheHelper: IndexReader.CacheHelper = this.in.getCoreCacheHelper
 
+  override def doGetSequentialStoredFieldsReader(reader: StoredFieldsReader): StoredFieldsReader =
+    this.reader match {
+      case ssfr : SequentialStoredFieldsLeafReader => ssfr.getSequentialStoredFieldsReader
+      case _ => throw UnderlyingReaderShouldBeSequentialStoredFieldsLeafReader
+    }
 }
 
 object DocumentFieldReader {
+  case object UnderlyingReaderShouldBeSequentialStoredFieldsLeafReader extends Exception
+
   def wrap(in: DirectoryReader, fieldsRestrictions: FieldsRestrictions): DocumentFieldDirectoryReader =
     new DocumentFieldDirectoryReader(in, fieldsRestrictions)
 }
