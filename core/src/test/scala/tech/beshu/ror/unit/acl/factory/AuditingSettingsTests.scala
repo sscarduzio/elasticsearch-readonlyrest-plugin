@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.factory
 
 import java.time.{Clock, ZoneId, ZonedDateTime}
-
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
@@ -114,7 +114,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-          auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
+          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(IndexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
         }
       }
@@ -142,7 +142,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-          auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("custom_template_20181231")
+          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(IndexName("custom_template_20181231"))
           auditingSettings.logSerializer shouldBe a[DefaultAuditLogSerializer]
         }
       }
@@ -170,7 +170,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-          auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
+          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(IndexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[QueryAuditLogSerializer]
         }
       }
@@ -198,7 +198,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
           .runSyncUnsafe()
         inside(core) { case Right(CoreSettings(_, _, Some(auditingSettings))) =>
           val zonedDateTime = ZonedDateTime.of(2019, 1, 1, 0, 1, 59, 0, ZoneId.of("+1"))
-          auditingSettings.indexNameFormatter.format(zonedDateTime.toInstant) should be("readonlyrest_audit-2018-12-31")
+          auditingSettings.rorAuditIndexTemplate.indexName(zonedDateTime.toInstant) should be(IndexName("readonlyrest_audit-2018-12-31"))
           auditingSettings.logSerializer shouldBe a[DeprecatedAuditLogSerializerAdapter[_]]
         }
       }

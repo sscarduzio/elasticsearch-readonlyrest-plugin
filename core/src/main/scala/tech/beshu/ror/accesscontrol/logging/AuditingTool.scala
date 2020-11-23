@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import java.time.format.DateTimeFormatter
 import java.time.{Clock, Instant}
 
 import cats.implicits._
@@ -24,6 +23,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -40,7 +40,7 @@ class AuditingTool(settings: Settings,
       .map {
         case Some(entry) =>
           auditSink.submit(
-            settings.indexNameFormatter.format(Instant.now(clock)),
+            settings.rorAuditIndexTemplate.indexName(Instant.now(clock)).value.value,
             response.requestContext.id.value,
             entry.toString
           )
@@ -128,7 +128,7 @@ class AuditingTool(settings: Settings,
 
 object AuditingTool {
 
-  final case class Settings(indexNameFormatter: DateTimeFormatter,
+  final case class Settings(rorAuditIndexTemplate: RorAuditIndexTemplate,
                             logSerializer: AuditLogSerializer)
 
 }

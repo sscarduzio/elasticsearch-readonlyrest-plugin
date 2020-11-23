@@ -17,20 +17,19 @@
 package tech.beshu.ror.integration
 
 import java.time.{Clock, Instant, ZoneId}
-import java.time.format.DateTimeFormatter
 
-import org.scalatest.WordSpec
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
+import org.scalatest.WordSpec
+import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.header
-import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.Constants
 
-import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
 
 class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlTest {
@@ -135,7 +134,7 @@ class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlT
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
     new AccessControlLoggingDecorator(acl, Some(new AuditingTool(
       AuditingTool.Settings(
-        DateTimeFormatter.ofPattern(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).withZone(ZoneId.of("UTC")),
+        RorAuditIndexTemplate.default,
         new DefaultAuditLogSerializer
       ),
       auditSinkService

@@ -95,7 +95,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   }
 
   private def createFrom(settingsJson: Json,
-                         rorIndexNameConfiguration: RorConfigurationIndex,
+                         rorConfigurationIndex: RorConfigurationIndex,
                          httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) = {
     val decoder = for {
@@ -106,10 +106,14 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
       } else {
         for {
-          globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorMode))
-          aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, rorIndexNameConfiguration, globalSettings)
-          (acl, context) = aclAndContext
           auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
+          globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(
+            rorMode,
+            rorConfigurationIndex,
+            auditingTools.map(_.rorAuditIndexTemplate)
+          ))
+          aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, rorConfigurationIndex, globalSettings)
+          (acl, context) = aclAndContext
         } yield CoreSettings(
           aclEngine = acl,
           aclStaticContext = context,

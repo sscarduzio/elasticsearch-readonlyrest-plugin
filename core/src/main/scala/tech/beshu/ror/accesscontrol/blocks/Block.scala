@@ -49,7 +49,7 @@ class Block(val name: Name,
 
   import Lifter._
 
-  private val postProcessingChecks: List[BlockPostProcessingCheck] = ???
+  //private val postProcessingChecks: List[BlockPostProcessingCheck] = ???
 
   def execute[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): BlockResultWithHistory[B] = {
     implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)

@@ -36,7 +36,6 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{Rule
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.configuration.RorIndexNameConfiguration
 
 object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers

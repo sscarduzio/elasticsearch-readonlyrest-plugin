@@ -16,9 +16,13 @@
  */
 package tech.beshu.ror.accesscontrol.factory
 
+import tech.beshu.ror.accesscontrol.domain.{RorAuditIndexTemplate, RorConfigurationIndex}
+
 final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 forbiddenRequestMessage: String,
-                                flsEngine: GlobalSettings.FlsEngine)
+                                flsEngine: GlobalSettings.FlsEngine,
+                                configurationIndex: RorConfigurationIndex,
+                                indexAuditTemplate: Option[RorAuditIndexTemplate])
 
 object GlobalSettings {
 

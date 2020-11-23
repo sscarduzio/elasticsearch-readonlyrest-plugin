@@ -319,8 +319,8 @@ object domain {
 
   final case class RorConfigurationIndex(index: IndexName) extends AnyVal
 
-  final case class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
-                                                 private val rawPattern: String) {
+  final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
+                                            rawPattern: String) {
 
     def indexName(instant: Instant): IndexName = {
       IndexName.fromUnsafeString(nameFormatter.format(instant))
@@ -337,11 +337,13 @@ object domain {
     }
   }
   object RorAuditIndexTemplate {
-    def apply(value: String): Either[CreationError, RorAuditIndexTemplate] = from(value)
+    val default = from(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).right.get
 
-    def from(value: String): Either[CreationError, RorAuditIndexTemplate] = {
-      Try(DateTimeFormatter.ofPattern(value).withZone(ZoneId.of("UTC"))) match {
-        case Success(formatter) => Right(new RorAuditIndexTemplate(formatter, value.replaceAll("'", "")))
+    def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = from(pattern)
+
+    def from(pattern: String): Either[CreationError, RorAuditIndexTemplate] = {
+      Try(DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.of("UTC"))) match {
+        case Success(formatter) => Right(new RorAuditIndexTemplate(formatter, pattern.replaceAll("'", "")))
         case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
       }
     }
