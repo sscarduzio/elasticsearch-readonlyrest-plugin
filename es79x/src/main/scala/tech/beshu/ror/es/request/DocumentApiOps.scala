@@ -19,7 +19,11 @@ package tech.beshu.ror.es.request
 import org.elasticsearch.action.get.{GetResponse, MultiGetItemResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.index.get.GetResult
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.{DocumentId, DocumentWithIndex, IndexName}
+import tech.beshu.ror.utils.ReflecUtils
+
+import scala.collection.JavaConverters._
 
 object DocumentApiOps {
 
@@ -45,6 +49,50 @@ object DocumentApiOps {
 
     implicit class GetResponseOps(val response: GetResponse) extends AnyVal {
       def asDocumentWithIndex = createDocumentWithIndex(response.getIndex, response.getId)
+
+      def filterFieldsUsing(fieldsRestrictions: FieldsRestrictions): GetResponse = {
+        val newSource = filterSourceFieldsUsing(fieldsRestrictions)
+        val newFields = filterDocumentFieldsUsing(fieldsRestrictions)
+
+        val newResult = new GetResult(
+          response.getIndex,
+          response.getType,
+          response.getId,
+          response.getSeqNo,
+          response.getPrimaryTerm,
+          response.getVersion,
+          true,
+          newSource,
+          newFields.nonMetadataDocumentFields.value.asJava,
+          newFields.metadataDocumentFields.value.asJava
+        )
+        new GetResponse(newResult)
+      }
+
+      private def filterSourceFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
+        Option(response.getSourceAsMap)
+          .map(_.asScala.toMap)
+          .filter(_.nonEmpty)
+          .map(source => FieldsFiltering.filterSource(source, fieldsRestrictions)) match {
+          case Some(value) => value.bytes
+          case None => response.getSourceAsBytesRef
+        }
+      }
+
+      private def filterDocumentFieldsUsing(fieldsRestrictions: FieldsRestrictions) = {
+        Option(ReflecUtils.getField(response, response.getClass, "getResult"))
+          .collect {
+            case getResult: GetResult => getResult
+          }
+          .map { getResult =>
+            val originalNonMetatadataFields = FieldsFiltering.NonMetadataDocumentFields(getResult.getDocumentFields.asScala.toMap)
+            val originalMetadataFields = FieldsFiltering.MetadataDocumentFields(getResult.getMetadataFields.asScala.toMap)
+
+            val filteredNonMetadataFields = FieldsFiltering.filterNonMetadataDocumentFields(originalNonMetatadataFields, fieldsRestrictions)
+            FieldsFiltering.NewFilteredDocumentFields(filteredNonMetadataFields, originalMetadataFields)
+          }
+          .getOrElse(throw new IllegalStateException("Could not access get result in get response."))
+      }
     }
   }
 

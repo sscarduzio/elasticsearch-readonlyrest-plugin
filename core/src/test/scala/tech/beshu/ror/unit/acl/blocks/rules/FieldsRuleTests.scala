@@ -16,53 +16,278 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import org.scalatest.WordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import org.scalatest.{Inside, WordSpec}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext, HasFieldLevelSecurity}
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
-import tech.beshu.ror.accesscontrol.domain.DocumentField
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{RequestFieldsUsage, Strategy}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.mocks.{MockRequestContext, MockSimpleRequestContext}
+import tech.beshu.ror.unit.acl.blocks.rules.FieldsRuleTests.{BlockContextCreator, Configuration, Fields, RequestContextCreator}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class FieldsRuleTests extends WordSpec with MockFactory {
+class FieldsRuleTests extends WordSpec with MockFactory with Inside {
 
-  "A FieldsRule" should {
-    "match" when {
-      "request is read only" in {
-        val fields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[DocumentField]] = UniqueNonEmptyList.of(AlreadyResolved(DocumentField("_field1".nonempty).nel), AlreadyResolved(DocumentField("_field2".nonempty).nel))
-        val rule = new FieldsRule(FieldsRule.Settings(fields, AccessMode.Whitelist))
-        val requestContext = mock[RequestContext]
-        (requestContext.isReadOnlyRequest _).expects().returning(true)
-
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
-
-        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
-          GeneralNonIndexRequestBlockContext(
-            requestContext,
-            UserMetadata.empty,
-            Set.empty,
-            Set(headerFrom("_fields" -> "eyJmaWVsZHMiOlt7InZhbHVlIjoiX2ZpZWxkMSJ9LHsidmFsdWUiOiJfZmllbGQyIn1dLCJtb2RlIjp7IiR0eXBlIjoidGVjaC5iZXNodS5yb3IuYWNjZXNzY29udHJvbC5kb21haW4uRmllbGRzUmVzdHJpY3Rpb25zLkFjY2Vzc01vZGUuV2hpdGVsaXN0In19"))
+  "A FieldsRule" when {
+    "filterable request is readonly" should {
+      "match and use lucene based strategy" when {
+        "'lucene' fls engine is used" in {
+          assertMatchRule(
+            config = Configuration(
+              flsEngine = FlsEngine.Lucene,
+              fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+            ),
+            requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+            incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.NotUsingFields),
+            expectedStrategy = Strategy.FlsAtLuceneLevelApproach
           )
-        ))
+        }
+        "'es_with_lucene' fls engine is used and" when {
+          "request fields can not be extracted" in {
+            assertMatchRule(
+              config = Configuration(
+                flsEngine = FlsEngine.ESWithLucene,
+                fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+              ),
+              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.CannotExtractFields),
+              expectedStrategy = Strategy.FlsAtLuceneLevelApproach
+            )
+          }
+          "there is used field with wildcard" in {
+            assertMatchRule(
+              config = Configuration(
+                flsEngine = FlsEngine.ESWithLucene,
+                fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+              ),
+              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1")))),
+              expectedStrategy = Strategy.FlsAtLuceneLevelApproach
+            )
+          }
+        }
+      }
+      "match and not use lucene strategy" when {
+        "'es_with_lucene' fls engine is used and" when {
+          "request fields are not used" in {
+            assertMatchRule(
+              config = Configuration(
+                flsEngine = FlsEngine.ESWithLucene,
+                fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+              ),
+              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.NotUsingFields),
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
+            )
+          }
+          "all used fields in request are allowed" in {
+            assertMatchRule(
+              config = Configuration(
+                flsEngine = FlsEngine.ESWithLucene,
+                fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+              ),
+              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1")))),
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
+            )
+          }
+          "some field in request is not allowed" in {
+            assertMatchRule(
+              config = Configuration(
+                flsEngine = FlsEngine.ESWithLucene,
+                fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+              ),
+              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField")))),
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField("notAllowedField")))
+            )
+          }
+        }
+        "es' fls engine is used and" when {
+          "request fields are not used" in {
+            assertMatchRule(
+              config = Configuration(
+                flsEngine = FlsEngine.ES,
+                fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+              ),
+              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.NotUsingFields),
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
+            )
+          }
+          "all used fields in request are allowed" in {
+            assertMatchRule(
+              config = Configuration(
+                flsEngine = FlsEngine.ES,
+                fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+              ),
+              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.one(UsedField("_field1")))),
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.EverythingAllowed
+            )
+          }
+          "some field in request is not allowed" in {
+            assertMatchRule(
+              config = Configuration(
+                flsEngine = FlsEngine.ES,
+                fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+              ),
+              requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+              incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_field1"), UsedField("notAllowedField")))),
+              expectedStrategy = Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(NonEmptyList.one(UsedField.SpecificField("notAllowedField")))
+            )
+          }
+        }
       }
     }
-    "not match" when {
-      "request is not read only" in {
-        val rule = new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.of(AlreadyResolved(DocumentField("_field1".nonempty).nel)), AccessMode.Whitelist))
+    "'es' fls engine' is used" should {
+      "not match" when {
+        "used fields can not be extracted" in {
+          assertRejectRule(
+            config = Configuration(
+              flsEngine = FlsEngine.ES,
+              fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+            ),
+            requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+            incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
+          )
+        }
+        "there is used field with wildcard" in {
+          assertRejectRule(
+            config = Configuration(
+              flsEngine = FlsEngine.ES,
+              fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+            ),
+            requestContext = MockRequestContext.readOnly[FilterableRequestBlockContext],
+            incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.UsingFields(NonEmptyList.of(UsedField("_fi*"), UsedField("_field1"))))
+          )
+        }
+      }
+    }
+    "filterable multi request is readonly" should {
+      "match and use lucene based strategy" when {
+        "request fields can not be extracted" in {
+          assertMatchRule(
+            config = Configuration(
+              flsEngine = FlsEngine.ESWithLucene,
+              fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+            ),
+            requestContext = MockRequestContext.readOnly[FilterableMultiRequestBlockContext],
+            incomingBlockContext = emptyFilterableMultiBlockContext(requestFieldsUsage = RequestFieldsUsage.CannotExtractFields),
+            expectedStrategy = Strategy.FlsAtLuceneLevelApproach
+          )
+        }
+      }
+    }
+    "request is not read only" should {
+      "not match" in {
+        assertRejectRule(
+          config = Configuration(
+            flsEngine = FlsEngine.ESWithLucene,
+            fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+          ),
+          requestContext = MockRequestContext.notReadOnly[FilterableRequestBlockContext],
+          incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
+        )
+      }
+    }
+    "some other non filterable request is readonly" should {
+      "not update block context with fields security strategy" in {
+        val rule = createRule(
+          Configuration(
+            flsEngine = FlsEngine.ESWithLucene,
+            fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+          )
+        )
         val requestContext = mock[RequestContext]
-        (requestContext.isReadOnlyRequest _).expects().returning(false)
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
-        rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
+        val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+
+        (requestContext.isReadOnlyRequest _).expects().returning(true)
+
+        inside(rule.check(incomingBlockContext).runSyncStep) {
+          case Right(Fulfilled(outBlockContext)) =>
+            outBlockContext shouldBe incomingBlockContext
+        }
       }
     }
   }
 
+  private def assertMatchRule[B <: BlockContext : BlockContextUpdater : HasFieldLevelSecurity](config: Configuration,
+                                                                                               requestContext: RequestContextCreator[B],
+                                                                                               incomingBlockContext: BlockContextCreator[B],
+                                                                                               expectedStrategy: Strategy) = {
+    import HasFieldLevelSecurity._
+
+    val rule = createRule(config)
+    val incomingRequest = requestContext(incomingBlockContext)
+
+    inside(rule.check(incomingRequest.initialBlockContext).runSyncStep) {
+      case Right(Fulfilled(outBlockContext)) =>
+        outBlockContext.fieldLevelSecurity.isDefined shouldBe true
+        outBlockContext.fieldLevelSecurity.get.strategy shouldBe expectedStrategy
+    }
+  }
+
+  private def assertRejectRule[B <: BlockContext : BlockContextUpdater](config: Configuration,
+                                                                        requestContext: RequestContextCreator[B],
+                                                                        incomingBlockContext: BlockContextCreator[B]) = {
+
+    val rule = createRule(config)
+    val incomingRequest = requestContext(incomingBlockContext)
+
+    rule.check(incomingRequest.initialBlockContext).runSyncStep shouldBe Right(Rejected())
+  }
+
+  private def createRule(configuredFLS: Configuration) = {
+    val resolvedFields = configuredFLS.fields.values.map(field => AlreadyResolved(DocumentField(field.nonempty).nel))
+    new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), configuredFLS.fields.accessMode, configuredFLS.flsEngine))
+  }
+
+  private def emptyFilterable(requestFieldsUsage: RequestFieldsUsage)
+                             (requestContext: RequestContext) = {
+    FilterableRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.empty,
+      responseHeaders = Set.empty,
+      filteredIndices = Set.empty,
+      allAllowedIndices = Set.empty,
+      filter = None,
+      fieldLevelSecurity = None,
+      requestFieldsUsage = requestFieldsUsage
+    )
+  }
+
+  private def emptyFilterableMultiBlockContext(requestFieldsUsage: RequestFieldsUsage)
+                                              (requestContext: RequestContext) = {
+    FilterableMultiRequestBlockContext(
+      requestContext = requestContext,
+      userMetadata = UserMetadata.empty,
+      responseHeaders = Set.empty,
+      indexPacks = List.empty,
+      filter = None,
+      fieldLevelSecurity = None,
+      requestFieldsUsage = requestFieldsUsage
+    )
+  }
+}
+
+object FieldsRuleTests {
+  type BlockContextCreator[B <: BlockContext] = RequestContext => B
+  type RequestContextCreator[B <: BlockContext] = BlockContextCreator[B] => MockSimpleRequestContext[B]
+
+  final case class Fields(values: NonEmptyList[String], accessMode: AccessMode)
+
+  final case class Configuration(fields: Fields, flsEngine: FlsEngine)
 }

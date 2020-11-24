@@ -14,9 +14,20 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.integration.plugin
+package tech.beshu.ror.accesscontrol.factory
 
-import tech.beshu.ror.integration.suites.FieldLevelSecuritySuite
-import tech.beshu.ror.integration.utils.SingletonPluginTestSupport
+final case class GlobalSettings(showBasicAuthPrompt: Boolean,
+                                forbiddenRequestMessage: String,
+                                flsEngine: GlobalSettings.FlsEngine)
 
-class FieldLevelSecurityPluginTests extends FieldLevelSecuritySuite with SingletonPluginTestSupport
+object GlobalSettings {
+
+  sealed trait FlsEngine
+  object FlsEngine {
+    case object Lucene extends FlsEngine
+    case object ESWithLucene extends FlsEngine
+    case object ES extends FlsEngine
+
+    val default = ESWithLucene
+  }
+}

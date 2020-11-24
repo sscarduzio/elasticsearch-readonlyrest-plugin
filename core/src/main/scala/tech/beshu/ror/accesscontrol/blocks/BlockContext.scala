@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
@@ -28,43 +29,37 @@ sealed trait BlockContext {
   def userMetadata: UserMetadata
 
   def responseHeaders: Set[Header]
-
-  def contextHeaders: Set[Header]
 }
 object BlockContext {
 
   final case class CurrentUserMetadataRequestBlockContext(override val requestContext: RequestContext,
                                                           override val userMetadata: UserMetadata,
-                                                          override val responseHeaders: Set[Header],
-                                                          override val contextHeaders: Set[Header])
+                                                          override val responseHeaders: Set[Header])
     extends BlockContext
 
   final case class GeneralNonIndexRequestBlockContext(override val requestContext: RequestContext,
                                                       override val userMetadata: UserMetadata,
-                                                      override val responseHeaders: Set[Header],
-                                                      override val contextHeaders: Set[Header])
+                                                      override val responseHeaders: Set[Header])
     extends BlockContext
 
   final case class RepositoryRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
-                                                 override val contextHeaders: Set[Header],
                                                  repositories: Set[RepositoryName])
     extends BlockContext
 
   final case class SnapshotRequestBlockContext(override val requestContext: RequestContext,
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
-                                               override val contextHeaders: Set[Header],
                                                snapshots: Set[SnapshotName],
                                                repositories: Set[RepositoryName],
-                                               indices: Set[IndexName])
+                                               filteredIndices: Set[IndexName],
+                                               allAllowedIndices: Set[IndexName])
     extends BlockContext
 
   final case class AliasRequestBlockContext(override val requestContext: RequestContext,
                                             override val userMetadata: UserMetadata,
                                             override val responseHeaders: Set[Header],
-                                            override val contextHeaders: Set[Header],
                                             aliases: Set[IndexName],
                                             indices: Set[IndexName])
     extends BlockContext
@@ -72,38 +67,38 @@ object BlockContext {
   final case class TemplateRequestBlockContext(override val requestContext: RequestContext,
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
-                                               override val contextHeaders: Set[Header],
                                                templates: Set[Template])
     extends BlockContext
 
   final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
                                                    override val userMetadata: UserMetadata,
                                                    override val responseHeaders: Set[Header],
-                                                   override val contextHeaders: Set[Header],
-                                                   indices: Set[IndexName])
+                                                   filteredIndices: Set[IndexName],
+                                                   allAllowedIndices: Set[IndexName])
     extends BlockContext
 
   final case class FilterableRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
-                                                 override val contextHeaders: Set[Header],
-                                                 indices: Set[IndexName],
-                                                 filter: Option[Filter])
+                                                 filteredIndices: Set[IndexName],
+                                                 allAllowedIndices: Set[IndexName],
+                                                 filter: Option[Filter],
+                                                 fieldLevelSecurity: Option[FieldLevelSecurity] = None,
+                                                 requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
     extends BlockContext
-
 
   final case class FilterableMultiRequestBlockContext(override val requestContext: RequestContext,
                                                       override val userMetadata: UserMetadata,
                                                       override val responseHeaders: Set[Header],
-                                                      override val contextHeaders: Set[Header],
                                                       indexPacks: List[Indices],
-                                                      filter: Option[Filter])
+                                                      filter: Option[Filter],
+                                                      fieldLevelSecurity: Option[FieldLevelSecurity] = None,
+                                                      requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields)
     extends BlockContext
 
   final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
-                                                 override val contextHeaders: Set[Header],
                                                  indexPacks: List[Indices])
     extends BlockContext
 
@@ -123,11 +118,11 @@ object BlockContext {
     def apply[B <: BlockContext](implicit instance: HasIndices[B]): HasIndices[B] = instance
 
     implicit val indicesFromFilterableBlockContext = new HasIndices[FilterableRequestBlockContext] {
-      override def indices(blockContext: FilterableRequestBlockContext): Set[IndexName] = blockContext.indices
+      override def indices(blockContext: FilterableRequestBlockContext): Set[IndexName] = blockContext.filteredIndices
     }
 
     implicit val indicesFromGeneralIndexBlockContext = new HasIndices[GeneralIndexRequestBlockContext] {
-      override def indices(blockContext: GeneralIndexRequestBlockContext): Set[IndexName] = blockContext.indices
+      override def indices(blockContext: GeneralIndexRequestBlockContext): Set[IndexName] = blockContext.filteredIndices
     }
 
     implicit val indicesFromAliasRequestBlockContext = new HasIndices[AliasRequestBlockContext] {
@@ -135,7 +130,7 @@ object BlockContext {
     }
 
     implicit val indicesFromSnapshotRequestBlockContext = new HasIndices[SnapshotRequestBlockContext] {
-      override def indices(blockContext: SnapshotRequestBlockContext): Set[IndexName] = blockContext.indices
+      override def indices(blockContext: SnapshotRequestBlockContext): Set[IndexName] = blockContext.filteredIndices
     }
 
     implicit class Ops[B <: BlockContext : HasIndices](blockContext: B) {
@@ -183,12 +178,49 @@ object BlockContext {
     }
   }
 
+  trait HasFieldLevelSecurity[B <: BlockContext] {
+    def fieldLevelSecurity(blockContext: B): Option[FieldLevelSecurity]
+  }
+  object HasFieldLevelSecurity {
+
+    def apply[B <: BlockContext](implicit instance: HasFieldLevelSecurity[B]): HasFieldLevelSecurity[B] = instance
+
+    implicit val flsFromFilterableMultiBlockContext = new HasFieldLevelSecurity[FilterableMultiRequestBlockContext] {
+      override def fieldLevelSecurity(blockContext: FilterableMultiRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
+    }
+
+    implicit val flsFromFilterableRequestBlockContext = new HasFieldLevelSecurity[FilterableRequestBlockContext] {
+      override def fieldLevelSecurity(blockContext: FilterableRequestBlockContext): Option[FieldLevelSecurity] = blockContext.fieldLevelSecurity
+    }
+
+    implicit class Ops[B <: BlockContext : HasFieldLevelSecurity](blockContext: B) {
+      def fieldLevelSecurity: Option[FieldLevelSecurity] = HasFieldLevelSecurity[B].fieldLevelSecurity(blockContext)
+    }
+  }
+
+  trait AllowsFieldsInRequest[B <: BlockContext] {
+    def requestFieldsUsage(blockContext: B): RequestFieldsUsage
+  }
+  object AllowsFieldsInRequest {
+
+    def apply[B <: BlockContext](implicit instance: AllowsFieldsInRequest[B]): AllowsFieldsInRequest[B] = instance
+
+    implicit val fieldsFromFilterableMultiBlockContext = new AllowsFieldsInRequest[FilterableMultiRequestBlockContext] {
+      override def requestFieldsUsage(blockContext: FilterableMultiRequestBlockContext): RequestFieldsUsage = blockContext.requestFieldsUsage
+    }
+
+    implicit val fieldsFromFilterableRequestBlockContext = new AllowsFieldsInRequest[FilterableRequestBlockContext] {
+      override def requestFieldsUsage(blockContext: FilterableRequestBlockContext): RequestFieldsUsage = blockContext.requestFieldsUsage
+    }
+
+    implicit class Ops[B <: BlockContext : AllowsFieldsInRequest](blockContext: B) {
+      def requestFieldsUsage: RequestFieldsUsage = AllowsFieldsInRequest[B].requestFieldsUsage(blockContext)
+    }
+  }
+
   implicit class BlockContextUpdaterOps[B <: BlockContext : BlockContextUpdater](val blockContext: B) {
     def withUserMetadata(update: UserMetadata => UserMetadata): B =
       BlockContextUpdater[B].withUserMetadata(blockContext, update(blockContext.userMetadata))
-
-    def withAddedContextHeader(header: Header): B =
-      BlockContextUpdater[B].withAddedContextHeader(blockContext, header)
 
     def withAddedResponseHeader(header: Header): B =
       BlockContextUpdater[B].withAddedResponseHeader(blockContext, header)
@@ -211,8 +243,8 @@ object BlockContext {
   }
 
   implicit class BlockContextWithIndicesUpdaterOps[B <: BlockContext: BlockContextWithIndicesUpdater](blockContext: B) {
-    def withIndices(indices: Set[IndexName]): B = {
-      BlockContextWithIndicesUpdater[B].withIndices(blockContext, indices)
+    def withIndices(filteredIndices: Set[IndexName], allAllowedIndices: Set[IndexName]): B = {
+      BlockContextWithIndicesUpdater[B].withIndices(blockContext, filteredIndices, allAllowedIndices)
     }
   }
 
@@ -225,6 +257,12 @@ object BlockContext {
   implicit class BlockContextWithFilterUpdaterOps[B <: BlockContext: BlockContextWithFilterUpdater](blockContext: B) {
     def withFilter(filter: Filter): B = {
       BlockContextWithFilterUpdater[B].withFilter(blockContext, filter)
+    }
+  }
+
+  implicit class BlockContextWithFLSUpdaterOps[B <: BlockContext: BlockContextWithFLSUpdater](blockContext: B) {
+    def withFields(fields: FieldLevelSecurity): B = {
+      BlockContextWithFLSUpdater[B].withFieldLevelSecurity(blockContext, fields)
     }
   }
 
@@ -250,11 +288,11 @@ object BlockContext {
         case _: CurrentUserMetadataRequestBlockContext => Set.empty
         case _: GeneralNonIndexRequestBlockContext => Set.empty
         case _: RepositoryRequestBlockContext => Set.empty
-        case bc: SnapshotRequestBlockContext => bc.indices
+        case bc: SnapshotRequestBlockContext => bc.filteredIndices
         case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
         case bc: AliasRequestBlockContext => bc.indices ++ bc.aliases
-        case bc: GeneralIndexRequestBlockContext => bc.indices
-        case bc: FilterableRequestBlockContext => bc.indices
+        case bc: GeneralIndexRequestBlockContext => bc.filteredIndices
+        case bc: FilterableRequestBlockContext => bc.filteredIndices
         case bc: MultiIndexRequestBlockContext => extractIndicesFrom(bc.indexPacks)
         case bc: FilterableMultiRequestBlockContext => extractIndicesFrom(bc.indexPacks)
       }
@@ -304,6 +342,23 @@ object BlockContext {
     }
   }
 
+  implicit class FieldLevelSecurityFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def fieldLevelSecurity: Option[FieldLevelSecurity] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => None
+        case _: GeneralNonIndexRequestBlockContext => None
+        case _: RepositoryRequestBlockContext => None
+        case _: SnapshotRequestBlockContext => None
+        case _: TemplateRequestBlockContext => None
+        case _: AliasRequestBlockContext => None
+        case _: GeneralIndexRequestBlockContext => None
+        case _: MultiIndexRequestBlockContext => None
+        case bc: FilterableRequestBlockContext => bc.fieldLevelSecurity
+        case bc: FilterableMultiRequestBlockContext => bc.fieldLevelSecurity
+      }
+    }
+  }
+
   implicit class RandomIndexBasedOnBlockContextIndices[B <: BlockContext: HasIndices](blockContext: B) {
 
     def randomNonexistentIndex(): IndexName = {
@@ -316,5 +371,25 @@ object BlockContext {
         i.value.value.replace(":", "_") // we don't want to call remote cluster
       ))
     }
+  }
+  implicit class ContainsIndices[B<:BlockContext](b:B){
+    val containsIndices: Boolean = b match {
+      case bc: BlockContext.CurrentUserMetadataRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.GeneralNonIndexRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.RepositoryRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.SnapshotRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.AliasRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.TemplateRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.GeneralIndexRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.FilterableRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.FilterableMultiRequestBlockContext => hasIndices(bc)
+      case bc: BlockContext.MultiIndexRequestBlockContext => hasIndices(bc)
+    }
+
+    implicit private def toOption[A](implicit a: A): Option[A] = Some(a)
+
+    private def hasIndices[B <: BlockContext](bc: B)(implicit hasIndices: Option[HasIndices[B]] = None,
+                                                     hasIndexPacks: Option[HasIndexPacks[B]] = None) = hasIndices.nonEmpty || hasIndexPacks.nonEmpty
+
   }
 }

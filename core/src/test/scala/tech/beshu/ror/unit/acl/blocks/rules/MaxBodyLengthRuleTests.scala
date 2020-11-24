@@ -70,7 +70,7 @@ class MaxBodyLengthRuleTests extends WordSpec with MockFactory {
     val rule = new MaxBodyLengthRule(MaxBodyLengthRule.Settings(configuredMaxContentLength))
     val requestContext = mock[RequestContext]
     (requestContext.contentLength _).expects().returning(Bytes(body.length))
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
     rule.check(blockContext).runSyncStep shouldBe Right{
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

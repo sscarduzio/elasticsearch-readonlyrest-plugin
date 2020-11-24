@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import cats.data.NonEmptyList
 import cats.implicits._
+import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.cluster.repositories.delete.DeleteRepositoryRequest
 import org.elasticsearch.threadpool.ThreadPool

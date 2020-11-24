@@ -14,12 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.boot
+package tech.beshu.ror.integration.suites.fields.engine
 
-import monix.execution.Scheduler
+import org.scalatest.Assertion
+import tech.beshu.ror.utils.containers.EsContainerCreator
 
-object SchedulerPools {
+trait FieldRuleEsEngineSuite extends FieldRuleEngineSuite {
+  this: EsContainerCreator =>
 
-  implicit val adminRestApiScheduler: Scheduler = Scheduler.fixedPool("admin-rest-api-executor", 5)
-  val ldapUnboundIdBlockingScheduler: Scheduler = Scheduler.cached("unboundid-executor", 10, 50)
+  override implicit val rorConfigFileName = "/field_level_security_engine/readonlyrest_fls_engine_es.yml"
+
+  protected def unmodifableQueryAssertion(user: String, query: String): Assertion =
+    assertOperationNotAllowed(user, query)
 }

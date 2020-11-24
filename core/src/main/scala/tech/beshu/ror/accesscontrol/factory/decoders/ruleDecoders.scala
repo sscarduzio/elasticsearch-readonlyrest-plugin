@@ -22,9 +22,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
-import tech.beshu.ror.configuration.RorIndexNameConfiguration
 import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.providers.UuidProvider
 
@@ -32,14 +32,15 @@ object ruleDecoders {
 
   implicit def ruleDecoderBy(name: Rule.Name,
                              definitions: DefinitionsPack,
-                             rorIndexNameConfiguration: RorConfigurationIndex)
+                             rorIndexNameConfiguration: RorConfigurationIndex,
+                             globalSettings: GlobalSettings)
                             (implicit clock: Clock,
                              uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] =
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
       case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(definitions.authorizationServices))
-      case FieldsRule.name => Some(FieldsRuleDecoder)
+      case FieldsRule.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine))
       case FilterRule.name => Some(new FilterRuleDecoder)
       case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users))
       case HeadersAndRule.name | HeadersAndRule.deprecatedName => Some(HeadersAndRuleDecoder)
@@ -84,6 +85,7 @@ object ruleDecoders {
       case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions))
       case AuthKeySha256Rule.name => Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions))
       case AuthKeySha512Rule.name => Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions))
+      case AuthKeyPBKDF2WithHmacSHA512Rule.name => Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions))
       case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions))
       case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions))
       case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(jwtDefinitions))

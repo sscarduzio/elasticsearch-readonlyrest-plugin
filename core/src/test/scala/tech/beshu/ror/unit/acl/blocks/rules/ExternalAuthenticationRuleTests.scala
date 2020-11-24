@@ -48,14 +48,13 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(baHeader)).twice()
 
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
 
         val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService))
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           GeneralNonIndexRequestBlockContext(
             requestContext,
             UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("user".nonempty))),
-            Set.empty,
             Set.empty
           )
         ))
@@ -73,7 +72,7 @@ class ExternalAuthenticationRuleTests extends WordSpec with MockFactory {
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(baHeader)).twice()
 
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
 
         val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService))
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())

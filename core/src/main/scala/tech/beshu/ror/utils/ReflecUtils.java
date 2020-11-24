@@ -69,6 +69,45 @@ public class ReflecUtils {
     });
   }
 
+  public static Object getField(Object o, Class c, String field) {
+    return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+      try {
+        Field f;
+        try {
+          f = c.getDeclaredField(field);
+        } catch (NoSuchFieldException nsfe) {
+          f = c.getField(field);
+        }
+        f.setAccessible(true);
+        return f.get(o);
+
+      } catch (Exception e) {
+        e.printStackTrace();
+        return null;
+      }
+    });
+  }
+
+
+  public static Object setField(Object o, Class c, String field, Object value) {
+    return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+      try {
+        Field f;
+        try {
+          f = c.getDeclaredField(field);
+        } catch (NoSuchFieldException nsfe) {
+          f = c.getField(field);
+        }
+        f.setAccessible(true);
+        f.set(o, value);
+        return o;
+      } catch (Exception e) {
+        e.printStackTrace();
+        return null;
+      }
+    });
+  }
+
   public static Object invokeMethod(Object o, Class c, String method) {
     String cacheKey = c.getName() + "#" + method;
     return AccessController.doPrivileged((PrivilegedAction<Object>) () -> {

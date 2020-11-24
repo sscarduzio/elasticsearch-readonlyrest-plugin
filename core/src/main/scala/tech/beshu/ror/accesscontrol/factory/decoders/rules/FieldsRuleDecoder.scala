@@ -25,8 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefin
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.domain.DocumentField
-import tech.beshu.ror.accesscontrol.domain.FieldsRestrictions.AccessMode
+import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -38,7 +38,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
 
-object FieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(FieldsRuleDecoderHelper.fieldsRuleDecoder)
+class FieldsRuleDecoder(flsEngine: FlsEngine)
+  extends RuleDecoderWithoutAssociatedFields[FieldsRule](FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine))
 
 private object FieldsRuleDecoderHelper {
 
@@ -51,11 +52,13 @@ private object FieldsRuleDecoderHelper {
   private val configuredFieldsDecoder = DecoderHelpers
     .decodeStringLikeOrUniqueNonEmptyListE(convertToConfiguredField)
 
-  val fieldsRuleDecoder = for {
-    configuredFields <- configuredFieldsDecoder
-    accessMode <- accessModeDecoder(configuredFields)
-    documentFields <- documentFieldsDecoder(configuredFields)
-  } yield RuleWithVariableUsageDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode)))
+  def fieldsRuleDecoder(flsEngine: FlsEngine): Decoder[RuleWithVariableUsageDefinition[FieldsRule]] = {
+    for {
+      configuredFields <- configuredFieldsDecoder
+      accessMode <- accessModeDecoder(configuredFields)
+      documentFields <- documentFieldsDecoder(configuredFields)
+    } yield RuleWithVariableUsageDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode, flsEngine)))
+  }
 
   private def convertToConfiguredField: String => Either[String, ConfiguredField] = str => {
     if (str.startsWith("~")) {

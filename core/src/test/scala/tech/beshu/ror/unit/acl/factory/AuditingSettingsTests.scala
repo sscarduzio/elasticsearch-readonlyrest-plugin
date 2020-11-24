@@ -27,11 +27,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.{DefaultAuditLogSerializer, QueryAuditLogSerializer}
-import tech.beshu.ror.configuration.RorIndexNameConfiguration
+import tech.beshu.ror.boot.RorMode
 import tech.beshu.ror.configuration.loader.RorConfigurationIndex
-import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvider}
-import tech.beshu.ror.providers.{EnvVarsProvider, JavaUuidProvider, JvmPropertiesProvider, OsEnvVarsProvider, PropertiesProvider, UuidProvider}
+import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
 
 class AuditingSettingsTests extends WordSpec with Inside {
@@ -41,7 +40,7 @@ class AuditingSettingsTests extends WordSpec with Inside {
     implicit val uuidProvider: UuidProvider = JavaUuidProvider
     implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
     implicit val propertiesProvider: PropertiesProvider = JvmPropertiesProvider
-    new RawRorConfigBasedCoreFactory
+    new RawRorConfigBasedCoreFactory(RorMode.Plugin)
   }
 
   "Auditing settings" should {
