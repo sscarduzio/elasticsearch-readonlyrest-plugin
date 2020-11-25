@@ -19,8 +19,8 @@ class RorInternalApiRule(val settings: Settings)
     val isInternalApiRelatedRequest = isRelatedToRorInternals(blockContext)
     settings.access match {
       case Allow => Fulfilled(blockContext)
-      case Forbid if !isInternalApiRelatedRequest => Fulfilled(blockContext)
-      case Forbid => Rejected()
+      case Forbid if isInternalApiRelatedRequest => Rejected()
+      case Forbid => Fulfilled(blockContext)
     }
   }
 

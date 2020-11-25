@@ -30,6 +30,7 @@ import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 import scala.collection.JavaConverters._
 
+// todo: clean up
 final class LoadClusterConfigsWithNoRorNodeTest
   extends WordSpec
     with BeforeAndAfterEach
@@ -59,7 +60,6 @@ final class LoadClusterConfigsWithNoRorNodeTest
     xPackSupport = isUsingXpackSupport
   )(rorConfigFileName)
   )
-
 
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)
 

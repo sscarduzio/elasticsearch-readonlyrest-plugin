@@ -6,6 +6,7 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 
 trait BlockPostProcessingCheck {
 
+  def name: String
   def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[PostProcessingResult]
 }
 

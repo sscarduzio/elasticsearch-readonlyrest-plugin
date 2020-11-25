@@ -15,6 +15,7 @@ readonlyrest:
       verbosity: error
       type: allow
       auth_key: admin:container
+      ror_internal_api: allow
 
     - name: "Rule 1"
       methods: GET
@@ -30,3 +31,7 @@ readonlyrest:
     - name: "Rule 3"
       methods: POST
       auth_key: username:dev
+      ror_internal_api: allow
+
+    - name: "Rule 4"
+      auth_key: restricted:dev

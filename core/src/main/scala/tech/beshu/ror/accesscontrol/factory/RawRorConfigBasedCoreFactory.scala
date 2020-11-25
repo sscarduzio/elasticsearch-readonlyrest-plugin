@@ -235,7 +235,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                 .remove(Attributes.Block.policy)
                 .remove(Attributes.Block.verbosity))
             ))
-          block <- Block.createFrom(name, policy, verbosity, rules).left.map(DecodingFailureOps.fromError(_))
+          block <- Block.createFrom(name, policy, verbosity, rules, globalSettings).left.map(DecodingFailureOps.fromError(_))
         } yield block
         result.left.map(_.overrideDefaultErrorWith(BlocksLevelCreationError(MalformedValue(c.value))))
       }

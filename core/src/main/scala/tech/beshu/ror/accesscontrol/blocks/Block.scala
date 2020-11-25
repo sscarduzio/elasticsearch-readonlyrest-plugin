@@ -23,15 +23,17 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
+import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.{FailedBlockPostProcessingCheckHistoryItem, RuleHistoryItem}
 import tech.beshu.ror.accesscontrol.blocks.Block._
-import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingCheck
+import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingCheck.PostProcessingResult
+import tech.beshu.ror.accesscontrol.blocks.postprocessing.{BlockPostProcessingCheck, ImplicitRorInternalApiCallCheck}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.domain.Header
-import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.BlocksLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
+import tech.beshu.ror.accesscontrol.factory.{BlockValidator, GlobalSettings}
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -43,13 +45,16 @@ import scala.util.Success
 class Block(val name: Name,
             val policy: Policy,
             val verbosity: Verbosity,
-            val rules: NonEmptyList[Rule])
+            val rules: NonEmptyList[Rule],
+            val globalSettings: GlobalSettings)
            (implicit val loggingContext: LoggingContext)
   extends Logging {
 
   import Lifter._
 
-  //private val postProcessingChecks: List[BlockPostProcessingCheck] = ???
+  private val postProcessingChecks: List[BlockPostProcessingCheck] = List(
+    new ImplicitRorInternalApiCallCheck(this, globalSettings)
+  )
 
   def execute[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): BlockResultWithHistory[B] = {
     implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
@@ -59,7 +64,7 @@ class Block(val name: Name,
         case (currentResult, rule) =>
           for {
             previousRulesResult <- currentResult
-            newCurrentResult <- previousRulesResult match {
+            resultAfterRulesCheck <- previousRulesResult match {
               case Matched(_, blockContext) =>
                 val ruleResult = rule
                   .check[B](blockContext)
@@ -71,15 +76,42 @@ class Block(val name: Name,
                   .flatMap {
                     case result: RuleResult.Fulfilled[B] =>
                       matched[B](result.blockContext)
-                        .tell(Vector(HistoryItem(rule.name, result)))
+                        .tell(Vector(RuleHistoryItem(rule.name, result)))
                     case result: RuleResult.Rejected[B] =>
                       mismatched[B](blockContext)
-                        .tell(Vector(HistoryItem(rule.name, result)))
+                        .tell(Vector(RuleHistoryItem(rule.name, result)))
                   }
               case Mismatched(lastBlockContext) =>
                 mismatched[B](lastBlockContext)
             }
-          } yield newCurrentResult
+            finalResult <- resultAfterRulesCheck match {
+              // todo: cleanup
+              case Matched(_, blockContext) =>
+                val postProcessingResult = postProcessingChecks
+                  .foldLeft(Task.now(Option.empty[BlockPostProcessingCheck])) {
+                    case (result, postCheck) => result.flatMap {
+                      case None =>
+                        postCheck
+                          .check(blockContext)
+                          .map {
+                            case PostProcessingResult.Continue => None
+                            case PostProcessingResult.Reject => Some(postCheck)
+                          }
+                      case Some(_) =>
+                        result
+                    }
+                  }
+                lift[B](postProcessingResult)
+                  .flatMap {
+                    case None => matched[B](blockContext)
+                    case Some(postCheck) =>
+                      mismatched[B](blockContext)
+                        .tell(Vector(FailedBlockPostProcessingCheckHistoryItem(postCheck)))
+                  }
+              case Mismatched(blockContext) =>
+                mismatched[B](blockContext)
+            }
+          } yield finalResult
       }
       .mapBoth { case (history, result) =>
         (History(name, history, result.blockContext), result)
@@ -97,10 +129,10 @@ class Block(val name: Name,
   }
 
   private def matched[B <: BlockContext](blockContext: B): WriterT[Task, Vector[HistoryItem[B]], ExecutionResult[B]] =
-    lift[B](Task.now(Matched(this, blockContext): ExecutionResult[B]))
+    lift[B](Task.now(ExecutionResult.matched(this, blockContext)))
 
   private def mismatched[B <: BlockContext](blockContext: B): WriterT[Task, Vector[HistoryItem[B]], ExecutionResult[B]] =
-    lift[B](Task.now(Mismatched(blockContext)))
+    lift[B](Task.now(ExecutionResult.mismatched(blockContext)))
 
 }
 
@@ -111,12 +143,13 @@ object Block {
   def createFrom(name: Name,
                  policy: Option[Policy],
                  verbosity: Option[Verbosity],
-                 rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                 rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]],
+                 globalSettings: GlobalSettings)
                 (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
     BlockValidator.validate(sortedRules) match {
       case Validated.Valid(_) =>
-        Right(createBlockInstance(name, policy, verbosity, sortedRules))
+        Right(createBlockInstance(name, policy, verbosity, sortedRules, globalSettings))
       case Validated.Invalid(errors) =>
         implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
         Left(BlocksLevelCreationError(Message(errors.map(_.show).mkString_("\n"))))
@@ -126,21 +159,30 @@ object Block {
   private def createBlockInstance(name: Name,
                                   policy: Option[Policy],
                                   verbosity: Option[Verbosity],
-                                  rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
+                                  rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]],
+                                  globalSettings: GlobalSettings)
                                  (implicit loggingContext: LoggingContext) =
     new Block(
       name,
       policy.getOrElse(Block.Policy.Allow),
       verbosity.getOrElse(Block.Verbosity.Info),
-      rules.map(_.rule)
+      rules.map(_.rule),
+      globalSettings
     )
 
   final case class Name(value: String) extends AnyVal
   final case class History[B <: BlockContext](block: Block.Name,
                                               items: Vector[HistoryItem[B]],
                                               blockContext: B)
-  final case class HistoryItem[B <: BlockContext](rule: Rule.Name,
-                                                  result: RuleResult[B])
+  sealed trait HistoryItem[B <: BlockContext]
+  object HistoryItem {
+    final case class RuleHistoryItem[B <: BlockContext](rule: Rule.Name,
+                                                        result: RuleResult[B])
+      extends HistoryItem[B]
+
+    final case class FailedBlockPostProcessingCheckHistoryItem[B <: BlockContext](check: BlockPostProcessingCheck)
+      extends HistoryItem[B]
+  }
 
   sealed trait ExecutionResult[B <: BlockContext] {
     def blockContext: B
@@ -150,6 +192,10 @@ object Block {
       extends ExecutionResult[B]
     final case class Mismatched[B <: BlockContext](override val blockContext: B)
       extends ExecutionResult[B]
+
+    def matched[B <: BlockContext](block: Block, blockContext: B): ExecutionResult[B] = Matched[B](block, blockContext)
+
+    def mismatched[B <: BlockContext](blockContext: B): ExecutionResult[B] = Mismatched[B](blockContext)
   }
 
   sealed trait Policy

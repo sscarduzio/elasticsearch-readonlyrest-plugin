@@ -45,7 +45,8 @@ object CrossBlockContextBlocksUpgrade {
             currentBlock.name,
             currentBlock.policy,
             currentBlock.verbosity,
-            NonEmptyList.fromListUnsafe(upgradedRules.toList)
+            NonEmptyList.fromListUnsafe(upgradedRules.toList),
+            currentBlock.globalSettings
           )
     }
     NonEmptyList.fromListUnsafe(upgradedBlocks.toList)

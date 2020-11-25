@@ -55,7 +55,8 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
               passingRule("r2", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty))))) ::
               notPassingRule("r3") ::
               passingRule("r4") :: Nil
-          )
+          ),
+          ??? // todo: fixme
         )
         val requestContext = MockRequestContext.indices
         val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -83,7 +84,8 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           verbosity = Block.Verbosity.Info,
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") :: passingRule("r2") :: throwingRule("r3") :: notPassingRule("r4") :: passingRule("r5") :: Nil
-          )
+          ),
+          ??? // todo: fixme
         )
         val requestContext = MockRequestContext.indices
         val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -112,7 +114,8 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
-        )
+        ),
+        ??? // todo: fixme
       )
       val requestContext = MockRequestContext.indices
       val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -143,7 +146,8 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
             passingRule("r2") ::
             passingRule("r3", _.withIndices(Set(IndexName("idx1".nonempty)), Set(IndexName("idx*".nonempty)))) ::
             Nil
-        )
+        ),
+        ??? // todo: fixme
       )
       val requestContext = MockRequestContext.indices
       val result = block.execute(requestContext).runSyncUnsafe(1 second)

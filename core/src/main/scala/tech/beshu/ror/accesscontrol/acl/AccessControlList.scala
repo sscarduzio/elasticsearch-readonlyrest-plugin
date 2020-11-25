@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
-import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Policy}
+import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
@@ -223,6 +223,10 @@ class AccessControlList(val blocks: NonEmptyList[Block])
   }
 
   private def rejectionsFrom[B <: BlockContext](history: Vector[History[B]]): Vector[Rejected[B]] = {
-    history.flatMap(_.items.map(_.result).collect { case r: Rejected[B] => r })
+    history.flatMap {
+      _.items
+        .collect { case h: HistoryItem.RuleHistoryItem[B] => h.result }
+        .collect { case r: Rejected[B] => r }
+    }
   }
 }

@@ -29,8 +29,9 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.{Uri => LemonUri}
 import shapeless.Nat
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
+import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.{FailedBlockPostProcessingCheckHistoryItem, RuleHistoryItem}
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
-import tech.beshu.ror.accesscontrol.blocks.Block.{History, HistoryItem, Name, Policy}
+import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -56,6 +57,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
+import tech.beshu.ror.utils.ScalaOps._
 
 object header {
 
@@ -106,7 +108,8 @@ object orders {
   }
   implicit val repositoryOrder: Order[RepositoryName] = Order.by(_.value.value)
   implicit val snapshotOrder: Order[SnapshotName] = Order.by(_.value.value)
-  implicit def accessOrder[T : Order]: Order[AccessRequirement[T]] = Order.from {
+
+  implicit def accessOrder[T: Order]: Order[AccessRequirement[T]] = Order.from {
     case (MustBeAbsent(v1), MustBeAbsent(v2)) => v1.compare(v2)
     case (MustBePresent(v1), MustBePresent(v2)) => v1.compare(v2)
     case (MustBePresent(_), _) => -1
@@ -189,7 +192,7 @@ object show {
     implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)
     implicit val blockNameShow: Show[Name] = Show.show(_.value)
 
-    implicit def historyItemShow[B <: BlockContext]: Show[HistoryItem[B]] = Show.show { hi =>
+    implicit def ruleHistoryItemShow[B <: BlockContext]: Show[RuleHistoryItem[B]] = Show.show { hi =>
       s"${hi.rule.show}->${
         hi.result match {
           case RuleResult.Fulfilled(_) => "true"
@@ -198,12 +201,22 @@ object show {
       }"
     }
 
+    implicit def failedBlockPostProcessingCheckHistoryItemShow[B <: BlockContext]: Show[FailedBlockPostProcessingCheckHistoryItem[B]] =
+      Show.show { hi => hi.check.name }
+
     implicit def historyShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[History[B]] =
       Show.show[History[B]] { h =>
-        val resolvedPart = h.blockContext.show.some
-          .filter(!_.isEmpty)
-          .map(context => s", RESOLVED:[$context]").getOrElse("")
-        s"""[${h.block.show}-> RULES:[${h.items.map(_.show).mkString(", ")}]$resolvedPart]"""
+        val rulesHistoryItemsStr = h.items
+          .collect { case hi: RuleHistoryItem[B] => hi }
+          .map(_.show)
+          .mkStringOrEmptyString(" RULES:[", ", ", "]")
+        val postRulesChecksHistoryItemsStr = h.items
+            .collect { case hi: FailedBlockPostProcessingCheckHistoryItem[B] => hi }
+            .map(_.show)
+            .mkStringOrEmptyString(", DISALLOWED BY GUARDS:[", ", ", "]")
+        val resolvedPart = h.blockContext.show.some.toList
+          .mkStringOrEmptyString(", RESOLVED:[", "", "]")
+        s"""[${h.block.show}->$rulesHistoryItemsStr$postRulesChecksHistoryItemsStr$resolvedPart]"""
       }
 
     implicit val policyShow: Show[Policy] = Show.show {
@@ -283,7 +296,7 @@ object show {
       case AuthorizationValueError.RorMetadataInvalidFormat(value, message) => s"Invalid format of ror_metadata: [$value], reason: [$message]"
     }
 
-    implicit def accessShow[T : Show]: Show[AccessRequirement[T]] = Show.show {
+    implicit def accessShow[T: Show]: Show[AccessRequirement[T]] = Show.show {
       case MustBePresent(value) => value.show
       case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
     }

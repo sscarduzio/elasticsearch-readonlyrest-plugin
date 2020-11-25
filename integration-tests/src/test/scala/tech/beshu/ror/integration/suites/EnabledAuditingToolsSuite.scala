@@ -226,6 +226,20 @@ trait EnabledAuditingToolsSuite
         entriesResult.responseCode should be (404)
       }
     }
+    "be blocked by guard check" when {
+      "`restricted` user is trying to call it" in {
+        val rorApiManager = new RorApiManager(basicAuthClient("restricted", "dev"))
+
+        val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
+
+        response.responseCode shouldBe 403
+
+        val auditEntries = adminAuditIndexManager.getEntries.jsons
+        auditEntries.size should be (1)
+        auditEntries(0)("acl_history").str should include ("[Rule 4-> RULES:[auth_key->true], DISALLOWED BY GUARDS:[ROR internal API guard]")
+        auditEntries(0).obj.get("event") should be(None)
+      }
+    }
   }
 }
 

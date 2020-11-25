@@ -75,7 +75,8 @@ class AccessControlListTests extends WordSpec with MockFactory with Inside {
             Task.now(Rule.RuleResult.Fulfilled(blockContext.withUserMetadata(_ => userMetadata)))
           }
         }
-      )
+      ),
+      ??? // todo: fixme
     )
   }
 
