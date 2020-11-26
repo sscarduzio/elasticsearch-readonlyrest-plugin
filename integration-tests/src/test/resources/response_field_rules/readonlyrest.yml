@@ -14,8 +14,8 @@ readonlyrest:
 
     - name: "Filter cluster health response"
       auth_key: dev1:test
-      uri_re: "^/_cluster.*$"
-      response_fields: ["cluster_name", "status"]
+      uri_re: "^/_cluster/health"
+      response_fields: ["cluster_*", "status"]
 
     - name: "Filter cat health response"
       auth_key: dev1:test
