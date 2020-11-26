@@ -1,5 +1,6 @@
 package tech.beshu.ror.es
 
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.xcontent.{LoggingDeprecationHandler, NamedXContentRegistry, XContentBuilder, XContentType}
 import org.elasticsearch.common.xcontent.cbor.CborXContent
 import org.elasticsearch.common.xcontent.json.JsonXContent
@@ -7,26 +8,30 @@ import org.elasticsearch.common.xcontent.smile.SmileXContent
 import org.elasticsearch.common.xcontent.yaml.YamlXContent
 import org.elasticsearch.rest.{BytesRestResponse, RestResponse}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseFieldsRestrictions}
+
 import scala.collection.JavaConverters._
 
 trait ResponseFieldsFiltering {
+  this: Logging =>
 
-  private var responseFieldsRestrictions: Option[ResponseFieldsRestrictions] = None
+  @volatile private var responseFieldsRestrictions: Option[ResponseFieldsRestrictions] = None
 
   def setResponseFieldRestrictions(responseFieldsRestrictions: ResponseFieldsRestrictions): Unit = {
     this.responseFieldsRestrictions = Some(responseFieldsRestrictions)
   }
 
   protected def filterRestResponse(response: RestResponse): RestResponse = {
-    response match {
-      case bytesRestResponse: BytesRestResponse =>
-        responseFieldsRestrictions match {
-          case Some(fieldsRestrictions) =>
+    responseFieldsRestrictions match {
+      case Some(fieldsRestrictions) =>
+        response match {
+          case bytesRestResponse: BytesRestResponse =>
             filterBytesRestResponse(bytesRestResponse, fieldsRestrictions)
-          case None =>
-            bytesRestResponse
+          case otherResponse =>
+            logger.warn("ResponseFields filtering is unavailable for this type of request")
+            otherResponse
         }
-      case otherResponse => otherResponse
+      case None =>
+        response
     }
   }
 

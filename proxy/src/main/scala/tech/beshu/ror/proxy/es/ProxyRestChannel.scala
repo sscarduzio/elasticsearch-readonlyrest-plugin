@@ -4,6 +4,7 @@
 package tech.beshu.ror.proxy.es
 
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.rest._
 import org.elasticsearch.tasks.{TaskManager, Task => EsTask}
@@ -14,7 +15,8 @@ import scala.concurrent.Promise
 
 sealed abstract class ProxyRestChannel(val restRequest: RestRequest)
   extends AbstractRestChannel(restRequest, true)
-    with ResponseFieldsFiltering {
+    with ResponseFieldsFiltering
+    with Logging{
 
   def taskManager: TaskManager
 

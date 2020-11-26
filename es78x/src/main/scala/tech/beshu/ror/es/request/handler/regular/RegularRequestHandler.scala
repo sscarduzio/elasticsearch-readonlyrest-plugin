@@ -145,8 +145,8 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def configureResponseTransformations(responseTransformations: List[ResponseTransformation]): Unit = {
-    responseTransformations.collect {
+  private def configureResponseTransformations(responseTransformations: List[ResponseTransformation]) = {
+    responseTransformations.map {
       case FilteredResponseFields(responseFieldsRestrictions) =>
         esContext.channel.setResponseFieldRestrictions(responseFieldsRestrictions)
     }

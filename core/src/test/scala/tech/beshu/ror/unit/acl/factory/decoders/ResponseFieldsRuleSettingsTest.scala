@@ -147,27 +147,6 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
           )
         }
       }
-      "ror is run in proxy mode" when {
-        "only one field is defined" in {
-          assertDecodingSuccess(
-            yaml =
-              """
-                |readonlyrest:
-                |
-                |  access_control_rules:
-                |
-                |  - name: test_block1
-                |    response_fields: "field1"
-                |
-                |""".stripMargin,
-            assertion = rule => {
-              rule.settings.responseFields.head should be(AlreadyResolved(ResponseField("field1".nonempty).nel))
-              rule.settings.accessMode should be(AccessMode.Whitelist)
-            },
-            aFactory = factory(rorMode = RorMode.Proxy)
-          )
-        }
-      }
     }
     "not be able to be loaded from config" when {
       "no field is defined" in {
@@ -221,6 +200,7 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
                 |  access_control_rules:
                 |
                 |  - name: test_block1
+                |    auth_key: dev1:test
                 |    response_fields: ["@{user}", "~field2"]
                 |
                 |""".stripMargin,
@@ -241,6 +221,7 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
                 |  access_control_rules:
                 |
                 |  - name: test_block1
+                |    auth_key: dev1:test
                 |    response_fields: ["@{user}", "~@{user}.name"]
                 |
                 |""".stripMargin,

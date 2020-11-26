@@ -19,7 +19,6 @@ package tech.beshu.ror.accesscontrol.factory.decoders.rules
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
@@ -30,17 +29,15 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.JavaConverters._
-
-object FieldsFilteringRuleBase {
+object FieldsRuleLikeDecoderHelperBase {
   final case class ConfiguredField(fieldName: NonEmptyString,
                                    rawValue: String,
                                    isNegated: Boolean)
 }
 
-trait FieldsFilteringRuleBase {
+trait FieldsRuleLikeDecoderHelperBase {
 
-  import FieldsFilteringRuleBase._
+  import FieldsRuleLikeDecoderHelperBase._
 
   protected val configuredFieldsDecoder = DecoderHelpers
     .decodeStringLikeOrUniqueNonEmptyListE(convertToConfiguredField)
@@ -63,9 +60,9 @@ trait FieldsFilteringRuleBase {
                                        (implicit accessModeConverter: AccessModeConverter[MODE]): Decoder[MODE] =
     fromConfiguredFieldsDecoder(configuredFields, createAccessMode[MODE])
 
-  protected def documentFieldsDecoder[FIELD](configuredFields: UniqueNonEmptyList[ConfiguredField], checkForAlwaysAllowedFields: Boolean)
+  protected def documentFieldsDecoder[FIELD](configuredFields: UniqueNonEmptyList[ConfiguredField], alwaysAllowedFields: Set[NonEmptyString])
                                            (implicit itemConvertible: Convertible[FIELD])=
-    fromConfiguredFieldsDecoder(configuredFields, createDocumentFields[FIELD](checkForAlwaysAllowedFields))
+    fromConfiguredFieldsDecoder(configuredFields, createDocumentFields[FIELD](alwaysAllowedFields))
 
   protected def fromConfiguredFieldsDecoder[ITEM](configuredFields: UniqueNonEmptyList[ConfiguredField],
                                                   creator: UniqueNonEmptyList[ConfiguredField] => Either[AclCreationError, ITEM]) =
@@ -85,11 +82,13 @@ trait FieldsFilteringRuleBase {
     }
   }
 
-  private def createDocumentFields[FIELD](checkForAlwaysAllowedFields: Boolean)
+  private def createDocumentFields[FIELD](alwaysAllowedFields: Set[NonEmptyString])
                                          (fields: UniqueNonEmptyList[ConfiguredField])
                                          (implicit itemConvertible: Convertible[FIELD])= {
-    if (checkForAlwaysAllowedFields && containsAlwaysAllowedFields(fields)) {
-      Left(RulesLevelCreationError(Message(s"The fields rule cannot contain always-allowed fields: ${Constants.FIELDS_ALWAYS_ALLOW.asScala.mkString(",")}")))
+    val fieldsFromAlwaysAllowedList = checkForAlwaysAllowedFields(fields, alwaysAllowedFields)
+
+    if (fieldsFromAlwaysAllowedList.nonEmpty) {
+      Left(RulesLevelCreationError(Message(s"These fields cannot be filtered using this rule: ${fieldsFromAlwaysAllowedList.mkString(",")}")))
     } else {
       fields
         .toNonEmptyList
@@ -103,11 +102,10 @@ trait FieldsFilteringRuleBase {
     negatedFields.nonEmpty && nonNegatedFields.nonEmpty
   }
 
-  private def containsAlwaysAllowedFields(fields: UniqueNonEmptyList[ConfiguredField]): Boolean = {
+  private def checkForAlwaysAllowedFields(fields: UniqueNonEmptyList[ConfiguredField], alwaysAllowedFields: Set[NonEmptyString]) = {
     fields
       .map(_.fieldName)
-      .intersect(Constants.FIELDS_ALWAYS_ALLOW.asScala.map(NonEmptyString.unsafeFrom).toSet)
-      .nonEmpty
+      .intersect(alwaysAllowedFields)
   }
 
   private def createRuntimeVariable[FIELD](field: ConfiguredField)

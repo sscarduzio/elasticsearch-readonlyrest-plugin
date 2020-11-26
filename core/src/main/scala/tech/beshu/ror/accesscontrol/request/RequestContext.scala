@@ -90,8 +90,7 @@ object RequestContext extends Logging {
 
   def show[B <: BlockContext](loggedUser: Option[LoggedUser],
                               kibanaIndex: Option[IndexName],
-                              history: Vector[Block.History[B]],
-                              responseTransformations: List[ResponseTransformation])
+                              history: Vector[Block.History[B]])
                              (implicit headerShow: Show[Header]): Show[RequestContext.Aux[B]] =
     Show.show { r =>
       def stringifyUser = {
@@ -114,13 +113,6 @@ object RequestContext extends Logging {
         else idx.mkString(",")
       }
 
-      def stringifyResponseTransformations: String = {
-        responseTransformations.map {
-          case FilteredResponseFields(ResponseFieldsRestrictions(fields, mode)) =>
-            val commaSeparatedFields = fields.map(_.value.value).toList.mkString(",")
-            s"ResponseFieldsTransformation(fields=[$commaSeparatedFields],mode=$mode)"
-        }.mkString("[", ",", "]")
-      }
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
@@ -138,7 +130,6 @@ object RequestContext extends Logging {
          | CNT:$stringifyContentLength,
          | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
          | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")},
-         | RT:$stringifyResponseTransformations
          | }""".stripMargin.replaceAll("\n", " ")
     }
 }

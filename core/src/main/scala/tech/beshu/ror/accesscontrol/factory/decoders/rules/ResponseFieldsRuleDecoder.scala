@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleD
 
 object ResponseFieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(ResponseFieldsRuleDecoderHelper.fieldsRuleDecoder)
 
-private object ResponseFieldsRuleDecoderHelper extends FieldsFilteringRuleBase {
+private object ResponseFieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
 
   private implicit val convertible: Convertible[ResponseField] = AlwaysRightConvertible.from(ResponseField.apply)
 
@@ -35,6 +35,6 @@ private object ResponseFieldsRuleDecoderHelper extends FieldsFilteringRuleBase {
   val fieldsRuleDecoder = for {
     configuredFields <- configuredFieldsDecoder
     accessMode <- accessModeDecoder[AccessMode](configuredFields)
-    documentFields <- documentFieldsDecoder[ResponseField](configuredFields, checkForAlwaysAllowedFields = false)
+    documentFields <- documentFieldsDecoder[ResponseField](configuredFields, Set.empty)
   } yield RuleWithVariableUsageDefinition.create(new ResponseFieldsRule(ResponseFieldsRule.Settings(documentFields, accessMode)))
 }

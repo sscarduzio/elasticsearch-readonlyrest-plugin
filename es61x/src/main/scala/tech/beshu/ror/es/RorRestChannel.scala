@@ -25,19 +25,23 @@ class RorRestChannel(underlying: RestChannel)
     with ResponseFieldsFiltering
     with Logging {
 
-  private var maybeTask: Option[Task] = None
+  @volatile private var maybeTask: Option[Task] = None
 
   def setTask(task: Task): Unit = {
     maybeTask = Some(task)
   }
 
   override def sendResponse(response: RestResponse): Unit = {
+    unregisterTask()
+    underlying.sendResponse(filterRestResponse(response))
+  }
+
+  private def unregisterTask(): Unit = {
     maybeTask.foreach { task =>
       TransportServiceInterceptor.taskManagerSupplier.get() match {
         case Some(taskManager) => taskManager.unregister(task)
         case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
       }
     }
-    underlying.sendResponse(filterRestResponse(response))
   }
 }

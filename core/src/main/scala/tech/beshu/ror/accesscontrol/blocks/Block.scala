@@ -88,7 +88,7 @@ class Block(val name: Name,
           val block: Block = this
           logger.debug(s"${ANSI_CYAN}matched ${block.show} { found: ${blockContext.show} }$ANSI_RESET")
         case Success((_: Mismatched[B], history)) =>
-          implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show[B](None, None, Vector(history), List.empty)
+          implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show[B](None, None, Vector(history))
           logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
       }
   }

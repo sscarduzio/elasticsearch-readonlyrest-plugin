@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Usa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, RuleOrdering}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, FilteredResponseFields, ResponseTransformation, RuleOrdering}
 import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, MustBePresent}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
@@ -157,8 +157,15 @@ object show {
           showTraversable("response_hdr", bc.responseHeaders) ::
           showTraversable("repositories", bc.repositories) ::
           showTraversable("snapshots", bc.snapshots) ::
+          showTraversable("response_transformations", bc.responseTransformations) ::
           Nil flatten) mkString ";"
       }
+
+    private implicit val responseTransformation: Show[ResponseTransformation] = Show.show {
+      case FilteredResponseFields(ResponseFieldsRestrictions(fields, mode)) =>
+        val commaSeparatedFields = fields.map(_.value.value).toList.mkString(",")
+        s"FilteredResponseFields(fields=[$commaSeparatedFields],mode=$mode)"
+    }
 
     private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {
       case KibanaAccess.RO => "ro"
