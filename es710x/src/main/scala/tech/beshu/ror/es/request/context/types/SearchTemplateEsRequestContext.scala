@@ -49,8 +49,8 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
   }
 
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
-                                indices: NonEmptyList[IndexName]): ModificationResult = {
-    searchRequest.indices(indices.toList.map(_.value.value): _*)
+                                filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    searchRequest.indices(filteredIndices.toList.map(_.value.value): _*)
     Modified
   }
 
@@ -65,7 +65,6 @@ class SearchTemplateEsRequestContext private(actionRequest: ActionRequest with C
         sr
     }
   }
-
 }
 
 object SearchTemplateEsRequestContext {

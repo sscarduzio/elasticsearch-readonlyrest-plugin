@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -38,7 +37,6 @@ class CurrentUserMetadataEsRequestContext(actionRequest: RRAdminRequest,
   override val initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this,
     UserMetadata.from(this),
-    Set.empty,
     Set.empty
   )
 

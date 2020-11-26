@@ -35,6 +35,7 @@ import org.elasticsearch.action.admin.cluster.snapshots.status.SnapshotsStatusRe
 import org.elasticsearch.action.admin.cluster.state.ClusterStateRequest
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
+import org.elasticsearch.action.admin.indices.resolve.ResolveIndexAction
 import org.elasticsearch.action.admin.indices.rollover.RolloverRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
@@ -156,6 +157,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new ClusterAllocationExplainEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: RolloverRequest =>
         regularRequestHandler.handle(new RolloverEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: ResolveIndexAction.Request =>
+        regularRequestHandler.handle(new ResolveIndexEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: IndicesRequest.Replaceable =>
         regularRequestHandler.handle(new IndicesReplaceableEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ReindexRequest =>
@@ -194,8 +197,7 @@ object AclAwareRequestFilter {
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
                              chain: ActionFilterChain[ActionRequest, ActionResponse],
-                             crossClusterSearchEnabled: Boolean,
-                             involvesFields: Boolean)
+                             crossClusterSearchEnabled: Boolean)
 }
 
 final case class RequestSeemsToBeInvalid[T: ClassTag](message: String, cause: Throwable = null)

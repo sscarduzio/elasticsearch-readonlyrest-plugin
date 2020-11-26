@@ -43,8 +43,8 @@ class ReflectionBasedIndicesEsRequestContext private(actionRequest: ActionReques
 
   override protected def indicesFrom(request: ActionRequest): Set[IndexName] = indices
 
-  override protected def update(request: ActionRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
-    if (tryUpdate(actionRequest, indices)) Modified
+  override protected def update(request: ActionRequest, filteredIndices: NonEmptyList[IndexName], allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    if (tryUpdate(actionRequest, filteredIndices)) Modified
     else {
       logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. We're using reflection to modify the request indices and it fails. Please, report the issue.")
       ShouldBeInterrupted
