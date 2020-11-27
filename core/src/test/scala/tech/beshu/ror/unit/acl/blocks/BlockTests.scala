@@ -22,7 +22,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
+import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -64,12 +64,12 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         inside(result) {
           case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
             historyItems should have size 3
-            historyItems(0).rule should be(Rule.Name("r1"))
-            historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
-            historyItems(1).rule should be(Rule.Name("r2"))
-            historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
-            historyItems(2).rule should be(Rule.Name("r3"))
-            historyItems(2).result shouldBe a[RuleResult.Rejected[_]]
+            historyItems(0).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r1"))
+            historyItems(0).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
+            historyItems(1).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r2"))
+            historyItems(1).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
+            historyItems(2).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r3"))
+            historyItems(2).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Rejected[_]]
 
             assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))) {
               blockContext
@@ -93,12 +93,12 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         inside(result) {
           case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
             historyItems should have size 3
-            historyItems(0).rule should be(Rule.Name("r1"))
-            historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
-            historyItems(1).rule should be(Rule.Name("r2"))
-            historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
-            historyItems(2).rule should be(Rule.Name("r3"))
-            historyItems(2).result shouldBe a[RuleResult.Rejected[_]]
+            historyItems(0).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r1"))
+            historyItems(0).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
+            historyItems(1).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r2"))
+            historyItems(1).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
+            historyItems(2).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r3"))
+            historyItems(2).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Rejected[_]]
 
             blockContext.userMetadata should be(UserMetadata.empty)
             blockContext.filteredIndices should be(Set.empty)
@@ -123,12 +123,12 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
           historyItems should have size 3
-          historyItems(0).rule should be(Rule.Name("r1"))
-          historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
-          historyItems(1).rule should be(Rule.Name("r2"))
-          historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
-          historyItems(2).rule should be(Rule.Name("r3"))
-          historyItems(2).result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(0).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r1"))
+          historyItems(0).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(1).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r2"))
+          historyItems(1).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(2).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r3"))
+          historyItems(2).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
 
           blockContext.userMetadata should be(UserMetadata.empty)
           blockContext.filteredIndices should be(Set.empty)
@@ -155,12 +155,12 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
           historyItems should have size 3
-          historyItems(0).rule should be(Rule.Name("r1"))
-          historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
-          historyItems(1).rule should be(Rule.Name("r2"))
-          historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
-          historyItems(2).rule should be(Rule.Name("r3"))
-          historyItems(2).result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(0).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r1"))
+          historyItems(0).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(1).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r2"))
+          historyItems(1).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(2).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].rule should be(Rule.Name("r3"))
+          historyItems(2).asInstanceOf[HistoryItem.RuleHistoryItem[GeneralIndexRequestBlockContext]].result shouldBe a[RuleResult.Fulfilled[_]]
 
           blockContext.userMetadata should be(
             UserMetadata
