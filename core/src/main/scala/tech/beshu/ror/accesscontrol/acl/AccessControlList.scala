@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContext.Aux
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -72,6 +73,14 @@ class AccessControlList(val blocks: NonEmptyList[Block])
       }
       .onErrorHandle { ex =>
         WithHistory(Vector.empty, RegularRequestResult.Failed(ex))
+      }
+  }
+
+  override def handleRegularRequest2[B <: BlockContext : BlockContextUpdater](requestContext: Aux[B],
+                                                                              committer: AccessControl.Committer): Task[WithHistory[RegularRequestResult[B], B]] = {
+    handleRegularRequest(requestContext)
+      .map {
+        case
       }
   }
 
@@ -229,4 +238,5 @@ class AccessControlList(val blocks: NonEmptyList[Block])
         .collect { case r: Rejected[B] => r }
     }
   }
+
 }

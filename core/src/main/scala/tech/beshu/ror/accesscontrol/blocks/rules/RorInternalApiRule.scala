@@ -16,10 +16,9 @@ class RorInternalApiRule(val settings: Settings)
   override val name: Rule.Name = RorInternalApiRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = Task.now {
-    val isInternalApiRelatedRequest = isRelatedToRorInternals(blockContext)
     settings.access match {
       case Allow => Fulfilled(blockContext)
-      case Forbid if isInternalApiRelatedRequest => Rejected()
+      case Forbid if isRelatedToRorInternals(blockContext) => Rejected()
       case Forbid => Fulfilled(blockContext)
     }
   }

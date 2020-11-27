@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import monix.execution.atomic.Atomic
 import org.elasticsearch.threadpool.ThreadPool
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
@@ -33,14 +34,19 @@ class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
   extends BaseEsRequestContext[GeneralNonIndexRequestBlockContext](esContext, clusterService)
     with EsRequest[GeneralNonIndexRequestBlockContext] {
 
+  private val auditEvents = Atomic(new JSONObject())
+
   override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
     this,
     UserMetadata.from(this),
     Set.empty
   )
 
-  override val generalAuditEvents: JSONObject = actionRequest.auditEvents
+  override val generalAuditEvents: JSONObject = auditEvents.get()
 
-  override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = Modified
+  override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = {
+    auditEvents.set(actionRequest.auditEvents)
+    Modified
+  }
 }
 
