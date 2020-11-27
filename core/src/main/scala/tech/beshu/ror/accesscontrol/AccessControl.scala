@@ -16,11 +16,10 @@
  */
 package tech.beshu.ror.accesscontrol
 
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.AccessControl.Committer.ForbiddenCause
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
-import tech.beshu.ror.accesscontrol.AccessControl.{Committer, RegularRequestResult, UserMetadataRequestResult, WithHistory}
+import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata

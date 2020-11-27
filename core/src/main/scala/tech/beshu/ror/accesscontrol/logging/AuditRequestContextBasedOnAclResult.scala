@@ -22,7 +22,6 @@ import cats.Show
 import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, HasIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
@@ -38,6 +37,7 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
                                                              userMetadata: Option[UserMetadata],
                                                              historyEntries: Vector[History[B]],
                                                              loggingContext: LoggingContext,
+                                                             override val generalAuditEvents: JSONObject,
                                                              override val involvesIndices: Boolean)
   extends AuditRequestContext {
 
@@ -86,5 +86,4 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
 
   override val attemptedUserName: Option[String] = requestContext.basicAuth.map(_.credentials.user.value.value)
   override val rawAuthHeader: Option[String] = requestContext.rawAuthHeader.map(_.value.value)
-  override val generalAuditEvents: JSONObject = requestContext.generalAuditEvents
 }
