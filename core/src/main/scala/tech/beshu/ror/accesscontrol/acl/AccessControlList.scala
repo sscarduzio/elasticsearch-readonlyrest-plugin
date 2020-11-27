@@ -75,15 +75,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
         WithHistory(Vector.empty, RegularRequestResult.Failed(ex))
       }
   }
-
-  override def handleRegularRequest2[B <: BlockContext : BlockContextUpdater](requestContext: Aux[B],
-                                                                              committer: AccessControl.Committer): Task[WithHistory[RegularRequestResult[B], B]] = {
-    handleRegularRequest(requestContext)
-      .map {
-        case
-      }
-  }
-
+  
   override def handleMetadataRequest(context: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] = {
     Task
       .gather(blocks.toList.map(executeBlocksForUserMetadata(_, context)))

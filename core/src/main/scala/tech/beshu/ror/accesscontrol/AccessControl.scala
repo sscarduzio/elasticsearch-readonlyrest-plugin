@@ -29,43 +29,10 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 
 trait AccessControl {
   def handleRegularRequest[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): Task[WithHistory[RegularRequestResult[B], B]]
-  def handleRegularRequest2[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B],
-                                                                     committer: Committer): Task[WithHistory[RegularRequestResult[B], B]]
   def handleMetadataRequest(requestContext: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]]
 }
 
 object AccessControl {
-
-  trait Committer {
-
-    def onProceed(): Unit
-    def onForbidden(causes: NonEmptyList[ForbiddenCause]): Unit
-  }
-  object Committer {
-    sealed trait ForbiddenCause {
-      def stringify: String
-    }
-    case object ForbiddenBlockMatch extends ForbiddenCause {
-      override def stringify: String = "FORBIDDEN_BY_BLOCK"
-    }
-    case object OperationNotAllowed extends ForbiddenCause {
-      override def stringify: String = "OPERATION_NOT_ALLOWED"
-    }
-    case object ImpersonationNotSupported extends ForbiddenCause {
-      override def stringify: String = "IMPERSONATION_NOT_SUPPORTED"
-    }
-    case object ImpersonationNotAllowed extends ForbiddenCause {
-      override def stringify: String = "IMPERSONATION_NOT_ALLOWED"
-    }
-
-    def fromMismatchedCause(cause: Cause): ForbiddenCause = {
-      cause match {
-        case Cause.OperationNotAllowed => OperationNotAllowed
-        case Cause.ImpersonationNotSupported => ImpersonationNotSupported
-        case Cause.ImpersonationNotAllowed => ImpersonationNotAllowed
-      }
-    }
-  }
 
   final case class WithHistory[RESULT, B <: BlockContext](history: Vector[History[B]], result: RESULT)
   object WithHistory {

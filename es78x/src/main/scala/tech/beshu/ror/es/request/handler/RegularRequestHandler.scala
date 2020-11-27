@@ -46,7 +46,7 @@ class RegularRequestHandler(engine: Engine,
                             esContext: EsContext,
                             threadPool: ThreadPool)
                            (implicit scheduler: Scheduler)
-  extends Committer with Logging {
+  extends Logging {
 
   def handle[B <: BlockContext : BlockContextUpdater](request: RequestContext.Aux[B] with EsRequest[B]): Task[Unit] = {
     engine.accessControl
