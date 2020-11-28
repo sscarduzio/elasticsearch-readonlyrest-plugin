@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl
 
+import eu.timepit.refined.auto._
 import cats.data.NonEmptyList
 import monix.eval.Task
 import org.scalatest.Matchers._
@@ -29,7 +30,9 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{Group, Header, LoggedUser, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, Header, IndexName, LoggedUser, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -70,13 +73,18 @@ class AccessControlListTests extends WordSpec with MockFactory with Inside {
       NonEmptyList.of(
         new RegularRule {
           override val name: Rule.Name = Rule.Name("auth")
-
           override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
             Task.now(Rule.RuleResult.Fulfilled(blockContext.withUserMetadata(_ => userMetadata)))
           }
         }
       ),
-      ??? // todo: fixme
+      GlobalSettings(
+        showBasicAuthPrompt = true,
+        forbiddenRequestMessage = "forbidden",
+        flsEngine = FlsEngine.ESWithLucene,
+        configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
+        indexAuditTemplate = None
+      )
     )
   }
 

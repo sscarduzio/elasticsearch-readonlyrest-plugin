@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.logging
 
+import eu.timepit.refined.auto._
 import java.time._
 
 import cats.data.{NonEmptyList, NonEmptySet}
@@ -30,7 +31,9 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
-import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorAuditIndexTemplate, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.orders._
@@ -103,7 +106,13 @@ class AuditingToolTests extends WordSpec with MockFactory {
             Block.Policy.Forbid,
             Block.Verbosity.Info,
             NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
-            ??? // todo: fixme
+            GlobalSettings(
+              showBasicAuthPrompt = true,
+              forbiddenRequestMessage = "forbidden",
+              flsEngine = FlsEngine.ESWithLucene,
+              configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
+              indexAuditTemplate = None
+            )
           ),
           GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty),
           Vector.empty
@@ -159,7 +168,13 @@ class AuditingToolTests extends WordSpec with MockFactory {
         policy,
         verbosity,
         NonEmptyList.one(new MethodsRule(MethodsRule.Settings(NonEmptySet.one(Method.GET)))),
-        ??? // todo: fixme
+        GlobalSettings(
+          showBasicAuthPrompt = true,
+          forbiddenRequestMessage = "forbidden",
+          flsEngine = FlsEngine.ESWithLucene,
+          configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
+          indexAuditTemplate = None
+        )
       ),
       GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty),
       Vector.empty

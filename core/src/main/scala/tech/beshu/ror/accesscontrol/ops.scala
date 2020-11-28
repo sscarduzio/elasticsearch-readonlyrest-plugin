@@ -202,7 +202,7 @@ object show {
     }
 
     implicit def failedBlockPostProcessingCheckHistoryItemShow[B <: BlockContext]: Show[FailedBlockPostProcessingCheckHistoryItem[B]] =
-      Show.show { hi => hi.check.name }
+      Show.show { hi => hi.checkName.value.value }
 
     implicit def historyShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[History[B]] =
       Show.show[History[B]] { h =>
@@ -214,8 +214,10 @@ object show {
             .collect { case hi: FailedBlockPostProcessingCheckHistoryItem[B] => hi }
             .map(_.show)
             .mkStringOrEmptyString(", DISALLOWED BY GUARDS:[", ", ", "]")
-        val resolvedPart = h.blockContext.show.some.toList
-          .mkStringOrEmptyString(", RESOLVED:[", "", "]")
+        val resolvedPart = h.blockContext.show match {
+          case "" => ""
+          case nonEmpty => s"RESOLVED:[$nonEmpty]"
+        }
         s"""[${h.block.show}->$rulesHistoryItemsStr$postRulesChecksHistoryItemsStr$resolvedPart]"""
       }
 

@@ -16,8 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.postprocessing
 
+import eu.timepit.refined.auto._
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingCheck.PostProcessingResult
+import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingCheck.{Name, PostProcessingResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.RorInternalApiRule
 import tech.beshu.ror.accesscontrol.blocks.rules.RorInternalApiRule.InternalApiAccess.Forbid
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
@@ -28,7 +29,7 @@ class ImplicitRorInternalApiCallCheck(block: Block,
                                       settings: GlobalSettings)
   extends BlockPostProcessingCheck {
 
-  override val name: String = "ROR internal API guard"
+  override val name: Name = BlockPostProcessingCheck.Name("ROR internal API guard")
 
   private val internalRule = new RorInternalApiRule(RorInternalApiRule.Settings(
     access = Forbid,

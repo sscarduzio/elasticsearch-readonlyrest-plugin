@@ -84,34 +84,34 @@ class Block(val name: Name,
               case Mismatched(lastBlockContext) =>
                 mismatched[B](lastBlockContext)
             }
-            finalResult <- resultAfterRulesCheck match {
-              // todo: cleanup
-              case Matched(_, blockContext) =>
-                val postProcessingResult = postProcessingChecks
-                  .foldLeft(Task.now(Option.empty[BlockPostProcessingCheck])) {
-                    case (result, postCheck) => result.flatMap {
-                      case None =>
-                        postCheck
-                          .check(blockContext)
-                          .map {
-                            case PostProcessingResult.Continue => None
-                            case PostProcessingResult.Reject => Some(postCheck)
-                          }
-                      case Some(_) =>
-                        result
+          } yield resultAfterRulesCheck
+      }
+      .flatMap {
+        // todo: cleanup
+        case Matched(_, blockContext) =>
+          val postProcessingResult = postProcessingChecks
+            .foldLeft(Task.now(Option.empty[BlockPostProcessingCheck])) {
+              case (result, postCheck) => result.flatMap {
+                case None =>
+                  postCheck
+                    .check(blockContext)
+                    .map {
+                      case PostProcessingResult.Continue => None
+                      case PostProcessingResult.Reject => Some(postCheck)
                     }
-                  }
-                lift[B](postProcessingResult)
-                  .flatMap {
-                    case None => matched[B](blockContext)
-                    case Some(postCheck) =>
-                      mismatched[B](blockContext)
-                        .tell(Vector(FailedBlockPostProcessingCheckHistoryItem(postCheck)))
-                  }
-              case Mismatched(blockContext) =>
-                mismatched[B](blockContext)
+                case Some(_) =>
+                  result
+              }
             }
-          } yield finalResult
+          lift[B](postProcessingResult)
+            .flatMap {
+              case None => matched[B](blockContext)
+              case Some(postCheck) =>
+                mismatched[B](blockContext)
+                  .tell(Vector(FailedBlockPostProcessingCheckHistoryItem(postCheck.name)))
+            }
+        case Mismatched(blockContext) =>
+          mismatched[B](blockContext)
       }
       .mapBoth { case (history, result) =>
         (History(name, history, result.blockContext), result)
@@ -180,7 +180,7 @@ object Block {
                                                         result: RuleResult[B])
       extends HistoryItem[B]
 
-    final case class FailedBlockPostProcessingCheckHistoryItem[B <: BlockContext](check: BlockPostProcessingCheck)
+    final case class FailedBlockPostProcessingCheckHistoryItem[B <: BlockContext](checkName: BlockPostProcessingCheck.Name)
       extends HistoryItem[B]
   }
 

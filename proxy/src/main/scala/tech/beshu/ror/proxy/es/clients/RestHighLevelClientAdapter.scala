@@ -77,6 +77,7 @@ import scala.collection.JavaConverters._
 // todo: use client async api
 class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
+  // todo: fixme
   def putRorAuditEvent(request: RRAuditEventRequest): Task[RRAuditEventResponse] = ???
 
   def generic(request: GenericRequest): Task[GenericResponse] = {
