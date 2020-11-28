@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks
 
+import eu.timepit.refined.auto._
 import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -31,7 +32,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
 import tech.beshu.ror.utils.TestsUtils._
@@ -56,7 +59,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
               notPassingRule("r3") ::
               passingRule("r4") :: Nil
           ),
-          ??? // todo: fixme
+          BlockTests.defaultGlobalSettings
         )
         val requestContext = MockRequestContext.indices
         val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -85,7 +88,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") :: passingRule("r2") :: throwingRule("r3") :: notPassingRule("r4") :: passingRule("r5") :: Nil
           ),
-          ??? // todo: fixme
+          BlockTests.defaultGlobalSettings
         )
         val requestContext = MockRequestContext.indices
         val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -115,7 +118,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
         ),
-        ??? // todo: fixme
+        BlockTests.defaultGlobalSettings
       )
       val requestContext = MockRequestContext.indices
       val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -147,7 +150,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
             passingRule("r3", _.withIndices(Set(IndexName("idx1".nonempty)), Set(IndexName("idx*".nonempty)))) ::
             Nil
         ),
-        ??? // todo: fixme
+        BlockTests.defaultGlobalSettings
       )
       val requestContext = MockRequestContext.indices
       val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -199,4 +202,12 @@ object BlockTests extends MockFactory {
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       Task.fromTry(Failure(new Exception("sth went wrong")))
   }
+
+  private val defaultGlobalSettings = GlobalSettings(
+    showBasicAuthPrompt = true,
+    forbiddenRequestMessage = "forbidden",
+    flsEngine = FlsEngine.ESWithLucene,
+    configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
+    indexAuditTemplate = None
+  )
 }
