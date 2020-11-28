@@ -45,6 +45,7 @@ import tech.beshu.ror.accesscontrol.domain.AccessRequirement.{MustBeAbsent, Must
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{ResponseField, ResponseFieldsRestrictions}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
@@ -163,8 +164,12 @@ object show {
 
     private implicit val responseTransformation: Show[ResponseTransformation] = Show.show {
       case FilteredResponseFields(ResponseFieldsRestrictions(fields, mode)) =>
-        val commaSeparatedFields = fields.map(_.value.value).toList.mkString(",")
-        s"FilteredResponseFields(fields=[$commaSeparatedFields],mode=$mode)"
+        val fieldPrefix = mode match {
+          case Whitelist => ""
+          case Blacklist => "~"
+        }
+        val commaSeparatedFields = fields.map(fieldPrefix + _.value.value).toList.mkString(",")
+        s"fields=[$commaSeparatedFields]"
     }
 
     private implicit val kibanaAccessShow: Show[KibanaAccess] = Show {

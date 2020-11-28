@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es
 
+import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import org.elasticsearch.tasks.Task
@@ -25,10 +26,10 @@ class RorRestChannel(underlying: RestChannel)
     with ResponseFieldsFiltering
     with Logging {
 
-  @volatile private var maybeTask: Option[Task] = None
+  private val maybeTask: Atomic[Option[Task]] = Atomic(None: Option[Task])
 
   def setTask(task: Task): Unit = {
-    maybeTask = Some(task)
+    maybeTask.set(Some(task))
   }
 
   override def sendResponse(response: RestResponse): Unit = {
@@ -37,7 +38,7 @@ class RorRestChannel(underlying: RestChannel)
   }
 
   private def unregisterTask(): Unit = {
-    maybeTask.foreach { task =>
+    maybeTask.get().foreach { task =>
       TransportServiceInterceptor.taskManagerSupplier.get() match {
         case Some(taskManager) => taskManager.unregister(task)
         case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")

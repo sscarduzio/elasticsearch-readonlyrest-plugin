@@ -1,5 +1,6 @@
 package tech.beshu.ror.es
 
+import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.common.xcontent.{LoggingDeprecationHandler, NamedXContentRegistry, XContentBuilder, XContentType}
 import org.elasticsearch.common.xcontent.cbor.CborXContent
@@ -14,14 +15,14 @@ import scala.collection.JavaConverters._
 trait ResponseFieldsFiltering {
   this: Logging =>
 
-  @volatile private var responseFieldsRestrictions: Option[ResponseFieldsRestrictions] = None
+  private val responseFieldsRestrictions: Atomic[Option[ResponseFieldsRestrictions]] = Atomic(None: Option[ResponseFieldsRestrictions])
 
   def setResponseFieldRestrictions(responseFieldsRestrictions: ResponseFieldsRestrictions): Unit = {
-    this.responseFieldsRestrictions = Some(responseFieldsRestrictions)
+    this.responseFieldsRestrictions.set(Some(responseFieldsRestrictions))
   }
 
   protected def filterRestResponse(response: RestResponse): RestResponse = {
-    responseFieldsRestrictions match {
+    responseFieldsRestrictions.get() match {
       case Some(fieldsRestrictions) =>
         response match {
           case bytesRestResponse: BytesRestResponse =>

@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, ClusterManagerYaml, DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ResponseFieldRuleSuite
@@ -34,7 +34,7 @@ trait ResponseFieldRuleSuite
 
   "A response_field rule" should {
 
-    "filter cluster health response in whitelist mode" in {
+    "filter cluster health response in whitelist mode using json format" in {
       val dev1ClusterStateManager = new ClusterManager(basicAuthClient("dev1", "test"), esVersion = targetEs.esVersion)
       val healthCheck = dev1ClusterStateManager.health()
 
@@ -43,6 +43,17 @@ trait ResponseFieldRuleSuite
       healthCheck.responseJson.obj.isDefinedAt("active_primary_shards") should equal(false)
       healthCheck.responseJson.obj.isDefinedAt("active_shards") should equal(false)
       healthCheck.responseJson.obj.isDefinedAt("number_of_nodes") should equal(false)
+    }
+
+    "filter cluster health response in whitelist mode using yaml format" in {
+      val dev1ClusterStateManager = new ClusterManagerYaml(basicAuthClient("dev1", "test"), esVersion = targetEs.esVersion)
+      val yamlHealthCheck = dev1ClusterStateManager.health()
+
+      yamlHealthCheck.responseYaml.isDefinedAt("cluster_name") should equal(true)
+      yamlHealthCheck.responseYaml.isDefinedAt("status") should equal(true)
+      yamlHealthCheck.responseYaml.isDefinedAt("active_primary_shards") should equal(false)
+      yamlHealthCheck.responseYaml.isDefinedAt("active_shards") should equal(false)
+      yamlHealthCheck.responseYaml.isDefinedAt("number_of_nodes") should equal(false)
     }
 
     "filter cat health response in blacklist mode " in {
