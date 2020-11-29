@@ -31,8 +31,6 @@ group = 'org.elasticsearch.plugin'
 version = pluginVersion + '_es' + esVersion
 
 apply plugin: 'java'
-apply plugin: 'application'
-apply plugin: 'maven'
 
 configurations {
     runtime
