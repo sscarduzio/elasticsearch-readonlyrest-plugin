@@ -41,14 +41,14 @@ class RorInternalApiRule(val settings: Settings)
   }
 
   private def isRelatedToRorInternals(blockContext: BlockContext) = {
-    (idRorAction(blockContext) || isWriteActionRelatedToRorIndices(blockContext)) && !isRestoreAllIndicesAction(blockContext)
+    (isRorAction(blockContext) || isWriteActionRelatedToRorIndices(blockContext)) && !isRestoreAllIndicesAction(blockContext)
   }
 
   private def isWriteActionRelatedToRorIndices(blockContext: BlockContext) = {
     !blockContext.requestContext.isReadOnlyRequest && (relatedToAuditIndex(blockContext) || relatedToConfigurationIndex(blockContext))
   }
 
-  private def idRorAction(blockContext: BlockContext) =
+  private def isRorAction(blockContext: BlockContext) =
     blockContext.requestContext.action.isRorInternalAction
 
   private def isRestoreAllIndicesAction(blockContext: BlockContext) = {

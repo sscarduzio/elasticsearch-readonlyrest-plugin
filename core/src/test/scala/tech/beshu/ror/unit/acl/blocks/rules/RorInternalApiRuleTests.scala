@@ -78,7 +78,10 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
                 configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
                 indexAuditTemplate = None
               ))
-              val requestContext = MockRequestContext.indices.copy(filteredIndices = Set(IndexName(".readonlyrest")))
+              val requestContext = MockRequestContext.indices.copy(
+                filteredIndices = Set(IndexName(".readonlyrest")),
+                isReadOnlyRequest = false
+              )
               val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
 
               inside(result) { case Fulfilled(_) => }
@@ -89,7 +92,10 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
                 configurationIndex = RorConfigurationIndex(IndexName(".ror")),
                 indexAuditTemplate = None
               ))
-              val requestContext = MockRequestContext.indices.copy(filteredIndices = Set(IndexName(".r*")))
+              val requestContext = MockRequestContext.indices.copy(
+                filteredIndices = Set(IndexName(".r*")),
+                isReadOnlyRequest = false
+              )
               val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
 
               inside(result) { case Fulfilled(_) => }
@@ -102,7 +108,10 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
                 configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
                 indexAuditTemplate = Some(RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get)
               ))
-              val requestContext = MockRequestContext.indices.copy(filteredIndices = Set(IndexName("test_2020-01-10")))
+              val requestContext = MockRequestContext.indices.copy(
+                filteredIndices = Set(IndexName("test_2020-01-10")),
+                isReadOnlyRequest = false
+              )
               val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
 
               inside(result) { case Fulfilled(_) => }
@@ -113,7 +122,10 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
                 configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
                 indexAuditTemplate = Some(RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get)
               ))
-              val requestContext = MockRequestContext.indices.copy(filteredIndices = Set(IndexName("test*")))
+              val requestContext = MockRequestContext.indices.copy(
+                filteredIndices = Set(IndexName("test*")),
+                isReadOnlyRequest = false
+              )
               val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
 
               inside(result) { case Fulfilled(_) => }
@@ -190,7 +202,10 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
               configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
               indexAuditTemplate = None
             ))
-            val requestContext = MockRequestContext.indices.copy(filteredIndices = Set(IndexName(".readonlyrest")))
+            val requestContext = MockRequestContext.indices.copy(
+              filteredIndices = Set(IndexName(".readonlyrest")),
+              isReadOnlyRequest = false
+            )
             val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
 
             result should be (Rejected(None))
@@ -201,7 +216,10 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
               configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
               indexAuditTemplate = None
             ))
-            val requestContext = MockRequestContext.indices.copy(filteredIndices = Set(IndexName(".read*")))
+            val requestContext = MockRequestContext.indices.copy(
+              filteredIndices = Set(IndexName(".read*")),
+              isReadOnlyRequest = false
+            )
             val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
 
             result should be (Rejected(None))
@@ -214,7 +232,10 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
               configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
               indexAuditTemplate = Some(RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get)
             ))
-            val requestContext = MockRequestContext.indices.copy(filteredIndices = Set(IndexName("test_2020-01-10")))
+            val requestContext = MockRequestContext.indices.copy(
+              filteredIndices = Set(IndexName("test_2020-01-10")),
+              isReadOnlyRequest = false
+            )
             val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
 
             result should be (Rejected(None))
@@ -225,7 +246,10 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
               configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
               indexAuditTemplate = Some(RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get)
             ))
-            val requestContext = MockRequestContext.indices.copy(filteredIndices = Set(IndexName("test*")))
+            val requestContext =  MockRequestContext.indices.copy(
+              filteredIndices = Set(IndexName("test*")),
+              isReadOnlyRequest = false
+            )
             val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
 
             result should be (Rejected(None))

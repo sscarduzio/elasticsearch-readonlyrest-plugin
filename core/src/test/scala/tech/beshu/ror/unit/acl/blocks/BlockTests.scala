@@ -119,7 +119,10 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         ),
         BlockTests.defaultGlobalSettings
       )
-      val requestContext = MockRequestContext.indices.copy(filteredIndices = Set(IndexName(".readonlyrest")))
+      val requestContext = MockRequestContext.indices.copy(
+        filteredIndices = Set(IndexName(".readonlyrest")),
+        isReadOnlyRequest = false
+      )
       val result = block.execute(requestContext).runSyncUnsafe(1 second)
 
       inside(result) {

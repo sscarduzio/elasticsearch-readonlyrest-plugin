@@ -105,6 +105,10 @@ class AccessControlListTests extends WordSpec with MockFactory with Inside {
       .expects()
       .returning(Action.rorUserMetadataAction)
       .anyNumberOfTimes()
+    (rc.isReadOnlyRequest _)
+      .expects()
+      .returning(false)
+      .anyNumberOfTimes()
     rc
   }
 
