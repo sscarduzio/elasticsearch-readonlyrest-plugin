@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext._
 import tech.beshu.ror.accesscontrol.blocks.rules.RorInternalApiRule.InternalApiAccess.{Allow, Forbid}
@@ -24,7 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.IndicesMatcher
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{RorAuditIndexTemplate, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, RorAuditIndexTemplate, RorConfigurationIndex}
 
 class RorInternalApiRule(val settings: Settings)
   extends RegularRule {
@@ -40,15 +41,19 @@ class RorInternalApiRule(val settings: Settings)
   }
 
   private def isRelatedToRorInternals(blockContext: BlockContext) = {
-    rorAction(blockContext) || isWriteActionRelatedToRorIndices(blockContext)
+    (idRorAction(blockContext) || isWriteActionRelatedToRorIndices(blockContext)) && !isRestoreAllIndicesAction(blockContext)
   }
 
   private def isWriteActionRelatedToRorIndices(blockContext: BlockContext) = {
     !blockContext.requestContext.isReadOnlyRequest && (relatedToAuditIndex(blockContext) || relatedToConfigurationIndex(blockContext))
   }
 
-  private def rorAction(blockContext: BlockContext) =
+  private def idRorAction(blockContext: BlockContext) =
     blockContext.requestContext.action.isRorInternalAction
+
+  private def isRestoreAllIndicesAction(blockContext: BlockContext) = {
+     blockContext.requestContext.action === Action.restoreSnapshotAction && blockContext.allUsedIndices.contains(IndexName.wildcard)
+  }
 
   private def relatedToAuditIndex(blockContext: BlockContext) = settings.indexAuditTemplate match {
     case Some(indexAuditTemplate) =>

@@ -61,7 +61,7 @@ trait QueryAuditLogSerializerSuite
         val result = user1MetadataManager.fetchMetadata()
 
         assertEquals(200, result.responseCode)
-        result.responseJson.obj.size should be(3)
+        result.responseJson.obj.size should be(4)
         result.responseJson("x-ror-username").str should be("user1-proxy-id")
         result.responseJson("x-ror-current-group").str should be("group1")
         result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
@@ -71,10 +71,10 @@ trait QueryAuditLogSerializerSuite
         auditEntries.size shouldBe 1
 
         val firstEntry = auditIndexManager.getEntries.jsons(0)
-        firstEntry("user") should be("user1-proxy-id")
-        firstEntry("final_state") shouldBe "ALLOWED"
-        firstEntry("block").asInstanceOf[String].contains("""name: 'Allowed only for group1'""") shouldBe true
-        firstEntry("content") shouldBe ""
+        firstEntry("user").str should be("user1-proxy-id")
+        firstEntry("final_state").str shouldBe "ALLOWED"
+        firstEntry("block").str should include("""name: 'Allowed only for group1'""")
+        firstEntry("content").str shouldBe ""
       }
       "rule 1 is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "dev"))
@@ -85,7 +85,7 @@ trait QueryAuditLogSerializerSuite
         auditEntries.size shouldBe 1
 
         val firstEntry = auditEntries(0)
-        firstEntry("user") should be ("user")
+        firstEntry("user").str should be ("user")
         firstEntry("final_state").str shouldBe "ALLOWED"
         firstEntry("block").str should include ("name: 'Rule 1'")
         firstEntry("content").str shouldBe ""

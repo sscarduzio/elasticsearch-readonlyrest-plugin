@@ -262,6 +262,7 @@ object domain {
   object Action {
     val searchAction = Action("indices:data/read/search")
     val mSearchAction = Action("indices:data/read/msearch")
+    val restoreSnapshotAction = Action("cluster:admin/snapshot/restore")
     val fieldCapsAction = Action("indices:data/read/field_caps")
     val asyncSearchAction = Action("indices:data/read/async_search/submit")
     val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
