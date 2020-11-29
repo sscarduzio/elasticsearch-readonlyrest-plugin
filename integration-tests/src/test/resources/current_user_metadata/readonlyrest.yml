@@ -12,6 +12,7 @@ readonlyrest:
       verbosity: error
       type: allow
       auth_key: admin:container
+      ror_internal_api: allow
 
     - name: "User 1 - index1"
       filter: '{"query_string":{"query":"app:(cste)"}}'

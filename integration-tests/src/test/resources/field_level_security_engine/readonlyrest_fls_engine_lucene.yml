@@ -13,6 +13,7 @@ readonlyrest:
     - name: "CONTAINER ADMIN"
       auth_key: admin:container
       verbosity: error
+      ror_internal_api: allow
 
     - name: user
       auth_key: "user:pass"

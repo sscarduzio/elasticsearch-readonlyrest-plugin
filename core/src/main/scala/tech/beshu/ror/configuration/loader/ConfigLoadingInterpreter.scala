@@ -33,7 +33,6 @@ import tech.beshu.ror.configuration.loader.LoadedRorConfig._
 import tech.beshu.ror.configuration.{ConfigLoading, EsConfig, IndexConfigManager}
 import tech.beshu.ror.providers.EnvVarsProvider
 
-import concurrent.duration._
 import language.postfixOps
 
 object ConfigLoadingInterpreter extends Logging {
@@ -68,10 +67,10 @@ object ConfigLoadingInterpreter extends Logging {
             error
           }
           .value
-      case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(index) =>
-        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ($index) ...")
-        loadFromIndex(indexConfigManager, index, inIndexLoadingDelay)
-          .bimap(convertIndexError, IndexConfig(index, _))
+      case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(configIndex) =>
+        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${configIndex.index.value}) ...")
+        loadFromIndex(indexConfigManager, configIndex, inIndexLoadingDelay)
+          .bimap(convertIndexError, IndexConfig(configIndex, _))
           .leftMap { error =>
             logIndexLoadingError(error)
             error

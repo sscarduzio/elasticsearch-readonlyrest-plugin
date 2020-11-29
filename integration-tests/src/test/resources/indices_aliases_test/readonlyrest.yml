@@ -12,6 +12,7 @@ readonlyrest:
   - name: "::INITIALIZER::"
     methods: [GET]
     auth_key: admin:container
+    ror_internal_api: allow
 
   - name: "::GETTER::"
     methods: [GET]

@@ -9,6 +9,7 @@ readonlyrest:
     - name: Container housekeeping is allowed
       type: allow
       auth_key: admin:container
+      ror_internal_api: allow
 
     - name: Valid JWT token is present
       type: allow

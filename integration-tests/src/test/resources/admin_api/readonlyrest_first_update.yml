@@ -5,6 +5,8 @@ readonlyrest:
       verbosity: "error"
       type: "allow"
       auth_key: "admin:container"
+      ror_internal_api: allow
+
     - name: "test1"
       indices: ["test1_index", "odd:test1_index"]
       auth_key: "dev1:test"

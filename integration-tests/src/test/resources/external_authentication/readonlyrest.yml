@@ -21,6 +21,7 @@ readonlyrest:
   - name: "CONTAINER ADMIN"
     type: allow
     auth_key: admin:container
+    ror_internal_api: allow
 
   - name: "::Tweets::"
     type: allow

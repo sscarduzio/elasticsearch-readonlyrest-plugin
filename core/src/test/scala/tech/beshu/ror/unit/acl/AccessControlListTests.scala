@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{Group, Header, IndexName, LoggedUser, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.domain.{Action, Group, Header, IndexName, LoggedUser, RorConfigurationIndex, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -96,11 +96,15 @@ class AccessControlListTests extends WordSpec with MockFactory with Inside {
     val rc = mock[MetadataRequestContext]
     (rc.initialBlockContext _)
       .expects()
-      .returning(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty))
+      .returning(CurrentUserMetadataRequestBlockContext(rc, UserMetadata.empty, Set.empty))
       .anyNumberOfTimes()
     (rc.headers _)
       .expects()
       .returning(Set(new Header(Header.Name("x-ror-current-group".nonempty), preferredGroup.nonempty)))
+    (rc.action _)
+      .expects()
+      .returning(Action.rorUserMetadataAction)
+      .anyNumberOfTimes()
     rc
   }
 

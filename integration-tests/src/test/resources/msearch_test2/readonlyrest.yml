@@ -10,6 +10,7 @@ readonlyrest:
     - name: "CONTAINER ADMIN"
       type: allow
       auth_key: admin:container
+      ror_internal_api: allow
 
     - name: "::KIBANA-SRV::"
       auth_key: kibana:kibana

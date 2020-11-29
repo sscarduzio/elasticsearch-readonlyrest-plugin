@@ -40,7 +40,11 @@ class RorInternalApiRule(val settings: Settings)
   }
 
   private def isRelatedToRorInternals(blockContext: BlockContext) = {
-    rorAction(blockContext) || relatedToAuditIndex(blockContext) || relatedToConfigurationIndex(blockContext)
+    rorAction(blockContext) || isWriteActionRelatedToRorIndices(blockContext)
+  }
+
+  private def isWriteActionRelatedToRorIndices(blockContext: BlockContext) = {
+    !blockContext.requestContext.isReadOnlyRequest && (relatedToAuditIndex(blockContext) || relatedToConfigurationIndex(blockContext))
   }
 
   private def rorAction(blockContext: BlockContext) =
