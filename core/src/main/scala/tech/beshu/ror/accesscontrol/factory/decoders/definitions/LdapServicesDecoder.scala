@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
@@ -105,8 +106,11 @@ object LdapServicesDecoder {
       ldapServiceDecodingResult match {
         case Left(error) => Task.now(Left(error))
         case Right(task) => task.flatMap {
-          case Left(ConnectionError(hosts)) =>
+          case Left(HostConnectionError(hosts)) =>
             val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.url.toString()).toList.mkString(",")}")
+            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+          case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
+            val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
             Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
           case Right(service) =>
             Task.now(Right(service))
@@ -133,8 +137,11 @@ object LdapServicesDecoder {
       ldapServiceDecodingResult match {
         case Left(error) => Task.now(Left(error))
         case Right(task) => task.flatMap {
-          case Left(ConnectionError(hosts)) =>
+          case Left(HostConnectionError(hosts)) =>
             val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.toString()).toList.mkString(",")}")
+            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+          case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
+            val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
             Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
           case Right(service) =>
             Task.now(Right(service))
