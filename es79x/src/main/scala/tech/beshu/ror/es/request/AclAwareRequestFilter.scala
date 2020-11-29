@@ -51,6 +51,7 @@ import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
 import org.elasticsearch.index.reindex.ReindexRequest
+import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
@@ -190,7 +191,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 }
 
 object AclAwareRequestFilter {
-  final case class EsContext(channel: RorRestChannel with ResponseFieldsFiltering,
+  final case class EsContext(channel: RestChannel with ResponseFieldsFiltering,
                              task: EsTask,
                              actionType: String,
                              actionRequest: ActionRequest,
