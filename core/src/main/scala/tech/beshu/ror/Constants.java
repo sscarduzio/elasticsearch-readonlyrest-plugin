@@ -31,6 +31,7 @@ public class Constants {
   public static final Integer AUDIT_SINK_MAX_KB = 100;
   public static final Integer AUDIT_SINK_MAX_SECONDS = 2;
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
+  public static final Integer MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES = 5 * 1000;
   public final static String CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user";
   public final static String AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event";
   public final static String FIELDS_TRANSIENT = "_fields";

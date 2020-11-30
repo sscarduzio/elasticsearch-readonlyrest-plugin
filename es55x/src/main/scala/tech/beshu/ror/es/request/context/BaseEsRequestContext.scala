@@ -21,7 +21,7 @@ import java.time.Instant
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import com.softwaremill.sttp.{HeaderNames, Method}
+import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.CompositeIndicesRequest

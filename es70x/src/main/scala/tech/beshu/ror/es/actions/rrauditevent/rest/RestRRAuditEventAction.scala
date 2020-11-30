@@ -23,11 +23,12 @@ import org.elasticsearch.common.xcontent.{XContentBuilder, XContentHelper}
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
 import org.json.JSONObject
+import squants.information.{Bytes, Information}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, RRAuditEventRequest}
 import tech.beshu.ror.es.utils.ErrorContentBuilderHelper.createErrorResponse
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 @Inject
 class RestRRAuditEventAction(settings: Settings, controller: RestController)
@@ -37,26 +38,40 @@ class RestRRAuditEventAction(settings: Settings, controller: RestController)
 
   override val getName: String = "ror-audit-event-collector-handler"
 
+
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    bodyJsonFrom(request) match {
-      case Success(json) =>
-        client.execute(
-          new RRAuditEventActionType,
-          new RRAuditEventRequest(json),
-          new RestRRAuditEventActionResponseBuilder(channel)
-        )
-      case Failure(_) =>
-        channel.sendResponse(new RestRRAuditEventBadRequest(channel))
+    val result = for {
+      _ <- validateContentSize(request)
+      json <- validateBodyJson(request)
+    } yield json
+    result match {
+      case Right(json) =>
+        client
+          .execute(
+            new RRAuditEventActionType,
+            new RRAuditEventRequest(json),
+            new RestRRAuditEventActionResponseBuilder(channel)
+          )
+      case Left(errorResponseCreator) =>
+        channel.sendResponse(errorResponseCreator(channel))
     }
   }
 
-  private def bodyJsonFrom(request: RestRequest) = Try {
+  private def validateContentSize(request: RestRequest) = {
+    Either.cond(
+      request.content().length() <= Constants.MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES,
+      (),
+      (channel: RestChannel) => new RestRRAuditEventPayloadTooLarge(channel, Bytes(Constants.MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES.toInt))
+    )
+  }
+
+  private def validateBodyJson(request: RestRequest) = Try {
     if (request.hasContent) {
       new JSONObject(XContentHelper.convertToMap(request.requiredContent(), false, request.getXContentType).v2())
     } else {
       new JSONObject()
     }
-  }
+  }.toEither.left.map(_ => (channel: RestChannel) => new RestRRAuditEventBadRequest(channel))
 
   private class RestRRAuditEventBadRequest(channel: RestChannel) extends BytesRestResponse(
     RestStatus.BAD_REQUEST,
@@ -64,6 +79,16 @@ class RestRRAuditEventAction(settings: Settings, controller: RestController)
       channel,
       RestStatus.BAD_REQUEST,
       (builder: XContentBuilder) => builder.field("reason", "Content malformed")
+    )
+  )
+
+  private class RestRRAuditEventPayloadTooLarge(channel: RestChannel,
+                                                maxContentSize: Information) extends BytesRestResponse(
+    RestStatus.REQUEST_ENTITY_TOO_LARGE,
+    createErrorResponse(
+      channel,
+      RestStatus.REQUEST_ENTITY_TOO_LARGE,
+      (builder: XContentBuilder) => builder.field("reason", s"Max request content allowed = ${maxContentSize.toKilobits}KB")
     )
   )
 

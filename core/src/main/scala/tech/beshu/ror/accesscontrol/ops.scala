@@ -213,10 +213,10 @@ object show {
         val postRulesChecksHistoryItemsStr = h.items
             .collect { case hi: FailedBlockPostProcessingCheckHistoryItem[B] => hi }
             .map(_.show)
-            .mkStringOrEmptyString(", DISALLOWED BY GUARDS:[", ", ", "]")
+            .mkStringOrEmptyString(" DISALLOWED BY GUARDS:[", ", ", "]")
         val resolvedPart = h.blockContext.show match {
           case "" => ""
-          case nonEmpty => s"RESOLVED:[$nonEmpty]"
+          case nonEmpty => s" RESOLVED:[$nonEmpty]"
         }
         s"""[${h.block.show}->$rulesHistoryItemsStr$postRulesChecksHistoryItemsStr$resolvedPart]"""
       }

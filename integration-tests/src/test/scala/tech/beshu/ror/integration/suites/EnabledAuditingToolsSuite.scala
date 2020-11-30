@@ -225,19 +225,23 @@ trait EnabledAuditingToolsSuite
         val entriesResult = adminAuditIndexManager.getEntries
         entriesResult.responseCode should be (404)
       }
-    }
-    "be blocked by guard check" when {
-      "`restricted` user is trying to call it" in {
-        val rorApiManager = new RorApiManager(basicAuthClient("restricted", "dev"))
+      "request JSON is malformed" in {
+        val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"))
 
-        val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
+        val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
 
-        response.responseCode shouldBe 403
+        response.responseCode shouldBe 400
+        val entriesResult = adminAuditIndexManager.getEntries
+        entriesResult.responseCode should be (404)
+      }
+      "request JSON is too large (>5KB)" in {
+        val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"))
 
-        val auditEntries = adminAuditIndexManager.getEntries.jsons
-        auditEntries.size should be (1)
-        auditEntries(0)("acl_history").str should include ("[Rule 4-> RULES:[auth_key->true], DISALLOWED BY GUARDS:[ROR internal API guard]")
-        auditEntries(0).obj.get("event") should be(None)
+        val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${Stream.continually("!").take(5000).mkString}" }"""))
+
+        response.responseCode shouldBe 413
+        val entriesResult = adminAuditIndexManager.getEntries
+        entriesResult.responseCode should be (404)
       }
     }
   }

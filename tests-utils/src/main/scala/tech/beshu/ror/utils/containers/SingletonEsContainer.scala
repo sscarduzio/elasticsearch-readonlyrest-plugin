@@ -42,7 +42,7 @@ object SingletonEsContainer
   singleton.start()
 
   def cleanUpContainer(): Unit = {
-    indexManager.removeAllIndices
+    indexManager.removeAllIndices()
     templateManager.deleteAllTemplates()
     snapshotManager.deleteAllRepositories()
   }

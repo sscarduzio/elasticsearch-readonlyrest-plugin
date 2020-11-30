@@ -255,8 +255,7 @@ object domain {
     ).contains(this)
     def isRorInternalAction: Boolean = List(
       rorConfigAction,
-      rorOldConfigAction,
-      rorAuditEventAction
+      rorOldConfigAction
     ).contains(this)
   }
   object Action {

@@ -156,6 +156,17 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
             }
           }
         }
+        "it's a ROR audit event request" in {
+          val rule = new RorInternalApiRule(Settings(
+            access = Forbid,
+            configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
+            indexAuditTemplate = None
+          ))
+          val requestContext = MockRequestContext.nonIndices.copy(action = Action.rorAuditEventAction)
+          val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
+
+          inside(result) { case Fulfilled(_) => }
+        }
       }
     }
     "access is set to 'forbid'" should {
@@ -179,17 +190,6 @@ class RorInternalApiRuleTests extends WordSpec with Inside {
               indexAuditTemplate = None
             ))
             val requestContext = MockRequestContext.nonIndices.copy(action = Action.rorOldConfigAction)
-            val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
-
-            result should be (Rejected(None))
-          }
-          "it's a ROR audit event request" in {
-            val rule = new RorInternalApiRule(Settings(
-              access = Forbid,
-              configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
-              indexAuditTemplate = None
-            ))
-            val requestContext = MockRequestContext.nonIndices.copy(action = Action.rorAuditEventAction)
             val result = rule.check(requestContext.initialBlockContext).runSyncUnsafe(1 second)
 
             result should be (Rejected(None))
