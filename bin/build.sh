@@ -27,8 +27,13 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
     ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es79x" ]]; then
-    echo ">>> es78x => Running testcontainers.."
+if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es710x" ]]; then
+    echo ">>> es710x => Running testcontainers.."
+    ./gradlew integration-tests:test '-PesModule=es710x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
+fi
+
+f [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es79x" ]]; then
+    echo ">>> es710x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es79x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
