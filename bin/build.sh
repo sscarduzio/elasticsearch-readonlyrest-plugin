@@ -33,7 +33,7 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es710x" ]]; then
 fi
 
 f [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es79x" ]]; then
-    echo ">>> es710x => Running testcontainers.."
+    echo ">>> es79x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es79x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
