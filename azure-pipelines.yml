@@ -10,10 +10,23 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
+- task: DownloadSecureFile@1
+  name: secretFile
+  displayName: 'Download test secret file'
+  inputs:
+    secureFile: 'test.txt'
+
+- script: |
+    echo Installing $(secretFile.secureFilePath) to directory...
+    sudo chown root:root $(secretFile.secureFilePath)
+    sudo chmod a+r $(secretFile.secureFilePath)
+    sudo ln -s -t /tmp/ $(secretFile.secureFilePath)
+    cat /tmp/test.txt
+
 - script: echo Hello, world!
   displayName: 'Run a one-line script'
 
 - script: |
     echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
+    cat /tmp/test.txt
   displayName: 'Run a multi-line script'
