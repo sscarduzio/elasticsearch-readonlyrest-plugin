@@ -15,7 +15,7 @@
 # Ultimately, I'm just going to commit changes to the build.gradle and this thing tags and uploads where necessary.
 
 # Translate Azure to Travis env vars
-if [ -z "$TRAVIS_BRANCH" ]; then
+if [ -z "$TRAVIS_BRANCH" ]; then
   export TRAVIS_BUILD_NUMBER="$BUILD_BUILDNUMBER"
   export TRAVIS_BRANCH=$SYSTEM_PULLREQUEST_SOURCEBRANCH
   if [[ $BUILD_REASON == "PullRequest" ]]; then 
