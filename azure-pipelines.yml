@@ -4,7 +4,7 @@
 # https://aka.ms/yaml
 
 trigger:
-  batch: true
+  batch: false
   branches:
     include:
     - master
@@ -51,6 +51,8 @@ stages:
         echo Installing $(deployKey.secureFilePath) to directory...
         sudo chown root:root $(deployKey.secureFilePath)
         sudo chmod a+r $(deployKey.secureFilePath)
+        mkdir -p ~/.ssh
+        chmod 0700 ~/.ssh
         sudo ln -s -t ~/.ssh/ $(deployKey.secureFilePath)
         echo " ~/.ssh/gh_deploy_key.priv MD5SUSM `md5sum ~/.ssh/gh_deploy_key.priv`"
         chmod 600 ~/.ssh/gh_deploy_key.priv && printf "%s\n" \
