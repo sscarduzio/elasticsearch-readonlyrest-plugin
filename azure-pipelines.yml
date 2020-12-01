@@ -31,22 +31,28 @@ stages:
       name: deployKey
       displayName: 'Download secret.pgp secret file'
       inputs:
-        secureFile: 'gh_deploy_key.pub'
+        secureFile: 'gh_deploy_key.priv'
 
     - script: |
         echo Installing $(deployKey.secureFilePath) to directory...
         sudo chown root:root $(deployKey.secureFilePath)
         sudo chmod a+r $(deployKey.secureFilePath)
         sudo ln -s -t ~/.ssh/ $(deployKey.secureFilePath)
-        echo "secret.pgp MD5SUSM `md5sum ~/.ssh/gh_deploy_key.pub`"
-        echo "PWD IS $PWD"
-        echo "LS Is `ls -ltra`"
+        echo " ~/.ssh/gh_deploy_key.priv MD5SUSM `md5sum ~/.ssh/gh_deploy_key.priv`"
+        chmod 600 ~/.ssh/gh_deploy_key.priv && printf "%s\n" \
+         "Host github.com" \
+         "  IdentityFile ~/.ssh/gh_deploy_key.priv" \
+         "  LogLevel ERROR" >> ~/.ssh/config
+
         export 
 - stage: "test_matrix"
   jobs:
   - job: Test
     steps:
-    - script: echo "executing ROR_TASK = $ROR_TASK"   
+    - script: |
+        echo "executing ROR_TASK = $ROR_TASK"
+        ci/ci-deplo
+
     strategy:
       maxParallel: 10
       matrix: 
