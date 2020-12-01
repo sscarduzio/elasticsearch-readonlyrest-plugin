@@ -70,7 +70,7 @@ stages:
         bin/build.sh
 
     strategy:
-      maxParallel: 13
+      maxParallel: 99
       matrix: 
         LICENSE:
           ROR_TASK: license
