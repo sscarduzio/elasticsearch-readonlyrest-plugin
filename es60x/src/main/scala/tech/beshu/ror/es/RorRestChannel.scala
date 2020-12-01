@@ -22,7 +22,7 @@ import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import org.elasticsearch.tasks.Task
 
 class RorRestChannel(underlying: RestChannel)
-  extends AbstractRestChannel(underlying.request(), false)
+  extends AbstractRestChannel(underlying.request(), true)
     with ResponseFieldsFiltering
     with Logging {
 
