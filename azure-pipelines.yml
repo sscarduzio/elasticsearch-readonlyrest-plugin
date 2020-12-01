@@ -70,7 +70,7 @@ stages:
     steps:
     - script: |
         echo "executing ROR_TASK = $ROR_TASK"
-        ci/ci-deploy.sh
+        bin/build.sh
 
     strategy:
       maxParallel: 10
@@ -98,4 +98,9 @@ stages:
         INTEGRATION_es70x:
           ROR_TASK: integration_es70x
 
-      
+- stage: "tag_and_upload"
+  jobs:
+  - job: Test
+    steps:
+    - script: |
+        ci/ci-deploy.sh
