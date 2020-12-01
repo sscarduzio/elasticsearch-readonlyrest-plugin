@@ -61,7 +61,7 @@ stages:
          "Host github.com" \
          "  IdentityFile $(ssh_file)" \
          "  LogLevel ERROR" >> ~/.ssh/config
-        ls -ltra .ssh
+        ls -ltra ~/.ssh
         # export 
 
 - stage: "test_matrix"
