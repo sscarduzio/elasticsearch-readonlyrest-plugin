@@ -16,7 +16,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "license" ]]; then
 fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "cve_check" ]]; then
-    echo ">>> Running unit tests.."
+    echo ">>> Running CVE checks.."
     ./gradlew dependencyCheckAnalyze
 fi
 
