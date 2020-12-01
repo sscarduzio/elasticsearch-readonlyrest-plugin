@@ -51,7 +51,7 @@ stages:
     steps:
     - script: |
         echo "executing ROR_TASK = $ROR_TASK"
-        ci/ci-deplo
+        ci/ci-deploy.sh
 
     strategy:
       maxParallel: 10
