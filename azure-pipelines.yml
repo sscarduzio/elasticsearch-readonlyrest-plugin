@@ -57,12 +57,13 @@ stages:
         chmod 0700 ~/.ssh
         sudo ln -s -t ~/.ssh/ $(deployKey.secureFilePath)
         echo " $(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
-        chmod 600 $(ssh_file) && printf "%s\n" \
+        sudo chmod 600 $(ssh_file) && sudo printf "%s\n" \
          "Host github.com" \
          "  IdentityFile $(ssh_file)" \
          "  LogLevel ERROR" >> ~/.ssh/config
+        ls -ltra .ssh
+        # export 
 
-        export 
 - stage: "test_matrix"
   jobs:
   - job: Test
