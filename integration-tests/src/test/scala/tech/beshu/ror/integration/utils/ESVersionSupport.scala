@@ -30,7 +30,7 @@ trait ESVersionSupport extends WordSpecLike {
   val allEs6xBelowEs63x = "^es6[0-2]x$".r
   val allEs6xExceptEs66x = "^es6(?!(?:6x)$)\\dx$".r
   val allEs7x = "^es7\\d+x$".r
-  val allEs7xExceptEs70x = "^es7(?!(?:0x)$)\\dx$".r
+  val allEs7xExceptEs70x = "^es7(?!(?:0x)$)\\dx\\d?$".r
   val allEs7xBelowEs74x = "^es7[0-3]x$".r
   val allEs7xBelowEs77x = "^es7[0-6]x$".r
   val allEs7xBelowEs78x = "^es7[0-7]x$".r
