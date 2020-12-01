@@ -106,6 +106,8 @@ object CreateEsHttpRequest {
     override def releaseAndCopy(): EsHttpRequest = from(request, requestHeaders)
 
     private def slashOrEmpty(urlPath: UrlPath) = urlPath == UrlPath.slash || urlPath == AbsolutePath(Vector(""))
+
+    override def getInboundException: Exception = new Exception("inbound exception")
   }
 
   private class EsProxyHttpResponse(status: RestStatus,

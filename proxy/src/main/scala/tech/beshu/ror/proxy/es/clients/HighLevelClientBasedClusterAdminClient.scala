@@ -33,6 +33,9 @@ import org.elasticsearch.action.admin.cluster.state._
 import org.elasticsearch.action.admin.cluster.stats._
 import org.elasticsearch.action.admin.cluster.storedscripts._
 import org.elasticsearch.action.admin.cluster.tasks._
+import org.elasticsearch.action.admin.indices.dangling.delete.DeleteDanglingIndexRequest
+import org.elasticsearch.action.admin.indices.dangling.import_index.ImportDanglingIndexRequest
+import org.elasticsearch.action.admin.indices.dangling.list.{ListDanglingIndicesRequest, ListDanglingIndicesResponse}
 import org.elasticsearch.action.ingest._
 import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.ClusterAdminClient
@@ -325,6 +328,17 @@ class HighLevelClientBasedClusterAdminClient(esClient: RestHighLevelClientAdapte
 
   override def execute[Request <: ActionRequest, Response <: ActionResponse](action: ActionType[Response], request: Request, listener: ActionListener[Response]): Unit = throw NotDefinedForRorProxy
 
-  override def threadPool(): ThreadPool = throw NotDefinedForRorProxy
+  override def listDanglingIndices(request: ListDanglingIndicesRequest, listener: ActionListener[ListDanglingIndicesResponse]): Unit = throw NotDefinedForRorProxy
 
+  override def listDanglingIndices(request: ListDanglingIndicesRequest): ActionFuture[ListDanglingIndicesResponse] = throw NotDefinedForRorProxy
+
+  override def importDanglingIndex(request: ImportDanglingIndexRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+
+  override def importDanglingIndex(request: ImportDanglingIndexRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
+
+  override def deleteDanglingIndex(request: DeleteDanglingIndexRequest, listener: ActionListener[AcknowledgedResponse]): Unit = throw NotDefinedForRorProxy
+
+  override def deleteDanglingIndex(request: DeleteDanglingIndexRequest): ActionFuture[AcknowledgedResponse] = throw NotDefinedForRorProxy
+
+  override def threadPool(): ThreadPool = throw NotDefinedForRorProxy
 }
