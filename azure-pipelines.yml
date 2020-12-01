@@ -12,16 +12,18 @@ pool:
 steps:
 - task: DownloadSecureFile@1
   name: secretFile
-  displayName: 'Download test secret file'
+  displayName: 'Download secret.pgp secret file'
   inputs:
-    secureFile: 'test.txt'
+    secureFile: 'secret.pgp'
 
 - script: |
     echo Installing $(secretFile.secureFilePath) to directory...
     sudo chown root:root $(secretFile.secureFilePath)
     sudo chmod a+r $(secretFile.secureFilePath)
-    sudo ln -s -t /tmp/ $(secretFile.secureFilePath)
-    cat /tmp/test.txt
+    sudo ln -s -t .travis/ $(secretFile.secureFilePath)
+    echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+    echo "PWD IS $PWD"
+    export 
 
 - script: echo Hello, world!
   displayName: 'Run a one-line script'
