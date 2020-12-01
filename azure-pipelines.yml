@@ -19,7 +19,7 @@ trigger:
     - '*.md'
     - '*/*/*.md'
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'ubuntu-20.04'
 
 stages:
 - stage: Prepration
