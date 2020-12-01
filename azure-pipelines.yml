@@ -9,39 +9,68 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
-steps:
-- task: DownloadSecureFile@1
-  name: secret
-  displayName: 'Download secret.pgp secret file'
-  inputs:
-    secureFile: 'secret.pgp'
+stages:
+- stage: Prepration
+  jobs:
+  - job: "Link_secret_files"
+    steps:
+    - task: DownloadSecureFile@1
+      name: secret
+      displayName: 'Download secret.pgp secret file'
+      inputs:
+        secureFile: 'secret.pgp'
 
-- script: |
-    echo Installing $(secret.secureFilePath) to directory...
-    sudo chown root:root $(secret.secureFilePath)
-    sudo chmod a+r $(secret.secureFilePath)
-    sudo ln -s -t .travis/ $(secret.secureFilePath)
-    echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+    - script: |
+        echo Installing $(secret.secureFilePath) to directory...
+        sudo chown root:root $(secret.secureFilePath)
+        sudo chmod a+r $(secret.secureFilePath)
+        sudo ln -s -t .travis/ $(secret.secureFilePath)
+        echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
 
-- task: DownloadSecureFile@1
-  name: deployKey
-  displayName: 'Download secret.pgp secret file'
-  inputs:
-    secureFile: 'gh_deploy_key.pub'
+    - task: DownloadSecureFile@1
+      name: deployKey
+      displayName: 'Download secret.pgp secret file'
+      inputs:
+        secureFile: 'gh_deploy_key.pub'
 
-- script: |
-    echo Installing $(deployKey.secureFilePath) to directory...
-    sudo chown root:root $(deployKey.secureFilePath)
-    sudo chmod a+r $(deployKey.secureFilePath)
-    sudo ln -s -t ~/.ssh/ $(deployKey.secureFilePath)
-    echo "secret.pgp MD5SUSM `md5sum ~/.ssh/gh_deploy_key.pub`"
-    echo "PWD IS $PWD"
-    echo "LS Is `ls -ltra`"
-    export 
+    - script: |
+        echo Installing $(deployKey.secureFilePath) to directory...
+        sudo chown root:root $(deployKey.secureFilePath)
+        sudo chmod a+r $(deployKey.secureFilePath)
+        sudo ln -s -t ~/.ssh/ $(deployKey.secureFilePath)
+        echo "secret.pgp MD5SUSM `md5sum ~/.ssh/gh_deploy_key.pub`"
+        echo "PWD IS $PWD"
+        echo "LS Is `ls -ltra`"
+        export 
+- stage: "test_matrix"
+  jobs:
+  - job: Test
+    steps:
+    - script: echo "executing ROR_TASK = $ROR_TASK"   
+    strategy:
+      maxParallel: 10
+      matrix: 
+        LICENSE:
+          ROR_TASK: license
+        CVE:
+          ROR_TASK: cve_check
+        UNIT:
+          ROR_TASK: unit
+        INTEGRATION_PROXY:
+          ROR_TASK: integration_proxy
+        INTEGRATION_es79x:
+          ROR_TASK: integration_es79x
+        INTEGRATION_es78x:
+          ROR_TASK: integration_es78x
+        INTEGRATION_es77x:
+          ROR_TASK: integration_es77x
+        INTEGRATION_es74x:
+          ROR_TASK: integration_es74x
+        INTEGRATION_es73x:
+          ROR_TASK: integration_es73x
+        INTEGRATION_es72x:
+          ROR_TASK: integration_es72x
+        INTEGRATION_es70x:
+          ROR_TASK: integration_es70x
 
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-  displayName: 'Run a multi-line script'
+      
