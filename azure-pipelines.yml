@@ -2,6 +2,8 @@
 # Start with a minimal pipeline that you can customize to build and deploy your code.
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
+variables:
+  ssh_file: '~/.ssh/gh_deploy_key.priv'
 
 trigger:
   batch: false
@@ -54,10 +56,10 @@ stages:
         mkdir -p ~/.ssh
         chmod 0700 ~/.ssh
         sudo ln -s -t ~/.ssh/ $(deployKey.secureFilePath)
-        echo " ~/.ssh/gh_deploy_key.priv MD5SUSM `md5sum ~/.ssh/gh_deploy_key.priv`"
-        chmod 600 ~/.ssh/gh_deploy_key.priv && printf "%s\n" \
+        echo " $(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
+        chmod 600 $(ssh_file) && printf "%s\n" \
          "Host github.com" \
-         "  IdentityFile ~/.ssh/gh_deploy_key.priv" \
+         "  IdentityFile $(ssh_file)" \
          "  LogLevel ERROR" >> ~/.ssh/config
 
         export 
