@@ -23,12 +23,12 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.{FailedBlockPostProcessingCheckHistoryItem, RuleHistoryItem}
+import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.{BlockedByGuardHistoryItem, RuleHistoryItem}
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingCheck.Name
+import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingGuard.Name
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
@@ -131,7 +131,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Fulfilled(requestContext.initialBlockContext)))
           historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Fulfilled(requestContext.initialBlockContext)))
           historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Fulfilled(requestContext.initialBlockContext)))
-          historyItems(3) should be(FailedBlockPostProcessingCheckHistoryItem(Name("ROR internal API guard")))
+          historyItems(3) should be(BlockedByGuardHistoryItem(Name("ROR internal API guard")))
 
           blockContext.userMetadata should be(UserMetadata.empty)
           blockContext.filteredIndices should be(Set(IndexName(".readonlyrest")))

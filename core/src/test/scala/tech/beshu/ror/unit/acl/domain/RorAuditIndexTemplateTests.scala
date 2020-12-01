@@ -19,22 +19,54 @@ package tech.beshu.ror.unit.acl.domain
 import java.time.Instant
 
 import eu.timepit.refined.auto._
-import org.scalatest.WordSpec
 import org.scalatest.Matchers._
+import org.scalatest.WordSpec
+import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorAuditIndexTemplate}
 
 class RorAuditIndexTemplateTests extends WordSpec {
 
-  // todo: do it better
-  "A test" in {
-    val template = RorAuditIndexTemplate.from("'.ror_'yyyy_MM").right.get
-    val index = template.indexName(Instant.now())
-    template.conforms(IndexName(".ror")) should be (false)
-    template.conforms(IndexName("other")) should be (false)
-    template.conforms(IndexName("ror*")) should be (false)
-    template.conforms(IndexName(".ror_2020_01")) should be (true)
-    template.conforms(IndexName("*")) should be (true)
-    template.conforms(index)
-    template.conforms(IndexName(".ror*")) should be (true)
+  private val template = RorAuditIndexTemplate.from("'.ror_'yyyy_MM").right.get
+
+  "A RorAuditIndexTemplate" should {
+    "provide a way to create an index from it" in {
+      val index = template.indexName(Instant.parse("2021-01-03T23:35:22.00Z"))
+      index should be(IndexName(".ror_2021_01"))
+    }
+    "not be able to be created" when {
+      "the string date pattern is malformed" in {
+        RorAuditIndexTemplate.from("'.ror'_dddd_MMM") should be(Left(CreationError.ParsingError("Too many pattern letters: d")))
+      }
+    }
+    "conform to index" which {
+      "was created from the template" in {
+        val index = template.indexName(Instant.now())
+        template.conforms(index) should be(true)
+      }
+      "name has proper date format" in {
+        template.conforms(IndexName(".ror_2020_01")) should be(true)
+      }
+      "name started the same as template" in {
+        template.conforms(IndexName(".ror*")) should be(true)
+      }
+      "is wildcard" in {
+        template.conforms(IndexName("*")) should be(true)
+      }
+      "name is exactly the same as template (no date pattern used)" in {
+        val noDatePatternTemplate = RorAuditIndexTemplate.from("'.ror'").right.get
+        noDatePatternTemplate.conforms(IndexName(".ror")) should be(true)
+      }
+    }
+    "not conform to index" which {
+      "name contains wildcard, but the pattern doesn't apply" in {
+        template.conforms(IndexName("ror*")) should be(false)
+      }
+      "name is the same as fixed part of template" in {
+        template.conforms(IndexName(".ror_")) should be(false)
+      }
+      "name totally differs" in {
+        template.conforms(IndexName("other")) should be(false)
+      }
+    }
   }
 }

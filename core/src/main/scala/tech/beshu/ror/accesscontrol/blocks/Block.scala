@@ -23,10 +23,10 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.{FailedBlockPostProcessingCheckHistoryItem, RuleHistoryItem}
+import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.{BlockedByGuardHistoryItem, RuleHistoryItem}
 import tech.beshu.ror.accesscontrol.blocks.Block._
-import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingCheck.PostProcessingResult
-import tech.beshu.ror.accesscontrol.blocks.postprocessing.{BlockPostProcessingCheck, ImplicitRorInternalApiCallCheck}
+import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingGuard.PostProcessingResult
+import tech.beshu.ror.accesscontrol.blocks.postprocessing.{BlockPostProcessingGuard, ImplicitRorInternalApiCallGuard}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -52,8 +52,8 @@ class Block(val name: Name,
 
   import Lifter._
 
-  private val postProcessingChecks: List[BlockPostProcessingCheck] = List(
-    new ImplicitRorInternalApiCallCheck(this, globalSettings)
+  private val postProcessingGuards: List[BlockPostProcessingGuard] = List(
+    new ImplicitRorInternalApiCallGuard(this, globalSettings)
   )
 
   def execute[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): BlockResultWithHistory[B] = {
@@ -66,50 +66,15 @@ class Block(val name: Name,
             previousRulesResult <- currentResult
             resultAfterRulesCheck <- previousRulesResult match {
               case Matched(_, blockContext) =>
-                val ruleResult = rule
-                  .check[B](blockContext)
-                  .recover { case e =>
-                    logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
-                    RuleResult.Rejected[B]()
-                  }
-                lift[B](ruleResult)
-                  .flatMap {
-                    case result: RuleResult.Fulfilled[B] =>
-                      matched[B](result.blockContext)
-                        .tell(Vector(RuleHistoryItem(rule.name, result)))
-                    case result: RuleResult.Rejected[B] =>
-                      mismatched[B](blockContext)
-                        .tell(Vector(RuleHistoryItem(rule.name, result)))
-                  }
+                checkRule[B](rule, blockContext)
               case Mismatched(lastBlockContext) =>
                 mismatched[B](lastBlockContext)
             }
           } yield resultAfterRulesCheck
       }
       .flatMap {
-        // todo: cleanup
         case Matched(_, blockContext) =>
-          val postProcessingResult = postProcessingChecks
-            .foldLeft(Task.now(Option.empty[BlockPostProcessingCheck])) {
-              case (result, postCheck) => result.flatMap {
-                case None =>
-                  postCheck
-                    .check(blockContext)
-                    .map {
-                      case PostProcessingResult.Continue => None
-                      case PostProcessingResult.Reject => Some(postCheck)
-                    }
-                case Some(_) =>
-                  result
-              }
-            }
-          lift[B](postProcessingResult)
-            .flatMap {
-              case None => matched[B](blockContext)
-              case Some(postCheck) =>
-                mismatched[B](blockContext)
-                  .tell(Vector(FailedBlockPostProcessingCheckHistoryItem(postCheck.name)))
-            }
+          postBlockProcessingChecks[B](blockContext)
         case Mismatched(blockContext) =>
           mismatched[B](blockContext)
       }
@@ -125,6 +90,49 @@ class Block(val name: Name,
         case Success((_: Mismatched[B], history)) =>
           implicit val requestShow: Show[RequestContext.Aux[B]] = RequestContext.show[B](None, None, Vector(history))
           logger.debug(s"$ANSI_YELLOW[${name.show}] the request matches no rules in this block: ${requestContext.show} $ANSI_RESET")
+      }
+  }
+
+  private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule, blockContext: B) = {
+    val ruleResult = rule
+      .check[B](blockContext)
+      .recover { case e =>
+        logger.error(s"${name.show}: ${rule.name.show} rule matching got an error ${e.getMessage}", e)
+        RuleResult.Rejected[B]()
+      }
+    lift[B](ruleResult)
+      .flatMap {
+        case result: RuleResult.Fulfilled[B] =>
+          matched[B](result.blockContext)
+            .tell(Vector(RuleHistoryItem(rule.name, result)))
+        case result: RuleResult.Rejected[B] =>
+          mismatched[B](blockContext)
+            .tell(Vector(RuleHistoryItem(rule.name, result)))
+      }
+  }
+
+  private def postBlockProcessingChecks[B <: BlockContext : BlockContextUpdater](blockContext: B) = {
+    val postProcessingGuardChecksResult = postProcessingGuards
+      .foldLeft(Task.now(Option.empty[BlockPostProcessingGuard])) {
+        case (result, guard) => result.flatMap {
+          case None =>
+            guard
+              .check(blockContext)
+              .map {
+                case PostProcessingResult.Continue => None
+                case PostProcessingResult.Reject => Some(guard)
+              }
+          case Some(_) =>
+            result
+        }
+      }
+    lift[B](postProcessingGuardChecksResult)
+      .flatMap {
+        case None =>
+          matched[B](blockContext)
+        case Some(postCheck) =>
+          mismatched[B](blockContext)
+            .tell(Vector(BlockedByGuardHistoryItem(postCheck.name)))
       }
   }
 
@@ -180,7 +188,7 @@ object Block {
                                                         result: RuleResult[B])
       extends HistoryItem[B]
 
-    final case class FailedBlockPostProcessingCheckHistoryItem[B <: BlockContext](checkName: BlockPostProcessingCheck.Name)
+    final case class BlockedByGuardHistoryItem[B <: BlockContext](guardName: BlockPostProcessingGuard.Name)
       extends HistoryItem[B]
   }
 

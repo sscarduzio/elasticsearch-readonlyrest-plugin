@@ -337,7 +337,7 @@ object domain {
     }
   }
   object RorAuditIndexTemplate {
-    val default = from(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).right.get
+    val default: RorAuditIndexTemplate = from(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).right.get
 
     def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = from(pattern)
 

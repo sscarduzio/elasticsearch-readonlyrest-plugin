@@ -22,7 +22,6 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
 import org.elasticsearch.rest.action.RestToXContentListener
-import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi._
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
 
@@ -34,7 +33,6 @@ class RestRRAdminAction(settings: Settings, controller: RestController)
   register("GET", AdminRestApi.provideRorIndexConfigPath.endpointString)
   register("POST", AdminRestApi.updateIndexConfigurationPath.endpointString)
   register("GET", AdminRestApi.provideRorFileConfigPath.endpointString)
-  register("GET", Constants.CURRENT_USER_METADATA_PATH)
   
   override val getName: String = "ror-admin-handler"
 

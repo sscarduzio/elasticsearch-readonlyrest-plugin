@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.plugin
 import java.util
 
 import cats.data.NonEmptyList
-import org.scalatest.Matchers.{be, contain, _}
+import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, Entry, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{IndexConfigInitializer, PluginTestSupport}
@@ -30,7 +30,6 @@ import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 import scala.collection.JavaConverters._
 
-// todo: clean up
 final class LoadClusterConfigsWithNoRorNodeTest
   extends WordSpec
     with BeforeAndAfterEach
@@ -39,32 +38,43 @@ final class LoadClusterConfigsWithNoRorNodeTest
     with BaseEsClusterIntegrationTest
     with MultipleClientsSupport {
   this: EsContainerCreator =>
+
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
+
+  override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node)
+
   private val readonlyrestIndexName: String = ".readonlyrest"
+
   private lazy val ror1_1Node = container.nodes.head
   private lazy val ror1_2Node = container.nodes.tail.head
-  override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node)
 
   override def clusterContainer: EsClusterContainer = createLocalClusterContainers(rorNode1, rorNode2)
 
-  private lazy val rorNode1: ClusterNodeData = ClusterNodeData("ror1", EsWithRorPluginContainerCreator, EsClusterSettings(
-    name = "ROR1",
-    nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
-    numberOfInstances = 2,
-    xPackSupport = isUsingXpackSupport
-  )(rorConfigFileName)
+  private lazy val rorNode1: ClusterNodeData = ClusterNodeData(
+    name = "ror1",
+    esContainerCreator = EsWithRorPluginContainerCreator,
+    settings = EsClusterSettings(
+      name = "ROR1",
+      nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
+      numberOfInstances = 2,
+      xPackSupport = isUsingXpackSupport
+    )
   )
-  private lazy val rorNode2: ClusterNodeData = ClusterNodeData("ror2", EsWithoutRorPluginContainerCreator, EsClusterSettings(
-    name = "ROR1",
-    nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
-    xPackSupport = isUsingXpackSupport
-  )(rorConfigFileName)
+  private lazy val rorNode2: ClusterNodeData = ClusterNodeData(
+    name = "ror2",
+    esContainerCreator = EsWithoutRorPluginContainerCreator,
+    settings = EsClusterSettings(
+      name = "ROR1",
+      nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
+      xPackSupport = isUsingXpackSupport
+    )
   )
 
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)
 
   "return index config, and a failure" in {
     val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load")
+
     result.getResponseCode should be(200)
     val config = result.getResponseJsonMap.get("config").asInstanceOf[util.Map[_, _]]
     config should contain(Entry("indexName", readonlyrestIndexName))
@@ -74,6 +84,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
   }
   "return timeout" in {
     val result = ror1WithIndexConfigAdminActionManager.actionGet("_readonlyrest/admin/config/load", Map("timeout" -> "1nanos").asJava)
+
     result.getResponseCode should be(200)
     result.getResponseJsonMap.get("config") should be(null)
     result.getResponseJsonMap.get("warnings").asInstanceOf[util.Collection[_]] shouldBe empty
