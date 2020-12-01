@@ -4,8 +4,22 @@
 # https://aka.ms/yaml
 
 trigger:
-- main
-
+  batch: true
+  branches:
+    include:
+    - master
+    - develop
+    - '*/pull/*'
+  tags:
+    exclude:
+    - '*'
+  paths:
+    include:
+    - '*' 
+    exclude:
+    - 'docs/*'
+    - '*.md'
+    - '*/*/*.md'
 pool:
   vmImage: 'ubuntu-latest'
 
