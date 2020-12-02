@@ -38,6 +38,8 @@ stages:
         sudo chmod a+r $(secret.secureFilePath)
         sudo ln -s -t .travis/ $(secret.secureFilePath)
         echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+        echo "JAVA VERSION: `java --version`"
+        export |egrep -i 'java|jdk'
 
     - task: DownloadSecureFile@1
       name: deployKey
@@ -66,6 +68,8 @@ stages:
     condition: succeeded()
     steps:
     - script: |
+        echo "JDK VERSION $jdk_version"
+        java --version
         echo "executing ROR_TASK = $ROR_TASK"
         bin/build.sh
 
