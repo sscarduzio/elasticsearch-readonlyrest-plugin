@@ -146,11 +146,6 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
 fi
 
-if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
-
-    echo ">>> ($0) additional builds of ES module for specified ES version"
-
-fi
 
 if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
 
