@@ -26,11 +26,6 @@ stages:
   jobs:
   - job: "Link_secret_files"
     steps:
-    - task: JavaToolInstaller@0
-      inputs:
-        versionSpec: '8'
-        jdkArchitectureOption: 'x86'
-        jdkSourceOption: 'PreInstalled'
     - task: DownloadSecureFile@1
       name: secret
       displayName: 'Download secret.pgp secret file'
@@ -74,7 +69,7 @@ stages:
     condition: succeeded()
     steps:
     - script: |
-        echo "JDK VERSION $jdk_version"
+        export JAVA_HOME=$JAVA_HOME_8_X64
         java --version
         echo "executing ROR_TASK = $ROR_TASK"
         bin/build.sh
