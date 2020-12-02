@@ -62,11 +62,16 @@ trait MiscSuite
     "be exposed in ror response" excludeES(allEs5x, allEs6x, rorProxy) in {
       // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
       // proxy cares waring printing it in logs, and it's not passed to ror.
-      val indexResponse = dev1IndexManager.getIndex("index1" :: Nil, Map("include_type_name" -> "true"))
+      val indexResponse = dev1IndexManager.createIndex("typed_index",
+        Map(
+          "master_timeout" -> "30s",
+          "include_type_name" -> "true",
+          "timeout" -> "30s",
+        ))
 
       indexResponse.responseCode should be(200)
       val warningHeader = indexResponse.headers.collectFirst { case SimpleHeader("Warning", value) => value }.get
-      warningHeader should include("[types removal] Using `include_type_name` in get indices requests is deprecated. The parameter will be removed in the next major version.")
+      warningHeader should include("[types removal] Using include_type_name in create index requests is deprecated. The parameter will be removed in the next major version.")
     }
   }
   "JWT auth and filter variable case" in {

@@ -32,17 +32,13 @@ eclipse-build
 docker/*
 eshome/plugins/readonlyrest/plugin-descriptor.properties
 integration-tests/src/main/resources/plugin-descriptor.properties
-eshome/logs/
-eshome/data/
-eshome/modules/
+eshome/**/data
+eshome/**/logs
+eshome/**/modules/*/*.jar
+eshome/**/plugins/*/*.jar
 eshome/*.log
-eshome/modules/*
-eshome/config/elasticsearch.keystore
+eshome/**/config/elasticsearch.keystore
 target/
-eshome2/*
-
-integration-tests/src/test/eshome2/*
-integration-tests/src/test/eshome2
 
 // Crypto
 *.pem
