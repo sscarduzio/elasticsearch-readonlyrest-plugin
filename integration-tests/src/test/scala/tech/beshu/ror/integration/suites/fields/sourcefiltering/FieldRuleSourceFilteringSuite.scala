@@ -25,6 +25,7 @@ import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsCont
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.Version
 
 trait FieldRuleSourceFilteringSuite
   extends WordSpec
@@ -351,7 +352,7 @@ trait FieldRuleSourceFilteringSuite
         //since ES 7.9.0 empty json array is included even when all its items are blacklisted
 
         val expectedSource =
-          if (targetEs.esVersion >= "7.9.0") {
+          if (Version.greaterOrEqualThan(targetEs.esVersion, 7, 9, 0)) {
             """
               |{
               |  "id":1,
