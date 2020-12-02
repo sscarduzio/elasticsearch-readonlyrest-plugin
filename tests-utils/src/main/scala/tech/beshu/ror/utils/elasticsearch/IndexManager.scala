@@ -28,6 +28,10 @@ class IndexManager(client: RestClient,
                    override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
+  def createIndex(indices: String, params:Map[String,String]): JsonResponse = {
+    call(createIndexRequest(indices, params), new JsonResponse(_))
+  }
+
   def getIndex(indices: List[String], params:Map[String,String]): JsonResponse = {
     call(getIndexRequest(indices.toSet, params), new JsonResponse(_))
   }
@@ -125,6 +129,11 @@ class IndexManager(client: RestClient,
   private def getIndexRequest(indices: Set[String], params:Map[String,String]) = {
     import scala.collection.JavaConverters._
     new HttpGet(client.from(indices.mkString(","), params.asJava))
+  }
+
+  private def createIndexRequest(indices: String, params:Map[String,String]) = {
+    import scala.collection.JavaConverters._
+    new HttpPut(client.from(indices, params.asJava))
   }
 
   private def createAliasRequest(index: String, alias: String) = {
