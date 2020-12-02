@@ -1,0 +1,86 @@
+/*
+ *    This file is part of ReadonlyREST.
+ *
+ *    ReadonlyREST is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    ReadonlyREST is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
+ */
+
+buildscript {
+    ext {
+        pluginVersion = rootProject.properties['pluginVersion']
+        esVersion = project.properties['esVersion']
+        repoPath = rootDir.absolutePath.toString()
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+group = 'org.elasticsearch.plugin'
+version = pluginVersion + '_es' + esVersion
+
+apply plugin: 'java'
+
+configurations {
+    runtime
+    ror
+    netty
+}
+
+dependencies {
+    ror project(path: ':es79x')
+    runtime group: 'org.elasticsearch', name: 'elasticsearch', version: esVersion
+    runtime group: 'org.codelibs.elasticsearch.lib', name: 'plugin-classloader', version: esVersion
+    runtime group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.0'
+    netty group: 'org.elasticsearch.plugin', name: 'transport-netty4-client', version: esVersion
+}
+
+task copyRorJar(type: Copy) {
+    from configurations.ror {
+        exclude group: 'org.elasticsearch'
+        exclude group: 'lucene-core'
+        exclude module: 'log4j-api'
+        exclude module: 'log4j-core'
+        exclude group: 'lucene-analyzers-common'
+        exclude group: 'org.apache.commons'
+        exclude group: 'org.yaml'
+        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+    }
+    into './plugins/readonlyrest'
+}
+task copyNettyJar(type: Copy) {
+    from configurations.netty
+    into './modules/transport-netty4'
+}
+task runEs(type: JavaExec, dependsOn: [copyRorJar, copyNettyJar]) {
+    classpath = configurations.runtime
+    systemProperties = [//"java.security.policy"                  : "$repoPath/eshome/plugins/readonlyrest/plugin-security.policy",
+                        "java.awt.headless"                     : "true",
+                        "es.insecure.allow.root"                : "true",
+                        "file.encoding"                         : "UTF-8",
+                        "jna.nosys"                             : "true",
+                        "es.path.home"                          : "$repoPath/eshome",
+                        "log4j2.disable.jmx"                    : "true",
+                        "jdk.io.permissionsUseCanonicalPath"    : "true",
+                        "io.netty.noUnsafe"                     : "true",
+                        "io.netty.noKeySetOptimization"         : "true",
+                        "io.netty.recycler.maxCapacityPerThread": "0",
+                        "log4j.shutdownHookEnabled"             : "false",
+                        "log4j.skipJansi"                       : "true",
+                        "es.path.conf"                          : "$repoPath/eshome/config/",
+                        "java.security.manager"                 : "",
+                        "java.security.policy"                  : "$repoPath/eshome/sec-all.policy",
+    ]
+    main = "org.elasticsearch.bootstrap.Elasticsearch"
+}

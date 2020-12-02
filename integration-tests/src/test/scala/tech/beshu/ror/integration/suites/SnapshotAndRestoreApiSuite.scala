@@ -350,6 +350,27 @@ trait SnapshotAndRestoreApiSuite
     }
     "user gets snapshots" should {
       "allow him to do so" when {
+        //todo: fixme
+        "todo: " in {
+          val documentManager = new DocumentManager(adminClient, esTargets.head.esVersion)
+          documentManager.createFirstDoc("infratest1", ujson.read("""{"hello":"world"}""")).force()
+          documentManager.createFirstDoc("infratest2", ujson.read("""{"hello":"world"}""")).force()
+
+          val repositoryName = "infratest"
+          adminSnapshotManager.putRepository(repositoryName).force()
+
+          val snapshotName1 = SnapshotNameGenerator.next("infratest-snap-")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "infratest*").force()
+
+          val snapshotName2 = SnapshotNameGenerator.next("infratest-snap-")
+          adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "infratest1").force()
+
+          val dev4SnapshotManager = new SnapshotManager(basicAuthClient("dev4", "test"))
+          val result = dev4SnapshotManager.getAllSnapshotsOf(repositoryName)
+
+          result.responseCode should be (200)
+          result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1, snapshotName2))
+        }
         "block doesn't contain repositories, snapshots, indices rules" in {
           val repositoryName = RepositoryNameGenerator.next("dev3-repo-")
           adminSnapshotManager.putRepository(repositoryName).force()
