@@ -69,7 +69,6 @@ stages:
     condition: succeeded()
     steps:
     - script: |
-        export JAVA_HOME=$JAVA_HOME_8_X64
         java --version
         echo "executing ROR_TASK = $ROR_TASK"
         bin/build.sh
