@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.request.handler.regular
+package tech.beshu.ror.es.request.handler
 
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -34,7 +34,7 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.ForbiddenResponse
 import tech.beshu.ror.es.request.context.ModificationResult.{CustomResponse, UpdateResponse}
 import tech.beshu.ror.es.request.context.{EsRequest, ModificationResult}
-import tech.beshu.ror.es.request.handler.regular.RegularRequestHandler.{ForbiddenBlockMatch, ForbiddenCause, OperationNotAllowed, fromMismatchedCause}
+import tech.beshu.ror.es.request.handler.RegularRequestHandler._
 import tech.beshu.ror.es.utils.ThreadContextOps._
 import tech.beshu.ror.utils.AccessControllerHelper.doPrivileged
 import tech.beshu.ror.utils.LoggerOps._

@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.rrconfig.rest
+package tech.beshu.ror.es.actions.rrconfig.rest
 
 import java.util.concurrent.TimeoutException
 
@@ -25,7 +25,7 @@ import org.elasticsearch.rest.{BytesRestResponse, RestChannel, RestResponse, Res
 import org.elasticsearch.transport.ActionNotFoundTransportException
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
-import tech.beshu.ror.es.rrconfig.{RRConfig, RRConfigsResponse}
+import tech.beshu.ror.es.actions.rrconfig.{RRConfig, RRConfigsResponse}
 
 import scala.collection.JavaConverters._
 

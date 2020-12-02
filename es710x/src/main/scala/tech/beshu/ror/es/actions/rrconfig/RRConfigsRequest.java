@@ -14,47 +14,48 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.rrconfig;
+package tech.beshu.ror.es.actions.rrconfig;
 
-import org.elasticsearch.action.support.nodes.BaseNodeResponse;
+import org.elasticsearch.action.support.nodes.BaseNodesRequest;
 import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.io.stream.StreamInput;
 import org.elasticsearch.common.io.stream.StreamOutput;
-import tech.beshu.ror.configuration.loader.distributed.NodeConfig;
-import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigSerializer;
+import tech.beshu.ror.configuration.loader.distributed.NodeConfigRequest;
+import tech.beshu.ror.configuration.loader.distributed.internode.NodeConfigRequestSerializer;
 
 import java.io.IOException;
+import java.util.Arrays;
 
-public class RRConfig extends BaseNodeResponse {
-    private final NodeConfig nodeConfig;
+public class RRConfigsRequest extends BaseNodesRequest<RRConfigsRequest> {
+
+    private final NodeConfigRequest nodeConfigRequest;
 
     @Inject
-    public RRConfig(StreamInput in) throws IOException {
+    public RRConfigsRequest(StreamInput in) throws IOException {
         super(in);
-        this.nodeConfig = NodeConfigSerializer.parse(in.readString());
+        this.nodeConfigRequest = NodeConfigRequestSerializer.parse(in.readString());
     }
 
-    public RRConfig(DiscoveryNode discoveryNode, NodeConfig nodeConfig) {
-        super(discoveryNode);
-        this.nodeConfig = nodeConfig;
+    public RRConfigsRequest(NodeConfigRequest nodeConfigRequest, DiscoveryNode... concreteNodes) {
+        super(concreteNodes);
+        this.nodeConfigRequest = nodeConfigRequest;
+    }
+
+    public NodeConfigRequest getNodeConfigRequest() {
+        return nodeConfigRequest;
     }
 
     @Override
     public void writeTo(StreamOutput out) throws IOException {
         super.writeTo(out);
-        out.writeString(NodeConfigSerializer.serialize(nodeConfig));
-    }
-
-    public NodeConfig getNodeConfig() {
-        return nodeConfig;
+        out.writeString(NodeConfigRequestSerializer.serialize(this.nodeConfigRequest));
     }
 
     @Override
     public String toString() {
-        return "RRConfig{" +
-                "nodeConfig=" + nodeConfig + ", " +
-                "discoveryNode=" + getNode() +
+        return "RRConfigsRequest{" +
+                "concreteNodes=" + Arrays.asList(concreteNodes()) +
                 '}';
     }
 }

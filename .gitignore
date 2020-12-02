@@ -49,3 +49,4 @@ target/
 .DS_Store
 
 .travis/secret.pgp
+.java-version

@@ -18,10 +18,13 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.admin.cluster.snapshots.get.GetSnapshotsRequest
+import monix.eval.Task
+import org.elasticsearch.action.admin.cluster.snapshots.get.{GetSnapshotsRequest, GetSnapshotsResponse}
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.on
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RepositoryName, SnapshotName}
 import tech.beshu.ror.es.RorClusterService
@@ -29,6 +32,8 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
+import scala.collection.JavaConverters._
 
 class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
                                    esContext: EsContext,
@@ -62,7 +67,12 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
     } yield update(actionRequest, snapshots, repository)
     updateResult match {
       case Right(_) =>
-        ModificationResult.Modified
+        ModificationResult.UpdateResponse {
+          case r: GetSnapshotsResponse =>
+            Task.now(updateGetSnapshotResponse(r, blockContext.allAllowedIndices))
+          case r =>
+            Task.now(r)
+        }
       case Left(_) =>
         logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. It's safer to forbid the request, but it looks like an issue. Please, report it as soon as possible.")
         ModificationResult.ShouldBeInterrupted
@@ -94,5 +104,19 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
                      repository: RepositoryName) = {
     actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
     actionRequest.repository(repository.value.value)
+  }
+
+  private def updateGetSnapshotResponse(response: GetSnapshotsResponse,
+                                        allAllowedIndices: Set[IndexName]): GetSnapshotsResponse = {
+    val matcher = MatcherWithWildcardsScalaAdapter.create(allAllowedIndices)
+    response
+      .getSnapshots.asSafeList
+      .foreach { snapshot =>
+        val snapshotIndices = snapshot.indices().asSafeList.flatMap(IndexName.fromString).toSet
+        val filteredSnapshotIndices = matcher.filter(snapshotIndices).map(_.value.value).toList.asJava
+        on(snapshot).set("indices", filteredSnapshotIndices)
+        snapshot
+      }
+    response
   }
 }

@@ -64,13 +64,15 @@ trait EnabledAuditingToolsSuite
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
 
-        val auditEntries = adminAuditIndexManager.getEntries.force().jsons
-        auditEntries.size shouldBe 1
+        eventually {
+          val auditEntries = adminAuditIndexManager.getEntries.force().jsons
+          auditEntries.size shouldBe 1
 
-        val firstEntry = auditEntries(0)
-        firstEntry("final_state").str shouldBe "ALLOWED"
-        firstEntry("user").str shouldBe "username"
-        firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
+          val firstEntry = auditEntries(0)
+          firstEntry("final_state").str shouldBe "ALLOWED"
+          firstEntry("user").str shouldBe "username"
+          firstEntry("block").str.contains("name: 'Rule 1'") shouldBe true
+        }
       }
       "no rule is matched with username from auth header" in {
         val indexManager = new IndexManager(
@@ -79,24 +81,28 @@ trait EnabledAuditingToolsSuite
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
-        val auditEntries = adminAuditIndexManager.getEntries.jsons
-        auditEntries.size shouldBe 1
+        eventually {
+          val auditEntries = adminAuditIndexManager.getEntries.jsons
+          auditEntries.size shouldBe 1
 
-        val firstEntry = auditEntries(0)
-        firstEntry("final_state").str shouldBe "FORBIDDEN"
-        firstEntry("user").str shouldBe "username"
+          val firstEntry = auditEntries(0)
+          firstEntry("final_state").str shouldBe "FORBIDDEN"
+          firstEntry("user").str shouldBe "username"
+        }
       }
       "no rule is matched with raw auth header as user" in {
         val indexManager = new IndexManager(tokenAuthClient("user_token"))
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
-        val auditEntries = adminAuditIndexManager.getEntries.jsons
-        auditEntries.size shouldBe 1
+        eventually {
+          val auditEntries = adminAuditIndexManager.getEntries.jsons
+          auditEntries.size shouldBe 1
 
-        val firstEntry = auditEntries(0)
-        firstEntry("final_state").str shouldBe "FORBIDDEN"
-        firstEntry("user").str shouldBe "user_token"
+          val firstEntry = auditEntries(0)
+          firstEntry("final_state").str shouldBe "FORBIDDEN"
+          firstEntry("user").str shouldBe "user_token"
+        }
       }
       "rule 1 is matched" when {
         "two requests were sent and correlationId is the same for both of them" in {
@@ -112,11 +118,13 @@ trait EnabledAuditingToolsSuite
           val response2 = indexManager.getIndex("twitter")
           response2.responseCode shouldBe 200
 
-          val auditEntries = adminAuditIndexManager.getEntries.jsons
-          auditEntries.size shouldBe 2
+          eventually {
+            val auditEntries = adminAuditIndexManager.getEntries.jsons
+            auditEntries.size shouldBe 2
 
-          auditEntries(0)("correlation_id").str shouldBe correlationId
-          auditEntries(1)("correlation_id").str shouldBe correlationId
+            auditEntries(0)("correlation_id").str shouldBe correlationId
+            auditEntries(1)("correlation_id").str shouldBe correlationId
+          }
         }
         "two requests were sent and the first one is user metadata request" in {
           val userMetadataManager = new RorApiManager(basicAuthClient("username", "dev"))
@@ -133,11 +141,13 @@ trait EnabledAuditingToolsSuite
           val getIndexResponse = indexManager.getIndex("twitter")
           getIndexResponse.responseCode shouldBe 200
 
-          val auditEntries = adminAuditIndexManager.getEntries.jsons
-          auditEntries.size shouldBe 2
+          eventually {
+            val auditEntries = adminAuditIndexManager.getEntries.jsons
+            auditEntries.size shouldBe 2
 
-          auditEntries(0)("correlation_id").str shouldBe correlationId
-          auditEntries(1)("correlation_id").str shouldBe correlationId
+            auditEntries(0)("correlation_id").str shouldBe correlationId
+            auditEntries(1)("correlation_id").str shouldBe correlationId
+          }
         }
         "two metadata requests were sent, one with correlationId" in {
           def fetchMetadata(correlationId: Option[String] = None) = {
@@ -158,10 +168,12 @@ trait EnabledAuditingToolsSuite
 
           loggingId1 shouldNot be (loggingId2)
 
-          val auditEntries = adminAuditIndexManager.getEntries.jsons
-          auditEntries.size shouldBe 2
+          eventually {
+            val auditEntries = adminAuditIndexManager.getEntries.jsons
+            auditEntries.size shouldBe 2
 
-          auditEntries.map(_("correlation_id").str).toSet shouldBe Set(loggingId1, loggingId2)
+            auditEntries.map(_ ("correlation_id").str).toSet shouldBe Set(loggingId1, loggingId2)
+          }
         }
       }
     }
@@ -171,8 +183,10 @@ trait EnabledAuditingToolsSuite
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
-        val auditEntriesResponse = adminAuditIndexManager.getEntries
-        auditEntriesResponse.responseCode should be (404)
+        eventually {
+          val auditEntriesResponse = adminAuditIndexManager.getEntries
+          auditEntriesResponse.responseCode should be(404)
+        }
       }
     }
   }
@@ -187,9 +201,11 @@ trait EnabledAuditingToolsSuite
 
           response.responseCode shouldBe 204
 
-          val auditEntries = adminAuditIndexManager.getEntries.jsons
-          auditEntries.size should be (1)
-          auditEntries(0)("event").str should be ("logout")
+          eventually {
+            val auditEntries = adminAuditIndexManager.getEntries.jsons
+            auditEntries.size should be(1)
+            auditEntries(0)("event").str should be("logout")
+          }
         }
         "user JSON key attribute from request doesn't override the defined in audit serializer" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"))
@@ -198,9 +214,11 @@ trait EnabledAuditingToolsSuite
 
           response.responseCode shouldBe 204
 
-          val auditEntries = adminAuditIndexManager.getEntries.jsons
-          auditEntries.size should be (1)
-          auditEntries(0)("user").str should be ("username")
+          eventually {
+            val auditEntries = adminAuditIndexManager.getEntries.jsons
+            auditEntries.size should be(1)
+            auditEntries(0)("user").str should be("username")
+          }
         }
         "new JSON key attribute from request body as a JSON value" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"))
@@ -209,9 +227,11 @@ trait EnabledAuditingToolsSuite
 
           response.responseCode shouldBe 204
 
-          val auditEntries = adminAuditIndexManager.getEntries.jsons
-          auditEntries.size should be (1)
-          auditEntries(0)("event") should be(ujson.read("""{ "field1": 1, "fields2": "f2" }"""))
+          eventually {
+            val auditEntries = adminAuditIndexManager.getEntries.jsons
+            auditEntries.size should be(1)
+            auditEntries(0)("event") should be(ujson.read("""{ "field1": 1, "fields2": "f2" }"""))
+          }
         }
       }
     }
@@ -220,28 +240,34 @@ trait EnabledAuditingToolsSuite
         val rorApiManager = new RorApiManager(adminClient)
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
-
         response.responseCode shouldBe 204
-        val entriesResult = adminAuditIndexManager.getEntries
-        entriesResult.responseCode should be (404)
+
+        eventually {
+          val entriesResult = adminAuditIndexManager.getEntries
+          entriesResult.responseCode should be(404)
+        }
       }
       "request JSON is malformed" in {
         val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"))
 
         val response = rorApiManager.sendAuditEvent(ujson.read("""[]"""))
-
         response.responseCode shouldBe 400
-        val entriesResult = adminAuditIndexManager.getEntries
-        entriesResult.responseCode should be (404)
+
+        eventually {
+          val entriesResult = adminAuditIndexManager.getEntries
+          entriesResult.responseCode should be(404)
+        }
       }
       "request JSON is too large (>5KB)" in {
         val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"))
 
         val response = rorApiManager.sendAuditEvent(ujson.read(s"""{ "event": "${Stream.continually("!").take(5000).mkString}" }"""))
-
         response.responseCode shouldBe 413
-        val entriesResult = adminAuditIndexManager.getEntries
-        entriesResult.responseCode should be (404)
+
+        eventually {
+          val entriesResult = adminAuditIndexManager.getEntries
+          entriesResult.responseCode should be(404)
+        }
       }
     }
   }

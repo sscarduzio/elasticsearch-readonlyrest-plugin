@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.rrconfig.rest
+package tech.beshu.ror.es.actions.rrconfig.rest
 
 import java.util
 import java.util.function.Supplier
@@ -30,7 +30,7 @@ import org.elasticsearch.rest._
 import tech.beshu.ror.adminapi.AdminRestApi
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
-import tech.beshu.ror.es.rrconfig.{RRConfigAction, RRConfigsRequest}
+import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
@@ -52,7 +52,7 @@ class RestRRConfigAction(nodesInCluster: Supplier[DiscoveryNodes])
     )
     channel => {
       val localNodeId = NodeId(client.getLocalNodeId)
-      client.execute(new RRConfigAction, new RRConfigsRequest(requestConfig, nodes.toArray: _*), new ResponseBuilder(localNodeId, channel))
+      client.execute(new RRConfigActionType, new RRConfigsRequest(requestConfig, nodes.toArray: _*), new ResponseBuilder(localNodeId, channel))
     }
   }
 

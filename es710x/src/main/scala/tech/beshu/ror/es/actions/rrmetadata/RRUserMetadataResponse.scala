@@ -14,15 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.es.rrconfig
+package tech.beshu.ror.es.actions.rrmetadata
 
-import org.elasticsearch.action.ActionType
-import org.elasticsearch.common.io.stream.Writeable
+import org.elasticsearch.action.ActionResponse
+import org.elasticsearch.common.io.stream.StreamOutput
+import org.elasticsearch.common.xcontent.{ToXContent, ToXContentObject, XContentBuilder}
 
-class RRConfigAction extends ActionType[RRConfigsResponse](RRConfigAction.name, RRConfigAction.reader)
+class RRUserMetadataResponse extends ActionResponse with ToXContentObject {
 
-object RRConfigAction {
-  val name = "cluster:admin/rrconfig/config"
-  val instance = new RRConfigAction
-  val reader: Writeable.Reader[RRConfigsResponse] = new RRConfigsResponse(_)
+  override def writeTo(out: StreamOutput): Unit = ()
+
+  override def toXContent(builder: XContentBuilder, params: ToXContent.Params): XContentBuilder = builder
 }
