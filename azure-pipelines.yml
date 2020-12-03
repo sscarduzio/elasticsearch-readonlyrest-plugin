@@ -1,19 +1,132 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+variables:
+  ssh_file: '~/.ssh/gh_deploy_key.priv'
 
 trigger:
-- main
-
+  batch: false
+  branches:
+    include:
+    - master
+    - develop
+    - '*/pull/*'
+  tags:
+    exclude:
+    - '*'
+  paths:
+    include:
+    - '*' 
+    exclude:
+    - 'docs/*'
+    - '*.md'
+    - '*/*/*.md'
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'ubuntu-20.04'
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+stages:
+- stage: Prepration
+  jobs:
+  - job: "Link_secret_files"
+    steps:
+    - task: DownloadSecureFile@1
+      name: secret
+      displayName: 'Download secret.pgp secret file'
+      inputs:
+        secureFile: 'secret.pgp'
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+    - script: |
+        echo Installing $(secret.secureFilePath) to directory...
+        sudo chown root:root $(secret.secureFilePath)
+        sudo chmod a+r $(secret.secureFilePath)
+        sudo ln -s -t .travis/ $(secret.secureFilePath)
+        echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+        echo "JAVA VERSION: `java --version`"
+        export |egrep -i 'java|jdk'
+
+    - task: DownloadSecureFile@1
+      name: deployKey
+      displayName: 'Download secret.pgp secret file'
+      inputs:
+        secureFile: 'gh_deploy_key.priv'
+
+    - script: |
+        echo Installing $(deployKey.secureFilePath) to directory...
+        sudo chown root:root $(deployKey.secureFilePath)
+        sudo chmod a+r $(deployKey.secureFilePath)
+        mkdir -p ~/.ssh
+        chmod 0700 ~/.ssh
+        sudo ln -s -t ~/.ssh/ $(deployKey.secureFilePath)
+        echo " $(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
+        sudo chmod 600 $(ssh_file) && sudo printf "%s\n" \
+         "Host github.com" \
+         "  IdentityFile $(ssh_file)" \
+         "  LogLevel ERROR" >> ~/.ssh/config
+        ls -ltra ~/.ssh
+        # export 
+
+
+- stage: "test_matrix"
+  jobs:
+  - job: Test
+    condition: succeeded()
+    steps:
+    - script: |
+        java --version
+        echo "executing ROR_TASK = $ROR_TASK"
+        bin/build.sh
+
+    strategy:
+      maxParallel: 99
+      matrix: 
+        LICENSE:
+          ROR_TASK: license
+        CVE:
+          ROR_TASK: cve_check
+        UNIT:
+          ROR_TASK: unit
+
+        INTEGRATION_PROXY:
+          ROR_TASK: integration_proxy
+        INTEGRATION_es710x:
+          ROR_TASK: integration_es710x
+        INTEGRATION_es79x:
+          ROR_TASK: integration_es79x
+        INTEGRATION_es78x:
+          ROR_TASK: integration_es78x
+        INTEGRATION_es77x:
+          ROR_TASK: integration_es77x
+        INTEGRATION_es74x:
+          ROR_TASK: integration_es74x
+        INTEGRATION_es73x:
+          ROR_TASK: integration_es73x
+        INTEGRATION_es72x:
+          ROR_TASK: integration_es72x
+        INTEGRATION_es66x:
+          ROR_TASK: integration_es66x
+        INTEGRATION_es63x:
+          ROR_TASK: integration_es63x
+        INTEGRATION_es62x:
+          ROR_TASK: integration_es62x
+        INTEGRATION_es61x:
+          ROR_TASK: integration_es61x
+        INTEGRATION_es60x:
+          ROR_TASK: integration_es60x
+          
+        PACKAGE_es7xx:
+          ROR_TASK: package_es7xx
+        PACKAGE_es6xx:
+          ROR_TASK: package_es6xx
+        PACKAGE_es5xx:
+          ROR_TASK: package_es5xx
+
+- stage: "tag_and_upload"
+  condition: succeeded()
+  jobs:
+  - job: "tag_and_upload_job"
+    steps:
+    - script: |
+        ci/ci-deploy.sh
+  - job: "publish_artifacts"
+  
+    steps:
+    - script: |
+        export ROR_TASK="publish_artifacts"
+        bin/build.sh
