@@ -71,8 +71,15 @@ stages:
     - script: |
         java --version
         echo "executing ROR_TASK = $ROR_TASK"
-        bin/build.sh
+        bin/build.sh && \
+        echo ">>> Tag and upload to S3" && \
+        ci/ci-deploy.sh && \
+        echo ">>> Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh
 
+    - task: PublishTestResults@2
+      inputs:
+        testRunTitle: "$ROR_TASK test results"
+        searchFolder: integration_testintegration-tests/build/reports/tests/test/*html
     strategy:
       maxParallel: 99
       matrix: 
@@ -116,17 +123,3 @@ stages:
           ROR_TASK: package_es6xx
         PACKAGE_es5xx:
           ROR_TASK: package_es5xx
-
-- stage: "tag_and_upload"
-  condition: succeeded()
-  jobs:
-  - job: "tag_and_upload_job"
-    steps:
-    - script: |
-        ci/ci-deploy.sh
-  - job: "publish_artifacts"
-  
-    steps:
-    - script: |
-        export ROR_TASK="publish_artifacts"
-        bin/build.sh
