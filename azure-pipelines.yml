@@ -1,6 +1,8 @@
 variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
 
+name: "ror-es"
+
 trigger:
   batch: false
   branches:
@@ -90,36 +92,36 @@ stages:
         UNIT:
           ROR_TASK: unit
 
-        INTEGRATION_PROXY:
+        IT_PROXY:
           ROR_TASK: integration_proxy
-        INTEGRATION_es710x:
+        IT_es710x:
           ROR_TASK: integration_es710x
-        INTEGRATION_es79x:
+        IT_es79x:
           ROR_TASK: integration_es79x
-        INTEGRATION_es78x:
+        IT_es78x:
           ROR_TASK: integration_es78x
-        INTEGRATION_es77x:
+        IT_es77x:
           ROR_TASK: integration_es77x
-        INTEGRATION_es74x:
+        IT_es74x:
           ROR_TASK: integration_es74x
-        INTEGRATION_es73x:
+        IT_es73x:
           ROR_TASK: integration_es73x
-        INTEGRATION_es72x:
+        IT_es72x:
           ROR_TASK: integration_es72x
-        INTEGRATION_es66x:
+        IT_es66x:
           ROR_TASK: integration_es66x
-        INTEGRATION_es63x:
+        IT_es63x:
           ROR_TASK: integration_es63x
-        INTEGRATION_es62x:
+        IT_es62x:
           ROR_TASK: integration_es62x
-        INTEGRATION_es61x:
+        IT_es61x:
           ROR_TASK: integration_es61x
-        INTEGRATION_es60x:
+        IT_es60x:
           ROR_TASK: integration_es60x
           
-        PACKAGE_es7xx:
+        PKG_es7xx:
           ROR_TASK: package_es7xx
-        PACKAGE_es6xx:
+        PKG_es6xx:
           ROR_TASK: package_es6xx
-        PACKAGE_es5xx:
+        PKG_es5xx:
           ROR_TASK: package_es5xx
