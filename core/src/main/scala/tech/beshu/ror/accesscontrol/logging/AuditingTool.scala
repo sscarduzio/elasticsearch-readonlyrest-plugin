@@ -23,6 +23,7 @@ import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Fulfilled
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -88,7 +89,7 @@ class AuditingTool(settings: Settings,
         AuditResponseContext.Forbidden(toAuditRequestContext(
           requestContext = forbidden.requestContext,
           blockContext = None,
-          userMetadata = None,
+          userMetadata = findLastBlockContext(forbidden).map(_.userMetadata),
           historyEntries = forbidden.history))
       case requestedIndexNotExist: ResponseContext.RequestedIndexNotExist[B] =>
         AuditResponseContext.RequestedIndexNotExist(
@@ -108,6 +109,15 @@ class AuditingTool(settings: Settings,
           cause = errored.cause)
     }
   }
+
+  private def findLastBlockContext[B <: BlockContext](forbidden: ResponseContext.Forbidden[B]) =
+    forbidden.history
+      .flatMap(_.items)
+      .map(_.result)
+      .reverse
+      .collectFirst {
+        case Fulfilled(blockContext) => blockContext
+      }
 
   private def toAuditVerbosity(verbosity: Verbosity) = verbosity match {
     case Verbosity.Info => AuditResponseContext.Verbosity.Info

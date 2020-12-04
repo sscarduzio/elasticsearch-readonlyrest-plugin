@@ -29,6 +29,12 @@ readonlyrest:
       auth_key: user:dev
       indices: ["facebook"]
 
+    - name: "deny all indices"
+      verbosity: error
+      methods: GET
+      type: forbid
+      auth_key: user2:dev
+
     - name: "Allowed only for group1"
       groups: [group1]
       type: allow
