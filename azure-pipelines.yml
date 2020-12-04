@@ -71,7 +71,7 @@ stages:
     - script: |
         java --version
         echo "executing ROR_TASK = $ROR_TASK"
-        bin/build.sh && \
+        bin/build.sh && \
         echo ">>> Tag and upload to S3" && \
         ci/ci-deploy.sh && \
         echo ">>> Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh
