@@ -69,7 +69,7 @@ stages:
   - job: Test
     condition: succeeded()
     steps:
-    - checkout: 
+    - checkout: self
       fetchDepth: 1
     - script: |
         java --version
