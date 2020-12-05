@@ -1,8 +1,6 @@
 variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
 
-name: "ror-es"
-
 trigger:
   batch: false
   branches:
