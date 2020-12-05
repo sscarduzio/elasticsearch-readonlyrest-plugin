@@ -85,7 +85,7 @@ trait QueryAuditLogSerializerSuite
         val firstEntry = auditEntries.get(0)
         firstEntry.get("user") should be("user1-proxy-id")
         firstEntry.get("final_state") shouldBe "ALLOWED"
-        firstEntry.get("block").asInstanceOf[String].contains("""name: 'Allowed only for group1'""") shouldBe true
+        firstEntry.get("block").asInstanceOf[String] should include("""name: 'Allowed only for group1""")
         firstEntry.get("content") shouldBe ""
       }
       "rule 1 is matching" in {
