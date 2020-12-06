@@ -75,6 +75,10 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
+    reports {
+        junitXml.enabled = true
+        html.enabled = false
+    }
 }
 
 configurations {
