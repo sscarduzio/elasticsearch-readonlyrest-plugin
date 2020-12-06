@@ -28,7 +28,7 @@ object GenericRequest {
     "/_ccr/",
     "/_enrich",
     "/_freeze", // todo: indices awareness
-    "/_ilm/",
+    "/_ilm/", // todo: indices awareness
     "/_license",
     "/_monitoring",
     "/_ml/",
