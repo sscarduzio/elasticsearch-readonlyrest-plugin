@@ -35,7 +35,8 @@ class GeneralNonIndexEsRequestContext(actionRequest: ActionRequest,
   override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
     this,
     UserMetadata.from(this),
-    Set.empty
+    Set.empty,
+    List.empty
   )
 
   override protected def modifyRequest(blockContext: GeneralNonIndexRequestBlockContext): ModificationResult = Modified

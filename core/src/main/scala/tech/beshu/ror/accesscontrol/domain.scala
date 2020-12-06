@@ -486,6 +486,20 @@ object domain {
 
   final case class DocumentWithIndex(index: IndexName, documentId: DocumentId)
 
+  object ResponseFieldsFiltering {
+
+    final case class ResponseFieldsRestrictions(responseFields: UniqueNonEmptyList[ResponseField],
+                                                mode: AccessMode)
+
+    final case class ResponseField(value: NonEmptyString)
+
+    sealed trait AccessMode
+    object AccessMode {
+      case object Whitelist extends AccessMode
+      case object Blacklist extends AccessMode
+    }
+  }
+
   sealed trait DocumentAccessibility
   object DocumentAccessibility {
     case object Accessible extends DocumentAccessibility

@@ -4,15 +4,19 @@
 package tech.beshu.ror.proxy.es
 
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.ElasticsearchException
-import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.rest._
-import org.elasticsearch.tasks.TaskManager
+import org.elasticsearch.tasks.{TaskManager, Task => EsTask}
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering
+import tech.beshu.ror.es.ResponseFieldsFiltering
 
 import scala.concurrent.Promise
 
 sealed abstract class ProxyRestChannel(val restRequest: RestRequest)
-  extends AbstractRestChannel(restRequest, true) {
+  extends AbstractRestChannel(restRequest, true)
+    with ResponseFieldsFiltering
+    with Logging{
 
   def taskManager: TaskManager
 
@@ -30,7 +34,7 @@ class PromiseBasedProxyRestChannel(restRequest: RestRequest, override val taskMa
   def result: Task[EsRestServiceSimulator.ProcessingResult] = Task.fromFuture(resultPromise.future)
 
   override def sendResponse(response: RestResponse): Unit = {
-    resultPromise.trySuccess(EsRestServiceSimulator.ProcessingResult.Response(response))
+    resultPromise.trySuccess(EsRestServiceSimulator.ProcessingResult.Response(filterRestResponse(response)))
   }
 
   override def sendFailureResponse(exception: Throwable): Unit = {
@@ -69,6 +73,10 @@ class UnregisteringTaskProxyRestChannel(underlying: ProxyRestChannel, task: EsTa
   override def passThrough(): Unit = {
     taskManager.unregister(task)
     underlying.passThrough()
+  }
+
+  override def setResponseFieldRestrictions(responseFieldsRestrictions: ResponseFieldsFiltering.ResponseFieldsRestrictions): Unit = {
+    underlying.setResponseFieldRestrictions(responseFieldsRestrictions)
   }
 }
 

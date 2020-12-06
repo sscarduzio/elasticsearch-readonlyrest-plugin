@@ -45,6 +45,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
     this,
     UserMetadata.from(this),
     Set.empty,
+    List.empty,
     indexPacksFrom(actionRequest)
   )
 

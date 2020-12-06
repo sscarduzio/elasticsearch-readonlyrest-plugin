@@ -182,7 +182,7 @@ class RepositoriesRuleTests extends WordSpec with Inside {
       action = requestAction,
       isReadOnlyRequest = readonlyRequest
     )
-    val blockContext = RepositoryRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, requestRepositories)
+    val blockContext = RepositoryRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, requestRepositories)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>

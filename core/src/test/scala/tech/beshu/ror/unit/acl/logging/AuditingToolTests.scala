@@ -114,7 +114,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
               indexAuditTemplate = None
             )
           ),
-          GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty),
+          GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
           Vector.empty
         )
 
@@ -176,7 +176,7 @@ class AuditingToolTests extends WordSpec with MockFactory {
           indexAuditTemplate = None
         )
       ),
-      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty),
+      GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty),
       Vector.empty
     )
   }

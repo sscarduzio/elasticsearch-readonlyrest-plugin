@@ -250,7 +250,7 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
 
 fi
 
-if [[ $TRAVIS_PULL_REQUEST == "false" ]] && [[ $ROR_TASK == "publish_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]]; then
+if [[ $ROR_TASK == "publish_artifacts" ]] && ( [[ $TRAVIS_BRANCH == "master" ]] || [[ $TRAVIS_BRANCH == "develop" ]]) ; then
 
     # only try to decode secret from Travis if it's not present
     [[ -e .travis/secret.pgp ]] || openssl aes-256-cbc -K $encrypted_31be120daa3b_key -iv $encrypted_31be120daa3b_iv -in .travis/secret.pgp.enc -out .travis/secret.pgp -d

@@ -45,7 +45,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
         val requestContext = MockRequestContext.indices.copy(
           headers = Set(basicAuthHeader("admin1:pass"))
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -58,7 +58,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
           val requestContext = MockRequestContext.indices.copy(
             headers = Set(basicAuthHeader("admin1:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
           )
-          val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+          val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
           val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -72,7 +72,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
           val requestContext = MockRequestContext.indices.copy(
             headers = Set(basicAuthHeader("admin3:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
           )
-          val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+          val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
           val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -89,7 +89,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
         val requestContext = MockRequestContext.indices.copy(
           headers = Set(basicAuthHeader("regularuser:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -99,7 +99,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
         val requestContext = MockRequestContext.indices.copy(
           headers = Set(basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -109,7 +109,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
         val requestContext = MockRequestContext.indices.copy(
           headers = Set(basicAuthHeader("admin1:invalid_password"), new Header(Header.Name.impersonateAs, "user1".nonempty))
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 
@@ -119,7 +119,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
         val requestContext = MockRequestContext.indices.copy(
           headers = Set(basicAuthHeader("admin1:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
         val rule = authRuleWithImpersonation { defs =>
           new AuthKeySha1Rule(BasicAuthenticationRule.Settings(HashedCredentials.HashedUserAndPassword("xxxxxxxxxxx".nonempty)), defs)
@@ -132,7 +132,7 @@ class ImpersonationRuleDecoratorTests extends WordSpec with MockFactory with Ins
         val requestContext = MockRequestContext.indices.copy(
           headers = Set(basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "user2".nonempty))
         )
-        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, Set.empty, Set.empty)
+        val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
         val result = rule.check(blockContext).runSyncUnsafe()
 

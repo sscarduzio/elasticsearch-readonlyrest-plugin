@@ -42,6 +42,7 @@ import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
@@ -252,9 +253,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
       restHandler: RestHandler =>
         (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-          ThreadRepo.setRestChannel(channel)
+          val rorRestChannel = new RorRestChannel(channel)
+          ThreadRepo.setRestChannel(rorRestChannel)
           consumeAllRequestParams(request)
-          restHandler.handleRequest(request, channel, client)
+          restHandler.handleRequest(request, rorRestChannel, client)
         }
     }
 

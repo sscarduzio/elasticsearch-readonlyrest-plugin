@@ -54,10 +54,10 @@ import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
+import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.{CurrentUserMetadataRequestHandler, RegularRequestHandler}
@@ -179,7 +179,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
 }
 
 object AclAwareRequestFilter {
-  final case class EsContext(channel: RestChannel,
+  final case class EsContext(channel: RestChannel with ResponseFieldsFiltering,
                              task: EsTask,
                              actionType: String,
                              actionRequest: ActionRequest,

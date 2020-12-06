@@ -36,7 +36,8 @@ class AuditEventESRequestContext(actionRequest: RRAuditEventRequest,
   override val initialBlockContext: GeneralNonIndexRequestBlockContext = GeneralNonIndexRequestBlockContext(
     this,
     UserMetadata.from(this),
-    Set.empty
+    Set.empty,
+    List.empty
   )
 
   override val generalAuditEvents: JSONObject = actionRequest.auditEvents

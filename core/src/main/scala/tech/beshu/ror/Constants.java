@@ -35,6 +35,7 @@ public class Constants {
   public final static String CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user";
   public final static String AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event";
   public final static String FIELDS_TRANSIENT = "_fields";
+
   public final static Set<String> FIELDS_ALWAYS_ALLOW = Sets.newHashSet("_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index");
 
   public static final String AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd";
