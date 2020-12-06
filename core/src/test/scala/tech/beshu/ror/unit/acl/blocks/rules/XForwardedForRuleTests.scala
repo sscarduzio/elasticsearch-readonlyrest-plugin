@@ -143,7 +143,7 @@ class XForwardedForRuleTests extends WordSpec with MockFactory {
       case Some(header) => MockRequestContext.metadata.copy(headers = Set(headerFrom("X-Forwarded-For" -> header.value)))
       case None => MockRequestContext.indices
     }
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

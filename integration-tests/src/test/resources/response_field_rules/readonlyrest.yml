@@ -1,0 +1,29 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: "readonlyrest"
+    key_pass: "readonlyrest"
+
+  access_control_rules:
+
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container
+
+    - name: "Filter cluster health response"
+      auth_key: dev1:test
+      uri_re: "^/_cluster/health"
+      response_fields: ["cluster_*", "status"]
+
+    - name: "Filter cat health response"
+      auth_key: dev1:test
+      uri_re: "^/_cat.*$"
+      response_fields: ["~cluster"]
+
+    - name: "Filter search response"
+      auth_key: dev1:test
+      uri_re: "^/_search.*$"
+      response_fields: ["hits.hits"]
+

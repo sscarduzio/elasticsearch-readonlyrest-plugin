@@ -212,8 +212,9 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
     restHandler: RestHandler =>
       (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-        ThreadRepo.setRestChannel(channel)
-        restHandler.handleRequest(request, channel, client)
+        val rorRestChannel = new RorRestChannel(channel)
+        ThreadRepo.setRestChannel(rorRestChannel)
+        restHandler.handleRequest(request, rorRestChannel, client)
       }
   }
 

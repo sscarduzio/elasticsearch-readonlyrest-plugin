@@ -16,15 +16,19 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import java.util
+
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpUriRequest
+import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.misc.ScalaUtils._
 import ujson.Value
 
+import collection.JavaConverters._
 import scala.util.Try
 
 abstract class BaseManager(client: RestClient) {
@@ -69,5 +73,12 @@ object BaseManager {
 
   class JsonResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {
     val responseJson: JSON = ujson.read(body)
+  }
+
+  class YamlMapResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {
+    val responseYaml: Map[String, Any] = {
+      val yamlParser = new Yaml()
+      yamlParser.load[util.LinkedHashMap[String, Object]](body).asScala.toMap
+    }
   }
 }

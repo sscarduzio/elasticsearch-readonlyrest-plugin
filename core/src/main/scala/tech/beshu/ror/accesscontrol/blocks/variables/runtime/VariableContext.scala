@@ -58,6 +58,8 @@ object VariableContext {
     implicit val uriRegexRule: VariableUsage[UriRegexRule] = UsingVariable[UriRegexRule](rule => rule.settings.uriPatterns.toNonEmptyList)
     implicit val usersRule:  VariableUsage[UsersRule] = UsingVariable[UsersRule](rule => rule.settings.userIds.toNonEmptyList)
     implicit val xForwarderForRule: VariableUsage[XForwardedForRule] = UsingVariable[XForwardedForRule](rule => rule.settings.allowedAddresses.toNonEmptyList)
+    implicit val responseFieldsRule: VariableUsage[ResponseFieldsRule] = UsingVariable[ResponseFieldsRule](rule => rule.settings.responseFields.toNonEmptyList)
+
 
     implicit val actionsRule: VariableUsage[ActionsRule] = NotUsingVariable
     implicit val apiKeyRule: VariableUsage[ApiKeysRule] = NotUsingVariable

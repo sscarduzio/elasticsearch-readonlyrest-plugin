@@ -87,7 +87,7 @@ class AccessControlListTests extends WordSpec with MockFactory with Inside {
     val rc = mock[MetadataRequestContext]
     (rc.initialBlockContext _)
       .expects()
-      .returning(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty))
+      .returning(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty, List.empty))
       .anyNumberOfTimes()
     (rc.headers _)
       .expects()

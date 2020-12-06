@@ -329,6 +329,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       requestContext,
       UserMetadata.from(requestContext),
       Set.empty,
+      List.empty,
       requestIndices,
       Set.empty
     )
@@ -337,6 +338,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
         requestContext,
         UserMetadata.from(requestContext),
         Set.empty,
+        List.empty,
         found,
         configuredValues
           .toNonEmptyList.toList

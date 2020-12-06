@@ -22,9 +22,9 @@ import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.exceptions.SecurityPermissionException
 
 object ThreadRepo {
-  private val threadLocalChannel = new ThreadLocal[RestChannel]
+  private val threadLocalChannel = new ThreadLocal[RorRestChannel]
 
-  def setRestChannel(restChannel: RestChannel): Unit = {
+  def setRestChannel(restChannel: RorRestChannel): Unit = {
     threadLocalChannel.set(restChannel)
   }
 
@@ -35,7 +35,10 @@ object ThreadRepo {
       if (channel == null) true
       else channel.request == null
     if (shouldSkipACL(channel == null, reqNull)) None
-    else Option(new RorRestChannel(channel, task))
+    else {
+      channel.setTask(task)
+      Option(channel)
+    }
   }
 
   private def shouldSkipACL(chanNull: Boolean, reqNull: Boolean): Boolean = { // This was not a REST message
