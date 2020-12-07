@@ -62,9 +62,9 @@ stages:
          "  LogLevel ERROR" >> ~/.ssh/config
         ls -ltra ~/.ssh
 
-- stage: "Matrix"
+- stage:
   jobs:
-  - job: Run
+  - job:
     condition: succeeded()
     steps:
     - checkout: self
