@@ -22,13 +22,13 @@ pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
-- stage: Prepration
+- stage:
   jobs:
-  - job: "Link_secret_files"
+  - job: "secrets"
     steps:
     - checkout: none
     - task: DownloadSecureFile@1
-      name: secret
+      name: pgp
       displayName: 'Download secret.pgp secret file'
       inputs:
         secureFile: 'secret.pgp'
@@ -43,7 +43,7 @@ stages:
         export |egrep -i 'java|jdk'
 
     - task: DownloadSecureFile@1
-      name: deployKey
+      name: GH_key
       displayName: 'Download secret.pgp secret file'
       inputs:
         secureFile: 'gh_deploy_key.priv'
