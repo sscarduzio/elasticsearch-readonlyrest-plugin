@@ -79,8 +79,9 @@ stages:
 
     - task: PublishTestResults@2
       inputs:
-        testRunTitle: "$ROR_TASK test results"
-        searchFolder: integration_testintegration-tests/build/reports/tests/test/*html
+        testRunTitle: "$ROR_TASK results"
+        testResultsFiles: "**/TEST*xml"
+
     strategy:
       maxParallel: 99
       matrix: 
