@@ -61,12 +61,10 @@ stages:
          "  IdentityFile $(ssh_file)" \
          "  LogLevel ERROR" >> ~/.ssh/config
         ls -ltra ~/.ssh
-        # export 
 
-
-- stage: "test_matrix"
+- stage: "Matrix"
   jobs:
-  - job: Test
+  - job: Run
     condition: succeeded()
     steps:
     - checkout: self
