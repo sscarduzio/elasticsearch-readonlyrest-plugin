@@ -32,11 +32,11 @@ class BlockContextContainsIndicesTest extends WordSpec with MockFactory {
   }
   "find HasIndices" in {
     implicitly[HasIndices[BlockContext.SnapshotRequestBlockContext]]
-    val bc: BlockContext.SnapshotRequestBlockContext = BlockContext.SnapshotRequestBlockContext(null, null, null, null, null, null, null)
+    val bc: BlockContext.SnapshotRequestBlockContext = BlockContext.SnapshotRequestBlockContext(null, null, null, null, null, null, null, null)
     bc.containsIndices shouldEqual true
   }
   "not find any  indices" in {
-    val bc: BlockContext.CurrentUserMetadataRequestBlockContext = BlockContext.CurrentUserMetadataRequestBlockContext(null, null, null)
+    val bc: BlockContext.CurrentUserMetadataRequestBlockContext = BlockContext.CurrentUserMetadataRequestBlockContext(null, null, null, null)
     bc.containsIndices shouldEqual false
   }
 }

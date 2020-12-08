@@ -30,7 +30,7 @@ class CatManager(client: RestClient,
                  esVersion: String)
   extends BaseManager(client) {
 
-  def healthCheck(): SimpleResponse = call(genericCatRequest("health"), new SimpleResponse(_))
+  def healthCheck(): JsonResponse = call(genericCatRequest("health"), new JsonResponse(_))
 
   def templates(): CatResponse = call(createCatTemplatesRequest(None), new CatResponse(_))
 
