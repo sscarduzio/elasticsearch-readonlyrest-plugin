@@ -6,11 +6,10 @@ import org.elasticsearch.action.support.IndicesOptions
 import org.elasticsearch.action.{ActionRequestValidationException, IndicesRequest}
 import org.elasticsearch.rest.RestRequest
 
-class GenericPathIndicesRequest(originIndices: List[String],
+class GenericPathIndicesRequest(override val actionName: String,
+                                originIndices: List[String],
                                 updateIndicesFunc: List[String] => RestRequest)
   extends ByProxyProcessedRequest with Replaceable {
-
-  override val actionName: String = "proxy:pathindices"
 
   private val alteredIndices = Atomic(originIndices)
 
@@ -31,18 +30,20 @@ class GenericPathIndicesRequest(originIndices: List[String],
 
 object GenericPathIndicesRequest {
 
-  private val ilmExplainRegex = "^/?([^/]+)/_ilm/explain$".r
   private val ilmMoveToRegex = "^/?_ilm/move/([^/]+)$".r
+  private val ilmExplainRegex = "^/?([^/]+)/_ilm/explain$".r
   private val ilmRemovePolicyRegex = "^/?([^/]+)/_ilm/remove$".r
 
   def from(rest: RestRequest): Option[GenericPathIndicesRequest] = {
-    val indicesStr = rest.path() match {
-      case ilmExplainRegex(is) => Some(is)
-      case ilmMoveToRegex(is) => Some(is)
-      case ilmRemovePolicyRegex(is) => Some(is)
+    val indicesStrAndAction = rest.path() match {
+      case ilmMoveToRegex(is) => Some((is, "cluster:admin/ilm/_move/post"))
+      case ilmExplainRegex(is) => Some((is, "indices:admin/ilm/explain"))
+      case ilmRemovePolicyRegex(is) => Some((is, "indices:admin/ilm/remove_policy"))
       case _ => None
     }
-    indicesStr.map { str => new GenericPathIndicesRequest(splitIntoIndices(str), replace(str, rest))}
+    indicesStrAndAction.map { case (str, action) =>
+      new GenericPathIndicesRequest(action, splitIntoIndices(str), replace(str, rest))
+    }
   }
 
   private def splitIntoIndices(indicesStr: String) = indicesStr.split(",").toList
