@@ -53,8 +53,7 @@ public class RCUtils {
       "indices:data/read/*",
       "indices:monitor/*",
       "indices:admin/xpack/rollup/search",
-      "indices:admin/resolve/index",
-      "proxy:pathindices"
+      "indices:admin/resolve/index"
   ));
 
   public static boolean isReadRequest(String action) {

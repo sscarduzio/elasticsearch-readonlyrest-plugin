@@ -1,3 +1,6 @@
+/*
+ *     Beshu Limited all rights reserved
+ */
 package tech.beshu.ror.proxy.es.proxyaction
 
 import monix.execution.atomic.Atomic
