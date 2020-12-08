@@ -1,11 +1,10 @@
-package tech.beshu.ror.proxy.es.proxyaction.indices
+package tech.beshu.ror.proxy.es.proxyaction
 
 import monix.execution.atomic.Atomic
-import org.elasticsearch.action.{ActionRequestValidationException, IndicesRequest}
 import org.elasticsearch.action.IndicesRequest.Replaceable
 import org.elasticsearch.action.support.IndicesOptions
+import org.elasticsearch.action.{ActionRequestValidationException, IndicesRequest}
 import org.elasticsearch.rest.RestRequest
-import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ProxyRestRequest}
 
 class GenericPathIndicesRequest(originIndices: List[String],
                                 updateIndicesFunc: List[String] => RestRequest)
@@ -15,6 +14,8 @@ class GenericPathIndicesRequest(originIndices: List[String],
 
   private val alteredIndices = Atomic(originIndices)
 
+  override def rest: RestRequest = updateIndicesFunc(alteredIndices.get())
+
   override def indices(indices: String*): IndicesRequest = {
     alteredIndices.set(indices.toList)
     this
@@ -22,10 +23,8 @@ class GenericPathIndicesRequest(originIndices: List[String],
 
   override def indices(): Array[String] = originIndices.toArray
 
-  // todo:
-  override def indicesOptions(): IndicesOptions = IndicesOptions.LENIENT_EXPAND_OPEN
-
-  override def rest: RestRequest = updateIndicesFunc(alteredIndices.get())
+  // note: this should not be taken into consideration
+  override def indicesOptions(): IndicesOptions = IndicesOptions.strictExpand()
 
   override def validate(): ActionRequestValidationException = null
 }
@@ -33,12 +32,17 @@ class GenericPathIndicesRequest(originIndices: List[String],
 object GenericPathIndicesRequest {
 
   private val ilmExplainRegex = "^/?([^/]+)/_ilm/explain$".r
+  private val ilmMoveToRegex = "^/?_ilm/move/([^/]+)$".r
+  private val ilmRemovePolicyRegex = "^/?([^/]+)/_ilm/remove$".r
 
   def from(rest: RestRequest): Option[GenericPathIndicesRequest] = {
-    rest.path() match {
-      case ilmExplainRegex(indicesStr) => Some(new GenericPathIndicesRequest(splitIntoIndices(indicesStr), replace(indicesStr, rest)))
+    val indicesStr = rest.path() match {
+      case ilmExplainRegex(is) => Some(is)
+      case ilmMoveToRegex(is) => Some(is)
+      case ilmRemovePolicyRegex(is) => Some(is)
       case _ => None
     }
+    indicesStr.map { str => new GenericPathIndicesRequest(splitIntoIndices(str), replace(str, rest))}
   }
 
   private def splitIntoIndices(indicesStr: String) = indicesStr.split(",").toList

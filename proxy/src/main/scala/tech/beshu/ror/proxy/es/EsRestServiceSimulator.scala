@@ -41,9 +41,7 @@ import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
-import tech.beshu.ror.proxy.es.proxyaction.generic.GenericRequest
-import tech.beshu.ror.proxy.es.proxyaction.indices.GenericPathIndicesRequest
-import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ByProxyProcessedResponseActionListener}
+import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ByProxyProcessedResponseActionListener, GenericPathIndicesRequest, GenericRequest}
 import tech.beshu.ror.proxy.es.services.ProxyIndexJsonContentService
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._

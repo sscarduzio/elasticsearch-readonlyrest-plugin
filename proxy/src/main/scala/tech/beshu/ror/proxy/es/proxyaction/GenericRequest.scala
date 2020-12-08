@@ -1,11 +1,10 @@
 /*
  *     Beshu Limited all rights reserved
  */
-package tech.beshu.ror.proxy.es.proxyaction.generic
+package tech.beshu.ror.proxy.es.proxyaction
 
-import org.elasticsearch.action.{ActionRequest, ActionRequestValidationException}
+import org.elasticsearch.action.ActionRequestValidationException
 import org.elasticsearch.rest.RestRequest
-import tech.beshu.ror.proxy.es.proxyaction.ByProxyProcessedRequest
 
 class GenericRequest(val rest: RestRequest) extends ByProxyProcessedRequest {
   override val actionName: String = "proxy:generic"

@@ -22,7 +22,7 @@ import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, SearchTemp
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult.{Handled, PassItThrough}
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
-import tech.beshu.ror.proxy.es.proxyaction.generic.GenericRequest
+import tech.beshu.ror.proxy.es.proxyaction.GenericRequest
 
 class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
                              clusterService: ClusterService)
