@@ -38,7 +38,7 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
     "match" when {
       "LDAP service authenticates user" in {
         val requestContext = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("admin:pass")))
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
         (service.authenticate _).expects(User.Id("admin".nonempty), PlainTextSecret("pass".nonempty)).returning(Task.now(true))
@@ -48,14 +48,15 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
           CurrentUserMetadataRequestBlockContext(
             requestContext,
             UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("admin".nonempty))),
-            Set.empty)
+            Set.empty,
+            List.empty)
         ))
       }
     }
     "not match" when {
       "LDAP service doesn't authenticate user" in {
         val requestContext = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("admin:pass")))
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
         (service.authenticate _).expects(User.Id("admin".nonempty), PlainTextSecret("pass".nonempty)).returning(Task.now(false))
@@ -65,7 +66,7 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
       }
       "there is no basic auth header" in {
         val requestContext = MockRequestContext.indices
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         val service = mock[LdapAuthenticationService]
 
         val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))
@@ -73,7 +74,7 @@ class LdapAuthenticationRuleTests extends WordSpec with MockFactory {
       }
       "LDAP service fails" in {
         val requestContext = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("admin:pass")))
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
         (service.authenticate _).expects(User.Id("admin".nonempty), PlainTextSecret("pass".nonempty)).returning(Task.raiseError(TestException("Cannot reach LDAP")))

@@ -85,7 +85,7 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
         implicit val _ = fixedClock
         val rule = new SessionMaxIdleRule(Settings(positive(1 minute)))
         val requestContext = mock[RequestContext]
-        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
       }
       "ror cookie is expired" in {
@@ -150,7 +150,8 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
         case Some(user) => UserMetadata.empty.withLoggedUser(user)
         case None => UserMetadata.empty
       },
-      Set.empty
+      Set.empty,
+      List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) {
@@ -160,7 +161,8 @@ class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
             case Some(user) => UserMetadata.empty.withLoggedUser(user)
             case None => UserMetadata.empty
           },
-          Set(headerFrom("Set-Cookie" -> setRawCookie))
+          Set(headerFrom("Set-Cookie" -> setRawCookie)),
+          List.empty
         ))
       } else {
         Rejected()

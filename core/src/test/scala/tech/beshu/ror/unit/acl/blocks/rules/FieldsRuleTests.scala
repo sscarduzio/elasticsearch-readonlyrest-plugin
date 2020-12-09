@@ -212,7 +212,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
           )
         )
         val requestContext = mock[RequestContext]
-        val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         (requestContext.isReadOnlyRequest _).expects().returning(true)
 
@@ -261,6 +261,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
       requestContext = requestContext,
       userMetadata = UserMetadata.empty,
       responseHeaders = Set.empty,
+      responseTransformations = List.empty,
       filteredIndices = Set.empty,
       allAllowedIndices = Set.empty,
       filter = None,
@@ -275,6 +276,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
       requestContext = requestContext,
       userMetadata = UserMetadata.empty,
       responseHeaders = Set.empty,
+      responseTransformations = List.empty,
       indexPacks = List.empty,
       filter = None,
       fieldLevelSecurity = None,

@@ -34,6 +34,7 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.rradmin._
 import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.utils.ThreadRepo
@@ -238,9 +239,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
       restHandler: RestHandler =>
         (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-          ThreadRepo.setRestChannel(channel)
+          val rorRestChannel = new RorRestChannel(channel)
+          ThreadRepo.setRestChannel(rorRestChannel)
           consumeAllRequestParams(request)
-          restHandler.handleRequest(request, channel, client)
+          restHandler.handleRequest(request, rorRestChannel, client)
         }
     }
 

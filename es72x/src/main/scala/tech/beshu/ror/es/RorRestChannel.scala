@@ -16,19 +16,33 @@
  */
 package tech.beshu.ror.es
 
+import monix.execution.atomic.Atomic
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.rest.{AbstractRestChannel, RestChannel, RestResponse}
 import org.elasticsearch.tasks.Task
 
-class RorRestChannel(underlying: RestChannel, task: Task)
-  extends AbstractRestChannel(underlying.request(), false)
+class RorRestChannel(underlying: RestChannel)
+  extends AbstractRestChannel(underlying.request(), true)
+    with ResponseFieldsFiltering
     with Logging {
 
-    override def sendResponse(response: RestResponse): Unit = {
+  private val maybeTask: Atomic[Option[Task]] = Atomic(None: Option[Task])
+
+  def setTask(task: Task): Unit = {
+    maybeTask.set(Some(task))
+  }
+
+  override def sendResponse(response: RestResponse): Unit = {
+    unregisterTask()
+    underlying.sendResponse(filterRestResponse(response))
+  }
+
+  private def unregisterTask(): Unit = {
+    maybeTask.get().foreach { task =>
       TransportServiceInterceptor.taskManagerSupplier.get() match {
         case Some(taskManager) => taskManager.unregister(task)
         case None => logger.error(s"Cannot unregister task: ${task.getId}; ${task.getDescription}")
       }
-      underlying.sendResponse(response)
     }
   }
+}

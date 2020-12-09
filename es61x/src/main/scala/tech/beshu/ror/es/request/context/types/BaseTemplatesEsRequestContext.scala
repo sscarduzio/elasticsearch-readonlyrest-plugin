@@ -38,6 +38,7 @@ abstract class BaseTemplatesEsRequestContext[R <: ActionRequest](actionRequest: 
     this,
     UserMetadata.from(this),
     Set.empty,
+    List.empty,
     templatesFrom(actionRequest)
   )
 }

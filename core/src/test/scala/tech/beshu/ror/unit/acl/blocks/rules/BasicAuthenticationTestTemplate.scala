@@ -40,12 +40,13 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
         val requestContext = mock[RequestContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:logstash"))).twice()
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           GeneralNonIndexRequestBlockContext(
             requestContext,
             UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("logstash".nonempty))),
-            Set.empty
+            Set.empty,
+            List.empty
           )
         ))
       }
@@ -56,14 +57,14 @@ trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
         val requestContext = mock[RequestContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set(basicAuthHeader("logstash:nologstash"))).twice()
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "basic auth header is absent" in {
         val requestContext = mock[RequestContext]
         (requestContext.id _).expects().returning(RequestContext.Id("1"))
         (requestContext.headers _).expects().returning(Set.empty).twice()
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }

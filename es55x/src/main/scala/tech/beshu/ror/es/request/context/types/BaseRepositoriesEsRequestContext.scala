@@ -39,6 +39,7 @@ abstract class BaseRepositoriesEsRequestContext[R <: ActionRequest](actionReques
     this,
     UserMetadata.from(this),
     Set.empty,
+    List.empty,
     repositoriesOrWildcard(repositoriesFrom(actionRequest))
   )
 

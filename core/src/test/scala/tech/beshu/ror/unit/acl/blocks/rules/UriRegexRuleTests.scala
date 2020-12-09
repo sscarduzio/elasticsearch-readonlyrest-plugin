@@ -129,7 +129,8 @@ class UriRegexRuleTests extends WordSpec with MockFactory {
         case Some(userId) => UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(userId))
         case None => UserMetadata.empty
       },
-      Set.empty
+      Set.empty,
+      List.empty
     )
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)

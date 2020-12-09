@@ -132,7 +132,7 @@ class LdapAuthorizationRuleTests
     )
     val blockContext = loggedUser
       .map(DirectlyLoggedUser.apply)
-      .foldLeft(CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty)) {
+      .foldLeft(CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)) {
         case (bc, user) => bc.withUserMetadata(_.withLoggedUser(user))
       }
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))

@@ -29,28 +29,34 @@ sealed trait BlockContext {
   def userMetadata: UserMetadata
 
   def responseHeaders: Set[Header]
+
+  def responseTransformations: List[ResponseTransformation]
 }
 object BlockContext {
 
   final case class CurrentUserMetadataRequestBlockContext(override val requestContext: RequestContext,
                                                           override val userMetadata: UserMetadata,
-                                                          override val responseHeaders: Set[Header])
+                                                          override val responseHeaders: Set[Header],
+                                                          override val responseTransformations: List[ResponseTransformation])
     extends BlockContext
 
   final case class GeneralNonIndexRequestBlockContext(override val requestContext: RequestContext,
                                                       override val userMetadata: UserMetadata,
-                                                      override val responseHeaders: Set[Header])
+                                                      override val responseHeaders: Set[Header],
+                                                      override val responseTransformations: List[ResponseTransformation])
     extends BlockContext
 
   final case class RepositoryRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
+                                                 override val responseTransformations: List[ResponseTransformation],
                                                  repositories: Set[RepositoryName])
     extends BlockContext
 
   final case class SnapshotRequestBlockContext(override val requestContext: RequestContext,
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
+                                               override val responseTransformations: List[ResponseTransformation],
                                                snapshots: Set[SnapshotName],
                                                repositories: Set[RepositoryName],
                                                filteredIndices: Set[IndexName],
@@ -60,6 +66,7 @@ object BlockContext {
   final case class AliasRequestBlockContext(override val requestContext: RequestContext,
                                             override val userMetadata: UserMetadata,
                                             override val responseHeaders: Set[Header],
+                                            override val responseTransformations: List[ResponseTransformation],
                                             aliases: Set[IndexName],
                                             indices: Set[IndexName])
     extends BlockContext
@@ -67,12 +74,14 @@ object BlockContext {
   final case class TemplateRequestBlockContext(override val requestContext: RequestContext,
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
+                                               override val responseTransformations: List[ResponseTransformation],
                                                templates: Set[Template])
     extends BlockContext
 
   final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
                                                    override val userMetadata: UserMetadata,
                                                    override val responseHeaders: Set[Header],
+                                                   override val responseTransformations: List[ResponseTransformation],
                                                    filteredIndices: Set[IndexName],
                                                    allAllowedIndices: Set[IndexName])
     extends BlockContext
@@ -80,6 +89,7 @@ object BlockContext {
   final case class FilterableRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
+                                                 override val responseTransformations: List[ResponseTransformation],
                                                  filteredIndices: Set[IndexName],
                                                  allAllowedIndices: Set[IndexName],
                                                  filter: Option[Filter],
@@ -90,6 +100,7 @@ object BlockContext {
   final case class FilterableMultiRequestBlockContext(override val requestContext: RequestContext,
                                                       override val userMetadata: UserMetadata,
                                                       override val responseHeaders: Set[Header],
+                                                      override val responseTransformations: List[ResponseTransformation],
                                                       indexPacks: List[Indices],
                                                       filter: Option[Filter],
                                                       fieldLevelSecurity: Option[FieldLevelSecurity] = None,
@@ -99,6 +110,7 @@ object BlockContext {
   final case class MultiIndexRequestBlockContext(override val requestContext: RequestContext,
                                                  override val userMetadata: UserMetadata,
                                                  override val responseHeaders: Set[Header],
+                                                 override val responseTransformations: List[ResponseTransformation],
                                                  indexPacks: List[Indices])
     extends BlockContext
 
@@ -224,6 +236,9 @@ object BlockContext {
 
     def withAddedResponseHeader(header: Header): B =
       BlockContextUpdater[B].withAddedResponseHeader(blockContext, header)
+
+    def withAddedResponseTransformation(responseTransformation: ResponseTransformation): B =
+      BlockContextUpdater[B].withAddedResponseTransformation(blockContext, responseTransformation)
   }
 
   implicit class RepositoryOperationBlockContextUpdaterOps(val blockContext: RepositoryRequestBlockContext) extends AnyVal {
