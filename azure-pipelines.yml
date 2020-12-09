@@ -79,7 +79,7 @@ stages:
 
     - task: PublishTestResults@2
       inputs:
-        testRunTitle: "$(BUILD_BUILDNUMBER) $(ROR_TASK) results"
+        testRunTitle: "$(RELEASE.RELEASENAME) $(ROR_TASK) results"
         testResultsFiles: "**/TEST*xml"
         mergeTestResults: true
 
