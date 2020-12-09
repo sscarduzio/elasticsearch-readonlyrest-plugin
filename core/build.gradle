@@ -59,7 +59,7 @@ dependencyCheck {
        High     7.0-8.9
        Critical 9.0-10.0
      */
-    failBuildOnCVSS = 4
+    failBuildOnCVSS = 5
     scanConfigurations = ['runtime']
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
@@ -99,8 +99,8 @@ dependencies {
     compile group: 'commons-codec',                         name: 'commons-codec',                          version: '1.10'
     compile group: 'org.typelevel',                         name: 'cats-free_2.12',                         version: '2.1.1'
     compile group: 'com.softwaremill.sttp',                 name: 'core_2.12',                              version: '1.7.2'
-    compile group: 'com.github.finagle',                    name: 'finchx-circe_2.12',                      version: '0.29.0'
-    compile group: 'com.github.finagle',                    name: 'finchx-core_2.12',                       version: '0.29.0'
+    compile group: 'com.github.finagle',                    name: 'finchx-circe_2.12',                      version: '0.32.1'
+    compile group: 'com.github.finagle',                    name: 'finchx-core_2.12',                       version: '0.32.1'
     compile group: 'com.comcast',                           name: 'ip4s-cats_2.12',                         version: '1.1.1'
     compile group: 'io.jsonwebtoken',                       name: 'jjwt-api',                               version: '0.10.5'
     compile group: 'io.jsonwebtoken',                       name: 'jjwt-impl',                              version: '0.10.5'
