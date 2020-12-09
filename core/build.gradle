@@ -59,7 +59,7 @@ dependencyCheck {
        High     7.0-8.9
        Critical 9.0-10.0
      */
-    failBuildOnCVSS = 5
+    failBuildOnCVSS = 4
     scanConfigurations = ['runtime']
     suppressionFiles = ["${project.rootDir}/supressions_cve.xml"]
 }
