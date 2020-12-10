@@ -280,7 +280,7 @@ object domain {
 
     def randomNonexistentIndex(prefix: String = ""): IndexName = from {
       NonEmptyString.unsafeFrom {
-        val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${Random.alphanumeric.take(10)}"
+        val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
         if(prefix.contains("*")) s"$nonexistentIndex*"
         else nonexistentIndex
       }
@@ -501,7 +501,7 @@ object domain {
       final case class ObfuscatedRandomField(value: String) extends AnyVal
       object ObfuscatedRandomField {
         def apply(from: SpecificField): ObfuscatedRandomField = {
-          new ObfuscatedRandomField(s"${from.value}_ROR_${Random.alphanumeric.take(10)}")
+          new ObfuscatedRandomField(s"${from.value}_ROR_${Random.alphanumeric.take(10).mkString("")}")
         }
       }
 
