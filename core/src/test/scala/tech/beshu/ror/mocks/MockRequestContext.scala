@@ -73,7 +73,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = GeneralIndexRequestBlockContext
 
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, filteredIndices, allAllowedIndices
+    this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices
   )
 }
 
@@ -101,7 +101,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = FilterableRequestBlockContext
 
   override def initialBlockContext: FilterableRequestBlockContext = FilterableRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, indices, allAllowedIndices, None
+    this, UserMetadata.from(this), Set.empty, List.empty, indices, allAllowedIndices, None
   )
 }
 
@@ -128,7 +128,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = RepositoryRequestBlockContext
 
   override def initialBlockContext: RepositoryRequestBlockContext = RepositoryRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, repositories
+    this, UserMetadata.from(this), Set.empty, List.empty, repositories
   )
 }
 
@@ -155,7 +155,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = SnapshotRequestBlockContext
 
   override def initialBlockContext: SnapshotRequestBlockContext = SnapshotRequestBlockContext(
-    this, UserMetadata.from(this), Set.empty, snapshots, Set.empty, Set.empty, Set.empty
+    this, UserMetadata.from(this), Set.empty, List.empty, snapshots, Set.empty, Set.empty, Set.empty
   )
 }
 
@@ -181,7 +181,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
 
   override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
-    this, UserMetadata.empty, Set.empty
+    this, UserMetadata.empty, Set.empty, List.empty
   )
 }
 

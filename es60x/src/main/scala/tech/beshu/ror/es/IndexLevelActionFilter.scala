@@ -125,7 +125,7 @@ class IndexLevelActionFilter(settings: Settings,
                             request: ActionRequest,
                             listener: ActionListener[ActionResponse],
                             chain: ActionFilterChain[ActionRequest, ActionResponse],
-                            channel: RestChannel): Unit = {
+                            channel: RorRestChannel): Unit = {
     TransportServiceInterceptor.remoteClusterServiceSupplier.get() match {
       case Some(remoteClusterService) =>
         aclAwareRequestFilter

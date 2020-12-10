@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
-import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait MiscSuite
@@ -86,6 +86,7 @@ trait MiscSuite
     result.searchHits.size should be(1)
     result.searchHits(0)("_source")("user_id").str should be("alice")
   }
+
 }
 
 object MiscSuite {

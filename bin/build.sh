@@ -7,92 +7,96 @@ echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION"
 # Log file friendly Gradle output
 export TERM=dumb
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "license" ]]; then
+# Adaptation for Azure
+( [ ! -z $BUILD_BUILDNUMBER ] || [ "$TRAVIS" ] ) && TRAVIS="true"
+
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "license" ]]; then
     echo  ">>> Check all license headers are in place"
     ./gradlew license
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "cve_check" ]]; then
-    echo ">>> Running unit tests.."
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "cve_check" ]]; then
+    echo ">>> Running CVE checks.."
     ./gradlew dependencyCheckAnalyze
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "unit" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "unit" ]]; then
     echo ">>> Running unit tests.."
     ./gradlew --stacktrace test ror
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_proxy" ]]; then
     echo ">>> proxy => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=proxy' '-Pmode=proxy' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es710x" ]]; then
+
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es710x" ]]; then
     echo ">>> es710x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es710x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es79x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es79x" ]]; then
     echo ">>> es79x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es79x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es78x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es78x" ]]; then
     echo ">>> es78x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es78x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es77x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es77x" ]]; then
     echo ">>> es77x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es77x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es74x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es74x" ]]; then
     echo ">>> es74x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es74x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es73x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es73x" ]]; then
     echo ">>> es73x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es73x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es72x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es72x" ]]; then
     echo ">>> es72x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es72x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es70x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es70x" ]]; then
     echo ">>> es70x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es70x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es66x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es66x" ]]; then
     echo ">>> es66x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es66x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es63x" ]]; then
     echo ">>> es63x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es63x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es62x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es62x" ]]; then
     echo ">>> es62x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es62x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es61x" ]]; then
     echo ">>> es61x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es61x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es60x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es60x" ]]; then
     echo ">>> es60x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es60x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "integration_es55x" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "integration_es55x" ]]; then
     echo ">>> es55x => Running testcontainers.."
     ./gradlew integration-tests:test '-PesModule=es55x' '-Pmode=plugin' || ( find . |grep hs_err |xargs cat && exit 1 )
 fi
@@ -102,7 +106,7 @@ if [[ $TRAVIS_PULL_REQUEST == "true" ]] && [[ $TRAVIS_BRANCH != "master" ]]; the
     exit 0
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
@@ -151,13 +155,8 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es7xx" ]]; then
 
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
 
-    echo ">>> ($0) additional builds of ES module for specified ES version"
-
-fi
-
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
@@ -221,7 +220,7 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es6xx" ]]; then
 
 fi
 
-if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
+if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
 
     echo ">>> ($0) additional builds of ES module for specified ES version"
 
@@ -251,9 +250,10 @@ if [[ $TRAVIS != "true" ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
 
 fi
 
-if [[ $TRAVIS_PULL_REQUEST = "false" ]] && [[ $ROR_TASK == "publish_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]]; then
+if [[ $ROR_TASK == "publish_artifacts" ]] && ( [[ $TRAVIS_BRANCH == "master" ]] || [[ $TRAVIS_BRANCH == "develop" ]]) ; then
 
-    openssl aes-256-cbc -K $encrypted_31be120daa3b_key -iv $encrypted_31be120daa3b_iv -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
+    # only try to decode secret from Travis if it's not present
+    [[ -e .travis/secret.pgp ]] || openssl aes-256-cbc -K $encrypted_31be120daa3b_key -iv $encrypted_31be120daa3b_iv -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
 
     CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
     PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
@@ -264,5 +264,6 @@ if [[ $TRAVIS_PULL_REQUEST = "false" ]] && [[ $ROR_TASK == "publish_artifacts" ]
       ./gradlew audit:closeAndReleaseRepository
     else
       echo ">>> Skipping publishing audit module artifacts"
-    fi   
+    fi
 fi
+

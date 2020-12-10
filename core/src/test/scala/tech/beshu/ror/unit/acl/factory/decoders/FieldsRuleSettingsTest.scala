@@ -298,7 +298,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
           assertion = errors => {
             errors should have size 1
             errors.head should be(RulesLevelCreationError(Message(
-              "The fields rule cannot contain always-allowed fields: _routing,_ttl,_index,_type,_size,_seq_no,_parent,_id,_uid,_version,_primary_term,_timestamp"
+              "These fields cannot be filtered using this rule: _type,_uid"
             )))
           }
         )
