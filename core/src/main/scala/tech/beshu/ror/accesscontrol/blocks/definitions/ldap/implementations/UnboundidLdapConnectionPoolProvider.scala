@@ -140,7 +140,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         new DNSSRVRecordServerSet(
           recordName.orNull,
           providerUrl.orNull,
-          ttl.map(_.toSeconds).getOrElse(0),
+          ttl.map(_.value.toSeconds).getOrElse(0),
           if (useSSL) sslSocketFactory(trustAllCerts) else null,
           options
         )

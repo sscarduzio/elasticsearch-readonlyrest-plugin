@@ -305,7 +305,7 @@ object LdapConnectionConfig {
   object ConnectionMethod {
     final case class SingleServer(host: LdapHost) extends ConnectionMethod
     final case class SeveralServers(hosts: NonEmptyList[LdapHost], haMethod: HaMethod) extends ConnectionMethod
-    final case class ServerDiscovery(recordName: Option[String], providerUrl: Option[String], ttl: Option[FiniteDuration], useSSL: Boolean) extends ConnectionMethod
+    final case class ServerDiscovery(recordName: Option[String], providerUrl: Option[String], ttl: Option[FiniteDuration Refined Positive], useSSL: Boolean) extends ConnectionMethod
   }
 
   sealed trait HaMethod
