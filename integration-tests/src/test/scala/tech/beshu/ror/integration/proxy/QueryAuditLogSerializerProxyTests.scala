@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.proxy
 
-import tech.beshu.ror.integration.suites.DeprecatedQueryAuditLogSerializerSuite
+import tech.beshu.ror.integration.suites.QueryAuditLogSerializerSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
 
 // todo: enable it when audit is ready for proxy

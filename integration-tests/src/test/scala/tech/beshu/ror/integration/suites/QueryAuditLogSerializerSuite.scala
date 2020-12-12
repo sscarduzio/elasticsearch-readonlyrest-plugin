@@ -24,7 +24,7 @@ import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTwee
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.Str
 
-trait DeprecatedQueryAuditLogSerializerSuite
+trait QueryAuditLogSerializerSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
@@ -39,7 +39,7 @@ trait DeprecatedQueryAuditLogSerializerSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      nodeDataInitializer = DeprecatedQueryAuditLogSerializerSuite.nodeDataInitializer(),
+      nodeDataInitializer = QueryAuditLogSerializerSuite.nodeDataInitializer(),
       xPackSupport = isUsingXpackSupport,
     )
   )
@@ -129,7 +129,7 @@ trait DeprecatedQueryAuditLogSerializerSuite
   }
 }
 
-object DeprecatedQueryAuditLogSerializerSuite {
+object QueryAuditLogSerializerSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     new ElasticsearchTweetsInitializer().initialize(adminRestClient)
   }
