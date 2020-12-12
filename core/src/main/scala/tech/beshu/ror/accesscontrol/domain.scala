@@ -29,7 +29,6 @@ import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
-import org.apache.commons.lang.RandomStringUtils.randomAlphanumeric
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
@@ -43,7 +42,7 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success, Try, Random}
 
 object domain {
 
@@ -299,7 +298,7 @@ object domain {
 
     def randomNonexistentIndex(prefix: String = ""): IndexName = from {
       NonEmptyString.unsafeFrom {
-        val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${randomAlphanumeric(10)}"
+        val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
         if(prefix.contains("*")) s"$nonexistentIndex*"
         else nonexistentIndex
       }
@@ -571,7 +570,7 @@ object domain {
       final case class ObfuscatedRandomField(value: String) extends AnyVal
       object ObfuscatedRandomField {
         def apply(from: SpecificField): ObfuscatedRandomField = {
-          new ObfuscatedRandomField(s"${from.value}_ROR_${randomAlphanumeric(10)}")
+          new ObfuscatedRandomField(s"${from.value}_ROR_${Random.alphanumeric.take(10).mkString("")}")
         }
       }
 

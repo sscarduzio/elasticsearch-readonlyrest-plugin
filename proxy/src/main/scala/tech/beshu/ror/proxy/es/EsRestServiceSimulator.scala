@@ -48,7 +48,7 @@ import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
-import tech.beshu.ror.proxy.es.genericaction.{GenericAction, GenericRequest, GenericResponseActionListener}
+import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ByProxyProcessedResponseActionListener, GenericPathIndicesRequest, GenericRequest}
 import tech.beshu.ror.proxy.es.services.ProxyIndexJsonContentService
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
@@ -84,9 +84,12 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       val threadContext = threadPool.getThreadContext
       threadContext.stashContext.bracket { _ =>
         ProxyThreadRepo.setRestChannel(restChannel)
-        GenericRequest.from(request) match {
-          case Some(genericRequest) =>
-            processDirectly(genericRequest, restChannel)
+        val genericRequest =
+          GenericPathIndicesRequest.from(request)
+            .orElse(GenericRequest.from(request))
+        genericRequest match {
+          case Some(req) =>
+            processDirectly(req, restChannel)
           case None =>
             processThroughEsInternals(request, restChannel, threadContext)
         }
@@ -103,9 +106,9 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       }
   }
 
-  private def processDirectly(request: GenericRequest, restChannel: ProxyRestChannel): Unit = {
+  private def processDirectly(request: ByProxyProcessedRequest, restChannel: ProxyRestChannel): Unit = {
     proxyFilter
-      .execute(GenericAction.NAME, request, new GenericResponseActionListener(restChannel))(
+      .execute(request.actionName, request, new ByProxyProcessedResponseActionListener(restChannel))(
         esClient.generic
       )
   }
@@ -215,13 +218,13 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     esActionRequestHandler
       .handle(request)
       .runAsyncF {
-      case Right(HandlingResult.Handled(response)) =>
-        listener.onResponse(response.asInstanceOf[RR])
-      case Right(HandlingResult.PassItThrough) =>
-        proxyRestChannel.passThrough()
-      case Left(ex) =>
-        proxyRestChannel.sendFailureResponse(ex)
-    }
+        case Right(HandlingResult.Handled(response)) =>
+          listener.onResponse(response.asInstanceOf[RR])
+        case Right(HandlingResult.PassItThrough) =>
+          proxyRestChannel.passThrough()
+        case Left(ex) =>
+          proxyRestChannel.sendFailureResponse(ex)
+      }
   }
 
   private class RORActionPlugin extends ActionPlugin {

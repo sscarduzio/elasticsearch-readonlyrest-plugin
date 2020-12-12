@@ -69,7 +69,7 @@ import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter._
 import tech.beshu.ror.proxy.es.clients.actions.ResolveIndex._
 import tech.beshu.ror.proxy.es.exceptions._
-import tech.beshu.ror.proxy.es.genericaction.{GenericRequest, GenericResponse}
+import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ByProxyProcessedResponse}
 
 import scala.collection.JavaConverters._
 
@@ -80,13 +80,13 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
   def putRorAuditEvent(request: RRAuditEventRequest): Task[RRAuditEventResponse] =
     Task.now(new RRAuditEventResponse())
 
-  def generic(request: GenericRequest): Task[GenericResponse] = {
+  def generic(request: ByProxyProcessedRequest): Task[ByProxyProcessedResponse] = {
     executeAsync {
       client
         .getLowLevelClient
         .performRequest(clientRequestFrom(request.rest))
     } map { response =>
-      new GenericResponse(response)
+      new ByProxyProcessedResponse(response)
     }
   }
 
