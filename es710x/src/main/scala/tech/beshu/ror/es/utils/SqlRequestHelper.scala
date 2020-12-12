@@ -61,7 +61,6 @@ object SqlRequestHelper {
                       finalIndices: Set[String]): Try[CompositeIndicesRequest] = Try {
     extractedIndices match {
       case s: SqlTableRelated =>
-        println(s"REMOvE: ${newQueryFrom(getQuery(request), s, finalIndices)}") // todo:
         setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))
       case SqlNotTableRelated =>
         request

@@ -48,6 +48,9 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
             """^retention_lease_sync$""".r,
             """^retention_lease_background_sync$""".r,
             """^xpack/rollup/.*$""".r,
+            """^cluster:monitor/tasks/lists$""".r,
+            """^cluster:monitor/tasks/lists\[n\]$""".r,
+            """^cluster:admin/tasks/cancel$""".r
           ))
         } match {
           case Failure(exception) => Failed(exception)
