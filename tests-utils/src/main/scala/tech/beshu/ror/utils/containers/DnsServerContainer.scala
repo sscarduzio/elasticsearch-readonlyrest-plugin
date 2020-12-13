@@ -12,9 +12,12 @@ class DnsServerContainer(srvServicePort: Int)
     dockerImage = new ImageFromDockerfile()
       .withFileFromClasspath("Dockerfile", "coredns-image/Dockerfile")
       .withFileFromClasspath("Corefile", "coredns-image/Corefile")
-      .withFileFromClasspath("entrypoint.sh", "coredns-image/entrypoint.sh")
-      .withFileFromClasspath("conf_template", "coredns-image/conf_template"),
-    env = Map("PORT" -> srvServicePort.toString)
+      .withFileFromString("conf",
+      s"""
+          |$$ORIGIN example.org.
+          |@	3600	IN	SOA someorg.org.  someorg.com.  (2017042745 7200 3600 1209600 3600)
+          |_ldap._tcp.	 86400	IN	SRV	10	60     $srvServicePort	localhost.
+          |""".stripMargin)
   ) {
 
   def dnsPort: Int = {
