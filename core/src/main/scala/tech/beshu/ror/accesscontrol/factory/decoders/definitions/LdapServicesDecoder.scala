@@ -227,7 +227,7 @@ object LdapServicesDecoder {
           hostOpt <- ldapHostDecoder.tryDecode(c).map(Some.apply).recover { case _ => None }
           hostsOpt <- c.downFields("hosts", "servers").as[Option[List[LdapHost]]]
           haMethod <- c.downField("ha").as[Option[HaMethod]]
-          serverDiscovery <- c.downField("server_discovery").as[Option[ConnectionMethod.ServerDiscovery]]
+          serverDiscovery <- c.getOrElse[Option[ConnectionMethod.ServerDiscovery]]("server_discovery")(fallback = None)
         } yield (hostOpt, hostsOpt, serverDiscovery) match {
           case (Some(host), None, None) =>
             haMethod match {
@@ -267,9 +267,17 @@ object LdapServicesDecoder {
       .decoder
 
     val complexDiscoverySettingDecoder =
-      Decoder
-        .forProduct4("record_name", "dns_url", "ttl", "use_ssl")(ConnectionMethod.ServerDiscovery)
+      SyncDecoderCreator
+        .instance { c =>
+          for {
+            recordName <- c.downField("record_name").as[Option[String]]
+            dnsUrl <- c.downField("dns_url").as[Option[String]]
+            ttl <- c.downField("ttl").as[Option[FiniteDuration Refined Positive]]
+            useSsl <- c.downField("use_ssl").as[Option[Boolean]]
+          } yield ConnectionMethod.ServerDiscovery(recordName, dnsUrl, ttl, useSsl.getOrElse(false))
+        }
         .map(Option.apply)
+        .decoder
 
     booleanDiscoverySettingDecoder or complexDiscoverySettingDecoder
   }
