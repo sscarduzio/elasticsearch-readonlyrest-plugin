@@ -78,6 +78,7 @@ stages:
         echo ">>> Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh
 
     - task: PublishTestResults@2
+      condition: failed()
       inputs:
         testRunTitle: "$(ROR_TASK) results"
         testResultsFiles: "**/TEST*xml"
