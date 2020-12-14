@@ -74,7 +74,8 @@ license {
 githook {
     hooks {
         "pre-commit" {
-            task = licenseFormat
+//            task = licenseFormat
+            shell = "./gradlew licenseFormat"
         }
     }
 }
