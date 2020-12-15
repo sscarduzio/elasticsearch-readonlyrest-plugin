@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDec
 import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
 import tech.beshu.ror.utils.TestsUtils.StringOps
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
-import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.containers.{DnsServerContainer, LdapContainer}
 
 import scala.language.postfixOps
 
@@ -47,8 +47,21 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
 
   private val containerLdap1 = new LdapContainer("LDAP1", "test_example.ldif")
   private val containerLdap2 = new LdapContainer("LDAP2", "test_example.ldif")
+  private var dnsContainer: Option[DnsServerContainer] = None
 
   override val container: MultipleContainers = MultipleContainers(containerLdap1, containerLdap2)
+
+  override def afterStart(): Unit = {
+    super.afterStart()
+    dnsContainer = Option(new DnsServerContainer(containerLdap1.ldapPort))
+    dnsContainer.foreach(_.start())
+  }
+
+  override def beforeStop(): Unit = {
+    super.beforeStop()
+    dnsContainer.foreach(_.stop())
+  }
+
 
   "An LdapService" should {
     "be able to be loaded from config" when {
@@ -178,6 +191,35 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    hosts:
                |    - "ldap://${containerLdap2.ldapHost}:${containerLdap2.ldapPort}"
                |    - "ldap://${containerLdap1.ldapHost}:${containerLdap1.ldapPort}"
+               |    ssl_enabled: false                                        # default true
+               |    ssl_trust_all_certs: true                                 # default false
+               |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+               |    bind_password: "password"                                 # skip for anonymous bind
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    user_id_attribute: "uid"                                  # default "uid"
+               |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+               |    connection_pool_size: 10                                  # default 30
+               |    connection_timeout_in_sec: 10                             # default 1
+               |    request_timeout_in_sec: 10                                # default 1
+               |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+           """.stripMargin,
+          assertion = { definitions =>
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService shouldBe a[LdapAuthService]
+            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+          }
+        )
+      }
+      "server discovery is enabled" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    server_discovery:
+               |        dns_url: "dns://localhost:${dnsContainer.map(_.dnsPort).get}"
                |    ssl_enabled: false                                        # default true
                |    ssl_trust_all_certs: true                                 # default false
                |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -393,7 +435,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Server information missing: use either 'host' and 'port' or 'servers'/'hosts' option.")))
+            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Server information missing: use 'host' and 'port', 'servers'/'hosts' or 'service_discovery' option.")))
           }
         )
       }
@@ -412,7 +454,24 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
            """.stripMargin,
           assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Cannot accept single server settings (host,port) AND multi server configuration (servers/hosts) at the same time.")))
+            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Cannot accept multiple server configurations settings (host,port) or (servers/hosts) or (service_discovery) at the same time.")))
+          }
+        )
+      }
+      "single host settings and server discovery settings are used in the same time" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${containerLdap1.ldapHost}
+               |    port: ${containerLdap1.ldapPort}
+               |    server_discovery: true
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+           """.stripMargin,
+          assertion = { error =>
+            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Cannot accept multiple server configurations settings (host,port) or (servers/hosts) or (service_discovery) at the same time.")))
           }
         )
       }
