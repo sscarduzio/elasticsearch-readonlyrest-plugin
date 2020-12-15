@@ -61,7 +61,7 @@ object QueryFieldsUsage extends Logging {
       Option(invokeMethodCached(query, query.getClass, "getFieldName")) match {
         case Some(fieldName: String) => UsingFields(NonEmptyList.one(UsedField(fieldName)))
         case _ =>
-          logger.warn(s"Cannot extract fields for terms set query")
+          logger.debug(s"Cannot extract fields for terms set query")
           CannotExtractFields
       }
     }
@@ -87,7 +87,7 @@ object QueryFieldsUsage extends Logging {
       case builder: TermsSetQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder: WildcardQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder =>
-        logger.warn(s"Cannot extract fields for query: ${builder.getName}")
+        logger.debug(s"Cannot extract fields for query: ${builder.getName}")
         CannotExtractFields
     }
 
