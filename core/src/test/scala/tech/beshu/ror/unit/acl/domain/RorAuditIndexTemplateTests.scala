@@ -20,18 +20,26 @@ import java.time.Instant
 
 import eu.timepit.refined.auto._
 import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorAuditIndexTemplate}
 
-class RorAuditIndexTemplateTests extends WordSpec {
+class RorAuditIndexTemplateTests extends WordSpec with Inside {
 
   private val template = RorAuditIndexTemplate.from("'.ror_'yyyy_MM").right.get
 
   "A RorAuditIndexTemplate" should {
-    "provide a way to create an index from it" in {
-      val index = template.indexName(Instant.parse("2021-01-03T23:35:22.00Z"))
-      index should be(IndexName(".ror_2021_01"))
+    "provide a way to create an index from it" when {
+      "template contains date pattern" in {
+        val index = template.indexName(Instant.parse("2021-01-03T23:35:22.00Z"))
+        index should be(IndexName(".ror_2021_01"))
+      }
+      "template doesn't contain date pattern" in {
+        inside(RorAuditIndexTemplate.from("'.ror'")) {
+          case Right(templateWithoutDate) =>
+            templateWithoutDate.indexName(Instant.now()) should be (IndexName(".ror"))
+        }
+      }
     }
     "not be able to be created" when {
       "the string date pattern is malformed" in {
