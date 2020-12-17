@@ -20,4 +20,11 @@
    ]]></notes>
         <cve>CVE-2020-9488</cve>
     </suppress>
+    <suppress>
+        <notes><![CDATA[
+   according to https://github.com/FasterXML/jackson-databind/issues/2589#issuecomment-714833837
+   should be already fixed
+   ]]></notes>
+        <cve>CVE-2020-25649</cve>
+    </suppress>
 </suppressions>
