@@ -37,9 +37,17 @@ class DnsServerContainer(srvServicePort: Int)
   ) {
 
   def dnsPort: Int = {
-    // This is hack to obtain mapping to UDP port as testcontainers doesn't allow explicit mapping of UDP ports
+    // This is hack to obtain mapping of UDP port as testcontainers doesn't allow explicit mapping of UDP ports
     // although it is mapping each port exposed by container(even UDP).
-    this.containerInfo.getNetworkSettings.getPorts.getBindings.asScala.get(new ExposedPort(53, InternetProtocol.UDP)).get.head.getHostPortSpec.toInt
+    this.containerInfo
+      .getNetworkSettings
+      .getPorts
+      .getBindings
+      .asScala
+      .getOrElse(new ExposedPort(53, InternetProtocol.UDP), throw new Exception("Couldn't get value of docker mapped port 53/udp"))
+      .head
+      .getHostPortSpec
+      .toInt
   }
 
   override def stop(): Unit = {
