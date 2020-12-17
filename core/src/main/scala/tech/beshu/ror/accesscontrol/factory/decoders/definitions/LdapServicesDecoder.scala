@@ -202,6 +202,7 @@ object LdapServicesDecoder {
           connectionTimeout <- c.downFields("connection_timeout_in_sec", "connection_timeout").as[Option[FiniteDuration Refined Positive]]
           requestTimeout <- c.downFields("request_timeout_in_sec", "request_timeout").as[Option[FiniteDuration Refined Positive]]
           trustAllCertsOps <- c.downField("ssl_trust_all_certs").as[Option[Boolean]]
+          checkConnectionOnStartUp <- c.downField("check_connection_on_startup").as[Option[Boolean]]
           bindRequestUser <- bindRequestUserDecoder.tryDecode(c)
         } yield LdapConnectionConfig(
           connectionMethod,
@@ -209,7 +210,8 @@ object LdapServicesDecoder {
           connectionTimeout.getOrElse(refineV[Positive].unsafeFrom(10 second)),
           requestTimeout.getOrElse(refineV[Positive].unsafeFrom(10 second)),
           trustAllCertsOps.getOrElse(false),
-          bindRequestUser
+          bindRequestUser,
+          checkConnectionOnStartUp.getOrElse(false)
         )
       }
   }

@@ -111,7 +111,8 @@ class UnboundidLdapAuthenticationServiceTests
           BindRequestUser.CustomUser(
             Dn("cn=admin,dc=example,dc=com".nonempty),
             PlainTextSecret("password".nonempty)
-          )
+          ),
+          checkConnectionOnStartUp = false
         ),
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
         global
@@ -140,7 +141,8 @@ class UnboundidLdapAuthenticationServiceTests
           BindRequestUser.CustomUser(
             Dn("cn=admin,dc=example,dc=com".nonempty),
             PlainTextSecret("password".nonempty)
-          )
+          ),
+          checkConnectionOnStartUp = false
         ),
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
         global

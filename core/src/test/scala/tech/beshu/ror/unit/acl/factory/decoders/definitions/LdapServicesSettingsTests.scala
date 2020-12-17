@@ -169,6 +169,26 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
           }
         )
       }
+      "Unreachable host is configured, but connection check on startup is disabled" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: 192.168.123.123
+               |    port: 234
+               |    check_connection_on_startup: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
+           """.stripMargin,
+          assertion = { definitions =>
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService shouldBe a[LdapAuthenticationService]
+          }
+        )
+      }
       "two LDAP hosts are defined" in {
         assertDecodingSuccess(
           yaml =

@@ -81,7 +81,11 @@ object UnboundidLdapAuthenticationService {
              blockingScheduler: Scheduler): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
     implicit val blockingSchedulerImplicit: Scheduler = blockingScheduler
     (for {
-      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+      _ <- if (connectionConfig.checkConnectionOnStartUp) {
+        EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+      } else {
+        EitherT.rightT[Task, ConnectionError](Unit)
+      }
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
     } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
   }
@@ -218,7 +222,11 @@ object UnboundidLdapAuthorizationService {
              blockingScheduler: Scheduler): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
     implicit val blockingSchedulerImplicit: Scheduler = blockingScheduler
     (for {
-      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+      _ <- if (connectionConfig.checkConnectionOnStartUp) {
+        EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+      } else {
+        EitherT.rightT[Task, ConnectionError](Unit)
+      }
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
     } yield new UnboundidLdapAuthorizationService(id, connectionPool, userGroupsSearchFilter, userSearchFiler, connectionConfig.requestTimeout)).value
   }
@@ -271,7 +279,8 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
                                       connectionTimeout: FiniteDuration Refined Positive,
                                       requestTimeout: FiniteDuration Refined Positive,
                                       trustAllCerts: Boolean,
-                                      bindRequestUser: BindRequestUser)
+                                      bindRequestUser: BindRequestUser,
+                                      checkConnectionOnStartUp: Boolean)
 
 object LdapConnectionConfig {
 
