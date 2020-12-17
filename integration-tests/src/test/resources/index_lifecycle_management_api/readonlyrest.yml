@@ -5,6 +5,8 @@ readonlyrest:
     keystore_pass: readonlyrest
     key_pass: readonlyrest
 
+  prompt_for_basic_auth: false
+
   access_control_rules:
 
     # ES containter initializer need this rule to configure ES instance after startup
@@ -13,6 +15,6 @@ readonlyrest:
       type: allow
       auth_key: admin:container
 
-    - name: "test1"
-      indices: ["test1_index"]
+    - name: "DEV1 block"
+      indices: ["index1", "index1_*"]
       auth_key: dev1:test

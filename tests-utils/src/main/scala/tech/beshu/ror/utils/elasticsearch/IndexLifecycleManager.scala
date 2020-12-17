@@ -17,10 +17,10 @@
 package tech.beshu.ror.utils.elasticsearch
 
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpDelete, HttpPut}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.IndexLifecycleManager.PoliciesResponse
+import tech.beshu.ror.utils.elasticsearch.IndexLifecycleManager.{IlmExplainResponse, IlmStatusResponse, PoliciesResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class IndexLifecycleManager(client: RestClient)
@@ -38,6 +38,22 @@ class IndexLifecycleManager(client: RestClient)
     call(createDeletePolicyRequest(id), new SimpleResponse(_))
   }
 
+  def startIlm(): SimpleResponse = {
+    call(createStartIlmRequest(), new SimpleResponse(_))
+  }
+
+  def stopIlm(): SimpleResponse = {
+    call(createStopIlmRequest(), new SimpleResponse(_))
+  }
+
+  def ilmStatus(): IlmStatusResponse = {
+    call(createIlmStatusRequest(), new IlmStatusResponse(_))
+  }
+
+  def ilmExplain(index: String, indices: String*): IlmExplainResponse = {
+    call(createIlmExplainRequest(index :: indices.toList), new IlmExplainResponse(_))
+  }
+
   private def createPutPolicyRequest(id: String, policy: JSON) = {
     val request = new HttpPut(client.from(s"_ilm/policy/$id"))
     request.addHeader("Content-Type", "application/json")
@@ -50,7 +66,23 @@ class IndexLifecycleManager(client: RestClient)
   }
 
   private def createGetPolicyRequest(id: String) = {
-    new HttpDelete(client.from(s"_ilm/policy/$id"))
+    new HttpGet(client.from(s"_ilm/policy/$id"))
+  }
+
+  private def createStartIlmRequest() = {
+    new HttpPost(client.from(s"_ilm/start"))
+  }
+
+  private def createStopIlmRequest() = {
+    new HttpPost(client.from(s"_ilm/stop"))
+  }
+
+  private def createIlmStatusRequest() = {
+    new HttpGet(client.from(s"_ilm/status"))
+  }
+
+  private def createIlmExplainRequest(indices: List[String]) = {
+    new HttpGet(client.from(s"${indices.mkString(",")}/_ilm/explain"))
   }
 }
 
@@ -62,5 +94,13 @@ object IndexLifecycleManager {
         val policy = ujson.Obj.from(json.obj.filterKeys(_ == "policy").toList)
         (policyName, policy)
       }
+  }
+
+  class IlmStatusResponse(response: HttpResponse) extends JsonResponse(response) {
+    lazy val mode: String = responseJson.obj("operation_mode").str
+  }
+
+  class IlmExplainResponse(response: HttpResponse) extends JsonResponse(response) {
+    lazy val indices: Map[String, JSON] = responseJson.obj("indices").obj.toMap
   }
 }
