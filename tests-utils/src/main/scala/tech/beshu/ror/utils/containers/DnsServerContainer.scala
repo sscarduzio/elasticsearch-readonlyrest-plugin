@@ -45,7 +45,8 @@ class DnsServerContainer(srvServicePort: Int)
       .getBindings
       .asScala
       .getOrElse(new ExposedPort(53, InternetProtocol.UDP), throw new Exception("Couldn't get value of docker mapped port 53/udp"))
-      .head
+      .headOption
+      .getOrElse(throw new Exception("Couldn't get first value of docker mapped port 53/udp"))
       .getHostPortSpec
       .toInt
   }

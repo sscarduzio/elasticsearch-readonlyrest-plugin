@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
-import tech.beshu.ror.utils.containers.{DnsServerContainer, LdapContainer}
+import tech.beshu.ror.utils.containers.LdapWithDnsContainer
 
 class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   extends WordSpec
@@ -36,11 +36,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
     with ForAllTestContainer
     with Inside {
 
-  private val ldapContainer = new LdapContainer("LDAP1", "test_example.ldif")
-
-  private var dnsContainer: Option[DnsServerContainer] = None
-
-  override val container: LdapContainer = ldapContainer
+  override val container: LdapWithDnsContainer = new LdapWithDnsContainer("LDAP1", "test_example.ldif")
 
   override protected def configYaml: String =
     s"""readonlyrest:
@@ -53,7 +49,7 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
        |  ldaps:
        |    - name: ldap1
        |      server_discovery:
-       |        dns_url: "dns://localhost:${dnsContainer.map(_.dnsPort).get}"
+       |        dns_url: "dns://localhost:${container.dnsPort}"
        |      ha: ROUND_ROBIN
        |      ssl_enabled: false                                        # default true
        |      ssl_trust_all_certs: true                                 # default false
@@ -66,17 +62,6 @@ class LdapServerDiscoveryCheckYamlLoadedAccessControlTests
   override protected def afterAll(): Unit = {
     super.afterAll()
     ldapConnectionPoolProvider.close()
-  }
-
-  override def afterStart(): Unit = {
-    super.afterStart()
-    dnsContainer = Option(new DnsServerContainer(ldapContainer.ldapPort))
-    dnsContainer.foreach(_.start())
-  }
-
-  override def beforeStop(): Unit = {
-    super.beforeStop()
-    dnsContainer.foreach(_.stop())
   }
 
   override protected val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
