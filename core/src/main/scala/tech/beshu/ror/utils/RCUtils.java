@@ -37,6 +37,9 @@ public class RCUtils {
       "cluster:monitor/*",
       "cluster:*get*",
       "cluster:*search*",
+      "cluster:admin/*/get",
+      "cluster:admin/*/status",
+      "indices:admin/*/explain",
       "indices:admin/aliases/exists",
       "indices:admin/aliases/get",
       "indices:admin/exists*",
@@ -49,8 +52,6 @@ public class RCUtils {
       "indices:admin/template/get",
       "indices:data/read/*",
       "indices:monitor/*",
-      "cluster:admin/*/get",
-      "cluster:admin/*/status",
       "indices:admin/xpack/rollup/search",
       "indices:admin/resolve/index"
   ));
