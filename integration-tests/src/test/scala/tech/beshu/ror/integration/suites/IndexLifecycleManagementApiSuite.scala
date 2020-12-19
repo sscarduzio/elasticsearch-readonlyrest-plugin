@@ -17,13 +17,15 @@
 package tech.beshu.ror.integration.suites
 
 import monix.execution.atomic.Atomic
+import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite.{ExamplePolicies, PolicyGenerator}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexLifecycleManager, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, IndexLifecycleManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait IndexLifecycleManagementApiSuite
@@ -33,7 +35,8 @@ trait IndexLifecycleManagementApiSuite
     with ESVersionSupport
     with XpackSupport
     with BeforeAndAfterEach
-    with Matchers {
+    with Matchers
+    with Eventually {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/index_lifecycle_management_api/readonlyrest.yml"
@@ -43,6 +46,7 @@ trait IndexLifecycleManagementApiSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
+      numberOfInstances = 2,
       nodeDataInitializer = IndexLifecycleManagementApiSuite.nodeDataInitializer(),
       xPackSupport = true
     )
@@ -53,15 +57,18 @@ trait IndexLifecycleManagementApiSuite
   private lazy val dev1IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev1", "test"))
   private lazy val dev3IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev3", "test"))
 
+  implicit override val patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = scaled(Span(5, Seconds)), interval = scaled(Span(200, Millis)))
+
   "Policy management APIs" when {
     "create lifecycle operation is used" should {
-      "be handled" in {
+      "be handled" excludeES (allEs5x, allEs6xBelowEs66x) in {
         val response = dev1IndexLifecycleManager.putPolicy(PolicyGenerator.next(), ExamplePolicies.forceMergePolicy)
         response.responseCode should be(200)
       }
     }
     "delete lifecycle operation is used" should {
-      "be handled" in {
+      "be handled" excludeES (allEs5x, allEs6xBelowEs66x) in {
         val policy = PolicyGenerator.next()
         dev1IndexLifecycleManager.putPolicy(policy, ExamplePolicies.forceMergePolicy).force()
 
@@ -70,7 +77,7 @@ trait IndexLifecycleManagementApiSuite
       }
     }
     "get lifecycle operation is used" should {
-      "be handled" in {
+      "be handled" excludeES (allEs5x, allEs6xBelowEs66x) in {
         val policy = PolicyGenerator.next()
         dev1IndexLifecycleManager.putPolicy(policy, ExamplePolicies.forceMergePolicy).force()
 
@@ -85,7 +92,7 @@ trait IndexLifecycleManagementApiSuite
   "Index management APIs" when {
     "move index to step operation is used" should {
       "be allowed" when {
-        "user has access to requested index" in {
+        "user has access to requested index" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val index = "dynamic1"
           createIndexWithAppliedMergedPolicy(index)
 
@@ -112,7 +119,7 @@ trait IndexLifecycleManagementApiSuite
 
           result.responseCode should be(200)
         }
-        "user has access to requested index (through configured wildcard)" in {
+        "user has access to requested index (through configured wildcard)" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val index = "dynamic_1"
           createIndexWithAppliedMergedPolicy(index)
 
@@ -139,7 +146,7 @@ trait IndexLifecycleManagementApiSuite
 
           result.responseCode should be(200)
         }
-        "no indices rule was used" in {
+        "no indices rule was used" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val index = "dynamic_2"
           createIndexWithAppliedMergedPolicy(index)
 
@@ -168,7 +175,7 @@ trait IndexLifecycleManagementApiSuite
         }
       }
       "be forbidden" when {
-        "user has no access to requested index" in {
+        "user has no access to requested index" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val result = dev3IndexLifecycleManager.moveToLifecycleStep(
             index = "index2",
             currentStep = ujson.read(
@@ -196,13 +203,91 @@ trait IndexLifecycleManagementApiSuite
     }
     "retry policy operation is used" should {
       "be allowed" when {
-        "user has an access to requested index" in {
+        "user has an access to the requested index" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val index = "dynamic1"
           createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index)
 
-          val result = dev3IndexLifecycleManager.retryPolicyExecution(index)
+          eventually {
+            val result = dev3IndexLifecycleManager.retryPolicyExecution(index)
 
-          result.responseCode should be(200)
+            result.responseCode should be(200)
+          }
+        }
+        "user has and access to all requested indices" excludeES (allEs5x, allEs6xBelowEs66x) in {
+          val index1 = "dynamic_1"
+          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index1)
+          val index2 = "dynamic_2"
+          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index2)
+
+          eventually {
+            val result = dev3IndexLifecycleManager.retryPolicyExecution(index1, index2)
+
+            result.responseCode should be(200)
+          }
+        }
+      }
+      "not be allowed" when {
+        "user has no access to at least one of requested indices" excludeES (allEs5x, allEs6xBelowEs66x) in {
+          val index1 = "dynamic1"
+          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index1)
+          val index2 = "dynamic2"
+          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index2)
+
+          eventually {
+            val result = dev3IndexLifecycleManager.retryPolicyExecution(index1, index2)
+
+            result.responseCode should be(403)
+          }
+        }
+      }
+    }
+    "remove policy from index operation is used" should {
+      "be allowed" when {
+        "user has access to requested indices" excludeES (allEs5x, allEs6xBelowEs66x) in {
+          val index1 = "dynamic1"
+          createIndexWithAppliedMergedPolicy(index1)
+          val index2 = "dynamic_1"
+          createIndexWithAppliedMergedPolicy(index2)
+
+          val result = dev3IndexLifecycleManager.removePolicyFromIndex(index1, index2)
+
+          result.responseCode should be (200)
+        }
+        "user has access to requested index pattern" excludeES (allEs5x, allEs6xBelowEs66x) in {
+          val index = "dynamic_1"
+          createIndexWithAppliedMergedPolicy(index)
+
+          val result = dev3IndexLifecycleManager.removePolicyFromIndex("dynamic_1*")
+
+          result.responseCode should be (200)
+        }
+        "no indices rule was used" excludeES (allEs5x, allEs6xBelowEs66x) in {
+          val index = "dynamic_1"
+          createIndexWithAppliedMergedPolicy(index)
+
+          val result = adminIndexLifecycleManager.removePolicyFromIndex("*")
+
+          result.responseCode should be (200)
+        }
+      }
+      "not be allowed" when {
+        "user has no access to at least one of requested indices" excludeES (allEs5x, allEs6xBelowEs66x) in {
+          val index1 = "dynamic1"
+          createIndexWithAppliedMergedPolicy(index1)
+          val index2 = "dynamic2"
+          createIndexWithAppliedMergedPolicy(index2)
+
+          val result = dev3IndexLifecycleManager.removePolicyFromIndex(index1, index2)
+
+          result.responseCode should be (403)
+        }
+        "user has no access to requested index pattern" excludeES (allEs5x, allEs6xBelowEs66x) in {
+          val index = "dynamic1"
+          createIndexWithAppliedMergedPolicy(index)
+
+          val result = dev3IndexLifecycleManager.removePolicyFromIndex("dynamic*")
+
+          result.responseCode should be (403)
         }
       }
     }
@@ -210,58 +295,58 @@ trait IndexLifecycleManagementApiSuite
 
   "Operation management APIs" when {
     "start ILM operation is used" should {
-      "be handled" in {
+      "be handled" excludeES (allEs5x, allEs6xBelowEs66x) in {
         val response = dev1IndexLifecycleManager.startIlm()
         response.responseCode should be(200)
       }
     }
     "stop ILM operation is used" should {
-      "be handled" in {
+      "be handled" excludeES (allEs5x, allEs6xBelowEs66x) in {
         val response = dev1IndexLifecycleManager.stopIlm()
         response.responseCode should be(200)
       }
     }
     "ILM status operation is used" should {
-      "be handled" in {
+      "be handled" excludeES (allEs5x, allEs6xBelowEs66x) in {
         val response = dev1IndexLifecycleManager.ilmStatus()
         response.responseCode should be(200)
       }
     }
     "explain operation is used" should {
       "be allowed" when {
-        "user has access to all requested indices" in {
+        "user has access to all requested indices" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val response = dev1IndexLifecycleManager.ilmExplain("index1", "index1_1")
 
           response.responseCode should be(200)
           response.indices.keys.toSet should be(Set("index1", "index1_1"))
         }
         "user has access to at least one requested index" when {
-          "full name index was used" in {
+          "full name index was used" excludeES (allEs5x, allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index1", "index2")
 
             response.responseCode should be(200)
             response.indices.keys.toSet should be(Set("index1"))
           }
-          "index with wildcard is used (no need to narrow the pattern)" in {
+          "index with wildcard is used (no need to narrow the pattern)" excludeES (allEs5x, allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index1_*", "index2_*")
 
             response.responseCode should be(200)
             response.indices.keys.toSet should be(Set("index1_1", "index1_2"))
           }
-          "index with wildcard is used (the pattern is narrowed)" in {
+          "index with wildcard is used (the pattern is narrowed)" excludeES (allEs5x, allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index1*", "index2*")
 
             response.responseCode should be(200)
             response.indices.keys.toSet should be(Set("index1", "index1_1", "index1_2"))
           }
-          "all indices are requested" in {
+          "all indices are requested" excludeES (allEs5x, allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("_all")
 
             response.responseCode should be(200)
             response.indices.keys.toSet should be(Set("index1", "index1_1", "index1_2"))
           }
         }
-        "no indices rule was used" in {
+        "no indices rule was used" excludeES (allEs5x, allEs6xBelowEs66x) in {
           val response = adminIndexLifecycleManager.ilmExplain("*")
 
           response.responseCode should be(200)
@@ -270,7 +355,7 @@ trait IndexLifecycleManagementApiSuite
       }
       "return empty result" when {
         "user has no access to requested index" when {
-          "index name with wildcard is used" in {
+          "index name with wildcard is used" excludeES (allEs5x, allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index2*")
 
             response.responseCode should be(200)
@@ -280,7 +365,7 @@ trait IndexLifecycleManagementApiSuite
       }
       "pretend that index doesn't exist" when {
         "user has no access to requested index" when {
-          "full name index was used" in {
+          "full name index was used" excludeES (allEs5x, allEs6xBelowEs66x) in {
             val response = dev1IndexLifecycleManager.ilmExplain("index2")
 
             response.responseCode should be(404)
@@ -321,7 +406,7 @@ trait IndexLifecycleManagementApiSuite
           s"""
              |{
              |  "settings": {
-             |    "index.number_of_shards": 2,
+             |    "index.number_of_shards": 1,
              |    "index.lifecycle.name": "$policy"
              |  }
              |}
@@ -341,11 +426,24 @@ object IndexLifecycleManagementApiSuite {
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     val document = ujson.read(s"""{"test": "abc"}""")
-    documentManager.createDoc("index1", "1", document)
-    documentManager.createDoc("index1_1", "1", document)
-    documentManager.createDoc("index1_2", "1", document)
-    documentManager.createDoc("index2", "1", document)
-    documentManager.createDoc("index2_1", "1", document)
+    documentManager.createDoc("index1", "1", document).force()
+    documentManager.createDoc("index1_1", "1", document).force()
+    documentManager.createDoc("index1_2", "1", document).force()
+    documentManager.createDoc("index2", "1", document).force()
+    documentManager.createDoc("index2_1", "1", document).force()
+
+    val clusterManager = new ClusterManager(adminRestClient, esVersion)
+    clusterManager
+      .putSettings(ujson.read {
+        s"""
+           |{
+           |    "persistent" : {
+           |        "indices.lifecycle.poll_interval": "100ms"
+           |    }
+           |}
+       """.stripMargin
+      })
+      .force()
   }
 
   private object PolicyGenerator {
@@ -380,7 +478,7 @@ object IndexLifecycleManagementApiSuite {
         |  "policy": {
         |    "phases": {
         |      "warm": {
-        |        "min_age": "5d",
+        |        "min_age": "100 ms",
         |        "actions": {
         |          "shrink": {
         |            "number_of_shards": 4

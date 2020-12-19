@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.elasticsearch
 
 import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut, HttpUriRequest}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.elasticsearch.IndexLifecycleManager.{IlmExplainResponse, IlmStatusResponse, PoliciesResponse}
@@ -61,6 +61,10 @@ class IndexLifecycleManager(client: RestClient)
 
   def retryPolicyExecution(index: String, indices: String*): SimpleResponse = {
     call(createRetryPolicyExecutionRequest(NonEmptyList.of(index, indices: _*)), new SimpleResponse(_))
+  }
+
+  def removePolicyFromIndex(index: String, indices: String*): SimpleResponse = {
+    call(createRemovePolicyFromIndexRequest(NonEmptyList.of(index, indices: _*)), new SimpleResponse(_))
   }
 
   private def createPutPolicyRequest(id: String, policy: JSON) = {
@@ -107,6 +111,10 @@ class IndexLifecycleManager(client: RestClient)
 
   private def createRetryPolicyExecutionRequest(indices: NonEmptyList[String]) = {
     new HttpPost(client.from(s"${indices.toList.mkString(",")}/_ilm/retry"))
+  }
+
+  private def createRemovePolicyFromIndexRequest(indices: NonEmptyList[String]) = {
+    new HttpPost(client.from(s"${indices.toList.mkString(",")}/_ilm/remove"))
   }
 }
 
