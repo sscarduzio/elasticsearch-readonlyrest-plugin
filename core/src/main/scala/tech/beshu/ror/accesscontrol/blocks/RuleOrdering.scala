@@ -86,6 +86,7 @@ object RuleOrdering {
     classOf[KibanaTemplateIndexRule],
     // Stuff to do later, at search time
     classOf[FieldsRule],
-    classOf[FilterRule]
+    classOf[FilterRule],
+    classOf[ResponseFieldsRule]
   )
 }

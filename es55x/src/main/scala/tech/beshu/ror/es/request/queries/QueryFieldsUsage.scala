@@ -77,7 +77,7 @@ object QueryFieldsUsage extends Logging {
       case builder: TermQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder: WildcardQueryBuilder => resolveFieldsUsageForLeafQuery(builder)
       case builder =>
-        logger.warn(s"Cannot extract fields for query: ${builder.getName}")
+        logger.debug(s"Cannot extract fields for query: ${builder.getName}")
         CannotExtractFields
     }
 

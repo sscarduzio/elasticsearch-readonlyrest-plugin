@@ -33,7 +33,7 @@ buildscript {
         classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
         classpath 'com.github.jengelman.gradle.plugins:shadow:4.0.4'
         classpath 'gradle.plugin.com.github.maiflai:gradle-scalatest:0.23'
-        classpath 'org.owasp:dependency-check-gradle:6.0.2'
+        classpath 'org.owasp:dependency-check-gradle:6.0.3'
     }
 }
 
@@ -82,7 +82,9 @@ test {
 }
 
 configurations {
-    scalaCompilerPlugin
+    scalaCompilerPlugin{
+        transitive = false
+    }
     all*.exclude group: 'org.hdrhistogram', module: 'HdrHistogram'
     all*.exclude group: 'org.scala-lang', module: 'scala-compiler'
     all*.exclude group: 'dom4j', module: 'dom4j'
@@ -92,6 +94,9 @@ dependencies {
     compile project(':audit')
     compile project(path: ':ror-shadowed-libs', configuration: 'shadow')
     scalaCompilerPlugin 'org.scalamacros:paradise_2.12.8:2.1.1'
+    compileClasspath "com.github.ghik:silencer-lib_2.12.8:1.6.0"
+    testCompileClasspath "com.github.ghik:silencer-lib_2.12.8:1.6.0"
+    scalaCompilerPlugin "com.github.ghik:silencer-plugin_2.12.8:1.6.0"
 
     compile group: 'com.softwaremill.sttp',                 name: 'async-http-client-backend-cats_2.12',    version: '1.7.2'
     compile group: 'com.github.pathikrit',                  name: 'better-files_2.12',                      version: '3.8.0'
@@ -103,8 +108,8 @@ dependencies {
     compile group: 'commons-codec',                         name: 'commons-codec',                          version: '1.10'
     compile group: 'org.typelevel',                         name: 'cats-free_2.12',                         version: '2.1.1'
     compile group: 'com.softwaremill.sttp',                 name: 'core_2.12',                              version: '1.7.2'
-    compile group: 'com.github.finagle',                    name: 'finchx-circe_2.12',                      version: '0.29.0'
-    compile group: 'com.github.finagle',                    name: 'finchx-core_2.12',                       version: '0.29.0'
+    compile group: 'com.github.finagle',                    name: 'finchx-circe_2.12',                      version: '0.32.1'
+    compile group: 'com.github.finagle',                    name: 'finchx-core_2.12',                       version: '0.32.1'
     compile group: 'com.comcast',                           name: 'ip4s-cats_2.12',                         version: '1.1.1'
     compile group: 'io.jsonwebtoken',                       name: 'jjwt-api',                               version: '0.10.5'
     compile group: 'io.jsonwebtoken',                       name: 'jjwt-impl',                              version: '0.10.5'
@@ -141,7 +146,7 @@ dependencies {
         compile group: 'io.netty',                          name: 'netty-transport-native-unix-common',     version: '4.1.53.Final'
         compile group: 'io.netty',                          name: 'netty-transport-native-epoll',           version: '4.1.53.Final'
         compile group: 'io.netty',                          name: 'netty-transport-native-kqueue',          version: '4.1.53.Final'
-        compile group: 'com.fasterxml.jackson.core',        name: 'jackson-databind',                       version: '2.9.10.6'
+        compile group: 'com.fasterxml.jackson.core',        name: 'jackson-databind',                       version: '2.9.10.7'
         compile group: 'com.google.guava',                  name: 'guava',                                  version: '30.0-jre'
         compile group: 'io.spray',                          name: 'spray-json_2.12',                        version: '1.3.5'
         compile group: 'org.scala-lang',                    name: 'scala-reflect',                          version: '2.12.10'

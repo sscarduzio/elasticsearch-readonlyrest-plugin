@@ -83,7 +83,6 @@ stages:
         testRunTitle: "$(ROR_TASK) results"
         testResultsFiles: "**/TEST*xml"
         mergeTestResults: true
-
     strategy:
       maxParallel: 99
       matrix: 

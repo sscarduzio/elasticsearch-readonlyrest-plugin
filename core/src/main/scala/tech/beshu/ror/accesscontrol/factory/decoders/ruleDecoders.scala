@@ -41,6 +41,7 @@ object ruleDecoders {
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
       case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(definitions.authorizationServices))
       case FieldsRule.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine))
+      case ResponseFieldsRule.name => Some(ResponseFieldsRuleDecoder)
       case FilterRule.name => Some(new FilterRuleDecoder)
       case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users))
       case HeadersAndRule.name | HeadersAndRule.deprecatedName => Some(HeadersAndRuleDecoder)
