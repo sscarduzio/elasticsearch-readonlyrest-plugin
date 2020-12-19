@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
-import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager, SearchManager}
+import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait MiscSuite
@@ -62,8 +62,9 @@ trait MiscSuite
     "be exposed in ror response" excludeES(allEs5x, allEs6x, rorProxy) in {
       // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
       // proxy cares waring printing it in logs, and it's not passed to ror.
-      val indexResponse = dev1IndexManager.createIndex("typed_index",
-        Map(
+      val indexResponse = dev1IndexManager.createIndex(
+        indices ="typed_index",
+        params = Map(
           "master_timeout" -> "30s",
           "include_type_name" -> "true",
           "timeout" -> "30s",

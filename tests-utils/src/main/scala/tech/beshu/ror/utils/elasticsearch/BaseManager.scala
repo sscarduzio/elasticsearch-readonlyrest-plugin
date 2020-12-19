@@ -69,6 +69,8 @@ object BaseManager {
         s"Expected success but got HTTP $responseCode, body: ${Try(stringBodyFrom(response)).getOrElse("")}"
       )
     }
+
+    override def toString: String = response.toString
   }
 
   class JsonResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {

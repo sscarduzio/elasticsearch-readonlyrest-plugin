@@ -23,7 +23,7 @@ import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationT
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexLifecycleManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexLifecycleManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait IndexLifecycleManagementApiSuite
@@ -48,20 +48,22 @@ trait IndexLifecycleManagementApiSuite
     )
   )
 
+  private lazy val adminIndexManager = new IndexManager(adminClient)
   private lazy val adminIndexLifecycleManager = new IndexLifecycleManager(adminClient)
   private lazy val dev1IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev1", "test"))
+  private lazy val dev3IndexLifecycleManager = new IndexLifecycleManager(basicAuthClient("dev3", "test"))
 
   "Policy management APIs" when {
     "create lifecycle operation is used" should {
       "be handled" in {
-        val response = dev1IndexLifecycleManager.putPolicy(PolicyGenerator.next(), ExamplePolicies.policy1)
+        val response = dev1IndexLifecycleManager.putPolicy(PolicyGenerator.next(), ExamplePolicies.forceMergePolicy)
         response.responseCode should be(200)
       }
     }
     "delete lifecycle operation is used" should {
       "be handled" in {
         val policy = PolicyGenerator.next()
-        dev1IndexLifecycleManager.putPolicy(policy, ExamplePolicies.policy1).force()
+        dev1IndexLifecycleManager.putPolicy(policy, ExamplePolicies.forceMergePolicy).force()
 
         val response = dev1IndexLifecycleManager.deletePolicy(policy)
         response.responseCode should be(200)
@@ -70,12 +72,138 @@ trait IndexLifecycleManagementApiSuite
     "get lifecycle operation is used" should {
       "be handled" in {
         val policy = PolicyGenerator.next()
-        dev1IndexLifecycleManager.putPolicy(policy, ExamplePolicies.policy1).force()
+        dev1IndexLifecycleManager.putPolicy(policy, ExamplePolicies.forceMergePolicy).force()
 
         val response = dev1IndexLifecycleManager.getPolicy(policy)
 
         response.responseCode should be(200)
-        response.policies.get(policy) should be(Some(ExamplePolicies.policy1))
+        response.policies.get(policy) should be(Some(ExamplePolicies.forceMergePolicy))
+      }
+    }
+  }
+
+  "Index management APIs" when {
+    "move index to step operation is used" should {
+      "be allowed" when {
+        "user has access to requested index" in {
+          val index = "dynamic1"
+          createIndexWithAppliedMergedPolicy(index)
+
+          val result = dev3IndexLifecycleManager.moveToLifecycleStep(
+            index,
+            currentStep = ujson.read(
+              s"""
+                 |{
+                 |  "phase": "new",
+                 |  "action": "complete",
+                 |  "name": "complete"
+                 |}
+               """.stripMargin),
+            nextStep = ujson.read(
+              s"""
+                 |{
+                 |  "phase": "warm",
+                 |  "action": "forcemerge",
+                 |  "name": "forcemerge"
+                 |}
+               """.stripMargin
+            )
+          )
+
+          result.responseCode should be(200)
+        }
+        "user has access to requested index (through configured wildcard)" in {
+          val index = "dynamic_1"
+          createIndexWithAppliedMergedPolicy(index)
+
+          val result = dev3IndexLifecycleManager.moveToLifecycleStep(
+            index,
+            currentStep = ujson.read(
+              s"""
+                 |{
+                 |  "phase": "new",
+                 |  "action": "complete",
+                 |  "name": "complete"
+                 |}
+               """.stripMargin),
+            nextStep = ujson.read(
+              s"""
+                 |{
+                 |  "phase": "warm",
+                 |  "action": "forcemerge",
+                 |  "name": "forcemerge"
+                 |}
+               """.stripMargin
+            )
+          )
+
+          result.responseCode should be(200)
+        }
+        "no indices rule was used" in {
+          val index = "dynamic_2"
+          createIndexWithAppliedMergedPolicy(index)
+
+          val result = adminIndexLifecycleManager.moveToLifecycleStep(
+            index = "dynamic_2",
+            currentStep = ujson.read(
+              s"""
+                 |{
+                 |  "phase": "new",
+                 |  "action": "complete",
+                 |  "name": "complete"
+                 |}
+               """.stripMargin),
+            nextStep = ujson.read(
+              s"""
+                 |{
+                 |  "phase": "warm",
+                 |  "action": "forcemerge",
+                 |  "name": "forcemerge"
+                 |}
+               """.stripMargin
+            )
+          )
+
+          result.responseCode should be(200)
+        }
+      }
+      "be forbidden" when {
+        "user has no access to requested index" in {
+          val result = dev3IndexLifecycleManager.moveToLifecycleStep(
+            index = "index2",
+            currentStep = ujson.read(
+              s"""
+                 |{
+                 |  "phase": "new",
+                 |  "action": "complete",
+                 |  "name": "complete"
+                 |}
+               """.stripMargin),
+            nextStep = ujson.read(
+              s"""
+                 |{
+                 |  "phase": "warm",
+                 |  "action": "forcemerge",
+                 |  "name": "forcemerge"
+                 |}
+               """.stripMargin
+            )
+          )
+
+          result.responseCode should be(403)
+        }
+      }
+    }
+    "retry policy operation is used" should {
+      "be allowed" when {
+        "user has an access to requested index" in {
+          val index = "dynamic1"
+          createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index)
+
+          val result = dev3IndexLifecycleManager.retryPolicyExecution(index)
+
+          result.responseCode should be(200)
+        }
       }
     }
   }
@@ -104,40 +232,40 @@ trait IndexLifecycleManagementApiSuite
         "user has access to all requested indices" in {
           val response = dev1IndexLifecycleManager.ilmExplain("index1", "index1_1")
 
-          response.responseCode should be (200)
-          response.indices.keys.toSet should be (Set("index1", "index1_1"))
+          response.responseCode should be(200)
+          response.indices.keys.toSet should be(Set("index1", "index1_1"))
         }
         "user has access to at least one requested index" when {
           "full name index was used" in {
             val response = dev1IndexLifecycleManager.ilmExplain("index1", "index2")
 
-            response.responseCode should be (200)
-            response.indices.keys.toSet should be (Set("index1"))
+            response.responseCode should be(200)
+            response.indices.keys.toSet should be(Set("index1"))
           }
           "index with wildcard is used (no need to narrow the pattern)" in {
             val response = dev1IndexLifecycleManager.ilmExplain("index1_*", "index2_*")
 
-            response.responseCode should be (200)
-            response.indices.keys.toSet should be (Set("index1_1", "index1_2"))
+            response.responseCode should be(200)
+            response.indices.keys.toSet should be(Set("index1_1", "index1_2"))
           }
           "index with wildcard is used (the pattern is narrowed)" in {
             val response = dev1IndexLifecycleManager.ilmExplain("index1*", "index2*")
 
-            response.responseCode should be (200)
-            response.indices.keys.toSet should be (Set("index1", "index1_1", "index1_2"))
+            response.responseCode should be(200)
+            response.indices.keys.toSet should be(Set("index1", "index1_1", "index1_2"))
           }
           "all indices are requested" in {
             val response = dev1IndexLifecycleManager.ilmExplain("_all")
 
-            response.responseCode should be (200)
-            response.indices.keys.toSet should be (Set("index1", "index1_1", "index1_2"))
+            response.responseCode should be(200)
+            response.indices.keys.toSet should be(Set("index1", "index1_1", "index1_2"))
           }
         }
         "no indices rule was used" in {
           val response = adminIndexLifecycleManager.ilmExplain("*")
 
-          response.responseCode should be (200)
-          response.indices.keys.toSet should be (Set("index1", "index1_1", "index1_2", "index2", "index2_1"))
+          response.responseCode should be(200)
+          response.indices.keys.toSet should be(Set("index1", "index1_1", "index1_2", "index2", "index2_1"))
         }
       }
       "return empty result" when {
@@ -146,7 +274,7 @@ trait IndexLifecycleManagementApiSuite
             val response = dev1IndexLifecycleManager.ilmExplain("index2*")
 
             response.responseCode should be(200)
-            response.indices.keys.toSet should be (Set.empty)
+            response.indices.keys.toSet should be(Set.empty)
           }
         }
       }
@@ -155,11 +283,57 @@ trait IndexLifecycleManagementApiSuite
           "full name index was used" in {
             val response = dev1IndexLifecycleManager.ilmExplain("index2")
 
-            response.responseCode should be (404)
+            response.responseCode should be(404)
           }
         }
       }
     }
+  }
+
+  private def createIndexWithAppliedMergedPolicy(index: String): Unit = {
+    val policy = PolicyGenerator.next()
+    adminIndexLifecycleManager.putPolicy(policy, ExamplePolicies.forceMergePolicy).force()
+    adminIndexManager.createIndex(index).force()
+    adminIndexManager
+      .putSettings(
+        indexName = index,
+        settings = ujson.read(
+          s"""
+             |{
+             |  "index": {
+             |    "lifecycle": {
+             |      "name": "$policy"
+             |    }
+             |  }
+             |}
+                """.stripMargin)
+      )
+      .force()
+  }
+
+  private def createIndexWithAppliedShrinkPolicyWhichCaseErrorStep(index: String): Unit = {
+    val policy = PolicyGenerator.next()
+    adminIndexLifecycleManager.putPolicy(policy, ExamplePolicies.shrinkPolicy).force()
+    adminIndexManager
+      .createIndex(
+        index,
+        settings = Some(ujson.read {
+          s"""
+             |{
+             |  "settings": {
+             |    "index.number_of_shards": 2,
+             |    "index.lifecycle.name": "$policy"
+             |  }
+             |}
+          """.stripMargin
+        })
+      )
+      .force()
+  }
+
+  override protected def beforeEach(): Unit = {
+    super.beforeEach()
+    adminIndexManager.removeIndex("dynamic*").force()
   }
 }
 
@@ -181,7 +355,7 @@ object IndexLifecycleManagementApiSuite {
   }
 
   private object ExamplePolicies {
-    val policy1: JSON = ujson.read {
+    val forceMergePolicy: JSON = ujson.read {
       """
         |{
         |  "policy": {
@@ -192,6 +366,25 @@ object IndexLifecycleManagementApiSuite {
         |          "forcemerge": {
         |            "max_num_segments": 1
         |           }
+        |        }
+        |      }
+        |    }
+        |  }
+        |}
+      """.stripMargin
+    }
+
+    val shrinkPolicy: JSON = ujson.read {
+      """
+        |{
+        |  "policy": {
+        |    "phases": {
+        |      "warm": {
+        |        "min_age": "5d",
+        |        "actions": {
+        |          "shrink": {
+        |            "number_of_shards": 4
+        |          }
         |        }
         |      }
         |    }

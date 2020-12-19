@@ -18,3 +18,7 @@ readonlyrest:
     - name: "DEV1 block"
       indices: ["index1", "index1_*"]
       auth_key: dev1:test
+
+    - name: "DEV3 block"
+      indices: ["dynamic1", "dynamic_*"]
+      auth_key: dev3:test

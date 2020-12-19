@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
@@ -51,7 +52,15 @@ class IndexLifecycleManager(client: RestClient)
   }
 
   def ilmExplain(index: String, indices: String*): IlmExplainResponse = {
-    call(createIlmExplainRequest(index :: indices.toList), new IlmExplainResponse(_))
+    call(createIlmExplainRequest(NonEmptyList.of(index, indices: _*)), new IlmExplainResponse(_))
+  }
+
+  def moveToLifecycleStep(index: String, currentStep: JSON, nextStep: JSON): SimpleResponse = {
+    call(createMoveToLifecycleStepRequest(index, currentStep, nextStep), new SimpleResponse(_))
+  }
+
+  def retryPolicyExecution(index: String, indices: String*): SimpleResponse = {
+    call(createRetryPolicyExecutionRequest(NonEmptyList.of(index, indices: _*)), new SimpleResponse(_))
   }
 
   private def createPutPolicyRequest(id: String, policy: JSON) = {
@@ -81,8 +90,23 @@ class IndexLifecycleManager(client: RestClient)
     new HttpGet(client.from(s"_ilm/status"))
   }
 
-  private def createIlmExplainRequest(indices: List[String]) = {
-    new HttpGet(client.from(s"${indices.mkString(",")}/_ilm/explain"))
+  private def createIlmExplainRequest(indices: NonEmptyList[String]) = {
+    new HttpGet(client.from(s"${indices.toList.mkString(",")}/_ilm/explain"))
+  }
+
+  private def createMoveToLifecycleStepRequest(index: String, currentStep: JSON, nextStep: JSON) = {
+    val request = new HttpPost(client.from(s"_ilm/move/$index"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""{
+         |  "current_step": ${ujson.write(currentStep)},
+         |  "next_step": ${ujson.write(nextStep)}
+         |}""".stripMargin))
+    request
+  }
+
+  private def createRetryPolicyExecutionRequest(indices: NonEmptyList[String]) = {
+    new HttpPost(client.from(s"${indices.toList.mkString(",")}/_ilm/retry"))
   }
 }
 
