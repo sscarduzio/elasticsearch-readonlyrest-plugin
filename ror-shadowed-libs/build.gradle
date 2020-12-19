@@ -50,7 +50,7 @@ compileJava {
 
 dependencies {
     shadowCompile group: 'com.fasterxml.jackson.dataformat',      name: 'jackson-dataformat-yaml',                version: '2.9.10'
-    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.9.10.7'
+    shadowCompile group: 'com.fasterxml.jackson.core',            name: 'jackson-databind',                       version: '2.9.10.8'
     shadowCompile group: 'com.jayway.jsonpath',                   name: 'json-path',                              version: '2.2.0'
     // because of https://bitbucket.org/asomov/snakeyaml/issues/462/memory-leak
     shadowCompile group: 'org.yaml',                              name: 'snakeyaml',                              version: '1.17'
