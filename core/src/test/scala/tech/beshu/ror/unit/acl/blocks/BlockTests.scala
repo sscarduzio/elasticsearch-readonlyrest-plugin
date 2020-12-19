@@ -168,6 +168,39 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           blockContext.responseHeaders should be(Set.empty)
       }
     }
+    "be matched and contain all rules history from the block with overwritten logged user" in {
+      val blockName = Block.Name("test_block")
+      val block = new Block(
+        name = blockName,
+        policy = Block.Policy.Allow,
+        verbosity = Block.Verbosity.Info,
+        rules = NonEmptyList.fromListUnsafe(
+          passingRule("r1", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty))))) ::
+          passingRule("r2", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2".nonempty))))) ::
+            Nil
+        )
+      )
+      val requestContext = MockRequestContext.indices
+      val result = block.execute(requestContext).runSyncUnsafe(1 second)
+
+      inside(result) {
+        case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
+          historyItems should have size 2
+          historyItems(0).rule should be(Rule.Name("r1"))
+          historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(1).rule should be(Rule.Name("r2"))
+          historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
+
+          blockContext.userMetadata should be(
+            UserMetadata
+              .empty
+              .withLoggedUser(DirectlyLoggedUser(User.Id("user2".nonempty)))
+          )
+          blockContext.filteredIndices should be(empty)
+          blockContext.allAllowedIndices should be(empty)
+          blockContext.responseHeaders should be(empty)
+      }
+    }
   }
 }
 

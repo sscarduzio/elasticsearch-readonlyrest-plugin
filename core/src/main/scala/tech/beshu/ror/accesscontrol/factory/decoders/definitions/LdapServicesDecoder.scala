@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UserGroupsSearchFilterConfig.UserGroupsSearchMode.{DefaultGroupSearch, GroupsFromUserAttribute}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
@@ -105,8 +105,11 @@ object LdapServicesDecoder {
       ldapServiceDecodingResult match {
         case Left(error) => Task.now(Left(error))
         case Right(task) => task.flatMap {
-          case Left(ConnectionError(hosts)) =>
+          case Left(HostConnectionError(hosts)) =>
             val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.url.toString()).toList.mkString(",")}")
+            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+          case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
+            val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
             Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
           case Right(service) =>
             Task.now(Right(service))
@@ -133,8 +136,11 @@ object LdapServicesDecoder {
       ldapServiceDecodingResult match {
         case Left(error) => Task.now(Left(error))
         case Right(task) => task.flatMap {
-          case Left(ConnectionError(hosts)) =>
+          case Left(HostConnectionError(hosts)) =>
             val connectionErrorMessage = Message(s"There was a problem with LDAP connection to: ${hosts.map(_.toString()).toList.mkString(",")}")
+            Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
+          case Left(ServerDiscoveryConnectionError(recordName, providerUrl)) =>
+            val connectionErrorMessage = Message(s"There was a problem with LDAP connection in discovery mode. Connection details: recordName=${recordName.getOrElse("default")}, providerUrl=${providerUrl.getOrElse("default")}")
             Task.now(Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(connectionErrorMessage))))
           case Right(service) =>
             Task.now(Right(service))
@@ -221,15 +227,16 @@ object LdapServicesDecoder {
           hostOpt <- ldapHostDecoder.tryDecode(c).map(Some.apply).recover { case _ => None }
           hostsOpt <- c.downFields("hosts", "servers").as[Option[List[LdapHost]]]
           haMethod <- c.downField("ha").as[Option[HaMethod]]
-        } yield (hostOpt, hostsOpt) match {
-          case (Some(host), None) =>
+          serverDiscovery <- c.getOrElse[Option[ConnectionMethod.ServerDiscovery]]("server_discovery")(fallback = None)
+        } yield (hostOpt, hostsOpt, serverDiscovery) match {
+          case (Some(host), None, None) =>
             haMethod match {
               case None =>
                 Right(SingleServer(host))
               case Some(_) =>
                 Left(DefinitionsLevelCreationError(Message(s"Please specify more than one LDAP server using 'servers'/'hosts' to use HA")))
             }
-          case (None, Some(hostsList)) =>
+          case (None, Some(hostsList), None) =>
             NonEmptyList.fromList(hostsList) match {
               case Some(hosts) if allHostsWithTheSameSchema(hosts) =>
                 Right(SeveralServers(hosts, haMethod.getOrElse(HaMethod.Failover)))
@@ -238,14 +245,42 @@ object LdapServicesDecoder {
               case None =>
                 Left(DefinitionsLevelCreationError(Message(s"Please specify more than one LDAP server using 'servers'/'hosts' to use HA")))
             }
-          case (Some(_), Some(_)) =>
-            Left(DefinitionsLevelCreationError(Message(s"Cannot accept single server settings (host,port) AND multi server configuration (servers/hosts) at the same time.")))
-          case (None, None) =>
-            Left(DefinitionsLevelCreationError(Message(s"Server information missing: use either 'host' and 'port' or 'servers'/'hosts' option.")))
+          case (None, None, Some(serverDiscoveryConfig)) =>
+            Right(serverDiscoveryConfig)
+          case (None, None, None) =>
+            Left(DefinitionsLevelCreationError(Message(s"Server information missing: use 'host' and 'port', 'servers'/'hosts' or 'service_discovery' option.")))
+          case _ =>
+            Left(DefinitionsLevelCreationError(Message(s"Cannot accept multiple server configurations settings (host,port) or (servers/hosts) or (service_discovery) at the same time.")))
         }
       }
       .emapE[ConnectionMethod](identity)
       .decoder
+
+  private implicit val serverDiscoveryDecoder: Decoder[Option[ConnectionMethod.ServerDiscovery]] = {
+    val booleanDiscoverySettingDecoder =
+      SyncDecoderCreator
+      .from(Decoder.decodeBoolean)
+      .map{
+        case true => Option(ConnectionMethod.ServerDiscovery(None, None, None, useSSL = false))
+        case false => None
+      }
+      .decoder
+
+    val complexDiscoverySettingDecoder =
+      SyncDecoderCreator
+        .instance { c =>
+          for {
+            recordName <- c.downField("record_name").as[Option[String]]
+            dnsUrl <- c.downField("dns_url").as[Option[String]]
+            ttl <- c.downField("ttl").as[Option[FiniteDuration Refined Positive]]
+            useSsl <- c.downField("use_ssl").as[Option[Boolean]]
+          } yield ConnectionMethod.ServerDiscovery(recordName, dnsUrl, ttl, useSsl.getOrElse(false))
+        }
+        .map(Option.apply)
+        .decoder
+
+    booleanDiscoverySettingDecoder or complexDiscoverySettingDecoder
+  }
 
   private def allHostsWithTheSameSchema(hosts: NonEmptyList[LdapHost]) = hosts.map(_.isSecure).distinct.length == 1
 
@@ -254,10 +289,10 @@ object LdapServicesDecoder {
       .from(Decoder.decodeString)
       .map(_.toUpperCase)
       .emapE[HaMethod] {
-      case "FAILOVER" => Right(HaMethod.Failover)
-      case "ROUND_ROBIN" => Right(HaMethod.RoundRobin)
-      case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown HA method '$unknown'")))
-    }
+        case "FAILOVER" => Right(HaMethod.Failover)
+        case "ROUND_ROBIN" => Right(HaMethod.RoundRobin)
+        case unknown => Left(DefinitionsLevelCreationError(Message(s"Unknown HA method '$unknown'")))
+      }
       .decoder
 
   private implicit lazy val ldapHostDecoder: Decoder[LdapHost] = {

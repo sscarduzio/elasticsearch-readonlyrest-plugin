@@ -69,6 +69,10 @@ test {
         exceptionFormat = 'full'
         events "standardOut", "started", "passed", "skipped", "failed"
     }
+    reports {
+        junitXml.enabled = true
+        html.enabled = false
+    }
 }
 
 license {
@@ -124,7 +128,6 @@ crossBuild {
     }
 }
 
-import org.gradle.plugins.signing.Sign
 gradle.taskGraph.whenReady { taskGraph ->
     if (taskGraph.allTasks.any { it instanceof Sign }) {
         allprojects { ext."signing.keyId" = System.getenv('GPG_KEY_ID') }

@@ -69,6 +69,13 @@ license {
     }
 }
 
+test {
+    reports {
+        junitXml.enabled = true
+        html.enabled = false
+    }
+}
+
 githook {
     hooks {
         "pre-commit" {
