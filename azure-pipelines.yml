@@ -22,12 +22,13 @@ pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
-- stage: Prepration
+- stage:
   jobs:
-  - job: "Link_secret_files"
+  - job: "secrets"
     steps:
+    - checkout: none
     - task: DownloadSecureFile@1
-      name: secret
+      name: pgp
       displayName: 'Download secret.pgp secret file'
       inputs:
         secureFile: 'secret.pgp'
@@ -42,7 +43,7 @@ stages:
         export |egrep -i 'java|jdk'
 
     - task: DownloadSecureFile@1
-      name: deployKey
+      name: GH_key
       displayName: 'Download secret.pgp secret file'
       inputs:
         secureFile: 'gh_deploy_key.priv'
@@ -60,14 +61,14 @@ stages:
          "  IdentityFile $(ssh_file)" \
          "  LogLevel ERROR" >> ~/.ssh/config
         ls -ltra ~/.ssh
-        # export 
 
-
-- stage: "test_matrix"
+- stage:
   jobs:
-  - job: Test
+  - job:
     condition: succeeded()
     steps:
+    - checkout: self
+      fetchDepth: 1
     - script: |
         java --version
         echo "executing ROR_TASK = $ROR_TASK"
@@ -79,9 +80,9 @@ stages:
     - task: PublishTestResults@2
       condition: failed()
       inputs:
-        testRunTitle: "$ROR_TASK test results"
-        failTaskOnFailedTests: false
-        searchFolder: integration_testintegration-tests/build/reports/tests/test/*html
+        testRunTitle: "$(ROR_TASK) results"
+        testResultsFiles: "**/TEST*xml"
+        mergeTestResults: true
     strategy:
       maxParallel: 99
       matrix: 

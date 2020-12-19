@@ -54,8 +54,12 @@ test {
         }
     }
     outputs.upToDateWhen { false }
-    
     maxParallelForks = 1
+
+    reports {
+        junitXml.enabled = true
+        html.enabled = false
+    }
 }
 
 dependencies {

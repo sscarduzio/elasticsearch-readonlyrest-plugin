@@ -68,6 +68,13 @@ license {
     }
 }
 
+test {
+    reports {
+        junitXml.enabled = true
+        html.enabled = false
+    }
+}
+
 tasks.withType(ScalaCompile) {
     scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
 }
