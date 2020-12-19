@@ -81,11 +81,14 @@ object UnboundidLdapAuthenticationService {
              blockingScheduler: Scheduler): Task[Either[ConnectionError, UnboundidLdapAuthenticationService]] = {
     implicit val blockingSchedulerImplicit: Scheduler = blockingScheduler
     (for {
-      _ <- if (connectionConfig.checkConnectionOnStartUp) {
-        EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-      } else {
-        EitherT.rightT[Task, ConnectionError](Unit)
-      }
+      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+        .recoverWith {
+          case error@ConnectionError(_) =>
+            if (connectionConfig.ignoreLdapConnectivityProblems)
+              EitherT.rightT(Unit)
+            else
+              EitherT.leftT(error)
+        }
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
     } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
   }
@@ -222,11 +225,14 @@ object UnboundidLdapAuthorizationService {
              blockingScheduler: Scheduler): Task[Either[ConnectionError, UnboundidLdapAuthorizationService]] = {
     implicit val blockingSchedulerImplicit: Scheduler = blockingScheduler
     (for {
-      _ <- if (connectionConfig.checkConnectionOnStartUp) {
-        EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
-      } else {
-        EitherT.rightT[Task, ConnectionError](Unit)
-      }
+      _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+        .recoverWith {
+          case error@ConnectionError(_) =>
+            if (connectionConfig.ignoreLdapConnectivityProblems)
+              EitherT.rightT(Unit)
+            else
+              EitherT.leftT(error)
+        }
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
     } yield new UnboundidLdapAuthorizationService(id, connectionPool, userGroupsSearchFilter, userSearchFiler, connectionConfig.requestTimeout)).value
   }
@@ -280,7 +286,7 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
                                       requestTimeout: FiniteDuration Refined Positive,
                                       trustAllCerts: Boolean,
                                       bindRequestUser: BindRequestUser,
-                                      checkConnectionOnStartUp: Boolean)
+                                      ignoreLdapConnectivityProblems: Boolean)
 
 object LdapConnectionConfig {
 

@@ -177,7 +177,8 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |  - name: ldap1
                |    host: 192.168.123.123
                |    port: 234
-               |    check_connection_on_startup: false
+               |    ignore_ldap_connectivity_problems: true
+               |    connection_timeout: 500 ms
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    ssl_trust_all_certs: true  #this is actually not required (but we use openLDAP default cert to test)
            """.stripMargin,

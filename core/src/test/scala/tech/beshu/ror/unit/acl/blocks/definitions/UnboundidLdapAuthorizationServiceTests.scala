@@ -95,7 +95,7 @@ class UnboundidLdapAuthorizationServiceTests
             Dn("cn=admin,dc=example,dc=com".nonempty),
             PlainTextSecret("password".nonempty)
           ),
-          checkConnectionOnStartUp = false
+          ignoreLdapConnectivityProblems = false
         ),
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
         UserGroupsSearchFilterConfig(DefaultGroupSearch(
