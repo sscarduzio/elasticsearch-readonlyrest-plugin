@@ -146,7 +146,7 @@ dependencies {
         compile group: 'io.netty',                          name: 'netty-transport-native-unix-common',     version: '4.1.53.Final'
         compile group: 'io.netty',                          name: 'netty-transport-native-epoll',           version: '4.1.53.Final'
         compile group: 'io.netty',                          name: 'netty-transport-native-kqueue',          version: '4.1.53.Final'
-        compile group: 'com.fasterxml.jackson.core',        name: 'jackson-databind',                       version: '2.9.10.7'
+        compile group: 'com.fasterxml.jackson.core',        name: 'jackson-databind',                       version: '2.9.10.8'
         compile group: 'com.google.guava',                  name: 'guava',                                  version: '30.0-jre'
         compile group: 'io.spray',                          name: 'spray-json_2.12',                        version: '1.3.5'
         compile group: 'org.scala-lang',                    name: 'scala-reflect',                          version: '2.12.10'
