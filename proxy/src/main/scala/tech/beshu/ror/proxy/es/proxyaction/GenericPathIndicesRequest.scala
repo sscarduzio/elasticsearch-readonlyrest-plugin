@@ -33,15 +33,17 @@ class GenericPathIndicesRequest(override val actionName: String,
 
 object GenericPathIndicesRequest {
 
-  private val ilmMoveToRegex = "^/?_ilm/move/([^/]+)$".r
-  private val ilmExplainRegex = "^/?([^/]+)/_ilm/explain$".r
-  private val ilmRemovePolicyRegex = "^/?([^/]+)/_ilm/remove$".r
+  private val ilmMoveToRegex = "^/?_ilm/move/([^/]+)/?$".r
+  private val ilmExplainRegex = "^/?([^/]+)/_ilm/explain/?$".r
+  private val ilmRemovePolicyRegex = "^/?([^/]+)/_ilm/remove/?$".r
+  private val ilmRetryPolicy = "^/?_ilm/retry/([^/]+)/?$".r
 
   def from(rest: RestRequest): Option[GenericPathIndicesRequest] = {
     val indicesStrAndAction = rest.path() match {
-      case ilmMoveToRegex(is) => Some((is, "cluster:admin/ilm/_move/post"))
-      case ilmExplainRegex(is) => Some((is, "indices:admin/ilm/explain"))
-      case ilmRemovePolicyRegex(is) => Some((is, "indices:admin/ilm/remove_policy"))
+      case ilmMoveToRegex(is) => Some(is, "cluster:admin/ilm/_move/post")
+      case ilmExplainRegex(is) => Some(is, "indices:admin/ilm/explain")
+      case ilmRemovePolicyRegex(is) => Some(is, "indices:admin/ilm/remove_policy")
+      case ilmRetryPolicy(is) => Some(is, "indices:admin/ilm/retry")
       case _ => None
     }
     indicesStrAndAction.map { case (str, action) =>

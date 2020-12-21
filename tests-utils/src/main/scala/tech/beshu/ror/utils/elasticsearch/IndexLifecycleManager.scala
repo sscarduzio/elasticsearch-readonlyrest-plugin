@@ -18,7 +18,7 @@ package tech.beshu.ror.utils.elasticsearch
 
 import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut, HttpUriRequest}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.elasticsearch.IndexLifecycleManager.{IlmExplainResponse, IlmStatusResponse, PoliciesResponse}
