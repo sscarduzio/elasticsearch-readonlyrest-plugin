@@ -36,6 +36,7 @@ import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.utils.LdapConnectionPoolOps._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import UnboundidLdapConnectionPoolProvider.ConnectionError
 
 import scala.concurrent.duration._
 import scala.util.Try
@@ -82,6 +83,13 @@ object UnboundidLdapAuthenticationService {
     implicit val blockingSchedulerImplicit: Scheduler = blockingScheduler
     (for {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+        .recoverWith {
+          case error: ConnectionError =>
+            if (connectionConfig.ignoreLdapConnectivityProblems)
+              EitherT.rightT(Unit)
+            else
+              EitherT.leftT(error)
+        }
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
     } yield new UnboundidLdapAuthenticationService(id, connectionPool, userSearchFiler, connectionConfig.requestTimeout)).value
   }
@@ -219,6 +227,13 @@ object UnboundidLdapAuthorizationService {
     implicit val blockingSchedulerImplicit: Scheduler = blockingScheduler
     (for {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
+        .recoverWith {
+          case error: ConnectionError =>
+            if (connectionConfig.ignoreLdapConnectivityProblems)
+              EitherT.rightT(Unit)
+            else
+              EitherT.leftT(error)
+        }
       connectionPool <- EitherT.liftF[Task, ConnectionError, LDAPConnectionPool](poolProvider.connect(connectionConfig))
     } yield new UnboundidLdapAuthorizationService(id, connectionPool, userGroupsSearchFilter, userSearchFiler, connectionConfig.requestTimeout)).value
   }
@@ -271,7 +286,8 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
                                       connectionTimeout: FiniteDuration Refined Positive,
                                       requestTimeout: FiniteDuration Refined Positive,
                                       trustAllCerts: Boolean,
-                                      bindRequestUser: BindRequestUser)
+                                      bindRequestUser: BindRequestUser,
+                                      ignoreLdapConnectivityProblems: Boolean)
 
 object LdapConnectionConfig {
 

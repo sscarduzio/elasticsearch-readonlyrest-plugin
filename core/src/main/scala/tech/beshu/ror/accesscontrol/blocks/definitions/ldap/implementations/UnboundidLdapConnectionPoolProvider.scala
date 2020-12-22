@@ -49,7 +49,9 @@ class UnboundidLdapConnectionPoolProvider {
       val pool = new LDAPConnectionPool(
         serverSet,
         bindRequest(connectionConfig.bindRequestUser),
-        connectionConfig.poolSize.value
+        if (connectionConfig.ignoreLdapConnectivityProblems) 0 else 1,
+        connectionConfig.poolSize.value,
+        null
       )
       pool.setMaxConnectionAgeMillis(60000)
       pool
