@@ -36,6 +36,7 @@ import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.utils.LdapConnectionPoolOps._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import UnboundidLdapConnectionPoolProvider.ConnectionError
 
 import scala.concurrent.duration._
 import scala.util.Try
@@ -83,7 +84,7 @@ object UnboundidLdapAuthenticationService {
     (for {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
         .recoverWith {
-          case error@ConnectionError(_) =>
+          case error: ConnectionError =>
             if (connectionConfig.ignoreLdapConnectivityProblems)
               EitherT.rightT(Unit)
             else
@@ -227,7 +228,7 @@ object UnboundidLdapAuthorizationService {
     (for {
       _ <- EitherT(UnboundidLdapConnectionPoolProvider.testBindingForAllHosts(connectionConfig))
         .recoverWith {
-          case error@ConnectionError(_) =>
+          case error: ConnectionError =>
             if (connectionConfig.ignoreLdapConnectivityProblems)
               EitherT.rightT(Unit)
             else
