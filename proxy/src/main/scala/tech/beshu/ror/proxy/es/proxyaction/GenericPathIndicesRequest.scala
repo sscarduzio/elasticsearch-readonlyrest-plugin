@@ -36,7 +36,7 @@ object GenericPathIndicesRequest {
   private val ilmMoveToRegex = "^/?_ilm/move/([^/]+)/?$".r
   private val ilmExplainRegex = "^/?([^/]+)/_ilm/explain/?$".r
   private val ilmRemovePolicyRegex = "^/?([^/]+)/_ilm/remove/?$".r
-  private val ilmRetryPolicy = "^/?_ilm/retry/([^/]+)/?$".r
+  private val ilmRetryPolicy = "^/?([^/]+)/_ilm/retry/?$".r
 
   def from(rest: RestRequest): Option[GenericPathIndicesRequest] = {
     val indicesStrAndAction = rest.path() match {

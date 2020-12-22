@@ -28,9 +28,9 @@ object GenericRequest {
           case RestRequest.Method.DELETE => Some("cluster:admin/ilm/delete")
           case _ => None
         }
-      case ilmPolicyStart(_) => Some("cluster:admin/ilm/start")
-      case ilmPolicyStop(_) => Some("cluster:admin/ilm/stop")
-      case ilmStatus(_) => Some("cluster:admin/ilm/operation_mode/get")
+      case ilmPolicyStart() => Some("cluster:admin/ilm/start")
+      case ilmPolicyStop() => Some("cluster:admin/ilm/stop")
+      case ilmStatus() => Some("cluster:admin/ilm/operation_mode/get")
       case _ => None
     }
     foundAction match {
