@@ -94,7 +94,8 @@ class UnboundidLdapAuthorizationServiceTests
           BindRequestUser.CustomUser(
             Dn("cn=admin,dc=example,dc=com".nonempty),
             PlainTextSecret("password".nonempty)
-          )
+          ),
+          ignoreLdapConnectivityProblems = false
         ),
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
         UserGroupsSearchFilterConfig(DefaultGroupSearch(
