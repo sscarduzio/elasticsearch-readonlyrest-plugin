@@ -1,19 +1,19 @@
-[![Build Status](https://dev.azure.com/scarduzio/ROR/_apis/build/status/ror?branchName=develop)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=develop)
+
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12)
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
 [![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/readonlyrest)
 
+
+| Develop branch | Master branch |
+|---|---|
+| [![Build Status Develop](https://dev.azure.com/scarduzio/ROR/_apis/build/status/ror?branchName=develop)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=develop) | [![Build Status Master](https://dev.azure.com/scarduzio/ROR/_apis/build/status/ror?branchName=master)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=master) |
 
 ## Supporters 
 Thanks **@Id57, Jeff Saxe, GoodMirek** for donating!
 
 [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest) [![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate) 
 
-
-## ReadonlyREST needs your help ⚠️
-
-
-If you care this project **keeps on existing**, read up the [Patreon campaign](https://www.patreon.com/readonlyrest), or [Liberapay campaign](https://liberapay.com/sscarduzio/donate).
+---
 
 # Readonly REST Elasticsearch Plugin
 Expose the high performance HTTP server embedded in Elasticsearch directly to the public, safely blocking any attempt to delete or modify your data.
