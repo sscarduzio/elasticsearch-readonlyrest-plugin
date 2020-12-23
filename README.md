@@ -1,12 +1,12 @@
-[![Build Status](https://travis-ci.com/sscarduzio/elasticsearch-readonlyrest-plugin.svg?branch=master)](https://travis-ci.com/sscarduzio/elasticsearch-readonlyrest-plugin)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/tech.beshu.ror/audit_2.12)
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
 [![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/readonlyrest)
 
 
-|  Supporters | Sponsored link |
-| ------------- | ------------- |
-| Thanks **@Id57, Jeff Saxe, GoodMirek** for donating! __________________________________________ [![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest) [![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate) | <a href="https://tracking.gitads.io/?repo=elasticsearch-readonlyrest-plugin"><img src="https://images.gitads.io/elasticsearch-readonlyrest-plugin" alt="GitAds"/></a> |
+## Supporters 
+Thanks **@Id57, Jeff Saxe, GoodMirek** for donating!
+
+[![Patreon](http://i.imgur.com/Fw6Kft4.png)](https://www.patreon.com/readonlyrest) [![Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/sscarduzio/donate) 
 
 
 ## ReadonlyREST needs your help ⚠️
