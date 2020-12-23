@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.dependencies.ldap
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator, NoXpackSupport}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -27,8 +27,7 @@ trait LdapIntegrationSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
-    with Matchers
-    with NoXpackSupport {
+    with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/ldap_integration/readonlyrest.yml"
@@ -43,7 +42,7 @@ trait LdapIntegrationSuite
         ldap(name = "LDAP2", ldapInitScript = "/ldap_integration/ldap.ldif")
       ),
       nodeDataInitializer = LdapIntegrationSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXpackSupport,
+      xPackSupport = false,
     )
   )
 

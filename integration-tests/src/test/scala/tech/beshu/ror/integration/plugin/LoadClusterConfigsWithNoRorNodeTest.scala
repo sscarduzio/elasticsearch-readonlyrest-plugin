@@ -33,7 +33,6 @@ import scala.collection.JavaConverters._
 final class LoadClusterConfigsWithNoRorNodeTest
   extends WordSpec
     with BeforeAndAfterEach
-    with NoXpackSupport
     with PluginTestSupport
     with BaseEsClusterIntegrationTest
     with MultipleClientsSupport {
@@ -55,7 +54,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
       name = "ROR1",
       nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
       numberOfInstances = 2,
-      xPackSupport = isUsingXpackSupport
+      xPackSupport = false
     )(rorConfigFileName)
   )
   private lazy val rorNode2: ClusterNodeData = ClusterNodeData(
@@ -63,7 +62,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
     settings = EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
-      xPackSupport = isUsingXpackSupport
+      xPackSupport = false
     )(rorConfigFileName)
   )
 

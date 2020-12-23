@@ -29,8 +29,7 @@ trait DocumentApiSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
-    with ESVersionSupport
-    with XpackSupport {
+    with ESVersionSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName: String = "/document_api/readonlyrest.yml"
@@ -43,7 +42,7 @@ trait DocumentApiSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = DocumentApiSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXpackSupport,
+      xPackSupport = true,
     )
   )
 

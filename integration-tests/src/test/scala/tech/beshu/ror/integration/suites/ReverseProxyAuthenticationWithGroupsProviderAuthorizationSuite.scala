@@ -28,8 +28,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
-    with Matchers
-    with NoXpackSupport {
+    with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/rev_proxy_groups_provider/readonlyrest.yml"
@@ -47,7 +46,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
           "/rev_proxy_groups_provider/wiremock_service2.json")
       ),
       nodeDataInitializer = ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXpackSupport,
+      xPackSupport = false,
     )
   )
 

@@ -18,7 +18,6 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
-import tech.beshu.ror.utils.containers.XpackSupport
 
 class IndexLifecycleManagementApiProxyTests
-  extends IndexLifecycleManagementApiSuite with ProxyTestSupport with XpackSupport
+  extends IndexLifecycleManagementApiSuite with ProxyTestSupport

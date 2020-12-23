@@ -33,7 +33,6 @@ trait IndexLifecycleManagementApiSuite
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport
-    with XpackSupport
     with BeforeAndAfterEach
     with Matchers
     with Eventually {

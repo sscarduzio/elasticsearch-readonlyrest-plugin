@@ -18,15 +18,14 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator, NoXpackSupport}
+import tech.beshu.ror.utils.containers.{EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, RorApiManager}
 
 trait RorDisabledSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
-    with Matchers
-    with NoXpackSupport {
+    with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/plugin_disabled/readonlyrest.yml"
@@ -36,7 +35,7 @@ trait RorDisabledSuite
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR1",
-      xPackSupport = isUsingXpackSupport,
+      xPackSupport = false,
     )
   )
 

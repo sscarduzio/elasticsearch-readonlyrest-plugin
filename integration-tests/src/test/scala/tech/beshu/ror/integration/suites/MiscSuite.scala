@@ -20,7 +20,7 @@ import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator, NoXpackSupport}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -29,8 +29,7 @@ trait MiscSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
-    with ESVersionSupport
-    with NoXpackSupport {
+    with ESVersionSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/misc/readonlyrest.yml"
@@ -42,14 +41,16 @@ trait MiscSuite
       name = "ROR1",
       numberOfInstances = 2,
       nodeDataInitializer = MiscSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXpackSupport,
+      xPackSupport = false,
     )
   )
 
   private lazy val userClusterStateManager = new CatManager(
     client = basicAuthClient("user1", "pass"),
     additionalHeaders = Map("X-Forwarded-For" -> "es-pub7"),
-    esVersion = targetEs.esVersion)
+    esVersion = targetEs.esVersion
+  )
+
   private lazy val dev1IndexManager = new IndexManager(basicAuthClient("admin", "container"))
 
   "An x_forwarded_for" should {
@@ -64,7 +65,7 @@ trait MiscSuite
       // headers are used only for deprecation. Deprecated features change among versions es8xx modules should use other method to test deprecation warnings
       // proxy cares waring printing it in logs, and it's not passed to ror.
       val indexResponse = dev1IndexManager.createIndex(
-        indices ="typed_index",
+        indices = "typed_index",
         params = Map(
           "master_timeout" -> "30s",
           "include_type_name" -> "true",

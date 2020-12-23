@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.junit.Assert.assertEquals
 import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator, NoXpackSupport}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.Str
@@ -29,8 +29,7 @@ trait QueryAuditLogSerializerSuite
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with BeforeAndAfterEach
-    with Matchers
-    with NoXpackSupport {
+    with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/query_audit_log_serializer/readonlyrest.yml"
@@ -41,7 +40,7 @@ trait QueryAuditLogSerializerSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = QueryAuditLogSerializerSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXpackSupport,
+      xPackSupport = false,
     )
   )
 

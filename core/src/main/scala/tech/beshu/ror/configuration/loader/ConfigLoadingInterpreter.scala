@@ -68,7 +68,7 @@ object ConfigLoadingInterpreter extends Logging {
           }
           .value
       case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(index) =>
-        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index ($index) ...")
+        logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${index.index.value}) ...")
         loadFromIndex(indexConfigManager, index, inIndexLoadingDelay)
           .bimap(convertIndexError, IndexConfig(index, _))
           .leftMap { error =>
