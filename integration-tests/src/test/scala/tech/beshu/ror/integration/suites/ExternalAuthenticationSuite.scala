@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.dependencies.wiremock
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator, NoXpackSupport}
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -28,7 +28,8 @@ trait ExternalAuthenticationSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
-    with Matchers {
+    with Matchers
+    with NoXpackSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/external_authentication/readonlyrest.yml"

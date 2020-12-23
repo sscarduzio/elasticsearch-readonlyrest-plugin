@@ -20,4 +20,4 @@ import tech.beshu.ror.integration.suites.ImpersonationSuite
 import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
 import tech.beshu.ror.utils.containers.XpackSupport
 
-class ImpersonationProxyTests extends ImpersonationSuite with BasicClusterProxyTestSupport with XpackSupport
+class ImpersonationProxyTests extends ImpersonationSuite with BasicClusterProxyTestSupport

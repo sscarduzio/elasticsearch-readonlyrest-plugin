@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator, NoXpackSupport}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.CustomScalaTestMatchers._
@@ -28,7 +28,8 @@ import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 trait ClusterApiSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
-    with SingleClientSupport {
+    with SingleClientSupport
+    with NoXpackSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/cluster_api/readonlyrest.yml"
@@ -58,7 +59,7 @@ trait ClusterApiSuite
       }
       "no index is passed and block without no `indices` rule was matched" in {
         val result = dev4ClusterManager.allocationExplain()
-        result.responseCode should not be (403)
+        result.responseCode should not be(403)
       }
     }
     "not allow to be used (pretend that index doesn't exist)" when {

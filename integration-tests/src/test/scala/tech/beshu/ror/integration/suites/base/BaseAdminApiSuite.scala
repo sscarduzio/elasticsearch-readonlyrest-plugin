@@ -21,7 +21,7 @@ import org.apache.commons.lang.StringEscapeUtils.escapeJava
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator, NoXpackSupport}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManager, IndexManagerJ, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
@@ -30,7 +30,8 @@ trait BaseAdminApiSuite
   extends WordSpec
     with BaseManyEsClustersIntegrationTest
     with MultipleClientsSupport
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach
+    with NoXpackSupport {
   this: EsContainerCreator =>
 
   protected def readonlyrestIndexName: String

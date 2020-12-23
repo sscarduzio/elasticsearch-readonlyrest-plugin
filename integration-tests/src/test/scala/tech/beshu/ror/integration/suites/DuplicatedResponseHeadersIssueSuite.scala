@@ -20,7 +20,7 @@ import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite.SearchResult
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.dependencies.wiremock
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator, NoXpackSupport}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleHeader
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -30,7 +30,8 @@ trait DuplicatedResponseHeadersIssueSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
-    with Matchers {
+    with Matchers
+    with NoXpackSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/duplicated_response_headers_issue/readonlyrest.yml"

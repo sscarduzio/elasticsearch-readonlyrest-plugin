@@ -29,7 +29,8 @@ trait DocumentApiSuite
   extends WordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
-    with ESVersionSupport {
+    with ESVersionSupport
+    with XpackSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName: String = "/document_api/readonlyrest.yml"
