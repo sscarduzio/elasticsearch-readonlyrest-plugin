@@ -18,6 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.DocumentApiSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
-import tech.beshu.ror.utils.containers.XpackSupport
 
-class DocumentApiProxyTests extends DocumentApiSuite with ProxyTestSupport with XpackSupport
+class DocumentApiProxyTests extends DocumentApiSuite with ProxyTestSupport

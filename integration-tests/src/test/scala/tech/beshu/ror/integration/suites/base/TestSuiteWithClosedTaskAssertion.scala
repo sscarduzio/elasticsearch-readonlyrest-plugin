@@ -38,16 +38,9 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
       case Succeeded =>
         val tasks = adminCatManager.tasks().results
         Try {
-          tasks.map(_ ("action").str).toSet should containAtMostElementsFrom(Set(
-            """^internal:.*$""".r,
-            """^cluster:monitor/.*$""".r,
-            """^indices:monitor/.*$""".r,
-            """^indices:admin/.*$""".r,
-            """^indices:data/read/get""".r,
-            """^indices:data/read/get\[s\]$""".r,
-            """^retention_lease_sync$""".r,
-            """^retention_lease_background_sync$""".r,
-            """^xpack/rollup/.*$""".r,
+          tasks.map(_ ("action").str).toSet should notContainElementsFrom(Set(
+            """^cluster:admin/rrconfig/.*$""".r,
+            """^cluster:admin/rradmin/.*$""".r
           ))
         } match {
           case Failure(exception) => Failed(exception)

@@ -18,6 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.LdapIntegrationSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
-import tech.beshu.ror.utils.containers.XpackSupport
 
-class LdapIntegrationProxyTests extends LdapIntegrationSuite with ProxyTestSupport with XpackSupport
+class LdapIntegrationProxyTests extends LdapIntegrationSuite with ProxyTestSupport

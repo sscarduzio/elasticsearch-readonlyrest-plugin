@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.integration.proxy
 
-import tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite
+import tech.beshu.ror.integration.suites.IndexLifecycleManagementApiSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
 
-class DuplicatedResponseHeadersIssueProxyTests extends DuplicatedResponseHeadersIssueSuite with ProxyTestSupport
+class IndexLifecycleManagementApiProxyTests
+  extends IndexLifecycleManagementApiSuite with ProxyTestSupport

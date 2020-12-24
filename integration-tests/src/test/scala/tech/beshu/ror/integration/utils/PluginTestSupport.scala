@@ -19,13 +19,13 @@ package tech.beshu.ror.integration.utils
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.providers._
-import tech.beshu.ror.utils.containers.{EsContainer, EsWithRorPluginContainerCreator, NoXpackSupport, SingletonEsContainer}
+import tech.beshu.ror.utils.containers.{EsContainer, EsWithRorPluginContainerCreator, SingletonEsContainer}
 
 trait PluginTestSupport extends EsWithRorPluginContainerCreator with CallingEsDirectly {
   this: MultipleEsTargets =>
 }
 
-trait SingletonPluginTestSupport extends PluginTestSupport with NoXpackSupport with BeforeAndAfterAll {
+trait SingletonPluginTestSupport extends PluginTestSupport with BeforeAndAfterAll {
   this: Suite with BaseSingleNodeEsClusterTest =>
 
   override lazy val targetEs: EsContainer = SingletonEsContainer.singleton.nodes.head

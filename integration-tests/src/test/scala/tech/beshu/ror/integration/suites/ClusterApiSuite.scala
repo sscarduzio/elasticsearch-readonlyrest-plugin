@@ -39,7 +39,7 @@ trait ClusterApiSuite
       name = "ROR1",
       numberOfInstances = 2,
       nodeDataInitializer = ClusterApiSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXpackSupport,
+      xPackSupport = false,
     )
   )
 
@@ -58,7 +58,7 @@ trait ClusterApiSuite
       }
       "no index is passed and block without no `indices` rule was matched" in {
         val result = dev4ClusterManager.allocationExplain()
-        result.responseCode should not be (403)
+        result.responseCode should not be(403)
       }
     }
     "not allow to be used (pretend that index doesn't exist)" when {
