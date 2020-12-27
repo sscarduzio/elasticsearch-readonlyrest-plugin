@@ -72,10 +72,11 @@ stages:
         echo "executing ROR_TASK = $ROR_TASK"
         echo ">>>>>>>>> content of .ssh/" && ls ~/.ssh
         bin/build.sh
-        [[ $ROR_TASK == package_es* ]] && \
+        if [[ $ROR_TASK == package_es* ]]
+        then
         echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh && \
-        echo ">>> ($ROR_TASK) Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh
-
+        echo ">>> ($ROR_TASK) Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh 
+        fi
     - task: PublishTestResults@2
       condition: failed()
       inputs:
