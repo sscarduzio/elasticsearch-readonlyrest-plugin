@@ -47,37 +47,37 @@ stages:
       matrix: 
         LICENSE:
           ROR_TASK: license
- #       CVE:
- #         ROR_TASK: cve_check
- #       UNIT:
- #         ROR_TASK: unit
+        CVE:
+          ROR_TASK: cve_check
+        UNIT:
+          ROR_TASK: unit
 
- #       IT_PROXY:
- #         ROR_TASK: integration_proxy
- #       IT_es710x:
- #         ROR_TASK: integration_es710x
- #       IT_es79x:
- #         ROR_TASK: integration_es79x
- #       IT_es78x:
- #         ROR_TASK: integration_es78x
- #       IT_es77x:
- #         ROR_TASK: integration_es77x
- #       IT_es74x:
- #         ROR_TASK: integration_es74x
- #       IT_es73x:
- #         ROR_TASK: integration_es73x
- #       IT_es72x:
- #         ROR_TASK: integration_es72x
- #       IT_es66x:
- #         ROR_TASK: integration_es66x
- #       IT_es63x:
- #         ROR_TASK: integration_es63x
- #       IT_es62x:
- #         ROR_TASK: integration_es62x
- #       IT_es61x:
- #         ROR_TASK: integration_es61x
- #       IT_es60x:
- #         ROR_TASK: integration_es60x
+        IT_PROXY:
+          ROR_TASK: integration_proxy
+        IT_es710x:
+          ROR_TASK: integration_es710x
+        IT_es79x:
+          ROR_TASK: integration_es79x
+        IT_es78x:
+          ROR_TASK: integration_es78x
+        IT_es77x:
+          ROR_TASK: integration_es77x
+        IT_es74x:
+          ROR_TASK: integration_es74x
+        IT_es73x:
+          ROR_TASK: integration_es73x
+        IT_es72x:
+          ROR_TASK: integration_es72x
+        IT_es66x:
+          ROR_TASK: integration_es66x
+        IT_es63x:
+          ROR_TASK: integration_es63x
+        IT_es62x:
+          ROR_TASK: integration_es62x
+        IT_es61x:
+          ROR_TASK: integration_es61x
+        IT_es60x:
+          ROR_TASK: integration_es60x
 
 - stage: PUBL
   condition: succeeded()
