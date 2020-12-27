@@ -6,14 +6,16 @@ buildscript {
         maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
+        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin', version: '0.15.0'
+        classpath group: 'com.star-zero.gradle',                         name: 'githook',               version: '1.2.1'
     }
 }
 
-apply plugin: 'java'
-apply plugin: 'scala'
-apply plugin: 'maven'
 apply plugin: "com.github.hierynomus.license"
+apply plugin: "com.star-zero.gradle.githook"
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'scala'
 
 repositories {
     mavenCentral()
@@ -41,7 +43,8 @@ dependencies {
     compile group: 'org.scala-lang.modules',         name: 'scala-java8-compat_2.12',       version: '0.9.0'
     compile group: 'com.typesafe.scala-logging',     name: 'scala-logging_2.12',            version: '3.9.2'
     compile group: 'org.scalatest',                  name: 'scalatest_2.12',                version: '3.0.8'
-    compile group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.38.7'
+    compile group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.38.4'
+    compile group: 'org.testcontainers',             name: 'testcontainers',                version: "1.15.0"
     compile group: 'com.unboundid',                  name: 'unboundid-ldapsdk',             version: '4.0.9'
     compile group: 'com.mashape.unirest',            name: 'unirest-java',                  version: '1.4.9'
     compile group: 'com.lihaoyi',                    name: 'upickle_2.12',                  version: '0.7.1'
@@ -55,6 +58,14 @@ license {
     mapping {
         java = 'SLASHSTAR_STYLE'
         scala = 'SLASHSTAR_STYLE'
+    }
+}
+
+githook {
+    hooks {
+        "pre-commit" {
+            shell = "./gradlew license --rerun-tasks"
+        }
     }
 }
 

@@ -42,7 +42,7 @@ trait QueryAuditLogSerializerSuite
     EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = QueryAuditLogSerializerSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXpackSupport,
+      xPackSupport = false,
     )
   )
 
@@ -55,6 +55,22 @@ trait QueryAuditLogSerializerSuite
 
   "Request" should {
     "be audited" when {
+      "user metadata context for failed login" in {
+        val user1MetadataManager = new RorApiManager(basicAuthClient("user2", "dev"))
+
+        val result = user1MetadataManager.fetchMetadata()
+
+        assertEquals(403, result.responseCode)
+        result.responseJson.obj.size should be(1)
+
+        val auditEntries = auditIndexManager.getEntries.jsons
+        auditEntries.size shouldBe 1
+        val firstEntry = auditEntries(0)
+        firstEntry("user").str should be("user2")
+        firstEntry("final_state").str shouldBe "FORBIDDEN"
+        firstEntry("block").str should include("""default""")
+        firstEntry("content").str shouldBe ""
+      }
       "user metadata context" in {
         val user1MetadataManager = new RorApiManager(authHeader("X-Auth-Token", "user1-proxy-id"))
 

@@ -14,14 +14,13 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.containers
+package tech.beshu.ror.audit.instances
 
-trait UsingXpackSupport {
-  def isUsingXpackSupport: Boolean
-}
-trait XpackSupport extends UsingXpackSupport {
-  override final val isUsingXpackSupport: Boolean = true
-}
-trait NoXpackSupport extends UsingXpackSupport {
-  override final val isUsingXpackSupport: Boolean = false
+import tech.beshu.ror.audit.AuditRequestContext
+
+object SerializeUser {
+
+  def serialize(requestContext: AuditRequestContext): Option[String] = {
+    requestContext.loggedInUserName.orElse(requestContext.attemptedUserName).orElse(requestContext.rawAuthHeader)
+  }
 }

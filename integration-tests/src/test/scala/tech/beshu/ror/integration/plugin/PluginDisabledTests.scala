@@ -18,6 +18,5 @@ package tech.beshu.ror.integration.plugin
 
 import tech.beshu.ror.integration.suites.RorDisabledSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
-import tech.beshu.ror.utils.containers.NoXpackSupport
 
-class PluginDisabledTests extends RorDisabledSuite with PluginTestSupport with NoXpackSupport
+class PluginDisabledTests extends RorDisabledSuite with PluginTestSupport

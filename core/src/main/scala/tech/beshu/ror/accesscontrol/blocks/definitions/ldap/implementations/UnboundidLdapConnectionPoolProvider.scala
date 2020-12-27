@@ -24,6 +24,7 @@ import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError.{HostConnectionError, ServerDiscoveryConnectionError}
 import tech.beshu.ror.utils.ScalaOps.retry
 
 import scala.util.control.NonFatal
@@ -48,7 +49,9 @@ class UnboundidLdapConnectionPoolProvider {
       val pool = new LDAPConnectionPool(
         serverSet,
         bindRequest(connectionConfig.bindRequestUser),
-        connectionConfig.poolSize.value
+        if (connectionConfig.ignoreLdapConnectivityProblems) 0 else 1,
+        connectionConfig.poolSize.value,
+        null
       )
       pool.setMaxConnectionAgeMillis(60000)
       pool
@@ -58,10 +61,10 @@ class UnboundidLdapConnectionPoolProvider {
 
 object UnboundidLdapConnectionPoolProvider extends Logging {
   def testBindingForAllHosts(connectionConfig: LdapConnectionConfig): Task[Either[ConnectionError, Unit]] = {
-    val server = createLdapServerSet(connectionConfig)
+    val serverSet = createLdapServerSet(connectionConfig)
     val bindReq = bindRequest(connectionConfig.bindRequestUser)
     val bindResult = retry {
-      val resource = Resource.make(Task(server.getConnection)) { conn =>
+      val resource = Resource.make(Task(serverSet.getConnection)) { conn =>
         Task(conn.close())
       }
       resource.use { connection =>
@@ -76,12 +79,13 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
       }
       .map {
         case true => Right(())
-        case false => Left(ConnectionError {
+        case false => Left(
           connectionConfig.connectionMethod match {
-            case ConnectionMethod.SingleServer(host) => NonEmptyList.one(host)
-            case ConnectionMethod.SeveralServers(hosts, _) => hosts
+            case ConnectionMethod.SingleServer(host) => HostConnectionError(NonEmptyList.one(host))
+            case ConnectionMethod.SeveralServers(hosts, _) => HostConnectionError(hosts)
+            case ConnectionMethod.ServerDiscovery(recordName, providerUrl, _, _) => ServerDiscoveryConnectionError(recordName, providerUrl)
           }
-        })
+        )
       }
   }
 
@@ -105,14 +109,14 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
   private def ldapServerSet(connectionMethod: ConnectionMethod, options: LDAPConnectionOptions, trustAllCerts: Boolean) = {
     connectionMethod match {
       case ConnectionMethod.SingleServer(ldap) if ldap.isSecure =>
-        new SingleServerSet(ldap.host, ldap.port, socketFactory(trustAllCerts), options)
+        new SingleServerSet(ldap.host, ldap.port, sslSocketFactory(trustAllCerts), options)
       case ConnectionMethod.SingleServer(ldap) =>
         new SingleServerSet(ldap.host, ldap.port, options)
       case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) if hosts.head.isSecure =>
         new FailoverServerSet(
           hosts.toList.map(_.host).toArray[String],
           hosts.toList.map(_.port).toArray[Int],
-          socketFactory(trustAllCerts),
+          sslSocketFactory(trustAllCerts),
           options
         )
       case ConnectionMethod.SeveralServers(hosts, HaMethod.Failover) =>
@@ -125,7 +129,7 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
         new RoundRobinServerSet(
           hosts.toList.map(_.host).toArray[String],
           hosts.toList.map(_.port).toArray[Int],
-          socketFactory(trustAllCerts),
+          sslSocketFactory(trustAllCerts),
           options
         )
       case ConnectionMethod.SeveralServers(hosts, HaMethod.RoundRobin) =>
@@ -134,14 +138,28 @@ object UnboundidLdapConnectionPoolProvider extends Logging {
           hosts.toList.map(_.port).toArray[Int],
           options
         )
+      case ConnectionMethod.ServerDiscovery(recordName, providerUrl, ttl, useSSL) =>
+        new DNSSRVRecordServerSet(
+          recordName.orNull,
+          providerUrl.orNull,
+          ttl.map(_.value.toSeconds).getOrElse(0),
+          if (useSSL) sslSocketFactory(trustAllCerts) else null,
+          options
+        )
     }
   }
 
-  private def socketFactory(trustAllCerts: Boolean) = {
+  private def sslSocketFactory(trustAllCerts: Boolean) = {
     val sslUtil = if (trustAllCerts) new SSLUtil(new TrustAllTrustManager) else new SSLUtil()
     sslUtil.createSSLSocketFactory
   }
 
-  final case class ConnectionError(hosts: NonEmptyList[LdapHost])
+  sealed trait ConnectionError
+  object ConnectionError {
+
+    final case class HostConnectionError(hosts: NonEmptyList[LdapHost]) extends ConnectionError
+    final case class ServerDiscoveryConnectionError(recordName: Option[String], providerUrl: Option[String]) extends ConnectionError
+
+  }
   case object ClosedLdapPool extends Exception
 }

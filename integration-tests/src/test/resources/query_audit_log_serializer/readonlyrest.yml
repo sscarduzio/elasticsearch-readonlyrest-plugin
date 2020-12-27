@@ -9,7 +9,7 @@ readonlyrest:
 
   audit_collector: true
   audit_index_template: "'audit_index'"
-  audit_serializer: "tech.beshu.ror.requestcontext.QueryAuditLogSerializer"
+  audit_serializer: "tech.beshu.ror.audit.instances.QueryAuditLogSerializer"
 
   access_control_rules:
 
@@ -29,6 +29,12 @@ readonlyrest:
       methods: GET
       auth_key: user:dev
       indices: ["facebook"]
+
+    - name: "deny all indices"
+      verbosity: error
+      methods: GET
+      type: forbid
+      auth_key: user2:dev
 
     - name: "Allowed only for group1"
       groups: [group1]

@@ -93,6 +93,8 @@ object BaseManager {
       )
       this
     }
+
+    override def toString: String = response.toString
   }
 
   class JsonResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {

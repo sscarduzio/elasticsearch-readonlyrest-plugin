@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.dependencies.wiremock
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.{ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -46,7 +46,7 @@ trait ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite
           "/rev_proxy_groups_provider/wiremock_service2.json")
       ),
       nodeDataInitializer = ReverseProxyAuthenticationWithGroupsProviderAuthorizationSuite.nodeDataInitializer(),
-      xPackSupport = isUsingXpackSupport,
+      xPackSupport = false,
     )
   )
 

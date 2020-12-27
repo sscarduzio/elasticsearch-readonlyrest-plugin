@@ -33,7 +33,6 @@ import scala.collection.JavaConverters._
 final class LoadClusterConfigsWithNoRorNodeTest
   extends WordSpec
     with BeforeAndAfterEach
-    with NoXpackSupport
     with PluginTestSupport
     with BaseEsClusterIntegrationTest
     with MultipleClientsSupport {
@@ -41,33 +40,31 @@ final class LoadClusterConfigsWithNoRorNodeTest
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
 
-  override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node)
-
   private val readonlyrestIndexName: String = ".readonlyrest"
 
   private lazy val ror1_1Node = container.nodes.head
   private lazy val ror1_2Node = container.nodes.tail.head
 
+  override lazy val esTargets = NonEmptyList.of(ror1_1Node, ror1_2Node)
+
   override def clusterContainer: EsClusterContainer = createLocalClusterContainers(rorNode1, rorNode2)
 
   private lazy val rorNode1: ClusterNodeData = ClusterNodeData(
     name = "ror1",
-    esContainerCreator = EsWithRorPluginContainerCreator,
     settings = EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
       numberOfInstances = 2,
-      xPackSupport = isUsingXpackSupport
-    )
+      xPackSupport = false
+    )(rorConfigFileName)
   )
   private lazy val rorNode2: ClusterNodeData = ClusterNodeData(
     name = "ror2",
-    esContainerCreator = EsWithoutRorPluginContainerCreator,
     settings = EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
-      xPackSupport = isUsingXpackSupport
-    )
+      xPackSupport = false
+    )(rorConfigFileName)
   )
 
   private lazy val ror1WithIndexConfigAdminActionManager = new ActionManagerJ(clients.head.adminClient)

@@ -18,6 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.EnabledAuditingToolsSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
-import tech.beshu.ror.utils.containers.NoXpackSupport
 
-class EnabledAuditingToolsProxyTests extends EnabledAuditingToolsSuite with ProxyTestSupport with NoXpackSupport
+class EnabledAuditingToolsProxyTests extends EnabledAuditingToolsSuite with ProxyTestSupport

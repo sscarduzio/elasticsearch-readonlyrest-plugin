@@ -26,7 +26,7 @@ trait EsClusterProvider {
     if (esClusterSettings.numberOfInstances < 1) throw new IllegalArgumentException("Cluster should have at least one instance")
     val nodeNames = NonEmptyList.fromListUnsafe(Seq.iterate(1, esClusterSettings.numberOfInstances)(_ + 1).toList
       .map(idx => s"${esClusterSettings.name}_$idx"))
-    val nodesData = nodeNames.map(name => ClusterNodeData(name, this, esClusterSettings))
+    val nodesData = nodeNames.map(name => ClusterNodeData(name, esClusterSettings))
     createLocalClusterContainers(nodesData)
   }
 
@@ -43,7 +43,7 @@ trait EsClusterProvider {
   }
 
   private def createNode(nodeNames: NonEmptyList[String], nodeData: ClusterNodeData) = {
-    nodeData.esContainerCreator.create(nodeData.name, nodeNames, nodeData.settings, _)
+    this.create(nodeData.name, nodeNames, nodeData.settings, _)
   }
 
   def createRemoteClustersContainer(localClustersSettings: EsClusterSettings,
@@ -57,5 +57,5 @@ trait EsClusterProvider {
   }
 }
 object EsClusterProvider {
-  final case class ClusterNodeData(name: String, esContainerCreator: EsContainerCreator, settings: EsClusterSettings)
+  final case class ClusterNodeData(name: String, settings: EsClusterSettings)
 }
