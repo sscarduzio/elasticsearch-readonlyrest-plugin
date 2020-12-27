@@ -109,12 +109,11 @@ stages:
 
     - script: |
         echo Installing $(ghKey.secureFilePath) to directory...
-        sudo chown root:root $(ghKey.secureFilePath)
-        sudo chmod a+r $(ghKey.secureFilePath)
-        mkdir -p ~/.ssh
-        chmod 0700 ~/.ssh
-        sudo ln -s -t ~/.ssh/ $(ghKey.secureFilePath)
-        echo " $(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
+        echo ">> show permission of secureFilePath " && ls -ltra $(ghKey.secureFilePath)
+        mkdir -p ~/.ssh && chmod 0700 ~/.ssh
+        touch $(ssh_file)
+        sudo cat $(ghKey.secureFilePath) > $(ssh_file)
+        echo "$(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
         sudo chmod 600 $(ssh_file) && sudo printf "%s\n" \
          "Host github.com" \
          "  IdentityFile $(ssh_file)" \
