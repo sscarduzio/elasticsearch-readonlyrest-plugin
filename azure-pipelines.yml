@@ -22,10 +22,9 @@ pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
-- stage:
+- stage: TEST
   jobs:
-    
-  - job: TESTS
+  - job:
     condition: succeeded()
     steps:
     - checkout: self
@@ -79,8 +78,10 @@ stages:
         IT_es60x:
           ROR_TASK: integration_es60x
 
-  - job: PKG
-    condition: succeeded()
+- stage: PUBL
+  condition: succeeded()
+  jobs:
+  - job:
     steps:
     - checkout: self
       fetchDepth: 1
@@ -123,6 +124,7 @@ stages:
     - script: |
         echo "[PKG] executing ROR_TASK = $ROR_TASK"
         echo ">>>>>>>>> content of .ssh/" && ls ~/.ssh
+        echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh 
         echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh && \
         echo ">>> ($ROR_TASK) Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh 
 
