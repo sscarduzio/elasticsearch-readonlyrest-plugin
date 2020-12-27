@@ -70,7 +70,7 @@ stages:
     - script: |
         echo "executing ROR_TASK = $ROR_TASK"
         echo ">>>>>>>>> content of .ssh/" && ls ~/.ssh
-        bin/build.sh && \
+        bin/build.sh
         [[ $ROR_TASK == package_es* ]] && \
         echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh && \
         echo ">>> ($ROR_TASK) Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh
