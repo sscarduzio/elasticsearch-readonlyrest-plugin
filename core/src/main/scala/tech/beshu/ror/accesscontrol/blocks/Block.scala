@@ -28,10 +28,10 @@ import tech.beshu.ror.accesscontrol.blocks.Block._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.factory.BlockValidator
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.BlocksLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
-import tech.beshu.ror.accesscontrol.factory.{BlockValidator, GlobalSettings}
 import tech.beshu.ror.accesscontrol.logging.LoggingContext
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -113,13 +113,12 @@ object Block {
   def createFrom(name: Name,
                  policy: Option[Policy],
                  verbosity: Option[Verbosity],
-                 rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]],
-                 globalSettings: GlobalSettings)
+                 rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
                 (implicit loggingContext: LoggingContext): Either[BlocksLevelCreationError, Block] = {
     val sortedRules = rules.sorted
     BlockValidator.validate(sortedRules) match {
       case Validated.Valid(_) =>
-        Right(createBlockInstance(name, policy, verbosity, sortedRules, globalSettings))
+        Right(createBlockInstance(name, policy, verbosity, sortedRules))
       case Validated.Invalid(errors) =>
         implicit val validationErrorShow: Show[BlockValidationError] = blockValidationErrorShow(name)
         Left(BlocksLevelCreationError(Message(errors.map(_.show).mkString_("\n"))))
@@ -129,8 +128,7 @@ object Block {
   private def createBlockInstance(name: Name,
                                   policy: Option[Policy],
                                   verbosity: Option[Verbosity],
-                                  rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]],
-                                  globalSettings: GlobalSettings)
+                                  rules: NonEmptyList[RuleWithVariableUsageDefinition[Rule]])
                                  (implicit loggingContext: LoggingContext) =
     new Block(
       name,
