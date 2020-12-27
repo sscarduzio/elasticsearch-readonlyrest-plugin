@@ -33,7 +33,7 @@ stages:
     - script: |
         echo "[TEST] executing ROR_TASK = $ROR_TASK"
         # Translate back env vars to avoid cyclical reference :/
-        export aws_access_key_id=$(var_aws_access_key_id)
+        export aws_access_key_id=$var_aws_access_key_id
         export aws_secret_access_key=$var_aws_secret_access_key
         export encrypted_31be120daa3b_iv=$var_encrypted_31be120daa3b_iv
         export encrypted_31be120daa3b_key=$var_encrypted_31be120daa3b_key
