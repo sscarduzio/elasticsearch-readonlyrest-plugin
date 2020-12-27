@@ -122,6 +122,7 @@ stages:
 
     - script: |
         echo "[PKG] executing ROR_TASK = $ROR_TASK"
+        echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
         echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
         chown -R $USER ~/.ssh 
         echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
