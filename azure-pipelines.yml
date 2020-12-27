@@ -6,7 +6,7 @@ variables:
   encrypted_31be120daa3b_key: $(encrypted_31be120daa3b_key)
   encrypted_bf4db9d5783b_iv: $(encrypted_bf4db9d5783b_iv)
   encrypted_bf4db9d5783b_key: $(encrypted_bf4db9d5783b_key)
-  
+
 trigger:
   batch: false
   branches:
@@ -38,6 +38,7 @@ stages:
       persistCredentials: true
     - script: |
         echo "[TEST] executing ROR_TASK = $ROR_TASK"
+        echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
         bin/build.sh
 
     - task: PublishTestResults@2
@@ -128,7 +129,6 @@ stages:
 
     - script: |
         echo "[PKG] executing ROR_TASK = $ROR_TASK"
-        echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
         echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
         chown -R $USER ~/.ssh 
         echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
