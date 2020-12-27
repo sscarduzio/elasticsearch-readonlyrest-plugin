@@ -37,6 +37,7 @@ stages:
         echo Installing $(pgp.secureFilePath) to directory...
         sudo chown root:root $(pgp.secureFilePath)
         sudo chmod a+r $(pgp.secureFilePath)
+        mkdir .travis
         sudo ln -s -t .travis/ $(pgp.secureFilePath)
         echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
 
