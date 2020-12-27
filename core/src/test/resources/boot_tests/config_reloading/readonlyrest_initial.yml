@@ -7,7 +7,6 @@ readonlyrest:
       verbosity: error
       type: allow
       auth_key: admin:container
-      ror_internal_api: allow
 
     - name: "User 1"
       auth_key: user1:pass

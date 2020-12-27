@@ -84,7 +84,6 @@ object VariableContext {
     implicit val proxyAuthRule: VariableUsage[ProxyAuthRule] = NotUsingVariable
     implicit val rorKbnAuthRule: VariableUsage[RorKbnAuthRule] = NotUsingVariable
     implicit val sessionMaxIdleRule: VariableUsage[SessionMaxIdleRule] = NotUsingVariable
-    implicit val isRorInternalRelatedRule: VariableUsage[RorInternalApiRule] = NotUsingVariable
   }
 
   sealed trait UsageRequirement {

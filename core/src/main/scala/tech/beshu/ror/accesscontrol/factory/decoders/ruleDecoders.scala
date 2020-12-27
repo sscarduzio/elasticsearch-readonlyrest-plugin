@@ -37,7 +37,6 @@ object ruleDecoders {
                             (implicit clock: Clock,
                              uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] =
     name match {
-      case RorInternalApiRule.name => Some(new RorInternalApiRuleDecoder(globalSettings.configurationIndex, globalSettings.indexAuditTemplate))
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
       case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(definitions.authorizationServices))

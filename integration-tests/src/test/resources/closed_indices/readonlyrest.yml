@@ -13,7 +13,6 @@ readonlyrest:
   - name: "CONTAINER ADMIN"
     auth_key: admin:container
     verbosity: error
-    ror_internal_api: allow
 
   - name: passthrough
     actions: ["cluster:monitor*", "indices:*/write*", "*create*"]

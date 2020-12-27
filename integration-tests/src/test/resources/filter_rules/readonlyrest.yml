@@ -10,7 +10,6 @@ readonlyrest:
       verbosity: "error"
       type: "allow"
       auth_key: "admin:container"
-      ror_internal_api: allow
 
     - name: "user1 with variable in filter"
       auth_key: "user1:pass"

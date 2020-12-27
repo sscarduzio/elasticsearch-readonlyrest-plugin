@@ -5,4 +5,3 @@ readonlyrest:
       verbosity: "error"
       type: "allow"
       auth_key: "admin:container"
-      ror_internal_api: allow

@@ -23,12 +23,11 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
 import org.scalatest.{Inside, WordSpec}
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.{BlockedByGuardHistoryItem, RuleHistoryItem}
+import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingGuard.Name
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
@@ -63,8 +62,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
               passingRule("r2", withLoggedUser) ::
               notPassingRule("r3") ::
               passingRule("r4") :: Nil
-          ),
-          BlockTests.defaultGlobalSettings
+          )
         )
         val requestContext = MockRequestContext.indices
         val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -89,8 +87,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           verbosity = Block.Verbosity.Info,
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") :: passingRule("r2") :: throwingRule("r3") :: notPassingRule("r4") :: passingRule("r5") :: Nil
-          ),
-          BlockTests.defaultGlobalSettings
+          )
         )
         val requestContext = MockRequestContext.indices
         val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -108,37 +105,6 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         }
       }
     }
-    "be mismatched and contain info in history that post processing check failed" in {
-      val blockName = Block.Name("test_block")
-      val block = new Block(
-        name = blockName,
-        policy = Block.Policy.Allow,
-        verbosity = Block.Verbosity.Info,
-        rules = NonEmptyList.fromListUnsafe(
-          passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
-        ),
-        BlockTests.defaultGlobalSettings
-      )
-      val requestContext = MockRequestContext.indices.copy(
-        filteredIndices = Set(IndexName(".readonlyrest")),
-        isReadOnlyRequest = false
-      )
-      val result = block.execute(requestContext).runSyncUnsafe(1 second)
-
-      inside(result) {
-        case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
-          historyItems should have size 4
-          historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Fulfilled(requestContext.initialBlockContext)))
-          historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Fulfilled(requestContext.initialBlockContext)))
-          historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Fulfilled(requestContext.initialBlockContext)))
-          historyItems(3) should be(BlockedByGuardHistoryItem(Name("ROR internal API guard")))
-
-          blockContext.userMetadata should be(UserMetadata.empty)
-          blockContext.filteredIndices should be(Set(IndexName(".readonlyrest")))
-          blockContext.allAllowedIndices should be(Set.empty)
-          blockContext.responseHeaders should be(Set.empty)
-      }
-    }
     "be matched and contain all rules history from the block" in {
       val blockName = Block.Name("test_block")
       val block = new Block(
@@ -147,8 +113,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
         verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromListUnsafe(
           passingRule("r1") :: passingRule("r2") :: passingRule("r3") :: Nil
-        ),
-        BlockTests.defaultGlobalSettings
+        )
       )
       val requestContext = MockRequestContext.indices
       val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -182,8 +147,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
             passingRule("r2") ::
             passingRule("r3", withIndices) ::
             Nil
-        ),
-        BlockTests.defaultGlobalSettings
+        )
       )
       val requestContext = MockRequestContext.indices
       val result = block.execute(requestContext).runSyncUnsafe(1 second)
@@ -220,8 +184,7 @@ class BlockTests extends WordSpec with BlockContextAssertion with Inside {
           passingRule("r1", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty))))) ::
           passingRule("r2", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2".nonempty))))) ::
             Nil
-        ),
-        BlockTests.defaultGlobalSettings
+        )
       )
       val requestContext = MockRequestContext.indices
       val result = block.execute(requestContext).runSyncUnsafe(1 second)

@@ -23,10 +23,8 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants.{ANSI_CYAN, ANSI_RESET, ANSI_YELLOW}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.{BlockedByGuardHistoryItem, RuleHistoryItem}
+import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block._
-import tech.beshu.ror.accesscontrol.blocks.postprocessing.BlockPostProcessingGuard.PostProcessingResult
-import tech.beshu.ror.accesscontrol.blocks.postprocessing.{BlockPostProcessingGuard, ImplicitRorInternalApiCallGuard}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.domain.Header
@@ -45,16 +43,11 @@ import scala.util.Success
 class Block(val name: Name,
             val policy: Policy,
             val verbosity: Verbosity,
-            val rules: NonEmptyList[Rule],
-            val globalSettings: GlobalSettings)
+            val rules: NonEmptyList[Rule])
            (implicit val loggingContext: LoggingContext)
   extends Logging {
 
   import Lifter._
-
-  private val postProcessingGuards: List[BlockPostProcessingGuard] = List(
-    new ImplicitRorInternalApiCallGuard(this, globalSettings)
-  )
 
   def execute[B <: BlockContext : BlockContextUpdater](requestContext: RequestContext.Aux[B]): BlockResultWithHistory[B] = {
     implicit val showHeader: Show[Header] = obfuscatedHeaderShow(loggingContext.obfuscatedHeaders)
@@ -71,12 +64,6 @@ class Block(val name: Name,
                 mismatched[B](lastBlockContext)
             }
           } yield resultAfterRulesCheck
-      }
-      .flatMap {
-        case Matched(_, blockContext) =>
-          postBlockProcessingChecks[B](blockContext)
-        case Mismatched(blockContext) =>
-          mismatched[B](blockContext)
       }
       .mapBoth { case (history, result) =>
         (History(name, history, result.blockContext), result)
@@ -108,31 +95,6 @@ class Block(val name: Name,
         case result: RuleResult.Rejected[B] =>
           mismatched[B](blockContext)
             .tell(Vector(RuleHistoryItem(rule.name, result)))
-      }
-  }
-
-  private def postBlockProcessingChecks[B <: BlockContext : BlockContextUpdater](blockContext: B) = {
-    val postProcessingGuardChecksResult = postProcessingGuards
-      .foldLeft(Task.now(Option.empty[BlockPostProcessingGuard])) {
-        case (result, guard) => result.flatMap {
-          case None =>
-            guard
-              .check(blockContext)
-              .map {
-                case PostProcessingResult.Continue => None
-                case PostProcessingResult.Reject => Some(guard)
-              }
-          case Some(_) =>
-            result
-        }
-      }
-    lift[B](postProcessingGuardChecksResult)
-      .flatMap {
-        case None =>
-          matched[B](blockContext)
-        case Some(postCheck) =>
-          mismatched[B](blockContext)
-            .tell(Vector(BlockedByGuardHistoryItem(postCheck.name)))
       }
   }
 
@@ -174,8 +136,7 @@ object Block {
       name,
       policy.getOrElse(Block.Policy.Allow),
       verbosity.getOrElse(Block.Verbosity.Info),
-      rules.map(_.rule),
-      globalSettings
+      rules.map(_.rule)
     )
 
   final case class Name(value: String) extends AnyVal
@@ -186,9 +147,6 @@ object Block {
   object HistoryItem {
     final case class RuleHistoryItem[B <: BlockContext](rule: Rule.Name,
                                                         result: RuleResult[B])
-      extends HistoryItem[B]
-
-    final case class BlockedByGuardHistoryItem[B <: BlockContext](guardName: BlockPostProcessingGuard.Name)
       extends HistoryItem[B]
   }
 

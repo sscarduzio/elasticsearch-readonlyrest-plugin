@@ -29,7 +29,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.lemonlabs.uri.{Uri => LemonUri}
 import shapeless.Nat
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
-import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.{BlockedByGuardHistoryItem, RuleHistoryItem}
+import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.Policy.{Allow, Forbid}
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Name, Policy}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
@@ -47,7 +47,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestrictions, Strategy}
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
-import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{ResponseField, ResponseFieldsRestrictions}
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
@@ -214,24 +214,17 @@ object show {
       }"
     }
 
-    implicit def failedBlockPostProcessingCheckHistoryItemShow[B <: BlockContext]: Show[BlockedByGuardHistoryItem[B]] =
-      Show.show { hi => hi.guardName.value.value }
-
     implicit def historyShow[B <: BlockContext](implicit headerShow: Show[Header]): Show[History[B]] =
       Show.show[History[B]] { h =>
         val rulesHistoryItemsStr = h.items
           .collect { case hi: RuleHistoryItem[B] => hi }
           .map(_.show)
           .mkStringOrEmptyString(" RULES:[", ", ", "]")
-        val postRulesChecksHistoryItemsStr = h.items
-            .collect { case hi: BlockedByGuardHistoryItem[B] => hi }
-            .map(_.show)
-            .mkStringOrEmptyString(" DISALLOWED BY GUARDS:[", ", ", "]")
         val resolvedPart = h.blockContext.show match {
           case "" => ""
           case nonEmpty => s" RESOLVED:[$nonEmpty]"
         }
-        s"""[${h.block.show}->$rulesHistoryItemsStr$postRulesChecksHistoryItemsStr$resolvedPart]"""
+        s"""[${h.block.show}->$rulesHistoryItemsStr$resolvedPart]"""
       }
 
     implicit val policyShow: Show[Policy] = Show.show {

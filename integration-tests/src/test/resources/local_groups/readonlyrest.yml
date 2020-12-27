@@ -10,7 +10,6 @@ readonlyrest:
   - name: "CONTAINER ADMIN"
     type: allow
     auth_key: admin:container
-    ror_internal_api: allow
 
   - name: R1
     groups: ["nonexisting"]
