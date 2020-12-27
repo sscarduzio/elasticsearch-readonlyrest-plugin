@@ -1,6 +1,12 @@
 variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
-
+  aws_access_key_id: $(aws_access_key_id)
+  aws_secret_access_key: $(aws_secret_access_key)
+  encrypted_31be120daa3b_iv: $(encrypted_31be120daa3b_iv)
+  encrypted_31be120daa3b_key: $(encrypted_31be120daa3b_key)
+  encrypted_bf4db9d5783b_iv: $(encrypted_bf4db9d5783b_iv)
+  encrypted_bf4db9d5783b_key: $(encrypted_bf4db9d5783b_key)
+  
 trigger:
   batch: false
   branches:
