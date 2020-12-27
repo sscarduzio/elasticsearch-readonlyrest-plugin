@@ -34,25 +34,25 @@ stages:
         secureFile: 'secret.pgp'
 
     - script: |
-        echo Installing $(secret.secureFilePath) to directory...
-        sudo chown root:root $(secret.secureFilePath)
-        sudo chmod a+r $(secret.secureFilePath)
-        sudo ln -s -t .travis/ $(secret.secureFilePath)
+        echo Installing $(pgp.secureFilePath) to directory...
+        sudo chown root:root $(pgp.secureFilePath)
+        sudo chmod a+r $(pgp.secureFilePath)
+        sudo ln -s -t .travis/ $(pgp.secureFilePath)
         echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
 
     - task: DownloadSecureFile@1
-      name: GH_key
+      name: ghKey
       displayName: 'Download secret.pgp secret file'
       inputs:
         secureFile: 'gh_deploy_key.priv'
 
     - script: |
-        echo Installing $(deployKey.secureFilePath) to directory...
-        sudo chown root:root $(deployKey.secureFilePath)
-        sudo chmod a+r $(deployKey.secureFilePath)
+        echo Installing $(ghKey.secureFilePath) to directory...
+        sudo chown root:root $(ghKey.secureFilePath)
+        sudo chmod a+r $(ghKey.secureFilePath)
         mkdir -p ~/.ssh
         chmod 0700 ~/.ssh
-        sudo ln -s -t ~/.ssh/ $(deployKey.secureFilePath)
+        sudo ln -s -t ~/.ssh/ $(ghKey.secureFilePath)
         echo " $(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
         sudo chmod 600 $(ssh_file) && sudo printf "%s\n" \
          "Host github.com" \
