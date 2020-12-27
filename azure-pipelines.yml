@@ -39,8 +39,6 @@ stages:
         sudo chmod a+r $(secret.secureFilePath)
         sudo ln -s -t .travis/ $(secret.secureFilePath)
         echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
-        echo "JAVA VERSION: `java --version`"
-        export |egrep -i 'java|jdk'
 
     - task: DownloadSecureFile@1
       name: GH_key
@@ -70,12 +68,12 @@ stages:
     - checkout: self
       fetchDepth: 1
     - script: |
-        java --version
         echo "executing ROR_TASK = $ROR_TASK"
+        echo ">>>>>>>>> content of .ssh/" && ls ~/.ssh
         bin/build.sh && \
-        echo ">>> Tag and upload to S3" && \
-        ci/ci-deploy.sh && \
-        echo ">>> Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh
+        [[ $ROR_TASK == package_es* ]] && \
+        echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh && \
+        echo ">>> ($ROR_TASK) Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh
 
     - task: PublishTestResults@2
       condition: failed()
