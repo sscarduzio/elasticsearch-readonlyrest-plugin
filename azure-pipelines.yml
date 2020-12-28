@@ -61,8 +61,6 @@ stages:
       matrix: 
         LICENSE:
           ROR_TASK: license
-        CVE:
-          ROR_TASK: cve_check
         UNIT:
           ROR_TASK: unit
 
