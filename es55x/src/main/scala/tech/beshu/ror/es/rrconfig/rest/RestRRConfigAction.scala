@@ -25,7 +25,7 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
-import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.Constants
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
 import tech.beshu.ror.es.rrconfig.{RRConfigAction, RRConfigsRequest}
@@ -39,7 +39,7 @@ class RestRRConfigAction(settings: Settings,
                          nodesInCluster: Supplier[DiscoveryNodes])
   extends BaseRestHandler(settings) {
 
-  register("GET", AdminRestApi.provideRorConfigPath.endpointString)
+  register("GET", Constants.MANAGE_ROR_CONFIG_PATH)
 
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = {
     val timeout = getTimeout(request, RestRRConfigAction.defaultTimeout)

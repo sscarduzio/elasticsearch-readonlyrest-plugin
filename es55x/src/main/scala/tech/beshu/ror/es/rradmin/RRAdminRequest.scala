@@ -18,7 +18,9 @@ package tech.beshu.ror.es.rradmin
 
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.rest.RestRequest
+import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi.AdminRestApi
+import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 
 class RRAdminRequest(request: RestRequest) extends ActionRequest {
 
@@ -26,7 +28,21 @@ class RRAdminRequest(request: RestRequest) extends ActionRequest {
     this(null)
   }
 
-  def getAdminRequest = AdminRestApi.AdminRequest(request.method.name, request.path, request.content.utf8ToString)
+  lazy val getAdminRequest: AdminRestApi.AdminRequest = {
+    val requestType = (request.uri(), request.method()) match {
+      case (uri, method) if uri == Constants.FORCE_RELOAD_CONFIG_PATH && method == POST =>
+        AdminRestApi.AdminRequest.Type.ForceReload
+      case (uri, method) if uri == Constants.PROVIDE_INDEX_CONFIG_PATH && method == GET =>
+        AdminRestApi.AdminRequest.Type.ProvideIndexConfig
+      case (uri, method) if uri == Constants.UPDATE_INDEX_CONFIG_PATH && method == POST =>
+        AdminRestApi.AdminRequest.Type.UpdateIndexConfig
+      case (uri, method) if uri == Constants.PROVIDE_FILE_CONFIG_PATH && method == GET =>
+        AdminRestApi.AdminRequest.Type.ProvideFileConfig
+      case (unknownUri, unknownMethod) =>
+        throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
+    }
+    new AdminRestApi.AdminRequest(requestType, request.method.name, request.path, request.content.utf8ToString)
+  }
 
   override def validate() = null
 }
