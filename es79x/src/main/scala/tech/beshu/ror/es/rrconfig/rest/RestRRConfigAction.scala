@@ -40,7 +40,7 @@ class RestRRConfigAction(nodesInCluster: Supplier[DiscoveryNodes])
   extends BaseRestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(GET, AdminRestApi.provideRorConfigPath.endpointString),
+//    new Route(GET, AdminRestApi.provideRorConfigPath.endpointString),
   ).asJava
 
   override val getName: String = "ror-config-handler"

@@ -14,18 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.adminapi
-
-import com.twitter.finagle.http.{Method, Request, Version}
-import com.twitter.io.{Buf, Reader}
-
-object RequestCreator {
-
-  def createPostRequest(uri: String, body: String): Request = {
-    Request(Version.Http11, Method.Post,  uri, Reader.value(Buf.Utf8(body)))
-  }
-
-  def createGetRequest(uri: String): Request = {
-    Request(Version.Http11, Method.Get, uri)
-  }
-}
+//package tech.beshu.ror.adminapi
+//
+//import com.twitter.finagle.http.{Method, Request, Version}
+//import com.twitter.io.{Buf, Reader}
+//
+//object RequestCreator {
+//
+//  def createPostRequest(uri: String, body: String): Request = {
+//    Request(Version.Http11, Method.Post,  uri, Reader.value(Buf.Utf8(body)))
+//  }
+//
+//  def createGetRequest(uri: String): Request = {
+//    Request(Version.Http11, Method.Get, uri)
+//  }
+//}
+// todo: remove

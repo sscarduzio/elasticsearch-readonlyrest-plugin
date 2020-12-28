@@ -35,10 +35,10 @@ class RestRRAdminAction(controller: RestController)
   extends BaseRestHandler with RestHandler {
 
   override def routes(): util.List[Route] = List(
-    new Route(POST, AdminRestApi.forceReloadRorPath.endpointString),
-    new Route(GET, AdminRestApi.provideRorIndexConfigPath.endpointString),
-    new Route(POST, AdminRestApi.updateIndexConfigurationPath.endpointString),
-    new Route(GET, AdminRestApi.provideRorFileConfigPath.endpointString),
+//    new Route(POST, AdminRestApi.forceReloadRorPath.endpointString),
+//    new Route(GET, AdminRestApi.provideRorIndexConfigPath.endpointString),
+//    new Route(POST, AdminRestApi.updateIndexConfigurationPath.endpointString),
+//    new Route(GET, AdminRestApi.provideRorFileConfigPath.endpointString),
     new Route(GET, Constants.CURRENT_USER_METADATA_PATH)
   ).asJava
 
