@@ -22,6 +22,22 @@ pool:
   vmImage: 'ubuntu-20.04'
 
 stages:
+- stage: CVE
+  dependsOn: [] # run in parallel
+  jobs:
+  - job:
+    steps:
+    - checkout: self
+      fetchDepth: 1
+      clean: false
+      persistCredentials: true
+    - script: |
+        echo "[CVE] executing ROR_TASK=$ROR_TASK"
+        bin/build.sh
+      continueOnError: true
+      env: 
+       ROR_TASK: cve_check
+
 - stage: TEST
   jobs:
   - job:
@@ -33,8 +49,6 @@ stages:
     - script: |
         echo "[TEST] executing ROR_TASK = $ROR_TASK"
         bin/build.sh
-
-
     - task: PublishTestResults@2
       condition: failed()
       inputs:
@@ -47,8 +61,6 @@ stages:
       matrix: 
         LICENSE:
           ROR_TASK: license
-        CVE:
-          ROR_TASK: cve_check
         UNIT:
           ROR_TASK: unit
 
