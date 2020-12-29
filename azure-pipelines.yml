@@ -1,0 +1,170 @@
+variables:
+  ssh_file: '~/.ssh/gh_deploy_key.priv'
+
+trigger:
+  batch: false
+  branches:
+    include:
+    - master
+    - develop
+    - '*/pull/*'
+  tags:
+    exclude:
+    - '*'
+  paths:
+    include:
+    - '*' 
+    exclude:
+    - 'docs/*'
+    - '*.md'
+    - '*/*/*.md'
+pool:
+  vmImage: 'ubuntu-20.04'
+
+stages:
+- stage: CVE
+  dependsOn: [] # run in parallel
+  jobs:
+  - job:
+    steps:
+    - checkout: self
+      fetchDepth: 1
+      clean: false
+      persistCredentials: true
+    - script: |
+        echo "[CVE] executing ROR_TASK=$ROR_TASK"
+        bin/build.sh
+      continueOnError: true
+      env: 
+       ROR_TASK: cve_check
+
+- stage: TEST
+  jobs:
+  - job:
+    steps:
+    - checkout: self
+      fetchDepth: 1
+      clean: false
+      persistCredentials: true
+    - script: |
+        echo "[TEST] executing ROR_TASK = $ROR_TASK"
+        bin/build.sh
+    - task: PublishTestResults@2
+      condition: failed()
+      inputs:
+        testRunTitle: "$(ROR_TASK) results"
+        testResultsFiles: "**/TEST*xml"
+        mergeTestResults: true
+
+    strategy:
+      maxParallel: 99
+      matrix: 
+        LICENSE:
+          ROR_TASK: license
+        UNIT:
+          ROR_TASK: unit
+
+        IT_PROXY:
+          ROR_TASK: integration_proxy
+        IT_es710x:
+          ROR_TASK: integration_es710x
+        IT_es79x:
+          ROR_TASK: integration_es79x
+        IT_es78x:
+          ROR_TASK: integration_es78x
+        IT_es77x:
+          ROR_TASK: integration_es77x
+        IT_es74x:
+          ROR_TASK: integration_es74x
+        IT_es73x:
+          ROR_TASK: integration_es73x
+        IT_es72x:
+          ROR_TASK: integration_es72x
+        IT_es66x:
+          ROR_TASK: integration_es66x
+        IT_es63x:
+          ROR_TASK: integration_es63x
+        IT_es62x:
+          ROR_TASK: integration_es62x
+        IT_es61x:
+          ROR_TASK: integration_es61x
+        IT_es60x:
+          ROR_TASK: integration_es60x
+
+- stage: PUBL
+  condition: succeeded()
+  jobs:
+  - job:
+    steps:
+    - checkout: self
+      fetchDepth: 1
+      clean: false
+      persistCredentials: true
+    - task: DownloadSecureFile@1
+      name: pgp
+      displayName: 'Download secret.pgp secret file'
+      inputs:
+        secureFile: 'secret.pgp'
+
+    - script: |
+        echo Installing $(pgp.secureFilePath) to directory...
+        sudo chown root:root $(pgp.secureFilePath)
+        sudo chmod a+r $(pgp.secureFilePath)
+        mkdir .travis
+        sudo ln -s -t .travis/ $(pgp.secureFilePath)
+        echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+
+    - task: DownloadSecureFile@1
+      name: ghKey
+      displayName: 'Download secret.pgp secret file'
+      inputs:
+        secureFile: 'gh_deploy_key.priv'
+
+    - script: |
+        echo Installing $(ghKey.secureFilePath) to directory...
+        echo ">> show permission of secureFilePath " && ls -ltra $(ghKey.secureFilePath)
+        mkdir -p ~/.ssh && chmod 0700 ~/.ssh
+        touch $(ssh_file)
+        sudo cat $(ghKey.secureFilePath) > $(ssh_file)
+        echo "$(ssh_file) MD5SUSM `md5sum $(ssh_file)`"
+        sudo chmod 600 $(ssh_file) && sudo printf "%s\n" \
+         "Host github.com" \
+         "  IdentityFile $(ssh_file)" \
+         "  LogLevel ERROR" >> ~/.ssh/config
+        ls -ltra ~/.ssh
+
+    - script: |
+        # Translate back env vars to avoid cyclical reference :/
+        export aws_access_key_id=$var_aws_access_key_id
+        export aws_secret_access_key=$var_aws_secret_access_key
+        export encrypted_31be120daa3b_iv=$var_encrypted_31be120daa3b_iv
+        export encrypted_31be120daa3b_key=$var_encrypted_31be120daa3b_key
+        export encrypted_bf4db9d5783b_iv=$var_encrypted_bf4db9d5783b_iv
+        export encrypted_bf4db9d5783b_key=$var_encrypted_bf4db9d5783b_key
+        echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
+
+        echo "[PKG] executing ROR_TASK = $ROR_TASK"
+        echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
+        chown -R $USER ~/.ssh 
+        echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
+        echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh 
+        echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh && \
+        echo ">>> ($ROR_TASK) Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh 
+      env:
+        var_aws_access_key_id: $(aws_access_key_id)
+        var_aws_secret_access_key: $(aws_secret_access_key)
+        var_encrypted_31be120daa3b_iv: $(encrypted_31be120daa3b_iv)
+        var_encrypted_31be120daa3b_key: $(encrypted_31be120daa3b_key)
+        var_encrypted_bf4db9d5783b_iv: $(encrypted_bf4db9d5783b_iv)
+        var_encrypted_bf4db9d5783b_key: $(encrypted_bf4db9d5783b_key)
+
+    strategy:
+      maxParallel: 99
+      matrix: 
+        PKG_es7xx:
+          ROR_TASK: package_es7xx
+        PKG_es6xx:
+          ROR_TASK: package_es6xx
+        PKG_es5xx:
+          ROR_TASK: package_es5xx
+
