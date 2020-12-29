@@ -45,6 +45,7 @@ public class DefaultAuditLogSerializer implements AuditLogSerializer<Map<String,
     map.put("block", rc.getReason());
 
     map.put("id", rc.getRequestContext().getId());
+    map.put("correlation_id", rc.getRequestContext().getCorrelationId());
     map.put("final_state", rc.finalState().name());
 
     map.put("@timestamp", zuluFormat.format(rc.getRequestContext().getTimestamp()));

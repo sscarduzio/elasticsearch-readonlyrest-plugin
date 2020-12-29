@@ -19,9 +19,9 @@ package tech.beshu.ror.accesscontrol.logging
 import java.time.Instant
 
 import cats.Show
+import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.Block.History
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, HasIndices}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
@@ -37,6 +37,7 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
                                                              userMetadata: Option[UserMetadata],
                                                              historyEntries: Vector[History[B]],
                                                              loggingContext: LoggingContext,
+                                                             override val generalAuditEvents: JSONObject,
                                                              override val involvesIndices: Boolean)
   extends AuditRequestContext {
 
@@ -47,6 +48,7 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
 
   override val timestamp: Instant = requestContext.timestamp
   override val id: String = requestContext.id.value
+  override val correlationId: String = requestContext.correlationId.value.value
   override val indices: Set[String] = requestContext.initialBlockContext.indices.map(_.value.value)
   override val action: String = requestContext.action.value
   override val headers: Map[String, String] = requestContext.headers.map(h => (h.name.value.value, h.value.value)).toMap

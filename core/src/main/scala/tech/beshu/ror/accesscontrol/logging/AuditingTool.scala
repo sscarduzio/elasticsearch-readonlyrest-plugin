@@ -16,14 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.logging
 
-import java.time.format.DateTimeFormatter
 import java.time.{Clock, Instant}
 
 import cats.implicits._
 import monix.eval.Task
+import org.json.JSONObject
 import tech.beshu.ror.accesscontrol.blocks.Block.{History, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.accesscontrol.logging.AuditingTool.Settings
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -40,7 +41,7 @@ class AuditingTool(settings: Settings,
       .map {
         case Some(entry) =>
           auditSink.submit(
-            settings.indexNameFormatter.format(Instant.now(clock)),
+            settings.rorAuditIndexTemplate.indexName(Instant.now(clock)).value.value,
             response.requestContext.id.value,
             entry.toString
           )
@@ -60,7 +61,9 @@ class AuditingTool(settings: Settings,
             requestContext = allowedBy.requestContext,
             blockContext = Some(allowedBy.blockContext),
             userMetadata = Some(allowedBy.blockContext.userMetadata),
-            historyEntries = allowedBy.history),
+            historyEntries = allowedBy.history,
+            generalAuditEvents = allowedBy.requestContext.generalAuditEvents
+          ),
           verbosity = toAuditVerbosity(allowedBy.block.verbosity),
           reason = allowedBy.block.show
         )
@@ -70,7 +73,9 @@ class AuditingTool(settings: Settings,
             requestContext = allow.requestContext,
             blockContext = None,
             userMetadata = Some(allow.userMetadata),
-            historyEntries = allow.history),
+            historyEntries = allow.history,
+            generalAuditEvents = allow.requestContext.generalAuditEvents
+          ),
           verbosity = toAuditVerbosity(Block.Verbosity.Info),
           reason = allow.block.show
         )
@@ -117,8 +122,16 @@ class AuditingTool(settings: Settings,
   private def toAuditRequestContext[B <: BlockContext](requestContext: RequestContext.Aux[B],
                                                        blockContext: Option[B],
                                                        userMetadata: Option[UserMetadata],
-                                                       historyEntries: Vector[History[B]]): AuditRequestContext = {
-    new AuditRequestContextBasedOnAclResult(requestContext, userMetadata, historyEntries, loggingContext, hasIndices(blockContext))
+                                                       historyEntries: Vector[History[B]],
+                                                       generalAuditEvents: JSONObject = new JSONObject()): AuditRequestContext = {
+    new AuditRequestContextBasedOnAclResult(
+      requestContext,
+      userMetadata,
+      historyEntries,
+      loggingContext,
+      generalAuditEvents,
+      hasIndices(blockContext)
+    )
   }
 
   private def hasIndices[B <: BlockContext](blockContext: Option[B]) =
@@ -128,7 +141,7 @@ class AuditingTool(settings: Settings,
 
 object AuditingTool {
 
-  final case class Settings(indexNameFormatter: DateTimeFormatter,
+  final case class Settings(rorAuditIndexTemplate: RorAuditIndexTemplate,
                             logSerializer: AuditLogSerializer)
 
 }

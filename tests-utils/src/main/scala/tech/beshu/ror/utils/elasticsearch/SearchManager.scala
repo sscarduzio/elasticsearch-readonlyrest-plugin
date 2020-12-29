@@ -147,11 +147,11 @@ object SearchManager {
   }
 
   class SearchResult(response: HttpResponse) extends BaseSearchResult(response) {
-    override lazy val searchHitsWithSettings: Value = responseJson("hits")("hits")
+    override lazy val searchHitsWithSettings: Value = force().responseJson("hits")("hits")
   }
 
   class AsyncSearchResult(response: HttpResponse) extends BaseSearchResult(response) {
-    override lazy val searchHitsWithSettings: Value = responseJson("response")("hits")("hits")
+    override lazy val searchHitsWithSettings: Value = force().responseJson("response")("hits")("hits")
   }
 
   class MSearchResult(response: HttpResponse) extends JsonResponse(response) {

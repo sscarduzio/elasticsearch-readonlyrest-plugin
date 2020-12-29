@@ -463,7 +463,7 @@ trait XpackApiSuite
             result.column("author").toList should contain only(Str("James S.A. Corey"), Str("Dan Simmons"), Str("Frank Herbert"))
             result.column("price").toList should contain only Null
           }
-          //fixme: filter rule doesn't work now for sql api.
+          //todo: filter rule doesn't work now for sql api.
           "filter in rule is used" excludeES("es55x", "es60x", "es61x", "es62x") ignore {
             val result = dev5SqlManager.execute("""SELECT * FROM bookstore""")
             result.isSuccess should be(true)

@@ -29,6 +29,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import shapeless.HNil
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.boot.RorInstance
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
@@ -36,7 +37,7 @@ import tech.beshu.ror.boot.RorSchedulers
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
-import tech.beshu.ror.configuration.loader.{FileConfigLoader, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 import tech.beshu.ror.utils.ScalaOps._
 
