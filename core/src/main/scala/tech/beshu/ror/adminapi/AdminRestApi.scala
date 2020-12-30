@@ -42,6 +42,7 @@ class AdminRestApi(rorInstance: RorInstance,
       case Type.ProvideIndexConfig => provideRorIndexConfig()
       case Type.UpdateIndexConfig => updateIndexConfiguration(request.body)
       case Type.ProvideFileConfig => provideRorFileConfig()
+      case Type.CurrentUserMetadata => Task.now(Success("ok"))
     }
     apiCallResult
       .map(AdminResponse(_))
@@ -144,6 +145,7 @@ object AdminRestApi {
       case object ProvideIndexConfig extends Type
       case object UpdateIndexConfig extends Type
       case object ProvideFileConfig extends Type
+      case object CurrentUserMetadata extends Type
     }
   }
   final case class AdminResponse(result: ApiCallResult)

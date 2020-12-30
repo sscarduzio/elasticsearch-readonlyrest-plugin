@@ -21,8 +21,6 @@ import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi.AdminRestApi
-
-import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
 
   def this() = {
@@ -46,6 +44,8 @@ object RRAdminRequest {
         AdminRestApi.AdminRequest.Type.UpdateIndexConfig
       case (uri, method) if uri == Constants.PROVIDE_FILE_CONFIG_PATH && method == GET =>
         AdminRestApi.AdminRequest.Type.ProvideFileConfig
+      case (uri, method) if uri == Constants.CURRENT_USER_METADATA_PATH && method == GET =>
+        AdminRestApi.AdminRequest.Type.CurrentUserMetadata
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
     }
