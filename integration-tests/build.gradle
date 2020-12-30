@@ -63,7 +63,7 @@ dependencies {
 
     testCompile group: 'jakarta.xml.bind',              name: 'jakarta.xml.bind-api',       version: '2.3.2'
     testCompile group: 'org.glassfish.jaxb',            name: 'jaxb-runtime',               version: '2.3.2'
-    testCompile group: 'io.jsonwebtoken',               name: 'jjwt',                       version: '0.9.1'
+    testCompile group: 'io.jsonwebtoken',               name: 'jjwt',                       version: '0.10.5'
     testCompile group: 'ch.qos.logback',                name: 'logback-classic',            version: '1.2.3'
     testRuntime group: 'org.pegdown',                   name: 'pegdown',                    version: '1.4.2'
     testCompile group: 'org.scala-lang',                name: 'scala-library',              version: '2.12.4'

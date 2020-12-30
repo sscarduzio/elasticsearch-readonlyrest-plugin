@@ -30,15 +30,15 @@ class RRAdminRequest(request: RestRequest) extends ActionRequest {
 
   lazy val getAdminRequest = {
     val requestType = (request.uri(), request.method()) match {
-      case (uri, method) if uri == Constants.FORCE_RELOAD_CONFIG_PATH && method == POST =>
+      case (uri, method) if Constants.FORCE_RELOAD_CONFIG_PATH.startsWith(uri) && method == POST =>
         AdminRestApi.AdminRequest.Type.ForceReload
-      case (uri, method) if uri == Constants.PROVIDE_INDEX_CONFIG_PATH && method == GET =>
+      case (uri, method) if Constants.PROVIDE_INDEX_CONFIG_PATH.startsWith(uri) && method == GET =>
         AdminRestApi.AdminRequest.Type.ProvideIndexConfig
-      case (uri, method) if uri == Constants.UPDATE_INDEX_CONFIG_PATH && method == POST =>
+      case (uri, method) if Constants.UPDATE_INDEX_CONFIG_PATH.startsWith(uri) && method == POST =>
         AdminRestApi.AdminRequest.Type.UpdateIndexConfig
-      case (uri, method) if uri == Constants.PROVIDE_FILE_CONFIG_PATH && method == GET =>
+      case (uri, method) if Constants.PROVIDE_FILE_CONFIG_PATH.startsWith(uri) && method == GET =>
         AdminRestApi.AdminRequest.Type.ProvideFileConfig
-      case (uri, method) if uri == Constants.CURRENT_USER_METADATA_PATH && method == GET =>
+      case (uri, method) if Constants.CURRENT_USER_METADATA_PATH.startsWith(uri) && method == GET =>
         AdminRestApi.AdminRequest.Type.CurrentUserMetadata
       case (unknownUri, unknownMethod) =>
         throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")

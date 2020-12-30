@@ -17,7 +17,7 @@
 package tech.beshu.ror.mocks
 
 import java.time.{Clock, Instant}
-
+import eu.timepit.refined.auto._
 import com.softwaremill.sttp.Method
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
