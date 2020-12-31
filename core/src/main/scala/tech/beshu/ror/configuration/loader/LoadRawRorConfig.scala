@@ -17,6 +17,7 @@
 package tech.beshu.ror.configuration.loader
 
 import cats.free.Free
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.ConfigLoading._
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.FileConfig
 import tech.beshu.ror.configuration.{EsConfig, RawRorConfig}

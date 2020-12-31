@@ -16,11 +16,12 @@
  */
 package tech.beshu.ror.integration
 
-import com.dimafeng.testcontainers.ForAllTestContainer
+import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
 import org.scalatest.{BeforeAndAfterAll, Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
@@ -28,6 +29,8 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
 import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched._
+import cats.data.NonEmptySet
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
   extends WordSpec
@@ -36,22 +39,51 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
     with ForAllTestContainer
     with Inside {
 
-  override val container: LdapContainer = new LdapContainer("LDAP1", "test_example.ldif")
+  private val ldap1 = new LdapContainer("LDAP1", "test_example.ldif")
+  private val ldap2 = new LdapContainer("LDAP2", "test_example2.ldif")
+
+  override val container: MultipleContainers = MultipleContainers(ldap1, ldap2)
 
   override protected def configYaml: String =
     s"""readonlyrest:
        |
        |  access_control_rules:
        |
-       |    - name: "LDAP test"
+       |    - name: "LDAP1"
        |      ldap_authentication: "ldap1"
+       |
+       |    - name: "LDAP2"
+       |      ldap_authentication: "ldap2"
+       |
+       |    - name: "LDAP3"
+       |      ldap_authentication: "nonreachable_ldap"
        |
        |  ldaps:
        |    - name: ldap1
        |      servers:
-       |        - "ldap://${container.ldapHost}:${container.ldapPort}"
+       |        - "ldap://${ldap1.ldapHost}:${ldap1.ldapPort}"
        |        - "ldap://localhost:666"                                # doesn't work
        |      ha: ROUND_ROBIN
+       |      ssl_enabled: false                                        # default true
+       |      ssl_trust_all_certs: true                                 # default false
+       |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+       |      bind_password: "password"                                 # skip for anonymous bind
+       |      search_user_base_DN: "ou=People,dc=example,dc=com"
+       |      user_id_attribute: "uid"                                  # default "uid
+       |    - name: ldap2
+       |      host: "${ldap2.ldapHost}"
+       |      port: ${ldap2.ldapPort}
+       |      ignore_ldap_connectivity_problems: true
+       |      ssl_enabled: false                                        # default true
+       |      ssl_trust_all_certs: true                                 # default false
+       |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+       |      bind_password: "password"                                 # skip for anonymous bind
+       |      search_user_base_DN: "ou=People,dc=example,dc=com"
+       |      user_id_attribute: "uid"                                  # default "uid
+       |    - name: nonreachable_ldap
+       |      host: "localhost"
+       |      port: 555
+       |      ignore_ldap_connectivity_problems: true
        |      ssl_enabled: false                                        # default true
        |      ssl_trust_all_certs: true                                 # default false
        |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
@@ -67,17 +99,40 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
 
   override protected val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
-  "An LDAP connectivity check" should {
-    "allow to core to start" when {
-      "HA is enabled and one of LDAP hosts is unavailable" in {
-        val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("cartman:user2")))
-        val result = acl.handleRegularRequest(request).runSyncUnsafe()
-        result.history should have size 1
-        inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
-          block.name should be(Block.Name("LDAP test"))
-          assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman".nonempty)))) {
-            blockContext
+  "LDAP authentication" should {
+    "be successful" when {
+      "one server is unreachable, but is configured to ignore connectivity problems" when {
+        "HA is enabled and one of LDAP hosts is unavailable" in {
+          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("cartman:user2")))
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          result.history should have size 1
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("LDAP1"))
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman".nonempty)))) {
+              blockContext
+            }
           }
+        }
+        "ROR is configured to ignore connectivity problems, but connection is possible" in {
+          val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("kyle:user2")))
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          result.history should have size 2
+          inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
+            block.name should be(Block.Name("LDAP2"))
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("kyle".nonempty)))) {
+              blockContext
+            }
+          }
+        }
+      }
+    }
+    "not be successful" when {
+      "person from unreachable ldap is authenticated" in {
+        val request = MockRequestContext.indices.copy(headers = Set(basicAuthHeader("unreachableldapperson:somepass")))
+        val result = acl.handleRegularRequest(request).runSyncUnsafe()
+        result.history should have size 3
+        inside(result.result) { case RegularRequestResult.ForbiddenByMismatched(causes) =>
+          causes.toSortedSet should contain(Cause.OperationNotAllowed)
         }
       }
     }

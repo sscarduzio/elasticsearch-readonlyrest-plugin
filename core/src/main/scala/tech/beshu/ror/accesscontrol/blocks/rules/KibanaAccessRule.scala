@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.util.Try

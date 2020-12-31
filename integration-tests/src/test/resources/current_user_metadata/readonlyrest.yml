@@ -37,13 +37,13 @@ readonlyrest:
 
     - name: "User 4 - index1"
       users: ["user4"]
-      actions: ["cluster:admin/rradmin/refreshsettings"]
+      actions: ["cluster:ror/user_metadata/get"]
       kibana_index: "user4_group5_kibana_index"
       groups: [group5]
 
     - name: "User 4 - index2"
       users: ["user4"]
-      actions: ["cluster:admin/rradmin/refreshsettings"]
+      actions: ["cluster:ror/user_metadata/get"]
       kibana_index: "user4_group6_kibana_index"
       kibana_template_index: "user4_group6_kibana_template_index"
       groups: [group6]

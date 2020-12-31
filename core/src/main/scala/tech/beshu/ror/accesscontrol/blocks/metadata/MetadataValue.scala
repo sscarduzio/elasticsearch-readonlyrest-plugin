@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.metadata
 import cats.Show
 import cats.data.NonEmptyList
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.domain.KibanaAccess
+import tech.beshu.ror.accesscontrol.domain.{CorrelationId, KibanaAccess}
 import cats.implicits._
 
 sealed trait MetadataValue
@@ -28,8 +28,10 @@ object MetadataValue {
 
   final case class MetadataString(value: String) extends MetadataValue
   final case class MetadataList(value: NonEmptyList[String]) extends MetadataValue
-  def read(userMetadata: UserMetadata): Map[String, MetadataValue] = {
-    loggedUser(userMetadata) ++
+  def read(userMetadata: UserMetadata,
+           correlationId: CorrelationId): Map[String, MetadataValue] = {
+    loggingId(correlationId) ++
+      loggedUser(userMetadata) ++
       currentGroup(userMetadata) ++
       foundKibanaIndex(userMetadata) ++
       foundKibanaTemplateIndex(userMetadata) ++
@@ -42,6 +44,10 @@ object MetadataValue {
   def toAny(metadataValue: MetadataValue): Any = metadataValue match {
     case MetadataString(value) => value: String
     case MetadataList(nel) => nel.toList.toArray: Array[String]
+  }
+
+  private def loggingId(correlationId: CorrelationId) = {
+    Map(Constants.HEADER_LOGGING_ID -> MetadataString(correlationId.value.value))
   }
 
   private def userOrigin(userMetadata: UserMetadata) = {

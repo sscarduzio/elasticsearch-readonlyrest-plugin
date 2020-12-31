@@ -211,7 +211,7 @@ class HeadersAndRuleTests extends WordSpec with MockFactory {
     val requestContext = mock[RequestContext]
     (requestContext.headers _).expects().returning(requestHeaders)
     (requestContext.id _).expects().returning(RequestContext.Id("1")).anyNumberOfTimes()
-    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

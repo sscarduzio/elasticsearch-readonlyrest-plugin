@@ -35,6 +35,14 @@ import scala.util.Try
 
 object ScalaOps {
 
+  implicit class TraversableOnceOps[T](val traversable: TraversableOnce[T]) extends AnyVal {
+
+    def mkStringOrEmptyString(start: String, sep: String, end: String): String = {
+      if(traversable.isEmpty) ""
+      else traversable.mkString(start, sep, end)
+    }
+  }
+
   implicit class TryOps[T](val `try`: Try[T]) extends AnyVal {
 
     def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)

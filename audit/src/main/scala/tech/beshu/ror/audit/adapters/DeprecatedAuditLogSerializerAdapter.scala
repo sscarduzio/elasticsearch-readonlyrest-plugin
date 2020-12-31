@@ -21,6 +21,7 @@ import java.util.{Date, Optional}
 
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext.{Allowed, Verbosity}
+import tech.beshu.ror.audit.instances.SerializeUser
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
 import tech.beshu.ror.commons.ResponseContext.FinalState
 import tech.beshu.ror.commons.shims.request.RequestContextShim
@@ -105,6 +106,7 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
   private def toDeprecatedRequestContext(requestContext: AuditRequestContext) = {
     new RequestContextShim {
       override val getId: String = requestContext.id
+      override val getCorrelationId: String = requestContext.correlationId
       override val getIndices: util.Set[String] = requestContext.indices.asJava
       override val getTimestamp: Date = Date.from(requestContext.timestamp)
       override val getAction: String = requestContext.action
@@ -118,7 +120,7 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
       override val getType: String = requestContext.`type`
       override val getTaskId: lang.Long = requestContext.taskId
       override val getMethodString: String = requestContext.httpMethod
-      override val getLoggedInUserName: Optional[String] = Optional.ofNullable(requestContext.loggedInUserName.orNull)
+      override val getLoggedInUserName: Optional[String] = Optional.ofNullable(SerializeUser.serialize(requestContext).orNull)
       override val involvesIndices: Boolean = requestContext.involvesIndices
     }
   }

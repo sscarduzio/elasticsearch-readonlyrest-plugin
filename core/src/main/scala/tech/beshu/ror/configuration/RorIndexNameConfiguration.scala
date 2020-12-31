@@ -24,9 +24,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers._
-import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.providers.OsEnvVarsProvider
 
 final case class RorIndexNameConfiguration(index: RorConfigurationIndex)

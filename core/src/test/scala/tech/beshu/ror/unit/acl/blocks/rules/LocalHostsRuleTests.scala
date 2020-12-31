@@ -78,7 +78,7 @@ class LocalHostsRuleTests extends WordSpec with MockFactory {
       new Ip4sBasedHostnameResolver
     )
     val requestContext = MockRequestContext.metadata.copy(localAddress = localAddress)
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right{
       if (isMatched) Fulfilled(blockContext)
       else Rejected()

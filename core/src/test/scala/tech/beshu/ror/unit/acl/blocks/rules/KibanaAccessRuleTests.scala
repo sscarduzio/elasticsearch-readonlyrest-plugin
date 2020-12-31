@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, StringOps}
 
@@ -247,7 +246,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
       filteredIndices = indices,
       uriPath = uriPath.getOrElse(UriPath("/undefined"))
     )
-    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, indices, Set.empty)
+    val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty, indices, Set.empty)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>

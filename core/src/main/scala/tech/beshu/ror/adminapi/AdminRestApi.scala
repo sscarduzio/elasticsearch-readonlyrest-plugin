@@ -20,13 +20,18 @@ import cats.data.EitherT
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.adminapi.AdminRestApi.AdminRequest.Type
+import monix.execution.Scheduler
+import org.apache.logging.log4j.scala.Logging
+import shapeless.HNil
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.boot.RorInstance
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
 import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
-import tech.beshu.ror.configuration.loader.{FileConfigLoader, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.FileConfigLoader
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
 
 class AdminRestApi(rorInstance: RorInstance,

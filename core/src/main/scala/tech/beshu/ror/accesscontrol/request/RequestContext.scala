@@ -24,9 +24,11 @@ import com.softwaremill.sttp.Method
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
+import org.json.JSONObject
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, FilteredResponseFields, ResponseTransformation}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
+import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -76,6 +78,15 @@ trait RequestContext {
   def isAllowedForDLS: Boolean
 
   def hasRemoteClusters: Boolean
+
+  def generalAuditEvents: JSONObject = new JSONObject()
+
+  lazy val correlationId: CorrelationId =
+    headers
+      .find(_.name === Header.Name.correlationId)
+      .map(_.value)
+      .map(CorrelationId.apply)
+      .getOrElse(CorrelationId.random)
 }
 
 object RequestContext extends Logging {
@@ -111,6 +122,7 @@ object RequestContext extends Logging {
         if (idx.isEmpty) "<N/A>"
         else idx.mkString(",")
       }
+
       s"""{
          | ID:${r.id.show},
          | TYP:${r.`type`.show},
@@ -127,7 +139,7 @@ object RequestContext extends Logging {
          | PTH:${r.uriPath.show},
          | CNT:$stringifyContentLength,
          | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
-         | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")}
+         | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")},
          | }""".stripMargin.replaceAll("\n", " ")
     }
 }

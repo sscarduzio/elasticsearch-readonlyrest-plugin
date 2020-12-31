@@ -34,14 +34,21 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
-import tech.beshu.ror.es.rradmin._
-import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
+import tech.beshu.ror.es.actions.rradmin._
+import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
+import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionHandler, RRAuditEventActionType, RRAuditEventRequest, RRAuditEventResponse, TransportRRAuditEventAction}
+import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
+import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
+import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
+import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
+import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.clients.{EsRestNodeClient, RestHighLevelClientAdapter}
-import tech.beshu.ror.proxy.es.genericaction.{GenericAction, GenericRequest, GenericResponseActionListener}
+import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ByProxyProcessedResponseActionListener, GenericPathIndicesRequest, GenericRequest}
 import tech.beshu.ror.proxy.es.services.ProxyIndexJsonContentService
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.TaskOps._
@@ -77,9 +84,12 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       val threadContext = threadPool.getThreadContext
       threadContext.stashContext.bracket { _ =>
         ProxyThreadRepo.setRestChannel(restChannel)
-        GenericRequest.from(request) match {
-          case Some(genericRequest) =>
-            processDirectly(genericRequest, restChannel)
+        val genericRequest =
+          GenericPathIndicesRequest.from(request)
+            .orElse(GenericRequest.from(request))
+        genericRequest match {
+          case Some(req) =>
+            processDirectly(req, restChannel)
           case None =>
             processThroughEsInternals(request, restChannel, threadContext)
         }
@@ -96,9 +106,9 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
       }
   }
 
-  private def processDirectly(request: GenericRequest, restChannel: ProxyRestChannel): Unit = {
+  private def processDirectly(request: ByProxyProcessedRequest, restChannel: ProxyRestChannel): Unit = {
     proxyFilter
-      .execute(GenericAction.NAME, request, new GenericResponseActionListener(restChannel))(
+      .execute(request.actionName, request, new ByProxyProcessedResponseActionListener(restChannel))(
         esClient.generic
       )
   }
@@ -190,6 +200,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
             (request, listener) match {
               case (req: RRAdminRequest, resp: ActionListener[RRAdminResponse]) =>
                 rrAdminActionHandler.handle(req, resp)
+              case (req: RRAuditEventRequest, resp: ActionListener[RRAuditEventResponse]) =>
+                RRAuditEventActionHandler.handle(req, resp)
               case _ =>
                 handleEsAction(esActionRequestHandler, request, listener, proxyRestChannel)
             }
@@ -206,20 +218,23 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
     esActionRequestHandler
       .handle(request)
       .runAsyncF {
-      case Right(HandlingResult.Handled(response)) =>
-        listener.onResponse(response.asInstanceOf[RR])
-      case Right(HandlingResult.PassItThrough) =>
-        proxyRestChannel.passThrough()
-      case Left(ex) =>
-        proxyRestChannel.sendFailureResponse(ex)
-    }
+        case Right(HandlingResult.Handled(response)) =>
+          listener.onResponse(response.asInstanceOf[RR])
+        case Right(HandlingResult.PassItThrough) =>
+          proxyRestChannel.passThrough()
+        case Left(ex) =>
+          proxyRestChannel.sendFailureResponse(ex)
+      }
   }
 
   private class RORActionPlugin extends ActionPlugin {
 
     override def getActions: util.List[ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
       List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
-        new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction])
+        new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
+        new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
+        new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
+        new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
       ).asJava
     }
 
@@ -231,16 +246,20 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                  indexNameExpressionResolver: IndexNameExpressionResolver,
                                  nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
       List[RestHandler](
-        new RestRRAdminAction(restController)
+        new RestRRAdminAction(),
+        new RestRRConfigAction(nodesInCluster),
+        new RestRRUserMetadataAction(),
+        new RestRRAuditEventAction()
       ).asJava
     }
 
     override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
       restHandler: RestHandler =>
         (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-          ThreadRepo.setRestChannel(channel)
+          val rorRestChannel = new RorRestChannel(channel)
+          ThreadRepo.setRestChannel(rorRestChannel)
           consumeAllRequestParams(request)
-          restHandler.handleRequest(request, channel, client)
+          restHandler.handleRequest(request, rorRestChannel, client)
         }
     }
 

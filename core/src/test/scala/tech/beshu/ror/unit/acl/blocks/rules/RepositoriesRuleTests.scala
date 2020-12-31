@@ -41,7 +41,7 @@ class RepositoriesRuleTests extends WordSpec with Inside {
       "request action doesn't contain 'repository'" in {
         assertMatchRule(
           configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("repository1".nonempty).nel)),
-          requestAction = Action("cluster:admin/rradmin/refreshsettings"),
+          requestAction = Action("cluster:ror/user_metadata/get"),
           requestRepositories = Set(RepositoryName("repository1".nonempty))
         ) {
           _.repositories should be(Set(RepositoryName("repository1".nonempty)))
@@ -182,7 +182,7 @@ class RepositoriesRuleTests extends WordSpec with Inside {
       action = requestAction,
       isReadOnlyRequest = readonlyRequest
     )
-    val blockContext = RepositoryRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, requestRepositories)
+    val blockContext = RepositoryRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, requestRepositories)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)
     blockContextAssertion match {
       case Some(assertOutputBlockContext) =>

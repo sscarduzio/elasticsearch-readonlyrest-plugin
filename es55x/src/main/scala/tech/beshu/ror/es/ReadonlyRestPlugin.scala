@@ -16,13 +16,12 @@
  */
 package tech.beshu.ror.es
 
-import java.nio.file.Path
 import java.util
 import java.util.function.{Supplier, UnaryOperator}
 
 import monix.execution.Scheduler
 import monix.execution.schedulers.CanBlock
-import org.elasticsearch.{ElasticsearchException, Version}
+import org.elasticsearch.ElasticsearchException
 import org.elasticsearch.action.support.ActionFilter
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.client.node.NodeClient
@@ -33,8 +32,8 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.io.stream.NamedWriteableRegistry
 import org.elasticsearch.common.network.NetworkService
 import org.elasticsearch.common.settings._
-import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.util.BigArrays
+import org.elasticsearch.common.util.concurrent.{EsExecutors, ThreadContext}
 import org.elasticsearch.common.xcontent.NamedXContentRegistry
 import org.elasticsearch.env.Environment
 import org.elasticsearch.http.HttpServerTransport
@@ -50,11 +49,15 @@ import org.elasticsearch.transport.netty4.Netty4Utils
 import tech.beshu.ror.Constants
 import tech.beshu.ror.buildinfo.LogPluginBuildInfoMessage
 import tech.beshu.ror.configuration.RorSsl
-import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
-import tech.beshu.ror.es.rradmin.{RRAdminAction, TransportRRAdminAction}
+import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
+import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, TransportRRAdminAction}
+import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionType, TransportRRAuditEventAction}
+import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
+import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
+import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
+import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.dlsfls.RoleIndexSearcherWrapper
-import tech.beshu.ror.es.rrconfig.rest.RestRRConfigAction
-import tech.beshu.ror.es.rrconfig.{RRConfigAction, TransportRRConfigAction}
 import tech.beshu.ror.es.ssl.{SSLNetty4HttpServerTransport, SSLNetty4InternodeServerTransport}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -149,8 +152,10 @@ class ReadonlyRestPlugin(s: Settings,
 
   override def getActions: util.List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
     List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
-      new ActionHandler(RRAdminAction.instance, classOf[TransportRRAdminAction]),
-      new ActionHandler(RRConfigAction.instance, classOf[TransportRRConfigAction]),
+      new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
+      new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
+      new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
+      new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
     ).asJava
   }
 
@@ -164,14 +169,17 @@ class ReadonlyRestPlugin(s: Settings,
     List[RestHandler](
       new RestRRAdminAction(settings, restController),
       new RestRRConfigAction(settings, restController, nodesInCluster),
+      new RestRRUserMetadataAction(settings, restController),
+      new RestRRAuditEventAction(settings, restController)
     ).asJava
   }
 
   override def getRestHandlerWrapper(threadContext: ThreadContext): UnaryOperator[RestHandler] = {
     restHandler: RestHandler =>
       (request: RestRequest, channel: RestChannel, client: NodeClient) => {
-        ThreadRepo.setRestChannel(channel)
-        restHandler.handleRequest(request, channel, client)
+        val rorRestChannel = new RorRestChannel(channel)
+        ThreadRepo.setRestChannel(rorRestChannel)
+        restHandler.handleRequest(request, rorRestChannel, client)
       }
   }
 }

@@ -66,7 +66,7 @@ class MethodsRuleTests extends WordSpec with MockFactory {
     val rule = new MethodsRule(MethodsRule.Settings(configuredMethods))
     val requestContext = mock[RequestContext]
     (requestContext.method _).expects().returning(requestMethod)
-    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty)
+    val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
     rule.check(blockContext).runSyncStep shouldBe Right {
       if (isMatched) Fulfilled(blockContext)
       else Rejected()
