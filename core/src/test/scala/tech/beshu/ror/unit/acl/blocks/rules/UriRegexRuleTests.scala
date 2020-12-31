@@ -39,6 +39,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
 import scala.util.Try
+import eu.timepit.refined.auto._
 
 class UriRegexRuleTests extends WordSpec with MockFactory {
 

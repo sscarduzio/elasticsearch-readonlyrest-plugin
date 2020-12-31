@@ -109,7 +109,7 @@ class KibanaAccessRule(val settings: Settings)
     isTargetingKibana(requestContext, kibanaIndex) &&
       settings.access =!= ROStrict &&
       !kibanaCanBeModified &&
-      nonStrictAllowedPaths.matcher(requestContext.uriPath.value).find() &&
+      nonStrictAllowedPaths.matcher(requestContext.uriPath.value.value).find() &&
       (requestContext.action.hasPrefix("indices:data/write/") || requestContext.action.hasPrefix("indices:admin/template/put"))
   }
 

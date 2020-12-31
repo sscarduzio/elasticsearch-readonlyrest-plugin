@@ -24,7 +24,7 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
-import tech.beshu.ror.adminapi.AdminRestApi
+import tech.beshu.ror.Constants
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.NodeId
 import tech.beshu.ror.configuration.loader.distributed.{NodeConfigRequest, Timeout}
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, RRConfigsRequest}
@@ -37,7 +37,7 @@ class RestRRConfigAction(controller: RestController,
                          nodesInCluster: Supplier[DiscoveryNodes])
   extends BaseRestHandler {
 
-  register("GET", AdminRestApi.provideRorConfigPath.endpointString)
+  register("GET", Constants.MANAGE_ROR_CONFIG_PATH)
 
   override val getName: String = "ror-config-handler"
 

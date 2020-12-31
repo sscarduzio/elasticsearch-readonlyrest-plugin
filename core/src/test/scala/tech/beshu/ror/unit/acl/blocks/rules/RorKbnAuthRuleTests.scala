@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 
 import scala.collection.JavaConverters._
@@ -42,6 +41,7 @@ import scala.language.postfixOps
 import io.jsonwebtoken.impl.DefaultClaims
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthRuleTests
@@ -73,7 +73,7 @@ class RorKbnAuthRuleTests
         }
       }
       "token has valid RS256 signature" in {
-        val (pub, secret) = TestsUtils.generateRsaRandomKeys
+        val (pub, secret) = Random.generateRsaRandomKeys
         val claims = new DefaultClaims(Map("sub" -> "test", "user" -> "user1", "groups" -> List("group1", "group2").asJava).asJava)
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
@@ -169,8 +169,8 @@ class RorKbnAuthRuleTests
         )
       }
       "token has invalid RS256 signature" in {
-        val (pub, _) = TestsUtils.generateRsaRandomKeys
-        val (_, secret) = TestsUtils.generateRsaRandomKeys
+        val (pub, _) = Random.generateRsaRandomKeys
+        val (_, secret) = Random.generateRsaRandomKeys
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
             RorKbnDef.Name("test".nonempty),
