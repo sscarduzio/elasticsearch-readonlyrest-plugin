@@ -45,12 +45,13 @@ class JwtAuthRule(val settings: JwtAuthRule.Settings)
 
   override val name: Rule.Name = JwtAuthRule.name
 
-  private val parser = settings.jwt.checkMethod match {
-    case NoCheck(_) => Jwts.parser
-    case Hmac(rawKey) => Jwts.parser.setSigningKey(rawKey)
-    case Rsa(pubKey) => Jwts.parser.setSigningKey(pubKey)
-    case Ec(pubKey) => Jwts.parser.setSigningKey(pubKey)
-  }
+  private val parser =
+    settings.jwt.checkMethod match {
+      case NoCheck(_) => Jwts.parserBuilder().build()
+      case Hmac(rawKey) => Jwts.parserBuilder().setSigningKey(rawKey).build()
+      case Rsa(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
+      case Ec(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
+    }
 
   override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task
     .unit

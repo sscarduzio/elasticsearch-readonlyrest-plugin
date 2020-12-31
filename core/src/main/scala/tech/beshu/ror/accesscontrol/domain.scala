@@ -356,12 +356,12 @@ object domain {
 
   final case class UriPath(value: NonEmptyString) {
     def isCurrentUserMetadataPath: Boolean = UriPath.currentUserMetadataPath.value.value.startsWith(value.value)
-    def isCatTemplatePath: Boolean = "/_cat/templates/".startsWith(value.value)
-    def isTemplatePath: Boolean = "/_template/".startsWith(value.value)
-    def isCatIndicesPath: Boolean = "/_cat/indices/".startsWith(value.value)
+    def isCatTemplatePath: Boolean = value.value.startsWith("/_cat/templates")
+    def isTemplatePath: Boolean = value.value.startsWith("/_template")
+    def isCatIndicesPath: Boolean = value.value.startsWith("/_cat/indices")
     def isAliasesPath: Boolean =
-      "/_cat/aliases/".startsWith(value.value) ||
-        "/_alias/".startsWith(value.value) ||
+      value.value.startsWith("/_cat/aliases") ||
+        value.value.startsWith("/_alias") ||
         "^/(\\w|\\*)*/_alias(|/)$".r.findFirstMatchIn(value.value).isDefined ||
         "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value.value).isDefined
   }
