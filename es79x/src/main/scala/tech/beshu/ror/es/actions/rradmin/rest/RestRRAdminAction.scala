@@ -26,8 +26,7 @@ import org.elasticsearch.rest.RestRequest.Method._
 import org.elasticsearch.rest._
 import org.elasticsearch.rest.action.RestToXContentListener
 import tech.beshu.ror.Constants
-import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminResponse}
-import tech.beshu.ror.es.rradmin.RRAdminRequest
+import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
 
 import scala.collection.JavaConverters._
 
