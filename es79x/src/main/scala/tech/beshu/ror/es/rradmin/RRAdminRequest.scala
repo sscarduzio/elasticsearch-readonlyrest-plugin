@@ -18,13 +18,11 @@ package tech.beshu.ror.es.rradmin
 
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.rest.RestRequest
+import tech.beshu.ror.Constants
 import tech.beshu.ror.adminapi.AdminRestApi
 
+import org.elasticsearch.rest.RestRequest.Method.{GET, POST}
 class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
-
-  def this(request: RestRequest) = {
-    this(AdminRestApi.AdminRequest(request.method.name, request.path, request.content.utf8ToString))
-  }
 
   def this() = {
     this(null: AdminRestApi.AdminRequest)
@@ -33,4 +31,27 @@ class RRAdminRequest(request: AdminRestApi.AdminRequest) extends ActionRequest {
   val getAdminRequest: AdminRestApi.AdminRequest = request
 
   override def validate() = null
+}
+
+object RRAdminRequest {
+
+  def createFrom(request: RestRequest): RRAdminRequest = {
+    val requestType = (request.uri(), request.method()) match {
+      case (uri, method) if Constants.FORCE_RELOAD_CONFIG_PATH.startsWith(uri) && method == POST =>
+        AdminRestApi.AdminRequest.Type.ForceReload
+      case (uri, method) if Constants.PROVIDE_INDEX_CONFIG_PATH.startsWith(uri) && method == GET =>
+        AdminRestApi.AdminRequest.Type.ProvideIndexConfig
+      case (uri, method) if Constants.UPDATE_INDEX_CONFIG_PATH.startsWith(uri) && method == POST =>
+        AdminRestApi.AdminRequest.Type.UpdateIndexConfig
+      case (uri, method) if Constants.PROVIDE_FILE_CONFIG_PATH.startsWith(uri) && method == GET =>
+        AdminRestApi.AdminRequest.Type.ProvideFileConfig
+      case (uri, method) if Constants.CURRENT_USER_METADATA_PATH.startsWith(uri) && method == GET =>
+        AdminRestApi.AdminRequest.Type.CurrentUserMetadata
+      case (unknownUri, unknownMethod) =>
+        throw new IllegalStateException(s"Unknown request: $unknownMethod $unknownUri")
+    }
+    new RRAdminRequest(
+      new AdminRestApi.AdminRequest(requestType, request.method.name, request.path, request.content.utf8ToString)
+    )
+  }
 }

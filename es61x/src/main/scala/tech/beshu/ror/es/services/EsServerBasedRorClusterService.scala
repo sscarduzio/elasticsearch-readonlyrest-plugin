@@ -41,10 +41,6 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
     with Logging {
 
   override def indexOrAliasUuids(indexOrAlias: IndexOrAlias): Set[IndexUuid] = {
-    // todo: cleanup
-//    val repositoriesMetaData = clusterService.state.getMetaData.custom[RepositoriesMetaData](RepositoriesMetaData.TYPE)
-//    repositoriesMetaData.repositories().asScala.head.
-
     val lookup = clusterService.state.metaData.getAliasAndIndexLookup
     lookup.get(indexOrAlias.value.value).getIndices.asScala.map(_.getIndexUUID).toSet
   }

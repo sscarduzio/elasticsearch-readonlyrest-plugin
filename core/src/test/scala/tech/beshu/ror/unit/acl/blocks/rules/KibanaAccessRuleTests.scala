@@ -35,6 +35,7 @@ import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, StringOps}
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import eu.timepit.refined.auto._
 
 class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssertion {
 
@@ -244,7 +245,7 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
     val requestContext = MockRequestContext.indices.copy(
       action = action,
       filteredIndices = indices,
-      uriPath = uriPath.getOrElse(UriPath(""))
+      uriPath = uriPath.getOrElse(UriPath("/undefined"))
     )
     val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, indices, Set.empty)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)

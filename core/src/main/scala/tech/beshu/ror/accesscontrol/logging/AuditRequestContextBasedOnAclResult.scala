@@ -58,7 +58,7 @@ class AuditRequestContextBasedOnAclResult[B <: BlockContext](requestContext: Req
           acc + (header.name.value.value -> (headerNames + header.value.value))
       }
   )
-  override val uriPath: String = requestContext.uriPath.value
+  override val uriPath: String = requestContext.uriPath.value.value
   override val history: String = historyEntries.map(h => historyShow(showHeader).show(h)).mkString(", ")
   override val content: String = requestContext.content
   override val contentLength: Integer = requestContext.contentLength.toBytes.toInt

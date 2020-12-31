@@ -12,10 +12,10 @@ import com.twitter.finagle.Http
 import javax.net.ssl.{SSLContext, X509TrustManager}
 import monix.eval.Task
 import monix.execution.schedulers.SchedulerService
-import org.apache.http.{HttpHost, Header => ApacheHttpHeader}
 import org.apache.http.conn.ssl.NoopHostnameVerifier
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder
 import org.apache.http.message.BasicHeader
+import org.apache.http.{HttpHost, Header => ApacheHttpHeader}
 import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.node.Node
@@ -27,7 +27,8 @@ import tech.beshu.ror.proxy.RorProxy.CloseHandler
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
 import tech.beshu.ror.proxy.es.{EsCode, EsRestServiceSimulator}
 import tech.beshu.ror.proxy.server.ProxyRestInterceptorService
-import tech.beshu.ror.utils.ScalaOps.{twitterFutureToIo, _}
+import tech.beshu.ror.proxy.utils.TwitterFutureOps.twitterFutureToIo
+import tech.beshu.ror.utils.ScalaOps._
 
 trait RorProxy {
 

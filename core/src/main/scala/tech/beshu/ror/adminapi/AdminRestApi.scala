@@ -16,99 +16,83 @@
  */
 package tech.beshu.ror.adminapi
 
-import cats.data.{EitherT, NonEmptyList}
+import cats.data.EitherT
 import cats.implicits._
-import com.twitter.finagle.http.Status.Successful
-import com.twitter.finagle.http.{Request, Response}
-import io.circe.parser._
-import io.circe.{Decoder, Encoder}
-import io.finch.Encode._
-import io.finch._
-import io.finch.circe._
 import monix.eval.Task
-import monix.execution.Scheduler
-import org.apache.logging.log4j.scala.Logging
-import shapeless.HNil
-import tech.beshu.ror.boot.RorInstance
+import tech.beshu.ror.adminapi.AdminRestApi.AdminRequest.Type
 import tech.beshu.ror.boot.RorInstance.IndexConfigReloadWithUpdateError.{IndexConfigSavingError, ReloadError}
 import tech.beshu.ror.boot.RorInstance.{IndexConfigReloadError, RawConfigReloadError}
-import tech.beshu.ror.boot.RorSchedulers
-import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
+import tech.beshu.ror.boot.{RorInstance, RorSchedulers}
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError
 import tech.beshu.ror.configuration.IndexConfigManager.IndexConfigError.IndexConfigNotExist
+import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError.SpecializedError
 import tech.beshu.ror.configuration.loader.{FileConfigLoader, RorConfigurationIndex}
 import tech.beshu.ror.configuration.{IndexConfigManager, RawRorConfig}
-import tech.beshu.ror.utils.ScalaOps._
 
 class AdminRestApi(rorInstance: RorInstance,
                    indexConfigManager: IndexConfigManager,
                    fileConfigLoader: FileConfigLoader,
-                   rorConfigurationIndex: RorConfigurationIndex)
-  extends EndpointModule[Task] {
+                   rorConfigurationIndex: RorConfigurationIndex) {
 
-  import AdminRestApi.encoders._
   import AdminRestApi._
 
-  private implicit val scheduler: Scheduler = RorSchedulers.adminRestApiScheduler
+  def call(request: AdminRequest): Task[AdminResponse] = {
+    val apiCallResult = request.aType match {
+      case Type.ForceReload => forceReloadRor()
+      case Type.ProvideIndexConfig => provideRorIndexConfig()
+      case Type.UpdateIndexConfig => updateIndexConfiguration(request.body)
+      case Type.ProvideFileConfig => provideRorFileConfig()
+      case Type.CurrentUserMetadata => Task.now(Success("ok"))
+    }
+    apiCallResult
+      .map(AdminResponse(_))
+      .executeOn(RorSchedulers.adminRestApiScheduler)
+  }
 
-  private val forceReloadRorEndpoint: Endpoint[Task, ApiCallResult] = post(forceReloadRorPath.endpointPath) {
+  private def forceReloadRor(): Task[ApiCallResult] = {
     rorInstance
       .forceReloadFromIndex()
       .map {
-        case Right(_) => Ok[ApiCallResult](Success("ReadonlyREST settings were reloaded with success!"))
-        case Left(IndexConfigReloadError.LoadingConfigError(error)) => Ok(Failure(error.show))
-        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate)) => Ok(Failure("Current settings are already loaded"))
-        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)) => Ok(Failure("ROR is stopped"))
-        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(failure))) => Ok(Failure(s"Cannot reload new settings: ${failure.message}"))
+        case Right(_) => Success("ReadonlyREST settings were reloaded with success!")
+        case Left(IndexConfigReloadError.LoadingConfigError(error)) => Failure(error.show)
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ConfigUpToDate)) => Failure("Current settings are already loaded")
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.RorInstanceStopped)) => Failure("ROR is stopped")
+        case Left(IndexConfigReloadError.ReloadError(RawConfigReloadError.ReloadingFailed(failure))) => Failure(s"Cannot reload new settings: ${failure.message}")
       }
   }
 
-  private val updateIndexConfigurationEndpoint = post(updateIndexConfigurationPath.endpointPath :: stringBody) { body: String =>
+  private def updateIndexConfiguration(body: String): Task[ApiCallResult] = {
     val result = for {
       config <- rorConfigFrom(body)
       _ <- forceReloadAndSaveNewConfig(config)
     } yield ()
     result.value.map {
-      case Right(_) => Ok[ApiCallResult](Success("updated settings"))
-      case Left(failure) => Ok[ApiCallResult](failure)
+      case Right(_) => Success("updated settings")
+      case Left(failure) => failure
     }
   }
 
-  private val provideRorFileConfigEndpoint = get(provideRorFileConfigPath.endpointPath) {
+  private def provideRorFileConfig(): Task[ApiCallResult] = {
     fileConfigLoader
       .load()
       .map {
-        case Right(config) => Ok[ApiCallResult](Success(config.raw))
-        case Left(error) => Ok[ApiCallResult](Failure(error.show))
+        case Right(config) => Success(config.raw)
+        case Left(error) => Failure(error.show)
       }
   }
 
-  private val provideRorIndexConfigEndpoint = get(provideRorIndexConfigPath.endpointPath) {
+  private def provideRorIndexConfig(): Task[ApiCallResult] = {
     indexConfigManager
       .load(rorConfigurationIndex)
       .map {
         case Right(config) =>
-          Ok[ApiCallResult](Success(config.raw))
+          Success(config.raw)
         case Left(SpecializedError(error: IndexConfigNotExist.type)) =>
           implicit val show = IndexConfigError.show.contramap(identity[IndexConfigNotExist.type])
-          Ok[ApiCallResult](ConfigNotFound(error.show))
+          ConfigNotFound(error.show)
         case Left(error) =>
-          Ok[ApiCallResult](Failure(error.show))
+          Failure(error.show)
       }
-  }
-
-  private val service = {
-    forceReloadRorEndpoint :+:
-      updateIndexConfigurationEndpoint :+:
-      provideRorFileConfigEndpoint :+:
-      provideRorIndexConfigEndpoint
-  }.toServiceAs[Application.Json]
-
-  def call(request: AdminRequest): Task[AdminResponse] = {
-    AdminRestApi.converters.toRequest(request) match {
-      case Right(req) => Task.deferFuture(service.apply(req)).map(AdminRestApi.converters.toResponse)
-      case Left(msg) => Task.now(AdminResponse(Failure(msg)))
-    }
   }
 
   private def rorConfigFrom(payload: String) = {
@@ -151,17 +135,19 @@ class AdminRestApi(rorInstance: RorInstance,
 
 }
 
-object AdminRestApi extends Logging {
+object AdminRestApi {
 
-  val forceReloadRorPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "refreshconfig"))
-  val updateIndexConfigurationPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config" ))
-  //deprecated("use provideRorConfigPath instead")
-  val provideRorFileConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config", "file"))
-  //deprecated("use provideRorConfigPath instead")
-  val provideRorIndexConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config"))
-  val provideRorConfigPath: Path = Path.create(NonEmptyList.of("_readonlyrest", "admin", "config", "load"))
-
-  final case class AdminRequest(method: String, uri: String, body: String)
+  final case class AdminRequest(aType: AdminRequest.Type, method: String, uri: String, body: String)
+  object AdminRequest {
+    sealed trait Type
+    object Type {
+      case object ForceReload extends Type
+      case object ProvideIndexConfig extends Type
+      case object UpdateIndexConfig extends Type
+      case object ProvideFileConfig extends Type
+      case object CurrentUserMetadata extends Type
+    }
+  }
   final case class AdminResponse(result: ApiCallResult)
   object AdminResponse {
     def notAvailable: AdminResponse = AdminResponse(Failure("Service not available"))
@@ -174,53 +160,4 @@ object AdminRestApi extends Logging {
   final case class Success(message: String) extends ApiCallResult
   final case class ConfigNotFound(message: String) extends ApiCallResult
   final case class Failure(message: String) extends ApiCallResult
-
-  final case class Path private(endpointPath: Endpoint[Task, HNil], endpointString: String)
-  object Path {
-    def create(paths: NonEmptyList[String]): Path = new Path(
-      paths.map(EndpointModule.apply[Task].path(_)).reduceLeft(_ :: _),
-      paths.map(p => s"/$p").toList.mkString
-    )
-  }
-
-  object encoders {
-    import io.circe.generic.semiauto._
-    implicit val apiCallResultEncoder: Encoder[ApiCallResult] = deriveEncoder
-    implicit val adminResponseEncoder: Encoder[AdminResponse] = deriveEncoder
-  }
-
-  object decoders {
-    import io.circe.generic.semiauto._
-    implicit val apiCallResultDecoder: Decoder[ApiCallResult] = deriveDecoder
-    implicit val adminResponseDecoder: Decoder[AdminResponse] = deriveDecoder
-  }
-
-  private object converters {
-    def toRequest(request: AdminRequest): Either[String, Request] = {
-      def requestCreator(uriString: String) = {
-        request.method.toUpperCase() match {
-          case "GET" => Right(Input.get(uriString))
-          case "POST" => Right(Input.post(uriString))
-          case _ => Left("Unsupported HTTP method")
-        }
-      }
-      requestCreator(request.uri).map(_.withBody[Text.Plain](request.body)).map(_.request)
-    }
-    def toResponse(response: Response): AdminResponse = {
-      response.status match {
-        case Successful(_) =>
-          (for {
-            json <- parse(response.contentString)
-            result <- decoders.apiCallResultDecoder.decodeJson(json)
-          } yield result) match {
-            case Right(result) => AdminResponse(result)
-            case Left(ex) =>
-              logger.warn("API internal error", ex)
-              AdminResponse.internalError
-          }
-        case other =>
-          AdminResponse(Failure(other.reason))
-      }
-    }
-  }
 }

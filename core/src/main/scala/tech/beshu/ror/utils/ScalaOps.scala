@@ -18,22 +18,20 @@ package tech.beshu.ror.utils
 
 import java.util.Base64
 
-import cats.{Functor, Order}
 import cats.data.{EitherT, NonEmptyList, NonEmptySet}
 import cats.effect.{ContextShift, IO}
 import cats.implicits._
-import com.twitter.{util => twitter}
+import cats.{Functor, Order}
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 
+import scala.collection.JavaConverters._
 import scala.collection.SortedSet
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Promise}
 import scala.language.{higherKinds, implicitConversions, postfixOps}
 import scala.reflect.ClassTag
-import scala.util.{Failure, Success, Try}
-import scala.collection.JavaConverters._
+import scala.util.Try
 
 object ScalaOps {
 
@@ -135,36 +133,6 @@ object ScalaOps {
         if (maxRetries > 0) repeat(maxRetries - 1, delay)(source)
         else Task.unit
       }
-  }
-
-  implicit def twitterToScalaTry[T](t: twitter.Try[T]): Try[T] = t match {
-    case twitter.Return(r) => Success(r)
-    case twitter.Throw(ex) => Failure(ex)
-  }
-
-  implicit def twitterToScalaFuture[T](f: twitter.Future[T]): Future[T] = {
-    val promise = Promise[T]()
-    f.respond(promise complete _)
-    promise.future
-  }
-
-  implicit def taskToTwitterFuture[T](t: Task[T])
-                                     (implicit scheduler: Scheduler): twitter.Future[T] = {
-    val promise = twitter.Promise[T]()
-    t.runAsync {
-      case Right(value) => promise.setValue(value)
-      case Left(ex) => promise.setException(ex)
-    }
-    promise
-  }
-
-  implicit def twitterFutureToTask[T](f: twitter.Future[T]): Task[T] = {
-    Task.fromFuture(f)
-  }
-
-  implicit def twitterFutureToIo[T](f: twitter.Future[T])
-                                   (implicit contextShift: ContextShift[IO]): IO[T] = {
-    IO.fromFuture(IO(f))
   }
 
   implicit def taskToIo[T](t: Task[T])
