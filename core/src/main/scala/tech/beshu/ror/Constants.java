@@ -32,8 +32,14 @@ public class Constants {
   public static final Integer AUDIT_SINK_MAX_SECONDS = 2;
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
   public static final Integer MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES = 5 * 1000;
-  public final static String CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user";
-  public final static String AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event";
+  public final static String CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user/";
+  public final static String AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event/";
+  public final static String FORCE_RELOAD_CONFIG_PATH = "/_readonlyrest/admin/refreshconfig/";
+  public final static String UPDATE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
+  public final static String PROVIDE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
+  public final static String PROVIDE_FILE_CONFIG_PATH = "/_readonlyrest/admin/config/file/";
+  public final static String MANAGE_ROR_CONFIG_PATH = "/_readonlyrest/admin/config/load";
+
   public final static String FIELDS_TRANSIENT = "_fields";
 
   public final static Set<String> FIELDS_ALWAYS_ALLOW = Sets.newHashSet("_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index");

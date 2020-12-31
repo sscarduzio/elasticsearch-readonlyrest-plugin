@@ -21,22 +21,22 @@ import org.elasticsearch.common.inject.Inject
 import org.elasticsearch.rest.BaseRestHandler.RestChannelConsumer
 import org.elasticsearch.rest._
 import org.elasticsearch.rest.action.RestToXContentListener
-import tech.beshu.ror.adminapi._
+import tech.beshu.ror.Constants
 import tech.beshu.ror.es.actions.rradmin.{RRAdminActionType, RRAdminRequest, RRAdminResponse}
 
 @Inject
 class RestRRAdminAction(controller: RestController)
   extends BaseRestHandler with RestHandler {
 
-  register("POST", AdminRestApi.forceReloadRorPath.endpointString)
-  register("GET", AdminRestApi.provideRorIndexConfigPath.endpointString)
-  register("POST", AdminRestApi.updateIndexConfigurationPath.endpointString)
-  register("GET", AdminRestApi.provideRorFileConfigPath.endpointString)
+  register("POST", Constants.FORCE_RELOAD_CONFIG_PATH)
+  register("GET", Constants.PROVIDE_INDEX_CONFIG_PATH)
+  register("POST", Constants.UPDATE_INDEX_CONFIG_PATH)
+  register("GET", Constants.PROVIDE_FILE_CONFIG_PATH)
 
   override val getName: String = "ror-admin-handler"
 
   override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    client.execute(new RRAdminActionType, new RRAdminRequest(request), new RestToXContentListener[RRAdminResponse](channel))
+    client.execute(new RRAdminActionType, RRAdminRequest.createFrom(request), new RestToXContentListener[RRAdminResponse](channel))
   }
 
   private def register(method: String, path: String): Unit = {

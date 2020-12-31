@@ -46,7 +46,7 @@ class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoaded
       |  - name: "User 2"
       |    users: ["user2"]
       |    groups: [group2, group3]
-      |    uri_re: ^/_readonlyrest/metadata/current_user$
+      |    uri_re: ^/_readonlyrest/metadata/current_user/?$
       |    kibana_index: "user2_kibana_index"
       |    kibana_hide_apps: ["user2_app1", "user2_app2"]
       |    kibana_access: ro

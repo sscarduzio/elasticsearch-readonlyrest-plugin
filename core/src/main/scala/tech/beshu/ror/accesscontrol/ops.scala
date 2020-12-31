@@ -142,7 +142,7 @@ object show {
     implicit val groupShow: Show[Group] = Show.show(_.value.value)
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
     implicit val jwtTokenShow: Show[JwtToken] = Show.show(_.value.value)
-    implicit val uriPathShow: Show[UriPath] = Show.show(_.value)
+    implicit val uriPathShow: Show[UriPath] = Show.show(_.value.value)
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)

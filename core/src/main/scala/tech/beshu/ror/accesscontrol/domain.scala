@@ -405,21 +405,26 @@ object domain {
     implicit val eqKibanaAccess: Eq[KibanaAccess] = Eq.fromUniversalEquals
   }
 
-  final case class UriPath(value: String) {
-    def isCurrentUserMetadataPath: Boolean = value.startsWith(UriPath.currentUserMetadataPath.value)
-    def isCatTemplatePath: Boolean = value.startsWith("/_cat/templates")
-    def isTemplatePath: Boolean = value.startsWith("/_template")
+  final case class UriPath(value: NonEmptyString) {
+    def isCurrentUserMetadataPath: Boolean = UriPath.currentUserMetadataPath.value.value.startsWith(value.value)
+    def isCatTemplatePath: Boolean = value.value.startsWith("/_cat/templates")
+    def isTemplatePath: Boolean = value.value.startsWith("/_template")
+    def isCatIndicesPath: Boolean = value.value.startsWith("/_cat/indices")
     def isAliasesPath: Boolean =
-      value.startsWith("/_cat/aliases") ||
-        value.startsWith("/_alias") ||
-        "^/(\\w|\\*)*/_alias(|/)$".r.findFirstMatchIn(value).isDefined ||
-        "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value).isDefined
-    def isCatIndicesPath: Boolean = value.startsWith("/_cat/indices")
-
+      value.value.startsWith("/_cat/aliases") ||
+        value.value.startsWith("/_alias") ||
+        "^/(\\w|\\*)*/_alias(|/)$".r.findFirstMatchIn(value.value).isDefined ||
+        "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value.value).isDefined
   }
   object UriPath {
-    val currentUserMetadataPath = UriPath(Constants.CURRENT_USER_METADATA_PATH)
+    val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(Constants.CURRENT_USER_METADATA_PATH))
     implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
+
+    def from(value: String): Option[UriPath] = {
+      NonEmptyString
+        .from(value).toOption
+        .map(UriPath.apply)
+    }
 
     object CatTemplatePath {
       def unapply(uriPath: UriPath): Option[UriPath] = {

@@ -35,7 +35,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -106,7 +105,10 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val method: Method = Method(restRequest.method().name())
 
-  override lazy val uriPath: UriPath = UriPath(restRequest.path())
+  override lazy val uriPath: UriPath =
+    UriPath
+      .from(restRequest.path())
+      .getOrElse(UriPath(NonEmptyString.unsafeFrom("/")))
 
   override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
 

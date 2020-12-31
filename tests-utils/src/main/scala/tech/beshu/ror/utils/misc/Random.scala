@@ -14,18 +14,17 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.adminapi
+package tech.beshu.ror.utils.misc
 
-import com.twitter.finagle.http.{Method, Request, Version}
-import com.twitter.io.{Buf, Reader}
+import java.security.{KeyPairGenerator, PrivateKey, PublicKey, SecureRandom}
 
-object RequestCreator {
+object Random {
 
-  def createPostRequest(uri: String, body: String): Request = {
-    Request(Version.Http11, Method.Post,  uri, Reader.value(Buf.Utf8(body)))
-  }
-
-  def createGetRequest(uri: String): Request = {
-    Request(Version.Http11, Method.Get, uri)
+  def generateRsaRandomKeys: (PublicKey, PrivateKey) = {
+    val keyGen = KeyPairGenerator.getInstance("RSA")
+    val random = SecureRandom.getInstance("SHA1PRNG", "SUN")
+    keyGen.initialize(2048, random)
+    val pair = keyGen.generateKeyPair()
+    (pair.getPublic, pair.getPrivate)
   }
 }
