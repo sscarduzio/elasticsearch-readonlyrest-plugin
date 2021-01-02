@@ -98,7 +98,7 @@ stages:
         IT_es55x:
           ROR_TASK: integration_es55x
 
-- stage: PUBL
+- stage: S3_UP
   condition: and(succeeded(), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
   jobs:
   - job:
@@ -143,27 +143,19 @@ stages:
         # Translate back env vars to avoid cyclical reference :/
         export aws_access_key_id=$var_aws_access_key_id
         export aws_secret_access_key=$var_aws_secret_access_key
-        export encrypted_31be120daa3b_iv=$var_encrypted_31be120daa3b_iv
-        export encrypted_31be120daa3b_key=$var_encrypted_31be120daa3b_key
-        export encrypted_bf4db9d5783b_iv=$var_encrypted_bf4db9d5783b_iv
-        export encrypted_bf4db9d5783b_key=$var_encrypted_bf4db9d5783b_key
 
         echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
         echo ">> ALL BUILD* VARIABLES " && export | grep BUILD'
 
-        echo "[PKG] executing ROR_TASK = $ROR_TASK"
+        echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
         chown -R $USER ~/.ssh 
         echo ">>>>>>>>> content of .ssh/" && ls -ltra ~/.ssh
         echo ">>> ($ROR_TASK) Creating deliverables to be published" && bin/build.sh 
         echo ">>> ($ROR_TASK) Tag and upload to S3" && ci/ci-deploy.sh && \
-        echo ">>> ($ROR_TASK) Publishing artifacts" && ROR_TASK="publish_artifacts" bin/build.sh 
       env:
         var_aws_access_key_id: $(aws_access_key_id)
         var_aws_secret_access_key: $(aws_secret_access_key)
-        var_encrypted_31be120daa3b_iv: $(encrypted_31be120daa3b_iv)
-        var_encrypted_31be120daa3b_key: $(encrypted_31be120daa3b_key)
-        var_encrypted_bf4db9d5783b_iv: $(encrypted_bf4db9d5783b_iv)
-        var_encrypted_bf4db9d5783b_key: $(encrypted_bf4db9d5783b_key)
+
 
     strategy:
       maxParallel: 99
@@ -175,3 +167,28 @@ stages:
         PKG_es5xx:
           ROR_TASK: package_es5xx
 
+- stage: MVN_PUB
+  condition: succeeded()
+  jobs:
+  - job:
+    steps:
+    - checkout: self
+      fetchDepth: 1
+      clean: false
+      persistCredentials: true
+    - script: |
+        # Translate back env vars to avoid cyclical reference :/
+        export encrypted_31be120daa3b_iv=$var_encrypted_31be120daa3b_iv
+        export encrypted_31be120daa3b_key=$var_encrypted_31be120daa3b_key
+        export encrypted_bf4db9d5783b_iv=$var_encrypted_bf4db9d5783b_iv
+        export encrypted_bf4db9d5783b_key=$var_encrypted_bf4db9d5783b_key
+
+        echo "[MVN_PUB] executing ROR_TASK=$ROR_TASK"
+        echo ">>> ($ROR_TASK) Publishing artifacts" && bin/build.sh 
+
+      env: 
+       ROR_TASK: publish_artifacts
+       var_encrypted_31be120daa3b_iv: $(encrypted_31be120daa3b_iv)
+       var_encrypted_31be120daa3b_key: $(encrypted_31be120daa3b_key)
+       var_encrypted_bf4db9d5783b_iv: $(encrypted_bf4db9d5783b_iv)
+       var_encrypted_bf4db9d5783b_key: $(encrypted_bf4db9d5783b_key)
