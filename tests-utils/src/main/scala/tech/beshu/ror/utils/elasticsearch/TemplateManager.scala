@@ -19,25 +19,27 @@ package tech.beshu.ror.utils.elasticsearch
 import java.time.Duration
 import java.util.function.BiPredicate
 
+import cats.data.NonEmptyList
 import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JsonResponse
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class TemplateManager(client: RestClient)
   extends BaseManager(client) {
 
+  // old API
   def getTemplate(name: String): JsonResponse =
     call(createGetTemplateRequest(name), new JsonResponse(_))
 
   def getTemplates: JsonResponse =
     call(createGetTemplatesRequest, new JsonResponse(_))
 
-  def insertTemplate(name: String, templateContent: String): JsonResponse =
+  def insertTemplate(name: String, templateContent: JSON): JsonResponse =
     call(createInsertTemplateRequest(name, templateContent), new JsonResponse(_))
 
-  def insertTemplateAndWaitForIndexing(name: String, templateContent: String): Unit = {
+  def insertTemplateAndWaitForIndexing(name: String, templateContent: JSON): Unit = {
     val result = insertTemplate(name, templateContent)
     if (!result.isSuccess) throw new IllegalStateException("Cannot insert template: [" + result.responseCode + "]\nResponse: " + result.body)
     val retryPolicy = new RetryPolicy[Boolean]()
@@ -55,6 +57,13 @@ class TemplateManager(client: RestClient)
   def deleteAllTemplates(): JsonResponse =
     call(createDeleteAllTemplatesRequest(), new JsonResponse(_))
 
+  // new API
+  def putIndexTemplate(templateName: String,
+                       indexPatterns: NonEmptyList[String],
+                       template: JSON): JsonResponse = {
+    call(createPutIndexTemplateRequest(templateName, indexPatterns, template), new JsonResponse(_))
+  }
+
   private def createGetTemplateRequest(name: String) = {
     val request = new HttpGet(client.from("/_template/" + name))
     request.setHeader("timeout", "50s")
@@ -68,7 +77,7 @@ class TemplateManager(client: RestClient)
   }
 
   private def createDeleteTemplateRequest(templateName: String) = {
-    val request = new HttpDelete(client.from("/_template/" + templateName))
+    val request = new HttpDelete(client.from(s"/_template/$templateName"))
     request.setHeader("timeout", "50s")
     request
   }
@@ -79,15 +88,29 @@ class TemplateManager(client: RestClient)
     request
   }
 
-  private def createInsertTemplateRequest(name: String, templateContent: String) = try {
-    val request = new HttpPut(client.from("/_template/" + name))
+  private def createInsertTemplateRequest(templateName: String, templateContent: JSON) = try {
+    val request = new HttpPut(client.from(s"/_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(templateContent))
+    request.setEntity(new StringEntity(ujson.write(templateContent)))
     request
   } catch {
     case ex: Exception =>
       throw new IllegalStateException("Cannot insert document", ex)
   }
+
+  private def createPutIndexTemplateRequest(templateName: String, indexPatterns: NonEmptyList[String], template: JSON) = {
+    val request = new HttpPut(client.from(s"/_index_template/$templateName" ))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""
+         |{
+         |  "index_patterns": [${indexPatterns.toList.mkString(",")}],
+         |  "template": ${ujson.write(template)}
+         |}
+       """.stripMargin))
+    request
+  }
+
 
   private def isTemplateIndexed(templateName: String) =
     getTemplates.responseJson.obj.contains(templateName)

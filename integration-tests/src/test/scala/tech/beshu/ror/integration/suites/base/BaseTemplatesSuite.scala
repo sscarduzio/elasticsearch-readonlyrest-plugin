@@ -19,6 +19,7 @@ package tech.beshu.ror.integration.suites.base
 import org.scalatest.{BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, TemplateManager}
 import tech.beshu.ror.utils.misc.Version
 
@@ -36,17 +37,38 @@ trait BaseTemplatesSuite
     adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}"""))
   }
 
-  protected def templateExample(indexPattern: String, otherIndexPatterns: String*): String = {
+  protected def templateExample(indexPattern: String, otherIndexPatterns: String*): JSON = {
     val esVersion = rorContainer.esVersion
     val allIndexPattern = indexPattern :: otherIndexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-      s"""{"index_patterns":[$patternsString],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
+      ujson.read {
+        s"""
+           |{
+           |  "index_patterns":[$patternsString],
+           |  "settings":{"number_of_shards":1},
+           |  "mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}
+           |}""".stripMargin
+      }
     } else if (Version.greaterOrEqualThan(esVersion, 6, 0, 0)) {
-      s"""{"index_patterns":[$patternsString],"settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
+      ujson.read {
+        s"""
+           |{
+           |  "index_patterns":[$patternsString],
+           |  "settings":{"number_of_shards":1},
+           |  "mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}
+           ||}""".stripMargin
+      }
     } else {
       if(otherIndexPatterns.isEmpty) {
-        s"""{"template":"$indexPattern","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
+        ujson.read {
+          s"""
+             |{
+             |  "template":"$indexPattern",
+             |  "settings":{"number_of_shards":1},
+             |  "mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}
+             |}""".stripMargin
+        }
       } else {
         throw new IllegalArgumentException("Cannot create template with more than one index pattern for the ES version < 6.0.0")
       }
