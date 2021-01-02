@@ -80,6 +80,8 @@ stages:
           ROR_TASK: integration_es73x
         IT_es72x:
           ROR_TASK: integration_es72x
+        IT_es70x:
+          ROR_TASK: integration_es70x
         IT_es66x:
           ROR_TASK: integration_es66x
         IT_es63x:
@@ -90,6 +92,8 @@ stages:
           ROR_TASK: integration_es61x
         IT_es60x:
           ROR_TASK: integration_es60x
+        IT_es55x:
+          ROR_TASK: integration_es55x
 
 - stage: PUBL
   condition: succeeded()
