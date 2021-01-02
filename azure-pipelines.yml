@@ -34,6 +34,7 @@ stages:
       clean: false
       persistCredentials: true
     - script: |
+        echo ">> ALL BUILD* VARIABLES " && export | grep BUILD'
         echo "[CVE] executing ROR_TASK=$ROR_TASK"
         bin/build.sh
       continueOnError: true
