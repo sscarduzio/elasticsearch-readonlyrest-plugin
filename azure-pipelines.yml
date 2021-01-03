@@ -145,7 +145,7 @@ stages:
         export aws_secret_access_key=$var_aws_secret_access_key
 
         echo ">> ALL VARIABLES NAMES " && export | awk -F= '{print $1}'
-        echo ">> ALL BUILD* VARIABLES " && export | grep BUILD'
+        echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
 
         echo "[S3_UP] executing ROR_TASK = $ROR_TASK"
         chown -R $USER ~/.ssh 
