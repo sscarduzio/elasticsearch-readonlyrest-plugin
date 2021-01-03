@@ -168,7 +168,7 @@ stages:
           ROR_TASK: package_es5xx
 
 - stage: MVN_PUB
-  condition: succeeded()
+  condition: and(succeeded(), eq(variables.isMaster, true))
   jobs:
   - job:
     steps:
