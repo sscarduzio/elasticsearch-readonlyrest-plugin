@@ -181,7 +181,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       // rest
       case _ =>
         ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
-          case XpackAsyncSearchRequest(request) => regularRequestHandler.handle(request)
+          case XpackAsyncSearchRequestContext(request) => regularRequestHandler.handle(request)
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)

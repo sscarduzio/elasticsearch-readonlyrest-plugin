@@ -18,17 +18,20 @@ package tech.beshu.ror.utils.misc
 
 import java.time.Duration
 
-import cats.implicits._
 import cats.Functor
+import cats.implicits._
 import monix.eval.Task
-import monix.execution.Scheduler
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.{higherKinds, implicitConversions, postfixOps}
 import scala.util.{Success, Try}
 
 object ScalaUtils {
+
+  implicit class StringListOps(val list: List[String]) extends AnyVal {
+    def mkJsonStringArray: String =
+      list.map(e => s""""$e"""").mkString("[", ",", "]")
+  }
 
   implicit class ListOps[T](val list: List[T]) extends AnyVal {
     def partitionByIndexMod2: (List[T], List[T]) = {

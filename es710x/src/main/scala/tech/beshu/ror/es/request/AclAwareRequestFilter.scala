@@ -56,13 +56,13 @@ import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.boot.Engine
-import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
-import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.es.actions.rrmetadata.RRUserMetadataRequest
+import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.context.types._
 import tech.beshu.ror.es.request.handler.{CurrentUserMetadataRequestHandler, RegularRequestHandler}
+import tech.beshu.ror.es.{ResponseFieldsFiltering, RorClusterService}
 
 import scala.language.postfixOps
 import scala.reflect.ClassTag
@@ -181,13 +181,20 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       // rest
       case _ =>
         ReflectionBasedActionRequest(esContext, aclContext, clusterService, threadPool) match {
-          case XpackAsyncSearchRequest(request) => regularRequestHandler.handle(request)
+          case XpackAsyncSearchRequestContext(request) => regularRequestHandler.handle(request)
+          // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
+          // templates
+          case PutComposableIndexTemplateEsRequestContext(request) => regularRequestHandler.handle(request)
+          // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
+          // rest
           case _ =>
             regularRequestHandler.handle {
-              new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, clusterService, threadPool)
+              val r = new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, clusterService, threadPool)
+              val temp = r.allTemplates
+              r // todo: clean up
             }
         }
     }

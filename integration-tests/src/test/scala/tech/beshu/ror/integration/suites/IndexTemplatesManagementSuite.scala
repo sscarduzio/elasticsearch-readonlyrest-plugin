@@ -758,6 +758,9 @@ trait IndexTemplatesManagementSuite
   "A new template API" when {
     "put index template operation is used" should {
       "be allowed" when {
+        "there is an index defined for it" when {
+          "template has index pattern with wildcard" in {}
+        }
         "indices rule is not used in matched block" in {
           val result = adminTemplateManager.putIndexTemplate(
             templateName = "temp1",
@@ -777,14 +780,37 @@ trait IndexTemplatesManagementSuite
       }
       "not be allowed" when {
         "user has no access to at least one requested index pattern" in {
-
+          val result = dev2TemplateManager.putIndexTemplate(
+            templateName = "temp1",
+            indexPatterns = NonEmptyList.of("dev1*"),
+            template = indexTemplate()
+          )
+          result.responseCode should be(401)
         }
         "user has no access to at least one requested alias" in {
-
+          val result = dev2TemplateManager.putIndexTemplate(
+            templateName = "temp1",
+            indexPatterns = NonEmptyList.of("custom_dev2_index_a_**"),
+            template = indexTemplate("dev1", "dev2_index")
+          )
+          result.responseCode should be(401)
         }
         "user has no access to at least one requested alias pattern" in {
-
+          val result = dev2TemplateManager.putIndexTemplate(
+            templateName = "temp1",
+            indexPatterns = NonEmptyList.of("custom_dev2_index_a_**"),
+            template = indexTemplate("alias_{index}", "dev2_index")
+          )
+          result.responseCode should be(401)
         }
+      }
+    }
+    "delete index template operation is used" should {
+      "be allowed" in {
+
+      }
+      "not be allowed" in {
+
       }
     }
   }
@@ -803,6 +829,7 @@ object IndexTemplatesManagementSuite {
          |  "aliases" : {
          |    ${aliases.toList.map(alias => s""""$alias":{}""").mkString(",")}
          |  }
+         |}
        """.stripMargin
     }
   }

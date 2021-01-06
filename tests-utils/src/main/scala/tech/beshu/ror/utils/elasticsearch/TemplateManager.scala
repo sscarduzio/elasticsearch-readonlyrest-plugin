@@ -25,6 +25,7 @@ import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.ScalaUtils._
 
 class TemplateManager(client: RestClient)
   extends BaseManager(client) {
@@ -104,7 +105,7 @@ class TemplateManager(client: RestClient)
     request.setEntity(new StringEntity(
       s"""
          |{
-         |  "index_patterns": [${indexPatterns.toList.mkString(",")}],
+         |  "index_patterns": ${indexPatterns.toList.mkJsonStringArray},
          |  "template": ${ujson.write(template)}
          |}
        """.stripMargin))

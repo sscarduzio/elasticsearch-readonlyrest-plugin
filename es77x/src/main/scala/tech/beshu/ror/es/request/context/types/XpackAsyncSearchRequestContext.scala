@@ -17,7 +17,6 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import monix.eval.Task
 import org.elasticsearch.action.search.{SearchRequest, SearchResponse}
 import org.elasticsearch.action.{ActionRequest, ActionResponse}
 import org.elasticsearch.threadpool.ThreadPool
@@ -33,11 +32,11 @@ import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ReflecUtils.invokeMethodCached
 import tech.beshu.ror.utils.ScalaOps._
 
-class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
-                                      esContext: EsContext,
-                                      aclContext: AccessControlStaticContext,
-                                      clusterService: RorClusterService,
-                                      override val threadPool: ThreadPool)
+class XpackAsyncSearchRequestContext private(actionRequest: ActionRequest,
+                                             esContext: EsContext,
+                                             aclContext: AccessControlStaticContext,
+                                             clusterService: RorClusterService,
+                                             override val threadPool: ThreadPool)
   extends BaseFilterableEsRequestContext[ActionRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   private lazy val searchRequest = searchRequestFrom(actionRequest)
@@ -90,11 +89,11 @@ class XpackAsyncSearchRequest private(actionRequest: ActionRequest,
   }
 }
 
-object XpackAsyncSearchRequest {
+object XpackAsyncSearchRequestContext {
 
-  def unapply(arg: ReflectionBasedActionRequest): Option[XpackAsyncSearchRequest] = {
+  def unapply(arg: ReflectionBasedActionRequest): Option[XpackAsyncSearchRequestContext] = {
     if (arg.esContext.actionRequest.getClass.getSimpleName.startsWith("SubmitAsyncSearchRequest")) {
-      Some(new XpackAsyncSearchRequest(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
+      Some(new XpackAsyncSearchRequestContext(arg.esContext.actionRequest, arg.esContext, arg.aclContext, arg.clusterService, arg.threadPool))
     } else {
       None
     }
