@@ -6,7 +6,7 @@ echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION"
 
 export TRAVIS_BRANCH=$(git symbolic-ref --short -q HEAD)
 
-if [ -nz ${BUILD_SOURCEBRANCHNAME:+x} ]
+if [ "$BUILD_SOURCEBRANCHNAME" ]
 then
  export TRAVIS=true
  export TRAVIS_BRANCH=$BUILD_SOURCEBRANCHNAME
