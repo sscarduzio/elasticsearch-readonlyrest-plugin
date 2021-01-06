@@ -473,6 +473,10 @@ trait XpackApiSuite
             result.column("author").toList should contain only Str("Frank Herbert")
           }
         }
+        "sql query is malformed" excludeES("es55x", "es60x", "es61x", "es62x") in {
+          val result = adminSqlManager.execute("""SELECT * FROM unescaped-index.name""")
+          result.isBadRequest should be(true)
+        }
       }
       "be forbidden" when {
         "user doesn't have access to given index" when {
