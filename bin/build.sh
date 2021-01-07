@@ -263,8 +263,7 @@ fi
 
 if [[ $ROR_TASK == "publish_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]] ; then
 
-    # only try to decode secret from Travis if it's not present
-    [[ -e .travis/secret.pgp ]] || openssl aes-256-cbc -K $encrypted_31be120daa3b_key -iv $encrypted_31be120daa3b_iv -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
+    # .travis/secret.pgp is downloaded via Azure secret files, see azure-pipelines.yml
 
     CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
     PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
