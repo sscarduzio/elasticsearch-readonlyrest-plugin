@@ -181,7 +181,7 @@ stages:
         echo "[MVN_PUB] executing ROR_TASK=$ROR_TASK"
         export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
         export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
-        export MAVEN_STAGING_PROFILE_ID=$(VAR_MAVEN_STAGING_PROFILE_ID)
+        export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
         echo ">>> MAVEN VARIABLES: " && export |grep MAVEN | awk -F= {'print $1'}
         echo ">>> ($ROR_TASK) Publishing artifacts" && bin/build.sh 
 
