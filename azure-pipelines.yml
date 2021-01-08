@@ -182,7 +182,8 @@ stages:
         export MAVEN_REPO_PASSWORD=$VAR_MAVEN_REPO_PASSWORD
         export MAVEN_REPO_USER=$VAR_MAVEN_REPO_USER
         export MAVEN_STAGING_PROFILE_ID=$VAR_MAVEN_STAGING_PROFILE_ID
-        echo ">>> MAVEN VARIABLES: " && export |grep MAVEN | awk -F= {'print $1'}
+        export GPG_KEY_ID=$VAR_GPG_KEY_ID
+        export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
         echo ">>> ($ROR_TASK) Publishing artifacts" && bin/build.sh 
 
       env: 
@@ -190,3 +191,5 @@ stages:
        VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
        VAR_MAVEN_REPO_USER: $(MAVEN_REPO_USER)
        VAR_MAVEN_STAGING_PROFILE_ID: $(MAVEN_STAGING_PROFILE_ID)
+       VAR_GPG_PASSPHRASE: $(GPG_PASSPHRASE)
+       VAR_GPG_KEY_ID: $(GPG_KEY_ID)
