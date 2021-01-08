@@ -99,7 +99,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
       })
   }
 
-  private def xmJavaOptions() = List("-Xms512m", "-Xmx512m")
+  private def xmJavaOptions() = List("-Xms1g", "-Xmx1g")
 
   private def urandomJavaOption() = List("-Djava.security.egd=file:/dev/./urandoms")
 
