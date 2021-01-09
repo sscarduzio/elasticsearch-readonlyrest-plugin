@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration
 
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -23,19 +24,18 @@ import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
 
-class IndicesYamlLoadedAccessControlTests  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class IndicesYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
   override protected def configYaml: String =
     """
       |readonlyrest:
       |
       |  access_control_rules:
       |
-      |  - name: "Forbidden for .readonlyrest index"
+      |  - name: "Forbidden for 'test' index"
       |    type: "allow"
       |    indices:
-      |      patterns: [".readonlyrest"]
+      |      patterns: ["test"]
       |      must_involve_indices: true #( <true|false|any> normal behaviour without option = any)
       |
     """.stripMargin
@@ -44,7 +44,7 @@ class IndicesYamlLoadedAccessControlTests  extends AnyWordSpec with BaseYamlLoad
     "indices rule is defined with must_involve_indices: true flag" should {
       "allow to proceed" when {
         "it is an indices request and the requested index is on the configured list" in {
-          val request = MockRequestContext.indices.copy(filteredIndices = Set(IndexName(".readonlyrest".nonempty)))
+          val request = MockRequestContext.indices.copy(filteredIndices = Set(IndexName("test")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(_, _) => }

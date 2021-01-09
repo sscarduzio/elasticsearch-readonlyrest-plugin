@@ -47,6 +47,7 @@ trait SnapshotAndRestoreApiSuite
   private lazy val dev1SnapshotManager = new SnapshotManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SnapshotManager = new SnapshotManager(basicAuthClient("dev2", "test"))
   private lazy val dev3SnapshotManager = new SnapshotManager(basicAuthClient("dev3", "test"))
+  private lazy val dev4SnapshotManager = new SnapshotManager(basicAuthClient("dev4", "test"))
 
   "Snapshot repository management API" when {
     "user creates a repository" should {
@@ -442,6 +443,22 @@ trait SnapshotAndRestoreApiSuite
 
             result.responseCode should be (200)
             result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1))
+          }
+          "has access to index from snapshot, but _all snapshots are called" in {
+            val repositoryName = "dev4-repo"
+            adminSnapshotManager.putRepository(repositoryName).force()
+
+            val snapshotName1 = SnapshotNameGenerator.next("dev4-snap-")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName1, "index1").force()
+
+            val snapshotName2 = SnapshotNameGenerator.next("dev4-snap-")
+            adminSnapshotManager.putSnapshot(repositoryName, snapshotName2, "index2*").force()
+
+            val result = dev4SnapshotManager.getAllSnapshotsOf(repositoryName)
+
+            result.responseCode should be (200)
+            result.snapshots.map(_ ("snapshot").str) should be (List(snapshotName1, snapshotName2))
+            result.snapshots.flatMap(_ ("indices").arr.map(_.str).toList) should be (List("index1"))
           }
         }
       }

@@ -30,6 +30,7 @@ import monix.execution.atomic.Atomic
 import monix.execution.{Cancelable, Scheduler}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason
 import tech.beshu.ror.accesscontrol.factory.{AsyncHttpClientsFactory, CoreFactory, RawRorConfigBasedCoreFactory}
@@ -41,7 +42,7 @@ import tech.beshu.ror.configuration.RorProperties.RefreshInterval
 import tech.beshu.ror.configuration._
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError
 import tech.beshu.ror.configuration.loader.ConfigLoader.ConfigLoaderError._
-import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.{ConfigLoadingInterpreter, LoadRawRorConfig, LoadedRorConfig}
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.ScalaOps.value

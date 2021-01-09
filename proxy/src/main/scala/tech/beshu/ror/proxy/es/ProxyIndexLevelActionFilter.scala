@@ -105,7 +105,7 @@ object ProxyIndexLevelActionFilter {
           mode = RorMode.Proxy,
           envVarsProvider = envVarsProvider
         )
-          .start(configFile, ProxyAuditSinkService, ProxyIndexJsonContentService)
+          .start(configFile, new ProxyAuditSinkService(esClient), ProxyIndexJsonContentService)
       )
       _ = RorInstanceSupplier.update(instance)
     } yield new ProxyIndexLevelActionFilter(instance, esClient, threadPool)

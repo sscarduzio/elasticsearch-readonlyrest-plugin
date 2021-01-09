@@ -17,7 +17,6 @@
 package tech.beshu.ror.utils
 
 import java.nio.file.Path
-import java.security.{KeyPairGenerator, PrivateKey, PublicKey, SecureRandom}
 import java.time.Duration
 import java.util.Base64
 
@@ -176,14 +175,6 @@ object TestsUtils {
 
   implicit class NonEmptyListOps[T](val value: T) extends AnyVal {
     def nel: NonEmptyList[T] = NonEmptyList.one(value)
-  }
-
-  def generateRsaRandomKeys: (PublicKey, PrivateKey) = {
-    val keyGen = KeyPairGenerator.getInstance("RSA")
-    val random = SecureRandom.getInstance("SHA1PRNG", "SUN")
-    keyGen.initialize(2048, random)
-    val pair = keyGen.generateKeyPair()
-    (pair.getPublic, pair.getPrivate)
   }
 
   def rorConfigFromUnsafe(yamlContent: String): RawRorConfig = {

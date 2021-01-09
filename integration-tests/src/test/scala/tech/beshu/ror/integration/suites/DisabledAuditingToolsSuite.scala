@@ -21,7 +21,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait DisabledAuditingToolsSuite
@@ -33,13 +33,13 @@ trait DisabledAuditingToolsSuite
 
   override implicit val rorConfigFileName = "/disabled_auditing_tools/readonlyrest.yml"
 
-  override def nodeDataInitializer = Some(DisabledAuditingToolsSuite.nodeDataInitializer())
+  override val nodeDataInitializer = Some(DisabledAuditingToolsSuite.nodeDataInitializer())
 
-  private lazy val auditIndexManager = new AuditIndexManagerJ(basicAuthClient("admin", "container"), "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManager(adminClient, "audit_index")
 
-  override def beforeEach() = {
+  override def beforeEach(): Unit = {
     super.beforeEach()
-    auditIndexManager.cleanAuditIndex
+    auditIndexManager.truncate
   }
 
   "Request" should {
@@ -49,24 +49,21 @@ trait DisabledAuditingToolsSuite
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
 
-        val auditResponse = auditIndexManager.auditIndexSearch()
-        auditResponse.isSuccess shouldBe false
+        auditIndexManager.getEntries.responseCode should be (404)
       }
       "rule 2 is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "dev"))
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
-        val auditResponse = auditIndexManager.auditIndexSearch()
-        auditResponse.isSuccess shouldBe false
+        auditIndexManager.getEntries.responseCode should be (404)
       }
       "no rule is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "wrong"))
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
-        val auditResponse = auditIndexManager.auditIndexSearch()
-        auditResponse.isSuccess shouldBe false
+        auditIndexManager.getEntries.responseCode should be (404)
       }
     }
   }

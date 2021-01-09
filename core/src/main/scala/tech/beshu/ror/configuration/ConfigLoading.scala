@@ -17,8 +17,9 @@
 package tech.beshu.ror.configuration
 
 import cats.free.Free
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
-import tech.beshu.ror.configuration.loader.{LoadedRorConfig, Path, RorConfigurationIndex}
+import tech.beshu.ror.configuration.loader.{LoadedRorConfig, Path}
 
 import scala.language.higherKinds
 

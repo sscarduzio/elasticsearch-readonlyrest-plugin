@@ -18,10 +18,13 @@ package tech.beshu.ror.audit
 
 import java.time.Instant
 
+import org.json.JSONObject
+
 trait AuditRequestContext {
 
   def timestamp: Instant
   def id: String
+  def correlationId: String
   def indices: Set[String]
   def action: String
   @deprecated("Use requestHeaders instead", "1.22.0")
@@ -41,4 +44,5 @@ trait AuditRequestContext {
   def involvesIndices: Boolean
   def attemptedUserName: Option[String]
   def rawAuthHeader: Option[String]
+  def generalAuditEvents: JSONObject
 }

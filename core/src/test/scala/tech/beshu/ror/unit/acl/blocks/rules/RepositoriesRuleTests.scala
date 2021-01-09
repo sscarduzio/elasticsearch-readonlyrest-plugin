@@ -42,7 +42,7 @@ class RepositoriesRuleTests extends AnyWordSpec with Inside {
       "request action doesn't contain 'repository'" in {
         assertMatchRule(
           configuredRepositories = NonEmptySet.one(AlreadyResolved(RepositoryName("repository1".nonempty).nel)),
-          requestAction = Action("cluster:admin/rradmin/refreshsettings"),
+          requestAction = Action("cluster:ror/user_metadata/get"),
           requestRepositories = Set(RepositoryName("repository1".nonempty))
         ) {
           _.repositories should be(Set(RepositoryName("repository1".nonempty)))

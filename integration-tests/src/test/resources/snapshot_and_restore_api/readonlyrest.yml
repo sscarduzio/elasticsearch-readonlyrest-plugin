@@ -27,3 +27,8 @@ readonlyrest:
 
     - name: "dev3 block"
       auth_key: dev3:test
+
+    - name: "dev4 block"
+      auth_key: dev4:test
+      indices: ["index1*"]
+      repositories: ["dev4-repo"]

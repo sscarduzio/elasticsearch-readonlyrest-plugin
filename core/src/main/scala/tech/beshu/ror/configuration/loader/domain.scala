@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.configuration.loader
 
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 
 import scala.language.implicitConversions
 
@@ -38,4 +38,4 @@ object LoadedRorConfig {
   case object IndexNotExist  extends LoadingIndexError
 }
 final case class Path(value: String) extends AnyVal
-final case class RorConfigurationIndex(index: IndexName) extends AnyVal
+

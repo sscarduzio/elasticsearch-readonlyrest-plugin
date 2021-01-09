@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.logging
 
 import java.time._
-import java.time.format.DateTimeFormatter
 
 import cats.data.{NonEmptyList, NonEmptySet}
 import com.softwaremill.sttp.Method
@@ -31,6 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.Block.{Policy, Verbosity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
+import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
 import tech.beshu.ror.accesscontrol.logging.ResponseContext._
 import tech.beshu.ror.accesscontrol.orders._
@@ -48,7 +48,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
       "request was allowed and verbosity level was ERROR" in {
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
-            DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
+            RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer
           ),
           mock[AuditSinkService]
@@ -58,7 +58,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
       "custom serializer throws exception" in {
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
-            DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
+            RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             throwingAuditLogSerializer
           ),
           mock[AuditSinkService]
@@ -75,7 +75,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
 
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
-            DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
+            RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer
           ),
           auditSink
@@ -89,7 +89,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
 
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
-            DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
+            RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer
           ),
           auditSink
@@ -116,7 +116,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
 
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
-            DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
+            RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer
           ),
           auditSink
@@ -133,7 +133,7 @@ class AuditingToolTests extends AnyWordSpec with MockFactory {
 
         val auditingTool = new AuditingTool(
           AuditingTool.Settings(
-            DateTimeFormatter.ofPattern("'test_'yyyy-MM-dd").withZone(ZoneId.of("UTC")),
+            RorAuditIndexTemplate.from("'test_'yyyy-MM-dd").right.get,
             new DefaultAuditLogSerializer
           ),
           auditSink

@@ -34,6 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefin
 import tech.beshu.ror.accesscontrol.domain.Header
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
+import tech.beshu.ror.accesscontrol.domain.{Header, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
@@ -46,7 +47,6 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResul
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps, _}
 import tech.beshu.ror.accesscontrol.utils._
 import tech.beshu.ror.boot.RorMode
-import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
@@ -99,7 +99,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   }
 
   private def createFrom(settingsJson: Json,
-                         rorIndexNameConfiguration: RorConfigurationIndex,
+                         rorConfigurationIndex: RorConfigurationIndex,
                          httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider) = {
     val decoder = for {
@@ -110,10 +110,15 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
             .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
         } else {
           for {
-            globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorMode))
-            aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, rorIndexNameConfiguration, globalSettings)
-            (acl, context) = aclAndContext
             auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
+          globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(
+            rorMode,
+            rorConfigurationIndex,
+            auditingTools.map(_.rorAuditIndexTemplate)
+          ))
+          aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, rorConfigurationIndex, globalSettings)
+            (acl, context) = aclAndContext
+
           } yield CoreSettings(
             aclEngine = acl,
             aclStaticContext = context,

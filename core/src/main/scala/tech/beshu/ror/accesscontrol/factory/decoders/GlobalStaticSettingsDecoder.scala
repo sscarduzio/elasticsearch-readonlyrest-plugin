@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.factory.decoders
 
 import io.circe.Decoder
+import tech.beshu.ror.accesscontrol.domain.{RorAuditIndexTemplate, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
@@ -26,7 +27,9 @@ import tech.beshu.ror.boot.RorMode
 
 object GlobalStaticSettingsDecoder {
 
-  def instance(rorMode: RorMode): Decoder[GlobalSettings] = {
+  def instance(rorMode: RorMode,
+               rorConfigurationIndex: RorConfigurationIndex,
+               rorAuditIndexTemplate: Option[RorAuditIndexTemplate]): Decoder[GlobalSettings] = {
     Decoder
       .instance { c =>
         for {
@@ -38,7 +41,9 @@ object GlobalStaticSettingsDecoder {
           basicAuthPrompt.getOrElse(true),
           forbiddenMessage.getOrElse("forbidden"),
           flsEngine,
+          rorConfigurationIndex,
           caseMapping,
+          rorAuditIndexTemplate
         )
       }
   }

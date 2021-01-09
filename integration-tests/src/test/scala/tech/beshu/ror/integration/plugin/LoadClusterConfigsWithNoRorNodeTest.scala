@@ -40,6 +40,7 @@ final class LoadClusterConfigsWithNoRorNodeTest
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/admin_api/readonlyrest.yml"
+
   private val readonlyrestIndexName: String = ".readonlyrest"
 
   private lazy val ror1_1Node = container.nodes.head

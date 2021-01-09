@@ -43,8 +43,8 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
@@ -79,7 +79,7 @@ class JwtAuthRuleTests
         }
       }
       "token has valid RS256 signature" in {
-        val (pub, secret) = TestsUtils.generateRsaRandomKeys
+        val (pub, secret) = Random.generateRsaRandomKeys
         val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test").asJava)
         assertMatchRule(
           configuredJwtDef = JwtDef(
@@ -375,8 +375,8 @@ class JwtAuthRuleTests
         )
       }
       "token has invalid RS256 signature" in {
-        val (pub, _) = TestsUtils.generateRsaRandomKeys
-        val (_, secret) = TestsUtils.generateRsaRandomKeys
+        val (pub, _) = Random.generateRsaRandomKeys
+        val (_, secret) = Random.generateRsaRandomKeys
         assertNotMatchRule(
           configuredJwtDef = JwtDef(
             JwtDef.Name("test".nonempty),

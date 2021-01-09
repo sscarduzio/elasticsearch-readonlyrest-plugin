@@ -22,8 +22,8 @@ import java.time.format.DateTimeFormatter
 import org.json.JSONObject
 import tech.beshu.ror.audit.AuditResponseContext._
 import tech.beshu.ror.audit.{AuditLogSerializer, AuditRequestContext, AuditResponseContext}
-import scala.collection.JavaConverters._
 
+import scala.collection.JavaConverters._
 import scala.concurrent.duration.FiniteDuration
 
 class DefaultAuditLogSerializer extends AuditLogSerializer {
@@ -60,6 +60,7 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       .put("id", requestContext.id)
       .put("final_state", finalState)
       .put("@timestamp", timestampFormatter.format(requestContext.timestamp))
+      .put("correlation_id", requestContext.correlationId)
       .put("processingMillis", duration.toMillis)
       .put("error_type", error.map(_.getClass.getSimpleName).orNull)
       .put("error_message", error.map(_.getMessage).orNull)
@@ -78,5 +79,21 @@ class DefaultAuditLogSerializer extends AuditLogSerializer {
       .put("action", requestContext.action)
       .put("indices", if (requestContext.involvesIndices) requestContext.indices.toList.asJava else List.empty.asJava)
       .put("acl_history", requestContext.history)
+      .mergeWith(requestContext.generalAuditEvents)
+  }
+
+  private implicit class JsonObjectOps(val mainJson: JSONObject) {
+    def mergeWith(secondaryJson: JSONObject): JSONObject = {
+      jsonKeys(secondaryJson).foldLeft(mainJson) {
+        case (json, name) if !json.has(name) =>
+          json.put(name, secondaryJson.get(name))
+        case (json, _) =>
+          json
+      }
+    }
+
+    private def jsonKeys(json: JSONObject) = {
+      Option(JSONObject.getNames(json)).toList.flatten
+    }
   }
 }

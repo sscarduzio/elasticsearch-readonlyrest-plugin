@@ -20,10 +20,8 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.CatManager
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator, SingletonEsContainer}
-import tech.beshu.ror.utils.elasticsearch.ClusterManager
+import tech.beshu.ror.utils.elasticsearch.CatManager
 import ujson.Str
 
 trait CatApiSuite

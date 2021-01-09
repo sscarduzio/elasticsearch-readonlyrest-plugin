@@ -17,12 +17,14 @@
 package tech.beshu.ror.unit.acl.blocks
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
+import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
@@ -32,7 +34,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex, User}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.{FlsEngine, UsernameCaseMapping}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
 import tech.beshu.ror.utils.TestsUtils._
@@ -46,6 +50,9 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
   "A block execution result" should {
     "be mismatched and contain all history, up to mismatched rule" when {
       "one of rules doesn't match" in {
+        def withLoggedUser: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
+          _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
+
         val blockName = Block.Name("test_block")
         val block = new Block(
           name = blockName,
@@ -53,7 +60,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
           verbosity = Block.Verbosity.Info,
           rules = NonEmptyList.fromListUnsafe(
             passingRule("r1") ::
-              passingRule("r2", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty))))) ::
+              passingRule("r2", withLoggedUser) ::
               notPassingRule("r3") ::
               passingRule("r4") :: Nil
           )
@@ -64,14 +71,11 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
         inside(result) {
           case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
             historyItems should have size 3
-            historyItems(0).rule should be(Rule.Name("r1"))
-            historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
-            historyItems(1).rule should be(Rule.Name("r2"))
-            historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
-            historyItems(2).rule should be(Rule.Name("r3"))
-            historyItems(2).result shouldBe a[RuleResult.Rejected[_]]
+            historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Fulfilled(requestContext.initialBlockContext)))
+            historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Fulfilled(withLoggedUser(requestContext.initialBlockContext))))
+            historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Rejected()))
 
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty)))) {
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("user1")))) {
               blockContext
             }
         }
@@ -92,12 +96,9 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
         inside(result) {
           case (ExecutionResult.Mismatched(_), History(`blockName`, historyItems, blockContext)) =>
             historyItems should have size 3
-            historyItems(0).rule should be(Rule.Name("r1"))
-            historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
-            historyItems(1).rule should be(Rule.Name("r2"))
-            historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
-            historyItems(2).rule should be(Rule.Name("r3"))
-            historyItems(2).result shouldBe a[RuleResult.Rejected[_]]
+            historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Fulfilled(requestContext.initialBlockContext)))
+            historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Fulfilled(requestContext.initialBlockContext)))
+            historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Rejected()))
 
             blockContext.userMetadata should be(UserMetadata.empty)
             blockContext.filteredIndices should be(Set.empty)
@@ -121,12 +122,9 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
           historyItems should have size 3
-          historyItems(0).rule should be(Rule.Name("r1"))
-          historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
-          historyItems(1).rule should be(Rule.Name("r2"))
-          historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
-          historyItems(2).rule should be(Rule.Name("r3"))
-          historyItems(2).result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Fulfilled(requestContext.initialBlockContext)))
+          historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Fulfilled(requestContext.initialBlockContext)))
+          historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Fulfilled(requestContext.initialBlockContext)))
 
           blockContext.userMetadata should be(UserMetadata.empty)
           blockContext.filteredIndices should be(Set.empty)
@@ -134,15 +132,21 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
       }
     }
     "be matched and contain all rules history from the block with modified block context" in {
+      def withLoggedUser: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
+        _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
+
+      def withIndices: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
+        _.withIndices(Set(IndexName("idx1")), Set(IndexName("idx*")))
+
       val blockName = Block.Name("test_block")
       val block = new Block(
         name = blockName,
         policy = Block.Policy.Allow,
         verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromListUnsafe(
-          passingRule("r1", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty))))) ::
+          passingRule("r1", withLoggedUser) ::
             passingRule("r2") ::
-            passingRule("r3", _.withIndices(Set(IndexName("idx1".nonempty)), Set(IndexName("idx*".nonempty)))) ::
+            passingRule("r3", withIndices) ::
             Nil
         )
       )
@@ -152,24 +156,26 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
           historyItems should have size 3
-          historyItems(0).rule should be(Rule.Name("r1"))
-          historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
-          historyItems(1).rule should be(Rule.Name("r2"))
-          historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
-          historyItems(2).rule should be(Rule.Name("r3"))
-          historyItems(2).result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Fulfilled(withLoggedUser(requestContext.initialBlockContext))))
+          historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Fulfilled(withLoggedUser(requestContext.initialBlockContext))))
+          historyItems(2) should be(RuleHistoryItem(Rule.Name("r3"), Fulfilled(withLoggedUser(withIndices(requestContext.initialBlockContext)))))
 
           blockContext.userMetadata should be(
             UserMetadata
               .empty
-              .withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty)))
+              .withLoggedUser(DirectlyLoggedUser(User.Id("user1")))
           )
-          blockContext.filteredIndices should be(Set(IndexName("idx1".nonempty)))
-          blockContext.allAllowedIndices should be(Set(IndexName("idx*".nonempty)))
+          blockContext.filteredIndices should be(Set(IndexName("idx1")))
+          blockContext.allAllowedIndices should be(Set(IndexName("idx*")))
           blockContext.responseHeaders should be(Set.empty)
       }
     }
     "be matched and contain all rules history from the block with overwritten logged user" in {
+      def withLoggedUser1: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
+        _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))
+      def withLoggedUser2: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext =
+        _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2"))))
+
       val blockName = Block.Name("test_block")
       val block = new Block(
         name = blockName,
@@ -187,10 +193,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
       inside(result) {
         case (ExecutionResult.Matched(_, _), History(`blockName`, historyItems, blockContext)) =>
           historyItems should have size 2
-          historyItems(0).rule should be(Rule.Name("r1"))
-          historyItems(0).result shouldBe a[RuleResult.Fulfilled[_]]
-          historyItems(1).rule should be(Rule.Name("r2"))
-          historyItems(1).result shouldBe a[RuleResult.Fulfilled[_]]
+          historyItems(0) should be(RuleHistoryItem(Rule.Name("r1"), Fulfilled(withLoggedUser1(requestContext.initialBlockContext))))
+          historyItems(1) should be(RuleHistoryItem(Rule.Name("r2"), Fulfilled(withLoggedUser2(requestContext.initialBlockContext))))
 
           blockContext.userMetadata should be(
             UserMetadata
@@ -211,6 +215,7 @@ object BlockTests extends MockFactory {
                           modifyBlockContext: GeneralIndexRequestBlockContext => GeneralIndexRequestBlockContext = identity) =
     new RegularRule {
       override val name: Rule.Name = Rule.Name(ruleName)
+
       override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
         BlockContextUpdater[B] match {
           case GeneralIndexRequestBlockContextUpdater => Task.now(Fulfilled(modifyBlockContext(blockContext)))
@@ -220,13 +225,24 @@ object BlockTests extends MockFactory {
 
   private def notPassingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
+
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       Task.now(Rejected())
   }
 
   private def throwingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
+
     override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       Task.fromTry(Failure(new Exception("sth went wrong")))
   }
+
+  private val defaultGlobalSettings = GlobalSettings(
+    showBasicAuthPrompt = true,
+    forbiddenRequestMessage = "forbidden",
+    flsEngine = FlsEngine.ESWithLucene,
+    configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
+    usernameCaseMapping = UsernameCaseMapping.CaseSensitive,
+    indexAuditTemplate = None,
+  )
 }

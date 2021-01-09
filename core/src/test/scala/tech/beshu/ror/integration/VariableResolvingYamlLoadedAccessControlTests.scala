@@ -28,15 +28,15 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, FilterableRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockContext, GeneralIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
@@ -44,7 +44,7 @@ import scala.collection.JavaConverters._
 class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
-  private lazy val (pub, secret) = TestsUtils.generateRsaRandomKeys
+  private lazy val (pub, secret) = Random.generateRsaRandomKeys
 
   override protected def configYaml: String =
     s"""

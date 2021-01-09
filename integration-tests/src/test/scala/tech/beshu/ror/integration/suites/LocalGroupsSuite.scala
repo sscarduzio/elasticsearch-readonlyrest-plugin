@@ -21,6 +21,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{RorApiManager, SearchManagerJ}
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.Str
 
 import scala.collection.JavaConverters._
@@ -29,7 +30,8 @@ import scala.collection.JavaConverters._
 trait LocalGroupsSuite
   extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
-    with Matchers {
+    with Matchers
+    with CustomScalaTestMatchers {
   this: EsContainerCreator =>
 
   private val matchingEndpoint = "/_cluster/state"
@@ -68,13 +70,14 @@ trait LocalGroupsSuite
     val response = userMetadataManager.fetchMetadata()
 
     response.responseCode should be(200)
-    response.responseJson.obj.size should be(6)
+    response.responseJson.obj.size should be(7)
     response.responseJson("x-ror-username").str should be("user")
     response.responseJson("x-ror-current-group").str should be("a_testgroup")
     response.responseJson("x-ror-available-groups").arr.toList should be(List(Str("a_testgroup"), Str("foogroup")))
     response.responseJson("x-ror-kibana_index").str should be(".kibana_user")
     response.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("timelion")))
     response.responseJson("x-ror-kibana_access").str should be("admin")
+    response.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
   }
 
   "identify retrieval with preferred group" in {
@@ -83,12 +86,13 @@ trait LocalGroupsSuite
     val response = userMetadataManager.fetchMetadata(preferredGroup = "foogroup")
 
     response.responseCode should be(200)
-    response.responseJson.obj.size should be(6)
+    response.responseJson.obj.size should be(7)
     response.responseJson("x-ror-username").str should be("user")
     response.responseJson("x-ror-current-group").str should be("foogroup")
     response.responseJson("x-ror-available-groups").arr.toList should be(List(Str("a_testgroup"), Str("foogroup")))
     response.responseJson("x-ror-kibana_index").str should be(".kibana_foogroup")
     response.responseJson("x-ror-kibana-hidden-apps").arr.toList should be(List(Str("foo:app")))
     response.responseJson("x-ror-kibana_access").str should be("admin")
+    response.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
   }
 }

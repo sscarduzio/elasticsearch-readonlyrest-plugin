@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.{Group, Header, LoggedUser, User}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -71,7 +71,6 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
       NonEmptyList.of(
         new RegularRule {
           override val name: Rule.Name = Rule.Name("auth")
-
           override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
             Task.now(Rule.RuleResult.Fulfilled(blockContext.withUserMetadata(_ => userMetadata)))
           }
@@ -88,11 +87,19 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
     val rc = mock[MetadataRequestContext]
     (rc.initialBlockContext _)
       .expects()
-      .returning(CurrentUserMetadataRequestBlockContext(mock[RequestContext], UserMetadata.empty, Set.empty, List.empty))
+      .returning(CurrentUserMetadataRequestBlockContext(rc, UserMetadata.empty, Set.empty, List.empty))
       .anyNumberOfTimes()
     (rc.headers _)
       .expects()
       .returning(Set(new Header(Header.Name("x-ror-current-group".nonempty), preferredGroup.nonempty)))
+    (rc.action _)
+      .expects()
+      .returning(Action.rorUserMetadataAction)
+      .anyNumberOfTimes()
+    (rc.isReadOnlyRequest _)
+      .expects()
+      .returning(false)
+      .anyNumberOfTimes()
     rc
   }
 

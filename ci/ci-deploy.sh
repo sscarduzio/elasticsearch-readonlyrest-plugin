@@ -15,13 +15,17 @@
 # Ultimately, I'm just going to commit changes to the build.gradle and this thing tags and uploads where necessary.
 
 # Translate Azure to Travis env vars
-if [ -z "$TRAVIS_BRANCH" ]; then
-  export TRAVIS_BUILD_NUMBER="$BUILD_BUILDNUMBER"
-  export TRAVIS_BRANCH=$SYSTEM_PULLREQUEST_SOURCEBRANCH
-  if [[ $BUILD_REASON == "PullRequest" ]]; then 
-    export TRAVIS_PULL_REQUEST="true"
-  fi
+
+export TRAVIS_BRANCH=$(git symbolic-ref --short -q HEAD)
+
+if [ -nz ${BUILD_SOURCEBRANCHNAME:+x} ]
+then
+ export TRAVIS=true
+ export TRAVIS_BRANCH=$BUILD_SOURCEBRANCHNAME
+ export TRAVIS_BUILD_NUMBER="$BUILD_BUILDNUMBER"
 fi
+echo ">> FOUND CI PARAMETERS: task? $ROR_TASK; is CI? $TRAVIS; branch? $TRAVIS_BRANCH"
+
 
 if [ ! -z "$TRAVIS_TAG" ]; then
   echo "Don't try to tag in response on a tag event"

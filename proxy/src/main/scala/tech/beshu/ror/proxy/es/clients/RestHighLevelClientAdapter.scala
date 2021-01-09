@@ -6,6 +6,7 @@ package tech.beshu.ror.proxy.es.clients
 import monix.eval.Task
 import org.apache.http.entity.{ContentType, InputStreamEntity}
 import org.elasticsearch.ElasticsearchStatusException
+import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.cluster.health.{ClusterHealthRequest, ClusterHealthResponse}
 import org.elasticsearch.action.admin.cluster.remote.{RemoteInfoResponse, RemoteInfoRequest => AdminRemoteInfoRequest}
 import org.elasticsearch.action.admin.cluster.repositories.cleanup.{CleanupRepositoryRequest, CleanupRepositoryResponse}
@@ -59,9 +60,11 @@ import org.elasticsearch.client._
 import org.elasticsearch.client.cluster.RemoteInfoRequest
 import org.elasticsearch.client.core.CountRequest
 import org.elasticsearch.client.indices._
+import org.elasticsearch.common.xcontent.ToXContent
 import org.elasticsearch.index.reindex.{BulkByScrollResponse, DeleteByQueryRequest, ReindexRequest, UpdateByQueryRequest}
 import org.elasticsearch.rest.RestRequest
 import org.elasticsearch.script.mustache.{MultiSearchTemplateRequest, MultiSearchTemplateResponse, SearchTemplateRequest, SearchTemplateResponse}
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventRequest, RRAuditEventResponse}
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter._
 import tech.beshu.ror.proxy.es.clients.actions.ResolveIndex._
@@ -73,6 +76,9 @@ import scala.collection.JavaConverters._
 // todo: neat response handling when ES is not available (client throws connection error or times out)
 // todo: use client async api
 class RestHighLevelClientAdapter(client: RestHighLevelClient) {
+
+  def putRorAuditEvent(request: RRAuditEventRequest): Task[RRAuditEventResponse] =
+    Task.now(new RRAuditEventResponse())
 
   def generic(request: ByProxyProcessedRequest): Task[ByProxyProcessedResponse] = {
     executeAsync {

@@ -16,7 +16,7 @@ import org.elasticsearch.search.SearchModule
 import tech.beshu.ror.proxy.RorProxy
 import tech.beshu.ror.proxy.es.EsRestServiceSimulator.ProcessingResult
 import tech.beshu.ror.proxy.es.{CreateEsHttpChannel, CreateEsHttpRequest, EsRestServiceSimulator}
-import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.proxy.utils.TwitterFutureOps._
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps

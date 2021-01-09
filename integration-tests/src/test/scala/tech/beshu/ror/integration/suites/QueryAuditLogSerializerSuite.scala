@@ -22,8 +22,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{AuditIndexManagerJ, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
+import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.CustomScalaTestMatchers
 import ujson.Str
 
 trait QueryAuditLogSerializerSuite
@@ -31,7 +32,8 @@ trait QueryAuditLogSerializerSuite
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with BeforeAndAfterEach
-    with Matchers {
+    with Matchers
+    with CustomScalaTestMatchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/query_audit_log_serializer/readonlyrest.yml"
@@ -46,11 +48,11 @@ trait QueryAuditLogSerializerSuite
     )
   )
 
-  private lazy val auditIndexManager = new AuditIndexManagerJ(basicAuthClient("admin", "container"), "audit_index")
+  private lazy val auditIndexManager = new AuditIndexManager(adminClient, "audit_index")
 
-  override def beforeEach() = {
+  override def beforeEach(): Unit = {
     super.beforeEach()
-    auditIndexManager.cleanAuditIndex
+    auditIndexManager.truncate
   }
 
   "Request" should {
@@ -62,14 +64,14 @@ trait QueryAuditLogSerializerSuite
 
         assertEquals(403, result.responseCode)
         result.responseJson.obj.size should be(1)
-        val auditEntries = auditIndexManager.auditIndexSearch().getEntries
-        auditEntries.size shouldBe 1
 
-        val firstEntry = auditEntries.get(0)
-        firstEntry.get("user") should be("user2")
-        firstEntry.get("final_state") shouldBe "FORBIDDEN"
-        firstEntry.get("block").asInstanceOf[String] should include("""default""")
-        firstEntry.get("content") shouldBe ""
+        val auditEntries = auditIndexManager.getEntries.jsons
+        auditEntries.size shouldBe 1
+        val firstEntry = auditEntries(0)
+        firstEntry("user").str should be("user2")
+        firstEntry("final_state").str shouldBe "FORBIDDEN"
+        firstEntry("block").str should include("""default""")
+        firstEntry("content").str shouldBe ""
       }
       "user metadata context" in {
         val user1MetadataManager = new RorApiManager(authHeader("X-Auth-Token", "user1-proxy-id"))
@@ -77,45 +79,46 @@ trait QueryAuditLogSerializerSuite
         val result = user1MetadataManager.fetchMetadata()
 
         assertEquals(200, result.responseCode)
-        result.responseJson.obj.size should be(3)
+        result.responseJson.obj.size should be(4)
         result.responseJson("x-ror-username").str should be("user1-proxy-id")
         result.responseJson("x-ror-current-group").str should be("group1")
         result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
-        val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+        result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
+
+        val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
 
-        val firstEntry = auditEntries.get(0)
-        firstEntry.get("user") should be("user1-proxy-id")
-        firstEntry.get("final_state") shouldBe "ALLOWED"
-        firstEntry.get("block").asInstanceOf[String] should include("""name: 'Allowed only for group1""")
-        firstEntry.get("content") shouldBe ""
+        val firstEntry = auditIndexManager.getEntries.jsons(0)
+        firstEntry("user").str should be("user1-proxy-id")
+        firstEntry("final_state").str shouldBe "ALLOWED"
+        firstEntry("block").str should include("""name: 'Allowed only for group1'""")
+        firstEntry("content").str shouldBe ""
       }
       "rule 1 is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "dev"))
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 200
 
-        val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+        val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
 
-        val firstEntry = auditEntries.get(0)
-        firstEntry.get("user") should be ("user")
-        firstEntry.get("final_state") shouldBe "ALLOWED"
-        firstEntry.get("block").asInstanceOf[String].contains("name: 'Rule 1'") shouldBe true
-        firstEntry.get("content") shouldBe ""
+        val firstEntry = auditEntries(0)
+        firstEntry("user").str should be ("user")
+        firstEntry("final_state").str shouldBe "ALLOWED"
+        firstEntry("block").str should include ("name: 'Rule 1'")
+        firstEntry("content").str shouldBe ""
       }
-
       "no rule is matching" in {
         val indexManager = new IndexManager(basicAuthClient("user", "wrong"))
         val response = indexManager.getIndex("twitter")
         response.responseCode shouldBe 403
 
-        val auditEntries = auditIndexManager.auditIndexSearch().getEntries
+        val auditEntries = auditIndexManager.getEntries.jsons
         auditEntries.size shouldBe 1
 
-        val firstEntry = auditEntries.get(0)
-        firstEntry.get("final_state") shouldBe "FORBIDDEN"
-        firstEntry.get("content") shouldBe ""
+        val firstEntry = auditEntries(0)
+        firstEntry("final_state").str shouldBe "FORBIDDEN"
+        firstEntry("content").str shouldBe ""
       }
     }
     "not be audited" when {
@@ -124,8 +127,8 @@ trait QueryAuditLogSerializerSuite
         val response = indexManager.getIndex("facebook")
         response.responseCode shouldBe 200
 
-        val auditEntries = auditIndexManager.auditIndexSearch().getEntries
-        auditEntries.size shouldBe 0
+        val auditEntriesResponse = auditIndexManager.getEntries
+        auditEntriesResponse.responseCode should be (404)
       }
     }
   }

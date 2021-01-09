@@ -4,6 +4,16 @@ set -xe
 
 echo ">>> ($0) RUNNING CONTINUOUS INTEGRATION"
 
+export TRAVIS_BRANCH=$(git symbolic-ref --short -q HEAD)
+
+if [ "$BUILD_SOURCEBRANCHNAME" ]
+then
+ export TRAVIS=true
+ export TRAVIS_BRANCH=$BUILD_SOURCEBRANCHNAME
+fi
+echo ">> FOUND BUILD PARAMETERS: task? $ROR_TASK; is CI? $TRAVIS; branch? $TRAVIS_BRANCH"
+
+
 # Log file friendly Gradle output
 export TERM=dumb
 
@@ -251,10 +261,9 @@ if [[ -z $TRAVIS ]] ||  [[ $ROR_TASK == "package_es5xx" ]]; then
 
 fi
 
-if [[ $ROR_TASK == "publish_artifacts" ]] && ( [[ $TRAVIS_BRANCH == "master" ]] || [[ $TRAVIS_BRANCH == "develop" ]]) ; then
+if [[ $ROR_TASK == "publish_artifacts" ]] && [[ $TRAVIS_BRANCH == "master" ]] ; then
 
-    # only try to decode secret from Travis if it's not present
-    [[ -e .travis/secret.pgp ]] || openssl aes-256-cbc -K $encrypted_31be120daa3b_key -iv $encrypted_31be120daa3b_iv -in .travis/secret.pgp.enc -out .travis/secret.pgp -d
+    # .travis/secret.pgp is downloaded via Azure secret files, see azure-pipelines.yml
 
     CURRENT_PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
     PUBLISHED_PLUGIN_VER=$(awk -F= '$1=="publishedPluginVersion" {print $2}' gradle.properties)
@@ -267,4 +276,3 @@ if [[ $ROR_TASK == "publish_artifacts" ]] && ( [[ $TRAVIS_BRANCH == "master" ]] 
       echo ">>> Skipping publishing audit module artifacts"
     fi
 fi
-

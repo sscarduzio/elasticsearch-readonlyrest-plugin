@@ -20,17 +20,16 @@ import java.time.Clock
 
 import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.matchers.should.Matchers.{a, _}
+import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside, Suite}
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.{CoreSettings, HttpClientsFactory, RawRorConfigBasedCoreFactory}
 import tech.beshu.ror.boot.RorMode
-import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.mocks.MockHttpClientsFactory
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsPropertiesProvider
