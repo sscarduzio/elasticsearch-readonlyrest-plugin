@@ -130,7 +130,7 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
       .map { case (indexName, aliases) => IndexWithAliases(indexName, aliases) }
       .toSet
 
-  override lazy val allTemplates: Set[Template] = clusterService.allTemplates
+  override lazy val allTemplates: Set[TemplateLike] = clusterService.allTemplates
 
   override lazy val isReadOnlyRequest: Boolean = RCUtils.isReadRequest(action.value)
 

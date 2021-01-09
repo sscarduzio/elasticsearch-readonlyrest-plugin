@@ -186,15 +186,15 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
           // templates
-          case PutComposableIndexTemplateEsRequestContext(request) => regularRequestHandler.handle(request)
+          case PutComposableIndexTemplateEsRequestContext(request) =>
+            val temp = request.allTemplates
+            regularRequestHandler.handle(request)
           // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
           // rest
           case _ =>
             regularRequestHandler.handle {
-              val r = new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, clusterService, threadPool)
-              val temp = r.allTemplates
-              r // todo: clean up
+              new GeneralNonIndexEsRequestContext(esContext.actionRequest, esContext, clusterService, threadPool)
             }
         }
     }

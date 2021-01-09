@@ -22,7 +22,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateLike, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -36,7 +36,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
                                    override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def templatesFrom(request: GetIndexTemplatesRequest): Set[Template] = {
+  override protected def templatesFrom(request: GetIndexTemplatesRequest): Set[TemplateLike] = {
     val templatesFromRequest = request
       .names().asSafeSet
       .flatMap(templateFrom)
@@ -64,7 +64,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
       .map { templateName =>
         clusterService.getTemplate(templateName) match {
           case Some(template) => template
-          case None => Template(templateName, UniqueNonEmptyList.of(IndexName.wildcard))
+          case None => TemplateLike.IndexTemplate(templateName, UniqueNonEmptyList.of(IndexName.wildcard), Set.empty)
         }
       }
       .toOption

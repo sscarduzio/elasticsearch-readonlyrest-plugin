@@ -147,7 +147,7 @@ object BlockContextUpdater {
 
 
     def withTemplates(blockContext: TemplateRequestBlockContext,
-                      templates: Set[Template]): TemplateRequestBlockContext =
+                      templates: Set[TemplateLike]): TemplateRequestBlockContext =
       blockContext.copy(templates = templates)
   }
 

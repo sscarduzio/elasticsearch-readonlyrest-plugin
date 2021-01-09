@@ -54,7 +54,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .runSyncUnsafe()
   }
 
-  override def allTemplates: Set[Template] = {
+  override def allTemplates: Set[TemplateLike] = {
     client
       .getTemplate(new GetIndexTemplatesRequest())
       .map { response =>
@@ -66,7 +66,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .runSyncUnsafe()
   }
 
-  override def getTemplate(name: TemplateName): Option[Template] = {
+  override def getTemplate(name: TemplateName): Option[TemplateLike] = {
     allTemplates.find(_.name === name)
   }
 
@@ -105,7 +105,8 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       }
   }
 
-  private def templateFrom(metaData: IndexTemplateMetadata): Option[Template] = {
+  // todo:
+  private def templateFrom(metaData: IndexTemplateMetadata): Option[TemplateLike] = {
     TemplateName
       .fromString(metaData.name())
       .flatMap { templateName =>
@@ -116,7 +117,8 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
               .flatMap(IndexName.fromString)
           }
           .map { patterns =>
-            Template(templateName, patterns)
+            val aliases = metaData.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+            TemplateLike.IndexTemplate(templateName, patterns, aliases)
           }
       }
   }

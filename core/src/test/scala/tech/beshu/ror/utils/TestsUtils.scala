@@ -89,7 +89,7 @@ object TestsUtils {
                            aliases: Set[IndexName] = Set.empty,
                            repositories: Set[RepositoryName] = Set.empty,
                            snapshots: Set[SnapshotName] = Set.empty,
-                           templates: Set[Template] = Set.empty)
+                           templates: Set[TemplateLike] = Set.empty)
                           (blockContext: BlockContext): Unit = {
       blockContext.userMetadata.loggedUser should be(loggedUser)
       blockContext.userMetadata.currentGroup should be(currentGroup)

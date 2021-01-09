@@ -364,7 +364,20 @@ object domain {
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
   }
 
-  final case class Template(name: TemplateName, patterns: UniqueNonEmptyList[IndexName])
+  sealed trait TemplateLike {
+    def name: TemplateName
+  }
+  object TemplateLike {
+    final case class IndexTemplate(override val name: TemplateName,
+                                   patterns: UniqueNonEmptyList[IndexName],
+                                   aliases: Set[IndexName])
+      extends TemplateLike
+
+    final case class ComponentTemplate(override val name: TemplateName,
+                                       aliases: Set[IndexName])
+      extends TemplateLike
+  }
+
   final case class TemplateName(value: NonEmptyString)
   object TemplateName {
     def fromString(value: String): Option[TemplateName] = {

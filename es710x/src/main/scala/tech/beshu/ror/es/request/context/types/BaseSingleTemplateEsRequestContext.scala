@@ -20,7 +20,8 @@ import cats.implicits._
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.Template
+import tech.beshu.ror.accesscontrol.domain.TemplateLike
+import tech.beshu.ror.accesscontrol.domain.TemplateLike.IndexTemplate
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -31,18 +32,24 @@ abstract class BaseSingleTemplateEsRequestContext[R <: ActionRequest](actionRequ
                                                                       override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  protected def templateFrom(request: R): Template
+  protected def templateFrom(request: R): IndexTemplate
 
-  protected def update(request: R, template: Template): ModificationResult
+  protected def update(request: R, template: IndexTemplate): ModificationResult
 
-  override protected def templatesFrom(request: R): Set[Template] = Set(templateFrom(request))
+  override protected def templatesFrom(request: R): Set[TemplateLike] = Set(templateFrom(request))
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     val templates = blockContext.templates
     if (templates.tail.nonEmpty) {
       logger.warn(s"[${id.show}] Filtered result contains more than one template. First was taken. Whole set of templates [${templates.toList.mkString(",")}]")
     }
-    update(actionRequest, templates.head)
+    templates.head match {
+      case t: IndexTemplate =>
+        update(actionRequest, t)
+      case t: TemplateLike.ComponentTemplate =>
+        logger.error(s"[${id.show}] Invalid state - an IndexTemplate was expected, but was a ComponentTemplate")
+        ModificationResult.ShouldBeInterrupted
+    }
   }
 
 }

@@ -61,7 +61,11 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toMap
   }
 
-  override def allTemplates: Set[Template] = {
+  override def allTemplates: Set[TemplateLike] = {
+    templates() ++ templatesV2() ++ templatesV3()
+  }
+
+  private def templates() = {
     val templates = clusterService.state.metadata().templates()
     templates
       .keysIt().asScala
@@ -72,7 +76,39 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           indexPatterns <- UniqueNonEmptyList.fromList(
             templateMetaData.patterns().asScala.flatMap(IndexName.fromString).toList
           )
-        } yield Template(templateName, indexPatterns)
+          aliases = templateMetaData.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+        } yield TemplateLike.IndexTemplate(templateName, indexPatterns, aliases)
+      }
+      .toSet
+  }
+
+  private def templatesV2() = {
+    val templates = clusterService.state.metadata().templatesV2()
+    templates
+      .keySet().asScala
+      .flatMap { templateNameString =>
+        val templateMetaData = templates.get(templateNameString)
+        for {
+          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
+          indexPatterns <- UniqueNonEmptyList.fromList(
+            templateMetaData.indexPatterns().asScala.flatMap(IndexName.fromString).toList
+          )
+          aliases = templateMetaData.template().aliases().values().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+        } yield TemplateLike.IndexTemplate(templateName, indexPatterns, aliases)
+      }
+      .toSet
+  }
+
+  private def templatesV3() = {
+    val templates = clusterService.state.metadata().componentTemplates()
+    templates
+      .keySet().asScala
+      .flatMap { templateNameString =>
+        val templateMetaData = templates.get(templateNameString)
+        for {
+          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
+          aliases = templateMetaData.template().aliases().values().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+        } yield TemplateLike.ComponentTemplate(templateName, aliases)
       }
       .toSet
   }

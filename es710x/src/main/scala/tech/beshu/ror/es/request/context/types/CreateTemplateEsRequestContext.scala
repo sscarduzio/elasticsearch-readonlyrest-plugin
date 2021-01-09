@@ -19,7 +19,9 @@ package tech.beshu.ror.es.request.context.types
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
+import org.joor.Reflect._
+import tech.beshu.ror.accesscontrol.domain.TemplateLike.IndexTemplate
+import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -34,7 +36,7 @@ class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
                                      override val threadPool: ThreadPool)
   extends BaseSingleTemplateEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def templateFrom(request: PutIndexTemplateRequest): Template = {
+  override protected def templateFrom(request: PutIndexTemplateRequest): IndexTemplate = {
     val templateName = NonEmptyString
       .from(request.name())
       .map(TemplateName.apply)
@@ -44,11 +46,22 @@ class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
       .fromList(request.patterns().asScala.flatMap(IndexName.fromString).toList)
       .getOrElse(throw RequestSeemsToBeInvalid[PutIndexTemplateRequest]("PutIndexTemplateRequest is required to have at least one index pattern"))
 
-    Template(templateName, indexPatterns)
+    val aliases = request.aliases().asScala.flatMap(a => IndexName.fromString(a.name())).toSet
+
+    IndexTemplate(templateName, indexPatterns, aliases)
   }
 
-  override protected def update(request: PutIndexTemplateRequest, template: Template): ModificationResult = {
+  override protected def update(request: PutIndexTemplateRequest, template: IndexTemplate): ModificationResult = {
     request.patterns(template.patterns.map(_.value.value).toList.asJava)
+    on(request).call("aliases", filterRequestAliasesWith(template).asJava)
     ModificationResult.Modified
+  }
+
+  private def filterRequestAliasesWith(template: IndexTemplate) = {
+    val allowedAliasesNames = template.aliases.map(_.value.value)
+    actionRequest
+      .aliases().asScala
+      .filter(a => allowedAliasesNames.contains(a.name()))
+      .toSet
   }
 }

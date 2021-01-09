@@ -19,7 +19,8 @@ package tech.beshu.ror.es.request.context.types
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.TemplateLike.{ComponentTemplate, IndexTemplate}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -32,19 +33,21 @@ class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
                                      override val threadPool: ThreadPool)
   extends BaseSingleTemplateEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def templateFrom(request: DeleteIndexTemplateRequest): Template = {
+  override protected def templateFrom(request: DeleteIndexTemplateRequest): IndexTemplate = {
     val templateName = NonEmptyString
       .from(request.name())
       .map(TemplateName.apply)
       .getOrElse(throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("DeleteIndexTemplateRequest template name cannot be empty"))
 
     clusterService.getTemplate(templateName) match {
-      case Some(template) => template
-      case None => Template(templateName, UniqueNonEmptyList.of(IndexName.wildcard))
+      case Some(template: IndexTemplate) =>
+        template
+      case Some(_: ComponentTemplate) | None =>
+        IndexTemplate(templateName, UniqueNonEmptyList.of(IndexName.wildcard), Set.empty)
     }
   }
 
-  override protected def update(request: DeleteIndexTemplateRequest, template: Template): ModificationResult =
-  // nothing to modify - if it was filtered, we are good
+  override protected def update(request: DeleteIndexTemplateRequest, template: IndexTemplate): ModificationResult =
+    // nothing to modify - if it was filtered, we are good
     ModificationResult.Modified
 }

@@ -16,15 +16,12 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import eu.timepit.refined.auto._
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain
-import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.TemplateLike
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class PutComposableIndexTemplateEsRequestContext(actionRequest: ActionRequest,
                                                  esContext: EsContext,
@@ -32,13 +29,16 @@ class PutComposableIndexTemplateEsRequestContext(actionRequest: ActionRequest,
                                                  override val threadPool: ThreadPool)
   extends BaseSingleTemplateEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
 
-  override protected def templateFrom(request: ActionRequest): domain.Template =
-    domain.Template(TemplateName("test"), UniqueNonEmptyList.of(IndexName.fromUnsafeString("index1")))
+//  override protected def templateFrom(request: ActionRequest): domain.TemplateLike =
+//    domain.TemplateLike(TemplateName("test"), UniqueNonEmptyList.of(IndexName.fromUnsafeString("index1")))
+//
+//  override protected def update(request: ActionRequest, template: domain.TemplateLike): ModificationResult = {
+//    val t = this.allTemplates
+//    ModificationResult.Modified
+//  }
+  override protected def templateFrom(request: ActionRequest): TemplateLike.IndexTemplate = ???
 
-  override protected def update(request: ActionRequest, template: domain.Template): ModificationResult = {
-    val t = this.allTemplates
-    ModificationResult.Modified
-  }
+  override protected def update(request: ActionRequest, template: TemplateLike.IndexTemplate): ModificationResult = ???
 }
 
 object PutComposableIndexTemplateEsRequestContext {

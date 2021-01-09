@@ -68,7 +68,7 @@ trait RequestContext {
 
   def allIndicesAndAliases: Set[IndexWithAliases]
 
-  def allTemplates: Set[Template]
+  def allTemplates: Set[TemplateLike]
 
   def isReadOnlyRequest: Boolean
 
