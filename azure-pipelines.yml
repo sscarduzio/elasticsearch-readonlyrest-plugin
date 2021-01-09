@@ -2,6 +2,7 @@ variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
+  doMvnPublish: $(isMaster)
 
 trigger:
   batch: false
@@ -155,7 +156,7 @@ stages:
 #           ROR_TASK: package_es5xx
 
 - stage: MVN_PUB
-  condition: and(succeeded(), eq(variables.isMaster, true))
+  condition: and(succeeded(), eq(variables.isMaster, true) )
   jobs:
   - job:
     steps:
@@ -163,7 +164,18 @@ stages:
       fetchDepth: 1
       clean: false
       persistCredentials: true
+
+    - script: |
+       PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
+       MVN_STATUS=$(curl --write-out '%{http_code}' --silent --output /dev/null "https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/")
+       echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS" 
+    
+    - script: |
+       echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with publishing."
+      condition: eq(200, variables.mvn_status)
+      
     - task: DownloadSecureFile@1
+      condition: eq(404, variables.mvn_status)
       name: pgp
       displayName: 'Download secret.pgp secret file'
       inputs:
@@ -176,6 +188,7 @@ stages:
         mkdir .travis
         sudo ln -s -t .travis/ $(pgp.secureFilePath)
         echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
+      condition: eq(404, variables.mvn_status)
 
     - script: |
         echo "[MVN_PUB] executing ROR_TASK=$ROR_TASK"
@@ -185,7 +198,7 @@ stages:
         export GPG_KEY_ID=$VAR_GPG_KEY_ID
         export GPG_PASSPHRASE=$VAR_GPG_PASSPHRASE
         echo ">>> ($ROR_TASK) Publishing artifacts" && bin/build.sh 
-
+      condition: eq(404, variables.mvn_status)
       env: 
        ROR_TASK: publish_artifacts
        VAR_MAVEN_REPO_PASSWORD: $(MAVEN_REPO_PASSWORD)
