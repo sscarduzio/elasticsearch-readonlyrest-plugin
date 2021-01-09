@@ -46,9 +46,9 @@ class RorKbnAuthRule(val settings: Settings)
   override val name: Rule.Name = RorKbnAuthRule.name
 
   private val parser = settings.rorKbn.checkMethod match {
-    case Hmac(rawKey) => Jwts.parser.setSigningKey(rawKey)
-    case Rsa(pubKey) => Jwts.parser.setSigningKey(pubKey)
-    case Ec(pubKey) => Jwts.parser.setSigningKey(pubKey)
+    case Hmac(rawKey) => Jwts.parserBuilder().setSigningKey(rawKey).build()
+    case Rsa(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
+    case Ec(pubKey) => Jwts.parserBuilder().setSigningKey(pubKey).build()
   }
 
   override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {

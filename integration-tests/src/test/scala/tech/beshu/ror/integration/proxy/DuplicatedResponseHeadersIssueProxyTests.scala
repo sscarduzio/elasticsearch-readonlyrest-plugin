@@ -18,6 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.DuplicatedResponseHeadersIssueSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
-import tech.beshu.ror.utils.containers.XpackSupport
 
-class DuplicatedResponseHeadersIssueProxyTests extends DuplicatedResponseHeadersIssueSuite with ProxyTestSupport with XpackSupport
+class DuplicatedResponseHeadersIssueProxyTests extends DuplicatedResponseHeadersIssueSuite with ProxyTestSupport

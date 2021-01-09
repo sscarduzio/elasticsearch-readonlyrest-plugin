@@ -106,6 +106,7 @@ class DeprecatedAuditLogSerializerAdapter[T](underlying: tech.beshu.ror.requestc
   private def toDeprecatedRequestContext(requestContext: AuditRequestContext) = {
     new RequestContextShim {
       override val getId: String = requestContext.id
+      override val getCorrelationId: String = requestContext.correlationId
       override val getIndices: util.Set[String] = requestContext.indices.asJava
       override val getTimestamp: Date = Date.from(requestContext.timestamp)
       override val getAction: String = requestContext.action

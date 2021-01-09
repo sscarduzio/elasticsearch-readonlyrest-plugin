@@ -33,7 +33,6 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.util.Try
@@ -110,7 +109,7 @@ class KibanaAccessRule(val settings: Settings)
     isTargetingKibana(requestContext, kibanaIndex) &&
       settings.access =!= ROStrict &&
       !kibanaCanBeModified &&
-      nonStrictAllowedPaths.matcher(requestContext.uriPath.value).find() &&
+      nonStrictAllowedPaths.matcher(requestContext.uriPath.value.value).find() &&
       (requestContext.action.hasPrefix("indices:data/write/") || requestContext.action.hasPrefix("indices:admin/template/put"))
   }
 

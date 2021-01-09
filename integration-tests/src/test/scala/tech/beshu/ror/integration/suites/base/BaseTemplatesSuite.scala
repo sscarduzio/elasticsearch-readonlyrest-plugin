@@ -73,7 +73,7 @@ trait BaseTemplatesSuite
 
   private def truncateIndices(): Unit = {
     val indicesManager = new IndexManager(rorContainer.nodes.head.adminClient)
-    if(indicesManager.removeAllIndices.responseCode != 200) {
+    if(indicesManager.removeAllIndices().responseCode != 200) {
       throw new IllegalStateException("Admin cannot remove all indices")
     }
   }

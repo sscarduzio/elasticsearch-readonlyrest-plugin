@@ -26,6 +26,8 @@ public interface RequestContextShim {
 
   String getId();
 
+  String getCorrelationId();
+
   Set<String> getIndices();
 
   Date getTimestamp();

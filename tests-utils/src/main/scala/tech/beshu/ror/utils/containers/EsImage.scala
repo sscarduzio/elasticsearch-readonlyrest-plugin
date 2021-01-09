@@ -68,6 +68,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
           .run("echo 'network.host: 0.0.0.0' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'cluster.name: $clusterName' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .run(s"echo 'cluster.routing.allocation.disk.threshold_enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml")
+          .runWhen(config.xPackSupport && Version.greaterOrEqualThan(esVersion, 7, 6, 0),
+            command = s"echo 'indices.lifecycle.history_index_enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
+          )
           .runWhen(Version.greaterOrEqualThan(esVersion, 7, 0, 0),
             command = s"echo 'discovery.seed_hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml",
             orElse = s"echo 'discovery.zen.ping.unicast.hosts: ${nodes.toList.mkString(",")}' >> /usr/share/elasticsearch/config/elasticsearch.yml"
@@ -96,7 +99,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
       })
   }
 
-  private def xmJavaOptions() = List("-Xms512m", "-Xmx512m")
+  private def xmJavaOptions() = List("-Xms1g", "-Xmx1g")
 
   private def urandomJavaOption() = List("-Djava.security.egd=file:/dev/./urandoms")
 

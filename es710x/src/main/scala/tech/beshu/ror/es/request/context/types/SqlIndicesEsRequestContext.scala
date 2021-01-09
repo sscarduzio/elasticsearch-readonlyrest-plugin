@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
+import cats.implicits._
 import org.elasticsearch.action.{ActionRequest, CompositeIndicesRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
@@ -30,8 +31,6 @@ import tech.beshu.ror.es.request.context.ModificationResult.{CannotModify, Modif
 import tech.beshu.ror.es.request.{FLSContextHeaderHandler, RequestSeemsToBeInvalid}
 import tech.beshu.ror.es.utils.SqlRequestHelper
 
-import scala.util.{Failure, Success}
-
 class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with CompositeIndicesRequest,
                                          esContext: EsContext,
                                          aclContext: AccessControlStaticContext,
@@ -41,37 +40,47 @@ class SqlIndicesEsRequestContext private(actionRequest: ActionRequest with Compo
 
   override protected def requestFieldsUsage: RequestFieldsUsage = RequestFieldsUsage.CannotExtractFields
 
-  private lazy val sqlIndices = SqlRequestHelper
-    .indicesFrom(actionRequest)
-    .fold(
-      ex => throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.getName}", ex),
-      identity
-    )
+  private lazy val sqlIndicesExtractResult = SqlRequestHelper.indicesFrom(actionRequest) match {
+    case result@Right(_) => result
+    case result@Left(SqlRequestHelper.IndicesError.ParsingException) => result
+    case Left(SqlRequestHelper.IndicesError.UnexpectedException(ex)) =>
+      throw RequestSeemsToBeInvalid[CompositeIndicesRequest](s"Cannot extract SQL indices from ${actionRequest.getClass.getName}", ex)
+  }
 
-  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[IndexName] =
-    sqlIndices.indices.flatMap(IndexName.fromString)
+  override protected def indicesFrom(request: ActionRequest with CompositeIndicesRequest): Set[IndexName] = {
+    sqlIndicesExtractResult.map(_.indices.flatMap(IndexName.fromString)) match {
+      case Right(indices) => indices
+      case Left(_) => Set(IndexName.wildcard)
+    }
+  }
 
   /** fixme: filter is not applied.
       If there is no way to apply filter to request (see e.g. SearchEsRequestContext),
       it can be handled just as in GET/MGET (see e.g. GetEsRequestContext) using ModificationResult.UpdateResponse.
-   **/
+    **/
   override protected def update(request: ActionRequest with CompositeIndicesRequest,
                                 indices: NonEmptyList[IndexName],
                                 filter: Option[Filter],
                                 fieldLevelSecurity: Option[FieldLevelSecurity]): ModificationResult = {
-    val indicesStrings = indices.map(_.value.value).toList.toSet
-    if (indicesStrings != sqlIndices.indices) {
-      SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings) match {
-        case Success(_) =>
+    sqlIndicesExtractResult match {
+      case Right(sqlIndices) =>
+        val indicesStrings = indices.map(_.value.value).toList.toSet
+        if (indicesStrings != sqlIndices.indices) {
+          SqlRequestHelper.modifyIndicesOf(request, sqlIndices, indicesStrings) match {
+            case Right(_) =>
+              applyFieldLevelSecurity(request, fieldLevelSecurity)
+              Modified
+            case Left(SqlRequestHelper.ModificationError.UnexpectedException(ex)) =>
+              logger.error(s"[${id.show}] Cannot modify SQL indices of incoming request", ex)
+              CannotModify
+          }
+        } else {
           applyFieldLevelSecurity(request, fieldLevelSecurity)
           Modified
-        case Failure(ex) =>
-          logger.error("Cannot modify SQL indices of incoming request", ex)
-          CannotModify
-      }
-    } else {
-      applyFieldLevelSecurity(request, fieldLevelSecurity)
-      Modified
+        }
+      case Left(_) =>
+        logger.debug(s"[${id.show}] Cannot parse SQL statement - we can pass it though, because ES is going to reject it")
+        Modified
     }
   }
 

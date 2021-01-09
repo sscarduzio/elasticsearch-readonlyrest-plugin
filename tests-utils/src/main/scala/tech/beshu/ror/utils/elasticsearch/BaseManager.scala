@@ -16,9 +16,12 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
+import java.time.Duration
+import java.util.function.BiPredicate
 import java.util
 
 import com.typesafe.scalalogging.LazyLogging
+import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.HttpUriRequest
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml
@@ -45,6 +48,26 @@ abstract class BaseManager(client: RestClient) {
       .bracket(fromResponse)
   }
 
+  protected def eventually[T <: SimpleResponse](action: => T)
+                                               (until: T => Boolean): T = {
+    val policy: RetryPolicy[T] = requestRepeatPolicy[T](shouldRepeat = until andThen(!_))
+    Failsafe
+      .`with`[T, RetryPolicy[T]](policy)
+      .get(() => action)
+  }
+
+  private def requestRepeatPolicy[T <: SimpleResponse](shouldRepeat: T => Boolean): RetryPolicy[T] = {
+    new RetryPolicy[T]()
+      .handleIf(new BiPredicate[T, Throwable] {
+        override def test(response: T, ex: Throwable): Boolean = {
+          ex != null || Try(shouldRepeat(response)).getOrElse(true)
+        }
+      })
+      .withMaxRetries(20)
+      .withDelay(Duration.ofMillis(500))
+      .withMaxDuration(Duration.ofSeconds(10))
+  }
+
   protected def additionalHeaders: Map[String, String] = Map.empty
 
 }
@@ -55,24 +78,27 @@ object BaseManager {
 
   final case class SimpleHeader(name: String, value: String)
 
-  class SimpleResponse private[elasticsearch](response: HttpResponse) {
+  class SimpleResponse private[elasticsearch](val response: HttpResponse) {
     val headers: List[SimpleHeader] = response.getAllHeaders.map(h => SimpleHeader(h.getName, h.getValue)).toList
     val responseCode: Int = response.getStatusLine.getStatusCode
     val isSuccess: Boolean = responseCode / 100 == 2
     val isForbidden: Boolean = responseCode == 401
     val isNotFound: Boolean = responseCode == 404
     val isBadRequest: Boolean = responseCode == 400
-    lazy val body: String = stringBodyFrom(response)
+    val body: String = Try(stringBodyFrom(response)).getOrElse("")
 
-    def force(): Unit = {
-      if(!isSuccess) throw new IllegalStateException(
+    def force(): this.type = {
+      if (!isSuccess) throw new IllegalStateException(
         s"Expected success but got HTTP $responseCode, body: ${Try(stringBodyFrom(response)).getOrElse("")}"
       )
+      this
     }
+
+    override def toString: String = response.toString
   }
 
   class JsonResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {
-    val responseJson: JSON = ujson.read(body)
+    lazy val responseJson: JSON = ujson.read(body)
   }
 
   class YamlMapResponse(response: HttpResponse) extends SimpleResponse(response) with LazyLogging {

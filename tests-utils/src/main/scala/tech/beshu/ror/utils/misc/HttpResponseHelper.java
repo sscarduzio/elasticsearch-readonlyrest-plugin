@@ -28,10 +28,6 @@ import java.util.Map;
 
 public class HttpResponseHelper {
 
-  public static Map<String, Object> deserializeJsonBody(HttpResponse response) {
-    return deserializeJsonBody(stringBodyFrom(response));
-  }
-
   public static Map<String, Object> deserializeJsonBody(String response) {
     Gson gson = new Gson();
     Type mapType = new TypeToken<HashMap<String, Object>>(){}.getType();

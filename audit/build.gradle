@@ -27,6 +27,7 @@ buildscript {
     dependencies {
         classpath group: 'com.github.prokod',                           name: 'gradle-crossbuild-scala',        version: '0.9.0'
         classpath group: 'io.codearte.gradle.nexus',                    name: 'gradle-nexus-staging-plugin',    version: '0.21.1'
+        classpath group: 'com.star-zero.gradle',                        name: 'githook',                        version: '1.2.1'
         classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins', name: 'license-gradle-plugin',          version: '0.15.0'
         classpath group: 'de.marcphilipp.gradle',                       name: 'nexus-publish-plugin',           version: '0.4.0'
     }
@@ -38,6 +39,7 @@ repositories {
 
 apply plugin: "com.github.hierynomus.license"
 apply plugin: 'com.github.prokod.gradle-crossbuild'
+apply plugin: "com.star-zero.gradle.githook"
 apply plugin: 'de.marcphilipp.nexus-publish'
 apply plugin: 'io.codearte.nexus-staging'
 apply plugin: 'java'
@@ -80,6 +82,14 @@ license {
     mapping {
         java = 'SLASHSTAR_STYLE'
         scala = 'SLASHSTAR_STYLE'
+    }
+}
+
+githook {
+    hooks {
+        "pre-commit" {
+            shell = "./gradlew license --rerun-tasks"
+        }
     }
 }
 

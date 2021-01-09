@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.AccessControl
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
 import tech.beshu.ror.accesscontrol.AccessControl.{RegularRequestResult, UserMetadataRequestResult, WithHistory}
 import tech.beshu.ror.accesscontrol.blocks.Block.ExecutionResult.{Matched, Mismatched}
-import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, Policy}
+import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History, HistoryItem, Policy}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.accesscontrol.request.RequestContext.Aux
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -74,7 +75,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
         WithHistory(Vector.empty, RegularRequestResult.Failed(ex))
       }
   }
-
+  
   override def handleMetadataRequest(context: RequestContext.Aux[CurrentUserMetadataRequestBlockContext]): Task[WithHistory[UserMetadataRequestResult, CurrentUserMetadataRequestBlockContext]] = {
     Task
       .gather(blocks.toList.map(executeBlocksForUserMetadata(_, context)))
@@ -223,6 +224,11 @@ class AccessControlList(val blocks: NonEmptyList[Block])
   }
 
   private def rejectionsFrom[B <: BlockContext](history: Vector[History[B]]): Vector[Rejected[B]] = {
-    history.flatMap(_.items.map(_.result).collect { case r: Rejected[B] => r })
+    history.flatMap {
+      _.items
+        .collect { case h: HistoryItem.RuleHistoryItem[B] => h.result }
+        .collect { case r: Rejected[B] => r }
+    }
   }
+
 }

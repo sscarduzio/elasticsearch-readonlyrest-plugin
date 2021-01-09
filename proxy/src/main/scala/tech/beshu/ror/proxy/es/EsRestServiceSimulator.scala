@@ -34,9 +34,15 @@ import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.es.actions.rradmin._
+import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
+import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
+import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionHandler, RRAuditEventActionType, RRAuditEventRequest, RRAuditEventResponse, TransportRRAuditEventAction}
+import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
+import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
+import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
+import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
 import tech.beshu.ror.es.RorRestChannel
-import tech.beshu.ror.es.rradmin._
-import tech.beshu.ror.es.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
@@ -194,6 +200,8 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
             (request, listener) match {
               case (req: RRAdminRequest, resp: ActionListener[RRAdminResponse]) =>
                 rrAdminActionHandler.handle(req, resp)
+              case (req: RRAuditEventRequest, resp: ActionListener[RRAuditEventResponse]) =>
+                RRAuditEventActionHandler.handle(req, resp)
               case _ =>
                 handleEsAction(esActionRequestHandler, request, listener, proxyRestChannel)
             }
@@ -223,7 +231,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
 
     override def getActions: util.List[ActionHandler[_ <: ActionRequest, _ <: ActionResponse]] = {
       List[ActionPlugin.ActionHandler[_ <: ActionRequest, _ <: ActionResponse]](
-        new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction])
+        new ActionHandler(RRAdminActionType.instance, classOf[TransportRRAdminAction]),
+        new ActionHandler(RRConfigActionType.instance, classOf[TransportRRConfigAction]),
+        new ActionHandler(RRUserMetadataActionType.instance, classOf[TransportRRUserMetadataAction]),
+        new ActionHandler(RRAuditEventActionType.instance, classOf[TransportRRAuditEventAction]),
       ).asJava
     }
 
@@ -235,7 +246,10 @@ class EsRestServiceSimulator(simulatorEsSettings: File,
                                  indexNameExpressionResolver: IndexNameExpressionResolver,
                                  nodesInCluster: Supplier[DiscoveryNodes]): util.List[RestHandler] = {
       List[RestHandler](
-        new RestRRAdminAction(restController)
+        new RestRRAdminAction(),
+        new RestRRConfigAction(nodesInCluster),
+        new RestRRUserMetadataAction(),
+        new RestRRAuditEventAction()
       ).asJava
     }
 

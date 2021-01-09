@@ -31,21 +31,31 @@ public class Constants {
   public static final Integer AUDIT_SINK_MAX_KB = 100;
   public static final Integer AUDIT_SINK_MAX_SECONDS = 2;
   public static final Integer AUDIT_SINK_MAX_RETRIES = 3;
-  public final static String CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user";
+  public static final Integer MAX_AUDIT_EVENT_REQUEST_CONTENT_IN_BYTES = 5 * 1000;
+  public final static String CURRENT_USER_METADATA_PATH = "/_readonlyrest/metadata/current_user/";
+  public final static String AUDIT_EVENT_COLLECTOR_PATH = "/_readonlyrest/admin/audit/event/";
+  public final static String FORCE_RELOAD_CONFIG_PATH = "/_readonlyrest/admin/refreshconfig/";
+  public final static String UPDATE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
+  public final static String PROVIDE_INDEX_CONFIG_PATH = "/_readonlyrest/admin/config/";
+  public final static String PROVIDE_FILE_CONFIG_PATH = "/_readonlyrest/admin/config/file/";
+  public final static String MANAGE_ROR_CONFIG_PATH = "/_readonlyrest/admin/config/load";
+
   public final static String FIELDS_TRANSIENT = "_fields";
 
   public final static Set<String> FIELDS_ALWAYS_ALLOW = Sets.newHashSet("_id", "_uid", "_type", "_version", "_seq_no", "_primary_term", "_parent", "_routing", "_timestamp", "_ttl", "_size", "_index");
 
   public static final String AUDIT_LOG_DEFAULT_INDEX_TEMPLATE = "'readonlyrest_audit-'yyyy-MM-dd";
 
-  public static final String HEADER_GROUPS_AVAILABLE = "x-ror-available-groups";
-  public static final String HEADER_GROUP_CURRENT = "x-ror-current-group";
-  public static final String HEADER_USER_ROR = "x-ror-username";
-  public static final String HEADER_KIBANA_HIDDEN_APPS = "x-ror-kibana-hidden-apps";
-  public static final String HEADER_KIBANA_ACCESS = "x-ror-kibana_access";
-  public static final String HEADER_KIBANA_INDEX = "x-ror-kibana_index";
+  public static final String HEADER_LOGGING_ID            = "x-ror-logging-id";
+  public static final String HEADER_GROUPS_AVAILABLE      = "x-ror-available-groups";
+  public static final String HEADER_GROUP_CURRENT         = "x-ror-current-group";
+  public static final String HEADER_USER_ROR              = "x-ror-username";
+  public static final String HEADER_KIBANA_HIDDEN_APPS    = "x-ror-kibana-hidden-apps";
+  public static final String HEADER_KIBANA_ACCESS         = "x-ror-kibana_access";
+  public static final String HEADER_KIBANA_INDEX          = "x-ror-kibana_index";
   public static final String HEADER_KIBANA_TEMPLATE_INDEX = "x-ror-kibana_template_index";
-  public static final String HEADER_USER_ORIGIN = "x-ror-origin";
+  public static final String HEADER_USER_ORIGIN           = "x-ror-origin";
+  public static final String HEADER_CORRELATION_ID        = "x-ror-correlation-id";
 
   public static final Set<String> RO_ACTIONS = Sets.newHashSet(
       "indices:admin/exists",

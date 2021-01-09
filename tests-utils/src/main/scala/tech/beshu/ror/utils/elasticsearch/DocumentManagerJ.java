@@ -125,9 +125,7 @@ public class DocumentManagerJ extends JBaseManager {
 
   private Boolean isDocumentIndexed(String docPath) {
     JsonResponse response = call(new HttpGet(restClient.from(docPath)), JsonResponse::new);
-    Boolean inserted = Optional.ofNullable((Boolean) response.getResponseJsonMap().get("found")).orElse(false);
-    System.out.println("INSERTED: " + inserted);
-    return inserted;
+    return Optional.ofNullable((Boolean) response.getResponseJsonMap().get("found")).orElse(false);
   }
 
   private Boolean isAliasIndexed(String aliasName) {

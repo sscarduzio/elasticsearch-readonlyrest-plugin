@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.utils.misc
 
+import org.scalatest.{Assertion, Matchers}
 import org.scalatest.matchers.{MatchResult, Matcher}
 import ujson._
 
-trait CustomScalaTestMatchers {
+trait CustomScalaTestMatchers extends Matchers {
 
   def containKeyOrValue(expectedKeyOrValue: String): JsonContainsKeyOrValue =
     new JsonContainsKeyOrValue(expectedKeyOrValue)
@@ -48,6 +49,13 @@ trait CustomScalaTestMatchers {
         case Num(_) | _: Bool | Null =>
           false
       }
+    }
+  }
+
+  implicit class UuidRegex(val context: ResultOfFullyMatchWordForString) {
+
+    def uuidRegex(): Assertion = {
+      context.regex("""^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$""")
     }
   }
 }

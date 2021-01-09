@@ -22,22 +22,22 @@ import scala.util.matching.Regex
 
 trait CustomMatchers {
 
-  class SetMayContainOnlyGivenElementsMatcher(elements: Set[Regex]) extends Matcher[Set[String]] {
+  class SetMayNotContainsElementsMatcher(elements: Set[Regex]) extends Matcher[Set[String]] {
 
     override def apply(setToCheck: Set[String]): MatchResult = {
       MatchResult(
-        doesAllValuesFromSetMatchPatterns(setToCheck),
-        s"Set [${setToCheck.mkString(",")}] contains unexpected elements which don't match any of patterns [${elements.map(_.pattern.pattern()).mkString(",")}]",
-        s"Set [${setToCheck.mkString(",")}] contains only elements matching at least one pattern [${elements.map(_.pattern.pattern()).mkString(",")}]"
+        doesAllValuesFromSetDontMatchAnyOfPatterns(setToCheck),
+        s"Set [${setToCheck.mkString(",")}] contains elements which do match at least one of patterns [${elements.map(_.pattern.pattern()).mkString(",")}]",
+        s"Set [${setToCheck.mkString(",")}] contains only elements matching which don't match any of patterns [${elements.map(_.pattern.pattern()).mkString(",")}]"
       )
     }
 
-    private def doesAllValuesFromSetMatchPatterns(set: Set[String]): Boolean = set.forall(value => matchesAnyOfPatterns(value))
+    private def doesAllValuesFromSetDontMatchAnyOfPatterns(setToCheck: Set[String]): Boolean = setToCheck.forall(value => !matchesAnyOfPatterns(value))
 
     private def matchesAnyOfPatterns(value: String) = elements.exists(r => r.findFirstMatchIn(value).isDefined)
   }
 
-  def containAtMostElementsFrom(elements: Set[Regex]) = new SetMayContainOnlyGivenElementsMatcher(elements)
+  def notContainElementsFrom(elements: Set[Regex]) = new SetMayNotContainsElementsMatcher(elements)
 }
 
 object CustomMatchers extends CustomMatchers
