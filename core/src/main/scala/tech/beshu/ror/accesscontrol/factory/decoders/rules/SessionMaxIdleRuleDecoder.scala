@@ -21,13 +21,16 @@ import java.time.Clock
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.providers.UuidProvider
 
-class SessionMaxIdleRuleDecoder(implicit clock: Clock, uuidProvider: UuidProvider)
+class SessionMaxIdleRuleDecoder(implicit clock: Clock,
+                                uuidProvider: UuidProvider,
+                                caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields(
     common
       .positiveFiniteDurationDecoder

@@ -23,8 +23,9 @@ import io.jsonwebtoken.security.Keys
 import io.jsonwebtoken.{Jwts, SignatureAlgorithm}
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule
@@ -45,7 +46,8 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthRuleTests
-  extends WordSpec with MockFactory with Inside with BlockContextAssertion {
+  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+  import tech.beshu.ror.utils.TestsUtils.userIdEq
 
   "A RorKbnAuthRule" should {
     "match" when {

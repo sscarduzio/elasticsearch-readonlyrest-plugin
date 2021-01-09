@@ -20,7 +20,8 @@ import java.time.Duration
 import java.util.function.BiPredicate
 
 import net.jodah.failsafe.{Failsafe, RetryPolicy}
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.SearchManager.MSearchResult
@@ -29,7 +30,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 
 //TODO change test names. Current names are copies from old java integration tests
 trait MSearchWithFilterSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with Matchers {
   this: EsContainerCreator =>

@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{RorApiManager, SearchManagerJ}
@@ -26,7 +27,7 @@ import scala.collection.JavaConverters._
 
 //TODO change test names. Current names are copies from old java integration tests
 trait LocalGroupsSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with Matchers {
   this: EsContainerCreator =>

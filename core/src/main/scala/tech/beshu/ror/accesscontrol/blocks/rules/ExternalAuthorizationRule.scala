@@ -44,6 +44,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   override protected def authorize[B <: BlockContext](blockContext: B,
                                                       user: LoggedUser): Task[AuthorizationResult] = {
+    //TODO: should fail
     if (userMatcher.`match`(user.id)) checkUserGroups(user, blockContext.requestContext.currentGroup.toOption)
     else Task.now(Unauthorized)
   }

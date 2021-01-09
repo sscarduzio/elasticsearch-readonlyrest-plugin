@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, Autho
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
@@ -35,7 +36,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 // todo:  seems that there is a problem with this rule. Eg. when we use as authentication method JWT token auth.
 //        We're trying to get group names first and then check authentication. We cannot resolve JWT token variable
 //        when user is not authenticated (using JWT auth token)
-class GroupsRule(val settings: Settings)
+final class GroupsRule(val settings: Settings)
+                      (implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRule
     with NoImpersonationSupport
     with AuthorizationRule

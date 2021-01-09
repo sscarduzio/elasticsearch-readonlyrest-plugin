@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -31,37 +32,49 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.StringWiseSplitter
 import tech.beshu.ror.utils.StringWiseSplitter._
 
-class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]])
+                        (implicit caseMappingEquality: UserIdCaseMappingEquality)
+  extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .plainTextCredentialsDecoder
     .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeyRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil))))
 )
 
-class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]])
+                            (implicit caseMappingEquality: UserIdCaseMappingEquality)
+  extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .hashedCredentialsDecoder
     .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeySha1Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil))))
 )
 
-class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]])
+                              (implicit caseMappingEquality: UserIdCaseMappingEquality)
+  extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .hashedCredentialsDecoder
     .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeySha256Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil))))
 )
 
-class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]])
+                              (implicit caseMappingEquality: UserIdCaseMappingEquality)
+  extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .hashedCredentialsDecoder
     .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeySha512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil))))
 )
 
-class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]])
+                                            (implicit caseMappingEquality: UserIdCaseMappingEquality)
+  extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .hashedCredentialsDecoder
     .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeyPBKDF2WithHmacSHA512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil))))
 )
 
-class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]]) extends RuleDecoderWithoutAssociatedFields(
+class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]])
+                            (implicit caseMappingEquality: UserIdCaseMappingEquality)
+  extends RuleDecoderWithoutAssociatedFields(
   AuthKeyDecodersHelper
     .unixHashedCredentialsDecoder
     .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeyUnixRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil))))

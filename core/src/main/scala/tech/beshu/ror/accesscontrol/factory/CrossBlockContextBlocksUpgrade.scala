@@ -33,6 +33,7 @@ object CrossBlockContextBlocksUpgrade {
           case (modifiedRules, currentRule: LdapAuthorizationRule) =>
             modifiedRules :+ new LdapAuthorizationRule(currentRule.settings.copy(allLdapGroups = UniqueNonEmptyList.unsafeFromSortedSet(crossBlocksAvailableLdapGroups)))
           case (modifiedRules, currentRule: LdapAuthRule) =>
+            import currentRule.caseMappingEquality
             modifiedRules :+ new LdapAuthRule(
               currentRule.authentication,
               new LdapAuthorizationRule(currentRule.authorization.settings.copy(allLdapGroups = UniqueNonEmptyList.unsafeFromSortedSet(crossBlocksAvailableLdapGroups)))

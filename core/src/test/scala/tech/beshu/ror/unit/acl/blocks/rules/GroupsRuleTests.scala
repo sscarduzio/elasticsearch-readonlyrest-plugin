@@ -19,13 +19,14 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import cats.data.NonEmptySet
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.{GroupsRule, Rule}
@@ -34,18 +35,20 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.createMultiResolvableVariableFrom
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests._
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class GroupsRuleTests extends WordSpec with Inside with BlockContextAssertion {
+class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
   implicit val provider: EnvVarsProvider = OsEnvVarsProvider
 
@@ -205,7 +208,10 @@ object GroupsRuleTests {
     override protected val impersonators: List[ImpersonatorDef] = Nil
     override val name: Rule.Name = Rule.Name("dummy-rejecting")
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = Task.now(Rejected())
-    override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+    override def exists(user: User.Id)
+                       (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+
+    override protected val caseMappingEquality: UserIdCaseMappingEquality = TestsUtils.userIdEq
   }
 
   private val alwaysThrowingAuthRule = new AuthenticationRule {
@@ -213,14 +219,16 @@ object GroupsRuleTests {
     override def name: Rule.Name = Rule.Name("dummy-throwing")
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
       Task.raiseError(new Exception("Sth went wrong"))
-    override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+    override def exists(user: User.Id)
+                       (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+    override protected val caseMappingEquality: UserIdCaseMappingEquality = TestsUtils.userIdEq
   }
 
-  private def alwaysFulfillingAuthRule(user: User.Id) = new AuthenticationRule {
+  private def alwaysFulfillingAuthRule(user: User.Id) = new AuthenticationRule with NoImpersonationSupport {
     override protected val impersonators: List[ImpersonatorDef] = Nil
     override def name: Rule.Name = Rule.Name("dummy-fulfilling")
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
       Task.now(Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
-    override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+    override protected val caseMappingEquality: UserIdCaseMappingEquality = TestsUtils.userIdEq
   }
 }

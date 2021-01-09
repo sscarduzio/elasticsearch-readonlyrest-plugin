@@ -17,15 +17,15 @@
 package tech.beshu.ror.unit.acl.blocks.rules.utils
 
 import com.google.common.collect.Sets
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.utils.{MatcherWithWildcards, ZeroKnowledgeIndexFilter}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeIndexFilterScalaAdapter, ZeroKnowledgeRepositoryFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
-class ZeroKnowledgeIndexFilterTests extends WordSpec {
+class ZeroKnowledgeIndexFilterTests extends AnyWordSpec {
 
   "ZeroKnowledgeIndexFilter check" when {
     "one element is passed" in {

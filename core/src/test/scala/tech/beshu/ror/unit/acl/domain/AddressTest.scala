@@ -17,11 +17,11 @@
 package tech.beshu.ror.unit.acl.domain
 
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Address
 
-class AddressTest extends WordSpec {
-  import org.scalatest.Matchers._
+class AddressTest extends AnyWordSpec {
+  import org.scalatest.matchers.should.Matchers._
 
   "address" when {
     "passed expected ipv4" should {

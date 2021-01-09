@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.blocks.definitions._

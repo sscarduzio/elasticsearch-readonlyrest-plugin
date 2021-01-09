@@ -18,9 +18,16 @@ package tech.beshu.ror.accesscontrol.factory
 
 final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 forbiddenRequestMessage: String,
-                                flsEngine: GlobalSettings.FlsEngine)
+                                flsEngine: GlobalSettings.FlsEngine,
+                                usernameCaseMapping: GlobalSettings.UsernameCaseMapping,
+                               )
 
 object GlobalSettings {
+  sealed trait UsernameCaseMapping
+  object UsernameCaseMapping {
+    case object CaseSensitive extends UsernameCaseMapping
+    case object CaseInsensitive extends UsernameCaseMapping
+  }
 
   sealed trait FlsEngine
   object FlsEngine {

@@ -16,8 +16,8 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers._
@@ -26,7 +26,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
 
 trait DocumentApiSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport {

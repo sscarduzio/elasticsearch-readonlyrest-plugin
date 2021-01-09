@@ -21,10 +21,12 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
-class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
+final class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
                   override val impersonators: List[ImpersonatorDef])
+                 (override implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings)
     with Logging {
 
@@ -35,7 +37,8 @@ class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
     configuredCredentials == credentials
   }
 
-  override def exists(user: User.Id): Task[UserExistence] = Task.now {
+  override def exists(user: User.Id)
+                     (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] = Task.now {
     if (user === settings.credentials.user) UserExistence.Exists
     else UserExistence.NotExist
   }

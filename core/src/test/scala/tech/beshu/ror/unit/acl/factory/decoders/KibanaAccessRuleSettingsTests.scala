@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess}

@@ -18,7 +18,9 @@ package tech.beshu.ror.integration.suites
 
 import monix.execution.atomic.Atomic
 import org.scalatest.concurrent.{Eventually, IntegrationPatience}
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.SnapshotAndRestoreApiSuite.{RepositoryNameGenerator, SnapshotNameGenerator}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
@@ -27,7 +29,7 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, Snapsh
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait SnapshotAndRestoreApiSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with Eventually
     with IntegrationPatience

@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import cats.data.NonEmptySet
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef, ProxyAuth, RorKbnDef}
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule}

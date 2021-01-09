@@ -32,6 +32,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.Header
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
@@ -48,6 +50,7 @@ import tech.beshu.ror.configuration.loader.RorConfigurationIndex
 import tech.beshu.ror.configuration.RawRorConfig
 import tech.beshu.ror.providers.{EnvVarsProvider, UuidProvider}
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.yaml.YamlOps
 
 final case class CoreSettings(aclEngine: AccessControl,
@@ -102,21 +105,21 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
-      if (!enabled) {
-        AsyncDecoderCreator
-          .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
-      } else {
-        for {
-          globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorMode))
-          aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, rorIndexNameConfiguration, globalSettings)
-          (acl, context) = aclAndContext
-          auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
-        } yield CoreSettings(
-          aclEngine = acl,
-          aclStaticContext = context,
-          auditingSettings = auditingTools
-        )
-      }
+        if (!enabled) {
+          AsyncDecoderCreator
+            .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
+        } else {
+          for {
+            globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(rorMode))
+            aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, rorIndexNameConfiguration, globalSettings)
+            (acl, context) = aclAndContext
+            auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
+          } yield CoreSettings(
+            aclEngine = acl,
+            aclStaticContext = context,
+            auditingSettings = auditingTools
+          )
+        }
     } yield core
 
     decoder(HCursor.fromJson(settingsJson))
@@ -130,7 +133,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
     }
   }
 
-  private implicit def rulesNelDecoder(definitions: DefinitionsPack,
+  private def rulesNelDecoder(definitions: DefinitionsPack,
                                        rorIndexNameConfiguration: RorConfigurationIndex,
                                        globalSettings: GlobalSettings): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
     val init = State.pure[ACursor, Option[Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](None)
@@ -164,7 +167,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private def decodeRuleInCursorContext(name: String,
                                         definitions: DefinitionsPack,
                                         rorIndexNameConfiguration: RorConfigurationIndex,
-                                        globalSettings: GlobalSettings): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] =
+                                        globalSettings: GlobalSettings): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] = {
+    implicit val caseMappingEquality: UserIdCaseMappingEquality = createUserMapingEquality(globalSettings)
     State(cursor => {
       if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
@@ -191,6 +195,14 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         }
       }
     })
+  }
+
+  private def createUserMapingEquality(globalSettings: GlobalSettings) = {
+    globalSettings.usernameCaseMapping match {
+      case UsernameCaseMapping.CaseSensitive => UserIdEq.caseSensitive
+      case UsernameCaseMapping.CaseInsensitive => UserIdEq.caseInsensitive
+    }
+  }
 
   private def blockDecoder(definitions: DefinitionsPack,
                            rorIndexNameConfiguration: RorConfigurationIndex,
@@ -239,13 +251,13 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   }
 
   private def aclStaticContextCreator(blocks: NonEmptyList[Block],
-                                      obfuscatedHeaders:Set[Header.Name],
+                                      obfuscatedHeaders: Set[Header.Name],
                                       globalSettings: GlobalSettings): EnabledAccessControlStaticContext = {
-      new EnabledAccessControlStaticContext(
-        blocks,
-        globalSettings,
-        obfuscatedHeaders
-      )
+    new EnabledAccessControlStaticContext(
+      blocks,
+      globalSettings,
+      obfuscatedHeaders
+    )
   }
 
   private val obfuscatedHeadersAsyncDecoder: Decoder[Set[Header.Name]] = {
@@ -274,14 +286,14 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
           implicit val blockAsyncDecoder: AsyncDecoder[Block] = AsyncDecoderCreator.from {
             blockDecoder(
               DefinitionsPack(
-              proxies = authProxies,
-              users = userDefs,
-              authenticationServices = authenticationServices,
-              authorizationServices = authorizationServices,
-              jwts = jwtDefs,
-              rorKbns = rorKbnDefs,
-              ldaps = ldapServices,
-              impersonators = impersonationDefs
+                proxies = authProxies,
+                users = userDefs,
+                authenticationServices = authenticationServices,
+                authorizationServices = authorizationServices,
+                jwts = jwtDefs,
+                rorKbns = rorKbnDefs,
+                ldaps = ldapServices,
+                impersonators = impersonationDefs
               ),
               rorIndexNameConfiguration,
               globalSettings

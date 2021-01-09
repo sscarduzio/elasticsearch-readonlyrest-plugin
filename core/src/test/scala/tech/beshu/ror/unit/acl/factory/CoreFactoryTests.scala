@@ -22,8 +22,9 @@ import cats.data.NonEmptyList
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{Header, IndexName}
@@ -38,7 +39,7 @@ import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockHttpClientsFactoryWithF
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
 
-class CoreFactoryTests extends WordSpec with Inside with MockFactory {
+class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()

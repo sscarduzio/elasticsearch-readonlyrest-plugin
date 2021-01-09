@@ -20,8 +20,8 @@ import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.accesscontrol.domain.ApiKey
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-class ApiKeysRuleTests extends WordSpec with MockFactory {
+class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
 
   private val rule = new ApiKeysRule(ApiKeysRule.Settings(NonEmptySet.of(ApiKey(NonEmptyString.unsafeFrom("1234567890")))))
 

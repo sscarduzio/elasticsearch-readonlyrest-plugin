@@ -25,10 +25,12 @@ import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
-class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
-                      override val impersonators: List[ImpersonatorDef])
+final class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
+                            override val impersonators: List[ImpersonatorDef])
+                           (implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings) {
 
   override val name: Rule.Name = AuthKeyUnixRule.name
@@ -39,7 +41,8 @@ class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCrede
       configuredCredentials.from(credentials).contains(configuredCredentials)
   }
 
-  override def exists(user: User.Id): Task[UserExistence] = Task.now {
+  override def exists(user: User.Id)
+                     (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] = Task.now {
     if (user === settings.credentials.userId) UserExistence.Exists
     else UserExistence.NotExist
   }

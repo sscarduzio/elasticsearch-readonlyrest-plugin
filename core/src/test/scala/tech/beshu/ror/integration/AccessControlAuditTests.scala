@@ -18,9 +18,9 @@ package tech.beshu.ror.integration
 
 import java.time.{Clock, Instant, ZoneId}
 import java.time.format.DateTimeFormatter
+import org.scalatest.wordspec.AnyWordSpec
 
-import org.scalatest.WordSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
@@ -33,7 +33,7 @@ import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlTest {
+class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest {
 
   override protected def configYaml: String =
     """

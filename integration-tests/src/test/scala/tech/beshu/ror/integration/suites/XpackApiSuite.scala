@@ -17,7 +17,9 @@
 package tech.beshu.ror.integration.suites
 
 import monix.execution.atomic.Atomic
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
@@ -27,7 +29,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
 
 trait XpackApiSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport

@@ -95,7 +95,7 @@ object SingleExtractable {
       blockContext
         .userMetadata
         .loggedUser
-        .map(_.id.value) match {
+        .map(_.id.value) match { //TODO: inspect
         case Some(value) => Right(value.value)
         case None => Left(ExtractError("Cannot extract user ID from block context"))
       }

@@ -20,8 +20,9 @@ import cats.data.NonEmptyList
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralIndexRequestBlockContextUpdater
@@ -40,7 +41,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Failure
 
-class BlockTests extends WordSpec with BlockContextAssertion with Inside {
+class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
 
   "A block execution result" should {
     "be mismatched and contain all history, up to mismatched rule" when {

@@ -19,8 +19,9 @@ package tech.beshu.ror.unit.acl.factory
 import java.time.{Clock, ZoneId, ZonedDateTime}
 
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -33,7 +34,7 @@ import tech.beshu.ror.mocks.{MockHttpClientsFactory, MockLdapConnectionPoolProvi
 import tech.beshu.ror.providers._
 import tech.beshu.ror.utils.TestsUtils._
 
-class AuditingSettingsTests extends WordSpec with Inside {
+class AuditingSettingsTests extends AnyWordSpec with Inside {
 
   private val factory = {
     implicit val clock: Clock = Clock.systemUTC()

@@ -56,7 +56,7 @@ object domain {
   object User {
     final case class Id(value: NonEmptyString)
     object Id {
-      implicit val eqId: Eq[Id] = Eq.fromUniversalEquals
+      type UserIdCaseMappingEquality = Eq[User.Id]
     }
   }
 

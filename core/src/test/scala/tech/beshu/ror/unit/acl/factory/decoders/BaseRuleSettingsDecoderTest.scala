@@ -20,8 +20,9 @@ import java.time.Clock
 
 import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers.{a, _}
-import org.scalatest.{BeforeAndAfterAll, Inside, Suite, WordSpec}
+import org.scalatest.matchers.should.Matchers.{a, _}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{BeforeAndAfterAll, Inside, Suite}
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
@@ -37,7 +38,7 @@ import tech.beshu.ror.utils.TestsUtils._
 
 import scala.reflect.ClassTag
 
-abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends WordSpec with BeforeAndAfterAll with Inside {
+abstract class BaseRuleSettingsDecoderTest[T <: Rule : ClassTag] extends AnyWordSpec with BeforeAndAfterAll with Inside {
   this: Suite =>
 
   val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider

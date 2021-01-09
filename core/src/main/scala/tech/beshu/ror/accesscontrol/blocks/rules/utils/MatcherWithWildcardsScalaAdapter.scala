@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
+import cats.kernel.Eq
 import eu.timepit.refined.types.string.NonEmptyString
 import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
 import tech.beshu.ror.utils.MatcherWithWildcards
@@ -25,22 +26,12 @@ import scala.collection.JavaConverters._
 trait Matcher {
   def underlying: MatcherWithWildcards
   def filter[T : StringTNaturalTransformation](items: Set[T]): Set[T]
-  def filter[T : StringTNaturalTransformation](remoteClusterAware: Boolean, items: Set[T]): Set[T]
   def `match`[T : StringTNaturalTransformation](value: T): Boolean
   def contains(str: String): Boolean
 }
 
 class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildcards)
   extends Matcher {
-
-  override def filter[T : StringTNaturalTransformation](remoteClusterAware: Boolean, items: Set[T]): Set[T] = {
-    val nt = implicitly[StringTNaturalTransformation[T]]
-    underlying
-      .filter(remoteClusterAware, items.map(nt.toAString(_)).asJava)
-      .asScala
-      .map(nt.fromString)
-      .toSet
-  }
 
   override def filter[T: StringTNaturalTransformation](items: Set[T]): Set[T] = {
     val nt = implicitly[StringTNaturalTransformation[T]]
@@ -51,6 +42,7 @@ class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildc
       .toSet
   }
 
+  //TODO: support eq
   override def `match`[T: StringTNaturalTransformation](value: T): Boolean = {
     val nt = implicitly[StringTNaturalTransformation[T]]
     underlying.`match`(nt.toAString(value))
@@ -70,6 +62,7 @@ object MatcherWithWildcardsScalaAdapter {
 final case class StringTNaturalTransformation[T](fromString: String => T, toAString: T => String)
 object StringTNaturalTransformation {
   object instances {
+    //TODO: should exist?
     implicit val stringUserIdNT: StringTNaturalTransformation[User.Id] =
       StringTNaturalTransformation[User.Id](str => User.Id(NonEmptyString.unsafeFrom(str)), _.value.value)
     implicit val identityNT: StringTNaturalTransformation[String] =
@@ -77,4 +70,9 @@ object StringTNaturalTransformation {
     implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
       StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
   }
+//  implicit def eqStringTNaturalTransformation[A:StringTNaturalTransformation]: Eq[String] =
+//    {
+//      val nt = implicitly[StringTNaturalTransformation[A]]
+//      cats.Eq.by[String, A](a => nt.fromString(a))
+//    }
 }

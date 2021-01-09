@@ -21,6 +21,7 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.TestsUtils._
 
 class AuthKeyUnixRuleTests extends BasicAuthenticationTestTemplate {
+  import tech.beshu.ror.utils.TestsUtils.userIdEq
 
   override protected def ruleName: String = classOf[AuthKeyUnixRuleTests].getSimpleName
   override protected val rule = new AuthKeyUnixRule(

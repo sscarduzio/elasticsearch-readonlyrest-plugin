@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
@@ -30,12 +31,13 @@ import tech.beshu.ror.providers.UuidProvider
 
 object ruleDecoders {
 
-  implicit def ruleDecoderBy(name: Rule.Name,
-                             definitions: DefinitionsPack,
-                             rorIndexNameConfiguration: RorConfigurationIndex,
-                             globalSettings: GlobalSettings)
-                            (implicit clock: Clock,
-                             uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] =
+  def ruleDecoderBy(name: Rule.Name,
+                    definitions: DefinitionsPack,
+                    rorIndexNameConfiguration: RorConfigurationIndex,
+                    globalSettings: GlobalSettings)
+                   (implicit clock: Clock,
+                    uuidProvider: UuidProvider,
+                    caseMappingEquality: UserIdCaseMappingEquality): Option[RuleBaseDecoder[_ <: Rule]] =
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
@@ -80,7 +82,8 @@ object ruleDecoders {
                                   jwtDefinitions: Definitions[JwtDef],
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   rorKbnDefinitions: Definitions[RorKbnDef],
-                                  impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
+                                  impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]])
+                                 (implicit caseMappingEquality: UserIdCaseMappingEquality): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
     name match {
       case AuthKeyRule.name => Some(new AuthKeyRuleDecoder(impersonatorsDefinitions))
       case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions))

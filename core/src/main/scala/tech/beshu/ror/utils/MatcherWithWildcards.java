@@ -101,7 +101,7 @@ public class MatcherWithWildcards {
 
     for (String[] p : patternsList) {
       // Ignore remote cluster related permissions if request didn't mean it
-      if (!remoteClusterRequested && Arrays.asList(p).contains(":")) {
+      if (!remoteClusterRequested && Arrays.asList(p).contains(":")) { //is it ever possible??
         continue;
       }
       if (miniglob(p, haystack)) {
@@ -123,21 +123,6 @@ public class MatcherWithWildcards {
     }
     return filtered;
   }
-  
-  public Set<String> matchingMatchers(Set<String> haystack) {
-    if (haystack == null) {
-      return empty;
-    }
-    Set<String> filtered = Sets.newHashSet();
-    for (String hs : haystack) {
-      for (String m : matchers) {
-        if (new MatcherWithWildcards(Sets.newHashSet(m)).match(hs)) {
-          filtered.add(m);
-        }
-      }
-    }
-    return filtered;
-}
 
   public Set<String> filterRemoteClusterAware(Set<String> haystack) {
     if (haystack == null) {

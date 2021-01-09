@@ -29,13 +29,15 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformat
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
 
-class ProxyAuthRule(val settings: Settings)
+final class ProxyAuthRule(val settings: Settings)
+                         (implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRule
     with NoImpersonationSupport
     with Logging {
@@ -65,7 +67,7 @@ class ProxyAuthRule(val settings: Settings)
   }
 
   private def shouldAuthenticate(user: LoggedUser) = {
-    userMatcher.`match`(user.id)
+    userMatcher.`match`(user.id) //TODO: should fail
   }
 }
 

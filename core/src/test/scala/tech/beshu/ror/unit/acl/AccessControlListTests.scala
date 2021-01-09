@@ -18,10 +18,11 @@ package tech.beshu.ror.unit.acl
 
 import cats.data.NonEmptyList
 import monix.eval.Task
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult.Allow
 import tech.beshu.ror.accesscontrol.acl.AccessControlList
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
@@ -34,7 +35,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class AccessControlListTests extends WordSpec with MockFactory with Inside {
+class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
 
   "An AccessControlList" when {
     "metadata request is called" should {

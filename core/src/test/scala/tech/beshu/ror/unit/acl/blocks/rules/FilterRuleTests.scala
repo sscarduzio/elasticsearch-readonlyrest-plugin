@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -35,7 +35,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.TestsUtils._
 
-class FilterRuleTests extends WordSpec with MockFactory {
+class FilterRuleTests extends AnyWordSpec with MockFactory {
 
   "A FilterRuleTests" should {
     "match and set filter" when {

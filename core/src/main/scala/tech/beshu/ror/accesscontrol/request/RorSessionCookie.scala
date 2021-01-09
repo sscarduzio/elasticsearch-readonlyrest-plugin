@@ -28,6 +28,7 @@ import io.circe.parser._
 import io.circe.{Decoder, Encoder}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.Header.Name.setCookie
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -49,8 +50,11 @@ object RorSessionCookie extends Logging {
     case object Invalid extends ExtractingError
   }
 
-  def extractFrom(context: RequestContext, user: LoggedUser)
-                 (implicit clock: Clock, uuidProvider: UuidProvider): Either[ExtractingError, RorSessionCookie] = {
+  def extractFrom(context: RequestContext,
+                  user: LoggedUser)
+                 (implicit clock: Clock,
+                  uuidProvider: UuidProvider,
+                  caseMappingEquality: UserIdCaseMappingEquality): Either[ExtractingError, RorSessionCookie] = {
     for {
       httpCookie <- extractRorHttpCookie(context).toRight(Absent)
       cookieAndSignature <- parseRorSessionCookieAndSignature(httpCookie).left.map(_ => Invalid: ExtractingError)
@@ -81,8 +85,12 @@ object RorSessionCookie extends Logging {
     } yield decoded
   }
 
-  private def checkCookie(cookie: RorSessionCookie, signature: Signature, loggedUser: LoggedUser)
-                         (implicit clock: Clock, uuidProvider: UuidProvider): Either[ExtractingError, Unit] = {
+  private def checkCookie(cookie: RorSessionCookie,
+                          signature: Signature,
+                          loggedUser: LoggedUser)
+                         (implicit clock: Clock,
+                          uuidProvider: UuidProvider,
+                          caseMappingEquality: UserIdCaseMappingEquality): Either[ExtractingError, Unit] = {
     val now = Instant.now(clock)
     if (cookie.userId =!= loggedUser.id) {
       logger.warn(s"this cookie does not belong to the user logged in as. Found in Cookie: ${cookie.userId.show} whilst in Authentication: ${loggedUser.id.show}")

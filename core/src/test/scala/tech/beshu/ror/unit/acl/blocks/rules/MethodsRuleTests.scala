@@ -20,8 +20,8 @@ import cats.data.NonEmptySet
 import com.softwaremill.sttp.Method
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule
@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-class MethodsRuleTests extends WordSpec with MockFactory {
+class MethodsRuleTests extends AnyWordSpec with MockFactory {
 
   "A MethodsRule" should {
     "match" when {

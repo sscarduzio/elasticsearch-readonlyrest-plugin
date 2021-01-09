@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.Filter

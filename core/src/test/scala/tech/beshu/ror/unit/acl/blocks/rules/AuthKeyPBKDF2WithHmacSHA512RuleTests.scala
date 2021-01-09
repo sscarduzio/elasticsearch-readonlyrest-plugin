@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.utils.TestsUtils._
 
 class AuthKeyPBKDF2WithHmacSHA512RuleTests extends BasicAuthenticationTestTemplate {
+  import tech.beshu.ror.utils.TestsUtils.userIdEq
 
   override protected def ruleName: String = classOf[AuthKeyPBKDF2WithHmacSHA512Rule].getSimpleName
   override protected val rule = new AuthKeyPBKDF2WithHmacSHA512Rule(
@@ -33,6 +34,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleTests extends BasicAuthenticationTestTempla
 }
 
 class AuthKeyPBKDF2WithHmacSHA512RuleAltSyntaxTests extends BasicAuthenticationTestTemplate {
+  import tech.beshu.ror.utils.TestsUtils.userIdEq
 
   override protected def ruleName: String = classOf[AuthKeyPBKDF2WithHmacSHA512Rule].getSimpleName
   override protected val rule = new AuthKeyPBKDF2WithHmacSHA512Rule(

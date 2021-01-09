@@ -30,9 +30,11 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleD
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import DecoderHelpers.decodeUniqueList
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef])
+                           (implicit caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[RorKbnAuthRule](
     RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)

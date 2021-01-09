@@ -16,8 +16,9 @@
  */
 package tech.beshu.ror.integration
 
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.mocks.MockRequestContext
@@ -27,7 +28,7 @@ import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
 
-class GroupsWithProxyAuthAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
   override protected def configYaml: String =
     """
       |readonlyrest:

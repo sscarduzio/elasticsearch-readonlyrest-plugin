@@ -18,7 +18,7 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.{BeforeAndAfterAll, Ignore}
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthService, LdapAuthenticationService, LdapService}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError

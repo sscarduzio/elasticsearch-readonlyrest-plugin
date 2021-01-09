@@ -17,8 +17,8 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite.{localClusterNodeDataInitializer, remoteClusterNodeDataInitializer, remoteClusterSetup}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait CrossClusterCallsSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseEsRemoteClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport {

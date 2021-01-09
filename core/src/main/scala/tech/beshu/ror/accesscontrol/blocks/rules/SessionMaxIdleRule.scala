@@ -27,14 +27,17 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.SessionMaxIdleRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.{ExtractingError, toSessionHeader}
 import tech.beshu.ror.providers.UuidProvider
 
 import scala.concurrent.duration.FiniteDuration
 
-class SessionMaxIdleRule(val settings: Settings)
-                        (implicit clock: Clock, uuidProvider: UuidProvider)
+final class SessionMaxIdleRule(val settings: Settings)
+                              (implicit clock: Clock,
+                               uuidProvider: UuidProvider,
+                               caseMappingEquality: UserIdCaseMappingEquality)
   extends RegularRule with Logging {
 
   override val name: Rule.Name = SessionMaxIdleRule.name

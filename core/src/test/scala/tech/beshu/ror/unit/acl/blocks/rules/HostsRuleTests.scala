@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.blocks.rules.HostsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 import tech.beshu.ror.utils.TestsUtils.StringOps
 
-class HostsRuleTests extends WordSpec with MockFactory {
+class HostsRuleTests extends AnyWordSpec with MockFactory {
 
   "A HostsRule" should {
     "match" when {

@@ -19,8 +19,9 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationService
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -38,7 +39,7 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
 class LdapAuthorizationRuleTests
-  extends WordSpec
+  extends AnyWordSpec
     with Inside
     with MockFactory
     with BlockContextAssertion {

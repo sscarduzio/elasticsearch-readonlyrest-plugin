@@ -17,14 +17,15 @@
 package tech.beshu.ror.integration
 
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 
-class IndicesYamlLoadedAccessControlTests  extends WordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class IndicesYamlLoadedAccessControlTests  extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
   override protected def configYaml: String =
     """
       |readonlyrest:

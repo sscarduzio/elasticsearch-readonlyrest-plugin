@@ -17,12 +17,12 @@
 package tech.beshu.ror.unit.utils
 
 import org.scalatest.prop.TableDrivenPropertyChecks._
-import org.scalatest.WordSpec
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
 import tech.beshu.ror.accesscontrol.domain.IndexName
 
-class TemplateMatcherTests extends WordSpec {
+class TemplateMatcherTests extends AnyWordSpec {
 
   "A TemplateMatcher" should {
     "be able to filter only allowed template indices patterns" in {
