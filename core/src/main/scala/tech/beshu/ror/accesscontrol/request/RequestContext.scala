@@ -77,6 +77,8 @@ trait RequestContext {
 
   def isAllowedForDLS: Boolean
 
+  def isRorAdminRequest: Boolean
+
   def hasRemoteClusters: Boolean
 
   def generalAuditEvents: JSONObject = new JSONObject()

@@ -203,6 +203,18 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         )
       }
     }
+    "request is ROR admin request" should {
+      "not match" in {
+        assertRejectRule(
+          config = Configuration(
+            flsEngine = FlsEngine.ESWithLucene,
+            fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+          ),
+          requestContext = MockRequestContext.readOnlyAdmin[FilterableRequestBlockContext],
+          incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.NotUsingFields)
+        )
+      }
+    }
     "some other non filterable request is readonly" should {
       "not update block context with fields security strategy" in {
         val rule = createRule(

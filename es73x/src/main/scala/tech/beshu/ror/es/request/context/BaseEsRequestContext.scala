@@ -145,6 +145,10 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
     }
   }
 
+  override def isRorAdminRequest: Boolean = {
+    RCUtils.isRorAdminRequest(action.value)
+  }
+
   override val hasRemoteClusters: Boolean = esContext.crossClusterSearchEnabled
 
   protected def indicesOrWildcard(indices: Set[IndexName]): Set[IndexName] = {

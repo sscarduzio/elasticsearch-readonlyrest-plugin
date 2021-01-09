@@ -46,10 +46,13 @@ object MockRequestContext {
     MockUserMetadataRequestContext(timestamp = clock.instant())
 
   def readOnly[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
-    MockSimpleRequestContext(blockContextCreator, isReadOnly = true)
+    MockSimpleRequestContext(blockContextCreator, isReadOnly = true, isRorAdmin = false)
+
+  def readOnlyAdmin[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
+    MockSimpleRequestContext(blockContextCreator, isReadOnly = true, isRorAdmin = true)
 
   def notReadOnly[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
-    MockSimpleRequestContext(blockContextCreator, isReadOnly = false)
+    MockSimpleRequestContext(blockContextCreator, isReadOnly = false, isRorAdmin = false)
 }
 
 final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
@@ -69,6 +72,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
+                                                override val isRorAdminRequest: Boolean = false,
                                                 override val hasRemoteClusters: Boolean = false,
                                                 filteredIndices: Set[IndexName],
                                                 allAllowedIndices: Set[IndexName])
@@ -78,6 +82,7 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices
   )
+
 }
 
 final case class MockGeneralNonIndexRequestContext(override val timestamp: Instant,
@@ -97,6 +102,7 @@ final case class MockGeneralNonIndexRequestContext(override val timestamp: Insta
                                                    override val isCompositeRequest: Boolean = false,
                                                    override val isReadOnlyRequest: Boolean = true,
                                                    override val isAllowedForDLS: Boolean = true,
+                                                   override val isRorAdminRequest: Boolean = false,
                                                    override val hasRemoteClusters: Boolean = false)
   extends RequestContext {
 
@@ -124,6 +130,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val isCompositeRequest: Boolean = false,
                                           override val isReadOnlyRequest: Boolean = true,
                                           override val isAllowedForDLS: Boolean = true,
+                                          override val isRorAdminRequest: Boolean = false,
                                           override val hasRemoteClusters: Boolean = false,
                                           indices: Set[IndexName],
                                           allAllowedIndices: Set[IndexName])
@@ -152,6 +159,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
+                                                override val isRorAdminRequest: Boolean = false,
                                                 override val hasRemoteClusters: Boolean = false,
                                                 repositories: Set[RepositoryName])
   extends RequestContext {
@@ -179,6 +187,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val isCompositeRequest: Boolean = false,
                                              override val isReadOnlyRequest: Boolean = true,
                                              override val isAllowedForDLS: Boolean = true,
+                                             override val isRorAdminRequest: Boolean = false,
                                              override val hasRemoteClusters: Boolean = false,
                                              snapshots: Set[SnapshotName])
   extends RequestContext {
@@ -206,6 +215,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val isCompositeRequest: Boolean = false,
                                                 override val isReadOnlyRequest: Boolean = true,
                                                 override val isAllowedForDLS: Boolean = true,
+                                                override val isRorAdminRequest: Boolean = false,
                                                 override val hasRemoteClusters: Boolean = false)
   extends RequestContext {
   override type BLOCK_CONTEXT = CurrentUserMetadataRequestBlockContext
@@ -231,6 +241,7 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
                                                             override val allTemplates: Set[Template] = Set.empty,
                                                             override val isCompositeRequest: Boolean = false,
                                                             override val isAllowedForDLS: Boolean = true,
+                                                            override val isRorAdminRequest: Boolean = false,
                                                             override val hasRemoteClusters: Boolean = false)
   extends RequestContext {
   override type BLOCK_CONTEXT = BC
@@ -238,8 +249,10 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
 
 object MockSimpleRequestContext {
   def apply[BC <: BlockContext](blockContextCreator: RequestContext => BC,
-                                isReadOnly: Boolean): MockSimpleRequestContext[BC] = new MockSimpleRequestContext[BC] {
+                                isReadOnly: Boolean,
+                                isRorAdmin: Boolean): MockSimpleRequestContext[BC] = new MockSimpleRequestContext[BC] {
     override val initialBlockContext: BC = blockContextCreator(this)
     override val isReadOnlyRequest: Boolean = isReadOnly
+    override val isRorAdminRequest: Boolean = isRorAdmin
   }
 }
