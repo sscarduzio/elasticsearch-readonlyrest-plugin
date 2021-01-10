@@ -21,22 +21,24 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateLike
-import tech.beshu.ror.accesscontrol.domain.TemplateLike.IndexTemplate
+import tech.beshu.ror.accesscontrol.domain.TemplateLike.{ComponentTemplate, IndexTemplate}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 
-abstract class BaseSingleTemplateEsRequestContext[R <: ActionRequest](actionRequest: R,
-                                                                      esContext: EsContext,
-                                                                      clusterService: RorClusterService,
-                                                                      override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+import scala.reflect.ClassTag
 
-  protected def templateFrom(request: R): IndexTemplate
+abstract class BaseSingleTemplateEsRequestContext[R <: ActionRequest, T <: TemplateLike : ClassTag](actionRequest: R,
+                                                                                                    esContext: EsContext,
+                                                                                                    clusterService: RorClusterService,
+                                                                                                    override val threadPool: ThreadPool)
+  extends BaseTemplatesEsRequestContext[R, T](actionRequest, esContext, clusterService, threadPool) {
 
-  protected def update(request: R, template: IndexTemplate): ModificationResult
+  protected def templateFrom(request: R): T
 
-  override protected def templatesFrom(request: R): Set[TemplateLike] = Set(templateFrom(request))
+  protected def update(request: R, template: T): ModificationResult
+
+  override protected def templatesFrom(request: R): Set[T] = Set(templateFrom(request))
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     val templates = blockContext.templates
@@ -44,10 +46,10 @@ abstract class BaseSingleTemplateEsRequestContext[R <: ActionRequest](actionRequ
       logger.warn(s"[${id.show}] Filtered result contains more than one template. First was taken. Whole set of templates [${templates.toList.mkString(",")}]")
     }
     templates.head match {
-      case t: IndexTemplate =>
+      case t: T =>
         update(actionRequest, t)
-      case t: TemplateLike.ComponentTemplate =>
-        logger.error(s"[${id.show}] Invalid state - an IndexTemplate was expected, but was a ComponentTemplate")
+      case t =>
+        logger.error(s"[${id.show}] Invalid state - an wrong type of template: $t")
         ModificationResult.ShouldBeInterrupted
     }
   }

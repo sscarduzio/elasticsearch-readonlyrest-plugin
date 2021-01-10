@@ -24,8 +24,9 @@ import org.elasticsearch.cluster.metadata.Metadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.domain.TemplateLike.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
-import tech.beshu.ror.accesscontrol.domain.{TemplateLike, TemplateName, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{TemplateName, UriPath}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -51,9 +52,12 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
                                                    esContext: EsContext,
                                                    clusterService: RorClusterService,
                                                    override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[ClusterStateRequest](actionRequest, esContext, clusterService, threadPool) {
+  extends BaseTemplatesEsRequestContext[ClusterStateRequest, IndexTemplate](
+    actionRequest, esContext, clusterService, threadPool
+  ) {
 
-  override protected def templatesFrom(actionRequest: ClusterStateRequest): Set[TemplateLike] = this.allTemplates
+  override protected def templatesFrom(actionRequest: ClusterStateRequest): Set[IndexTemplate] =
+    this.allTemplates.collect { case it: IndexTemplate => it }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     val allowedTemplates = blockContext.templates.map(_.name)

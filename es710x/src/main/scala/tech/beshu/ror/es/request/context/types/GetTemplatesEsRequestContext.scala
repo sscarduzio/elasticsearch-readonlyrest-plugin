@@ -22,7 +22,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateLike, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.TemplateLike.{ComponentTemplate, IndexTemplate}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -34,14 +35,16 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
                                    esContext: EsContext,
                                    clusterService: RorClusterService,
                                    override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseTemplatesEsRequestContext[GetIndexTemplatesRequest, IndexTemplate](
+    actionRequest, esContext, clusterService, threadPool
+  ) {
 
-  override protected def templatesFrom(request: GetIndexTemplatesRequest): Set[TemplateLike] = {
+  override protected def templatesFrom(request: GetIndexTemplatesRequest): Set[IndexTemplate] = {
     val templatesFromRequest = request
       .names().asSafeSet
       .flatMap(templateFrom)
     if (templatesFromRequest.nonEmpty) templatesFromRequest
-    else clusterService.allTemplates
+    else clusterService.allTemplates.collect { case it: IndexTemplate => it }
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
@@ -63,8 +66,10 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
       .map(TemplateName.apply)
       .map { templateName =>
         clusterService.getTemplate(templateName) match {
-          case Some(template) => template
-          case None => TemplateLike.IndexTemplate(templateName, UniqueNonEmptyList.of(IndexName.wildcard), Set.empty)
+          case Some(template: IndexTemplate) =>
+            template
+          case Some(_: ComponentTemplate) | None =>
+            IndexTemplate(templateName, UniqueNonEmptyList.of(IndexName.wildcard), Set.empty)
         }
       }
       .toOption

@@ -16,37 +16,82 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import org.elasticsearch.action.ActionRequest
+import eu.timepit.refined.types.string.NonEmptyString
+import org.elasticsearch.action.admin.indices.template.put.PutComposableIndexTemplateAction
+import org.elasticsearch.cluster.metadata.{ComposableIndexTemplate, Template}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.TemplateLike
+import tech.beshu.ror.accesscontrol.domain.TemplateLike.IndexTemplate
+import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class PutComposableIndexTemplateEsRequestContext(actionRequest: ActionRequest,
+import scala.collection.JavaConverters._
+
+class PutComposableIndexTemplateEsRequestContext(actionRequest: PutComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,
                                                  clusterService: RorClusterService,
                                                  override val threadPool: ThreadPool)
-  extends BaseSingleTemplateEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSingleTemplateEsRequestContext[PutComposableIndexTemplateAction.Request, IndexTemplate](
+    actionRequest, esContext, clusterService, threadPool
+  ) {
 
-//  override protected def templateFrom(request: ActionRequest): domain.TemplateLike =
-//    domain.TemplateLike(TemplateName("test"), UniqueNonEmptyList.of(IndexName.fromUnsafeString("index1")))
-//
-//  override protected def update(request: ActionRequest, template: domain.TemplateLike): ModificationResult = {
-//    val t = this.allTemplates
-//    ModificationResult.Modified
-//  }
-  override protected def templateFrom(request: ActionRequest): TemplateLike.IndexTemplate = ???
+  override protected def templateFrom(request: PutComposableIndexTemplateAction.Request): IndexTemplate = {
+    val templateName = NonEmptyString
+      .from(request.name())
+      .map(TemplateName.apply)
+      .getOrElse(throw invalidRequestException("template name cannot be empty"))
 
-  override protected def update(request: ActionRequest, template: TemplateLike.IndexTemplate): ModificationResult = ???
-}
+    val indexPatterns = UniqueNonEmptyList
+      .fromList(request.indexTemplate().indexPatterns().asScala.flatMap(IndexName.fromString).toList)
+      .getOrElse(throw invalidRequestException("is required to have at least one index pattern"))
 
-object PutComposableIndexTemplateEsRequestContext {
-  def unapply(arg: ReflectionBasedActionRequest): Option[PutComposableIndexTemplateEsRequestContext] = {
-    if (arg.esContext.actionRequest.getClass.getName.endsWith("PutComposableIndexTemplateAction$Request")) {
-      Some(new PutComposableIndexTemplateEsRequestContext(arg.esContext.actionRequest, arg.esContext, arg.clusterService, arg.threadPool))
-    } else {
-      None
-    }
+    val aliases = request.indexTemplate().template().aliases().values().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+
+    IndexTemplate(templateName, indexPatterns, aliases)
+  }
+
+  override protected def update(request: PutComposableIndexTemplateAction.Request,
+                                template: IndexTemplate): ModificationResult = {
+    request.indexTemplate(
+      filterIndexTemplatePatternsAndAliases(
+        request.indexTemplate(),
+        template.patterns,
+        template.aliases
+      )
+    )
+    ModificationResult.Modified
+  }
+
+  private def filterIndexTemplatePatternsAndAliases(indexTemplate: ComposableIndexTemplate,
+                                                    allowedPatterns: UniqueNonEmptyList[IndexName],
+                                                    allowedAliases: Set[IndexName]) = {
+    new ComposableIndexTemplate(
+      allowedPatterns.map(_.value.value).toList.asJava,
+      filterTemplateAliases(indexTemplate.template(), allowedAliases),
+      indexTemplate.composedOf(),
+      indexTemplate.priority(),
+      indexTemplate.version(),
+      indexTemplate.metadata(),
+      indexTemplate.getDataStreamTemplate
+    )
+  }
+
+  private def filterTemplateAliases(template: Template, allowedAliases: Set[IndexName]) = {
+    val allowedAliasesStrings = allowedAliases.map(_.value.value)
+    new Template(
+      template.settings(),
+      template.mappings(),
+      template
+        .aliases().asScala
+        .filter { case (_, value) => allowedAliasesStrings.contains(value.alias())}
+        .asJava
+    )
+  }
+
+  private def invalidRequestException(message: String) = {
+    RequestSeemsToBeInvalid[PutComposableIndexTemplateAction.Request](s"PutComposableIndexTemplateAction.Request $message")
   }
 }

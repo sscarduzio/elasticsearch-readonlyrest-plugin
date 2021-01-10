@@ -31,7 +31,9 @@ class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
                                      esContext: EsContext,
                                      clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseSingleTemplateEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSingleTemplateEsRequestContext[DeleteIndexTemplateRequest, IndexTemplate](
+    actionRequest, esContext, clusterService, threadPool
+  ) {
 
   override protected def templateFrom(request: DeleteIndexTemplateRequest): IndexTemplate = {
     val templateName = NonEmptyString

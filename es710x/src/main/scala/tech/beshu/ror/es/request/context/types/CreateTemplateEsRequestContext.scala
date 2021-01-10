@@ -34,7 +34,9 @@ class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
                                      esContext: EsContext,
                                      clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseSingleTemplateEsRequestContext(actionRequest, esContext, clusterService, threadPool) {
+  extends BaseSingleTemplateEsRequestContext[PutIndexTemplateRequest, IndexTemplate](
+    actionRequest, esContext, clusterService, threadPool
+  ) {
 
   override protected def templateFrom(request: PutIndexTemplateRequest): IndexTemplate = {
     val templateName = NonEmptyString

@@ -42,7 +42,7 @@ import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
 import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
-import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
+import org.elasticsearch.action.admin.indices.template.put.{PutComposableIndexTemplateAction, PutIndexTemplateRequest}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
@@ -121,6 +121,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new CreateTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       case request: DeleteIndexTemplateRequest =>
         regularRequestHandler.handle(new DeleteTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: PutComposableIndexTemplateAction.Request =>
+        regularRequestHandler.handle(new PutComposableIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       // aliases
       case request: GetAliasesRequest =>
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
@@ -185,10 +187,6 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
           // rollup
           case PutRollupJobEsRequestContext(request) => regularRequestHandler.handle(request)
           case GetRollupCapsEsRequestContext(request) => regularRequestHandler.handle(request)
-          // templates
-          case PutComposableIndexTemplateEsRequestContext(request) =>
-            val temp = request.allTemplates
-            regularRequestHandler.handle(request)
           // indices based
           case ReflectionBasedIndicesEsRequestContext(request) => regularRequestHandler.handle(request)
           // rest
