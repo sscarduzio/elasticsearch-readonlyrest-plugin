@@ -208,6 +208,14 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
       assertMatchClusterRule(RW)
       assertMatchClusterRule(RO)
     }
+    "ROR action is used" when {
+      "it's current user metadata request action" in {
+        assertMatchRule(settingsOf(KibanaAccess.Admin), Action.rorUserMetadataAction)()
+        assertMatchRule(settingsOf(KibanaAccess.Admin), Action.rorOldConfigAction)()
+        assertMatchRule(settingsOf(KibanaAccess.Admin), Action.rorConfigAction)()
+        assertMatchRule(settingsOf(KibanaAccess.Admin), Action.rorAuditEventAction)()
+      }
+    }
   }
 
   private def testNonStrictOperations(customKibanaIndex: IndexName, action: Action, uriPath: UriPath): Unit = {
