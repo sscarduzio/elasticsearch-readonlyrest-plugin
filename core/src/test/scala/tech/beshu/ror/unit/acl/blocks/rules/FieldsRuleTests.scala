@@ -227,6 +227,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         (requestContext.isReadOnlyRequest _).expects().returning(true)
+        (requestContext.isRorAdminRequest _).expects().returning(false)
 
         inside(rule.check(incomingBlockContext).runSyncStep) {
           case Right(Fulfilled(outBlockContext)) =>
