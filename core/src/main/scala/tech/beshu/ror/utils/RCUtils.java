@@ -56,16 +56,8 @@ public class RCUtils {
       "indices:admin/resolve/index"
   ));
 
-  private static MatcherWithWildcards rorAdminRequestMatcher = new MatcherWithWildcards(Sets.newHashSet(
-          "cluster:admin/rradmin/*"
-  ));
-
   public static boolean isReadRequest(String action) {
     return readRequestMatcher.match(action);
-  }
-
-  public static boolean isRorAdminRequest(String action) {
-    return rorAdminRequestMatcher.match(action);
   }
 
   public static boolean isLocalHost(String remoteHost) {

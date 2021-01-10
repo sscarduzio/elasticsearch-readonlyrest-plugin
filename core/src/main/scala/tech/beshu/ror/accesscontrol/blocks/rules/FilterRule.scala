@@ -36,26 +36,26 @@ class FilterRule(val settings: Settings)
   override val name: Rule.Name = FilterRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    val requestContext = blockContext.requestContext
-    if (!requestContext.isAllowedForDLS || requestContext.isRorAdminRequest) Rejected()
-    else {
-      settings.filter.resolve(blockContext) match {
-        case Left(_: Unresolvable) =>
-          Rejected()
-        case Right(filter) =>
-          BlockContextUpdater[B] match {
-            case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
-            case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
-            case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
-            case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
-            case TemplateRequestBlockContextUpdater => Fulfilled(blockContext)
-            case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
-            case AliasRequestBlockContextUpdater => Fulfilled(blockContext)
-            case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
-            case FilterableRequestBlockContextUpdater => addFilter(blockContext, filter)
-            case FilterableMultiRequestBlockContextUpdater => addFilter(blockContext, filter)
-          }
-      }
+    blockContext.requestContext match {
+      case r if !r.isAllowedForDLS || r.action.isRorAction => Rejected()
+      case _ =>
+        settings.filter.resolve(blockContext) match {
+          case Left(_: Unresolvable) =>
+            Rejected()
+          case Right(filter) =>
+            BlockContextUpdater[B] match {
+              case CurrentUserMetadataRequestBlockContextUpdater => Fulfilled(blockContext)
+              case GeneralNonIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+              case RepositoryRequestBlockContextUpdater => Fulfilled(blockContext)
+              case SnapshotRequestBlockContextUpdater => Fulfilled(blockContext)
+              case TemplateRequestBlockContextUpdater => Fulfilled(blockContext)
+              case GeneralIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+              case AliasRequestBlockContextUpdater => Fulfilled(blockContext)
+              case MultiIndexRequestBlockContextUpdater => Fulfilled(blockContext)
+              case FilterableRequestBlockContextUpdater => addFilter(blockContext, filter)
+              case FilterableMultiRequestBlockContextUpdater => addFilter(blockContext, filter)
+            }
+        }
     }
   }
 

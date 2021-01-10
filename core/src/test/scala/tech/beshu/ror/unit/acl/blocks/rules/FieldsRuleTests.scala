@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{RequestFieldsUsage, Strategy}
@@ -227,7 +228,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         (requestContext.isReadOnlyRequest _).expects().returning(true)
-        (requestContext.isRorAdminRequest _).expects().returning(false)
+        (requestContext.action _).expects().returning(MockRequestContext.DefaultAction)
 
         inside(rule.check(incomingBlockContext).runSyncStep) {
           case Right(Fulfilled(outBlockContext)) =>

@@ -123,7 +123,7 @@ class FilterRuleTests extends WordSpec with MockFactory {
       "request is ROR admin request" in {
         val rawFilter = "{\"bool\":{\"must\":[{\"term\":{\"Country\":{\"value\":\"UK\"}}}]}}"
         val rule = new FilterRule(FilterRule.Settings(filterValueFrom(rawFilter)))
-        val requestContext = MockRequestContext.indices.copy(isRorAdminRequest = true)
+        val requestContext = MockRequestContext.indices.copy(action = MockRequestContext.AdminAction)
         val blockContext = FilterableRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty, None)
 
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
