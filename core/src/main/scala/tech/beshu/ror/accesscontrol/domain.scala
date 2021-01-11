@@ -261,6 +261,7 @@ object domain {
     val asyncSearchAction = Action("indices:data/read/async_search/submit")
     val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
     val searchTemplateAction = Action("indices:data/read/search/template")
+    // ROR actions
     val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
     val rorConfigAction = Action("cluster:ror/config/manage")
     val rorAuditEventAction = Action("cluster:ror/audit_event/put")
