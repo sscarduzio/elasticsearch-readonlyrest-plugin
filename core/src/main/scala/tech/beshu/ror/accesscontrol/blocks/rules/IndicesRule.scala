@@ -35,13 +35,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherW
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithIndexPacksUpdater, BlockContextWithIndicesUpdater}
+import tech.beshu.ror.accesscontrol.domain.TemplateLike.{ComponentTemplate, IndexTemplate}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateLike}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.{ZeroKnowledgeIndexFilter, uniquelist}
+import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class IndicesRule(val settings: Settings)
@@ -367,10 +368,14 @@ class IndicesRule(val settings: Settings)
     CanPass.Yes {
       blockContext
         .templates
-        .flatMap { template =>
-          val filtered = filterAllowedTemplateIndexPatterns(aliasesAndPatternsFrom(template), allowedIndices)
-          if (filtered.nonEmpty) Some(template)
-          else None
+        .flatMap {
+          case template@IndexTemplate(_, patterns, _) =>
+            val filtered = filterAllowedTemplateIndexPatterns(patterns.toSet, allowedIndices).toList
+            if (filtered.nonEmpty) Some(template)
+            else None
+          case template: ComponentTemplate =>
+            ???
+            Option.empty[ComponentTemplate]
         }
     }
   }
@@ -392,31 +397,58 @@ class IndicesRule(val settings: Settings)
     else stop(CanPass.No())
   }
 
+  private sealed trait AddTemplateError
+  private object AddTemplateError {
+    sealed case class PatternError(narrowedOriginPatterns: Set[IndexName]) extends AddTemplateError
+    sealed case class AliasesError(forbiddenAliases: Set[IndexName]) extends AddTemplateError
+  }
+
   private def canAddTemplateRequestPass(blockContext: TemplateRequestBlockContext,
                                         allowedIndices: Set[IndexName]): CheckContinuation[Set[TemplateLike]] = {
     if (blockContext.requestContext.action.isPutTemplate) {
       logger.debug(s"[${blockContext.requestContext.id.show}] Checking - if template can be added ...")
-      val modifiedTemplates = blockContext
+      val modifiedTemplates: Set[TemplateLike] = blockContext
         .templates
-        .flatMap { template =>
-          val templatePatterns = aliasesAndPatternsFrom(template)
-          val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices)
-          val narrowedOriginPatterns = narrowedPatterns.map(_._1)
-          if (narrowedOriginPatterns == templatePatterns) {
-//            UniqueNonEmptyList
-//              .fromList(narrowedPatterns.map(_._2).toList)
-//              .map(nel => template.copy(patterns = nel))
-            val ll: UniqueNonEmptyList[TemplateLike] = ???
-            ll
-          } else {
-            logger.debug(
-              s"""[${blockContext.requestContext.id.show}] Template ${template.name.show} cannot be added because
-                 |it requires access to patterns [${templatePatterns.map(_.show).mkString(",")}], but according to this
-                 |rule, there is only access for following ones [${narrowedOriginPatterns.map(_.show).mkString(",")}]
-                 |""".stripMargin
-            )
-            None
-          }
+        .flatMap {
+          case template@IndexTemplate(_, patterns, aliases) =>
+            val result = for {
+              narrowedPatterns <- narrowTemplatePatterns(patterns, allowedIndices)
+              _ <- validateAliases(aliases, allowedIndices)
+            } yield template.copy(patterns = narrowedPatterns)
+
+            result match {
+              case Right(updatedTemplate) =>
+                Some(updatedTemplate)
+              case Left(AddTemplateError.PatternError(narrowedOriginPatterns)) =>
+                logger.debug(
+                  s"""[${blockContext.requestContext.id.show}] Template ${template.name.show} cannot be added because
+                     |it requires access to patterns [${patterns.toList.map(_.show).mkString(",")}], but according to this
+                     |rule, there is only access for following ones [${narrowedOriginPatterns.map(_.show).mkString(",")}]
+                     |""".stripMargin
+                )
+                None
+              case Left(AddTemplateError.AliasesError(forbiddenAliases)) =>
+                logger.debug(
+                  s"""[${blockContext.requestContext.id.show}] Template ${template.name.show} cannot be added because
+                     |it requires access to aliases [${aliases.toList.map(_.show).mkString(",")}], but according to this
+                     |rule, following aliases are forbidden [${forbiddenAliases.map(_.show).mkString(",")}]
+                     |""".stripMargin
+                )
+                None
+            }
+          case template@ComponentTemplate(_, aliases) =>
+            validateAliases(aliases, allowedIndices) match {
+              case Right(_) =>
+                Some(template)
+              case Left(AddTemplateError.AliasesError(forbiddenAliases)) =>
+                logger.debug(
+                  s"""[${blockContext.requestContext.id.show}] Template ${template.name.show} cannot be added because
+                     |it requires access to aliases [${aliases.toList.map(_.show).mkString(",")}], but according to this
+                     |rule, following aliases are forbidden [${forbiddenAliases.map(_.show).mkString(",")}]
+                     |""".stripMargin
+                )
+                None
+            }
         }
       if (modifiedTemplates.size == blockContext.templates.size) {
         stop(CanPass.Yes(modifiedTemplates))
@@ -426,6 +458,27 @@ class IndicesRule(val settings: Settings)
     } else {
       continue
     }
+  }
+
+  private def narrowTemplatePatterns(patterns: UniqueNonEmptyList[IndexName],
+                                     allowedIndices: Set[IndexName]): Either[AddTemplateError.PatternError, UniqueNonEmptyList[IndexName]] = {
+    val templatePatterns = patterns.toSet
+    val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices)
+    val narrowedOriginPatterns = narrowedPatterns.map(_._1)
+    if (narrowedOriginPatterns == templatePatterns) {
+      UniqueNonEmptyList
+        .fromList(narrowedPatterns.map(_._2).toList)
+        .toRight(AddTemplateError.PatternError(Set.empty))
+    } else {
+      Left(AddTemplateError.PatternError(narrowedOriginPatterns))
+    }
+  }
+
+  private def validateAliases(aliases: Set[IndexName],
+                              allowedIndices: Set[IndexName]): Either[AddTemplateError.AliasesError, Unit] = {
+    val filteredAliases = IndicesMatcher.create(allowedIndices).filterIndices(aliases)
+    val forbiddenAliases = filteredAliases.diff(aliases)
+    Either.cond(forbiddenAliases.nonEmpty, (), AddTemplateError.AliasesError(forbiddenAliases))
   }
 
   private def canTemplatesWriteRequestPass(blockContext: TemplateRequestBlockContext,
@@ -441,14 +494,12 @@ class IndicesRule(val settings: Settings)
   }
 
   private def canTemplateBeChanged(template: TemplateLike, allowedIndices: Set[IndexName]) = {
-    val templatePatterns = aliasesAndPatternsFrom(template)
-    val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices).map(_._2)
-    narrowedPatterns.intersect(templatePatterns) == templatePatterns
-  }
-
-  private def aliasesAndPatternsFrom(template: TemplateLike): Set[IndexName] = template match {
-    case TemplateLike.IndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
-    case TemplateLike.ComponentTemplate(_, aliases) => aliases
+    val templatePatternsAndAliases = template match {
+      case IndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
+      case ComponentTemplate(_, aliases) => aliases
+    }
+    val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatternsAndAliases, allowedIndices).map(_._2)
+    narrowedPatterns.intersect(templatePatternsAndAliases) == templatePatternsAndAliases
   }
 
   private val matchAll = settings.allowedIndices.exists {
