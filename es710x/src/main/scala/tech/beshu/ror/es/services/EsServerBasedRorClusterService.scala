@@ -34,6 +34,7 @@ import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.ScalaOps._
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
                                      nodeClient: NodeClient)
@@ -93,7 +94,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           indexPatterns <- UniqueNonEmptyList.fromList(
             templateMetaData.indexPatterns().asScala.flatMap(IndexName.fromString).toList
           )
-          aliases = templateMetaData.template().aliases().values().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
         } yield TemplateLike.IndexTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
@@ -107,7 +108,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          aliases = templateMetaData.template().aliases().values().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
         } yield TemplateLike.ComponentTemplate(templateName, aliases)
       }
       .toSet

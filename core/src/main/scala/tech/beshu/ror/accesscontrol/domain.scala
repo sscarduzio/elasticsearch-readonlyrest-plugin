@@ -33,7 +33,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
-import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction}
+import tech.beshu.ror.accesscontrol.domain.Action._
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
@@ -243,7 +243,10 @@ object domain {
     def isSnapshot: Boolean = value.contains("/snapshot/")
     def isRepository: Boolean = value.contains("/repository/")
     def isTemplate: Boolean = value.contains("/template/")
-    def isPutTemplate: Boolean = value == "indices:admin/template/put"
+    def isPutTemplate: Boolean = List(
+      putTemplateAction,
+      putIndexTemplateAction
+    ).contains(this)
     def isSearchAction: Boolean = List(
       searchAction,
       mSearchAction,
@@ -261,6 +264,8 @@ object domain {
     val asyncSearchAction = Action("indices:data/read/async_search/submit")
     val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
     val searchTemplateAction = Action("indices:data/read/search/template")
+    val putTemplateAction = Action("indices:admin/template/put")
+    val putIndexTemplateAction = Action("indices:admin/index_template/put")
     // ROR actions
     val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
     val rorConfigAction = Action("cluster:ror/config/manage")

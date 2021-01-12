@@ -42,6 +42,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -400,7 +401,7 @@ class IndicesRule(val settings: Settings)
   private sealed trait AddTemplateError
   private object AddTemplateError {
     sealed case class PatternError(narrowedOriginPatterns: Set[IndexName]) extends AddTemplateError
-    sealed case class AliasesError(forbiddenAliases: Set[IndexName]) extends AddTemplateError
+    sealed case class AliasesError(forbiddenAliases: UniqueNonEmptyList[IndexName]) extends AddTemplateError
   }
 
   private def canAddTemplateRequestPass(blockContext: TemplateRequestBlockContext,
@@ -414,25 +415,31 @@ class IndicesRule(val settings: Settings)
             val result = for {
               narrowedPatterns <- narrowTemplatePatterns(patterns, allowedIndices)
               _ <- validateAliases(aliases, allowedIndices)
-            } yield template.copy(patterns = narrowedPatterns)
+            } yield {
+              if(patterns != narrowedPatterns) {
+                logger.debug(
+                  s"""[${blockContext.requestContext.id.show}] Template [${template.name.show}] can be allowed, but
+                     | indices patterns [${patterns.show}] have to be narrowed to [${narrowedPatterns.show}]""".oneLiner
+                )
+              }
+              template.copy(patterns = narrowedPatterns)
+            }
 
             result match {
               case Right(updatedTemplate) =>
                 Some(updatedTemplate)
               case Left(AddTemplateError.PatternError(narrowedOriginPatterns)) =>
                 logger.debug(
-                  s"""[${blockContext.requestContext.id.show}] Template ${template.name.show} cannot be added because
-                     |it requires access to patterns [${patterns.toList.map(_.show).mkString(",")}], but according to this
-                     |rule, there is only access for following ones [${narrowedOriginPatterns.map(_.show).mkString(",")}]
-                     |""".stripMargin
+                  s"""[${blockContext.requestContext.id.show}] Template [${template.name.show}] cannot be added because
+                     | it requires access to patterns [${patterns.show}], but according to this rule, there is only
+                     | access for following ones [${narrowedOriginPatterns.show}]""".oneLiner
                 )
                 None
               case Left(AddTemplateError.AliasesError(forbiddenAliases)) =>
                 logger.debug(
-                  s"""[${blockContext.requestContext.id.show}] Template ${template.name.show} cannot be added because
-                     |it requires access to aliases [${aliases.toList.map(_.show).mkString(",")}], but according to this
-                     |rule, following aliases are forbidden [${forbiddenAliases.map(_.show).mkString(",")}]
-                     |""".stripMargin
+                  s"""[${blockContext.requestContext.id.show}] Template [${template.name.show}] cannot be added because
+                     | it requires access to aliases [${aliases.show}], but according to this rule, following aliases are
+                     | forbidden [${forbiddenAliases.show}]""".oneLiner
                 )
                 None
             }
@@ -442,10 +449,9 @@ class IndicesRule(val settings: Settings)
                 Some(template)
               case Left(AddTemplateError.AliasesError(forbiddenAliases)) =>
                 logger.debug(
-                  s"""[${blockContext.requestContext.id.show}] Template ${template.name.show} cannot be added because
-                     |it requires access to aliases [${aliases.toList.map(_.show).mkString(",")}], but according to this
-                     |rule, following aliases are forbidden [${forbiddenAliases.map(_.show).mkString(",")}]
-                     |""".stripMargin
+                  s"""[${blockContext.requestContext.id.show}] Template [${template.name.show}] cannot be added because
+                     | it requires access to aliases [${aliases.show}], but according to this rule, following aliases are
+                     | forbidden [${forbiddenAliases.show}]""".oneLiner
                 )
                 None
             }
@@ -474,11 +480,18 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def validateAliases(aliases: Set[IndexName],
-                              allowedIndices: Set[IndexName]): Either[AddTemplateError.AliasesError, Unit] = {
-    val filteredAliases = IndicesMatcher.create(allowedIndices).filterIndices(aliases)
-    val forbiddenAliases = filteredAliases.diff(aliases)
-    Either.cond(forbiddenAliases.nonEmpty, (), AddTemplateError.AliasesError(forbiddenAliases))
+  private def validateAliases(requestedAliases: Set[IndexName],
+                              ruleAllowedIndices: Set[IndexName]): Either[AddTemplateError.AliasesError, Unit] = {
+    UniqueNonEmptyList.fromSet(requestedAliases) match {
+      case None => Right(())
+      case Some(_) =>
+        val allowedRequestedAliases = IndicesMatcher.create(ruleAllowedIndices).filterIndices(requestedAliases)
+        if (allowedRequestedAliases == requestedAliases) Right(())
+        else {
+          val forbiddenRequestedAliases = requestedAliases.diff(allowedRequestedAliases)
+          Left(AddTemplateError.AliasesError(UniqueNonEmptyList.unsafeFromSet(forbiddenRequestedAliases)))
+        }
+    }
   }
 
   private def canTemplatesWriteRequestPass(blockContext: TemplateRequestBlockContext,

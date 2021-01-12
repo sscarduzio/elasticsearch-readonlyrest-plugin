@@ -27,6 +27,7 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
@@ -48,7 +49,7 @@ class PutComposableIndexTemplateEsRequestContext(actionRequest: PutComposableInd
       .fromList(request.indexTemplate().indexPatterns().asScala.flatMap(IndexName.fromString).toList)
       .getOrElse(throw invalidRequestException("is required to have at least one index pattern"))
 
-    val aliases = request.indexTemplate().template().aliases().values().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+    val aliases = request.indexTemplate().template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
 
     IndexTemplate(templateName, indexPatterns, aliases)
   }
@@ -85,7 +86,7 @@ class PutComposableIndexTemplateEsRequestContext(actionRequest: PutComposableInd
       template.settings(),
       template.mappings(),
       template
-        .aliases().asScala
+        .aliases().asSafeMap
         .filter { case (_, value) => allowedAliasesStrings.contains(value.alias())}
         .asJava
     )

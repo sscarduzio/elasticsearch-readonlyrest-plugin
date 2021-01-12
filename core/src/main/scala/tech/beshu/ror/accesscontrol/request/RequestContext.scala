@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
+import tech.beshu.ror.utils.ScalaOps._
 
 trait RequestContext {
 
@@ -139,7 +140,7 @@ object RequestContext extends Logging {
          | CNT:$stringifyContentLength,
          | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
          | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")},
-         | }""".stripMargin.replaceAll("\n", " ")
+         | }""".oneLiner
     }
 }
 
