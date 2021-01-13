@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
-import tech.beshu.ror.utils.elasticsearch.BaseManager.{JsonResponse, SimpleResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, ResolveResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -28,11 +28,13 @@ class IndexManager(client: RestClient,
                    override val additionalHeaders: Map[String, String] = Map.empty)
   extends BaseManager(client) {
 
-  def createIndex(indices: String, params:Map[String,String]): JsonResponse = {
-    call(createIndexRequest(indices, params), new JsonResponse(_))
+  def createIndex(indices: String,
+                  settings: Option[JSON] = None,
+                  params: Map[String, String] = Map.empty): JsonResponse = {
+    call(createIndexRequest(indices, settings, params), new JsonResponse(_))
   }
 
-  def getIndex(indices: List[String], params:Map[String,String]): JsonResponse = {
+  def getIndex(indices: List[String], params: Map[String, String] = Map.empty): JsonResponse = {
     call(getIndexRequest(indices.toSet, params), new JsonResponse(_))
   }
 
@@ -84,6 +86,10 @@ class IndexManager(client: RestClient,
     call(createPutSettingsRequest(indexName, allocationNodeNames.toList), new JsonResponse(_))
   }
 
+  def putSettings(indexName: String, settings: JSON): SimpleResponse = {
+    call(createPutSettingsRequest(indexName, settings), new SimpleResponse(_))
+  }
+
   def removeAllIndices(): SimpleResponse =
     call(createDeleteAllIndicesRequest, new SimpleResponse(_))
 
@@ -126,14 +132,21 @@ class IndexManager(client: RestClient,
     new HttpGet(client.from(path))
   }
 
-  private def getIndexRequest(indices: Set[String], params:Map[String,String]) = {
+  private def getIndexRequest(indices: Set[String], params: Map[String, String]) = {
     import scala.collection.JavaConverters._
     new HttpGet(client.from(indices.mkString(","), params.asJava))
   }
 
-  private def createIndexRequest(indices: String, params:Map[String,String]) = {
+  private def createIndexRequest(indices: String, settings: Option[JSON], params: Map[String, String]) = {
     import scala.collection.JavaConverters._
-    new HttpPut(client.from(indices, params.asJava))
+    val request = new HttpPut(client.from(indices, params.asJava))
+    settings match {
+      case Some(s) =>
+        request.addHeader("Content-Type", "application/json")
+        request.setEntity(new StringEntity(ujson.write(s)))
+      case None =>
+    }
+    request
   }
 
   private def createAliasRequest(index: String, alias: String) = {
@@ -176,6 +189,13 @@ class IndexManager(client: RestClient,
     request
   }
 
+  private def createPutSettingsRequest(indexName: String, settings: JSON) = {
+    val request = new HttpPut(client.from(s"/$indexName/_settings/"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(settings)))
+    request
+  }
+
   private def createGetMappingRequest(indexName: String, field: String) = {
     new HttpGet(client.from(s"/$indexName/_mapping/field/$field"))
   }
@@ -192,14 +212,15 @@ class IndexManager(client: RestClient,
       case AliasAction.Add(index, alias) => s"""{ "add": { "index": "$index", "alias": "$alias" } }"""
       case AliasAction.Delete(index, alias) => s"""{ "remove": { "index": "$index", "alias": "$alias" } }"""
     }
+
     val request = new HttpPost(client.from("/_aliases"))
     request.addHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(
       s"""{
-        |  "actions": [
-        |     ${actionStrings.toList.mkString(",\n")}
-        |  ]
-        |}""".stripMargin))
+         |  "actions": [
+         |     ${actionStrings.toList.mkString(",\n")}
+         |  ]
+         |}""".stripMargin))
     request
   }
 

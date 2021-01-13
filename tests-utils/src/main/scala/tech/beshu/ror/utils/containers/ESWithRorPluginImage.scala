@@ -18,6 +18,7 @@ package tech.beshu.ror.utils.containers
 
 import org.testcontainers.images.builder.ImageFromDockerfile
 import org.testcontainers.images.builder.dockerfile.DockerfileBuilder
+import tech.beshu.ror.utils.misc.Version
 
 object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
 
@@ -38,7 +39,7 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
     new ImageFromDockerfile()
       .withFileFromFile(config.rorPluginFile.getAbsolutePath, config.rorPluginFile)
       .withFileFromFile(s"$configDir/$rorConfigFileName", config.rorConfigFile)
-      .withFileFromFile(s"$configDir/$log4j2FileName", ContainerUtils.getResourceFile("/" + log4j2FileName))
+      .withFileFromFile(s"$configDir/$log4j2FileName", ContainerUtils.getResourceFile("/" + log4jFileNameBaseOn(config)))
       .withFileFromFile(s"$configDir/$keystoreFileName", ContainerUtils.getResourceFile("/" + keystoreFileName))
       .withFileFromFile(s"$configDir/$truststoreFileName", ContainerUtils.getResourceFile("/" + truststoreFileName))
       .withFileFromFile(s"$configDir/$javaOptionsFileName", ContainerUtils.getResourceFile("/" + javaOptionsFileName))
@@ -48,5 +49,10 @@ object ESWithRorPluginImage extends EsImage[EsWithRorPluginContainer.Config] {
                                  config: EsWithRorPluginContainer.Config): DockerfileBuilder = {
     builder
       .run("yes | /usr/share/elasticsearch/bin/elasticsearch-plugin install file:///tmp/" + config.rorPluginFile.getName)
+  }
+
+  private def log4jFileNameBaseOn(config: EsWithRorPluginContainer.Config) = {
+    if(Version.greaterOrEqualThan(config.esVersion, 7, 10, 0)) "log4j2_es_7.10_and_newer.properties"
+    else "log4j2_es_before_7.10.properties"
   }
 }

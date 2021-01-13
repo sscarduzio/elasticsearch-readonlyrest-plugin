@@ -16,19 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-
 import io.circe.Decoder
 import org.apache.logging.log4j.scala.Logging
-import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
+import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.AuditingSettingsCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.logging.AuditingTool
+import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 import tech.beshu.ror.audit.AuditLogSerializer
 import tech.beshu.ror.audit.adapters.DeprecatedAuditLogSerializerAdapter
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
-import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 
 import scala.util.{Failure, Success, Try}
 
@@ -41,10 +39,10 @@ object AuditingSettingsDecoder extends Logging {
         settings <-
           if (auditCollectorEnabled.getOrElse(false)) {
             for {
-              indexNameFormatter <- c.downField("audit_index_template").as[Option[DateTimeFormatter]]
+              auditIndexTemplate <- c.downField("audit_index_template").as[Option[RorAuditIndexTemplate]]
               customAuditSerializer <- c.downField("audit_serializer").as[Option[AuditLogSerializer]]
             } yield Some(AuditingTool.Settings(
-              indexNameFormatter.getOrElse(DateTimeFormatter.ofPattern(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).withZone(ZoneId.of("UTC"))),
+              auditIndexTemplate.getOrElse(RorAuditIndexTemplate.default),
               customAuditSerializer.getOrElse(new DefaultAuditLogSerializer)
             ))
           } else {
@@ -53,17 +51,19 @@ object AuditingSettingsDecoder extends Logging {
       } yield settings
     }
 
-
-  private implicit val indexNameFormatterDecoder: Decoder[DateTimeFormatter] =
+  private implicit val rorAuditIndexTemplateDecoder: Decoder[RorAuditIndexTemplate] =
     SyncDecoderCreator
       .from(Decoder.decodeString)
       .emapE { patternStr =>
-        Try(DateTimeFormatter.ofPattern(patternStr).withZone(ZoneId.of("UTC"))) match {
-          case Success(formatter) => Right(formatter)
-          case Failure(ex) => Left(AuditingSettingsCreationError(Message(
-            s"Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: $patternStr error: ${ex.getMessage}"
-          )))
-        }
+        RorAuditIndexTemplate
+          .from(patternStr)
+          .left
+          .map {
+            case CreationError.ParsingError(msg) =>
+              AuditingSettingsCreationError(Message(
+                s"Illegal pattern specified for audit_index_template. Have you misplaced quotes? Search for 'DateTimeFormatter patterns' to learn the syntax. Pattern was: $patternStr error: $msg"
+              ))
+          }
       }
       .decoder
 

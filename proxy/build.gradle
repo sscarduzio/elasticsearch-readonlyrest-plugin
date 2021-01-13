@@ -28,7 +28,8 @@ buildscript {
         maven { url "https://plugins.gradle.org/m2/" }
     }
     dependencies {
-        classpath "gradle.plugin.com.hierynomus.gradle.plugins:license-gradle-plugin:0.15.0"
+        classpath group: 'gradle.plugin.com.hierynomus.gradle.plugins',  name: 'license-gradle-plugin', version: '0.15.0'
+        classpath group: 'com.star-zero.gradle',                         name: 'githook',               version: '1.2.1'
     }
 }
 
@@ -40,9 +41,10 @@ group = 'org.elasticsearch.plugin'
 version = pluginVersion + '_es' + esVersion
 def proxyFullName = pluginName + '-' + version
 
-apply plugin: 'scala'
-apply plugin: 'maven'
 apply plugin: "com.github.hierynomus.license"
+apply plugin: "com.star-zero.gradle.githook"
+apply plugin: 'maven'
+apply plugin: 'scala'
 
 compileScala {
     sourceCompatibility = 1.8
@@ -59,6 +61,8 @@ dependencies {
     compile  project(path: ':es79x')
 
     compile  group: 'org.elasticsearch.client',             name: 'elasticsearch-rest-high-level-client',   version: esVersion
+    compile group: 'com.github.finagle',                    name: 'finchx-circe_2.12',                      version: '0.32.1'
+    compile group: 'com.github.finagle',                    name: 'finchx-core_2.12',                       version: '0.32.1'
     compile  group: 'org.javassist',                        name: 'javassist',                              version: '3.26.0-GA'
     compile  group: 'org.jooq',                             name: 'joor-java-8',                            version: '0.9.13'
     compile  group: 'org.codelibs.elasticsearch.module',    name: 'lang-mustache',                          version: esVersion
@@ -83,6 +87,14 @@ test {
     }
 }
 
+githook {
+    hooks {
+        "pre-commit" {
+            shell = "./gradlew license --rerun-tasks"
+        }
+    }
+}
+
 tasks.withType(ScalaCompile) {
     scalaCompileOptions.additionalParameters = ["-Ypartial-unification", "-Ywarn-macros:after", "-feature"]
 }
@@ -97,7 +109,7 @@ task generateVersionsFile() {
     outputs.upToDateWhen { false }
     doFirst {
         def resourcesDir = sourceSets.main.output.resourcesDir
-        println(resourcesDir)
+        
         resourcesDir.mkdirs()
         def contents = "es_version=$esVersion\nplugin_version=$pluginVersion"
         new File(resourcesDir, "ror-build-info.properties").text = contents

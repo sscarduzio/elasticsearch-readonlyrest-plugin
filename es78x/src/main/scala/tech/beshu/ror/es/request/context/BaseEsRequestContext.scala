@@ -105,7 +105,10 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   override lazy val method: Method = Method(restRequest.method().name())
 
-  override lazy val uriPath: UriPath = UriPath(restRequest.path())
+  override lazy val uriPath: UriPath =
+    UriPath
+      .from(restRequest.path())
+      .getOrElse(UriPath(NonEmptyString.unsafeFrom("/")))
 
   override lazy val contentLength: Information = Bytes(Option(restRequest.content()).map(_.length()).getOrElse(0))
 

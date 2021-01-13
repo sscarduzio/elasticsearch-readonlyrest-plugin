@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.ReflecUtils
 import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 sealed trait ExtractedIndices {
   def indices: Set[String]
@@ -56,26 +56,47 @@ object ExtractedIndices {
 
 object SqlRequestHelper {
 
-  def modifyIndicesOf(request: CompositeIndicesRequest,
-                      extractedIndices: SqlIndices,
-                      finalIndices: Set[String]): Try[CompositeIndicesRequest] = Try {
-    extractedIndices match {
-      case s: SqlTableRelated =>
-        setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))
-      case SqlNotTableRelated =>
-        request
-    }
+  sealed trait ModificationError
+  object ModificationError {
+    final case class UnexpectedException(ex: Throwable) extends ModificationError
   }
 
-  def indicesFrom(request: CompositeIndicesRequest): Try[SqlIndices] = Try {
-    val query = getQuery(request)
-    val params = ReflecUtils.invokeMethodCached(request, request.getClass, "params")
+  def modifyIndicesOf(request: CompositeIndicesRequest,
+                      extractedIndices: SqlIndices,
+                      finalIndices: Set[String]): Either[ModificationError, CompositeIndicesRequest] = {
+    val result = Try {
+      extractedIndices match {
+        case s: SqlTableRelated =>
+          setQuery(request, newQueryFrom(getQuery(request), s, finalIndices))
+        case SqlNotTableRelated =>
+          request
+      }
+    }
+    result.toEither.left.map(ModificationError.UnexpectedException.apply)
+  }
 
-    implicit val classLoader: ClassLoader = request.getClass.getClassLoader
-    val statement = new SqlParser().createStatement(query, params)
-    statement match {
-      case statement: SimpleStatement => statement.indices
-      case command: Command => command.indices
+  sealed trait IndicesError
+  object IndicesError {
+    final case class UnexpectedException(ex: Throwable) extends IndicesError
+    case object ParsingException extends IndicesError
+  }
+
+  def indicesFrom(request: CompositeIndicesRequest): Either[IndicesError, SqlIndices] = {
+    val result = Try {
+      val query = getQuery(request)
+      val params = ReflecUtils.invokeMethodCached(request, request.getClass, "params")
+
+      implicit val classLoader: ClassLoader = request.getClass.getClassLoader
+      val statement = Try(new SqlParser().createStatement(query, params))
+      statement match {
+        case Success(statement: SimpleStatement) => Right(statement.indices)
+        case Success(command: Command) => Right(command.indices)
+        case Failure(_) => Left(IndicesError.ParsingException: IndicesError)
+      }
+    }
+    result match {
+      case Success(value) => value
+      case Failure(exception) => Left(IndicesError.UnexpectedException(exception))
     }
   }
 

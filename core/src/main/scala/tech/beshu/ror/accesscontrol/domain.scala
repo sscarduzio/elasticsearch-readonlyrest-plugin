@@ -17,19 +17,22 @@
 package tech.beshu.ror.accesscontrol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.util.{Base64, Locale}
+import java.time.{Instant, ZoneId}
+import java.time.format.DateTimeFormatter
+import java.util.{Base64, Locale, UUID}
 
 import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
@@ -39,9 +42,14 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.util.{Random, Try}
+import scala.util.{Failure, Success, Try, Random}
 
 object domain {
+
+  final case class CorrelationId(value: NonEmptyString)
+  object CorrelationId {
+    def random: CorrelationId = new CorrelationId(NonEmptyString.unsafeFrom(UUID.randomUUID().toString))
+  }
 
   sealed trait LoggedUser {
     def id: User.Id
@@ -66,21 +74,22 @@ object domain {
   object Header {
     final case class Name(value: NonEmptyString)
     object Name {
-      val xApiKeyHeaderName = Header.Name(NonEmptyString.unsafeFrom("X-Api-Key"))
-      val xForwardedFor = Name(NonEmptyString.unsafeFrom("X-Forwarded-For"))
-      val xForwardedUser = Name(NonEmptyString.unsafeFrom("X-Forwarded-User"))
-      val xUserOrigin = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ORIGIN))
-      val kibanaHiddenApps = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_HIDDEN_APPS))
-      val cookie = Name(NonEmptyString.unsafeFrom("Cookie"))
-      val setCookie = Name(NonEmptyString.unsafeFrom("Set-Cookie"))
-      val transientFields = Name(NonEmptyString.unsafeFrom(Constants.FIELDS_TRANSIENT))
-      val currentGroup = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUP_CURRENT))
-      val availableGroups = Name(NonEmptyString.unsafeFrom(Constants.HEADER_GROUPS_AVAILABLE))
-      val userAgent = Name(NonEmptyString.unsafeFrom("User-Agent"))
-      val authorization = Name(NonEmptyString.unsafeFrom("Authorization"))
-      val rorUser = Name(NonEmptyString.unsafeFrom(Constants.HEADER_USER_ROR))
-      val kibanaAccess = Name(NonEmptyString.unsafeFrom(Constants.HEADER_KIBANA_ACCESS))
-      val impersonateAs = Name(NonEmptyString.unsafeFrom("impersonate_as"))
+      val xApiKeyHeaderName = Header.Name("X-Api-Key")
+      val xForwardedFor = Name("X-Forwarded-For")
+      val xForwardedUser = Name("X-Forwarded-User")
+      val xUserOrigin = Name(Constants.HEADER_USER_ORIGIN)
+      val kibanaHiddenApps = Name(Constants.HEADER_KIBANA_HIDDEN_APPS)
+      val cookie = Name("Cookie")
+      val setCookie = Name("Set-Cookie")
+      val transientFields = Name(Constants.FIELDS_TRANSIENT)
+      val currentGroup = Name(Constants.HEADER_GROUP_CURRENT)
+      val availableGroups = Name(Constants.HEADER_GROUPS_AVAILABLE)
+      val userAgent = Name("User-Agent")
+      val authorization = Name("Authorization")
+      val rorUser = Name(Constants.HEADER_USER_ROR)
+      val kibanaAccess = Name(Constants.HEADER_KIBANA_ACCESS)
+      val impersonateAs = Name("impersonate_as")
+      val correlationId = Name(Constants.HEADER_CORRELATION_ID)
 
       implicit val eqName: Eq[Name] = Eq.by(_.value.value.toLowerCase(Locale.US))
     }
@@ -247,10 +256,16 @@ object domain {
   object Action {
     val searchAction = Action("indices:data/read/search")
     val mSearchAction = Action("indices:data/read/msearch")
+    val restoreSnapshotAction = Action("cluster:admin/snapshot/restore")
     val fieldCapsAction = Action("indices:data/read/field_caps")
     val asyncSearchAction = Action("indices:data/read/async_search/submit")
     val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
     val searchTemplateAction = Action("indices:data/read/search/template")
+    // ROR actions
+    val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
+    val rorConfigAction = Action("cluster:ror/config/manage")
+    val rorAuditEventAction = Action("cluster:ror/audit_event/put")
+    val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
   }
@@ -296,6 +311,43 @@ object domain {
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
     def all: Set[IndexName] = aliases + index
+  }
+
+  final case class RorConfigurationIndex(index: IndexName) extends AnyVal
+
+  final class RorAuditIndexTemplate private(nameFormatter: DateTimeFormatter,
+                                            rawPattern: String) {
+
+    def indexName(instant: Instant): IndexName = {
+      IndexName.fromUnsafeString(nameFormatter.format(instant))
+    }
+
+    def conforms(index: IndexName): Boolean = {
+      if(index.hasWildcard) {
+        IndicesMatcher
+          .create(Set(index))
+          .`match`(IndexName.fromUnsafeString(rawPattern))
+      } else {
+        Try(nameFormatter.parse(index.value.value)).isSuccess
+      }
+    }
+  }
+  object RorAuditIndexTemplate {
+    val default: RorAuditIndexTemplate = from(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).right.get
+
+    def apply(pattern: String): Either[CreationError, RorAuditIndexTemplate] = from(pattern)
+
+    def from(pattern: String): Either[CreationError, RorAuditIndexTemplate] = {
+      Try(DateTimeFormatter.ofPattern(pattern).withZone(ZoneId.of("UTC"))) match {
+        case Success(formatter) => Right(new RorAuditIndexTemplate(formatter, pattern.replaceAll("'", "")))
+        case Failure(ex) => Left(CreationError.ParsingError(ex.getMessage))
+      }
+    }
+
+    sealed trait CreationError
+    object CreationError {
+      final case class ParsingError(msg: String) extends CreationError
+    }
   }
 
   final case class RepositoryName(value: NonEmptyString)
@@ -354,21 +406,26 @@ object domain {
     implicit val eqKibanaAccess: Eq[KibanaAccess] = Eq.fromUniversalEquals
   }
 
-  final case class UriPath(value: String) {
-    def isCurrentUserMetadataPath: Boolean = value.startsWith(UriPath.currentUserMetadataPath.value)
-    def isCatTemplatePath: Boolean = value.startsWith("/_cat/templates")
-    def isTemplatePath: Boolean = value.startsWith("/_template")
+  final case class UriPath(value: NonEmptyString) {
+    def isCurrentUserMetadataPath: Boolean = UriPath.currentUserMetadataPath.value.value.startsWith(value.value)
+    def isCatTemplatePath: Boolean = value.value.startsWith("/_cat/templates")
+    def isTemplatePath: Boolean = value.value.startsWith("/_template")
+    def isCatIndicesPath: Boolean = value.value.startsWith("/_cat/indices")
     def isAliasesPath: Boolean =
-      value.startsWith("/_cat/aliases") ||
-        value.startsWith("/_alias") ||
-        "^/(\\w|\\*)*/_alias(|/)$".r.findFirstMatchIn(value).isDefined ||
-        "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value).isDefined
-    def isCatIndicesPath: Boolean = value.startsWith("/_cat/indices")
-
+      value.value.startsWith("/_cat/aliases") ||
+        value.value.startsWith("/_alias") ||
+        "^/(\\w|\\*)*/_alias(|/)$".r.findFirstMatchIn(value.value).isDefined ||
+        "^/(\\w|\\*)*/_alias/(\\w|\\*)*(|/)$".r.findFirstMatchIn(value.value).isDefined
   }
   object UriPath {
-    val currentUserMetadataPath = UriPath(Constants.CURRENT_USER_METADATA_PATH)
+    val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(Constants.CURRENT_USER_METADATA_PATH))
     implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
+
+    def from(value: String): Option[UriPath] = {
+      NonEmptyString
+        .from(value).toOption
+        .map(UriPath.apply)
+    }
 
     object CatTemplatePath {
       def unapply(uriPath: UriPath): Option[UriPath] = {

@@ -18,6 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.DynamicVariablesSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
-import tech.beshu.ror.utils.containers.XpackSupport
 
-class DynamicVariablesProxyTests extends DynamicVariablesSuite with ProxyTestSupport with XpackSupport
+class DynamicVariablesProxyTests extends DynamicVariablesSuite with ProxyTestSupport

@@ -17,20 +17,19 @@
 package tech.beshu.ror.integration
 
 import java.time.{Clock, Instant, ZoneId}
-import java.time.format.DateTimeFormatter
 
-import org.scalatest.WordSpec
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Matchers._
+import org.scalatest.WordSpec
+import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
 import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.header
-import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.Constants
 
-import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future, Promise}
 import scala.language.postfixOps
 
 class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlTest {
@@ -77,10 +76,11 @@ class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlT
              |  "task_id":0,
              |  "type":"default-type",
              |  "req_method":"GET",
-             |  "path":"/_readonlyrest/metadata/current_user",
+             |  "path":"/_readonlyrest/metadata/current_user/",
              |  "indices":[],
              |  "@timestamp":"2020-01-01T00:00:00Z",
              |  "content_len_kb":0,
+             |  "correlation_id":"${captureCorrelationId(jsonString)}",
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
              |  "action":"default-action",
@@ -113,10 +113,11 @@ class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlT
              |  "task_id":0,
              |  "type":"default-type",
              |  "req_method":"GET",
-             |  "path":"/_readonlyrest/metadata/current_user",
+             |  "path":"/_readonlyrest/metadata/current_user/",
              |  "indices":[],
              |  "@timestamp":"2020-01-01T00:00:00Z",
              |  "content_len_kb":0,
+             |  "correlation_id":"${captureCorrelationId(jsonString)}",
              |  "processingMillis":${captureProcessingMillis(jsonString)},
              |  "xff":"192.168.0.1",
              |  "action":"default-action",
@@ -133,7 +134,7 @@ class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlT
     implicit val loggingContext: LoggingContext = LoggingContext(Set.empty)
     new AccessControlLoggingDecorator(acl, Some(new AuditingTool(
       AuditingTool.Settings(
-        DateTimeFormatter.ofPattern(Constants.AUDIT_LOG_DEFAULT_INDEX_TEMPLATE).withZone(ZoneId.of("UTC")),
+        RorAuditIndexTemplate.default,
         new DefaultAuditLogSerializer
       ),
       auditSinkService
@@ -145,6 +146,13 @@ class AccessControlAuditTests extends WordSpec with BaseYamlLoadedAccessControlT
       .findFirstMatchIn(jsonString)
       .getOrElse(throw new IllegalStateException("no processingMillis pattern matched"))
       .group(1).toLong
+  }
+
+  private def captureCorrelationId(jsonString: String) = {
+    "\"correlation_id\":\"((\\d|\\w|-)*)\",".r
+      .findFirstMatchIn(jsonString)
+      .getOrElse(throw new IllegalStateException("no correlation_id pattern matched"))
+      .group(1)
   }
 
   private class MockedAuditSinkService extends AuditSinkService {
