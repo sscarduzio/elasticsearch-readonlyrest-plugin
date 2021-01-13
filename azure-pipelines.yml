@@ -172,11 +172,12 @@ stages:
     - script: |
        echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
       condition: eq(200, variables.mvn_status)
+
     - script: |
        echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
       condition: eq(404, variables.mvn_status)
     - task: DownloadSecureFile@1
-      condition: eq(404, variables.mvn_status)
+      #condition: eq(404, variables.mvn_status)
       name: pgp
       displayName: 'Download secret.pgp secret file'
       inputs:
@@ -187,7 +188,7 @@ stages:
         sudo chown root:root $(pgp.secureFilePath)
         sudo chmod a+r $(pgp.secureFilePath)
         mkdir .travis
-        sudo ln -s -t .travis/ $(pgp.secureFilePath)
+        sudo ln -s -t .travis/$(pgp.secureFilePath)
         echo "secret.pgp MD5SUSM `md5sum .travis/secret.pgp`"
       condition: eq(404, variables.mvn_status)
 
