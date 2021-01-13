@@ -37,7 +37,8 @@ class FilterRule(val settings: Settings)
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     blockContext.requestContext match {
-      case r if !r.isAllowedForDLS || r.action.isRorAction => Rejected()
+      case r if !r.isAllowedForDLS => Rejected()
+      case r if r.action.isRorAction => Rejected()
       case _ =>
         settings.filter.resolve(blockContext) match {
           case Left(_: Unresolvable) =>
