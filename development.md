@@ -5,16 +5,13 @@ This project contains the ElasticSearch dependencies in the Maven build system, 
 `git clone https://github.com/sscarduzio/elasticsearch-readonlyrest-plugin.git /me/elasticsearch-readonlyrest-plugin`
 For this example, we cloned the source code under a short path: the `/me` directory.
 ## Run ES as a Java Application
-Open IntelliJ Idea and open the source folder as a maven project. The dependencies will be downloaded automatically.
-Now click on the drop down menu on the left of the green play icon on the top right and select "Edit Configurations.."
-![Dropdown edit configurations](http://i.imgur.com/cmqNA7T.png)
-Click the plus icon on the left and create a new "Application". Now fill in all the fields as shown in the pic:
-![IntelliJ Idea Run Configuration](https://i.imgur.com/csPfgkw.png)
-That is:
-- **VM Options** `-Djava.security.policy=/me/elasticsearch-readonlyrest-plugin/integration-tests/src/test/eshome/plugins/readonlyrest/plugin-security.policy -Djava.awt.headless=true -Des.insecure.allow.root=true -Dfile.encoding=UTF-8 -Djna.nosys=true -Des.path.home=/me/elasticsearch-readonlyrest-plugin/integration-tests/src/test/eshome -Dlog4j2.disable.jmx=true -Xms1g -Xmx1g -Djdk.io.permissionsUseCanonicalPath=true -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j.skipJansi=true -Des.path.conf=/me/elasticsearch-readonlyrest-plugin/integration-tests/src/test/eshome/config/ -Djava.security.manager -Djava.security.policy=/me/elasticsearch-readonlyrest-plugin/integration-tests/src/test/eshome/sec-all.policy`
-- **Main class** `org.elasticsearch.bootstrap.Elasticsearch`
-- **Use classpath of module** `readonlyrest.es[YY]x.main`
-The careful reader may already have noticed that some Java options points to a special folder under `integration-tests/src/test/eshome`. This contains what ElasticSearch normally expects to see in the present working directory it's being run.
+Gradle project named `eshome` is configured to run ROR as java application. You can run it from console
+```bash
+./gradlew :eshome:run
+```
+or using Intellij for debug. ![Dropdown edit configurations](https://i.imgur.com/KiFSyD9.png)
+The careful reader may already have noticed that some Java options points to a special folder under `./eshome`. This contains what ElasticSearch normally expects to see in the present working directory it's being run.
+
 ```
 $ tree eshome
 .
@@ -42,7 +39,13 @@ $ tree eshome
 Notice the plugins/readonlyrest contains a copy of the descriptor properties and security policy, but not the plugin's jar. This is because - as stated in the beginning - the plugin code is already available to the class path in form of source files.
 ## Run it
 Now save this, call it with a name like `Whole ES` and you'll be able to press play and see ElasticSearch boot up in your IDE.
-![ES booting up and running in IDE](http://i.imgur.com/A4DfsWZ.png)
+![ES booting up and running in IDE](https://i.imgur.com/A4DfsWZ.png)
+## Debug with concrete ES version
+Intellij is able to run `eshome` in debug, but it misses resolving ES sources.
+It would navigate to ES 5.5.0, even when you're debugging ES 7.3.2.
+You can help Intellij by ignoring not used modules.
+If you'll ignore every es module, except one you're working on Intellij won't miss ES version sources.
+![ES booting up and running in IDE](https://i.imgur.com/s32SaI8.png) 
 ## Building plugin using Gradle for concrete ES version:
 * `./gradlew clean es70x:ror '-PesVersion=7.2.0'` 
 * ROR plugin binaries can found in `es70x/build/distributions/`
@@ -78,3 +81,9 @@ If you see:
 you should change following properties:
 * `version` and `elasticsearch.version` of `integration-tests/src/test/eshome/modules/transport-netty4/plugin-descriptor.properties` from A.B.C to X.Y.Z
 * `elasticsearch.version` of `integration-tests/src/test/eshome/plugins/readonlyrest/plugin-descriptor.properties` from A.B.C to X.Y.Z
+### #5
+```
+Caused by: java.lang.IllegalStateException: codebase property already set: codebase.readonlyrest -> file:/home/wdk/multirepo/elasticsearch-readonlyrest-plugin/eshome/plugins/readonlyrest/readonlyrest-1.25.0_es7.9.3.jar, cannot set to file:/home/wdk/multirepo/elasticsearch-readonlyrest-plugin/eshome/plugins/readonlyrest/readonlyrest-1.25.0_es7.10.0.jar
+```
+ES above version 7.9.x uses plugin class loaders based on plugin dirs, so dependency jars are copied like are copied for installed plugin, to plugin's dir. You should clean `eshome` project.
+`./gradlew :eshome:clean`

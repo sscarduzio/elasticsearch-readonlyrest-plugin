@@ -44,8 +44,8 @@ trait CurrentUserMetadataSuite
           assertEquals(200, result.responseCode)
           result.responseJson.obj.size should be(4)
           result.responseJson("x-ror-username").str should be("user1")
-          result.responseJson("x-ror-current-group").str should be("group3")
-          result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group3"), Str("group1")))
+          result.responseJson("x-ror-current-group").str should be("group1")
+          result.responseJson("x-ror-available-groups").arr.toList should be(List(Str("group1")))
           result.responseJson("x-ror-logging-id").str should fullyMatch uuidRegex()
         }
         "several blocks are matched and current group is set" in {

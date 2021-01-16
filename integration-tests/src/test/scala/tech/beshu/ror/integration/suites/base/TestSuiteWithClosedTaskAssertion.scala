@@ -39,8 +39,7 @@ trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
         val tasks = adminCatManager.tasks().results
         Try {
           tasks.map(_ ("action").str).toSet should notContainElementsFrom(Set(
-            """^cluster:admin/rrconfig/.*$""".r,
-            """^cluster:admin/rradmin/.*$""".r
+            """^cluster:ror/.*$""".r
           ))
         } match {
           case Failure(exception) => Failed(exception)
