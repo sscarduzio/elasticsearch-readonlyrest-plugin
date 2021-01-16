@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCrede
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 final class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
                             override val impersonators: List[ImpersonatorDef])

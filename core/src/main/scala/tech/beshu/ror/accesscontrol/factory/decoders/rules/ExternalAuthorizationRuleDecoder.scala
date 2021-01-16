@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -40,6 +41,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[ExternalAuthorizationService])
+                                      (implicit caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
     ExternalAuthorizationRuleDecoder
       .settingsDecoder(authotizationServices)

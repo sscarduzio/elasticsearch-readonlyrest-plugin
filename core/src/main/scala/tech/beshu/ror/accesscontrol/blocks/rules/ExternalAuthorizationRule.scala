@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
@@ -24,27 +23,22 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{Matcher, MatcherWithWildcardsScalaAdapter}
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.TypedMatcherWithWildcards
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.collection.JavaConverters._
-
 class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings)
+                               (implicit caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseAuthorizationRule {
 
-  private val userMatcher: Matcher = new MatcherWithWildcardsScalaAdapter(
-    new MatcherWithWildcards(settings.users.map(_.value.value).toSortedSet.asJava)
-  )
+  private val userMatcher = new TypedMatcherWithWildcards[User.Id](settings.users.map(_.value.value).toSortedSet)
 
   override val name: Rule.Name = ExternalAuthorizationRule.name
 
   override protected def authorize[B <: BlockContext](blockContext: B,
                                                       user: LoggedUser): Task[AuthorizationResult] = {
-    //TODO: should fail
     if (userMatcher.`match`(user.id)) checkUserGroups(user, blockContext.requestContext.currentGroup.toOption)
     else Task.now(Unauthorized)
   }

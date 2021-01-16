@@ -21,7 +21,7 @@ import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 import java.util.{Base64, Locale, UUID}
 
-import cats.Eq
+import cats.{Eq, Show}
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
@@ -39,11 +39,12 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.CaseMappingEquality
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.util.{Failure, Success, Try, Random}
-
+import scala.util.{Failure, Random, Success, Try}
+import tech.beshu.ror.utils.CaseMappingEquality._
 object domain {
 
   final case class CorrelationId(value: NonEmptyString)
@@ -64,7 +65,7 @@ object domain {
   object User {
     final case class Id(value: NonEmptyString)
     object Id {
-      type UserIdCaseMappingEquality = Eq[User.Id]
+      type UserIdCaseMappingEquality = CaseMappingEquality[User.Id]
     }
   }
 
@@ -267,6 +268,7 @@ object domain {
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
+    implicit val showAction:Show[Action] = _.value
   }
 
   final case class IndexName(value: NonEmptyString) {

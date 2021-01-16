@@ -37,6 +37,7 @@ import tech.beshu.ror.providers.UuidProvider
 
 import scala.collection.JavaConverters._
 import scala.util.Try
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 final case class RorSessionCookie(userId: User.Id, expiryDate: Instant)
 

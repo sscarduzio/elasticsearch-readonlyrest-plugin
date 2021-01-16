@@ -16,14 +16,22 @@
  */
 package tech.beshu.ror.utils
 
-import cats.Eq
+import cats.{Contravariant, Eq, Show}
+import cats.implicits._
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.utils.CaseMapping.{StringEquality, caseSensitiveEquality}
+
+import language.implicitConversions
 
 object UserIdEq {
   val caseSensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(CaseMapping.caseSensitiveEquality)
   val caseInsensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(CaseMapping.caseInsensitiveEquality)
+  implicit val rmMe: UserIdCaseMappingEquality = caseSensitive
 
   private def eqUserWith(eqString: CaseMapping.StringEquality): User.Id.UserIdCaseMappingEquality = {
-    Eq.by[User.Id, String](_.value.value)(eqString)
+    eqString.contramap[User.Id](_.value.value)
   }
 }
+
+

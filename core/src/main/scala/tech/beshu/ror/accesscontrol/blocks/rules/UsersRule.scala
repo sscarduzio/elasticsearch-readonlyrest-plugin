@@ -24,13 +24,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, User}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.MatcherWithWildcards
-
-import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.{MatcherWithWildcards, TypedMatcherWithWildcards}
 
 class UsersRule(val settings: Settings)
+               (implicit caseMappingEquality: UserIdCaseMappingEquality)
   extends RegularRule {
 
   override val name: Rule.Name = UsersRule.name
@@ -45,7 +45,7 @@ class UsersRule(val settings: Settings)
   private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): RuleResult[B] = {
     val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet
     RuleResult.fromCondition(blockContext) {
-      new MatcherWithWildcards(resolvedIds.map(_.value.value).asJava).`match`(user.id.value.value)//TODO: should fail
+      new TypedMatcherWithWildcards[User.Id](resolvedIds.map(_.value.value)).`match`(user.id)
     }
   }
 }

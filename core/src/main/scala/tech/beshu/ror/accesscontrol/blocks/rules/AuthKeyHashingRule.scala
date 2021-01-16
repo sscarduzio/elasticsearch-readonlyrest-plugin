@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExi
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.Hasher
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
                                   hasher: Hasher)

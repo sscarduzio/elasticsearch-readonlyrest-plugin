@@ -18,122 +18,22 @@
 package tech.beshu.ror.utils;
 
 
-import com.google.common.base.Strings;
-import com.google.common.collect.Sets;
+public class MatcherWithWildcards extends GenericMatcherWithWildcards<String> {
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+    private static final CaseMappingEqualityJava<String> stringCaseMappingEquality =
+            new CaseMappingEqualityJava<String>() {
+                @Override
+                public String show(String a) {
+                    return a;
+                }
 
-public class MatcherWithWildcards {
-  private static Set<String> empty = new HashSet<>(0);
-  private final Set<String> matchers;
-  private List<String[]> patternsList = new LinkedList<>();
+                @Override
+                public String mapCases(String from) {
+                    return from;
+                }
+            };
 
-  public MatcherWithWildcards(Iterable<String> patterns) {
-    this.matchers = Sets.newHashSet(patterns);
-    for (String p : patterns) {
-      if (p == null) {
-        continue;
-      }
-      patternsList.add(p.split("\\*+", -1 /* want empty trailing token if any */));
+    public MatcherWithWildcards(Iterable<String> patterns) {
+        super(patterns, stringCaseMappingEquality);
     }
-  }
-
-  private static boolean miniglob(String[] pattern, String line) {
-    if (pattern.length == 0) {
-      return Strings.isNullOrEmpty(line);
-    }
-    else if (pattern.length == 1) {
-      return line.equals(pattern[0]);
-    }
-    if (!line.startsWith(pattern[0])) {
-      return false;
-    }
-
-    int idx = pattern[0].length();
-    for (int i = 1; i < pattern.length - 1; ++i) {
-      String patternTok = pattern[i];
-      int nextIdx = line.indexOf(patternTok, idx);
-      if (nextIdx < 0) {
-        return false;
-      }
-      else {
-        idx = nextIdx + patternTok.length();
-      }
-    }
-
-    return line.endsWith(pattern[pattern.length - 1]);
-  }
-
-  public Set<String> getMatchers() {
-    return matchers;
-  }
-
-  public boolean match(String haystack) {
-    if (haystack == null) {
-      return false;
-    }
-    for (String[] p : patternsList) {
-      if (miniglob(p, haystack)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public boolean match(boolean remoteClusterAware, String haystack) {
-    return remoteClusterAware ? matchRemoteClusterAware(haystack) : match(haystack);
-  }
-
-  public Set<String> filter(boolean remoteClusterAware, Set<String> haystack) {
-    return remoteClusterAware ? filterRemoteClusterAware(haystack) : filter(haystack);
-  }
-
-  public boolean matchRemoteClusterAware(String haystack) {
-    if (haystack == null) {
-      return false;
-    }
-
-    boolean remoteClusterRequested = haystack.contains(":");
-
-    for (String[] p : patternsList) {
-      // Ignore remote cluster related permissions if request didn't mean it
-      if (!remoteClusterRequested && Arrays.asList(p).contains(":")) { //is it ever possible??
-        continue;
-      }
-      if (miniglob(p, haystack)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public Set<String> filter(Set<String> haystack) {
-    if (haystack == null) {
-      return empty;
-    }
-    Set<String> filtered = Sets.newHashSet();
-    for (String hs : haystack) {
-      if (match(hs)) {
-        filtered.add(hs);
-      }
-    }
-    return filtered;
-  }
-
-  public Set<String> filterRemoteClusterAware(Set<String> haystack) {
-    if (haystack == null) {
-      return empty;
-    }
-    Set<String> filtered = Sets.newHashSet();
-    for (String hs : haystack) {
-      if (matchRemoteClusterAware(hs)) {
-        filtered.add(hs);
-      }
-    }
-    return filtered;
-  }
 }

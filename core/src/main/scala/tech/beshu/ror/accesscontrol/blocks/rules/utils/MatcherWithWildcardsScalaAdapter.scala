@@ -56,7 +56,8 @@ object MatcherWithWildcardsScalaAdapter {
   def create[T: StringTNaturalTransformation](items: Iterable[T]): Matcher =
     new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(
       items.map(implicitly[StringTNaturalTransformation[T]].toAString).asJava
-    ))
+    ))  //TODO: fix
+
 }
 
 final case class StringTNaturalTransformation[T](fromString: String => T, toAString: T => String)

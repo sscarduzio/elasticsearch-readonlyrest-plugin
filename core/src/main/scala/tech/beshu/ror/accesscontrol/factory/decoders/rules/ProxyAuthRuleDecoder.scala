@@ -31,6 +31,9 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.userIdDecoder
+import tech.beshu.ror.utils.CaseMapping
+import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.UserIdEq.rmMe
 
 class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth])
   extends RuleDecoderWithoutAssociatedFields[ProxyAuthRule](

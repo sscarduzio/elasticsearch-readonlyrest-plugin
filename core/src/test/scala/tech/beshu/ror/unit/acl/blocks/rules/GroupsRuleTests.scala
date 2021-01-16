@@ -209,7 +209,8 @@ object GroupsRuleTests {
     override val name: Rule.Name = Rule.Name("dummy-rejecting")
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = Task.now(Rejected())
     override def exists(user: User.Id)
-                       (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+                       (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] =
+      Task.now(UserExistence.CannotCheck)
 
     override protected val caseMappingEquality: UserIdCaseMappingEquality = TestsUtils.userIdEq
   }

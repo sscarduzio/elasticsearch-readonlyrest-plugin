@@ -16,14 +16,7 @@
  */
 package tech.beshu.ror.utils
 
-import java.util.Locale
+import scala.collection.JavaConverters._
 
-import cats.Eq
-import cats.implicits._
-
-object CaseMapping {
-  final case class CaseMappedString(value: String)
-  type StringEquality = CaseMappingEquality[String]
-  val caseSensitiveEquality: StringEquality = CaseMappingEquality.instance(identity)
-  val caseInsensitiveEquality: StringEquality = CaseMappingEquality.instance(_.toUpperCase(Locale.ENGLISH))
-}
+class TypedMatcherWithWildcards[A: CaseMappingEquality](patterns: Set[String])
+  extends GenericMatcherWithWildcards[A](patterns.asJava, CaseMappingEquality.java)

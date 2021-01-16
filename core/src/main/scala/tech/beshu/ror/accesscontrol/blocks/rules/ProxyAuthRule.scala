@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.{MatcherWithWildcards, TypedMatcherWithWildcards}
 
 import scala.collection.JavaConverters._
 
@@ -42,9 +42,7 @@ final class ProxyAuthRule(val settings: Settings)
     with NoImpersonationSupport
     with Logging {
 
-  private val userMatcher = new MatcherWithWildcardsScalaAdapter(
-    new MatcherWithWildcards(settings.userIds.toSortedSet.map(_.value.value).asJava)
-  )
+  private val userMatcher = new TypedMatcherWithWildcards[User.Id](settings.userIds.map(_.value.value).toSortedSet)
 
   override val name: Rule.Name = ProxyAuthRule.name
 

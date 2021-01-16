@@ -22,6 +22,7 @@ import eu.timepit.refined.auto._
 import cats.implicits._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 class UserIdEqTest
   extends AnyWordSpec {

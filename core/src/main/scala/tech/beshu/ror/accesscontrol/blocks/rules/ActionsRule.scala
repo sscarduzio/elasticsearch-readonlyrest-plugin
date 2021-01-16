@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
@@ -26,20 +25,20 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.MatcherWithWildcards
-
-import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.TypedMatcherWithWildcards
 
 class ActionsRule(val settings: Settings)
   extends RegularRule with Logging {
 
   override val name: Rule.Name = ActionsRule.name
 
-  private val matcher = new MatcherWithWildcards(settings.actions.map(_.value).toSortedSet.asJava)
+  import tech.beshu.ror.utils.CaseMappingEquality.Instances._
+
+  private val matcher: TypedMatcherWithWildcards[Action] = new TypedMatcherWithWildcards[Action](settings.actions.map(_.value).toSortedSet)
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     val requestContext = blockContext.requestContext
-    if (matcher.`match`(requestContext.action.value)) {
+    if (matcher.`match`(requestContext.action)) {
       RuleResult.Fulfilled(blockContext)
     } else {
       logger.debug(s"This request uses the action '${requestContext.action.show}' and none of them is on the list.")

@@ -113,6 +113,14 @@ class MatcherWithWildcardsTest
         matcher.`match`(value.value) shouldBe true
       }
     }
+    "value matches pattern case sensitive" in {
+      forAll("CaseVulnerableString") { (caseVulnerableString: CaseVulnerableString) =>
+        val value = caseVulnerableString.value.toLowerCase()
+        val pattern = caseVulnerableString.value
+        val matcher = new MatcherWithWildcards(List(pattern).asJava)
+        matcher.`match`(value) shouldBe false
+      }
+    }
 
     "value mismatches matches empty" in {
       forAll("haystack") { (haystack: String) =>
@@ -267,7 +275,9 @@ object MatcherWithWildcardsTest {
       value <- genLiteralString(pattern, Gen.asciiPrintableStr)
     } yield PatternAndValue(pattern, value)
   implicit val arbPatternAndValue: Arbitrary[PatternAndValue] = Arbitrary(genPatternAndValue)
-
+  final case class CaseVulnerableString(value:String)
+  implicit val arbCaseVulnerableString:Arbitrary[CaseVulnerableString] =
+    Arbitrary(Gen.asciiPrintableStr.filter(s => s.neqv(s.toLowerCase())).map(CaseVulnerableString))
   implicit def arbIterator[A](implicit arb: Arbitrary[A]): Arbitrary[Iterator[A]] =
     Arbitrary(Gen.infiniteStream(arb.arbitrary).map(_.iterator))
 

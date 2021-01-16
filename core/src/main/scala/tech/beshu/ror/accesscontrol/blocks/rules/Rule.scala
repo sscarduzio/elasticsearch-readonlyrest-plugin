@@ -35,9 +35,10 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.{MatcherWithWildcards, TypedMatcherWithWildcards}
 
 import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 sealed trait Rule {
   def name: Name
@@ -99,10 +100,8 @@ object Rule {
     private lazy val enhancedImpersonatorDefs =
       impersonators
         .map { i =>
-          val matcher = new MatcherWithWildcardsScalaAdapter(
-            new MatcherWithWildcards(i.users.map(_.value.value).toSortedSet.asJava)
-          )
-          (i, matcher)
+           val userMatcher = new TypedMatcherWithWildcards[User.Id](i.users.map(_.value.value).toSortedSet)(caseMappingEquality)
+          (i, userMatcher)
         }
 
     protected def impersonators: List[ImpersonatorDef]

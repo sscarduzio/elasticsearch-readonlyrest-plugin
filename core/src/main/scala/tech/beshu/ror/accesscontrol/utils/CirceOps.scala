@@ -43,10 +43,13 @@ import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.authentication
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult._
+import tech.beshu.ror.utils.CaseMapping
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.collection.SortedSet
 import scala.language.{existentials, higherKinds}
+import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 object CirceOps {
 
@@ -312,6 +315,7 @@ object CirceOps {
                           ldapDefinitions: Definitions[LdapService],
                           rorKbnDefinitions: Definitions[RorKbnDef],
                           imperonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
+      import tech.beshu.ror.utils.UserIdEq.rmMe
       value.keys.map(_.toList) match {
         case None | Some(Nil) =>
           Left(Message(s"No authentication method defined for user ['${username.show}']"))

@@ -22,6 +22,6 @@ import scala.collection.JavaConverters._
 object SimpleMatcher {
 
   def isMatched(pattern: String, value: String): Boolean = {
-    new MatcherWithWildcards(List(pattern).asJava).`match`(value)
+    new MatcherWithWildcards(List(pattern).asJava).`match`(value)  //TODO: fix
   }
 }
