@@ -17,6 +17,8 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
 import com.google.common.base.Strings
+import eu.timepit.refined.types.string.NonEmptyString
+import tech.beshu.ror.accesscontrol.domain.IndexName
 
 class ScalaMatcherWithWildcards[PATTERN: StringTNaturalTransformation](patterns: Set[PATTERN]) {
 
@@ -57,4 +59,12 @@ class ScalaMatcherWithWildcards[PATTERN: StringTNaturalTransformation](patterns:
     line.endsWith(pattern.last)
   }
 
+}
+
+final case class StringTNaturalTransformation[T](fromString: String => T, toAString: T => String)
+object StringTNaturalTransformation {
+  object instances {
+    implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
+      StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
+  }
 }

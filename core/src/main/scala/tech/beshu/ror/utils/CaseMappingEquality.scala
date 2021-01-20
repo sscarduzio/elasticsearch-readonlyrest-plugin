@@ -29,7 +29,7 @@ trait CaseMappingEquality[A] {
 
 object CaseMappingEquality {
   def apply[A](implicit caseMappingEquality: CaseMappingEquality[A]): CaseMappingEquality[A] = caseMappingEquality
-  def java[A](implicit caseMappingEquality: CaseMappingEquality[A]): CaseMappingEqualityJava[A] = new CaseMappingEqualityJava[A] {
+  def summonJava[A](implicit caseMappingEquality: CaseMappingEquality[A]): CaseMappingEqualityJava[A] = new CaseMappingEqualityJava[A] {
     override def show(a: A): String = caseMappingEquality.show.show(a)
 
     override def mapCases(from: String): String = caseMappingEquality.mapCases(from)
@@ -54,11 +54,5 @@ object CaseMappingEquality {
       override def contramap[A, B](fa: CaseMappingEquality[A])(f: B => A): CaseMappingEquality[B] =
         CaseMappingEquality.instance[B](fa.mapCases)(fa.show.contramap(f))
     }
-  }
-  //TODO: mv
-  object Instances{
-    implicit val caseMappingEqualityAction:CaseMappingEquality[Action] = CaseMappingEquality.instance(identity)
-    implicit val caseMappingEqualityRepositoryName:CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(identity)
-    implicit val caseMappingEqualitySnapshotName:CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(identity)
   }
 }

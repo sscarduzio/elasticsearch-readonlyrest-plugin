@@ -18,8 +18,6 @@ package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
 import cats.Show
 import cats.implicits._
-import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.utils.{CaseMappingEquality, GenericMatcherWithWildcards, MatcherWithWildcards}
 
 import scala.collection.JavaConverters._
@@ -34,7 +32,6 @@ object Matcher {
   def asMatcherWithWildcards[A](matcher: Matcher[A]): MatcherWithWildcards = {
     new MatcherWithWildcards(matcher.underlying.getMatchers)
   }
-
 
 }
 
@@ -60,23 +57,15 @@ object MatcherWithWildcardsScalaAdapter {
   import tech.beshu.ror.utils.CaseMappingEquality._
 
   def create[T: CaseMappingEquality](items: Iterable[T]): Matcher[T] =
-    new MatcherWithWildcardsScalaAdapter(new GenericMatcherWithWildcards(items.map(Show[T].show).asJava, CaseMappingEquality.java))
+    new MatcherWithWildcardsScalaAdapter(new GenericMatcherWithWildcards(items.map(Show[T].show).asJava, CaseMappingEquality.summonJava))
    def apply[A: CaseMappingEquality](patterns: Set[A]): MatcherWithWildcardsScalaAdapter[A] =
      fromJavaSetString(patterns.map(_.show).asJava)
-    def fromJavaSetString[A: CaseMappingEquality](patterns: _root_.java.util.Set[String]): MatcherWithWildcardsScalaAdapter[A] = //TODO: root
-      new MatcherWithWildcardsScalaAdapter(new GenericMatcherWithWildcards[A](patterns, CaseMappingEquality.java))
+    def fromJavaSetString[A: CaseMappingEquality](patterns: java.util.Set[String]): MatcherWithWildcardsScalaAdapter[A] =
+      new MatcherWithWildcardsScalaAdapter(new GenericMatcherWithWildcards[A](patterns, CaseMappingEquality.summonJava))
     def fromSetString[A: CaseMappingEquality](patterns: Set[String]): MatcherWithWildcardsScalaAdapter[A] =
       fromJavaSetString(patterns.asJava)
-    def fromJavaSet[A: CaseMappingEquality](patterns: _root_.java.util.Set[A]): MatcherWithWildcardsScalaAdapter[A] =  //TODO: root
+    def fromJavaSet[A: CaseMappingEquality](patterns: java.util.Set[A]): MatcherWithWildcardsScalaAdapter[A] =
       fromJavaSetString(patterns.asScala.toSet.map(CaseMappingEquality[A].show.show).asJava)
   def isMatched(pattern: String, value: String): Boolean =
     new MatcherWithWildcards(List(pattern).asJava).`match`(value)
-}
-
-final case class StringTNaturalTransformation[T](fromString: String => T, toAString: T => String)
-object StringTNaturalTransformation {
-  object instances {
-    implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
-      StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
-  }
 }

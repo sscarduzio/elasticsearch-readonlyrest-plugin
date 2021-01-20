@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ImpersonationDefinitionsDecoder}
 import tech.beshu.ror.accesscontrol.orders.userIdOrder
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.UserIdEq
 
 class ImpersonationSettingsTests extends BaseDecoderTest(
   ImpersonationDefinitionsDecoder.instance(
@@ -34,7 +35,8 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
     Definitions[ProxyAuth](Nil),
     Definitions[JwtDef](Nil),
     Definitions[LdapService](Nil),
-    Definitions[RorKbnDef](Nil)
+    Definitions[RorKbnDef](Nil),
+    UserIdEq.caseSensitive,
   )
 ) {
 

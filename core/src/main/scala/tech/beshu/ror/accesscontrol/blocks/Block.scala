@@ -40,11 +40,11 @@ import tech.beshu.ror.utils.TaskOps._
 
 import scala.util.Success
 
-final class Block(val name: Name,
-                  val policy: Policy,
-                  val verbosity: Verbosity,
-                  val rules: NonEmptyList[Rule])
-                 (implicit val loggingContext: LoggingContext)
+class Block(val name: Name,
+            val policy: Policy,
+            val verbosity: Verbosity,
+            val rules: NonEmptyList[Rule])
+           (implicit val loggingContext: LoggingContext)
   extends Logging {
 
   import Lifter._
@@ -144,15 +144,15 @@ object Block {
   sealed trait HistoryItem[B <: BlockContext]
   object HistoryItem {
     final case class RuleHistoryItem[B <: BlockContext](rule: Rule.Name,
-                                                  result: RuleResult[B])extends HistoryItem[B]
+                                                        result: RuleResult[B])
+      extends HistoryItem[B]
   }
 
   sealed trait ExecutionResult[B <: BlockContext] {
     def blockContext: B
   }
   object ExecutionResult {
-    final case class Matched[B <: BlockContext](block: Block,
-                                                override val blockContext: B)
+    final case class Matched[B <: BlockContext](block: Block, override val blockContext: B)
       extends ExecutionResult[B]
     final case class Mismatched[B <: BlockContext](override val blockContext: B)
       extends ExecutionResult[B]

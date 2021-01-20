@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScala
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService._
-import tech.beshu.ror.utils.CaseMappingEquality.Instances._
 
 trait RorClusterService {
 

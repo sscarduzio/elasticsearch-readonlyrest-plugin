@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, Reason, ValueLevelCreationError}
@@ -314,8 +315,8 @@ object CirceOps {
                           jwtDefinitions: Definitions[JwtDef],
                           ldapDefinitions: Definitions[LdapService],
                           rorKbnDefinitions: Definitions[RorKbnDef],
-                          imperonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
-      import tech.beshu.ror.utils.UserIdEq.rmMe
+                          imperonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+                          caseMappingEquality: UserIdCaseMappingEquality) = {
       value.keys.map(_.toList) match {
         case None | Some(Nil) =>
           Left(Message(s"No authentication method defined for user ['${username.show}']"))

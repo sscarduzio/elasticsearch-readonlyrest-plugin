@@ -23,6 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -35,7 +36,8 @@ object ImpersonationDefinitionsDecoder {
                authProxyDefinitions: Definitions[ProxyAuth],
                jwtDefinitions: Definitions[JwtDef],
                ldapDefinitions: Definitions[LdapService],
-               rorKbnDefinitions: Definitions[RorKbnDef]): ADecoder[Id, Definitions[ImpersonatorDef]] = {
+               rorKbnDefinitions: Definitions[RorKbnDef],
+               caseMappingEquality: UserIdCaseMappingEquality): ADecoder[Id, Definitions[ImpersonatorDef]] = {
     implicit val decoder: SyncDecoder[ImpersonatorDef] = SyncDecoderCreator.from(impersonationDefDecoder)
     DefinitionsBaseDecoder.instance[Id, ImpersonatorDef]("impersonation")
   }
@@ -46,7 +48,8 @@ object ImpersonationDefinitionsDecoder {
                                       authProxyDefinitions: Definitions[ProxyAuth],
                                       jwtDefinitions: Definitions[JwtDef],
                                       ldapDefinitions: Definitions[LdapService],
-                                      rorKbnDefinitions: Definitions[RorKbnDef]): Decoder[ImpersonatorDef] = {
+                                      rorKbnDefinitions: Definitions[RorKbnDef],
+                                      caseMappingEquality: UserIdCaseMappingEquality): Decoder[ImpersonatorDef] = {
     implicit val _ = Option.empty[Definitions[ImpersonatorDef]]
     SyncDecoderCreator
       .instance { c =>

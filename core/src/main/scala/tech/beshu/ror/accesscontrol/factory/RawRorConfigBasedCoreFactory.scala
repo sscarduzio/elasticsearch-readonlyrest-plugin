@@ -274,7 +274,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private def aclDecoder(httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                          rorIndexNameConfiguration: RorConfigurationIndex,
-                         globalSettings: GlobalSettings): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] =
+                         globalSettings: GlobalSettings): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] = {
+    implicit val caseMappingEquality: UserIdCaseMappingEquality = createUserMapingEquality(globalSettings)
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
@@ -283,8 +284,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
-        impersonationDefs <- AsyncDecoderCreator.from(ImpersonationDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
-        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, impersonationDefs))
+        impersonationDefs <- AsyncDecoderCreator.from(ImpersonationDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, caseMappingEquality))
+        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, impersonationDefs, caseMappingEquality))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocks <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)
@@ -330,6 +331,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
       } yield (acl, staticContext)
       decoder.apply(c)
     }
+  }
 }
 
 object RawRorConfigBasedCoreFactory {

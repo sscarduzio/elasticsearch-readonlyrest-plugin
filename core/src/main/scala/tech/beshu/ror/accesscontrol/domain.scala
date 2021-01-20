@@ -31,7 +31,6 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
@@ -276,6 +275,7 @@ object domain {
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
     implicit val showAction:Show[Action] = _.value
+    implicit val caseMappingEqualityAction:CaseMappingEquality[Action] = CaseMappingEquality.instance(identity)
   }
 
   final case class IndexName(value: NonEmptyString) {
@@ -365,6 +365,7 @@ object domain {
     val wildcard: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualityRepositoryName:CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(identity)
   }
   final case class SnapshotName(value: NonEmptyString)
   object SnapshotName {
@@ -372,6 +373,7 @@ object domain {
     val wildcard: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualitySnapshotName:CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(identity)
   }
 
   final case class Template(name: TemplateName, patterns: UniqueNonEmptyList[IndexName])

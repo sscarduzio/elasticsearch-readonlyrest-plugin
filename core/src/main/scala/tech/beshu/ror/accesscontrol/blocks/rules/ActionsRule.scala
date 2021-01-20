@@ -32,7 +32,6 @@ class ActionsRule(val settings: Settings)
 
   override val name: Rule.Name = ActionsRule.name
 
-  import tech.beshu.ror.utils.CaseMappingEquality.Instances._
 
   private val matcher: MatcherWithWildcardsScalaAdapter[Action] = MatcherWithWildcardsScalaAdapter[Action](settings.actions.toSortedSet)
 

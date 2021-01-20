@@ -21,6 +21,7 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.ProxyAuth
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -31,11 +32,9 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.userIdDecoder
-import tech.beshu.ror.utils.CaseMapping
-import tech.beshu.ror.utils.CaseMappingEquality._
-import tech.beshu.ror.utils.UserIdEq.rmMe
 
 class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth])
+                          (implicit caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[ProxyAuthRule](
     ProxyAuthRuleDecoder.simpleSettingsDecoder
       .or(ProxyAuthRuleDecoder.extendedSettingsDecoder(authProxiesDefinitions))

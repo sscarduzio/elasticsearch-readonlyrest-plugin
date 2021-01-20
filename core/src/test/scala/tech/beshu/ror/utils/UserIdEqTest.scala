@@ -27,7 +27,6 @@ import tech.beshu.ror.utils.CaseMappingEquality._
 class UserIdEqTest
   extends AnyWordSpec {
 
-  import UserIdEqTest._
   import org.scalatest.matchers.should.Matchers._
 
   private val user1 = User.Id("user1")
@@ -51,23 +50,15 @@ class UserIdEqTest
   private def `match`(user1: User.Id, user2: User.Id)
                      (implicit userIdCaseMappingEquality: UserIdCaseMappingEquality) = {
     show"match $user1, and $user2" in {
-      user1 catsEq user2 shouldBe true
+      user1 eqv user2 shouldBe true
     }
   }
 
   private def mismatch(user1: User.Id, user2: User.Id)
                       (implicit userIdCaseMappingEquality: UserIdCaseMappingEquality) = {
     show"mismatch $user1, and $user2" in {
-      user1 catsEq user2 shouldBe false
+      user1 eqv user2 shouldBe false
     }
   }
 
-}
-object UserIdEqTest {
-  implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
-
-  implicit class EqOps[A](val l: A) extends AnyVal {
-    def catsEq(r: A)
-              (implicit eq: Eq[A]): Boolean = Eq[A].eqv(l, r) //=== is overloaded
-  }
 }

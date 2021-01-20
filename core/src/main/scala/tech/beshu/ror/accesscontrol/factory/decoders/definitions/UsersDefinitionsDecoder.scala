@@ -20,6 +20,7 @@ import cats.Id
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -35,7 +36,8 @@ object UsersDefinitionsDecoder {
                jwtDefinitions: Definitions[JwtDef],
                ldapDefinitions: Definitions[LdapService],
                rorKbnDefinitions: Definitions[RorKbnDef],
-               impersonatorDefs: Definitions[ImpersonatorDef]): ADecoder[Id, Definitions[UserDef]] = {
+               impersonatorDefs: Definitions[ImpersonatorDef],
+               caseMappingEquality: UserIdCaseMappingEquality): ADecoder[Id, Definitions[UserDef]] = {
     implicit val userDefDecoder: SyncDecoder[UserDef] =
       SyncDecoderCreator.from(
         UsersDefinitionsDecoder
@@ -45,7 +47,8 @@ object UsersDefinitionsDecoder {
             jwtDefinitions,
             ldapDefinitions,
             rorKbnDefinitions,
-            impersonatorDefs
+            impersonatorDefs,
+            caseMappingEquality
           )
       )
     DefinitionsBaseDecoder.instance[Id, UserDef]("users")
@@ -56,7 +59,8 @@ object UsersDefinitionsDecoder {
                                       jwtDefinitions: Definitions[JwtDef],
                                       ldapDefinitions: Definitions[LdapService],
                                       rorKbnDefinitions: Definitions[RorKbnDef],
-                                      impersonatorDefs: Definitions[ImpersonatorDef]): Decoder[UserDef] = {
+                                      impersonatorDefs: Definitions[ImpersonatorDef],
+                                      caseMappingEquality: UserIdCaseMappingEquality): Decoder[UserDef] = {
     implicit val _ = Some(impersonatorDefs)
     SyncDecoderCreator
       .instance { c =>

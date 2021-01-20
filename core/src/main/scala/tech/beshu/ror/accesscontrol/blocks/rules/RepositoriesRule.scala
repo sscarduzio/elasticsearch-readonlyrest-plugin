@@ -30,7 +30,6 @@ import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.CaseMappingEquality.Instances._
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class RepositoriesRule(val settings: Settings)

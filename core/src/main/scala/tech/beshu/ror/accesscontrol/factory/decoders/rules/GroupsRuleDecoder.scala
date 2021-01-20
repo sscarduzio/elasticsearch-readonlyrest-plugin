@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefin
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -38,13 +39,13 @@ import scala.collection.SortedSet
 import tech.beshu.ror.utils.CaseMappingEquality._
 
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef])
+                       (implicit caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[GroupsRule](
   DecoderHelpers
     .decoderStringLikeOrUniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]]
     .toSyncDecoder
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>
-      import tech.beshu.ror.utils.UserIdEq.rmMe
       NonEmptySet.fromSet(SortedSet.empty[UserDef] ++ usersDefinitions.items) match {
         case Some(userDefs) => Right(RuleWithVariableUsageDefinition.create(new GroupsRule(GroupsRule.Settings(groups, userDefs))))
         case None => Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.name.show}` requires them.")))
