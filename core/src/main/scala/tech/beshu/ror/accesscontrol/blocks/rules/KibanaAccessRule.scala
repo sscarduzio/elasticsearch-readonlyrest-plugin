@@ -33,14 +33,13 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.utils.CaseMappingEquality.Instances._
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 
 import scala.util.Try
 
 class KibanaAccessRule(val settings: Settings)
   extends RegularRule with Logging {
-
-  import KibanaAccessRule.stringActionNT
 
   override val name: Rule.Name = KibanaAccessRule.name
 
@@ -169,10 +168,10 @@ object KibanaAccessRule {
                             rorIndex: RorConfigurationIndex)
 
   private object Matchers {
-    val roMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RO_ACTIONS))
-    val rwMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RW_ACTIONS))
-    val adminMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.ADMIN_ACTIONS))
-    val clusterMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.CLUSTER_ACTIONS))
+    val roMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RO_ACTIONS)
+    val rwMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RW_ACTIONS)
+    val adminMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.ADMIN_ACTIONS)
+    val clusterMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.CLUSTER_ACTIONS)
   }
 
   private implicit val stringActionNT: StringTNaturalTransformation[Action] =

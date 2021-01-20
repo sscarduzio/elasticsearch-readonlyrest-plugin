@@ -290,6 +290,7 @@ object domain {
     }
   }
   object IndexName {
+    implicit val caseMappingEqualityIndexName:CaseMappingEquality[IndexName] = CaseMappingEquality.instance(identity)
     val wildcard: IndexName = fromUnsafeString("*")
     val all: IndexName = fromUnsafeString("_all")
     val devNullKibana: IndexName = fromUnsafeString(".kibana-devnull")

@@ -18,7 +18,7 @@ package tech.beshu.ror.utils
 
 import cats._
 import cats.implicits._
-import tech.beshu.ror.accesscontrol.domain.Action
+import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, RepositoryName, SnapshotName}
 
 import language.implicitConversions
 
@@ -28,6 +28,7 @@ trait CaseMappingEquality[A] {
 }
 
 object CaseMappingEquality {
+  def apply[A](implicit caseMappingEquality: CaseMappingEquality[A]): CaseMappingEquality[A] = caseMappingEquality
   def java[A](implicit caseMappingEquality: CaseMappingEquality[A]): CaseMappingEqualityJava[A] = new CaseMappingEqualityJava[A] {
     override def show(a: A): String = caseMappingEquality.show.show(a)
 
@@ -57,5 +58,7 @@ object CaseMappingEquality {
   //TODO: mv
   object Instances{
     implicit val caseMappingEqualityAction:CaseMappingEquality[Action] = CaseMappingEquality.instance(identity)
+    implicit val caseMappingEqualityRepositoryName:CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(identity)
+    implicit val caseMappingEqualitySnapshotName:CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(identity)
   }
 }

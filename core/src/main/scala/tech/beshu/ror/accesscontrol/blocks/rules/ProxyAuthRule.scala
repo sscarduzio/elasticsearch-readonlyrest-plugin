@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
@@ -25,16 +24,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringUserIdNT
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.{MatcherWithWildcards, TypedMatcherWithWildcards}
-
-import scala.collection.JavaConverters._
 
 final class ProxyAuthRule(val settings: Settings)
                          (implicit override val caseMappingEquality: UserIdCaseMappingEquality)
@@ -42,7 +37,7 @@ final class ProxyAuthRule(val settings: Settings)
     with NoImpersonationSupport
     with Logging {
 
-  private val userMatcher = new TypedMatcherWithWildcards[User.Id](settings.userIds.map(_.value.value).toSortedSet)
+  private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.userIds.toSortedSet)
 
   override val name: Rule.Name = ProxyAuthRule.name
 

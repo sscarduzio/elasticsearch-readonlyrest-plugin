@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
@@ -35,9 +34,6 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.utils.{MatcherWithWildcards, TypedMatcherWithWildcards}
-
-import scala.collection.JavaConverters._
 import tech.beshu.ror.utils.CaseMappingEquality._
 
 sealed trait Rule {
@@ -100,7 +96,7 @@ object Rule {
     private lazy val enhancedImpersonatorDefs =
       impersonators
         .map { i =>
-           val userMatcher = new TypedMatcherWithWildcards[User.Id](i.users.map(_.value.value).toSortedSet)(caseMappingEquality)
+           val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSortedSet)(caseMappingEquality)
           (i, userMatcher)
         }
 

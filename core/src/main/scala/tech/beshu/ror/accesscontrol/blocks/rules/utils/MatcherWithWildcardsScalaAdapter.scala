@@ -16,36 +16,40 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
-import cats.kernel.Eq
+import cats.Show
+import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
-import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.utils.{CaseMappingEquality, GenericMatcherWithWildcards, MatcherWithWildcards}
 
 import scala.collection.JavaConverters._
 
-trait Matcher {
-  def underlying: MatcherWithWildcards
-  def filter[T : StringTNaturalTransformation](items: Set[T]): Set[T]
-  def `match`[T : StringTNaturalTransformation](value: T): Boolean
+trait Matcher[A] {
+  def underlying: GenericMatcherWithWildcards[A]
+  def filter(items: Set[A]): Set[A]
+  def `match`(value: A): Boolean
   def contains(str: String): Boolean
 }
+object Matcher {
+  def asMatcherWithWildcards[A](matcher: Matcher[A]): MatcherWithWildcards = {
+    new MatcherWithWildcards(matcher.underlying.getMatchers)
+  }
 
-class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildcards)
-  extends Matcher {
 
-  override def filter[T: StringTNaturalTransformation](items: Set[T]): Set[T] = {
-    val nt = implicitly[StringTNaturalTransformation[T]]
+}
+
+class MatcherWithWildcardsScalaAdapter[A](override val underlying: GenericMatcherWithWildcards[A])
+  extends Matcher[A] {
+
+  override def filter(items: Set[A]): Set[A] = {
     underlying
-      .filter(items.map(nt.toAString(_)).asJava)
+      .filter(items.asJava)
       .asScala
-      .map(nt.fromString)
       .toSet
   }
 
-  //TODO: support eq
-  override def `match`[T: StringTNaturalTransformation](value: T): Boolean = {
-    val nt = implicitly[StringTNaturalTransformation[T]]
-    underlying.`match`(nt.toAString(value))
+  override def `match`(value: A): Boolean = {
+    underlying.`match`(value)
   }
 
   override def contains(str: String): Boolean =
@@ -53,27 +57,26 @@ class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildc
 }
 
 object MatcherWithWildcardsScalaAdapter {
-  def create[T: StringTNaturalTransformation](items: Iterable[T]): Matcher =
-    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(
-      items.map(implicitly[StringTNaturalTransformation[T]].toAString).asJava
-    ))  //TODO: fix
+  import tech.beshu.ror.utils.CaseMappingEquality._
 
+  def create[T: CaseMappingEquality](items: Iterable[T]): Matcher[T] =
+    new MatcherWithWildcardsScalaAdapter(new GenericMatcherWithWildcards(items.map(Show[T].show).asJava, CaseMappingEquality.java))
+   def apply[A: CaseMappingEquality](patterns: Set[A]): MatcherWithWildcardsScalaAdapter[A] =
+     fromJavaSetString(patterns.map(_.show).asJava)
+    def fromJavaSetString[A: CaseMappingEquality](patterns: _root_.java.util.Set[String]): MatcherWithWildcardsScalaAdapter[A] = //TODO: root
+      new MatcherWithWildcardsScalaAdapter(new GenericMatcherWithWildcards[A](patterns, CaseMappingEquality.java))
+    def fromSetString[A: CaseMappingEquality](patterns: Set[String]): MatcherWithWildcardsScalaAdapter[A] =
+      fromJavaSetString(patterns.asJava)
+    def fromJavaSet[A: CaseMappingEquality](patterns: _root_.java.util.Set[A]): MatcherWithWildcardsScalaAdapter[A] =  //TODO: root
+      fromJavaSetString(patterns.asScala.toSet.map(CaseMappingEquality[A].show.show).asJava)
+  def isMatched(pattern: String, value: String): Boolean =
+    new MatcherWithWildcards(List(pattern).asJava).`match`(value)
 }
 
 final case class StringTNaturalTransformation[T](fromString: String => T, toAString: T => String)
 object StringTNaturalTransformation {
   object instances {
-    //TODO: should exist?
-    implicit val stringUserIdNT: StringTNaturalTransformation[User.Id] =
-      StringTNaturalTransformation[User.Id](str => User.Id(NonEmptyString.unsafeFrom(str)), _.value.value)
-    implicit val identityNT: StringTNaturalTransformation[String] =
-      StringTNaturalTransformation[String](identity, identity)
     implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
       StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
   }
-//  implicit def eqStringTNaturalTransformation[A:StringTNaturalTransformation]: Eq[String] =
-//    {
-//      val nt = implicitly[StringTNaturalTransformation[A]]
-//      cats.Eq.by[String, A](a => nt.fromString(a))
-//    }
 }

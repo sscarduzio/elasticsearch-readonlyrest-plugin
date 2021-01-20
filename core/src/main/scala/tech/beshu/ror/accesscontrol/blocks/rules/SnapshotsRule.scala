@@ -16,23 +16,20 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
+import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.SnapshotsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.MatcherWithWildcards
-
-import scala.collection.JavaConverters._
-
+import tech.beshu.ror.utils.CaseMappingEquality.Instances._
 class SnapshotsRule(val settings: Settings)
   extends RegularRule {
 
@@ -60,7 +57,7 @@ class SnapshotsRule(val settings: Settings)
     } else {
       zeroKnowledgeMatchFilter.alterSnapshotsIfNecessary(
         blockContext.snapshots,
-        new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(allowedSnapshots.map(_.value.value).asJava))
+        MatcherWithWildcardsScalaAdapter[SnapshotName](allowedSnapshots)
       ) match {
         case NotAltered =>
           Fulfilled(blockContext)

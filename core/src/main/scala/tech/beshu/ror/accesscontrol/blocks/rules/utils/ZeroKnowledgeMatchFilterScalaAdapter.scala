@@ -25,30 +25,30 @@ import scala.collection.JavaConverters._
 
 class ZeroKnowledgeMatchFilterScalaAdapter {
 
-  def alterIndicesIfNecessary(indices: Set[IndexName], matcher: Matcher): AlterResult[IndexName] = {
+  def alterIndicesIfNecessary(indices: Set[IndexName], matcher: Matcher[IndexName]): AlterResult[IndexName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
       indices.map(_.value.value).asJava,
-      matcher.underlying
+      Matcher.asMatcherWithWildcards(matcher)
     )) match {
       case Some(alteredIndices) => AlterResult.Altered(alteredIndices.asScala.map(str => IndexName(NonEmptyString.unsafeFrom(str))).toSet)
       case None => AlterResult.NotAltered
     }
   }
 
-  def alterRepositoriesIfNecessary(repositories: Set[RepositoryName], matcher: Matcher): AlterResult[RepositoryName] = {
+  def alterRepositoriesIfNecessary(repositories: Set[RepositoryName], matcher: Matcher[RepositoryName]): AlterResult[RepositoryName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
       repositories.map(_.value.value).asJava,
-      matcher.underlying
+      Matcher.asMatcherWithWildcards(matcher)
     )) match {
       case Some(alteredRepositories) => AlterResult.Altered(alteredRepositories.asScala.map(str => RepositoryName(NonEmptyString.unsafeFrom(str))).toSet)
       case None => AlterResult.NotAltered
     }
   }
 
-  def alterSnapshotsIfNecessary(snapshots: Set[SnapshotName], matcher: Matcher): AlterResult[SnapshotName] = {
+  def alterSnapshotsIfNecessary(snapshots: Set[SnapshotName], matcher: Matcher[SnapshotName]): AlterResult[SnapshotName] = {
     Option(ZeroKnowledgeMatchFilter.alterIndicesIfNecessary(
       snapshots.map(_.value.value).asJava,
-      matcher.underlying
+      Matcher.asMatcherWithWildcards(matcher)
     )) match {
       case Some(alteredSnapshots) => AlterResult.Altered(alteredSnapshots.asScala.map(str => SnapshotName(NonEmptyString.unsafeFrom(str))).toSet)
       case None => AlterResult.NotAltered

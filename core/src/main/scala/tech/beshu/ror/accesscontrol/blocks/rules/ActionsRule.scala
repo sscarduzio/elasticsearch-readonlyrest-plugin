@@ -22,10 +22,10 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.ActionsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.TypedMatcherWithWildcards
 
 class ActionsRule(val settings: Settings)
   extends RegularRule with Logging {
@@ -34,7 +34,7 @@ class ActionsRule(val settings: Settings)
 
   import tech.beshu.ror.utils.CaseMappingEquality.Instances._
 
-  private val matcher: TypedMatcherWithWildcards[Action] = new TypedMatcherWithWildcards[Action](settings.actions.map(_.value).toSortedSet)
+  private val matcher: MatcherWithWildcardsScalaAdapter[Action] = MatcherWithWildcardsScalaAdapter[Action](settings.actions.toSortedSet)
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     val requestContext = blockContext.requestContext

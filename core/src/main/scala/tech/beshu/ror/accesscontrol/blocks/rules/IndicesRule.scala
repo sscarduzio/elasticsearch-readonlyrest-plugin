@@ -43,6 +43,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.CaseMappingEquality.Instances._
 
 class IndicesRule(val settings: Settings)
   extends RegularRule with Logging {
@@ -74,11 +75,11 @@ class IndicesRule(val settings: Settings)
   }
 
   private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): RuleResult[B] = {
-    if(settings.mustInvolveIndices) Rejected()
+    if (settings.mustInvolveIndices) Rejected()
     else Fulfilled(blockContext)
   }
 
-  private def processIndicesRequest[B <: BlockContext: BlockContextWithIndicesUpdater](blockContext: B): RuleResult[B] = {
+  private def processIndicesRequest[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B): RuleResult[B] = {
     val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
     val result = processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices)
     result match {
@@ -87,7 +88,7 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def processIndicesPacks[B <: BlockContext: BlockContextWithIndexPacksUpdater: HasIndexPacks](blockContext: B): RuleResult[B] = {
+  private def processIndicesPacks[B <: BlockContext : BlockContextWithIndexPacksUpdater : HasIndexPacks](blockContext: B): RuleResult[B] = {
     import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks._
     def atLeastOneFound(indices: Vector[Indices]) = indices.exists(_.isInstanceOf[Indices.Found])
 
@@ -357,7 +358,7 @@ class IndicesRule(val settings: Settings)
   }
 
   private def processSnapshotRequest(blockContext: SnapshotRequestBlockContext): RuleResult[SnapshotRequestBlockContext] = {
-    if(blockContext.filteredIndices.isEmpty) processRequestWithoutIndices(blockContext)
+    if (blockContext.filteredIndices.isEmpty) processRequestWithoutIndices(blockContext)
     else processIndicesRequest(blockContext)
   }
 
