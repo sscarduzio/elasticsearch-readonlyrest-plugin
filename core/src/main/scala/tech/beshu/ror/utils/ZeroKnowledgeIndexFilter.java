@@ -81,13 +81,13 @@ public class ZeroKnowledgeIndexFilter {
 
     Set<String> newIndices = Sets.newHashSet();
     for (String i : indices) {
-      if (matcher.match(remoteClusterAware, i)) {
+      if (matcher.match(i)) {
         newIndices.add(i);
         continue;
       }
 
       MatcherWithWildcards revMatcher = new MatcherWithWildcards(Sets.newHashSet(i));
-      Set<String> matched = revMatcher.filter(remoteClusterAware, matcher.getMatchers());
+      Set<String> matched = revMatcher.filter(matcher.getMatchers());
 
       if (!matched.isEmpty()) {
         newIndices.addAll(matched);

@@ -35,7 +35,7 @@ final class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
 
   override protected def compare(configuredCredentials: Credentials,
                                  credentials: Credentials): Task[Boolean] = Task.now {
-    configuredCredentials == credentials
+    configuredCredentials === credentials
   }
 
   override def exists(user: User.Id)

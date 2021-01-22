@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 // todo:  seems that there is a problem with this rule. Eg. when we use as authentication method JWT token auth.
 //        We're trying to get group names first and then check authentication. We cannot resolve JWT token variable

@@ -129,7 +129,7 @@ class IndicesRule(val settings: Settings)
         if (!requestContext.hasRemoteClusters) {
           // Only requested X-cluster when we don't have remote, will return empty.
           val crossClusterIndices = indices.filter(_.isClusterIndex)
-          if (indices.nonEmpty && indices.size == crossClusterIndices.size) {
+          if (indices.nonEmpty && indices.size === crossClusterIndices.size) {
             return ProcessResult.Ok(indices)
           }
           // If you requested local + X-cluster indices while we don't have remotes, it's like you asked for only local indices.
@@ -401,7 +401,7 @@ class IndicesRule(val settings: Settings)
           val templatePatterns = template.patterns.toSet
           val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices)
           val narrowedOriginPatterns = narrowedPatterns.map(_._1)
-          if (narrowedOriginPatterns == templatePatterns) {
+          if (narrowedOriginPatterns === templatePatterns) {
             UniqueNonEmptyList
               .fromList(narrowedPatterns.map(_._2).toList)
               .map(nel => template.copy(patterns = nel))
@@ -415,7 +415,7 @@ class IndicesRule(val settings: Settings)
             None
           }
         }
-      if (modifiedTemplates.size == blockContext.templates.size) {
+      if (modifiedTemplates.size === blockContext.templates.size) {
         stop(CanPass.Yes(modifiedTemplates))
       } else {
         stop(CanPass.No())
@@ -440,7 +440,7 @@ class IndicesRule(val settings: Settings)
   private def canTemplateBeChanged(template: Template, allowedIndices: Set[IndexName]) = {
     val templatePatterns = template.patterns.toSet
     val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices).map(_._2)
-    narrowedPatterns.intersect(templatePatterns) == templatePatterns
+    narrowedPatterns.intersect(templatePatterns) === templatePatterns
   }
 
   private val matchAll = settings.allowedIndices.exists {

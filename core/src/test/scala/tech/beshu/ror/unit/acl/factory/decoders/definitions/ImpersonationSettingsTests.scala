@@ -25,9 +25,9 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ImpersonationDefinitionsDecoder}
-import tech.beshu.ror.accesscontrol.orders.userIdOrder
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.UserIdEq
+import tech.beshu.ror.utils.{TestsUtils, UserIdEq}
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 class ImpersonationSettingsTests extends BaseDecoderTest(
   ImpersonationDefinitionsDecoder.instance(

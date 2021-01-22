@@ -33,6 +33,8 @@ import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.TestsUtils
 
 class UsersRuleTests extends AnyWordSpec with MockFactory {
 

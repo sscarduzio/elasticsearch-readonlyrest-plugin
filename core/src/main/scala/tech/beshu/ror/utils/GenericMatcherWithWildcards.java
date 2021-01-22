@@ -55,38 +55,12 @@ public class GenericMatcherWithWildcards<T> { //TODO rm this class
         return false;
     }
 
-    public boolean match(boolean remoteClusterAware, T haystack) {
-        return remoteClusterAware ? matchRemoteClusterAware(haystack) : match(haystack);
-    }
-
-    public Set<T> filter(boolean remoteClusterAware, Set<T> haystack) {
-        return remoteClusterAware ? filterRemoteClusterAware(haystack) : filter(haystack);
-    }
-
-    public boolean matchRemoteClusterAware(T haystack) {
-        if (haystack == null) {
-            return false;
-        }
-
-        boolean remoteClusterRequested = caseMappingEquality.show(haystack).contains(":");
-
-        for (String[] p : patternsList) {
-            // Ignore remote cluster related permissions if request didn't mean it
-            if (!remoteClusterRequested && Arrays.asList(p).contains(":")) { //is it ever possible??
-                continue;
-            }
-            if (miniglob(caseMappingEquality, p, haystack)) {
-                return true;
-            }
-        }
-        return false;
-    }
     private static <T> boolean miniglob(CaseMappingEqualityJava<T> caseMappingEquality, String[] pattern, T line) {
         String showedLine = caseMappingEquality.mapCases(caseMappingEquality.show(line));
         if (pattern.length == 0) {
             return Strings.isNullOrEmpty(showedLine);
         } else if (pattern.length == 1) {
-            return showedLine.equals(pattern[0]);
+            return showedLine.equals(caseMappingEquality.mapCases(pattern[0]));
         }
         if (!showedLine.startsWith(caseMappingEquality.mapCases(pattern[0]))) {
             return false;
@@ -119,16 +93,4 @@ public class GenericMatcherWithWildcards<T> { //TODO rm this class
         return filtered;
     }
 
-    public Set<T> filterRemoteClusterAware(Set<T> haystack) {
-        if (haystack == null) {
-            return Collections.emptySet();
-        }
-        Set<T> filtered = Sets.newHashSet();
-        for (T hs : haystack) {
-            if (matchRemoteClusterAware(hs)) {
-                filtered.add(hs);
-            }
-        }
-        return filtered;
-    }
 }

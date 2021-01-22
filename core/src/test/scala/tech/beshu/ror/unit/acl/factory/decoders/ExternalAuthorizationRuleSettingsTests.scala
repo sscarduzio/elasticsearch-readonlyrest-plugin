@@ -32,6 +32,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.TestsUtils
 
 class ExternalAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthorizationRule] with MockFactory with Inside {

@@ -38,7 +38,7 @@ final class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashe
 
   override protected def compare(configuredCredentials: UnixHashedCredentials,
                                  credentials: Credentials): Task[Boolean] = Task {
-    configuredCredentials.userId == credentials.user &&
+    configuredCredentials.userId === credentials.user &&
       configuredCredentials.from(credentials).contains(configuredCredentials)
   }
 

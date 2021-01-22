@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
 import tech.beshu.ror.accesscontrol.factory.decoders.common.userIdDecoder
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth])
                           (implicit caseMappingEquality: UserIdCaseMappingEquality)
@@ -46,12 +47,13 @@ private object ProxyAuthRuleDecoder {
 
   private val defaultUserHeaderName: Header.Name = Header.Name.xForwardedUser
 
-  private val simpleSettingsDecoder: Decoder[ProxyAuthRule.Settings] =
+  private def simpleSettingsDecoder(implicit caseMappingEquality: UserIdCaseMappingEquality): Decoder[ProxyAuthRule.Settings] =
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[User.Id]
       .map(ProxyAuthRule.Settings(_, defaultUserHeaderName))
 
-  private def extendedSettingsDecoder(authProxiesDefinitions: Definitions[ProxyAuth]): Decoder[ProxyAuthRule.Settings] =
+  private def extendedSettingsDecoder(authProxiesDefinitions: Definitions[ProxyAuth])
+                                     (implicit caseMappingEquality: UserIdCaseMappingEquality): Decoder[ProxyAuthRule.Settings] =
     Decoder.instance { c =>
       for {
         users <- nonEmptySetOfUserIdsDecoder.tryDecode(c.downField("users"))
@@ -67,7 +69,7 @@ private object ProxyAuthRuleDecoder {
       } yield settings
     }
 
-  implicit val nonEmptySetOfUserIdsDecoder: Decoder[NonEmptySet[User.Id]] =
+  implicit def nonEmptySetOfUserIdsDecoder(implicit caseMappingEquality: UserIdCaseMappingEquality): Decoder[NonEmptySet[User.Id]] =
     DecoderHelpers.decodeNonEmptyStringLikeOrNonEmptySet(User.Id.apply)
 
 }

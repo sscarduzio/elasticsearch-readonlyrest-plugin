@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.implicits._
+import cats.kernel.Eq
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -38,9 +39,10 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[Has
                                  credentials: Credentials): Task[Boolean] = Task {
     configuredCredentials match {
       case secret: HashedUserAndPassword =>
-        secret == HashedUserAndPassword.from(credentials, hasher)
+        secret === HashedUserAndPassword.from(credentials, hasher)
       case secret: HashedOnlyPassword =>
-        secret == HashedOnlyPassword.from(credentials, hasher)
+        implicit val caseMappingEquality: UserIdCaseMappingEquality = this.caseMappingEquality
+        secret === HashedOnlyPassword.from(credentials, hasher)
     }
   }
 
@@ -67,6 +69,7 @@ object AuthKeyHashingRule {
         NonEmptyString.unsafeFrom(
           hasher.hashString(s"${credentials.user.value.value}:${credentials.secret.value}"))
       }
+      implicit val eqHashedUserAndPassword: Eq[HashedUserAndPassword] = Eq.by(_.hash.value)
     }
 
     final case class HashedOnlyPassword(userId: User.Id, hash: NonEmptyString) extends HashedCredentials
@@ -75,6 +78,9 @@ object AuthKeyHashingRule {
         credentials.user,
         NonEmptyString.unsafeFrom(hasher.hashString(credentials.secret.value.value))
       )
+      implicit def eqHashedOnlyPassword(implicit caseMappingEquality: UserIdCaseMappingEquality): Eq[HashedOnlyPassword] =
+        Eq.and(Eq.by(_.hash.value), Eq.by(_.userId))
+
     }
   }
 

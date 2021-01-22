@@ -40,11 +40,11 @@ class CurrentUserMetadataAccessControlTests extends AnyWordSpec with BaseYamlLoa
       |  access_control_rules:
       |
       |  - name: "User 1 - index1"
-      |    users: ["User1"]
+      |    users: ["user1"]
       |    groups: [group2, group3]
       |
       |  - name: "User 1 - index2"
-      |    users: ["User1"]
+      |    users: ["user1"]
       |    groups: [group2, group1]
       |
       |  - name: "User 2"
@@ -92,11 +92,11 @@ class CurrentUserMetadataAccessControlTests extends AnyWordSpec with BaseYamlLoa
     "handling current user metadata kibana plugin request" should {
       "allow to proceed" when {
         "several blocks are matched" in {
-          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user1:pass")))
+          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("User1:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata, _) =>
-            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1".nonempty))))
+            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("User1".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group3".nonempty)))
             userMetadata.availableGroups should be (UniqueList.of(Group("group3".nonempty), Group("group1".nonempty)))
             userMetadata.kibanaIndex should be (None)

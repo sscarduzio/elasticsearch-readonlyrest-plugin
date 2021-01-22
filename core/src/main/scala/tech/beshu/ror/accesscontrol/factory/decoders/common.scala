@@ -33,6 +33,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Address, Group, Header, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -46,7 +47,7 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-
+import tech.beshu.ror.utils.CaseMappingEquality._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -121,7 +122,7 @@ object common extends Logging {
       .withError(ValueLevelCreationError(Message("Non empty list of groups are required")))
       .decoder
 
-  implicit val usersNesDecoder: Decoder[NonEmptySet[User.Id]] =
+  implicit def usersNesDecoder(implicit caseMappingEquality: UserIdCaseMappingEquality): Decoder[NonEmptySet[User.Id]] =
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[User.Id]
       .toSyncDecoder

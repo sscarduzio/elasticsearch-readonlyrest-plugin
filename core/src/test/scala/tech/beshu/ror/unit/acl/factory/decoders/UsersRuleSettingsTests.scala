@@ -26,6 +26,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.TestsUtils
 
 class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
 

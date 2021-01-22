@@ -41,8 +41,8 @@ object CaseMappingEquality {
     override def mapCases: String => String = _mapCases
   }
 
-  implicit def eqCaseMappingEquality[A](implicit caseMappingEquality: CaseMappingEquality[A]): Eq[A] =
-    Eq[String]
+  implicit def orderCaseMappingEquality[A](implicit caseMappingEquality: CaseMappingEquality[A]): Order[A] =
+    Order[String]
       .contramap(caseMappingEquality.mapCases)
       .contramap(_.show)
 

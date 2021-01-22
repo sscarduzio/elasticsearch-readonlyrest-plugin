@@ -32,10 +32,11 @@ import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
-import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction}
+import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction, searchAction, searchTemplateAction}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.CaseMappingEquality
@@ -161,6 +162,9 @@ object domain {
   }
 
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
+  object Credentials {
+    implicit def eqCredentials(implicit caseMappingEquality: UserIdCaseMappingEquality): Eq[Credentials] = Eq.and(Eq.by(_.user), Eq.by(_.secret))
+  }
   final case class BasicAuth private(credentials: Credentials) {
     def header: Header = new Header(
       Header.Name.authorization,
@@ -290,7 +294,8 @@ object domain {
     }
   }
   object IndexName {
-    implicit val caseMappingEqualityIndexName:CaseMappingEquality[IndexName] = CaseMappingEquality.instance(identity)
+    implicit val indexNameShow: Show[IndexName] = Show.show(_.value.value)
+    implicit val caseMappingEqualityIndexName: CaseMappingEquality[IndexName] = CaseMappingEquality.instance(identity)
     val wildcard: IndexName = fromUnsafeString("*")
     val all: IndexName = fromUnsafeString("_all")
     val devNullKibana: IndexName = fromUnsafeString(".kibana-devnull")
@@ -365,6 +370,7 @@ object domain {
     val wildcard: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
+    implicit val repositoryShow: Show[RepositoryName] = Show.show(_.value.value)
     implicit val caseMappingEqualityRepositoryName:CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(identity)
   }
   final case class SnapshotName(value: NonEmptyString)
@@ -373,6 +379,7 @@ object domain {
     val wildcard: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+    implicit val snapshotShow: Show[SnapshotName] = Show.show(_.value.value)
     implicit val caseMappingEqualitySnapshotName:CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(identity)
   }
 

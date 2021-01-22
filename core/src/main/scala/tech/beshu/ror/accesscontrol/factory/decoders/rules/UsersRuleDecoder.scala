@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleD
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.UsersRuleDecoderHelper.userIdValueDecoder
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 class UsersRuleDecoder()
                       (implicit caseMappingEquality: UserIdCaseMappingEquality)extends RuleDecoderWithoutAssociatedFields(

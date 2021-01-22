@@ -32,11 +32,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
-import tech.beshu.ror.accesscontrol.orders.userIdOrder
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 
 class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+  import tech.beshu.ror.utils.CaseMappingEquality._
+  import TestsUtils.userIdEq
 
   private val rule = authKeyRuleWithConfiguredImpersonation("user1", "secret")
 

@@ -45,7 +45,7 @@ class KibanaAccessRule(val settings: Settings)
 
     val requestContext = blockContext.requestContext
 
-    if (settings.access == KibanaAccess.Unrestricted) Fulfilled(modifyMatched(blockContext))
+    if (settings.access === KibanaAccess.Unrestricted) Fulfilled(modifyMatched(blockContext))
     else if (requestContext.uriPath.isCurrentUserMetadataPath) Fulfilled(modifyMatched(blockContext))
     // Allow other actions if devnull is targeted to readers and writers
     else if (blockContext.requestContext.initialBlockContext.indices.contains(devNullKibana)) Fulfilled(modifyMatched(blockContext))
@@ -112,7 +112,7 @@ class KibanaAccessRule(val settings: Settings)
 
   private def isKibanaSimplaData(requestContext: RequestContext) = {
     val originRequestIndices = requestContext.initialBlockContext.indices
-    kibanaCanBeModified && originRequestIndices.size == 1 && originRequestIndices.head.hasPrefix("kibana_sample_data_")
+    kibanaCanBeModified && originRequestIndices.size === 1 && originRequestIndices.head.hasPrefix("kibana_sample_data_")
   }
 
   private def emptyIndicesMatch(requestContext: RequestContext) = {

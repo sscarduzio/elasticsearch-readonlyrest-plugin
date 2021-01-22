@@ -31,6 +31,8 @@ import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.TestsUtils
 
 class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
 

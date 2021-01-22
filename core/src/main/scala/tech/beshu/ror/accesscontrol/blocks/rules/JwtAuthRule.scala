@@ -124,7 +124,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings)
 
   private def logBadToken(ex: Throwable, token: JwtToken): Unit = {
     val tokenParts = token.show.split(".")
-    val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length == 3) {
+    val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length === 3) {
       // signed JWT, last block is the cryptographic digest, which should be treated as a secret.
       s"${tokenParts(0)}.${tokenParts(1)} (omitted digest)"
     }

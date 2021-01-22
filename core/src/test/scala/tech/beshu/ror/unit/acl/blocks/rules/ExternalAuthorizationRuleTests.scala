@@ -30,9 +30,11 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, Header, User}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -41,6 +43,8 @@ import scala.language.postfixOps
 
 class ExternalAuthorizationRuleTests
   extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+  import tech.beshu.ror.utils.CaseMappingEquality._
+  import TestsUtils.userIdEq
 
   "An ExternalAuthorizationRule" should {
     "match" when {

@@ -84,7 +84,7 @@ class RepositoriesRule(val settings: Settings)
       ) match {
         case CheckResult.Ok(processedRepositories) if requestContext.isReadOnlyRequest =>
           Right(processedRepositories)
-        case CheckResult.Ok(processedRepositories) if processedRepositories.size == repositoriesToCheck.size =>
+        case CheckResult.Ok(processedRepositories) if processedRepositories.size === repositoriesToCheck.size =>
           Right(processedRepositories)
         case CheckResult.Ok(_) | CheckResult.Failed =>
           Left(())
