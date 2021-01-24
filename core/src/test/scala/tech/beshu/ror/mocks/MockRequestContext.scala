@@ -17,16 +17,22 @@
 package tech.beshu.ror.mocks
 
 import java.time.{Clock, Instant}
-import eu.timepit.refined.auto._
+
 import com.softwaremill.sttp.Method
+import eu.timepit.refined.auto._
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.mocks.MockRequestContext.DefaultAction
 
 object MockRequestContext {
+  
+  val DefaultAction = Action("default-action")
+  val AdminAction = Action("cluster:ror/user_metadata/get")
+  
   def indices(implicit clock: Clock = Clock.systemUTC()): MockGeneralIndexRequestContext =
     MockGeneralIndexRequestContext(timestamp = clock.instant(), filteredIndices = Set.empty, allAllowedIndices = Set.empty)
 
@@ -46,17 +52,20 @@ object MockRequestContext {
     MockUserMetadataRequestContext(timestamp = clock.instant())
 
   def readOnly[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
-    MockSimpleRequestContext(blockContextCreator, isReadOnly = true)
+    MockSimpleRequestContext(blockContextCreator, isReadOnly = true, customAction = DefaultAction)
+
+  def readOnlyAdmin[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
+    MockSimpleRequestContext(blockContextCreator, isReadOnly = true, customAction = AdminAction)
 
   def notReadOnly[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
-    MockSimpleRequestContext(blockContextCreator, isReadOnly = false)
+    MockSimpleRequestContext(blockContextCreator, isReadOnly = false, customAction = DefaultAction)
 }
 
 final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
-                                                override val action: Action = Action("default-action"),
+                                                override val action: Action = DefaultAction,
                                                 override val headers: Set[Header] = Set.empty,
                                                 override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                 override val localAddress: Address = Address.from("localhost").get,
@@ -78,13 +87,14 @@ final case class MockGeneralIndexRequestContext(override val timestamp: Instant,
   override def initialBlockContext: GeneralIndexRequestBlockContext = GeneralIndexRequestBlockContext(
     this, UserMetadata.from(this), Set.empty, List.empty, filteredIndices, allAllowedIndices
   )
+
 }
 
 final case class MockGeneralNonIndexRequestContext(override val timestamp: Instant,
                                                    override val taskId: Long = 0L,
                                                    override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                    override val `type`: Type = Type("default-type"),
-                                                   override val action: Action = Action("default-action"),
+                                                   override val action: Action = DefaultAction,
                                                    override val headers: Set[Header] = Set.empty,
                                                    override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                    override val localAddress: Address = Address.from("localhost").get,
@@ -111,7 +121,7 @@ final case class MockSearchRequestContext(override val timestamp: Instant,
                                           override val taskId: Long = 0L,
                                           override val id: RequestContext.Id = RequestContext.Id("mock"),
                                           override val `type`: Type = Type("default-type"),
-                                          override val action: Action = Action("default-action"),
+                                          override val action: Action = DefaultAction,
                                           override val headers: Set[Header] = Set.empty,
                                           override val remoteAddress: Option[Address] = Address.from("localhost"),
                                           override val localAddress: Address = Address.from("localhost").get,
@@ -139,7 +149,7 @@ final case class MockRepositoriesRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
-                                                override val action: Action = Action("default-action"),
+                                                override val action: Action = DefaultAction,
                                                 override val headers: Set[Header] = Set.empty,
                                                 override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                 override val localAddress: Address = Address.from("localhost").get,
@@ -166,7 +176,7 @@ final case class MockSnapshotsRequestContext(override val timestamp: Instant,
                                              override val taskId: Long = 0L,
                                              override val id: RequestContext.Id = RequestContext.Id("mock"),
                                              override val `type`: Type = Type("default-type"),
-                                             override val action: Action = Action("default-action"),
+                                             override val action: Action = DefaultAction,
                                              override val headers: Set[Header] = Set.empty,
                                              override val remoteAddress: Option[Address] = Address.from("localhost"),
                                              override val localAddress: Address = Address.from("localhost").get,
@@ -193,7 +203,7 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
                                                 override val taskId: Long = 0L,
                                                 override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                 override val `type`: Type = Type("default-type"),
-                                                override val action: Action = Action("default-action"),
+                                                override val action: Action = DefaultAction,
                                                 override val headers: Set[Header] = Set.empty,
                                                 override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                 override val localAddress: Address = Address.from("localhost").get,
@@ -219,7 +229,7 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
                                                             override val taskId: Long = 0L,
                                                             override val id: RequestContext.Id = RequestContext.Id("mock"),
                                                             override val `type`: Type = Type("default-type"),
-                                                            override val action: Action = Action("default-action"),
+                                                            override val action: Action = DefaultAction,
                                                             override val headers: Set[Header] = Set.empty,
                                                             override val remoteAddress: Option[Address] = Address.from("localhost"),
                                                             override val localAddress: Address = Address.from("localhost").get,
@@ -238,8 +248,10 @@ abstract class MockSimpleRequestContext[BC <: BlockContext](override val timesta
 
 object MockSimpleRequestContext {
   def apply[BC <: BlockContext](blockContextCreator: RequestContext => BC,
-                                isReadOnly: Boolean): MockSimpleRequestContext[BC] = new MockSimpleRequestContext[BC] {
+                                isReadOnly: Boolean,
+                                customAction: Action): MockSimpleRequestContext[BC] = new MockSimpleRequestContext[BC] {
     override val initialBlockContext: BC = blockContextCreator(this)
     override val isReadOnlyRequest: Boolean = isReadOnly
+    override val action: Action = customAction
   }
 }
