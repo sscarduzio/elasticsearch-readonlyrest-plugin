@@ -44,7 +44,7 @@ class UsersRule(val settings: Settings)
 
   private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): RuleResult[B] = {
     val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet
-    RuleResult.fromCondition(blockContext) {
+    RuleResult.resultBasedOnCondition(blockContext) {
       new MatcherWithWildcards(resolvedIds.map(_.value.value).asJava).`match`(user.id.value.value)
     }
   }

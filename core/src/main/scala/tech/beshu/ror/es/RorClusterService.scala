@@ -21,7 +21,7 @@ import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
-import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, DocumentWithIndex, Filter, IndexName, TemplateLike, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.{DocumentAccessibility, DocumentWithIndex, Filter, IndexName, Template, TemplateName}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService._
 
@@ -31,7 +31,7 @@ trait RorClusterService {
 
   def allIndicesAndAliases: Map[IndexName, Set[AliasName]]
 
-  def allTemplates: Set[TemplateLike]
+  def allTemplates: Set[Template]
 
   def verifyDocumentAccessibility(document: Document,
                                   filter: Filter,
@@ -41,9 +41,14 @@ trait RorClusterService {
                                      filter: Filter,
                                      id: RequestContext.Id): Task[DocumentsAccessibilities]
 
-  def getTemplate(name: TemplateName): Option[TemplateLike] = {
+  def getTemplate(name: TemplateName): Option[Template] = {
     allTemplates.find(_.name === name)
   }
+
+  // todo:
+//  def getTemplatesBy(namePattern: TemplateName): Option[Template] = {
+//    allTemplates.map(_.name).fi
+//  }
 
   def expandIndices(indices: Set[IndexName]): Set[IndexName] = {
     val all = allIndicesAndAliases

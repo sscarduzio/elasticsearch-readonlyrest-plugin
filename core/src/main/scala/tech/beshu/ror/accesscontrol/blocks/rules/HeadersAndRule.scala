@@ -37,7 +37,7 @@ class HeadersAndRule(val settings: Settings)
   override val name: Rule.Name = HeadersAndRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    RuleResult.fromCondition(blockContext) {
+    RuleResult.resultBasedOnCondition(blockContext) {
       val requestHeaders = blockContext.requestContext.headers
       settings
         .headerAccessRequirements

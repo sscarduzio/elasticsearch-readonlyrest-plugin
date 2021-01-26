@@ -75,7 +75,8 @@ object BlockContext {
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
                                                override val responseTransformations: List[ResponseTransformation],
-                                               templates: Set[TemplateLike])
+                                               templateOperation: TemplateOperation,
+                                               responseTemplateTransformation: Set[Template] => Set[Template])
     extends BlockContext
 
   final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
@@ -282,8 +283,11 @@ object BlockContext {
   }
 
   implicit class TemplateRequestBlockContextUpdaterOps(val blockContext: TemplateRequestBlockContext) extends AnyVal {
-    def withTemplates(templates: Set[TemplateLike]): TemplateRequestBlockContext = {
-      TemplateRequestBlockContextUpdater.withTemplates(blockContext, templates)
+    def withTemplateOperation(templateOperation: TemplateOperation): TemplateRequestBlockContext = {
+      TemplateRequestBlockContextUpdater.withTemplateOperation(blockContext, templateOperation)
+    }
+    def withResponseTemplateTransformation(transformation: Set[Template] => Set[Template]): TemplateRequestBlockContext = {
+      TemplateRequestBlockContextUpdater.withResponseTemplateTransformation(blockContext, transformation)
     }
   }
 
@@ -305,10 +309,11 @@ object BlockContext {
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.filteredIndices
         case bc: TemplateRequestBlockContext =>
-          bc.templates.flatMap {
-            case TemplateLike.IndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
-            case TemplateLike.ComponentTemplate(_, aliases) => aliases
-          }
+          ??? // todo:
+//          bc.templateOperations.flatMap {
+//            case TemplateOperation.IndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
+//            case TemplateOperation.ComponentTemplate(_, aliases) => aliases
+//          }
         case bc: AliasRequestBlockContext => bc.indices ++ bc.aliases
         case bc: GeneralIndexRequestBlockContext => bc.filteredIndices
         case bc: FilterableRequestBlockContext => bc.filteredIndices
@@ -422,10 +427,11 @@ object BlockContext {
       case bc: SnapshotRequestBlockContext => bc.filteredIndices
       case bc: AliasRequestBlockContext => bc.aliases ++ bc.indices
       case bc: TemplateRequestBlockContext =>
-        bc.templates.flatMap {
-          case TemplateLike.IndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
-          case TemplateLike.ComponentTemplate(_, aliases) => aliases
-        }
+        ??? // todo:
+//        bc.templateOperations.flatMap {
+//          case TemplateOperation.IndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
+//          case TemplateOperation.ComponentTemplate(_, aliases) => aliases
+//        }
       case bc: GeneralIndexRequestBlockContext => bc.filteredIndices
       case bc: FilterableRequestBlockContext => bc.filteredIndices
       case bc: FilterableMultiRequestBlockContext =>

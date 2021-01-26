@@ -19,7 +19,7 @@ package tech.beshu.ror.es.request.context.types
 import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.TemplateLike.{ComponentTemplate, IndexTemplate}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{ComponentTemplate, IndexTemplate}
 import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext

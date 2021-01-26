@@ -69,7 +69,16 @@ trait RequestContext {
 
   def allIndicesAndAliases: Set[IndexWithAliases]
 
-  def allTemplates: Set[TemplateLike]
+  def allTemplates: Set[Template]
+
+  lazy val legacyTemplates: Set[Template.LegacyIndexTemplate] =
+    allTemplates.collect { case t: Template.LegacyIndexTemplate => t }
+
+  lazy val indexTemplates: Set[Template.IndexTemplate] =
+    allTemplates.collect { case t: Template.IndexTemplate => t }
+
+  lazy val componentTemplates: Set[Template.ComponentTemplate] =
+    allTemplates.collect { case t: Template.ComponentTemplate => t }
 
   def isReadOnlyRequest: Boolean
 

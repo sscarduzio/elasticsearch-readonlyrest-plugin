@@ -31,7 +31,6 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.orders.forbiddenByMismatchedCauseOrder
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.accesscontrol.request.RequestContext.Aux
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
@@ -170,7 +169,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
 
   private def nonEmptySetOfMismatchedCausesFromHistory[B <: BlockContext](history: Vector[History[B]]): NonEmptySet[ForbiddenByMismatched.Cause] = {
     val causes = rejectionsFrom(history).map {
-      case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound | Rejected.Cause.AliasNotFound)) =>
+      case Rejected(None) | Rejected(Some(Rejected.Cause.IndexNotFound | Rejected.Cause.AliasNotFound | Rejected.Cause.TemplateNotFound)) =>
         ForbiddenByMismatched.Cause.OperationNotAllowed
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) =>
         ForbiddenByMismatched.Cause.ImpersonationNotAllowed
@@ -197,6 +196,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     rejections.exists {
       case Rejected(Some(Rejected.Cause.IndexNotFound)) => true
       case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
+      case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
       case Rejected(None) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
@@ -207,6 +207,18 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     rejections.exists {
       case Rejected(Some(Rejected.Cause.AliasNotFound)) => true
       case Rejected(Some(Rejected.Cause.IndexNotFound)) => false
+      case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
+      case Rejected(None) => false
+      case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
+      case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
+    }
+  }
+
+  private def templateNotFoundRejectionExists(rejections: Vector[Rejected[_]]) = {
+    rejections.exists {
+      case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
+      case Rejected(Some(Rejected.Cause.IndexNotFound)) => false
+      case Rejected(Some(Rejected.Cause.TemplateNotFound)) => true
       case Rejected(None) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => false
@@ -217,6 +229,7 @@ class AccessControlList(val blocks: NonEmptyList[Block])
     rejections.exists {
       case Rejected(Some(Rejected.Cause.IndexNotFound)) => false
       case Rejected(Some(Rejected.Cause.AliasNotFound)) => false
+      case Rejected(Some(Rejected.Cause.TemplateNotFound)) => false
       case Rejected(None) => false
       case Rejected(Some(Rejected.Cause.ImpersonationNotAllowed)) => true
       case Rejected(Some(Rejected.Cause.ImpersonationNotSupported)) => true

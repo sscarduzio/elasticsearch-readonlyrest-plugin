@@ -66,13 +66,17 @@ object Rule {
         case object ImpersonationNotAllowed extends Cause
         case object IndexNotFound extends Cause
         case object AliasNotFound extends Cause
+        case object TemplateNotFound extends Cause
       }
     }
 
-    private[rules] def fromCondition[B <: BlockContext](blockContext: B)(condition: => Boolean): RuleResult[B] = {
+    private[rules] def resultBasedOnCondition[B <: BlockContext](blockContext: B)(condition: => Boolean): RuleResult[B] = {
       if (condition) Fulfilled[B](blockContext)
       else Rejected[B]()
     }
+
+    private[rules] def fulfilled[B <: BlockContext](blockContext: B): RuleResult[B] = RuleResult.Fulfilled(blockContext)
+    private[rules] def rejected[B <: BlockContext](specialCause: Option[Cause] = None): RuleResult[B] = RuleResult.Rejected(specialCause)
   }
 
   final case class Name(value: String) extends AnyVal

@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateNamePattern, User}
 import tech.beshu.ror.utils.MatcherWithWildcards
 
 import scala.collection.JavaConverters._
@@ -76,5 +76,7 @@ object StringTNaturalTransformation {
       StringTNaturalTransformation[String](identity, identity)
     implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
       StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
+    implicit val templateNamePatternNT: StringTNaturalTransformation[TemplateNamePattern] =
+      StringTNaturalTransformation[TemplateNamePattern](str => TemplateNamePattern(NonEmptyString.unsafeFrom(str)), _.value.value)
   }
 }

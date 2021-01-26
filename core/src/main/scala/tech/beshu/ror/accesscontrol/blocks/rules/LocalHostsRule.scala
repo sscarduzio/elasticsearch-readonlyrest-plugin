@@ -35,7 +35,7 @@ class LocalHostsRule(val settings: Settings,
     checkAllowedAddresses(blockContext)(
       allowedAddresses = settings.allowedAddresses,
       addressToCheck = blockContext.requestContext.localAddress
-    ).map(condition => RuleResult.fromCondition(blockContext)(condition))
+    ).map(condition => RuleResult.resultBasedOnCondition(blockContext)(condition))
   }
 
 }

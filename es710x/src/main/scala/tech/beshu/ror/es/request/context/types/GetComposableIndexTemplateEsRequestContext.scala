@@ -19,45 +19,48 @@ package tech.beshu.ror.es.request.context.types
 import java.util.UUID
 
 import eu.timepit.refined.types.string.NonEmptyString
-import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
+import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{ComponentTemplate, IndexTemplate}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{ComponentTemplate, IndexTemplate}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
-import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
-                                   esContext: EsContext,
-                                   clusterService: RorClusterService,
-                                   override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[GetIndexTemplatesRequest, IndexTemplate](
+class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableIndexTemplateAction.Request,
+                                                 esContext: EsContext,
+                                                 clusterService: RorClusterService,
+                                                 override val threadPool: ThreadPool)
+  extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, IndexTemplate](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  override protected def templatesFrom(request: GetIndexTemplatesRequest): Set[IndexTemplate] = {
-    val templatesFromRequest = request
-      .names().asSafeSet
+  override protected def templatesFrom(request: GetComposableIndexTemplateAction.Request): Set[IndexTemplate] = {
+    Option(request.name())
       .flatMap(templateFrom)
-    if (templatesFromRequest.nonEmpty) templatesFromRequest
-    else clusterService.allTemplates.collect { case it: IndexTemplate => it }
+      .map(Set(_))
+      .getOrElse(clusterService.allTemplates.collect { case it: IndexTemplate => it })
   }
 
-  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
-    val templates = blockContext.templateOperations
-    if (templates.isEmpty) {
-      // hack! there is no other way to return empty list of templates (at the moment should not be used, but
-      // I leave it as a protection
-      actionRequest.names(UUID.randomUUID + "*")
-      Modified
-    } else {
-      actionRequest.names(templates.toList.map(_.name.value.value): _*)
-      Modified
+  override protected def modifyRequest(blockContext: BlockContext.TemplateRequestBlockContext): ModificationResult =  {
+    val templatesStr = blockContext.templateOperations.toList match {
+      case Nil =>
+        // hack! there is no other way to return empty list of templates (at the moment should not be used, but
+        // I leave it as a protection
+        UUID.randomUUID + "*"
+      case t :: Nil =>
+        t.name.value.value match {
+          case "*" => null
+          case other => other
+        }
+      case ts =>
+        ts.map(_.name.value.value).mkString(",")
     }
+    actionRequest.name(templatesStr)
+    Modified
   }
 
   private def templateFrom(name: String) = {

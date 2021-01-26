@@ -62,7 +62,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toMap
   }
 
-  override def allTemplates: Set[TemplateLike] = {
+  override def allTemplates: Set[TemplateOperation] = {
     templates() ++ templatesV2() ++ templatesV3()
   }
 
@@ -78,7 +78,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
             templateMetaData.patterns().asScala.flatMap(IndexName.fromString).toList
           )
           aliases = templateMetaData.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
-        } yield TemplateLike.IndexTemplate(templateName, indexPatterns, aliases)
+        } yield TemplateOperation.IndexTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
   }
@@ -95,7 +95,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
             templateMetaData.indexPatterns().asScala.flatMap(IndexName.fromString).toList
           )
           aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
-        } yield TemplateLike.IndexTemplate(templateName, indexPatterns, aliases)
+        } yield TemplateOperation.IndexTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
   }
@@ -109,7 +109,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
           aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
-        } yield TemplateLike.ComponentTemplate(templateName, aliases)
+        } yield TemplateOperation.ComponentTemplate(templateName, aliases)
       }
       .toSet
   }

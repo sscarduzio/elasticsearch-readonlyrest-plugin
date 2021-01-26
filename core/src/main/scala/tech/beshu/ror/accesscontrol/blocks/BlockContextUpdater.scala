@@ -131,7 +131,7 @@ object BlockContextUpdater {
     extends BlockContextUpdater[TemplateRequestBlockContext] {
 
     override def emptyBlockContext(blockContext: TemplateRequestBlockContext): TemplateRequestBlockContext =
-      TemplateRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, List.empty, blockContext.templates)
+      TemplateRequestBlockContext(blockContext.requestContext, UserMetadata.empty, Set.empty, List.empty, blockContext.templateOperation, identity)
 
     override def withUserMetadata(blockContext: TemplateRequestBlockContext,
                                   userMetadata: UserMetadata): TemplateRequestBlockContext =
@@ -146,9 +146,13 @@ object BlockContextUpdater {
       blockContext.copy(responseTransformations = responseTransformation :: blockContext.responseTransformations)
 
 
-    def withTemplates(blockContext: TemplateRequestBlockContext,
-                      templates: Set[TemplateLike]): TemplateRequestBlockContext =
-      blockContext.copy(templates = templates)
+    def withTemplateOperation(blockContext: TemplateRequestBlockContext,
+                              templateOperation: TemplateOperation): TemplateRequestBlockContext =
+      blockContext.copy(templateOperation = templateOperation)
+
+    def withResponseTemplateTransformation(blockContext: TemplateRequestBlockContext,
+                                           transformation: Set[Template] => Set[Template]): TemplateRequestBlockContext =
+      blockContext.copy(responseTemplateTransformation = transformation)
   }
 
   implicit object AliasRequestBlockContextUpdater

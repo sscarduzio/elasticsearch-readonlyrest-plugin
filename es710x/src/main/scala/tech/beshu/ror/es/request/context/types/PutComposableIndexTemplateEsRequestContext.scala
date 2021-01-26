@@ -20,7 +20,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.indices.template.put.PutComposableIndexTemplateAction
 import org.elasticsearch.cluster.metadata.{ComposableIndexTemplate, Template}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.TemplateLike.IndexTemplate
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext

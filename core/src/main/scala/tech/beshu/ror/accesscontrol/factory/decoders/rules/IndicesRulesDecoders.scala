@@ -21,7 +21,9 @@ import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.{IndicesRule, RepositoriesRule, SnapshotsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.RandomBasedUniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.blocks.rules.{RepositoriesRule, SnapshotsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -49,7 +51,10 @@ object IndicesRuleDecoders {
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[IndexName]]
       .map(indices =>
         RuleWithVariableUsageDefinition.create(
-          new IndicesRule(IndicesRule.Settings(indices, mustInvolveIndices = defaultMustInvolveIndicesValue))
+          new IndicesRule(
+            settings = IndicesRule.Settings(indices, mustInvolveIndices = defaultMustInvolveIndicesValue),
+            identifierGenerator = RandomBasedUniqueIdentifierGenerator
+          )
         )
       )
 
@@ -60,7 +65,10 @@ object IndicesRuleDecoders {
         mustInvolveIndices <- c.downFields("must_involve_indices").as[Option[Boolean]]
       } yield {
         RuleWithVariableUsageDefinition.create(
-          new IndicesRule(IndicesRule.Settings(indices, mustInvolveIndices.getOrElse(defaultMustInvolveIndicesValue)))
+          new IndicesRule(
+            settings = IndicesRule.Settings(indices, mustInvolveIndices.getOrElse(defaultMustInvolveIndicesValue)),
+            identifierGenerator = RandomBasedUniqueIdentifierGenerator
+          )
         )
       }
     }

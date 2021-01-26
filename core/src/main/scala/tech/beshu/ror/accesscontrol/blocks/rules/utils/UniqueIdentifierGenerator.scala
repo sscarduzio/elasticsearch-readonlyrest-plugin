@@ -16,21 +16,17 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
-import tech.beshu.ror.accesscontrol.domain.{Template, TemplateNamePattern}
-import StringTNaturalTransformation.instances._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 
-// todo:
-class TemplateMatcher(namePatterns: Set[TemplateNamePattern]) {
+import scala.util.Random
 
-  private val matcher = MatcherWithWildcardsScalaAdapter.create(namePatterns.map(_.value.value))
+trait UniqueIdentifierGenerator {
+  def generate(numOfChars: Int Refined Positive): String
+}
 
-  def filterTemplates[T <: Template](templates: Set[T]): Set[T] = {
-    val templateByName: Map[String, Set[T]] = templates.groupBy(t => t.name.value.value)
-    val filteredTemplateNames = matcher.filter(templateByName.keys.toSet)
-    templateByName.filterKeys(filteredTemplateNames.contains).values.toSet.flatten
-  }
-
-  def filterTemplateNamePatterns(namePatterns: Set[TemplateNamePattern]): Set[TemplateNamePattern] = {
-    matcher.filter(namePatterns)
+object RandomBasedUniqueIdentifierGenerator extends UniqueIdentifierGenerator {
+  override def generate(numOfChars: Refined[Int, Positive]): String = {
+    Random.alphanumeric.take(numOfChars.value).mkString("")
   }
 }

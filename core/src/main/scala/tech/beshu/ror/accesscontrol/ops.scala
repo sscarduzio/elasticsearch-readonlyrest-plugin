@@ -120,7 +120,7 @@ object orders {
 }
 
 object show {
-  object logs {
+  trait LogsShowInstances {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
     implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
     implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value.value)
@@ -149,6 +149,7 @@ object show {
     implicit val repositoryShow: Show[RepositoryName] = Show.show(_.value.value)
     implicit val snapshotShow: Show[SnapshotName] = Show.show(_.value.value)
     implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
+    implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
 
     implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
       Show.show { bc =>
@@ -309,6 +310,7 @@ object show {
       case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
     }
   }
+  object logs extends LogsShowInstances
 }
 
 object refined {

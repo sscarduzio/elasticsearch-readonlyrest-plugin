@@ -20,15 +20,15 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.domain.TemplateLike
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest}
 
-abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateLike](actionRequest: R,
-                                                                                    esContext: EsContext,
-                                                                                    clusterService: RorClusterService,
-                                                                                    override val threadPool: ThreadPool)
+abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOperation](actionRequest: R,
+                                                                                         esContext: EsContext,
+                                                                                         clusterService: RorClusterService,
+                                                                                         override val threadPool: ThreadPool)
   extends BaseEsRequestContext[TemplateRequestBlockContext](esContext, clusterService)
     with EsRequest[TemplateRequestBlockContext] {
 
@@ -39,6 +39,6 @@ abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateLi
     UserMetadata.from(this),
     Set.empty,
     List.empty,
-    templatesFrom(actionRequest).collect { case t: TemplateLike => t }
+    templatesFrom(actionRequest).collect { case t: TemplateOperation => t }
   )
 }

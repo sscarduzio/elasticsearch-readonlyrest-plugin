@@ -32,7 +32,7 @@ class UriRegexRule(val settings: Settings)
   override val name: Rule.Name = UriRegexRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    RuleResult.fromCondition(blockContext) {
+    RuleResult.resultBasedOnCondition(blockContext) {
       settings
         .uriPatterns
         .exists(variableMatchingRequestedUri(blockContext))
