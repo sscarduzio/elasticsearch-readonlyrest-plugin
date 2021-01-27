@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import eu.timepit.refined.auto._
 import cats.data.{NonEmptyList, NonEmptySet}
 import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Matchers._
-import org.scalatest.{Assertion, WordSpec}
+import org.scalatest.{Assertion, Succeeded, WordSpec}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{GeneralIndexRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
@@ -35,7 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyIndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{LegacyTemplateAdding, LegacyTemplateDeleting, LegacyTemplateGetting}
-import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, IndexWithAliases, Template, TemplateName, TemplateNamePattern, TemplateOperation}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.mocks.{MockGeneralIndexRequestContext, MockRequestContext, MockTemplateRequestContext}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -304,10 +304,30 @@ class IndicesRuleTests extends WordSpec with MockFactory {
     "getting legacy template request is sent" should {
       "match" when {
         "template doesn't exist" in {
+          val gettingTemplateOperation = LegacyTemplateGetting(NonEmptyList.of(TemplateNamePattern("t*")))
           assertMatchRule2(
             configured = NonEmptySet.of(index("*")),
-            templateOperation = LegacyTemplateGetting(NonEmptyList.of(TemplateNamePattern("t*")))
+            requestContext = MockRequestContext.template(gettingTemplateOperation),
+            templateOperationAfterProcessing = gettingTemplateOperation
           )
+        }
+        "template exists" when {
+          "rule allows access to all indices" in {
+            val existingTemplate = LegacyIndexTemplate(
+              name = TemplateName("t1"),
+              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"))
+            )
+            val gettingTemplateOperation = LegacyTemplateGetting(NonEmptyList.of(TemplateNamePattern("t1")))
+            assertMatchRule2(
+              configured = NonEmptySet.of(index("*")),
+              requestContext = MockRequestContext
+                .template(gettingTemplateOperation)
+                .addExistingTemplates(existingTemplate),
+              templateOperationAfterProcessing = gettingTemplateOperation,
+              additionalAssertions = blockContext =>
+                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be (Set(existingTemplate))
+            )
+          }
         }
       }
     }
@@ -315,39 +335,49 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       "match" when {
         "template with given name doesn't exit" when {
           "rule allows access to all indices" in {
+            val addingTemplateOperation = LegacyTemplateAdding(
+              name = TemplateName("t1"),
+              patterns = UniqueNonEmptyList.of(IndexName("test1"))
+            )
             assertMatchRule2(
               configured = NonEmptySet.of(index("*")),
-              templateOperation = LegacyTemplateAdding(
-                name = TemplateName("t1"),
-                patterns = UniqueNonEmptyList.of(IndexName("test1"))
-              )
+              requestContext = MockRequestContext.template(addingTemplateOperation),
+              templateOperationAfterProcessing = addingTemplateOperation,
+              additionalAssertions = blockContext =>
+                blockContext.responseTemplateTransformation(Set.empty) should be (Set.empty)
             )
           }
           "rule allows access to index name which is used in template's pattern list" in {
+            val addingTemplateOperation = LegacyTemplateAdding(
+              name = TemplateName("t1"),
+              patterns = UniqueNonEmptyList.of(IndexName("test1"))
+            )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test1")),
-              templateOperation = LegacyTemplateAdding(
-                name = TemplateName("t1"),
-                patterns = UniqueNonEmptyList.of(IndexName("test1"))
-              )
+              requestContext = MockRequestContext.template(addingTemplateOperation),
+              templateOperationAfterProcessing = addingTemplateOperation
             )
           }
           "rule allows access to index name with wildcard which is a superset of the pattern in template's pattern list" in {
+            val addingTemplateOperation = LegacyTemplateAdding(
+              name = TemplateName("t1"),
+              patterns = UniqueNonEmptyList.of(IndexName("test1*"))
+            )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
-              templateOperation = LegacyTemplateAdding(
-                name = TemplateName("t1"),
-                patterns = UniqueNonEmptyList.of(IndexName("test1*"))
-              )
+              requestContext = MockRequestContext.template(addingTemplateOperation),
+              templateOperationAfterProcessing = addingTemplateOperation
             )
           }
           "rule allows access to index name with wildcard which matches both patterns in template's pattern list" in {
+            val addingTemplateOperation = LegacyTemplateAdding(
+              name = TemplateName("t1"),
+              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"))
+            )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
-              templateOperation = LegacyTemplateAdding(
-                name = TemplateName("t1"),
-                patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"))
-              )
+              requestContext = MockRequestContext.template(addingTemplateOperation),
+              templateOperationAfterProcessing = addingTemplateOperation
             )
           }
         }
@@ -357,13 +387,16 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(IndexName("test1"))
             )
+            val addingTemplateOperation = LegacyTemplateAdding(
+              name = existingTemplate.name,
+              patterns = UniqueNonEmptyList.of(IndexName("test2"))
+            )
             assertMatchRule2(
               configured = NonEmptySet.of(index("*")),
-              modifyRequestContext = addExistingTemplates(existingTemplate),
-              templateOperation = LegacyTemplateAdding(
-                name = existingTemplate.name,
-                patterns = UniqueNonEmptyList.of(IndexName("test2"))
-              )
+              requestContext = MockRequestContext
+                .template(addingTemplateOperation)
+                .addExistingTemplates(existingTemplate),
+              templateOperationAfterProcessing = addingTemplateOperation
             )
           }
           "rule allows access to index name which is used in existing template's pattern list" in {
@@ -371,10 +404,13 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(IndexName("test1"))
             )
+            val addingTemplateOperation = LegacyTemplateAdding(existingTemplate.name, existingTemplate.patterns)
             assertMatchRule2(
               configured = NonEmptySet.of(index("test1")),
-              modifyRequestContext = addExistingTemplates(existingTemplate),
-              templateOperation = LegacyTemplateAdding(existingTemplate.name, existingTemplate.patterns)
+              requestContext = MockRequestContext
+                .template(addingTemplateOperation)
+                .addExistingTemplates(existingTemplate),
+              templateOperationAfterProcessing = addingTemplateOperation
             )
           }
           "rule allows access to index name with wildcard which is a superset of the patten in existing template's pattern list" in {
@@ -382,13 +418,16 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(IndexName("test1*"))
             )
+            val addingTemplateOperation = LegacyTemplateAdding(
+              name = existingTemplate.name,
+              patterns = UniqueNonEmptyList.of(IndexName("test2*"))
+            )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
-              modifyRequestContext = addExistingTemplates(existingTemplate),
-              templateOperation = LegacyTemplateAdding(
-                name = existingTemplate.name,
-                patterns = UniqueNonEmptyList.of(IndexName("test2*"))
-              )
+              requestContext = MockRequestContext
+                .template(addingTemplateOperation)
+                .addExistingTemplates(existingTemplate),
+              templateOperationAfterProcessing = addingTemplateOperation
             )
           }
           "rule allows access to index name with wildcard which matches both patterns in existing template's pattern list" in {
@@ -396,13 +435,16 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"))
             )
+            val addingTemplateOperation = LegacyTemplateAdding(
+              name = existingTemplate.name,
+              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"), IndexName("test3"))
+            )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
-              modifyRequestContext = addExistingTemplates(existingTemplate),
-              templateOperation = LegacyTemplateAdding(
-                name = existingTemplate.name,
-                patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"), IndexName("test3"))
-              )
+              requestContext = MockRequestContext
+                .template(addingTemplateOperation)
+                .addExistingTemplates(existingTemplate),
+              templateOperationAfterProcessing = addingTemplateOperation
             )
           }
         }
@@ -412,37 +454,41 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name which is not used in template's pattern list" in {
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test1")),
-              templateOperation = LegacyTemplateAdding(
-                name = TemplateName("t1"),
-                patterns = UniqueNonEmptyList.of(IndexName("test2"))
-              )
+              requestContext = MockRequestContext
+                .template(LegacyTemplateAdding(
+                  name = TemplateName("t1"),
+                  patterns = UniqueNonEmptyList.of(IndexName("test2"))
+                ))
             )
           }
           "rule allows access to index name which matches the pattern in template's pattern list" in {
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test1")),
-              templateOperation = LegacyTemplateAdding(
-                name = TemplateName("t1"),
-                patterns = UniqueNonEmptyList.of(IndexName("test*"))
-              )
+              requestContext = MockRequestContext
+                .template(LegacyTemplateAdding(
+                  name = TemplateName("t1"),
+                  patterns = UniqueNonEmptyList.of(IndexName("test*"))
+                ))
             )
           }
           "rule allows access to index name with wildcard which is a subset of the pattern in template's pattern list" in {
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test1*")),
-              templateOperation = LegacyTemplateAdding(
-                name = TemplateName("t1"),
-                patterns = UniqueNonEmptyList.of(IndexName("test*"))
-              )
+              requestContext = MockRequestContext
+                .template(LegacyTemplateAdding(
+                  name = TemplateName("t1"),
+                  patterns = UniqueNonEmptyList.of(IndexName("test*"))
+                ))
             )
           }
           "rule allows access ot index name with wildcard which matches only one pattern in template's pattern list" in {
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test*")),
-              templateOperation = LegacyTemplateAdding(
-                name = TemplateName("t1"),
-                patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*"))
-              )
+              requestContext = MockRequestContext
+                .template(LegacyTemplateAdding(
+                  name = TemplateName("t1"),
+                  patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*"))
+                ))
             )
           }
         }
@@ -454,11 +500,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test1")),
-              modifyRequestContext = addExistingTemplates(existingTemplate),
-              templateOperation = LegacyTemplateAdding(
-                name = existingTemplate.name,
-                patterns = UniqueNonEmptyList.of(IndexName("test1"))
-              )
+              requestContext = MockRequestContext
+                .template(LegacyTemplateAdding(
+                  name = existingTemplate.name,
+                  patterns = UniqueNonEmptyList.of(IndexName("test1"))
+                ))
+                .addExistingTemplates(existingTemplate)
             )
           }
           "rule allows access to index name which matches the pattern in existing template's pattern list" in {
@@ -468,11 +515,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test1")),
-              modifyRequestContext = addExistingTemplates(existingTemplate),
-              templateOperation = LegacyTemplateAdding(
-                name = existingTemplate.name,
-                patterns = UniqueNonEmptyList.of(IndexName("test1"))
-              )
+              requestContext = MockRequestContext
+                .template(LegacyTemplateAdding(
+                  name = existingTemplate.name,
+                  patterns = UniqueNonEmptyList.of(IndexName("test1"))
+                ))
+                .addExistingTemplates(existingTemplate)
             )
           }
           "rule allows access to index name with wildcard which is a subset of the pattern in existing template's pattern list" in {
@@ -482,11 +530,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test1*")),
-              modifyRequestContext = addExistingTemplates(existingTemplate),
-              templateOperation = LegacyTemplateAdding(
-                name = existingTemplate.name,
-                patterns = UniqueNonEmptyList.of(IndexName("test*"))
-              )
+              requestContext = MockRequestContext
+                .template(LegacyTemplateAdding(
+                  name = existingTemplate.name,
+                  patterns = UniqueNonEmptyList.of(IndexName("test*"))
+                ))
+                .addExistingTemplates(existingTemplate)
             )
           }
           "rule allows access ot index name with wildcard which matches only one pattern in existing template's pattern list" in {
@@ -496,11 +545,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test*")),
-              modifyRequestContext = addExistingTemplates(existingTemplate),
-              templateOperation = LegacyTemplateAdding(
-                name = existingTemplate.name,
-                patterns = UniqueNonEmptyList.of(IndexName("test*"))
-              )
+              requestContext = MockRequestContext
+                .template(LegacyTemplateAdding(
+                  name = existingTemplate.name,
+                  patterns = UniqueNonEmptyList.of(IndexName("test*"))
+                ))
+                .addExistingTemplates(existingTemplate)
             )
           }
         }
@@ -512,17 +562,19 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to all indices" in {
             assertMatchRule2(
               configured = NonEmptySet.of(index("*")),
-              templateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              templateOperationAfterProcessing = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000"))),
-              modifyRequestContext = noModifications
+              requestContext = MockRequestContext
+                .template(LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*")))),
+              templateOperationAfterProcessing =
+                LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000")))
             )
           }
           "rule allows access to specific index" in {
             assertMatchRule2(
               configured = NonEmptySet.of(index("index1")),
-              templateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              templateOperationAfterProcessing = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000"))),
-              modifyRequestContext = noModifications
+              requestContext = MockRequestContext
+                .template(LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*")))),
+              templateOperationAfterProcessing =
+                LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000")))
             )
           }
         }
@@ -536,11 +588,13 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               name = TemplateName("s1"),
               patterns = UniqueNonEmptyList.of(IndexName("index1"))
             )
+            val deletingTemplateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*")))
             assertMatchRule2(
               configured = NonEmptySet.of(index("*")),
-              templateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              templateOperationAfterProcessing = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              modifyRequestContext = addExistingTemplates(existingTemplate1, existingTemplate2)
+              requestContext = MockRequestContext
+                .template(deletingTemplateOperation)
+                .addExistingTemplates(existingTemplate1, existingTemplate2),
+              templateOperationAfterProcessing = deletingTemplateOperation
             )
           }
           "all requested existing templates have only allowed indices" in {
@@ -552,11 +606,13 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               name = TemplateName("s1"),
               patterns = UniqueNonEmptyList.of(IndexName("index3"))
             )
+            val deletingTemplateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t1")))
             assertMatchRule2(
               configured = NonEmptySet.of(index("index1"), index("index2")),
-              templateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t1"))),
-              templateOperationAfterProcessing = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t1"))),
-              modifyRequestContext = addExistingTemplates(existingTemplate1, existingTemplate2)
+              requestContext = MockRequestContext
+                .template(deletingTemplateOperation)
+                .addExistingTemplates(existingTemplate1, existingTemplate2),
+              templateOperationAfterProcessing = deletingTemplateOperation
             )
           }
           "all requested existing templates have only allowed indices patterns" in {
@@ -568,11 +624,13 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               name = TemplateName("s1"),
               patterns = UniqueNonEmptyList.of(IndexName("b*"))
             )
+            val deletingTemplateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*")))
             assertMatchRule2(
               configured = NonEmptySet.of(index("a*")),
-              templateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              templateOperationAfterProcessing = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              modifyRequestContext = addExistingTemplates(existingTemplate1, existingTemplate2)
+              requestContext = MockRequestContext
+                .template(deletingTemplateOperation)
+                .addExistingTemplates(existingTemplate1, existingTemplate2),
+              templateOperationAfterProcessing = deletingTemplateOperation
             )
           }
         }
@@ -590,9 +648,9 @@ class IndicesRuleTests extends WordSpec with MockFactory {
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("index1")),
-              templateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              templateOperationAfterProcessing = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              modifyRequestContext = addExistingTemplates(existingTemplate1, existingTemplate2)
+              requestContext = MockRequestContext
+                .template(LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))))
+                .addExistingTemplates(existingTemplate1, existingTemplate2)
             )
           }
           "one of existing requested templates has index pattern which is forbidden" in {
@@ -606,9 +664,9 @@ class IndicesRuleTests extends WordSpec with MockFactory {
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("index1*")),
-              templateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              templateOperationAfterProcessing = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              modifyRequestContext = addExistingTemplates(existingTemplate1, existingTemplate2)
+              requestContext = MockRequestContext
+                .template(LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))))
+                .addExistingTemplates(existingTemplate1, existingTemplate2)
             )
           }
           "requested existing template has pattern which values form a superset of set of configured index pattern values" in {
@@ -618,9 +676,9 @@ class IndicesRuleTests extends WordSpec with MockFactory {
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("index*")),
-              templateOperation = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              templateOperationAfterProcessing = LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))),
-              modifyRequestContext = addExistingTemplates(existingTemplate1)
+              requestContext = MockRequestContext
+                .template(LegacyTemplateDeleting(NonEmptyList.of(TemplateNamePattern("t*"))))
+                .addExistingTemplates(existingTemplate1)
             )
           }
         }
@@ -685,55 +743,26 @@ class IndicesRuleTests extends WordSpec with MockFactory {
   }
 
   private def assertMatchRule2(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                               templateOperation: TemplateOperation,
-                               modifyRequestContext: MockTemplateRequestContext => MockTemplateRequestContext = identity): Assertion =
-    assertMatchRule2(configured, templateOperation, templateOperation, modifyRequestContext)
-
-  private def assertMatchRule2(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                               templateOperation: TemplateOperation,
+                               requestContext: MockTemplateRequestContext,
                                templateOperationAfterProcessing: TemplateOperation,
-                               modifyRequestContext: MockTemplateRequestContext => MockTemplateRequestContext): Assertion =
-    assertRule2(configured, templateOperation, isMatched = true, modifyRequestContext, templateOperationAfterProcessing)
-
-  private def assertNotMatchRule2(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                                  templateOperation: TemplateOperation,
-                                  modifyRequestContext: MockTemplateRequestContext => MockTemplateRequestContext = identity): Assertion =
-    assertNotMatchRule2(configured, templateOperation, templateOperation, modifyRequestContext)
-
-  private def assertNotMatchRule2(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                                  templateOperation: TemplateOperation,
-                                  templateOperationAfterProcessing: TemplateOperation,
-                                  modifyRequestContext: MockTemplateRequestContext => MockTemplateRequestContext): Assertion =
-    assertRule2(configured, templateOperation, isMatched = false, modifyRequestContext, templateOperationAfterProcessing)
-
-  private def assertRule2(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                          requestedTemplateOperation: TemplateOperation,
-                          isMatched: Boolean,
-                          modifyRequestContext: MockTemplateRequestContext => MockTemplateRequestContext,
-                          templateOperationAfterProcessing: TemplateOperation) = {
-    val rule = createIndicesRule(configuredValues)
-    val requestContext = modifyRequestContext apply MockRequestContext.template(requestedTemplateOperation)
-    val emptyUserMetadata = UserMetadata.from(requestContext)
-    val blockContext = TemplateRequestBlockContext(
-      requestContext,
-      emptyUserMetadata,
-      Set.empty,
-      List.empty,
-      requestedTemplateOperation,
-      identity
-    )
-    val ruleResult = rule.check(blockContext).runSyncStep.right.get
-    if(isMatched) {
-      ruleResult should matchPattern {
-        case Fulfilled(TemplateRequestBlockContext(rc, metadata, headers, Nil, operation, _))
-          if rc == requestContext
-            && metadata == emptyUserMetadata
-            && headers.isEmpty
-            && operation == templateOperationAfterProcessing =>
-      }
-    } else {
-      ruleResult shouldBe Rejected()
+                               additionalAssertions: TemplateRequestBlockContext => Assertion = noTransformation): Assertion = {
+    val rule = createIndicesRule(configured)
+    val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.right.get
+    ruleResult should matchPattern {
+      case Fulfilled(blockContext@TemplateRequestBlockContext(rc, metadata, headers, Nil, operation, _))
+        if rc == requestContext
+          && metadata == requestContext.initialBlockContext.userMetadata
+          && headers.isEmpty
+          && operation == templateOperationAfterProcessing
+          && additionalAssertions(blockContext) == Succeeded =>
     }
+  }
+
+  private def assertNotMatchRule2(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                  requestContext: MockTemplateRequestContext): Assertion = {
+    val rule = createIndicesRule(configured)
+    val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.right.get
+    ruleResult shouldBe Rejected()
   }
 
   private def createIndicesRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]]) = {
@@ -750,9 +779,18 @@ class IndicesRuleTests extends WordSpec with MockFactory {
       .getOrElse(throw new IllegalStateException(s"Cannot create IndexName Value from $value"))
   }
 
-  private def addExistingTemplates(template: Template, otherTemplates: Template*): MockTemplateRequestContext => MockTemplateRequestContext = requestContext => {
-    requestContext.copy(allTemplates = requestContext.allTemplates + template ++ otherTemplates.toSet)
+  private implicit class MockTemplateRequestContextOps(underlying: MockTemplateRequestContext) {
+    def addExistingTemplates(template: Template, otherTemplates: Template*): MockTemplateRequestContext = {
+      underlying.copy(allTemplates = underlying.allTemplates + template ++ otherTemplates.toSet)
+    }
   }
 
-  private def noModifications: MockTemplateRequestContext => MockTemplateRequestContext = identity
+  private def noTransformation(blockContext: TemplateRequestBlockContext) = {
+    // we check here if sth else than identity was configured
+    val controlTemplate = LegacyIndexTemplate(
+      TemplateName("whatever"),
+      UniqueNonEmptyList.of(IndexName("*"))
+    )
+    blockContext.responseTemplateTransformation(Set(controlTemplate)) should be(Set(controlTemplate))
+  }
 }
