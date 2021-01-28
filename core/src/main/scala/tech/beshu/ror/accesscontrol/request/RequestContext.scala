@@ -71,8 +71,8 @@ trait RequestContext {
 
   def allTemplates: Set[Template]
 
-  lazy val legacyTemplates: Set[Template.LegacyIndexTemplate] =
-    allTemplates.collect { case t: Template.LegacyIndexTemplate => t }
+  lazy val legacyTemplates: Set[Template.LegacyTemplate] =
+    allTemplates.collect { case t: Template.LegacyTemplate => t }
 
   lazy val indexTemplates: Set[Template.IndexTemplate] =
     allTemplates.collect { case t: Template.IndexTemplate => t }

@@ -16,62 +16,31 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
 
-import cats.Show
-import cats.data.{NonEmptyList, NonEmptySet}
+import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{TemplateMatcher, UniqueIdentifierGenerator}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.implicits._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-private[indicesrule] trait TemplateIndices {
-  this: Logging =>
+private[indicesrule] trait LegacyTemplatesIndices
+  extends Logging {
+  this: AllTemplateIndices =>
 
-  protected def settings: IndicesRule.Settings
-
-  protected def identifierGenerator: UniqueIdentifierGenerator
-
-  protected def processTemplateRequest(blockContext: TemplateRequestBlockContext): RuleResult[TemplateRequestBlockContext] = {
-    implicit val allowedIndices: AllowedIndices = new AllowedIndices(settings.allowedIndices, blockContext)
-    logger.debug(
-      s"""[${blockContext.requestContext.id.show}] Checking - indices and aliases in Template related request.
-         | Allowed indices by the rule: [${allowedIndices.show}]:""".oneLiner
-    )
-    implicit val _ = blockContext
-    blockContext.templateOperation match {
-      case TemplateOperation.LegacyTemplateGetting(namePatterns) =>
-        getLegacyTemplates(namePatterns)
-      case TemplateOperation.LegacyTemplateAdding(name, patterns) =>
-        addingLegacyTemplate(name, patterns)
-      case TemplateOperation.LegacyTemplateDeleting(namePatterns) =>
-        deletingLegacyTemplates(namePatterns)
-      case TemplateOperation.TemplateAccess(namePatterns) =>
-        ???
-      case TemplateOperation.TemplateAdding(name, patterns, aliases) =>
-        ???
-      case TemplateOperation.ComponentTemplateAccess(namePatterns) =>
-        ???
-      case TemplateOperation.ComponentTemplateAdding(name, aliases) =>
-        ???
-    }
-  }
-
-  private def getLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                (implicit blockContext: TemplateRequestBlockContext,
-                                 allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+  protected def gettingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
+                                      (implicit blockContext: TemplateRequestBlockContext,
+                                       allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * getting Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
     val existingTemplates = findTemplatesBy(templateNamePatterns.toList.toSet, in = blockContext)
-    if(existingTemplates.isEmpty) {
+    if (existingTemplates.isEmpty) {
       logger.debug(
         s"""[${blockContext.requestContext.id.show}] * no Templates for name patterns [${templateNamePatterns.show}] found ..."""
       )
@@ -81,7 +50,7 @@ private[indicesrule] trait TemplateIndices {
       NonEmptyList.fromList(filteredExistingTemplates) match {
         case Some(nonEmptyFilterTemplates) =>
           val templateNamePatterns = nonEmptyFilterTemplates.map(t => TemplateNamePattern.from(t.name))
-          val modifiedOperation = TemplateOperation.LegacyTemplateGetting(templateNamePatterns)
+          val modifiedOperation = TemplateOperation.GettingLegacyTemplates(templateNamePatterns)
           RuleResult.fulfilled(
             blockContext
               .withTemplateOperation(modifiedOperation)
@@ -93,10 +62,10 @@ private[indicesrule] trait TemplateIndices {
     }
   }
 
-  private def addingLegacyTemplate(newTemplateName: TemplateName,
-                                   newTemplateIndicesPatterns: UniqueNonEmptyList[IndexName])
-                                  (implicit blockContext: TemplateRequestBlockContext,
-                                   allowedIndices: AllowedIndices) = {
+  protected def addingLegacyTemplate(newTemplateName: TemplateName,
+                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexName])
+                                    (implicit blockContext: TemplateRequestBlockContext,
+                                     allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * adding Template [${newTemplateName.show}] with index
          | patterns [${newTemplateIndicesPatterns.show}] ...""".oneLiner
@@ -118,9 +87,9 @@ private[indicesrule] trait TemplateIndices {
     }
   }
 
-  private def deletingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
-                                     (implicit blockContext: TemplateRequestBlockContext,
-                                      allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+  protected def deletingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
+                                       (implicit blockContext: TemplateRequestBlockContext,
+                                        allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * deleting Templates with name patterns [${templateNamePatterns.show}] ..."""
     )
@@ -137,7 +106,7 @@ private[indicesrule] trait TemplateIndices {
       case Left(_) | Right(Nil) =>
         RuleResult.rejected()
       case Right(nonEmptyPatternsList) =>
-        val modifiedOperation = TemplateOperation.LegacyTemplateDeleting(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
+        val modifiedOperation = TemplateOperation.DeletingLegacyTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
         RuleResult.fulfilled(blockContext.withTemplateOperation(modifiedOperation))
     }
   }
@@ -178,7 +147,7 @@ private[indicesrule] trait TemplateIndices {
       }
   }
 
-  private def canViewExistingTemplate(existingTemplate: Template.LegacyIndexTemplate)
+  private def canViewExistingTemplate(existingTemplate: Template.LegacyTemplate)
                                      (implicit blockContext: TemplateRequestBlockContext,
                                       allowedIndices: AllowedIndices) = {
     val isTemplateForbidden = existingTemplate.patterns.toList
@@ -192,7 +161,7 @@ private[indicesrule] trait TemplateIndices {
     !isTemplateForbidden
   }
 
-  private def canModifyExistingTemplate(existingTemplate: Template.LegacyIndexTemplate)
+  private def canModifyExistingTemplate(existingTemplate: Template.LegacyTemplate)
                                        (implicit blockContext: TemplateRequestBlockContext,
                                         allowedIndices: AllowedIndices) = {
     logger.debug(
@@ -214,28 +183,23 @@ private[indicesrule] trait TemplateIndices {
     in.requestContext.legacyTemplates.find(_.name == name)
   }
 
-  private def findTemplatesBy(namePattern: TemplateNamePattern, in: TemplateRequestBlockContext): Set[Template.LegacyIndexTemplate] = {
+  private def findTemplatesBy(namePattern: TemplateNamePattern, in: TemplateRequestBlockContext): Set[Template.LegacyTemplate] = {
     findTemplatesBy(Set(namePattern), in)
   }
 
-  private def findTemplatesBy(namePatterns: Set[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.LegacyIndexTemplate] = {
+  private def findTemplatesBy(namePatterns: Set[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.LegacyTemplate] = {
     new TemplateMatcher(namePatterns).filterTemplates(in.requestContext.legacyTemplates)
-  }
-
-  private def generateRorArtificialName(templateNamePattern: TemplateNamePattern): TemplateNamePattern = {
-    val nonexistentTemplateNamePattern = s"${templateNamePattern.value}_ROR_${identifierGenerator.generate(10)}"
-    TemplateNamePattern(NonEmptyString.unsafeFrom(nonexistentTemplateNamePattern))
   }
 
   private def filterTemplatesNotAllowedPatterns(templates: Set[Template])
                                                (implicit blockContext: TemplateRequestBlockContext,
                                                 allowedIndices: AllowedIndices): Set[Template] = {
     templates.flatMap {
-      case Template.LegacyIndexTemplate(name, patterns) =>
+      case Template.LegacyTemplate(name, patterns) =>
         val onlyAllowedPatterns = patterns.filter(p => allowedIndices.resolved.exists(_.matches(p)))
         UniqueNonEmptyList.fromSortedSet(onlyAllowedPatterns) match {
           case Some(nonEmptyAllowedPatterns) =>
-            Set[Template](Template.LegacyIndexTemplate(name, nonEmptyAllowedPatterns))
+            Set[Template](Template.LegacyTemplate(name, nonEmptyAllowedPatterns))
           case None =>
             logger.error(
               s"""[${blockContext.requestContext.id.show} Template [${name.show}] has no allowed patterns, even if
@@ -246,20 +210,5 @@ private[indicesrule] trait TemplateIndices {
       case other =>
         Set[Template](other)
     }
-  }
-
-  private class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                               val blockContext: TemplateRequestBlockContext) {
-    val resolved: Set[IndexName] = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
-  }
-  private object AllowedIndices {
-    implicit def show: Show[AllowedIndices] = Show.show(_.resolved.map(_.show).mkStringOrEmptyString("", ",", ""))
-  }
-
-  private sealed trait PartialResult[T]
-  private object Result {
-    sealed case class Allowed[T](value: T) extends PartialResult[T]
-    sealed case class NotFound[T](value: T) extends PartialResult[T]
-    sealed case class Forbidden[T](value: T) extends PartialResult[T]
   }
 }

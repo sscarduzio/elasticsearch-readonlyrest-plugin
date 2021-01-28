@@ -34,6 +34,7 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.domain.Action._
+import tech.beshu.ror.accesscontrol.domain.AliasPlaceholder.from
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
@@ -42,7 +43,7 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.util.{Failure, Success, Try, Random}
+import scala.util.{Failure, Random, Success, Try}
 
 object domain {
 
@@ -314,6 +315,21 @@ object domain {
     }
   }
 
+  final case class AliasPlaceholder private (alias: IndexName) extends AnyVal {
+    def index(value: NonEmptyString): IndexName =
+      IndexName.fromUnsafeString(alias.value.replaceAll(AliasPlaceholder.placeholder, value.value))
+  }
+  object AliasPlaceholder {
+    private val placeholder = "{index}"
+
+    def from(alias: IndexName): Option[AliasPlaceholder] =
+      if(alias.value.contains(placeholder)) Some(AliasPlaceholder(alias)) else None
+  }
+
+  object Placeholder {
+    def unapply(alias: IndexName): Option[AliasPlaceholder] = AliasPlaceholder.from(alias)
+  }
+
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
     def all: Set[IndexName] = aliases + index
   }
@@ -374,8 +390,8 @@ object domain {
     def name: TemplateName
   }
   object Template {
-    final case class LegacyIndexTemplate(override val name: TemplateName,
-                                         patterns: UniqueNonEmptyList[IndexName])
+    final case class LegacyTemplate(override val name: TemplateName,
+                                    patterns: UniqueNonEmptyList[IndexName])
       extends Template
 
     final case class IndexTemplate(override val name: TemplateName,
@@ -391,29 +407,35 @@ object domain {
   sealed trait TemplateOperation
   object TemplateOperation {
 
-    final case class LegacyTemplateGetting(namePatterns: NonEmptyList[TemplateNamePattern])
+    final case class GettingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
 
-    final case class LegacyTemplateAdding(name: TemplateName,
+    final case class AddingLegacyTemplate(name: TemplateName,
                                           patterns: UniqueNonEmptyList[IndexName])
       extends TemplateOperation
 
-    final case class LegacyTemplateDeleting(namePatterns: NonEmptyList[TemplateNamePattern])
+    final case class DeletingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
 
-    final case class TemplateAccess(namePatterns: NonEmptyList[TemplateNamePattern])
+    final case class GettingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
 
-    final case class TemplateAdding(name: TemplateName,
-                                    patterns: UniqueNonEmptyList[IndexName],
-                                    aliases: Set[IndexName])
+    final case class AddingIndexTemplate(name: TemplateName,
+                                         patterns: UniqueNonEmptyList[IndexName],
+                                         aliases: Set[IndexName])
       extends TemplateOperation
 
-    final case class ComponentTemplateAccess(namePatterns: NonEmptyList[TemplateNamePattern])
+    final case class DeletingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
 
-    final case class ComponentTemplateAdding(name: TemplateName,
+    final case class GettingComponentTemplate(namePatterns: NonEmptyList[TemplateNamePattern])
+      extends TemplateOperation
+
+    final case class AddingComponentTemplate(name: TemplateName,
                                              aliases: Set[IndexName])
+      extends TemplateOperation
+
+    final case class DeletingComponentTemplate(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
   }
 

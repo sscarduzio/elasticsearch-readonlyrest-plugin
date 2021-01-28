@@ -47,7 +47,7 @@ import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 class IndicesRule(override val settings: Settings,
                   override val identifierGenerator: UniqueIdentifierGenerator)
   extends RegularRule
-    with TemplateIndices
+    with AllTemplateIndices
     with Logging {
 
   import IndicesCheckContinuation._

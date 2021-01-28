@@ -138,6 +138,7 @@ object show {
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
     implicit val indexNameShow: Show[IndexName] = Show.show(_.value.value)
+    implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
     implicit val groupShow: Show[Group] = Show.show(_.value.value)
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
