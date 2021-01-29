@@ -17,11 +17,12 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptySet
+import com.softwaremill.sttp.Method
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, GeneralIndexRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
@@ -31,7 +32,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, IndexWithAliases}
 import tech.beshu.ror.accesscontrol.orders.indexOrder
-import tech.beshu.ror.mocks.{MockGeneralIndexRequestContext, MockRequestContext}
+import tech.beshu.ror.mocks.{MockFilterableMultiRequestContext, MockGeneralIndexRequestContext, MockRequestContext}
 import tech.beshu.ror.utils.TestsUtils._
 
 class IndicesRuleTests extends AnyWordSpec with MockFactory {
@@ -197,6 +198,13 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           )
         )
       }
+      "multi filterable request tries to fetch data for allowed and not allowed index" in {
+        assertMatchRuleMultiIndexRequest(
+          configured = NonEmptySet.of(indexNameValueFrom("test1")),
+          indexPacks = Indices.Found(Set(IndexName("test1".nonempty), IndexName("test2".nonempty))) :: Nil,
+          allowed = Indices.Found(Set(IndexName("test1".nonempty))) :: Nil
+        )
+      }
     }
     "not match" when {
       "no index passed, one is configured, no real indices" in {
@@ -291,6 +299,12 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           )
         )
       }
+      "multi filterable request tries to fetch data for not allowed index" in {
+        assertNotMatchRuleMultiIndexRequest(
+          configured = NonEmptySet.of(indexNameValueFrom("test1")),
+          indexPacks = Indices.Found(Set(IndexName("test2".nonempty))) :: Nil
+        )
+      }
     }
   }
 
@@ -345,6 +359,60 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           .collect { case a: AlreadyResolved[IndexName] => a }
           .flatMap(_.value.toList)
           .toSet
+      ))
+      else Rejected(Some(Cause.IndexNotFound))
+    }
+  }
+
+  private def assertMatchRuleMultiIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                               indexPacks: List[Indices],
+                                               modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext = identity,
+                                               allowed: List[Indices]) = {
+    assertRuleForMultiIndexRequest(configured, indexPacks, isMatched = true, modifyRequestContext, allowed)
+  }
+
+  private def assertNotMatchRuleMultiIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                                  indexPacks: List[Indices],
+                                                  modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext = identity) = {
+    assertRuleForMultiIndexRequest(configured, indexPacks, isMatched = false, modifyRequestContext, List.empty)
+  }
+
+  private def assertRuleForMultiIndexRequest(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                             indexPacks: List[Indices],
+                                             isMatched: Boolean,
+                                             modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext,
+                                             allowed: List[Indices]) = {
+    val rule = new IndicesRule(IndicesRule.Settings(configuredValues, mustInvolveIndices = false))
+    val requestContext = modifyRequestContext apply MockRequestContext.filterableMulti
+      .copy(
+        indexPacks = indexPacks,
+        action = Action("indices:data/read/mget"),
+        isReadOnlyRequest = true,
+        method = Method("POST"),
+        allIndicesAndAliases = Set(
+          IndexWithAliases(IndexName("test1".nonempty), Set.empty),
+          IndexWithAliases(IndexName("test2".nonempty), Set.empty),
+          IndexWithAliases(IndexName("test3".nonempty), Set.empty),
+          IndexWithAliases(IndexName("test4".nonempty), Set.empty),
+          IndexWithAliases(IndexName("test5".nonempty), Set.empty)
+        )
+      )
+    val blockContext = FilterableMultiRequestBlockContext(
+      requestContext,
+      UserMetadata.from(requestContext),
+      Set.empty,
+      List.empty,
+      indexPacks,
+      None
+    )
+    rule.check(blockContext).runSyncStep shouldBe Right {
+      if (isMatched) Fulfilled(FilterableMultiRequestBlockContext(
+        requestContext,
+        UserMetadata.from(requestContext),
+        Set.empty,
+        List.empty,
+        allowed,
+        None
       ))
       else Rejected(Some(Cause.IndexNotFound))
     }
