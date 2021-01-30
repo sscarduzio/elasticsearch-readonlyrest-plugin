@@ -52,7 +52,7 @@ private[indicesrule] trait IndexTemplateIndices
           RuleResult.fulfilled(
             blockContext
               .withTemplateOperation(modifiedOperation)
-              .withResponseTemplateTransformation(filterTemplatesNotAllowedPatterns)
+              .withResponseTemplateTransformation(filterTemplatesNotAllowedPatternsAndAliases)
           )
         case None =>
           RuleResult.rejected()
@@ -67,7 +67,7 @@ private[indicesrule] trait IndexTemplateIndices
                                     allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * adding Index Template [${newTemplateName.show}] with index
-         | patterns [${newTemplateIndicesPatterns.show}] ...""".oneLiner
+         | patterns [${newTemplateIndicesPatterns.show}] and aliases [${aliases.show}] ...""".oneLiner
     )
     findTemplateBy(name = newTemplateName, in = blockContext) match {
       case Some(existingTemplate) =>
@@ -149,18 +149,12 @@ private[indicesrule] trait IndexTemplateIndices
       if(newTemplateAliases.isEmpty) true
       else {
         newTemplateAliases.forall { alias =>
-          val isAliasAllowed = alias match {
-            case Placeholder(placeholder) =>
-              val potentialAliases = allowedIndices.resolved.map(i => placeholder.index(i.value))
-              potentialAliases.exists { alias => allowedIndices.resolved.exists(_.matches(alias)) }
-            case _ =>
-              allowedIndices.resolved.exists(_.matches(alias))
-          }
-          if (!isAliasAllowed) logger.debug(
+          val allowed = isAliasAllowed(alias)
+          if (!allowed) logger.debug(
             s"""[${blockContext.requestContext.id.show}] STOP: one of Template's [${newTemplateName.show}]
                | alias [${alias.show}] is forbidden.""".oneLiner
           )
-          isAliasAllowed
+          allowed
         }
       }
     allPatternAllowed && allAliasesAllowed
@@ -200,19 +194,13 @@ private[indicesrule] trait IndexTemplateIndices
       if(existingTemplate.aliases.isEmpty) true
       else {
         existingTemplate.aliases.forall { alias =>
-          val isAliasAllowed = alias match {
-            case Placeholder(placeholder) =>
-              val potentialAliases = allowedIndices.resolved.map(i => placeholder.index(i.value))
-              potentialAliases.exists { alias => allowedIndices.resolved.exists(_.matches(alias)) }
-            case _ =>
-              allowedIndices.resolved.exists(_.matches(alias))
-          }
-          if (!isAliasAllowed) logger.debug(
+          val allowed = isAliasAllowed(alias)
+          if (!allowed) logger.debug(
             s"""[${blockContext.requestContext.id.show}] STOP: cannot allow to modify existing Index Template
                | [${existingTemplate.name.show}], because its alias [${alias.show}] is not allowed by rule
                | (it means that user has no access to it)""".oneLiner
           )
-          isAliasAllowed
+          allowed
         }
       }
     allPatternAllowed && allAliasesAllowed
@@ -230,13 +218,13 @@ private[indicesrule] trait IndexTemplateIndices
     new TemplateMatcher(namePatterns).filterTemplates(in.requestContext.indexTemplates)
   }
 
-  private def filterTemplatesNotAllowedPatterns(templates: Set[Template])
-                                               (implicit blockContext: TemplateRequestBlockContext,
-                                                allowedIndices: AllowedIndices): Set[Template] = {
+  private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])
+                                                         (implicit blockContext: TemplateRequestBlockContext,
+                                                          allowedIndices: AllowedIndices): Set[Template] = {
     templates.flatMap {
       case Template.IndexTemplate(name, patterns, aliases) =>
         val onlyAllowedPatterns = patterns.filter(p => allowedIndices.resolved.exists(_.matches(p)))
-        val onlyAllowedAliases = aliases.filter(a => allowedIndices.resolved.exists(_.matches(a))) // todo: {index} placeholder handling
+        val onlyAllowedAliases = aliases.filter(isAliasAllowed)
         UniqueNonEmptyList.fromSortedSet(onlyAllowedPatterns) match {
           case Some(nonEmptyAllowedPatterns) =>
             Set[Template](Template.IndexTemplate(name, nonEmptyAllowedPatterns, onlyAllowedAliases))

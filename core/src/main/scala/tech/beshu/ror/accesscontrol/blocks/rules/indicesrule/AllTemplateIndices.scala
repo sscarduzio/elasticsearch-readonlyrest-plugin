@@ -32,6 +32,7 @@ import tech.beshu.ror.utils.ScalaOps._
 
 private[indicesrule] trait AllTemplateIndices
   extends IndexTemplateIndices
+    with ComponentTemplateIndices
     with LegacyTemplatesIndices
     with Logging {
 
@@ -53,16 +54,26 @@ private[indicesrule] trait AllTemplateIndices
       case TemplateOperation.GettingIndexTemplates(namePatterns) => gettingIndexTemplates(namePatterns)
       case TemplateOperation.AddingIndexTemplate(name, patterns, aliases) => addingIndexTemplate(name, patterns, aliases)
       case TemplateOperation.DeletingIndexTemplates(namePatterns) => deletingIndexTemplates(namePatterns)
-      case TemplateOperation.GettingComponentTemplate(namePatterns) => ???
-      case TemplateOperation.AddingComponentTemplate(name, aliases) => ???
-      case TemplateOperation.DeletingComponentTemplate(namePatterns) => ???
+      case TemplateOperation.GettingComponentTemplates(namePatterns) => gettingComponentTemplates(namePatterns)
+      case TemplateOperation.AddingComponentTemplate(name, aliases) => addingComponentTemplate(name, aliases)
+      case TemplateOperation.DeletingComponentTemplates(namePatterns) => deletingComponentTemplates(namePatterns)
     }
   }
-
 
   private [indicesrule] def generateRorArtificialName(templateNamePattern: TemplateNamePattern): TemplateNamePattern = {
     val nonexistentTemplateNamePattern = s"${templateNamePattern.value}_ROR_${identifierGenerator.generate(10)}"
     TemplateNamePattern(NonEmptyString.unsafeFrom(nonexistentTemplateNamePattern))
+  }
+
+  private [indicesrule]  def isAliasAllowed(alias: IndexName)
+                                           (implicit allowedIndices: AllowedIndices) = {
+    alias match {
+      case Placeholder(placeholder) =>
+        val potentialAliases = allowedIndices.resolved.map(i => placeholder.index(i.value))
+        potentialAliases.exists { alias => allowedIndices.resolved.exists(_.matches(alias)) }
+      case _ =>
+        allowedIndices.resolved.exists(_.matches(alias))
+    }
   }
 
   private[indicesrule] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],

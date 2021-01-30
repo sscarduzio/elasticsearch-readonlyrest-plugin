@@ -428,14 +428,14 @@ object domain {
     final case class DeletingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
 
-    final case class GettingComponentTemplate(namePatterns: NonEmptyList[TemplateNamePattern])
+    final case class GettingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
 
     final case class AddingComponentTemplate(name: TemplateName,
                                              aliases: Set[IndexName])
       extends TemplateOperation
 
-    final case class DeletingComponentTemplate(namePatterns: NonEmptyList[TemplateNamePattern])
+    final case class DeletingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
   }
 
