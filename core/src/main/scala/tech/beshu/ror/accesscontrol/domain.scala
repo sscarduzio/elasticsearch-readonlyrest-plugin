@@ -34,7 +34,6 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.domain.Action._
-import tech.beshu.ror.accesscontrol.domain.AliasPlaceholder.from
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
@@ -317,10 +316,11 @@ object domain {
 
   final case class AliasPlaceholder private (alias: IndexName) extends AnyVal {
     def index(value: NonEmptyString): IndexName =
-      IndexName.fromUnsafeString(alias.value.replaceAll(AliasPlaceholder.placeholder, value.value))
+      IndexName.fromUnsafeString(alias.value.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value))
   }
   object AliasPlaceholder {
     private val placeholder = "{index}"
+    private val escapedPlaceholder = placeholder.replaceAllLiterally("{", "\\{").replaceAllLiterally("}", "\\}")
 
     def from(alias: IndexName): Option[AliasPlaceholder] =
       if(alias.value.contains(placeholder)) Some(AliasPlaceholder(alias)) else None

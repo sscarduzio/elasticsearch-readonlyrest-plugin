@@ -910,11 +910,23 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               templateOperationAfterProcessing = addingTemplateOperation
             )
           }
-          "rule allows access to index name with wildcard which matches pattern in template's pattern list and all aliases" in {
+          "rule allows access to index name with wildcard which matches pattern in template's pattern list and all aliases (without index placeholder)" in {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
               aliases = Set(IndexName("test1_alias"), IndexName("test2_alias"))
+            )
+            assertMatchRule2(
+              configured = NonEmptySet.of(index("test*")),
+              requestContext = MockRequestContext.template(addingTemplateOperation),
+              templateOperationAfterProcessing = addingTemplateOperation
+            )
+          }
+          "rule allows access to index name with wildcard which matches pattern in template's pattern list and all aliases (with index placeholder)" in {
+            val addingTemplateOperation = AddingIndexTemplate(
+              name = TemplateName("t1"),
+              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              aliases = Set(IndexName("{index}_alias"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
@@ -996,7 +1008,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               templateOperationAfterProcessing = addingTemplateOperation
             )
           }
-          "rule allows access to index name with wildcard which matches pattern in existing template's pattern list and all aliases" in {
+          "rule allows access to index name with wildcard which matches pattern in existing template's pattern list and all aliases (without index placeholder)" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
@@ -1006,6 +1018,25 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               name = existingTemplate.name,
               patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"), IndexName("test3")),
               aliases = Set(IndexName("test1_alias"), IndexName("test2_alias"))
+            )
+            assertMatchRule2(
+              configured = NonEmptySet.of(index("test*")),
+              requestContext = MockRequestContext
+                .template(addingTemplateOperation)
+                .addExistingTemplates(existingTemplate),
+              templateOperationAfterProcessing = addingTemplateOperation
+            )
+          }
+          "rule allows access to index name with wildcard which matches pattern in existing template's pattern list and all aliases (with index placeholder)" in {
+            val existingTemplate = IndexTemplate(
+              name = TemplateName("t1"),
+              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              aliases = Set.empty
+            )
+            val addingTemplateOperation = AddingIndexTemplate(
+              name = existingTemplate.name,
+              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"), IndexName("test3")),
+              aliases = Set(IndexName("{index}_alias"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
@@ -1063,7 +1094,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
                 ))
             )
           }
-          "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases" in {
+          "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (without index placeholder)" in {
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
@@ -1071,6 +1102,17 @@ class IndicesRuleTests extends WordSpec with MockFactory {
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(IndexName("test1*")),
                   aliases = Set(IndexName("test1_alias"), IndexName("alias_test1"))
+                ))
+            )
+          }
+          "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (with index placeholder)" in {
+            assertNotMatchRule2(
+              configured = NonEmptySet.of(index("test*")),
+              requestContext = MockRequestContext
+                .template(AddingIndexTemplate(
+                  name = TemplateName("t1"),
+                  patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+                  aliases = Set(IndexName("{index}_alias"), IndexName("alias_{index}"))
                 ))
             )
           }
@@ -1144,7 +1186,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
                 .addExistingTemplates(existingTemplate)
             )
           }
-          "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases" in {
+          "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (without index placeholder)" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
               patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*")),
@@ -1157,6 +1199,23 @@ class IndicesRuleTests extends WordSpec with MockFactory {
                   name = TemplateName("t1"),
                   patterns = UniqueNonEmptyList.of(IndexName("test1*")),
                   aliases = Set(IndexName("test1_alias"), IndexName("alias_test1"))
+                ))
+                .addExistingTemplates(existingTemplate)
+            )
+          }
+          "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (with index placeholder)" in {
+            val existingTemplate = IndexTemplate(
+              name = TemplateName("t1"),
+              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*")),
+              aliases = Set.empty
+            )
+            assertNotMatchRule2(
+              configured = NonEmptySet.of(index("test*")),
+              requestContext = MockRequestContext
+                .template(AddingIndexTemplate(
+                  name = TemplateName("t1"),
+                  patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+                  aliases = Set(IndexName("{index}_alias"), IndexName("alias_{index}"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
