@@ -101,7 +101,7 @@ private[indicesrule] trait ComponentTemplateIndices
       case Left(_) | Right(Nil) =>
         RuleResult.rejected()
       case Right(nonEmptyPatternsList) =>
-        val modifiedOperation = TemplateOperation.DeletingIndexTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
+        val modifiedOperation = TemplateOperation.DeletingComponentTemplates(NonEmptyList.fromListUnsafe(nonEmptyPatternsList))
         RuleResult.fulfilled(blockContext.withTemplateOperation(modifiedOperation))
     }
   }
