@@ -32,13 +32,14 @@ abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOp
   extends BaseEsRequestContext[TemplateRequestBlockContext](esContext, clusterService)
     with EsRequest[TemplateRequestBlockContext] {
 
-  protected def templatesFrom(actionRequest: R): Set[T]
+  protected def templateOperationFrom(actionRequest: R): T
 
   override val initialBlockContext: TemplateRequestBlockContext = TemplateRequestBlockContext(
     this,
     UserMetadata.from(this),
     Set.empty,
     List.empty,
-    templatesFrom(actionRequest).collect { case t: TemplateOperation => t }
+    templateOperationFrom(actionRequest),
+    identity
   )
 }
