@@ -41,15 +41,6 @@ trait RorClusterService {
                                      filter: Filter,
                                      id: RequestContext.Id): Task[DocumentsAccessibilities]
 
-  def getTemplate(name: TemplateName): Option[Template] = {
-    allTemplates.find(_.name === name)
-  }
-
-  // todo:
-//  def getTemplatesBy(namePattern: TemplateName): Option[Template] = {
-//    allTemplates.map(_.name).fi
-//  }
-
   def expandIndices(indices: Set[IndexName]): Set[IndexName] = {
     val all = allIndicesAndAliases
       .flatMap { case (indexName, aliases) => aliases + indexName }

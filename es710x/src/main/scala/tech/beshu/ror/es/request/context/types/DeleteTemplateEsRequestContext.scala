@@ -16,40 +16,51 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import eu.timepit.refined.types.string.NonEmptyString
+import cats.data.NonEmptyList
+import cats.implicits._
 import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{ComponentTemplate, IndexTemplate}
-import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{DeletingLegacyTemplates, GettingLegacyTemplates}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.ScalaOps._
 
 class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
                                      esContext: EsContext,
                                      clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseSingleTemplateEsRequestContext[DeleteIndexTemplateRequest, IndexTemplate](
+  extends BaseTemplatesEsRequestContext[DeleteIndexTemplateRequest, DeletingLegacyTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  override protected def templateFrom(request: DeleteIndexTemplateRequest): IndexTemplate = {
-    val templateName = NonEmptyString
-      .from(request.name())
-      .map(TemplateName.apply)
-      .getOrElse(throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("DeleteIndexTemplateRequest template name cannot be empty"))
-
-    clusterService.getTemplate(templateName) match {
-      case Some(template: IndexTemplate) =>
-        template
-      case Some(_: ComponentTemplate) | None =>
-        IndexTemplate(templateName, UniqueNonEmptyList.of(IndexName.wildcard), Set.empty)
+  override protected def templateOperationFrom(request: DeleteIndexTemplateRequest): DeletingLegacyTemplates = {
+    TemplateNamePattern.fromString(request.name()) match {
+      case Some(pattern) => DeletingLegacyTemplates(NonEmptyList.one(pattern))
+      case None => throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("No template name patterns found")
     }
   }
 
-  override protected def update(request: DeleteIndexTemplateRequest, template: IndexTemplate): ModificationResult =
-    // nothing to modify - if it was filtered, we are good
-    ModificationResult.Modified
+  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
+    blockContext.templateOperation match {
+      case GettingLegacyTemplates(namePatterns) =>
+        namePatterns.tail match {
+          case Nil =>
+          case notEmptyTail =>
+            logger.warn(
+              s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
+                 | Whole set of patterns [${namePatterns.toList.mkString(",")}]""".oneLiner)
+        }
+        actionRequest.name(namePatterns.head.value.value)
+        ModificationResult.Modified
+      case other =>
+        logger.error(
+          s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
+             | type [${other.getClass}]]. Please report the issue!""".oneLiner)
+        ModificationResult.ShouldBeInterrupted
+    }
+  }
 }

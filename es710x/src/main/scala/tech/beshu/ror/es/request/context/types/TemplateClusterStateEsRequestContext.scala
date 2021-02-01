@@ -16,6 +16,9 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.data.NonEmptyList
+import cats.implicits._
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
@@ -24,12 +27,13 @@ import org.elasticsearch.cluster.metadata.Metadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.IndexTemplate
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
-import tech.beshu.ror.accesscontrol.domain.{TemplateName, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{TemplateNamePattern, UriPath}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
@@ -52,19 +56,29 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
                                                    esContext: EsContext,
                                                    clusterService: RorClusterService,
                                                    override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[ClusterStateRequest, IndexTemplate](
+  extends BaseTemplatesEsRequestContext[ClusterStateRequest, GettingLegacyTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  override protected def templatesFrom(actionRequest: ClusterStateRequest): Set[IndexTemplate] =
-    this.allTemplates.collect { case it: IndexTemplate => it }
-
-  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
-    val allowedTemplates = blockContext.templateOperations.map(_.name)
-    ModificationResult.UpdateResponse(updateCatTemplateResponse(allowedTemplates))
+  override protected def templateOperationFrom(request: ClusterStateRequest): GettingLegacyTemplates = {
+    GettingLegacyTemplates(NonEmptyList.one(TemplateNamePattern("*")))
   }
 
-  private def updateCatTemplateResponse(allowedTemplates: Set[TemplateName])
+  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
+    blockContext.templateOperation match {
+      case GettingLegacyTemplates(namePatterns) =>
+        ModificationResult.UpdateResponse(
+          updateCatTemplateResponse(namePatterns.toList.toSet)
+        )
+      case other =>
+        logger.error(
+          s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
+             | type [${other.getClass}]]. Please report the issue!""".oneLiner)
+        ModificationResult.ShouldBeInterrupted
+    }
+  }
+
+  private def updateCatTemplateResponse(allowedTemplates: Set[TemplateNamePattern])
                                        (actionResponse: ActionResponse): Task[ActionResponse] = Task.now {
     actionResponse match {
       case response: ClusterStateResponse =>
@@ -72,7 +86,8 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
         val filteredTemplates = oldMetadata
           .templates().valuesIt().asScala.toSet
           .filter { t =>
-            TemplateName
+            // todo: here is template name and we want to check if tempalte pattern applies to it
+            TemplateNamePattern
               .fromString(t.name())
               .exists(allowedTemplates.contains)
           }
@@ -103,5 +118,4 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
       case response => response
     }
   }
-
 }

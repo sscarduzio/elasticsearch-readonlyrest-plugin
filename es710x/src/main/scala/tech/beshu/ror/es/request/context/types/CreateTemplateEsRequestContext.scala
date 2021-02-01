@@ -16,54 +16,45 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import eu.timepit.refined.types.string.NonEmptyString
 import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
 import org.elasticsearch.threadpool.ThreadPool
-import org.joor.Reflect._
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.IndexTemplate
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingLegacyTemplate
 import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.es.request.context.ModificationResult.Modified
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-
-import scala.collection.JavaConverters._
 
 class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
                                      esContext: EsContext,
                                      clusterService: RorClusterService,
                                      override val threadPool: ThreadPool)
-  extends BaseSingleTemplateEsRequestContext[PutIndexTemplateRequest, IndexTemplate](
+  extends BaseTemplatesEsRequestContext[PutIndexTemplateRequest, AddingLegacyTemplate](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  override protected def templateFrom(request: PutIndexTemplateRequest): IndexTemplate = {
-    val templateName = NonEmptyString
-      .from(request.name())
-      .map(TemplateName.apply)
-      .getOrElse(throw RequestSeemsToBeInvalid[PutIndexTemplateRequest]("PutIndexTemplateRequest template name cannot be empty"))
+  override protected def templateOperationFrom(request: PutIndexTemplateRequest): AddingLegacyTemplate = {
+    val templateOperation = for {
+      name <- TemplateName
+        .fromString(request.name())
+        .toRight("Template name should be non-empty")
+      patterns <- UniqueNonEmptyList
+        .fromList(request.patterns().asSafeList.flatMap(IndexName.fromString))
+        .toRight("Template indices pattern list should not be empty")
+    } yield AddingLegacyTemplate(name, patterns)
 
-    val indexPatterns = UniqueNonEmptyList
-      .fromList(request.patterns().asScala.flatMap(IndexName.fromString).toList)
-      .getOrElse(throw RequestSeemsToBeInvalid[PutIndexTemplateRequest]("PutIndexTemplateRequest is required to have at least one index pattern"))
-
-    val aliases = request.aliases().asScala.flatMap(a => IndexName.fromString(a.name())).toSet
-
-    IndexTemplate(templateName, indexPatterns, aliases)
+    templateOperation match {
+      case Right(operation) => operation
+      case Left(msg) => throw RequestSeemsToBeInvalid[PutIndexTemplateRequest](msg)
+    }
   }
 
-  override protected def update(request: PutIndexTemplateRequest, template: IndexTemplate): ModificationResult = {
-    request.patterns(template.patterns.map(_.value.value).toList.asJava)
-    on(request).call("aliases", filterRequestAliasesWith(template).asJava)
-    ModificationResult.Modified
-  }
-
-  private def filterRequestAliasesWith(template: IndexTemplate) = {
-    val allowedAliasesNames = template.aliases.map(_.value.value)
-    actionRequest
-      .aliases().asScala
-      .filter(a => allowedAliasesNames.contains(a.name()))
-      .toSet
+  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
+    // nothing to modify - if it wasn't blocked, we are good
+    Modified
   }
 }

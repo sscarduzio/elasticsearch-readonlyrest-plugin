@@ -16,65 +16,51 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import java.util.UUID
-
-import eu.timepit.refined.types.string.NonEmptyString
+import cats.data.NonEmptyList
+import cats.implicits._
 import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{ComponentTemplate, IndexTemplate}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingComponentTemplates
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
+import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
-import tech.beshu.ror.es.request.context.ModificationResult.Modified
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.ScalaOps._
 
 class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableIndexTemplateAction.Request,
                                                  esContext: EsContext,
                                                  clusterService: RorClusterService,
                                                  override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, IndexTemplate](
+  extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, GettingComponentTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  override protected def templatesFrom(request: GetComposableIndexTemplateAction.Request): Set[IndexTemplate] = {
-    Option(request.name())
-      .flatMap(templateFrom)
-      .map(Set(_))
-      .getOrElse(clusterService.allTemplates.collect { case it: IndexTemplate => it })
-  }
-
-  override protected def modifyRequest(blockContext: BlockContext.TemplateRequestBlockContext): ModificationResult =  {
-    val templatesStr = blockContext.templateOperations.toList match {
-      case Nil =>
-        // hack! there is no other way to return empty list of templates (at the moment should not be used, but
-        // I leave it as a protection
-        UUID.randomUUID + "*"
-      case t :: Nil =>
-        t.name.value.value match {
-          case "*" => null
-          case other => other
-        }
-      case ts =>
-        ts.map(_.name.value.value).mkString(",")
+  override protected def templateOperationFrom(request: GetComposableIndexTemplateAction.Request): GettingComponentTemplates = {
+    TemplateNamePattern.fromString(request.name()) match {
+      case Some(pattern) => GettingComponentTemplates(NonEmptyList.one(pattern))
+      case None => throw RequestSeemsToBeInvalid[GetComposableIndexTemplateAction.Request]("No template name patterns found")
     }
-    actionRequest.name(templatesStr)
-    Modified
   }
 
-  private def templateFrom(name: String) = {
-    NonEmptyString
-      .from(name)
-      .map(TemplateName.apply)
-      .map { templateName =>
-        clusterService.getTemplate(templateName) match {
-          case Some(template: IndexTemplate) =>
-            template
-          case Some(_: ComponentTemplate) | None =>
-            IndexTemplate(templateName, UniqueNonEmptyList.of(IndexName.wildcard), Set.empty)
+  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
+    blockContext.templateOperation match {
+      case GettingComponentTemplates(namePatterns) =>
+        namePatterns.tail match {
+          case Nil =>
+          case notEmptyTail =>
+            logger.warn(
+              s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
+                 | Whole set of patterns [${namePatterns.toList.mkString(",")}]""".oneLiner)
         }
-      }
-      .toOption
+        actionRequest.name(namePatterns.head.value.value)
+        ModificationResult.Modified
+      case other =>
+        logger.error(
+          s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
+             | type [${other.getClass}]]. Please report the issue!""".oneLiner)
+        ModificationResult.ShouldBeInterrupted
+    }
   }
 }

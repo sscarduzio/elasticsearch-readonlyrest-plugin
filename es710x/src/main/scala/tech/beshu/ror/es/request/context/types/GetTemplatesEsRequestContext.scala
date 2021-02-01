@@ -55,12 +55,25 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
+    blockContext.templateOperation match {
+      case GettingLegacyTemplates(namePatterns) =>
+        actionRequest.names(namePatterns.map(_.value.value).toList: _*)
+        updateResponse(using = blockContext)
+      case other =>
+        logger.error(
+          s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
+             | type [${other.getClass}]]. Please report the issue!""".oneLiner)
+        ModificationResult.ShouldBeInterrupted
+    }
+  }
+
+  private def updateResponse(using: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetIndexTemplatesResponse =>
         Task.now(new GetIndexTemplatesResponse(
           filter(
             templates = r.getIndexTemplates.asSafeList,
-            using = blockContext.responseTemplateTransformation
+            using = using.responseTemplateTransformation
           )
         ))
       case other =>
@@ -83,7 +96,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
         }
       }
       .toMap
-    val filteredTemplates = using(templatesMap.keys)
+    val filteredTemplates = using(templatesMap.keys.toSet)
     templatesMap
       .filterKeys(filteredTemplates.contains)
       .values
