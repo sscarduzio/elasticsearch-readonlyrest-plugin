@@ -186,6 +186,13 @@ class KibanaAccessRuleTests extends WordSpec with Inside with BlockContextAssert
         uriPath = UriPath("/.custom_kibana/_update/url1234")
       )
     }
+    "non strict operations (11)" in {
+      testNonStrictOperations(
+        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        action = Action("indices:data/write/update"),
+        uriPath = UriPath("/.custom_kibana/_create/url:710d2a92ef849fc282bcb8a216f39046")
+      )
+    }
     "RW can change cluster settings" in {
       assertNotMatchRule(settingsOf(RO, IndexName(".kibana".nonempty)), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings")))
       assertMatchRule(settingsOf(RW, IndexName(".kibana".nonempty)), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings"))) {
