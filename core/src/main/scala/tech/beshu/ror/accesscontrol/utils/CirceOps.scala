@@ -44,7 +44,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.authentication
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult._
-import tech.beshu.ror.utils.CaseMapping
+import tech.beshu.ror.utils.StringCaseMapping
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.collection.SortedSet

@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-import tech.beshu.ror.utils.CaseMapping
+import tech.beshu.ror.utils.StringCaseMapping
 
 import scala.collection.SortedSet
 import tech.beshu.ror.utils.CaseMappingEquality._

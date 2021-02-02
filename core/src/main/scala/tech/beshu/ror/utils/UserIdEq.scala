@@ -22,8 +22,8 @@ import tech.beshu.ror.accesscontrol.domain.User
 import scala.language.implicitConversions
 
 object UserIdEq {
-  val caseSensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(CaseMapping.caseSensitiveEquality)
-  val caseInsensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(CaseMapping.caseInsensitiveEquality)
+  val caseSensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(StringCaseMapping.caseSensitiveEquality)
+  val caseInsensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(StringCaseMapping.caseInsensitiveEquality)
 
   private def eqUserWith(eqString: CaseMappingEquality[String]): User.Id.UserIdCaseMappingEquality =
     eqString.contramap[User.Id](_.value.value)

@@ -34,8 +34,8 @@ class MatcherWithWildcardsTest
 
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 1000, workers = PosInt.ensuringValid(Runtime.getRuntime.availableProcessors()))
-  private val caseSensitive = CaseMappingEquality.summonJava(CaseMapping.caseSensitiveEquality)
-  private val caseInsensitive = CaseMappingEquality.summonJava(CaseMapping.caseInsensitiveEquality)
+  private val caseSensitive = CaseMappingEquality.summonJava(StringCaseMapping.caseSensitiveEquality)
+  private val caseInsensitive = CaseMappingEquality.summonJava(StringCaseMapping.caseInsensitiveEquality)
 
   "match" should {
     "value matches pattern" in {
