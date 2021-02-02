@@ -60,7 +60,7 @@ final class ProxyAuthRule(val settings: Settings)
   }
 
   private def shouldAuthenticate(user: LoggedUser) = {
-    userMatcher.`match`(user.id) //TODO: should fail
+    userMatcher.`match`(user.id)
   }
 }
 

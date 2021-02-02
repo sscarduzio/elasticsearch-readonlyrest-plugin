@@ -25,9 +25,8 @@ object UserIdEq {
   val caseSensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(CaseMapping.caseSensitiveEquality)
   val caseInsensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(CaseMapping.caseInsensitiveEquality)
 
-  private def eqUserWith(eqString: CaseMapping.StringEquality): User.Id.UserIdCaseMappingEquality = {
+  private def eqUserWith(eqString: CaseMappingEquality[String]): User.Id.UserIdCaseMappingEquality =
     eqString.contramap[User.Id](_.value.value)
-  }
 }
 
 

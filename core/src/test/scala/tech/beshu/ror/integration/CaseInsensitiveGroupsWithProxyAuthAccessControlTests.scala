@@ -28,33 +28,23 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class GroupsWithProxyAuthAccessControlCaseInsensitiveTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
   override protected def configYaml: String =
     """
       |readonlyrest:
       |  username_mapping: case_insensitive
       |
       |  access_control_rules:
-      |
-      |  - name: "Allowed only for group3 and group4"
-      |    groups: [group3, group4]
-      |    indices: ["g34_index"]
-      |
       |  - name: "Allowed only for group1 and group2"
-      |    groups: [group1, group2]
+      |    groups: [group1]
       |    indices: ["g12_index"]
       |
       |  users:
-      |
       |  - username: user1-proxy-iD
       |    groups: ["group1"]
       |    proxy_auth:
       |      proxy_auth_config: "proxy1"
-      |      users: ["user1-proxy-iD"]
-      |
-      |  - username: User2
-      |    groups: ["group3", "group4"]
-      |    auth_key: "User2:pass"
+      |      users: ["User1-proxy-iD"]
       |
       |  proxy_auth_configs:
       |
@@ -63,26 +53,24 @@ class GroupsWithProxyAuthAccessControlCaseInsensitiveTests extends AnyWordSpec w
     """.stripMargin
 
   "An ACL" when {
-    "proxy auth is used together with groups" should {
+    "user are case insensitive" should {
       "allow to proceed" when {
-        "proxy auth user is correct one" in {
+        "user i user1" in {
           val request = MockRequestContext.indices.copy(headers = Set(header("X-Auth-Token", "user1-proxy-id")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 2
+          result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id".nonempty))))
             blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1".nonempty)))
           }
         }
-      }
-      "not allow to proceed" when {
-        "proxy auth user is unknown" in {
-          val request = MockRequestContext.indices.copy(headers = Set(header("X-Auth-Token", "user1-invalid")))
+        "user i User1" in {
+          val request = MockRequestContext.indices.copy(headers = Set(header("X-Auth-Token", "User1-proxy-id")))
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 2
-          inside(result.result) { case ForbiddenByMismatched(causes) =>
-            causes.toNonEmptyList.toList should have size 1
-            causes.toNonEmptyList.head should be (Cause.OperationNotAllowed)
+          result.history should have size 1
+          inside(result.result) { case Allow(blockContext, _) =>
+            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("User1-proxy-id".nonempty))))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1".nonempty)))
           }
         }
       }

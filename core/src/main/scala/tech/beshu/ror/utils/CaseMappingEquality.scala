@@ -29,11 +29,13 @@ trait CaseMappingEquality[A] {
 
 object CaseMappingEquality {
   def apply[A](implicit caseMappingEquality: CaseMappingEquality[A]): CaseMappingEquality[A] = caseMappingEquality
-  def summonJava[A](implicit caseMappingEquality: CaseMappingEquality[A]): CaseMappingEqualityJava[A] = new CaseMappingEqualityJava[A] {
-    override def show(a: A): String = caseMappingEquality.show.show(a)
 
-    override def mapCases(from: String): String = caseMappingEquality.mapCases(from)
-  }
+  def summonJava[A](implicit caseMappingEquality: CaseMappingEquality[A]): CaseMappingEqualityJava[A] =
+    new CaseMappingEqualityJava[A] {
+      override def show(a: A): String = caseMappingEquality.show.show(a)
+
+      override def mapCases(from: String): String = caseMappingEquality.mapCases(from)
+    }
 
   def instance[A: Show](_mapCases: String => String): CaseMappingEquality[A] = new CaseMappingEquality[A] {
     override def show: Show[A] = implicitly[Show[A]]

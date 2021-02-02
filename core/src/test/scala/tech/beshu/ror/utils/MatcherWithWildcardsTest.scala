@@ -34,12 +34,15 @@ class MatcherWithWildcardsTest
 
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
     PropertyCheckConfiguration(minSuccessful = 1000, workers = PosInt.ensuringValid(Runtime.getRuntime.availableProcessors()))
+  private val caseSensitive = CaseMappingEquality.summonJava(CaseMapping.caseSensitiveEquality)
+  private val caseInsensitive = CaseMappingEquality.summonJava(CaseMapping.caseInsensitiveEquality)
+
   "match" should {
     "value matches pattern" in {
-      forAll("pattern and value") { (patternAndValue: PatternAndValue) =>
+      forAll("pattern and value") { (patternAndValue: PatternAndMatch) =>
         val value = patternAndValue.value
         val pattern = patternAndValue.pattern
-        val matcher = new MatcherWithWildcards(List(pattern.string).asJava)
+        val matcher = new MatcherWithWildcards(List(pattern.string).asJava, caseSensitive)
         matcher.`match`(value.value) shouldBe true
       }
     }
@@ -47,34 +50,41 @@ class MatcherWithWildcardsTest
       forAll("CaseVulnerableString") { (caseVulnerableString: CaseVulnerableString) =>
         val value = caseVulnerableString.value.toLowerCase()
         val pattern = caseVulnerableString.value
-        val matcher = new MatcherWithWildcards(List(pattern).asJava)
+        val matcher = new MatcherWithWildcards(List(pattern).asJava, caseSensitive)
         matcher.`match`(value) shouldBe false
       }
     }
-
+    "value matches pattern case insensitive" in {
+      forAll("CaseVulnerableString") { (caseVulnerableString: CaseVulnerableString) =>
+        val value = caseVulnerableString.value.toLowerCase()
+        val pattern = caseVulnerableString.value
+        val matcher = new MatcherWithWildcards(List(pattern).asJava, caseInsensitive)
+        matcher.`match`(value) shouldBe true
+      }
+    }
     "value mismatches matches empty" in {
       forAll("haystack") { (haystack: String) =>
-        val matcher = new MatcherWithWildcards(List().asJava)
+        val matcher = new MatcherWithWildcards(List().asJava, caseSensitive)
         matcher.`match`(haystack) shouldBe false
       }
     }
     "haystack is pattern" in {
       forAll("haystack") { (haystack: String) =>
-        val matcher = new MatcherWithWildcards(List(haystack).asJava)
+        val matcher = new MatcherWithWildcards(List(haystack).asJava, caseSensitive)
         matcher.`match`(haystack) shouldBe true
       }
     }
     "haystack not in pattern" in {
       forAll("haystack", "pattern") { (haystack: String, patterns: NonEmptyList[String]) =>
         whenever(!patterns.toList.contains(haystack) && !patterns.toList.contains("*")) {
-          val matcher = new MatcherWithWildcards(patterns.toList.asJava)
+          val matcher = new MatcherWithWildcards(patterns.toList.asJava, caseSensitive)
           matcher.`match`(haystack) shouldBe false
         }
       }
     }
     "haystack among patterns" in {
       forAll("haystack", "pattern") { (haystack: String, patterns: NonEmptyList[String]) =>
-        val matcher = new MatcherWithWildcards((haystack :: patterns.toList).asJava)
+        val matcher = new MatcherWithWildcards((haystack :: patterns.toList).asJava, caseSensitive)
         matcher.`match`(haystack) shouldBe true
       }
     }
@@ -83,25 +93,25 @@ class MatcherWithWildcardsTest
         val iterator = starReplacements //.iterator
         val string = patternParts.reduceLeftOption((a, b) => s"$a${iterator.next()}$b").get
         val pattern = patternParts.reduceLeftOption((a, b) => s"$a*$b").get
-        val matcher = new MatcherWithWildcards(List(pattern).asJava)
+        val matcher = new MatcherWithWildcards(List(pattern).asJava, caseSensitive)
         matcher.`match`(string) shouldBe true
       }
     }
     "pattern starts with star" in {
       forAll("randomString", "pattern") { (randomString: String, pattern: String) =>
-        val matcher = new MatcherWithWildcards(List(s"*$pattern").asJava)
+        val matcher = new MatcherWithWildcards(List(s"*$pattern").asJava, caseSensitive)
         matcher.`match`(s"$randomString$pattern") shouldBe true
       }
     }
     "pattern ends with star" in {
       forAll("randomString", "pattern") { (randomString: String, pattern: String) =>
-        val matcher = new MatcherWithWildcards(List(s"$pattern*").asJava)
+        val matcher = new MatcherWithWildcards(List(s"$pattern*").asJava, caseSensitive)
         matcher.`match`(s"$pattern$randomString") shouldBe true
       }
     }
     "pattern with middle star" in {
       forAll("randomString", "pattern1", "pattern2") { (randomString: String, pattern1: String, pattern2: String) =>
-        val matcher = new MatcherWithWildcards(List(s"$pattern1*$pattern2").asJava)
+        val matcher = new MatcherWithWildcards(List(s"$pattern1*$pattern2").asJava, caseSensitive)
         matcher.`match`(s"$pattern1$randomString$pattern2") shouldBe true
       }
     }
@@ -109,28 +119,28 @@ class MatcherWithWildcardsTest
   "filter result" should {
     "reject not related haystach" in {
       forAll("matchers", "haystack") { (matchers: List[String], haystack: Set[String]) =>
-        val matcher = new MatcherWithWildcards(matchers.asJava)
+        val matcher = new MatcherWithWildcards(matchers.asJava, caseSensitive)
         val result = matcher.filter(haystack.asJava).asScala.toSet
         result shouldBe haystack.intersect(matchers.toSet)
       }
     }
     "contain all haystack if haystack is in matchers" in {
       forAll("matchers", "haystack") { (matchers: List[String], haystack: Set[String]) =>
-        val matcher = new MatcherWithWildcards((matchers ++ haystack).asJava)
+        val matcher = new MatcherWithWildcards((matchers ++ haystack).asJava, caseSensitive)
         val result = matcher.filter(haystack.asJava).asScala.toSet
         result shouldBe haystack
       }
     }
     "should be empty if haystack is empty" in {
       forAll("matchers") { (matchers: List[String]) =>
-        val matcher = new MatcherWithWildcards(matchers.asJava)
+        val matcher = new MatcherWithWildcards(matchers.asJava, caseSensitive)
         val result = matcher.filter(Set().asJava).asScala.toSet
         result should be(empty)
       }
     }
     "should be empty if matchers is empty" in {
       forAll("haystack") { (haystack: Set[String]) =>
-        val matcher = new MatcherWithWildcards(Nil.asJava)
+        val matcher = new MatcherWithWildcards(Nil.asJava, caseSensitive)
         val result = matcher.filter(haystack.asJava).asScala.toSet
         result should be(empty)
       }
@@ -163,7 +173,7 @@ class MatcherWithWildcardsTest
 
   private def testMatchersMatchHaystack(matchers: List[String], haystack: String, result: Boolean) = {
     s"$haystack should${if (!result) "n't"} match $matchers" in {
-      val matcher = new MatcherWithWildcards(matchers.asJava)
+      val matcher = new MatcherWithWildcards(matchers.asJava, caseSensitive)
       matcher.`match`(haystack) shouldBe result
     }
   }
@@ -171,14 +181,15 @@ class MatcherWithWildcardsTest
 }
 object MatcherWithWildcardsTest {
   final case class WildcardPattern(private val value: NonEmptyList[String]) {
-    def toList = value.toList
+    lazy val toList: List[String] = value.toList
 
-    def string = toList.mkString
+    lazy val string: String = toList.mkString
   }
-  final case class LiteralString(value: String) extends AnyVal
-  final case class PatternAndValue(pattern: WildcardPattern, value: LiteralString)
-  implicit val genWildcardPattern: Gen[WildcardPattern] = {
+  final case class MatchingString(value: String) extends AnyVal
+  final case class PatternAndMatch(pattern: WildcardPattern, value: MatchingString)
+  final case class CaseVulnerableString(value: String)
 
+  val genWildcardPattern: Gen[WildcardPattern] = {
     Gen.someOf(Gen.asciiPrintableStr, Gen.const("*"))
       .map(_.toList.toNel)
       .filter(_.isDefined)
@@ -187,7 +198,7 @@ object MatcherWithWildcardsTest {
   }
 
   def genLiteralString(wildcardPattern: WildcardPattern,
-                       genString: Gen[String]): Gen[LiteralString] = {
+                       genString: Gen[String]): Gen[MatchingString] = {
     for {
       stream <- Gen.infiniteStream(genString)
       iterator = stream.iterator
@@ -196,24 +207,26 @@ object MatcherWithWildcardsTest {
           case "*" => iterator.next()
           case a => a
         }.mkString
-    } yield LiteralString(str)
+    } yield MatchingString(str)
   }
 
-  implicit val genPatternAndValue: Gen[PatternAndValue] =
+  val genPatternAndValue: Gen[PatternAndMatch] =
     for {
-      pattern <- implicitly[Gen[WildcardPattern]]
+      pattern <- genWildcardPattern
       value <- genLiteralString(pattern, Gen.asciiPrintableStr)
-    } yield PatternAndValue(pattern, value)
-  implicit val arbPatternAndValue: Arbitrary[PatternAndValue] = Arbitrary(genPatternAndValue)
-  final case class CaseVulnerableString(value:String)
-  implicit val arbCaseVulnerableString:Arbitrary[CaseVulnerableString] =
+    } yield PatternAndMatch(pattern, value)
+
+  implicit val arbPatternAndValue: Arbitrary[PatternAndMatch] = Arbitrary(genPatternAndValue)
+
+  implicit val arbCaseVulnerableString: Arbitrary[CaseVulnerableString] =
     Arbitrary(Gen.asciiPrintableStr.filter(s => s.neqv(s.toLowerCase())).map(CaseVulnerableString))
+
   implicit def arbIterator[A](implicit arb: Arbitrary[A]): Arbitrary[Iterator[A]] =
     Arbitrary(Gen.infiniteStream(arb.arbitrary).map(_.iterator))
 
-  implicit def arbNEL[A](implicit arb: Arbitrary[List[A]]): Arbitrary[NonEmptyList[A]] =
+  implicit def arbNonEmptyList[A](implicit arb: Arbitrary[List[A]]): Arbitrary[NonEmptyList[A]] =
     Arbitrary(arb.arbitrary.filter(_.nonEmpty).map(_.toNel.get))
 
-  implicit def arbNES(implicit arb: Arbitrary[String]): Arbitrary[NonEmptyString] =
+  implicit def arbNonEmptyString(implicit arb: Arbitrary[String]): Arbitrary[NonEmptyString] =
     Arbitrary(arb.arbitrary.filter(_.nonEmpty).map(NonEmptyString.apply))
 }

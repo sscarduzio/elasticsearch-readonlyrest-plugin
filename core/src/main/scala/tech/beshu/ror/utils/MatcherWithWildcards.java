@@ -14,26 +14,84 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-
 package tech.beshu.ror.utils;
 
+import com.google.common.base.Strings;
+import com.google.common.collect.Sets;
 
-public class MatcherWithWildcards extends GenericMatcherWithWildcards<String> {
+import java.util.*;
 
-    private static final CaseMappingEqualityJava<String> stringCaseMappingEquality =
-            new CaseMappingEqualityJava<String>() {
-                @Override
-                public String show(String a) {
-                    return a;
-                }
+public class MatcherWithWildcards<T> {
 
-                @Override
-                public String mapCases(String from) {
-                    return from;
-                }
-            };
+    private final Set<String> matchers;
+    private final List<String[]> patternsList;
+    private final CaseMappingEqualityJava<T> caseMappingEquality;
 
-    public MatcherWithWildcards(Iterable<String> patterns) {
-        super(patterns, stringCaseMappingEquality);
+    public MatcherWithWildcards(Iterable<String> patterns,
+                                CaseMappingEqualityJava<T> caseMappingEquality) {
+        this.caseMappingEquality = caseMappingEquality;
+        this.patternsList = new LinkedList<>();
+        this.matchers = Sets.newHashSet(patterns);
+        for (String p : patterns) {
+            if (p == null) {
+                continue;
+            }
+            patternsList.add(p.split("\\*+", -1 /* want empty trailing token if any */));
+        }
     }
+
+    public Set<String> getMatchers() {
+        return matchers;
+    }
+
+    public boolean match(T haystack) {
+        if (haystack == null) {
+            return false;
+        }
+        for (String[] p : patternsList) {
+            if (miniglob(caseMappingEquality, p, haystack)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static <T> boolean miniglob(CaseMappingEqualityJava<T> caseMappingEquality, String[] pattern, T line) {
+        String showedLine = caseMappingEquality.mapCases(caseMappingEquality.show(line));
+        if (pattern.length == 0) {
+            return Strings.isNullOrEmpty(showedLine);
+        } else if (pattern.length == 1) {
+            return showedLine.equals(caseMappingEquality.mapCases(pattern[0]));
+        }
+        if (!showedLine.startsWith(caseMappingEquality.mapCases(pattern[0]))) {
+            return false;
+        }
+
+        int idx = pattern[0].length();
+        for (int i = 1; i < pattern.length - 1; ++i) {
+            String patternTok = caseMappingEquality.mapCases(pattern[i]);
+            int nextIdx = showedLine.indexOf(patternTok, idx);
+            if (nextIdx < 0) {
+                return false;
+            } else {
+                idx = nextIdx + patternTok.length();
+            }
+        }
+
+        return showedLine.endsWith(caseMappingEquality.mapCases(pattern[pattern.length - 1]));
+    }
+
+    public Set<T> filter(Set<T> haystack) {
+        if (haystack == null) {
+            return Collections.emptySet();
+        }
+        Set<T> filtered = Sets.newHashSet();
+        for (T hs : haystack) {
+            if (match(hs)) {
+                filtered.add(hs);
+            }
+        }
+        return filtered;
+    }
+
 }

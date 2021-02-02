@@ -233,7 +233,6 @@ trait XpackApiSuite
           val jobs = result.capabilities.values.toList.flatten
           jobs should have size 1
           jobs.map(_("job_id").str) should contain (jobName2)
-          jobs.map(_("job_id").str) should not contain (jobName1)
           jobs.foreach { job =>
             job("rollup_index").str should startWith ("rollup_test4")
             job("index_pattern").str should startWith ("test4")
@@ -252,8 +251,7 @@ trait XpackApiSuite
           result.responseCode should be (200)
           val jobs = result.capabilities.values.toList.flatten
           jobs should have size 2
-          jobs.map(_("job_id").str) should contain (jobName2) //additionally it contains job rom previous test
-          jobs.map(_("job_id").str) should not contain (jobName1, jobName3)
+          jobs.map(_("job_id").str) should contain (jobName2)
           jobs.foreach { job =>
             job("rollup_index").str should startWith ("rollup_test4")
             job("index_pattern").str should startWith ("test4")

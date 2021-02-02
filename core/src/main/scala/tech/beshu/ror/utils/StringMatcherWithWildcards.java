@@ -14,15 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils
 
-import java.util.Locale
+package tech.beshu.ror.utils;
 
-import cats.Eq
-import cats.implicits._
 
-object CaseMapping {
-  final case class CaseMappedString(value: String)
-  val caseSensitiveEquality: CaseMappingEquality[String] = CaseMappingEquality.instance(identity)
-  val caseInsensitiveEquality: CaseMappingEquality[String] = CaseMappingEquality.instance(_.toUpperCase(Locale.ENGLISH))
+public class StringMatcherWithWildcards extends MatcherWithWildcards<String> {
+
+    private static final CaseMappingEqualityJava<String> stringCaseMappingEquality =
+            CaseMappingEquality.summonJava(CaseMapping.caseSensitiveEquality());
+
+    public StringMatcherWithWildcards(Iterable<String> patterns) {
+        super(patterns, stringCaseMappingEquality);
+    }
 }

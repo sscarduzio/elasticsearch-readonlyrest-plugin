@@ -18,10 +18,8 @@ package tech.beshu.ror.integration
 
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.matchers.should.Matchers._
-import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
-import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Matchers._
+import org.scalatest.{Inside, WordSpec}
 import tech.beshu.ror.accesscontrol.AccessControl.UserMetadataRequestResult._
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
@@ -29,13 +27,11 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-//TODO: revert
-class CurrentUserMetadataAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
+class CurrentUserMetadataAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
   override protected def configYaml: String =
     """
       |readonlyrest:
-      |  username_mapping: case_insensitive
       |
       |  access_control_rules:
       |
@@ -82,7 +78,7 @@ class CurrentUserMetadataAccessControlTests extends AnyWordSpec with BaseYamlLoa
       |    groups: ["group2", "group4"]
       |    auth_key: "user2:pass"
       |
-      |  - username: User4
+      |  - username: user4
       |    groups: ["group5", "group6"]
       |    auth_key: "user4:pass"
       |
@@ -92,11 +88,11 @@ class CurrentUserMetadataAccessControlTests extends AnyWordSpec with BaseYamlLoa
     "handling current user metadata kibana plugin request" should {
       "allow to proceed" when {
         "several blocks are matched" in {
-          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("User1:pass")))
+          val request = MockRequestContext.metadata.copy(headers = Set(basicAuthHeader("user1:pass")))
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata, _) =>
-            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("User1".nonempty))))
+            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1".nonempty))))
             userMetadata.currentGroup should be (Some(Group("group3".nonempty)))
             userMetadata.availableGroups should be (UniqueList.of(Group("group3".nonempty), Group("group1".nonempty)))
             userMetadata.kibanaIndex should be (None)

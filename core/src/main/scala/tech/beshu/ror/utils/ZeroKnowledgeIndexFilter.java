@@ -39,7 +39,7 @@ public class ZeroKnowledgeIndexFilter {
    * @param indicesWriter function to write indices in request.
    * @return can be allowed
    */
-  public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, MatcherWithWildcards matcher, Consumer<Set<String>> indicesWriter) {
+  public boolean alterIndicesIfNecessaryAndCheck(Set<String> indices, StringMatcherWithWildcards matcher, Consumer<Set<String>> indicesWriter) {
     Set<String> modifiedIndices = alterIndicesIfNecessary(indices, matcher);
     if (modifiedIndices != null) {
       if (modifiedIndices.isEmpty()) {
@@ -52,7 +52,7 @@ public class ZeroKnowledgeIndexFilter {
     return true;
   }
 
-  private Set<String> alterIndicesIfNecessary(Set<String> indices, MatcherWithWildcards matcher) {
+  private Set<String> alterIndicesIfNecessary(Set<String> indices, StringMatcherWithWildcards matcher) {
 
     boolean shouldReplace = false;
 
@@ -86,7 +86,7 @@ public class ZeroKnowledgeIndexFilter {
         continue;
       }
 
-      MatcherWithWildcards revMatcher = new MatcherWithWildcards(Sets.newHashSet(i));
+      StringMatcherWithWildcards revMatcher = new StringMatcherWithWildcards(Sets.newHashSet(i));
       Set<String> matched = revMatcher.filter(matcher.getMatchers());
 
       if (!matched.isEmpty()) {
