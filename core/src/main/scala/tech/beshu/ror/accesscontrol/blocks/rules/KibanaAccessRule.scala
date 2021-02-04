@@ -132,7 +132,7 @@ class KibanaAccessRule(val settings: Settings)
 
   private def kibanaIndexPattern(kibanaIndex: IndexName) = {
     Try(Pattern.compile(
-      "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)"
+      "^/@kibana_index/(url|config/.*/_create|index-pattern|doc/index-pattern.*|doc/url.*)/.*|^/_template/.*|^/@kibana_index/doc/telemetry.*|^/@kibana_index/(_update/index-pattern.*|_update/url.*)|^/@kibana_index/_create/(url:.*)"
         .replace("@kibana_index", kibanaIndex.value.value)
     )).toOption
   }
