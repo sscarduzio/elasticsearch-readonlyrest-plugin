@@ -17,11 +17,10 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
 
 import cats.data.NonEmptyList
-import eu.timepit.refined.auto._
-import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
 import tech.beshu.ror.accesscontrol.domain._
@@ -57,7 +56,7 @@ private[indicesrule] trait LegacyTemplatesIndices
               .withResponseTemplateTransformation(filterTemplatesNotAllowedPatterns)
           )
         case None =>
-          RuleResult.rejected()
+          RuleResult.rejected(Some(Cause.TemplateNotFound))
       }
     }
   }
@@ -96,9 +95,14 @@ private[indicesrule] trait LegacyTemplatesIndices
     val result = templateNamePatterns.foldLeft(List.empty[TemplateNamePattern].asRight[Unit]) {
       case (Right(acc), templateNamePattern) =>
         deletingLegacyTemplate(templateNamePattern) match {
-          case Result.Allowed(t) => Right(t :: acc)
-          case Result.NotFound(t) => Right(generateRorArtificialName(t) :: acc)
-          case Result.Forbidden(_) => Left(())
+          case Result.Allowed(t) =>
+            Right(t :: acc)
+          case Result.NotFound(t) =>
+            implicit val _ = identifierGenerator
+            val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(t)
+            Right(nonExistentTemplateNamePattern :: acc)
+          case Result.Forbidden(_) =>
+            Left(())
         }
       case (rejected@Left(_), _) => rejected
     }
@@ -150,15 +154,15 @@ private[indicesrule] trait LegacyTemplatesIndices
   private def canViewExistingTemplate(existingTemplate: Template.LegacyTemplate)
                                      (implicit blockContext: TemplateRequestBlockContext,
                                       allowedIndices: AllowedIndices) = {
-    val isTemplateForbidden = existingTemplate.patterns.toList
-      .forall { pattern =>
-        allowedIndices.resolved.forall(i => !i.matches(pattern))
+    val isTemplateAllowed = existingTemplate.patterns.toList
+      .exists { pattern =>
+        allowedIndices.resolved.exists(i => pattern.matches(i) || i.matches(pattern))
       }
-    if (isTemplateForbidden) logger.debug(
+    if (!isTemplateAllowed) logger.debug(
       s"""[${blockContext.requestContext.id.show}] WARN: Template [${existingTemplate.name.show}] is forbidden
-         | because none of its index patterns is allowed by the rule""".oneLiner
+         | because none of its index patterns [${existingTemplate.patterns.show}] is allowed by the rule""".oneLiner
     )
-    !isTemplateForbidden
+    isTemplateAllowed
   }
 
   private def canModifyExistingTemplate(existingTemplate: Template.LegacyTemplate)
@@ -196,7 +200,7 @@ private[indicesrule] trait LegacyTemplatesIndices
                                                 allowedIndices: AllowedIndices): Set[Template] = {
     templates.flatMap {
       case Template.LegacyTemplate(name, patterns) =>
-        val onlyAllowedPatterns = patterns.filter(p => allowedIndices.resolved.exists(_.matches(p)))
+        val onlyAllowedPatterns = patterns.filter(p => allowedIndices.resolved.exists(i => p.matches(i) || i.matches(p))) // todo:
         UniqueNonEmptyList.fromSortedSet(onlyAllowedPatterns) match {
           case Some(nonEmptyAllowedPatterns) =>
             Set[Template](Template.LegacyTemplate(name, nonEmptyAllowedPatterns))

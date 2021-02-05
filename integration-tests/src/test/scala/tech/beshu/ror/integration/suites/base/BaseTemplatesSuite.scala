@@ -31,10 +31,11 @@ trait BaseTemplatesSuite
   def rorContainer: EsClusterContainer
 
   protected lazy val adminTemplateManager = new TemplateManager(adminClient)
+  protected lazy val adminIndexManager = new IndexManager(adminClient)
   protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
   protected def createIndexWithExampleDoc(documentManager: DocumentManager, index: String): Unit = {
-    adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}"""))
+    adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}""")).force()
   }
 
   protected def templateExample(indexPattern: String, otherIndexPatterns: String*): JSON = {
@@ -60,7 +61,7 @@ trait BaseTemplatesSuite
            ||}""".stripMargin
       }
     } else {
-      if(otherIndexPatterns.isEmpty) {
+      if (otherIndexPatterns.isEmpty) {
         ujson.read {
           s"""
              |{
@@ -83,27 +84,23 @@ trait BaseTemplatesSuite
   }
 
   private def truncateTemplates(): Unit = {
-    val templates = adminTemplateManager.getTemplates
-    if(templates.responseCode != 200) throw new IllegalStateException("Cannot get all templates by admin")
-    templates
+    adminTemplateManager
+      .getTemplates.force()
       .responseJson.obj.keys
       .foreach { template =>
-        val deleteTemplateResult = adminTemplateManager.deleteTemplate(template)
-        if (deleteTemplateResult.responseCode != 200) throw new IllegalStateException(s"Admin cannot delete '$template' template")
+        adminTemplateManager.deleteTemplate(template).force()
       }
   }
 
   private def truncateIndices(): Unit = {
-    val indicesManager = new IndexManager(rorContainer.nodes.head.adminClient)
-    if(indicesManager.removeAllIndices().responseCode != 200) {
-      throw new IllegalStateException("Admin cannot remove all indices")
-    }
+    adminIndexManager
+      .removeAllIndices()
+      .force()
   }
 
   private def addControlTemplate(): Unit = {
-    val response = adminTemplateManager.insertTemplate("control_one", templateExample("control_*"))
-    if (response.responseCode != 200) {
-      throw new IllegalStateException("Cannot add control template")
-    }
+    adminTemplateManager
+      .insertTemplate("control_one", templateExample("control_*"))
+      .force()
   }
 }

@@ -18,14 +18,14 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
+import eu.timepit.refined.auto._
 import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingComponentTemplates
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
@@ -33,23 +33,24 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
                                                  esContext: EsContext,
                                                  clusterService: RorClusterService,
                                                  override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, GettingComponentTemplates](
+  extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, GettingIndexTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  override protected def templateOperationFrom(request: GetComposableIndexTemplateAction.Request): GettingComponentTemplates = {
-    TemplateNamePattern.fromString(request.name()) match {
-      case Some(pattern) => GettingComponentTemplates(NonEmptyList.one(pattern))
-      case None => throw RequestSeemsToBeInvalid[GetComposableIndexTemplateAction.Request]("No template name patterns found")
-    }
+  override protected def templateOperationFrom(request: GetComposableIndexTemplateAction.Request): GettingIndexTemplates = {
+    GettingIndexTemplates(NonEmptyList.one(
+      Option(request.name())
+        .flatMap(TemplateNamePattern.fromString)
+        .getOrElse(TemplateNamePattern("*"))
+    ))
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
-      case GettingComponentTemplates(namePatterns) =>
+      case GettingIndexTemplates(namePatterns) =>
         namePatterns.tail match {
           case Nil =>
-          case notEmptyTail =>
+          case _ =>
             logger.warn(
               s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
                  | Whole set of patterns [${namePatterns.toList.mkString(",")}]""".oneLiner)

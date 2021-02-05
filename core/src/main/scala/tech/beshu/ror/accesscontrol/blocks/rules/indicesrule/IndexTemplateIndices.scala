@@ -95,9 +95,14 @@ private[indicesrule] trait IndexTemplateIndices
     val result = templateNamePatterns.foldLeft(List.empty[TemplateNamePattern].asRight[Unit]) {
       case (Right(acc), templateNamePattern) =>
         deletingIndexTemplate(templateNamePattern) match {
-          case Result.Allowed(t) => Right(t :: acc)
-          case Result.NotFound(t) => Right(generateRorArtificialName(t) :: acc)
-          case Result.Forbidden(_) => Left(())
+          case Result.Allowed(t) =>
+            Right(t :: acc)
+          case Result.NotFound(t) =>
+            implicit val _ = identifierGenerator
+            val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(t)
+            Right(nonExistentTemplateNamePattern :: acc)
+          case Result.Forbidden(_) =>
+            Left(())
         }
       case (rejected@Left(_), _) => rejected
     }

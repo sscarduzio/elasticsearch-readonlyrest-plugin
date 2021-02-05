@@ -60,11 +60,6 @@ private[indicesrule] trait AllTemplateIndices
     }
   }
 
-  private [indicesrule] def generateRorArtificialName(templateNamePattern: TemplateNamePattern): TemplateNamePattern = {
-    val nonexistentTemplateNamePattern = s"${templateNamePattern.value}_ROR_${identifierGenerator.generate(10)}"
-    TemplateNamePattern(NonEmptyString.unsafeFrom(nonexistentTemplateNamePattern))
-  }
-
   private [indicesrule]  def isAliasAllowed(alias: IndexName)
                                            (implicit allowedIndices: AllowedIndices) = {
     alias match {

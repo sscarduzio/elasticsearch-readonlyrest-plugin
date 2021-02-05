@@ -46,7 +46,7 @@ class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
-      case GettingLegacyTemplates(namePatterns) =>
+      case DeletingLegacyTemplates(namePatterns) =>
         namePatterns.tail match {
           case Nil =>
           case notEmptyTail =>

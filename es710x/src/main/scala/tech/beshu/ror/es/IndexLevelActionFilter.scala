@@ -29,6 +29,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.{Engine, EsInitListener, Ror, RorInstance, RorMode}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
@@ -49,6 +50,7 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              esInitListener: EsInitListener)
+                            (implicit generator: UniqueIdentifierGenerator)
   extends ActionFilter with Logging {
 
   private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider

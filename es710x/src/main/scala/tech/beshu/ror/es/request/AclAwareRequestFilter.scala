@@ -55,6 +55,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
@@ -69,7 +70,8 @@ import scala.reflect.ClassTag
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
                             threadPool: ThreadPool)
-                           (implicit scheduler: Scheduler)
+                           (implicit generator: UniqueIdentifierGenerator,
+                            scheduler: Scheduler)
   extends Logging {
 
   def handle(engine: Engine,

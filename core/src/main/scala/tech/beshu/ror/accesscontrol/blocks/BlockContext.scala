@@ -309,11 +309,17 @@ object BlockContext {
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.filteredIndices
         case bc: TemplateRequestBlockContext =>
-          ??? // todo:
-//          bc.templateOperations.flatMap {
-//            case TemplateOperation.IndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
-//            case TemplateOperation.ComponentTemplate(_, aliases) => aliases
-//          }
+          bc.templateOperation match {
+            case TemplateOperation.GettingLegacyTemplates(_) => Set.empty
+            case TemplateOperation.AddingLegacyTemplate(_, patterns) => patterns.toSet
+            case TemplateOperation.DeletingLegacyTemplates(_) => Set.empty
+            case TemplateOperation.GettingIndexTemplates(_) => Set.empty
+            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
+            case TemplateOperation.DeletingIndexTemplates(_) => Set.empty
+            case TemplateOperation.GettingComponentTemplates(_) => Set.empty
+            case TemplateOperation.AddingComponentTemplate(_, aliases) => aliases
+            case TemplateOperation.DeletingComponentTemplates(_) => Set.empty
+          }
         case bc: AliasRequestBlockContext => bc.indices ++ bc.aliases
         case bc: GeneralIndexRequestBlockContext => bc.filteredIndices
         case bc: FilterableRequestBlockContext => bc.filteredIndices

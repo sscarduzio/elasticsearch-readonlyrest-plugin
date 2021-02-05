@@ -63,6 +63,8 @@ class AccessControlList(val blocks: NonEmptyList[Block])
             RegularRequestResult.IndexNotFound()
           case Mismatched(_) if wasRejectedDueToAliasNotFound(history) =>
             RegularRequestResult.AliasNotFound()
+          case Mismatched(_) if wasRejectedDueToTemplateNotFound(history) =>
+            RegularRequestResult.TemplateNotFound()
           case Mismatched(_) =>
             RegularRequestResult.ForbiddenByMismatched(
               nonEmptySetOfMismatchedCausesFromHistory(history)
@@ -190,6 +192,11 @@ class AccessControlList(val blocks: NonEmptyList[Block])
   private def wasRejectedDueToAliasNotFound[B <: BlockContext](history: Vector[History[B]]) = {
     val rejections = rejectionsFrom(history)
     !impersonationRejectionExists(rejections) && aliasNotFoundRejectionExists(rejections)
+  }
+
+  private def wasRejectedDueToTemplateNotFound[B <: BlockContext](history: Vector[History[B]]) = {
+    val rejections = rejectionsFrom(history)
+    !impersonationRejectionExists(rejections) && templateNotFoundRejectionExists(rejections)
   }
 
   private def indexNotFoundRejectionExists(rejections: Vector[Rejected[_]]) = {

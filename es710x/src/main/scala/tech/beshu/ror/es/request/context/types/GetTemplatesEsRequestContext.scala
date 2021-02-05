@@ -18,17 +18,18 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesResponse}
 import org.elasticsearch.cluster.metadata.IndexTemplateMetadata
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -39,19 +40,27 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
                                    esContext: EsContext,
                                    clusterService: RorClusterService,
                                    override val threadPool: ThreadPool)
+                                  (implicit generator: UniqueIdentifierGenerator)
   extends BaseTemplatesEsRequestContext[GetIndexTemplatesRequest, GettingLegacyTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  override protected def templateOperationFrom(request: GetIndexTemplatesRequest): GettingLegacyTemplates = {
-    val templateNamePatterns = request
-      .names().asSafeSet
-      .flatMap(TemplateNamePattern.fromString)
-      .toList
-    NonEmptyList.fromList(templateNamePatterns) match {
-      case Some(patterns) => GettingLegacyTemplates(patterns)
-      case None => throw RequestSeemsToBeInvalid[GetIndexTemplatesRequest]("No template name patterns found")
-    }
+  private lazy val requestTemplateNamePatterns = NonEmptyList
+    .fromList(
+      actionRequest
+        .names().asSafeSet
+        .flatMap(TemplateNamePattern.fromString)
+        .toList
+    )
+    .getOrElse(NonEmptyList.one(TemplateNamePattern("*")))
+
+  override protected def templateOperationFrom(request: GetIndexTemplatesRequest): GettingLegacyTemplates =
+    GettingLegacyTemplates(requestTemplateNamePatterns)
+
+  override def modifyWhenTemplateNotFound: ModificationResult = {
+    val nonExistentTemplateNamePattern = TemplateNamePattern.generateNonExistentBasedOn(requestTemplateNamePatterns.head)
+    actionRequest.names(nonExistentTemplateNamePattern.value.value)
+    ModificationResult.Modified
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {

@@ -32,7 +32,7 @@ import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.domain.Action._
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
@@ -456,6 +456,12 @@ object domain {
     }
 
     def from(templateName: TemplateName): TemplateNamePattern = TemplateNamePattern(templateName.value)
+
+    def generateNonExistentBasedOn(templateNamePattern: TemplateNamePattern)
+                                  (implicit identifierGenerator: UniqueIdentifierGenerator): TemplateNamePattern = {
+      val nonexistentTemplateNamePattern = s"${templateNamePattern.value}_ROR_${identifierGenerator.generate(10)}"
+      TemplateNamePattern(NonEmptyString.unsafeFrom(nonexistentTemplateNamePattern))
+    }
 
     implicit val eqTemplateName: Eq[TemplateNamePattern] = Eq.fromUniversalEquals
   }
