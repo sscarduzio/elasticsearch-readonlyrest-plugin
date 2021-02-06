@@ -1,0 +1,18 @@
+readonlyrest:
+  ssl:
+    enable: true
+    keystore_file: "keystore.jks"
+    keystore_pass: readonlyrest
+    key_pass: readonlyrest
+
+  access_control_rules:
+
+    # ES containter initializer need this rule to configure ES instance after startup
+    - name: "CONTAINER ADMIN"
+      verbosity: error
+      type: allow
+      auth_key: admin:container
+
+    - name: "allow list for remote tests"
+      indices: ["test1_index", "test1_index_reindexed", "test2_index", "test2_index_reindexed", "test3_index", "test3_index_reindexed"]
+      auth_key: dev1:test
