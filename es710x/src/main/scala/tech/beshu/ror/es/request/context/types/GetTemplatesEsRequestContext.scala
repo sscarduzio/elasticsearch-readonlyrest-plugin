@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
-import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.domain.{IndexPattern, Template, TemplateName, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -107,10 +107,33 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
       .toMap
     val filteredTemplates = using(templatesMap.keys.toSet)
     templatesMap
-      .filterKeys(filteredTemplates.contains)
-      .values
+      .flatMap { case (template, metadata) =>
+        filteredTemplates
+          .find(_.name == template.name)
+          .flatMap {
+            case t: LegacyTemplate if t == template =>
+              Some(metadata)
+            case t: LegacyTemplate =>
+              Some(filterMetadataData(metadata, t))
+            case t =>
+              logger.error(s"""[${id.show}] Expected IndexTemplate, but got: $t. Skipping""")
+              None
+          }
+      }
       .toList
       .asJava
+  }
+
+  private def filterMetadataData(metadata: IndexTemplateMetadata, basedOn: LegacyTemplate) = {
+    new IndexTemplateMetadata(
+      metadata.name(),
+      metadata.order(),
+      metadata.version(),
+      basedOn.patterns.toList.map(_.value.value).asJava,
+      metadata.settings(),
+      metadata.mappings(),
+      metadata.aliases() // todo:
+    )
   }
 
   private def toLegacyTemplate(metadata: IndexTemplateMetadata) = {
@@ -119,7 +142,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
         .fromString(metadata.getName)
         .toRight("Template name should be non-empty")
       patterns <- UniqueNonEmptyList
-        .fromList(metadata.patterns().asSafeList.flatMap(IndexName.fromString))
+        .fromList(metadata.patterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
     } yield LegacyTemplate(name, patterns)
   }

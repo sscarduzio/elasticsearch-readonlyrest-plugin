@@ -314,6 +314,24 @@ object domain {
     }
   }
 
+  final case class IndexPattern(value: NonEmptyString) {
+    private lazy val matcher = MatcherWithWildcardsScalaAdapter.create(toIndexName :: Nil)
+
+    lazy val toIndexName: IndexName = IndexName(value)
+
+    def isAllowedBy(index: IndexName): Boolean = {
+      matcher.`match`(index) || index.matches(toIndexName)
+    }
+
+    def isSubsetOf(index: IndexName): Boolean = {
+      index.matches(toIndexName)
+    }
+  }
+  object IndexPattern {
+
+    def fromString(value: String): Option[IndexPattern] = NonEmptyString.from(value).map(IndexPattern.apply).toOption
+  }
+
   final case class AliasPlaceholder private (alias: IndexName) extends AnyVal {
     def index(value: NonEmptyString): IndexName =
       IndexName.fromUnsafeString(alias.value.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value))
@@ -391,11 +409,11 @@ object domain {
   }
   object Template {
     final case class LegacyTemplate(override val name: TemplateName,
-                                    patterns: UniqueNonEmptyList[IndexName])
+                                    patterns: UniqueNonEmptyList[IndexPattern])
       extends Template
 
     final case class IndexTemplate(override val name: TemplateName,
-                                   patterns: UniqueNonEmptyList[IndexName],
+                                   patterns: UniqueNonEmptyList[IndexPattern],
                                    aliases: Set[IndexName])
       extends Template
 
@@ -411,7 +429,7 @@ object domain {
       extends TemplateOperation
 
     final case class AddingLegacyTemplate(name: TemplateName,
-                                          patterns: UniqueNonEmptyList[IndexName])
+                                          patterns: UniqueNonEmptyList[IndexPattern])
       extends TemplateOperation
 
     final case class DeletingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
@@ -421,7 +439,7 @@ object domain {
       extends TemplateOperation
 
     final case class AddingIndexTemplate(name: TemplateName,
-                                         patterns: UniqueNonEmptyList[IndexName],
+                                         patterns: UniqueNonEmptyList[IndexPattern],
                                          aliases: Set[IndexName])
       extends TemplateOperation
 

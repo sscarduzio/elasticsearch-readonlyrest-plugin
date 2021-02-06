@@ -230,11 +230,6 @@ trait IndexTemplatesManagementSuite
 
               result.responseCode should be(200)
             }
-            "rule has index pattern with no wildcard" in {
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index*"))
-
-              result.responseCode should be(200)
-            }
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
@@ -258,13 +253,6 @@ trait IndexTemplatesManagementSuite
 
               result.responseCode should be(200)
             }
-            "rule has index pattern with no wildcard" in {
-              adminDocumentManager.createFirstDoc("dev1_index", ujson.read("""{"hello":"world"}"""))
-
-              val result = dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index*"))
-
-              result.responseCode should be(200)
-            }
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
@@ -284,7 +272,7 @@ trait IndexTemplatesManagementSuite
           }
         }
         "template applies to generic index pattern (ES >= 6.0.0)" excludeES (allEs5x) in {
-          val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_*"))
+          val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*"))
 
           result.responseCode should be(200)
 
@@ -295,7 +283,7 @@ trait IndexTemplatesManagementSuite
           )
         }
         "template applies to generic index pattern (ES < 6.0.0)" excludeES(allEs6x, allEs7x, rorProxy) in {
-          val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_*"))
+          val result = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*"))
 
           result.responseCode should be(200)
 
@@ -309,17 +297,17 @@ trait IndexTemplatesManagementSuite
           val dev1TemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
 
           val insert1Result =
-            dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1*"))
+            dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test*"))
           insert1Result.responseCode should be(200)
 
           val user1Template = dev1TemplateManager.getTemplates
           user1Template.responseCode should be(200)
           user1Template.responseJson.obj("new_template").obj("index_patterns").arr.map(_.str).toList should be(
-            "custom_dev1_index_*" :: Nil
+            "custom_dev1_index_test*" :: Nil
           )
 
           val insert2Result =
-            dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index*"))
+            dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
           insert2Result.responseCode should be(200)
 
           val user1TemplateAfterOverride = dev1TemplateManager.getTemplates
@@ -332,15 +320,15 @@ trait IndexTemplatesManagementSuite
           val dev1TemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
 
           val insert1Result =
-            dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1*"))
+            dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_test*"))
           insert1Result.responseCode should be(200)
 
           val user1Template = dev1TemplateManager.getTemplates
           user1Template.responseCode should be(200)
-          user1Template.responseJson.obj("new_template").obj("template").str should be("custom_dev1_index_*")
+          user1Template.responseJson.obj("new_template").obj("template").str should be("custom_dev1_index_test*")
 
           val insert2Result =
-            dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index*"))
+            dev1TemplateManager.insertTemplate("new_template", templateExample("dev1_index"))
           insert2Result.responseCode should be(200)
 
           val user1TemplateAfterOverride = dev1TemplateManager.getTemplates
@@ -434,13 +422,6 @@ trait IndexTemplatesManagementSuite
           val result = dev1TemplateManager.deleteTemplate("temp")
 
           result.responseCode should be(200)
-        }
-        "he previously added it" in {
-          val addingResult = dev1TemplateManager.insertTemplate("new_template", templateExample("*"))
-          addingResult.responseCode should be(200)
-
-          val deletingResult = dev1TemplateManager.deleteTemplate("new_template")
-          deletingResult.responseCode should be(200)
         }
       }
     }
@@ -611,7 +592,7 @@ trait IndexTemplatesManagementSuite
             result.responseCode should be(401)
           }
           "rule has index pattern with no wildcard" in {
-            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("dev1_*"))
+            val result = dev2TemplateManager.insertTemplate("new_template", templateExample("dev1_index*"))
 
             result.responseCode should be(401)
           }
@@ -644,10 +625,10 @@ trait IndexTemplatesManagementSuite
           val dev1TemplateManager = new TemplateManager(basicAuthClient("dev1", "test"))
           val dev2TemplateManager = new TemplateManager(basicAuthClient("dev2", "test"))
 
-          val result1 = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1*"))
+          val result1 = dev1TemplateManager.insertTemplate("new_template", templateExample("custom_dev1_index_*"))
           result1.responseCode should be(200)
 
-          val result2 = dev2TemplateManager.insertTemplate("new_template", templateExample("custom_dev2*"))
+          val result2 = dev2TemplateManager.insertTemplate("new_template", templateExample("custom_dev2_index_*"))
           result2.responseCode should be(401)
         }
       }
@@ -753,67 +734,79 @@ trait IndexTemplatesManagementSuite
         }
       }
     }
-  }
+    "user is dev3" should {
+      "be allowed to remove his template" when {
+        "he previously added it (because it was allowed by block with no indices rule)" in {
+          val dev3TemplateManager = new TemplateManager(basicAuthClient("dev3", "test"))
+          val addingResult = dev3TemplateManager.insertTemplate("new_template", templateExample("*"))
+          addingResult.responseCode should be(200)
 
-  "A new template API" when {
-    "put index template operation is used" should {
-      "be allowed" when {
-        "there is an index defined for it" when {
-          "template has index pattern with wildcard" in {}
-        }
-        "indices rule is not used in matched block" in {
-          val result = adminTemplateManager.putIndexTemplate(
-            templateName = "temp1",
-            indexPatterns = NonEmptyList.of("dev*"),
-            template = indexTemplate("dev")
-          )
-          result.responseCode should be(200)
-        }
-        "user has access to all indices related data from request (index patterns, aliases, aliases patterns)" in {
-          val result = dev1TemplateManager.putIndexTemplate(
-            templateName = "temp1",
-            indexPatterns = NonEmptyList.of("custom_dev1_index_a_*", "custom_dev1_index_b_*"),
-            template = indexTemplate("dev1_index", "{index}_alias")
-          )
-          result.responseCode should be(200)
-        }
-      }
-      "not be allowed" when {
-        "user has no access to at least one requested index pattern" in {
-          val result = dev2TemplateManager.putIndexTemplate(
-            templateName = "temp1",
-            indexPatterns = NonEmptyList.of("dev1*"),
-            template = indexTemplate()
-          )
-          result.responseCode should be(401)
-        }
-        "user has no access to at least one requested alias" in {
-          val result = dev2TemplateManager.putIndexTemplate(
-            templateName = "temp1",
-            indexPatterns = NonEmptyList.of("custom_dev2_index_a_**"),
-            template = indexTemplate("dev1", "dev2_index")
-          )
-          result.responseCode should be(401)
-        }
-        "user has no access to at least one requested alias pattern" in {
-          val result = dev2TemplateManager.putIndexTemplate(
-            templateName = "temp1",
-            indexPatterns = NonEmptyList.of("custom_dev2_index_a_**"),
-            template = indexTemplate("alias_{index}", "dev2_index")
-          )
-          result.responseCode should be(401)
+          val deletingResult = dev3TemplateManager.deleteTemplate("new_template")
+          deletingResult.responseCode should be(200)
         }
       }
     }
-    "delete index template operation is used" should {
-      "be allowed" in {
-
-      }
-      "not be allowed" in {
-
-      }
-    }
   }
+
+//  "A new template API" when {
+//    "put index template operation is used" should {
+//      "be allowed" when {
+//        "there is an index defined for it" when {
+//          "template has index pattern with wildcard" in {}
+//        }
+//        "indices rule is not used in matched block" in {
+//          val result = adminTemplateManager.putIndexTemplate(
+//            templateName = "temp1",
+//            indexPatterns = NonEmptyList.of("dev*"),
+//            template = indexTemplate("dev")
+//          )
+//          result.responseCode should be(200)
+//        }
+//        "user has access to all indices related data from request (index patterns, aliases, aliases patterns)" in {
+//          val result = dev1TemplateManager.putIndexTemplate(
+//            templateName = "temp1",
+//            indexPatterns = NonEmptyList.of("custom_dev1_index_a_*", "custom_dev1_index_b_*"),
+//            template = indexTemplate("dev1_index", "{index}_alias")
+//          )
+//          result.responseCode should be(200)
+//        }
+//      }
+//      "not be allowed" when {
+//        "user has no access to at least one requested index pattern" in {
+//          val result = dev2TemplateManager.putIndexTemplate(
+//            templateName = "temp1",
+//            indexPatterns = NonEmptyList.of("dev1*"),
+//            template = indexTemplate()
+//          )
+//          result.responseCode should be(401)
+//        }
+//        "user has no access to at least one requested alias" in {
+//          val result = dev2TemplateManager.putIndexTemplate(
+//            templateName = "temp1",
+//            indexPatterns = NonEmptyList.of("custom_dev2_index_a_**"),
+//            template = indexTemplate("dev1", "dev2_index")
+//          )
+//          result.responseCode should be(401)
+//        }
+//        "user has no access to at least one requested alias pattern" in {
+//          val result = dev2TemplateManager.putIndexTemplate(
+//            templateName = "temp1",
+//            indexPatterns = NonEmptyList.of("custom_dev2_index_a_**"),
+//            template = indexTemplate("alias_{index}", "dev2_index")
+//          )
+//          result.responseCode should be(401)
+//        }
+//      }
+//    }
+//    "delete index template operation is used" should {
+//      "be allowed" in {
+//
+//      }
+//      "not be allowed" in {
+//
+//      }
+//    }
+//  }
 }
 
 object IndexTemplatesManagementSuite {

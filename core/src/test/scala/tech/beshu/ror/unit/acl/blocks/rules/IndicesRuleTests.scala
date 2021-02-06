@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.domain.Template.{ComponentTemplate, IndexTemplate, LegacyTemplate}
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingComponentTemplate, AddingIndexTemplate, AddingLegacyTemplate, DeletingComponentTemplates, DeletingIndexTemplates, DeletingLegacyTemplates, GettingComponentTemplates, GettingIndexTemplates, GettingLegacyTemplates}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.orders.indexOrder
 import tech.beshu.ror.mocks.{MockGeneralIndexRequestContext, MockRequestContext, MockTemplateRequestContext}
@@ -315,7 +315,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to all indices" in {
             val existingTemplate = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"))
             )
             val gettingTemplateOperation = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
             assertMatchRule2(
@@ -331,15 +331,15 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access not to all indices, but there is at least one matching template with at least one index pattern allowed" in {
             val existingTemplate1 = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("test2*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*"))
             )
             val existingTemplate2 = LegacyTemplate(
               name = TemplateName("t2"),
-              patterns = UniqueNonEmptyList.of(IndexName("test3*"), IndexName("test4*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test3*"), IndexPattern("test4*"))
             )
             val existingTemplate3 = LegacyTemplate(
               name = TemplateName("a3"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("test2*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("t*1*")),
@@ -352,7 +352,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
                 blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
                   LegacyTemplate(
                     name = TemplateName("t1"),
-                    patterns = UniqueNonEmptyList.of(IndexName("test1*"))
+                    patterns = UniqueNonEmptyList.of(IndexPattern("test1*"))
                   )
                 ))
             )
@@ -363,11 +363,11 @@ class IndicesRuleTests extends WordSpec with MockFactory {
             "no template is matched" in {
               val existingTemplate1 = LegacyTemplate(
                 name = TemplateName("t1"),
-                patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"))
+                patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"))
               )
               val existingTemplate2 = LegacyTemplate(
                 name = TemplateName("t2"),
-                patterns = UniqueNonEmptyList.of(IndexName("test3"))
+                patterns = UniqueNonEmptyList.of(IndexPattern("test3"))
               )
               val gettingTemplateOperation = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
               assertNotMatchRule2(
@@ -387,7 +387,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to all indices" in {
             val addingTemplateOperation = AddingLegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("*")),
@@ -400,7 +400,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name which is used in template's pattern list" in {
             val addingTemplateOperation = AddingLegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test1")),
@@ -411,7 +411,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which is a superset of the pattern in template's pattern list" in {
             val addingTemplateOperation = AddingLegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
@@ -422,7 +422,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which matches both patterns in template's pattern list" in {
             val addingTemplateOperation = AddingLegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
@@ -435,11 +435,11 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to all indices" in {
             val existingTemplate = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"))
             )
             val addingTemplateOperation = AddingLegacyTemplate(
               name = existingTemplate.name,
-              patterns = UniqueNonEmptyList.of(IndexName("test2"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test2"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("*")),
@@ -452,7 +452,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name which is used in existing template's pattern list" in {
             val existingTemplate = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"))
             )
             val addingTemplateOperation = AddingLegacyTemplate(existingTemplate.name, existingTemplate.patterns)
             assertMatchRule2(
@@ -466,11 +466,11 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which is a superset of the patten in existing template's pattern list" in {
             val existingTemplate = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"))
             )
             val addingTemplateOperation = AddingLegacyTemplate(
               name = existingTemplate.name,
-              patterns = UniqueNonEmptyList.of(IndexName("test2*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test2*"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
@@ -483,11 +483,11 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which matches both patterns in existing template's pattern list" in {
             val existingTemplate = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"))
             )
             val addingTemplateOperation = AddingLegacyTemplate(
               name = existingTemplate.name,
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"), IndexName("test3"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3"))
             )
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
@@ -507,7 +507,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test2"))
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test2"))
                 ))
             )
           }
@@ -517,7 +517,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test*"))
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test*"))
                 ))
             )
           }
@@ -527,7 +527,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test*"))
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test*"))
                 ))
             )
           }
@@ -537,7 +537,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*"))
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*"))
                 ))
             )
           }
@@ -546,14 +546,14 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name which is not used in existing template's pattern list" in {
             val existingTemplate = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test2"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test2"))
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
                   name = existingTemplate.name,
-                  patterns = UniqueNonEmptyList.of(IndexName("test1"))
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -561,14 +561,14 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name which matches the pattern in existing template's pattern list" in {
             val existingTemplate = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test*"))
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
                   name = existingTemplate.name,
-                  patterns = UniqueNonEmptyList.of(IndexName("test1"))
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -576,14 +576,14 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which is a subset of the pattern in existing template's pattern list" in {
             val existingTemplate = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test*"))
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test1*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
                   name = existingTemplate.name,
-                  patterns = UniqueNonEmptyList.of(IndexName("test*"))
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test*"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -591,14 +591,14 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access ot index name with wildcard which matches only one pattern in existing template's pattern list" in {
             val existingTemplate = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*"))
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
                   name = existingTemplate.name,
-                  patterns = UniqueNonEmptyList.of(IndexName("test*"))
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test*"))
                 ))
                 .addExistingTemplates(existingTemplate)
             )
@@ -632,11 +632,11 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to all indices" in {
             val existingTemplate1 = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1"))
             )
             val existingTemplate2 = LegacyTemplate(
               name = TemplateName("s1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1"))
             )
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
             assertMatchRule2(
@@ -650,11 +650,11 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "all requested existing templates have only allowed indices" in {
             val existingTemplate1 = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1"), IndexName("index2"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1"), IndexPattern("index2"))
             )
             val existingTemplate2 = LegacyTemplate(
               name = TemplateName("s1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index3"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("index3"))
             )
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
             assertMatchRule2(
@@ -668,11 +668,11 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "all requested existing templates have only allowed indices patterns" in {
             val existingTemplate1 = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("a1*"), IndexName("a2*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("a1*"), IndexPattern("a2*"))
             )
             val existingTemplate2 = LegacyTemplate(
               name = TemplateName("s1"),
-              patterns = UniqueNonEmptyList.of(IndexName("b*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("b*"))
             )
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
             assertMatchRule2(
@@ -690,11 +690,11 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "one of existing requested templates has index which is forbidden" in {
             val existingTemplate1 = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1"))
             )
             val existingTemplate2 = LegacyTemplate(
               name = TemplateName("t2"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1"), IndexName("index2"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1"), IndexPattern("index2"))
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("index1")),
@@ -706,11 +706,11 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "one of existing requested templates has index pattern which is forbidden" in {
             val existingTemplate1 = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1*"))
             )
             val existingTemplate2 = LegacyTemplate(
               name = TemplateName("t2"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1*"), IndexName("index2*"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1*"), IndexPattern("index2*"))
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("index1*")),
@@ -722,7 +722,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "requested existing template has pattern which values form a superset of set of configured index pattern values" in {
             val existingTemplate1 = LegacyTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("i*1"))
+              patterns = UniqueNonEmptyList.of(IndexPattern("i*1"))
             )
             assertNotMatchRule2(
               configured = NonEmptySet.of(index("index*")),
@@ -751,7 +751,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to all indices" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set(IndexName("alias1"))
             )
             val gettingTemplateOperation = GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
@@ -768,17 +768,17 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access not to all indices, but there is at least one matching template with at least one index pattern allowed and no alias allowed" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("test2*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*")),
               aliases = Set.empty
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("t2"),
-              patterns = UniqueNonEmptyList.of(IndexName("test3*"), IndexName("test4*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test3*"), IndexPattern("test4*")),
               aliases = Set.empty
             )
             val existingTemplate3 = IndexTemplate(
               name = TemplateName("a3"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("test2*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*")),
               aliases = Set.empty
             )
             assertMatchRule2(
@@ -792,7 +792,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
                 blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
                   IndexTemplate(
                     name = TemplateName("t1"),
-                    patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+                    patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
                     aliases = Set.empty
                   )
                 ))
@@ -801,17 +801,17 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access not to all indices, but there is at least one matching template with at least one index pattern allowed and one alias allowed" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("test2*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*")),
               aliases = Set(IndexName("test1_alias"), IndexName("test2_alias"))
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("t2"),
-              patterns = UniqueNonEmptyList.of(IndexName("test3*"), IndexName("test4*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test3*"), IndexPattern("test4*")),
               aliases = Set.empty
             )
             val existingTemplate3 = IndexTemplate(
               name = TemplateName("a3"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("test2*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*")),
               aliases = Set.empty
             )
             assertMatchRule2(
@@ -825,7 +825,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
                 blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
                   IndexTemplate(
                     name = TemplateName("t1"),
-                    patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+                    patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
                     aliases = Set(IndexName("test1_alias"))
                   )
                 ))
@@ -838,12 +838,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "no template is matched (because of forbidden indices patterns)" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set.empty
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("t2"),
-              patterns = UniqueNonEmptyList.of(IndexName("test3")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test3")),
               aliases = Set.empty
             )
             val gettingTemplateOperation = GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
@@ -863,7 +863,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to all indices" in {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
               aliases = Set(IndexName("alias1"))
             )
             assertMatchRule2(
@@ -877,7 +877,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name which is used in template's pattern list" in {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
               aliases = Set.empty
             )
             assertMatchRule2(
@@ -889,7 +889,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which is a superset of the pattern in template's pattern list" in {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
               aliases = Set.empty
             )
             assertMatchRule2(
@@ -901,7 +901,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which matches both patterns in template's pattern list" in {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set.empty
             )
             assertMatchRule2(
@@ -913,7 +913,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which matches pattern in template's pattern list and all aliases (without index placeholder)" in {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set(IndexName("test1_alias"), IndexName("test2_alias"))
             )
             assertMatchRule2(
@@ -925,7 +925,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which matches pattern in template's pattern list and all aliases (with index placeholder)" in {
             val addingTemplateOperation = AddingIndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set(IndexName("{index}_alias"))
             )
             assertMatchRule2(
@@ -939,12 +939,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to all indices" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
               aliases = Set.empty
             )
             val addingTemplateOperation = AddingIndexTemplate(
               name = existingTemplate.name,
-              patterns = UniqueNonEmptyList.of(IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test2")),
               aliases = Set.empty
             )
             assertMatchRule2(
@@ -958,7 +958,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name which is used in existing template's pattern list" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
               aliases = Set.empty
             )
             val addingTemplateOperation = AddingIndexTemplate(existingTemplate.name, existingTemplate.patterns, existingTemplate.aliases)
@@ -973,12 +973,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which is a superset of the patten in existing template's pattern list" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
               aliases = Set.empty
             )
             val addingTemplateOperation = AddingIndexTemplate(
               name = existingTemplate.name,
-              patterns = UniqueNonEmptyList.of(IndexName("test2*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test2*")),
               aliases = Set.empty
             )
             assertMatchRule2(
@@ -992,12 +992,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which matches both patterns in existing template's pattern list" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set.empty
             )
             val addingTemplateOperation = AddingIndexTemplate(
               name = existingTemplate.name,
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"), IndexName("test3")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3")),
               aliases = Set.empty
             )
             assertMatchRule2(
@@ -1011,12 +1011,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which matches pattern in existing template's pattern list and all aliases (without index placeholder)" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set.empty
             )
             val addingTemplateOperation = AddingIndexTemplate(
               name = existingTemplate.name,
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"), IndexName("test3")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3")),
               aliases = Set(IndexName("test1_alias"), IndexName("test2_alias"))
             )
             assertMatchRule2(
@@ -1030,12 +1030,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which matches pattern in existing template's pattern list and all aliases (with index placeholder)" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set.empty
             )
             val addingTemplateOperation = AddingIndexTemplate(
               name = existingTemplate.name,
-              patterns = UniqueNonEmptyList.of(IndexName("test1"), IndexName("test2"), IndexName("test3")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3")),
               aliases = Set(IndexName("{index}_alias"))
             )
             assertMatchRule2(
@@ -1056,7 +1056,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test2")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test2")),
                   aliases = Set.empty
                 ))
             )
@@ -1067,7 +1067,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test*")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
                   aliases = Set.empty
                 ))
             )
@@ -1078,7 +1078,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test*")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
                   aliases = Set.empty
                 ))
             )
@@ -1089,7 +1089,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
                   aliases = Set.empty
                 ))
             )
@@ -1100,7 +1100,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
                   aliases = Set(IndexName("test1_alias"), IndexName("alias_test1"))
                 ))
             )
@@ -1111,7 +1111,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
                   aliases = Set(IndexName("{index}_alias"), IndexName("alias_{index}"))
                 ))
             )
@@ -1121,7 +1121,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name which is not used in existing template's pattern list" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test2")),
               aliases = Set.empty
             )
             assertNotMatchRule2(
@@ -1129,7 +1129,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = existingTemplate.name,
-                  patterns = UniqueNonEmptyList.of(IndexName("test1")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
                   aliases = Set.empty
                 ))
                 .addExistingTemplates(existingTemplate)
@@ -1138,7 +1138,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name which matches the pattern in existing template's pattern list" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
               aliases = Set.empty
             )
             assertNotMatchRule2(
@@ -1146,7 +1146,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = existingTemplate.name,
-                  patterns = UniqueNonEmptyList.of(IndexName("test1")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
                   aliases = Set.empty
                 ))
                 .addExistingTemplates(existingTemplate)
@@ -1155,7 +1155,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to index name with wildcard which is a subset of the pattern in existing template's pattern list" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
               aliases = Set.empty
             )
             assertNotMatchRule2(
@@ -1163,7 +1163,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = existingTemplate.name,
-                  patterns = UniqueNonEmptyList.of(IndexName("test*")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
                   aliases = Set.empty
                 ))
                 .addExistingTemplates(existingTemplate)
@@ -1172,7 +1172,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access ot index name with wildcard which matches only one pattern in existing template's pattern list" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
               aliases = Set.empty
             )
             assertNotMatchRule2(
@@ -1180,7 +1180,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = existingTemplate.name,
-                  patterns = UniqueNonEmptyList.of(IndexName("test*")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
                   aliases = Set.empty
                 ))
                 .addExistingTemplates(existingTemplate)
@@ -1189,7 +1189,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (without index placeholder)" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
               aliases = Set.empty
             )
             assertNotMatchRule2(
@@ -1197,7 +1197,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
                   aliases = Set(IndexName("test1_alias"), IndexName("alias_test1"))
                 ))
                 .addExistingTemplates(existingTemplate)
@@ -1206,7 +1206,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (with index placeholder)" in {
             val existingTemplate = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("test1*"), IndexName("index1*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
               aliases = Set.empty
             )
             assertNotMatchRule2(
@@ -1214,7 +1214,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
                   name = TemplateName("t1"),
-                  patterns = UniqueNonEmptyList.of(IndexName("test1*")),
+                  patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
                   aliases = Set(IndexName("{index}_alias"), IndexName("alias_{index}"))
                 ))
                 .addExistingTemplates(existingTemplate)
@@ -1249,12 +1249,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "rule allows access to all indices" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1")),
               aliases = Set(IndexName("alias"))
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("s1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1")),
               aliases = Set.empty
             )
             val deletingTemplateOperation = DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
@@ -1269,12 +1269,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "all requested existing templates have only allowed indices" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1"), IndexName("index2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1"), IndexPattern("index2")),
               aliases = Set.empty
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("s1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index3")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index3")),
               aliases = Set.empty
             )
             val deletingTemplateOperation = DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
@@ -1289,12 +1289,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "all requested existing templates have only allowed indices patterns" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("a1*"), IndexName("a2*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("a1*"), IndexPattern("a2*")),
               aliases = Set.empty
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("s1"),
-              patterns = UniqueNonEmptyList.of(IndexName("b*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("b*")),
               aliases = Set.empty
             )
             val deletingTemplateOperation = DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
@@ -1309,12 +1309,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "all requested existing templates have only allowed indices patterns and aliases" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("a1*"), IndexName("a2*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("a1*"), IndexPattern("a2*")),
               aliases = Set(IndexName("alias"))
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("s1"),
-              patterns = UniqueNonEmptyList.of(IndexName("a*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("a*")),
               aliases = Set(IndexName("balias"))
             )
             val deletingTemplateOperation = DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
@@ -1333,12 +1333,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "one of existing requested templates has index which is forbidden" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1")),
               aliases = Set.empty
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("t2"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1"), IndexName("index2")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1"), IndexPattern("index2")),
               aliases = Set.empty
             )
             assertNotMatchRule2(
@@ -1351,12 +1351,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "one of existing requested templates has index pattern which is forbidden" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1*")),
               aliases = Set.empty
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("t2"),
-              patterns = UniqueNonEmptyList.of(IndexName("index1*"), IndexName("index2*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index1*"), IndexPattern("index2*")),
               aliases = Set.empty
             )
             assertNotMatchRule2(
@@ -1369,12 +1369,12 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "one of existing requested templates has alias which is forbidden" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("index11*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index11*")),
               aliases = Set(IndexName("index11_alias"))
             )
             val existingTemplate2 = IndexTemplate(
               name = TemplateName("t2"),
-              patterns = UniqueNonEmptyList.of(IndexName("index12*")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("index12*")),
               aliases = Set(IndexName("alias"))
             )
             assertNotMatchRule2(
@@ -1387,7 +1387,7 @@ class IndicesRuleTests extends WordSpec with MockFactory {
           "requested existing template has pattern which values form a superset of set of configured index pattern values" in {
             val existingTemplate1 = IndexTemplate(
               name = TemplateName("t1"),
-              patterns = UniqueNonEmptyList.of(IndexName("i*1")),
+              patterns = UniqueNonEmptyList.of(IndexPattern("i*1")),
               aliases = Set.empty
             )
             assertNotMatchRule2(
@@ -1939,8 +1939,8 @@ class IndicesRuleTests extends WordSpec with MockFactory {
   private def noTransformation(blockContext: TemplateRequestBlockContext) = {
     // we check here if sth else than identity was configured
     val controlTemplates: Set[Template] = Set(
-      LegacyTemplate(TemplateName("whatever1"), UniqueNonEmptyList.of(IndexName("*"))),
-      IndexTemplate(TemplateName("whatever2"), UniqueNonEmptyList.of(IndexName("*")), Set(IndexName("alias"))),
+      LegacyTemplate(TemplateName("whatever1"), UniqueNonEmptyList.of(IndexPattern("*"))),
+      IndexTemplate(TemplateName("whatever2"), UniqueNonEmptyList.of(IndexPattern("*")), Set(IndexName("alias"))),
       ComponentTemplate(TemplateName("whatever3"), Set(IndexName("alias"))),
     )
     blockContext.responseTemplateTransformation(controlTemplates) should be(controlTemplates)

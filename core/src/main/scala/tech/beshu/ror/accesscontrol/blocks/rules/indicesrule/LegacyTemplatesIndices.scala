@@ -62,7 +62,7 @@ private[indicesrule] trait LegacyTemplatesIndices
   }
 
   protected def addingLegacyTemplate(newTemplateName: TemplateName,
-                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexName])
+                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern])
                                     (implicit blockContext: TemplateRequestBlockContext,
                                      allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
     logger.debug(
@@ -134,15 +134,16 @@ private[indicesrule] trait LegacyTemplatesIndices
   }
 
   private def canAddNewLegacyTemplate(newTemplateName: TemplateName,
-                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexName])
+                                      newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern])
                                      (implicit blockContext: TemplateRequestBlockContext,
                                       allowedIndices: AllowedIndices) = {
     logger.debug(
-      s"""[${blockContext.requestContext.id.show}] * checking if Template [${newTemplateName.show}] can be added ..."""
+      s"""[${blockContext.requestContext.id.show}] * checking if Template [${newTemplateName.show}] with indices
+         | patterns [${newTemplateIndicesPatterns.show}] can be added ...""".oneLiner
     )
     newTemplateIndicesPatterns.toList
       .forall { pattern =>
-        val isPatternAllowed = allowedIndices.resolved.exists(_.matches(pattern))
+        val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
         if (!isPatternAllowed) logger.debug(
           s"""[${blockContext.requestContext.id.show}] STOP: one of Template's [${newTemplateName.show}]
              | index pattern [${pattern.show}] is forbidden.""".oneLiner
@@ -156,7 +157,7 @@ private[indicesrule] trait LegacyTemplatesIndices
                                       allowedIndices: AllowedIndices) = {
     val isTemplateAllowed = existingTemplate.patterns.toList
       .exists { pattern =>
-        allowedIndices.resolved.exists(i => pattern.matches(i) || i.matches(pattern))
+        allowedIndices.resolved.exists(pattern.isAllowedBy)
       }
     if (!isTemplateAllowed) logger.debug(
       s"""[${blockContext.requestContext.id.show}] WARN: Template [${existingTemplate.name.show}] is forbidden
@@ -169,11 +170,12 @@ private[indicesrule] trait LegacyTemplatesIndices
                                        (implicit blockContext: TemplateRequestBlockContext,
                                         allowedIndices: AllowedIndices) = {
     logger.debug(
-      s"[${blockContext.requestContext.id.show}] * checking if Template [${existingTemplate.name.show}] can be modified by the user ..."
+      s"[${blockContext.requestContext.id.show}] * checking if Template [${existingTemplate.name.show}] with indices patterns" +
+        s" [${existingTemplate.patterns.show}] can be modified by the user ..."
     )
     existingTemplate.patterns.toList
       .forall { pattern =>
-        val isPatternAllowed = allowedIndices.resolved.exists(_.matches(pattern))
+        val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
         if (!isPatternAllowed) logger.debug(
           s"""[${blockContext.requestContext.id.show}] STOP: cannot allow to modify existing Template
              | [${existingTemplate.name.show}], because its index pattern [${pattern.show}] is not allowed by rule
@@ -200,7 +202,7 @@ private[indicesrule] trait LegacyTemplatesIndices
                                                 allowedIndices: AllowedIndices): Set[Template] = {
     templates.flatMap {
       case Template.LegacyTemplate(name, patterns) =>
-        val onlyAllowedPatterns = patterns.filter(p => allowedIndices.resolved.exists(i => p.matches(i) || i.matches(p))) // todo:
+        val onlyAllowedPatterns = patterns.filter(p => allowedIndices.resolved.exists(p.isAllowedBy))
         UniqueNonEmptyList.fromSortedSet(onlyAllowedPatterns) match {
           case Some(nonEmptyAllowedPatterns) =>
             Set[Template](Template.LegacyTemplate(name, nonEmptyAllowedPatterns))

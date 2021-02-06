@@ -75,7 +75,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
           indexPatterns <- UniqueNonEmptyList.fromList(
-            templateMetaData.patterns().asScala.flatMap(IndexName.fromString).toList
+            templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
           )
           aliases = templateMetaData.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
         } yield Template.LegacyTemplate(templateName, indexPatterns) // todo: aliases
@@ -92,7 +92,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
           indexPatterns <- UniqueNonEmptyList.fromList(
-            templateMetaData.indexPatterns().asScala.flatMap(IndexName.fromString).toList
+            templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString).toList
           )
           aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
         } yield Template.IndexTemplate(templateName, indexPatterns, aliases)

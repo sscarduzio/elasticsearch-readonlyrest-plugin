@@ -311,10 +311,10 @@ object BlockContext {
         case bc: TemplateRequestBlockContext =>
           bc.templateOperation match {
             case TemplateOperation.GettingLegacyTemplates(_) => Set.empty
-            case TemplateOperation.AddingLegacyTemplate(_, patterns) => patterns.toSet
+            case TemplateOperation.AddingLegacyTemplate(_, patterns) => patterns.map(_.toIndexName).toSet
             case TemplateOperation.DeletingLegacyTemplates(_) => Set.empty
             case TemplateOperation.GettingIndexTemplates(_) => Set.empty
-            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
+            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.map(_.toIndexName).toSet ++ aliases
             case TemplateOperation.DeletingIndexTemplates(_) => Set.empty
             case TemplateOperation.GettingComponentTemplates(_) => Set.empty
             case TemplateOperation.AddingComponentTemplate(_, aliases) => aliases
@@ -368,6 +368,23 @@ object BlockContext {
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: FilterableRequestBlockContext => Set.empty
         case _: FilterableMultiRequestBlockContext => Set.empty
+      }
+    }
+  }
+
+  implicit class TemplatesFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def templateOperation: Option[TemplateOperation] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => None
+        case _: GeneralNonIndexRequestBlockContext => None
+        case _: RepositoryRequestBlockContext => None
+        case _: SnapshotRequestBlockContext => None
+        case bc: TemplateRequestBlockContext => Some(bc.templateOperation)
+        case _: AliasRequestBlockContext => None
+        case _: GeneralIndexRequestBlockContext => None
+        case _: MultiIndexRequestBlockContext => None
+        case _: FilterableRequestBlockContext => None
+        case _: FilterableMultiRequestBlockContext => None
       }
     }
   }

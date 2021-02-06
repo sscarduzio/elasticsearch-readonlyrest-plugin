@@ -61,7 +61,7 @@ private[indicesrule] trait IndexTemplateIndices
   }
 
   protected def addingIndexTemplate(newTemplateName: TemplateName,
-                                    newTemplateIndicesPatterns: UniqueNonEmptyList[IndexName],
+                                    newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
                                     aliases: Set[IndexName])
                                    (implicit blockContext: TemplateRequestBlockContext,
                                     allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
@@ -134,7 +134,7 @@ private[indicesrule] trait IndexTemplateIndices
   }
 
   private def canAddNewIndexTemplate(newTemplateName: TemplateName,
-                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexName],
+                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
                                      newTemplateAliases: Set[IndexName])
                                     (implicit blockContext: TemplateRequestBlockContext,
                                      allowedIndices: AllowedIndices) = {
@@ -143,7 +143,7 @@ private[indicesrule] trait IndexTemplateIndices
     )
     lazy val allPatternAllowed = newTemplateIndicesPatterns.toList
       .forall { pattern =>
-        val isPatternAllowed = allowedIndices.resolved.exists(_.matches(pattern))
+        val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
         if (!isPatternAllowed) logger.debug(
           s"""[${blockContext.requestContext.id.show}] STOP: one of Template's [${newTemplateName.show}]
              | index pattern [${pattern.show}] is forbidden.""".oneLiner
@@ -168,15 +168,15 @@ private[indicesrule] trait IndexTemplateIndices
   private def canViewExistingTemplate(existingTemplate: Template.IndexTemplate)
                                      (implicit blockContext: TemplateRequestBlockContext,
                                       allowedIndices: AllowedIndices) = {
-    val isTemplateForbidden = existingTemplate.patterns.toList
-      .forall { pattern =>
-        allowedIndices.resolved.forall(i => !i.matches(pattern))
+    val isTemplateAllowed = existingTemplate.patterns.toList
+      .exists { pattern =>
+        allowedIndices.resolved.exists(pattern.isAllowedBy)
       }
-    if (isTemplateForbidden) logger.debug(
+    if (!isTemplateAllowed) logger.debug(
       s"""[${blockContext.requestContext.id.show}] WARN: Index Template [${existingTemplate.name.show}] is forbidden
-         | because none of its index patterns is allowed by the rule""".oneLiner
+         | because none of its index patterns [${existingTemplate.patterns.show}] is allowed by the rule""".oneLiner
     )
-    !isTemplateForbidden
+    isTemplateAllowed
   }
 
   private def canModifyExistingIndexTemplate(existingTemplate: Template.IndexTemplate)
@@ -187,7 +187,7 @@ private[indicesrule] trait IndexTemplateIndices
     )
     lazy val allPatternAllowed = existingTemplate.patterns.toList
       .forall { pattern =>
-        val isPatternAllowed = allowedIndices.resolved.exists(_.matches(pattern))
+        val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
         if (!isPatternAllowed) logger.debug(
           s"""[${blockContext.requestContext.id.show}] STOP: cannot allow to modify existing Index Template
              | [${existingTemplate.name.show}], because its index pattern [${pattern.show}] is not allowed by rule
@@ -228,7 +228,7 @@ private[indicesrule] trait IndexTemplateIndices
                                                           allowedIndices: AllowedIndices): Set[Template] = {
     templates.flatMap {
       case Template.IndexTemplate(name, patterns, aliases) =>
-        val onlyAllowedPatterns = patterns.filter(p => allowedIndices.resolved.exists(_.matches(p)))
+        val onlyAllowedPatterns = patterns.filter(p => allowedIndices.resolved.exists(p.isAllowedBy))
         val onlyAllowedAliases = aliases.filter(isAliasAllowed)
         UniqueNonEmptyList.fromSortedSet(onlyAllowedPatterns) match {
           case Some(nonEmptyAllowedPatterns) =>
