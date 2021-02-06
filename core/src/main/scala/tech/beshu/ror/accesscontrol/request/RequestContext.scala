@@ -132,7 +132,7 @@ object RequestContext extends Logging {
          | KDX:${kibanaIndex.map(_.show).getOrElse("null")},
          | ACT:${r.action.show},
          | OA:${r.remoteAddress.map(_.show).getOrElse("null")},
-         | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.show).getOrElse("null")},
+         | XFF:${r.headers.find(_.name === Header.Name.xForwardedFor).map(_.value.show).getOrElse("null")},
          | DA:${r.localAddress.show},
          | IDX:$stringifyIndices,
          | MET:${r.method.show},
