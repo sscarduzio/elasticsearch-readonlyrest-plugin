@@ -31,10 +31,10 @@ import tech.beshu.ror.accesscontrol.domain.Credentials
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
 
 class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
-  import tech.beshu.ror.utils.TestsUtils.userIdEq
 
   "An ExternalAuthenticationRule" should {
     "match" when {
@@ -51,7 +51,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
-        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService))
+        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService), TestsUtils.userIdEq)
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           GeneralNonIndexRequestBlockContext(
             requestContext,
@@ -76,7 +76,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
-        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService))
+        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService), TestsUtils.userIdEq)
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }

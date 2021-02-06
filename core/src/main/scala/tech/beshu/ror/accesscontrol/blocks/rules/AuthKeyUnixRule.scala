@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import java.util.regex.Pattern
-
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -29,9 +27,11 @@ import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 import tech.beshu.ror.utils.CaseMappingEquality._
 
+import java.util.regex.Pattern
+
 final class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
-                            override val impersonators: List[ImpersonatorDef])
-                           (implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+                            override val impersonators: List[ImpersonatorDef],
+                            implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings) {
 
   override val name: Rule.Name = AuthKeyUnixRule.name

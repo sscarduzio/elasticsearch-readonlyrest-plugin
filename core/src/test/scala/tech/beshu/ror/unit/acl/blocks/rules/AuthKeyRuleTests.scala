@@ -18,14 +18,16 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 
 class AuthKeyRuleTests extends BasicAuthenticationTestTemplate {
-  import tech.beshu.ror.utils.TestsUtils.userIdEq
 
   override protected def ruleName: String = classOf[AuthKeyRule].getSimpleName
+
   override protected val rule = new AuthKeyRule(
     BasicAuthenticationRule.Settings(Credentials(User.Id("logstash".nonempty), PlainTextSecret("logstash".nonempty))),
-    Nil
+    Nil,
+    TestsUtils.userIdEq
   )
 }

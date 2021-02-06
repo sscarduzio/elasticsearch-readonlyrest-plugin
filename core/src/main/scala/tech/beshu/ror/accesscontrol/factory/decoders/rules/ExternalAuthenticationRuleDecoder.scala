@@ -39,8 +39,8 @@ import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 
 import scala.concurrent.duration.FiniteDuration
 
-class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService])
-                                       (implicit caseMappingEquality: UserIdCaseMappingEquality)
+class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService],
+                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthenticationRule](
     simpleExternalAuthenticationServiceNameAndLocalConfig
       .orElse(complexExternalAuthenticationServiceNameAndLocalConfig)
@@ -52,7 +52,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
         case (name, None) =>
           findAuthenticationService(authenticationServices.items, name)
       }
-      .map(service => RuleWithVariableUsageDefinition.create(new ExternalAuthenticationRule(Settings(service))))
+      .map(service => RuleWithVariableUsageDefinition.create(new ExternalAuthenticationRule(Settings(service), caseMappingEquality)))
       .decoder
   )
 

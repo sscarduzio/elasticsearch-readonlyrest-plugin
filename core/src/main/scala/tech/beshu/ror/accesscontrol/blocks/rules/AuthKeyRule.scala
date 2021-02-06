@@ -26,8 +26,8 @@ import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 import tech.beshu.ror.utils.CaseMappingEquality._
 
 final class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
-                  override val impersonators: List[ImpersonatorDef])
-                 (override implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                        override val impersonators: List[ImpersonatorDef],
+                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings)
     with Logging {
 

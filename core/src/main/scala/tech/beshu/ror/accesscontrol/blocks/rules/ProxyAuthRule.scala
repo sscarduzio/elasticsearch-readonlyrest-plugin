@@ -31,8 +31,8 @@ import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-final class ProxyAuthRule(val settings: Settings)
-                         (implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+final class ProxyAuthRule(val settings: Settings,
+                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRule
     with NoImpersonationSupport
     with Logging {

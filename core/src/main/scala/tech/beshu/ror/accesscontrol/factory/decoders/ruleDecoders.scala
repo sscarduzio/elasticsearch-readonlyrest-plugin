@@ -16,18 +16,18 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
-import java.time.Clock
-
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules._
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
 import tech.beshu.ror.providers.UuidProvider
+
+import java.time.Clock
 
 object ruleDecoders {
 
@@ -41,11 +41,11 @@ object ruleDecoders {
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
-      case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(definitions.authorizationServices))
+      case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(definitions.authorizationServices, caseMappingEquality))
       case FieldsRule.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine))
       case ResponseFieldsRule.name => Some(ResponseFieldsRuleDecoder)
       case FilterRule.name => Some(new FilterRuleDecoder)
-      case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users))
+      case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users, caseMappingEquality))
       case HeadersAndRule.name | HeadersAndRule.deprecatedName => Some(HeadersAndRuleDecoder)
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
       case HostsRule.name => Some(new HostsRuleDecoder)
@@ -62,7 +62,7 @@ object ruleDecoders {
       case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder)
       case SnapshotsRule.name => Some(new SnapshotsRuleDecoder)
       case UriRegexRule.name => Some(new UriRegexRuleDecoder)
-      case UsersRule.name => Some(new UsersRuleDecoder)
+      case UsersRule.name => Some(new UsersRuleDecoder()(caseMappingEquality))
       case XForwardedForRule.name => Some(new XForwardedForRuleDecoder)
       case _ =>
         authenticationRuleDecoderBy(
@@ -72,7 +72,8 @@ object ruleDecoders {
           definitions.jwts,
           definitions.ldaps,
           definitions.rorKbns,
-          Some(definitions.impersonators)
+          Some(definitions.impersonators),
+          caseMappingEquality
         )
     }
 
@@ -82,21 +83,21 @@ object ruleDecoders {
                                   jwtDefinitions: Definitions[JwtDef],
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   rorKbnDefinitions: Definitions[RorKbnDef],
-                                  impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]])
-                                 (implicit caseMappingEquality: UserIdCaseMappingEquality): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
+                                  impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+                                  caseMappingEquality: UserIdCaseMappingEquality): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
     name match {
-      case AuthKeyRule.name => Some(new AuthKeyRuleDecoder(impersonatorsDefinitions))
-      case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions))
-      case AuthKeySha256Rule.name => Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions))
-      case AuthKeySha512Rule.name => Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions))
-      case AuthKeyPBKDF2WithHmacSHA512Rule.name => Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions))
-      case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions))
-      case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions))
-      case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(jwtDefinitions))
-      case LdapAuthRule.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions))
-      case LdapAuthenticationRule.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions))
-      case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions))
-      case RorKbnAuthRule.name => Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions))
+      case AuthKeyRule.name => Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeySha256Rule.name => Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeySha512Rule.name => Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeyPBKDF2WithHmacSHA512Rule.name => Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, caseMappingEquality))
+      case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
+      case LdapAuthRule.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
+      case LdapAuthenticationRule.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
+      case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions, caseMappingEquality))
+      case RorKbnAuthRule.name => Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, caseMappingEquality))
       case _ => None
     }
   }

@@ -30,11 +30,10 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.TestsUtils
+import tech.beshu.ror.utils.TestsUtils._
 
 class UsersRuleTests extends AnyWordSpec with MockFactory {
 
@@ -82,7 +81,7 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
     assertRule(configuredIds, loggedUser, isMatched = false)
 
   private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser], isMatched: Boolean) = {
-    val rule = new UsersRule(UsersRule.Settings(configuredIds))
+    val rule = new UsersRule(UsersRule.Settings(configuredIds), TestsUtils.userIdEq)
     val requestContext = MockRequestContext.metadata
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,

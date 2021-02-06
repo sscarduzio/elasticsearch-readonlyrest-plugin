@@ -25,24 +25,24 @@ import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.decoders.common.userIdDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ProxyAuthDefinitionsDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
-import tech.beshu.ror.accesscontrol.factory.decoders.common.userIdDecoder
 import tech.beshu.ror.utils.CaseMappingEquality._
 
-class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth])
-                          (implicit caseMappingEquality: UserIdCaseMappingEquality)
+class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
+                           implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[ProxyAuthRule](
     ProxyAuthRuleDecoder.simpleSettingsDecoder
       .or(ProxyAuthRuleDecoder.extendedSettingsDecoder(authProxiesDefinitions))
-      .map(settings => RuleWithVariableUsageDefinition.create(new ProxyAuthRule(settings)))
-)
+      .map(settings => RuleWithVariableUsageDefinition.create(new ProxyAuthRule(settings, caseMappingEquality)))
+  )
 
 private object ProxyAuthRuleDecoder {
+
   import cats.implicits._
 
   private val defaultUserHeaderName: Header.Name = Header.Name.xForwardedUser

@@ -33,23 +33,23 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.decodeUniqueLi
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
-                        (implicit caseMappingEquality: UserIdCaseMappingEquality)
+class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
+                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
-  JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
-    .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
-    .toSyncDecoder
-    .emapE { case (name, groups) =>
-      jwtDefinitions.items.find(_.id === name) match {
-        case Some(jwtDef) => Right((jwtDef, groups))
-        case None => Left(RulesLevelCreationError(Message(s"Cannot find JWT definition with name: ${name.show}")))
+    JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
+      .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
+      .toSyncDecoder
+      .emapE { case (name, groups) =>
+        jwtDefinitions.items.find(_.id === name) match {
+          case Some(jwtDef) => Right((jwtDef, groups))
+          case None => Left(RulesLevelCreationError(Message(s"Cannot find JWT definition with name: ${name.show}")))
+        }
       }
-    }
-    .map { case (jwtDef, groups) =>
-      RuleWithVariableUsageDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups)))
-    }
-    .decoder
-)
+      .map { case (jwtDef, groups) =>
+        RuleWithVariableUsageDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups), caseMappingEquality))
+      }
+      .decoder
+  )
 
 private object JwtAuthRuleDecoder {
 

@@ -29,8 +29,8 @@ import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{LoggedUser, User}
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 
-class UsersRule(val settings: Settings)
-               (implicit caseMappingEquality: UserIdCaseMappingEquality)
+class UsersRule(val settings: Settings,
+                implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RegularRule {
 
   override val name: Rule.Name = UsersRule.name

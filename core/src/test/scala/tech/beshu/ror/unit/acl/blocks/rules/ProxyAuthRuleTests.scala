@@ -28,11 +28,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.TestsUtils
+import tech.beshu.ror.utils.TestsUtils._
 
 class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
 
@@ -83,7 +82,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
     assertRule(settings, header, isMatched = false)
 
   private def assertRule(settings: ProxyAuthRule.Settings, header: Header, isMatched: Boolean) = {
-    val rule = new ProxyAuthRule(settings)
+    val rule = new ProxyAuthRule(settings, TestsUtils.userIdEq)
     val requestContext = mock[RequestContext]
     (requestContext.headers _).expects().returning(Set(header)).twice()
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)

@@ -26,15 +26,14 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.UsersRuleDecoderHelper.userIdValueDecoder
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.CaseMappingEquality._
 
-class UsersRuleDecoder()
-                      (implicit caseMappingEquality: UserIdCaseMappingEquality)extends RuleDecoderWithoutAssociatedFields(
+class UsersRuleDecoder(implicit val caseMappingEquality: UserIdCaseMappingEquality)
+  extends RuleDecoderWithoutAssociatedFields(
   DecoderHelpers
     .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[User.Id]]
-    .map(users => RuleWithVariableUsageDefinition.create(new UsersRule(Settings(users))))
+    .map(users => RuleWithVariableUsageDefinition.create(new UsersRule(Settings(users), caseMappingEquality)))
 )
 
 private object UsersRuleDecoderHelper {

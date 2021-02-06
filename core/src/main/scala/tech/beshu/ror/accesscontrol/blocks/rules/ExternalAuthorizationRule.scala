@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.data.NonEmptySet
-import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
@@ -29,8 +28,8 @@ import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings)
-                               (implicit caseMappingEquality: UserIdCaseMappingEquality)
+class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings,
+                                implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseAuthorizationRule {
 
   private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.users.toSortedSet)

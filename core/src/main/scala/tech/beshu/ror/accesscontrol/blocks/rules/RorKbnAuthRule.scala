@@ -38,8 +38,8 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.util.Try
 
-final class RorKbnAuthRule(val settings: Settings)
-                          (implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+final class RorKbnAuthRule(val settings: Settings,
+                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRule
     with NoImpersonationSupport
     with AuthorizationRule

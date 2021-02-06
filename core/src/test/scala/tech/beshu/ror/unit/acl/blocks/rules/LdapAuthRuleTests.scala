@@ -19,9 +19,9 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthenticationService, LdapAuthorizationService}
@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticati
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils.{AssertionType, BlockContextAssertion, _}
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -43,7 +44,6 @@ class LdapAuthRuleTests
     with Inside
     with MockFactory
     with BlockContextAssertion {
-  import tech.beshu.ror.utils.TestsUtils.userIdEq
 
   "An LdapAuthRule" should {
     "match" when {
@@ -157,7 +157,10 @@ class LdapAuthRuleTests
                          authorizationSettings: LdapAuthorizationRule.Settings,
                          basicHeader: Option[Header],
                          assertionType: AssertionType): Unit = {
-    val rule = new LdapAuthRule(new LdapAuthenticationRule(authenticationSettings), new LdapAuthorizationRule(authorizationSettings))
+    val rule = new LdapAuthRule(authentication = new LdapAuthenticationRule(authenticationSettings, TestsUtils.userIdEq),
+      authorization = new LdapAuthorizationRule(authorizationSettings),
+      caseMappingEquality = TestsUtils.userIdEq,
+    )
     val requestContext = MockRequestContext.indices.copy(headers = basicHeader.toSet)
     val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty, Set.empty, Set.empty)
     val result = Try(rule.check(blockContext).runSyncUnsafe(1 second))

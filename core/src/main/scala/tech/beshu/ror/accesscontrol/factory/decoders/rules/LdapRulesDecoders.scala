@@ -38,8 +38,8 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
-class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService])
-                                   (implicit caseMappingEquality: UserIdCaseMappingEquality)
+class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
+                                    implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[LdapAuthenticationRule](
     LdapAuthenticationRuleDecoder.simpleLdapAuthenticationNameAndLocalConfig
       .orElse(LdapAuthenticationRuleDecoder.complexLdapAuthenticationServiceNameAndLocalConfig)
@@ -54,7 +54,7 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService])
             .findLdapService[LdapAuthenticationService](ldapDefinitions.items, name, LdapAuthenticationRule.name)
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
-      .map(service => RuleWithVariableUsageDefinition.create(new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service))))
+      .map(service => RuleWithVariableUsageDefinition.create(new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), caseMappingEquality)))
       .decoder
   )
 
@@ -114,11 +114,11 @@ object LdapAuthorizationRuleDecoder {
       .decoder
 }
 
-class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService])
-                         (implicit caseMappingEquality: UserIdCaseMappingEquality)
+class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
+                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[LdapAuthRule](
     LdapAuthRuleDecoder.instance(ldapDefinitions)
-    .map(RuleWithVariableUsageDefinition.create(_))
+      .map(RuleWithVariableUsageDefinition.create(_))
   )
 
 object LdapAuthRuleDecoder {
@@ -151,10 +151,11 @@ object LdapAuthRuleDecoder {
       .decoder
 
   private def createLdapAuthRule(ldapService: LdapAuthService, groups: UniqueNonEmptyList[Group])
-                                (implicit caseMappingEquality: UserIdCaseMappingEquality)= {
+                                (implicit caseMappingEquality: UserIdCaseMappingEquality) = {
     new LdapAuthRule(
-      new LdapAuthenticationRule(LdapAuthenticationRule.Settings(ldapService)),
-      new LdapAuthorizationRule(LdapAuthorizationRule.Settings(ldapService, groups, groups))
+      new LdapAuthenticationRule(LdapAuthenticationRule.Settings(ldapService), caseMappingEquality),
+      new LdapAuthorizationRule(LdapAuthorizationRule.Settings(ldapService, groups, groups)),
+      caseMappingEquality
     )
   }
 }
