@@ -21,6 +21,7 @@ import com.dimafeng.testcontainers.{Container, SingleContainer}
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
 import org.testcontainers.containers.GenericContainer
+import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
 import tech.beshu.ror.utils.elasticsearch.ClusterManager
 
 import scala.collection.immutable.Seq
@@ -130,10 +131,17 @@ final case class EsClusterSettings(name: String,
                                    xPackSupport: Boolean,
                                    configHotReloadingEnabled: Boolean = true,
                                    customRorIndexName: Option[String] = None,
-                                   internodeSslEnabled: Boolean = false)(implicit val rorConfigFileName: String)
+                                   internodeSslEnabled: Boolean = false,
+                                   esVersion: EsVersion = EsVersion.DeclaredInProject)(implicit val rorConfigFileName: String)
 
 object EsClusterSettings {
   val basic = EsClusterSettings(name = "ROR_SINGLE", xPackSupport = false)("/basic/readonlyrest.yml")
+
+  trait EsVersion
+  object EsVersion {
+    case object DeclaredInProject extends EsVersion
+    final case class SpecificVersion(moduleName: String) extends EsVersion
+  }
 }
 
 final case class DependencyDef(name: String, containerCreator: Coeval[SingleContainer[GenericContainer[_]]], originalPort: Int)
