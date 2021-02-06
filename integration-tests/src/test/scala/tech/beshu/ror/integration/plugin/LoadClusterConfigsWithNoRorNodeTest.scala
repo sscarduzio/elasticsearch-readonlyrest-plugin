@@ -55,7 +55,8 @@ final class LoadClusterConfigsWithNoRorNodeTest
       name = "ROR1",
       nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
       numberOfInstances = 2,
-      xPackSupport = false
+      xPackSupport = false,
+      configHotReloadingEnabled = true
     )(rorConfigFileName)
   )
   private lazy val rorNode2: ClusterNodeData = ClusterNodeData(
@@ -63,7 +64,8 @@ final class LoadClusterConfigsWithNoRorNodeTest
     settings = EsClusterSettings(
       name = "ROR1",
       nodeDataInitializer = new IndexConfigInitializer(readonlyrestIndexName, "/admin_api/readonlyrest_index.yml"),
-      xPackSupport = false
+      xPackSupport = false,
+      configHotReloadingEnabled = true
     )(rorConfigFileName)
   )
 
