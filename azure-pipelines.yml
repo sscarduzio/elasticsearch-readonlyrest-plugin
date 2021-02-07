@@ -35,11 +35,13 @@ stages:
       persistCredentials: true
     - script: |
         echo ">> ALL BUILD* VARIABLES " && export | grep BUILD
+        echo "test if secrets leak in PRs: " && echo $var_aws_access_key_id | wc -c
         echo "[CVE] executing ROR_TASK=$ROR_TASK"
         bin/build.sh
       continueOnError: true
       env: 
        ROR_TASK: cve_check
+       var_aws_access_key_id: $(aws_access_key_id)
 
 - stage: TEST
   jobs:
