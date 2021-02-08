@@ -2,7 +2,7 @@ variables:
   ssh_file: '~/.ssh/gh_deploy_key.priv'
   isMaster: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
   isDevelop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
-#test1
+#test2
 trigger:
   batch: false
   branches:
