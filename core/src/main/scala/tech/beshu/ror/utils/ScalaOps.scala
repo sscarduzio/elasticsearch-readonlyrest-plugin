@@ -56,6 +56,10 @@ object ScalaOps {
     def asSafeList: List[T] = Option(list).map(_.asScala.toList).getOrElse(Nil)
   }
 
+  implicit class JavaSetOps[T : ClassTag](val set: java.util.Set[T]) {
+    def asSafeSet: Set[T] = Option(set).map(_.asScala.toSet).getOrElse(Set.empty)
+  }
+
   implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
     def asSafeSet: Set[T] = safeArray.toSet
     def asSafeList: List[T] = safeArray.toList

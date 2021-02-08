@@ -78,7 +78,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
           )
           aliases = templateMetaData.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
-        } yield Template.LegacyTemplate(templateName, indexPatterns) // todo: aliases
+        } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
   }

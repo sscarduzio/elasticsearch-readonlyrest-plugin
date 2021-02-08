@@ -409,7 +409,8 @@ object domain {
   }
   object Template {
     final case class LegacyTemplate(override val name: TemplateName,
-                                    patterns: UniqueNonEmptyList[IndexPattern])
+                                    patterns: UniqueNonEmptyList[IndexPattern],
+                                    aliases: Set[IndexName])
       extends Template
 
     final case class IndexTemplate(override val name: TemplateName,
@@ -429,7 +430,8 @@ object domain {
       extends TemplateOperation
 
     final case class AddingLegacyTemplate(name: TemplateName,
-                                          patterns: UniqueNonEmptyList[IndexPattern])
+                                          patterns: UniqueNonEmptyList[IndexPattern],
+                                          aliases: Set[IndexName])
       extends TemplateOperation
 
     final case class DeletingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern])

@@ -141,7 +141,8 @@ private[indicesrule] trait IndexTemplateIndices
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * checking if Index Template [${newTemplateName.show}] can be added ..."""
     )
-    lazy val allPatternAllowed = newTemplateIndicesPatterns.toList
+    lazy val allPatternAllowed =
+      newTemplateIndicesPatterns.toList
       .forall { pattern =>
         val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
         if (!isPatternAllowed) logger.debug(
@@ -185,7 +186,8 @@ private[indicesrule] trait IndexTemplateIndices
     logger.debug(
       s"[${blockContext.requestContext.id.show}] * checking if Index Template [${existingTemplate.name.show}] can be modified by the user ..."
     )
-    lazy val allPatternAllowed = existingTemplate.patterns.toList
+    lazy val allPatternAllowed =
+      existingTemplate.patterns.toList
       .forall { pattern =>
         val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
         if (!isPatternAllowed) logger.debug(

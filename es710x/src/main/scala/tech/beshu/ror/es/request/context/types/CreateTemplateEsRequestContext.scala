@@ -20,7 +20,7 @@ import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateReque
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingLegacyTemplate
-import tech.beshu.ror.accesscontrol.domain.{IndexPattern, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, IndexPattern, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
@@ -45,7 +45,8 @@ class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
       patterns <- UniqueNonEmptyList
         .fromList(request.patterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
-    } yield AddingLegacyTemplate(name, patterns)
+      aliases = request.aliases().asSafeSet.flatMap(a => IndexName.fromString(a.name()))
+    } yield AddingLegacyTemplate(name, patterns, aliases)
 
     templateOperation match {
       case Right(operation) => operation

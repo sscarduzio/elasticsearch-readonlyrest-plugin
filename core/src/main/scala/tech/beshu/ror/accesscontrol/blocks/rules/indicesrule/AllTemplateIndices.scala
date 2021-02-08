@@ -49,7 +49,7 @@ private[indicesrule] trait AllTemplateIndices
     implicit val _ = blockContext
     blockContext.templateOperation match {
       case TemplateOperation.GettingLegacyTemplates(namePatterns) => gettingLegacyTemplates(namePatterns)
-      case TemplateOperation.AddingLegacyTemplate(name, patterns) => addingLegacyTemplate(name, patterns)
+      case TemplateOperation.AddingLegacyTemplate(name, patterns, aliases) => addingLegacyTemplate(name, patterns, aliases)
       case TemplateOperation.DeletingLegacyTemplates(namePatterns) => deletingLegacyTemplates(namePatterns)
       case TemplateOperation.GettingIndexTemplates(namePatterns) => gettingIndexTemplates(namePatterns)
       case TemplateOperation.AddingIndexTemplate(name, patterns, aliases) => addingIndexTemplate(name, patterns, aliases)
@@ -60,8 +60,8 @@ private[indicesrule] trait AllTemplateIndices
     }
   }
 
-  private [indicesrule]  def isAliasAllowed(alias: IndexName)
-                                           (implicit allowedIndices: AllowedIndices) = {
+  private [indicesrule] def isAliasAllowed(alias: IndexName)
+                                          (implicit allowedIndices: AllowedIndices) = {
     alias match {
       case Placeholder(placeholder) =>
         val potentialAliases = allowedIndices.resolved.map(i => placeholder.index(i.value))

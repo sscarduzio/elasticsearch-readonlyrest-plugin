@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.integration.suites
 
-import cats.data.NonEmptyList
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
@@ -30,8 +29,6 @@ trait IndexTemplatesManagementSuite
     with BaseTemplatesSuite
     with ESVersionSupport {
   this: EsContainerCreator =>
-
-  import IndexTemplatesManagementSuite.examples._
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
@@ -52,7 +49,14 @@ trait IndexTemplatesManagementSuite
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                name = "temp1",
+                templateContent = templateExample(
+                  indexPattern = "custom_dev1_*",
+                  otherIndexPatterns = Set.empty,
+                  aliases = Set("dev1_index")
+                )
+              )
 
               val templates = dev1TemplateManager.getTemplates
 
@@ -210,6 +214,23 @@ trait IndexTemplatesManagementSuite
               templates.responseJson.obj.keys.toList should contain only "temp1"
             }
           }
+        }
+        "with filtered not allowed alias" in {
+          adminTemplateManager.insertTemplateAndWaitForIndexing(
+            "temp1",
+            templateExample(
+              indexPattern = "custom_dev1_*",
+              otherIndexPatterns = Set.empty,
+              aliases = Set("not_allowed_alias", "dev1_index")
+            )
+          )
+
+          val templates = dev1TemplateManager.getTemplate("temp1")
+
+          templates.responseCode should be(200)
+          templates.responseJson.obj.keys.toList should contain only "temp1"
+          templates.responseJson.obj("temp1")("index_patterns").arr.map(_.str).toSet should be (Set("custom_dev1_*"))
+          templates.responseJson.obj("temp1")("aliases").obj.keys.toSet should be (Set("dev1_index"))
         }
         "at least one template index pattern matches user's allowed indices" excludeES (allEs5x) in {
           adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*", "custom_dev2_*"))
@@ -709,16 +730,6 @@ trait IndexTemplatesManagementSuite
           adminTemplateManager.insertTemplateAndWaitForIndexing(
             "temp",
             templateExample("custom_dev1_index_*", "custom_dev2_index_*")
-          )
-
-          val result = dev2TemplateManager.deleteTemplate("temp")
-
-          result.responseCode should be(401)
-        }
-        "index pattern defined in template are allowed to the user" in {
-          adminTemplateManager.insertTemplateAndWaitForIndexing(
-            "temp",
-            templateExample("custom_dev2_index_*")
           )
 
           val result = dev2TemplateManager.deleteTemplate("temp")

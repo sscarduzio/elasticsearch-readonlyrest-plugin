@@ -21,13 +21,14 @@ import cats.implicits._
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesResponse}
-import org.elasticsearch.cluster.metadata.IndexTemplateMetadata
+import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexTemplateMetadata}
+import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
-import tech.beshu.ror.accesscontrol.domain.{IndexPattern, Template, TemplateName, TemplateNamePattern}
+import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -132,8 +133,20 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
       basedOn.patterns.toList.map(_.value.value).asJava,
       metadata.settings(),
       metadata.mappings(),
-      metadata.aliases() // todo:
+      filterAliases(metadata, basedOn)
     )
+  }
+
+  private def filterAliases(metadata: IndexTemplateMetadata, template: LegacyTemplate) = {
+    val aliasesStrings = template.aliases.map(_.value.value)
+    val filteredAliasesMap = metadata
+      .aliases().valuesIt().asScala
+      .filter { a => aliasesStrings.contains(a.alias()) }
+      .map(a => (a.alias(), a))
+      .toMap
+    new ImmutableOpenMap.Builder[String, AliasMetadata]()
+      .putAll(filteredAliasesMap.asJava)
+      .build()
   }
 
   private def toLegacyTemplate(metadata: IndexTemplateMetadata) = {
@@ -144,6 +157,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
       patterns <- UniqueNonEmptyList
         .fromList(metadata.patterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
-    } yield LegacyTemplate(name, patterns)
+      aliases = metadata.aliases().keysIt().asScala.flatMap(IndexName.fromString).toSet
+    } yield LegacyTemplate(name, patterns, aliases)
   }
 }

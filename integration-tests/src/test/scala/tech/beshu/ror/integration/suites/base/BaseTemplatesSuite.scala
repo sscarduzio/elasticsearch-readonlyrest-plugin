@@ -38,15 +38,29 @@ trait BaseTemplatesSuite
     adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}""")).force()
   }
 
-  protected def templateExample(indexPattern: String, otherIndexPatterns: String*): JSON = {
+  protected def templateExample(indexPattern: String,
+                                otherIndexPatterns: Set[String],
+                                aliases: Set[String]): JSON = {
+    putTemplateBodyJson(otherIndexPatterns + indexPattern, aliases)
+  }
+
+  protected def templateExample(indexPattern: String,
+                                otherIndexPatterns: String*): JSON = {
+    putTemplateBodyJson(otherIndexPatterns.toSet + indexPattern, Set.empty)
+  }
+
+  private def putTemplateBodyJson(indexPatterns: Set[String], aliases: Set[String]): JSON = {
     val esVersion = rorContainer.esVersion
-    val allIndexPattern = indexPattern :: otherIndexPatterns.toList
+    val allIndexPattern = indexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
       ujson.read {
         s"""
            |{
            |  "index_patterns":[$patternsString],
+           |  "aliases":{
+           |    ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
+           |  },
            |  "settings":{"number_of_shards":1},
            |  "mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}
            |}""".stripMargin
@@ -56,16 +70,22 @@ trait BaseTemplatesSuite
         s"""
            |{
            |  "index_patterns":[$patternsString],
+           |  "aliases":{
+           |    ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
+           |  },
            |  "settings":{"number_of_shards":1},
            |  "mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}
            ||}""".stripMargin
       }
     } else {
-      if (otherIndexPatterns.isEmpty) {
+      if (allIndexPattern.size == 1) {
         ujson.read {
           s"""
              |{
-             |  "template":"$indexPattern",
+             |  "template":"${allIndexPattern.head}",
+             |  "aliases":{
+             |    ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
+             |  },
              |  "settings":{"number_of_shards":1},
              |  "mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}
              |}""".stripMargin

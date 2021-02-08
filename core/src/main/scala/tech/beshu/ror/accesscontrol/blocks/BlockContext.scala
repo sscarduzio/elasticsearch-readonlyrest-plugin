@@ -311,7 +311,7 @@ object BlockContext {
         case bc: TemplateRequestBlockContext =>
           bc.templateOperation match {
             case TemplateOperation.GettingLegacyTemplates(_) => Set.empty
-            case TemplateOperation.AddingLegacyTemplate(_, patterns) => patterns.map(_.toIndexName).toSet
+            case TemplateOperation.AddingLegacyTemplate(_, patterns, aliases) => patterns.map(_.toIndexName).toSet ++ aliases
             case TemplateOperation.DeletingLegacyTemplates(_) => Set.empty
             case TemplateOperation.GettingIndexTemplates(_) => Set.empty
             case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.map(_.toIndexName).toSet ++ aliases
