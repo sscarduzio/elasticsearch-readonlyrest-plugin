@@ -16,11 +16,12 @@
  */
 package tech.beshu.ror.integration.suites.base
 
+import cats.data.NonEmptyList
 import org.scalatest.{BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, TemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, LegacyTemplateManager}
 import tech.beshu.ror.utils.misc.Version
 
 trait BaseTemplatesSuite
@@ -30,7 +31,7 @@ trait BaseTemplatesSuite
 
   def rorContainer: EsClusterContainer
 
-  protected lazy val adminTemplateManager = new TemplateManager(adminClient)
+  protected lazy val adminTemplateManager = new LegacyTemplateManager(adminClient, targetEs.esVersion)
   protected lazy val adminIndexManager = new IndexManager(adminClient)
   protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
@@ -120,7 +121,11 @@ trait BaseTemplatesSuite
 
   private def addControlTemplate(): Unit = {
     adminTemplateManager
-      .insertTemplate("control_one", templateExample("control_*"))
+      .insertTemplate(
+        templateName = "control_one",
+        indexPatterns = NonEmptyList.one("control_*"),
+        aliases = Set("control")
+      )
       .force()
   }
 }

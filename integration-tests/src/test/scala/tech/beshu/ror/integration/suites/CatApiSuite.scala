@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration.suites
 
+import cats.data.NonEmptyList
 import org.scalatest.Matchers._
 import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
@@ -146,7 +147,10 @@ trait CatApiSuite
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_*")
+              )
 
               val templates = dev1ClusterStateManager.templates()
 
@@ -155,7 +159,10 @@ trait CatApiSuite
               templates.results(0)("name") should be(Str("temp1"))
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_*")
+              )
 
               val templates = dev1ClusterStateManager.templates()
 
@@ -166,7 +173,10 @@ trait CatApiSuite
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_index_test")
+              )
 
               val templates = dev1ClusterStateManager.templates()
 
@@ -175,7 +185,10 @@ trait CatApiSuite
               templates.results(0)("name") should be(Str("temp1"))
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_index")
+              )
 
               val templates = dev1ClusterStateManager.templates()
 
@@ -188,7 +201,10 @@ trait CatApiSuite
         "there is an index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_*")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
               val templates = dev1ClusterStateManager.templates()
@@ -198,7 +214,10 @@ trait CatApiSuite
               templates.results(0)("name") should be(Str("temp1"))
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_*")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
               val templates = dev1ClusterStateManager.templates()
@@ -210,7 +229,10 @@ trait CatApiSuite
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_index_test")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
               val templates = dev1ClusterStateManager.templates()
@@ -220,7 +242,10 @@ trait CatApiSuite
               templates.results(0)("name") should be(Str("temp1"))
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_index")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
               val templates = dev1ClusterStateManager.templates()
@@ -242,7 +267,10 @@ trait CatApiSuite
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_*")
+              )
 
               val templates = dev1ClusterStateManager.templates("temp1")
 
@@ -251,7 +279,10 @@ trait CatApiSuite
               templates.results(0)("name") should be(Str("temp1"))
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_*")
+              )
 
               val templates = dev1ClusterStateManager.templates("temp1")
 
@@ -262,7 +293,10 @@ trait CatApiSuite
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_index_test")
+              )
 
               val templates = dev1ClusterStateManager.templates("temp1")
 
@@ -271,7 +305,10 @@ trait CatApiSuite
               templates.results(0)("name") should be(Str("temp1"))
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_index")
+              )
 
               val templates = dev1ClusterStateManager.templates("temp1")
 
@@ -284,7 +321,10 @@ trait CatApiSuite
         "there is an index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_*")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
               val templates = dev1ClusterStateManager.templates("temp1")
@@ -294,7 +334,10 @@ trait CatApiSuite
               templates.results(0)("name") should be(Str("temp1"))
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_*")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
               val templates = dev1ClusterStateManager.templates("temp1")
@@ -306,7 +349,10 @@ trait CatApiSuite
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_index_test")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
               val templates = dev1ClusterStateManager.templates("temp1")
@@ -316,7 +362,10 @@ trait CatApiSuite
               templates.results(0)("name") should be(Str("temp1"))
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_index")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
               val templates = dev1ClusterStateManager.templates("temp1")
@@ -335,7 +384,10 @@ trait CatApiSuite
           "there is no index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  templateName = "temp1",
+                  indexPatterns = NonEmptyList.of("custom_dev1_*")
+                )
 
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
                 val templates = dev1ClusterStateManager.templates()
@@ -344,7 +396,10 @@ trait CatApiSuite
                 templates.results.size should be(0)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  templateName = "temp1",
+                  indexPatterns = NonEmptyList.of("dev1_*")
+                )
 
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
                 val templates = dev1ClusterStateManager.templates()
@@ -355,7 +410,10 @@ trait CatApiSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  templateName = "temp1",
+                  indexPatterns = NonEmptyList.of("custom_dev1_index_test")
+                )
 
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
                 val templates = dev1ClusterStateManager.templates()
@@ -364,7 +422,10 @@ trait CatApiSuite
                 templates.results.size should be(0)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  templateName = "temp1",
+                  indexPatterns = NonEmptyList.of("dev1_index")
+                )
 
                 val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
                 val templates = dev1ClusterStateManager.templates()
@@ -377,7 +438,10 @@ trait CatApiSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  templateName = "temp1",
+                  indexPatterns = NonEmptyList.of("custom_dev1_*")
+                )
                 createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
                 val templates = dev2ClusterStateManager.templates()
@@ -386,7 +450,10 @@ trait CatApiSuite
                 templates.results.size should be(0)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  templateName = "temp1",
+                  indexPatterns = NonEmptyList.of("dev1_*")
+                )
                 createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
                 val templates = dev2ClusterStateManager.templates()
@@ -397,7 +464,10 @@ trait CatApiSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  templateName = "temp1",
+                  indexPatterns = NonEmptyList.of("custom_dev1_index_test")
+                )
                 createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
                 val templates = dev2ClusterStateManager.templates()
@@ -406,7 +476,10 @@ trait CatApiSuite
                 templates.results.size should be(0)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  templateName = "temp1",
+                  indexPatterns = NonEmptyList.of("dev1_index")
+                )
                 createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
                 val templates = dev2ClusterStateManager.templates()
@@ -422,7 +495,10 @@ trait CatApiSuite
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_*")
+              )
 
               val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
               val templates = dev1ClusterStateManager.templates("temp1")
@@ -431,7 +507,10 @@ trait CatApiSuite
               templates.results.size should be(0)
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_*")
+              )
 
               val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
               val templates = dev1ClusterStateManager.templates("temp1")
@@ -442,7 +521,10 @@ trait CatApiSuite
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_index_test")
+              )
 
               val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
               val templates = dev1ClusterStateManager.templates("temp1")
@@ -451,7 +533,10 @@ trait CatApiSuite
               templates.results.size should be(0)
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_index")
+              )
 
               val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
               val templates = dev1ClusterStateManager.templates("temp1")
@@ -464,7 +549,10 @@ trait CatApiSuite
         "there is an index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_*")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
               val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
@@ -474,7 +562,10 @@ trait CatApiSuite
               templates.results.size should be(0)
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_*"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_*")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
               val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
@@ -486,7 +577,10 @@ trait CatApiSuite
           }
           "template has index pattern with no wildcard" when {
             "rule has index pattern with wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("custom_dev1_index_test"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("custom_dev1_index_test")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
               val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
@@ -496,7 +590,10 @@ trait CatApiSuite
               templates.results.size should be(0)
             }
             "rule has index pattern with no wildcard" in {
-              adminTemplateManager.insertTemplateAndWaitForIndexing("temp1", templateExample("dev1_index"))
+              adminTemplateManager.insertTemplateAndWaitForIndexing(
+                templateName = "temp1",
+                indexPatterns = NonEmptyList.of("dev1_index")
+              )
               createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
               val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
