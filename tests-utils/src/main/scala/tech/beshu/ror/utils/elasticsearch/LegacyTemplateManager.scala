@@ -25,37 +25,24 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.LegacyTemplateManager.{TemplateResponse, TemplatesResponse}
+import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager._
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.ScalaUtils._
 import tech.beshu.ror.utils.misc.Version
 
-trait TemplateManager {
-  def getTemplate(name: String): TemplateResponse
-
-  def getTemplates: TemplatesResponse
-
-  def insertTemplate(name: String, templateContent: JSON): SimpleResponse
-
-  def insertTemplateAndWaitForIndexing(name: String, templateContent: JSON): Unit
-
-  def deleteTemplate(name: String): SimpleResponse
-}
-
-class LegacyTemplateManager(client: RestClient, esVersion: String)
+abstract class BaseTemplateManager(client: RestClient,
+                                   parseTemplates: JSON => List[Template])
   extends BaseManager(client) {
 
-  // old API
   def getTemplate(name: String): TemplateResponse =
-    call(createGetTemplateRequest(name), new TemplateResponse(_))
+    call(createGetTemplateRequest(name), new TemplateResponse(_, parseTemplates))
 
   def getTemplates: TemplatesResponse =
-    call(createGetTemplatesRequest, new TemplatesResponse(_))
+    call(createGetTemplatesRequest, new TemplatesResponse(_, parseTemplates))
 
   def insertTemplate(templateName: String,
                      indexPatterns: NonEmptyList[String],
                      aliases: Set[String] = Set.empty): SimpleResponse =
-    call(createInsertLegacyTemplateRequest(templateName, indexPatterns, aliases), new SimpleResponse(_))
+    call(createInsertTemplateRequest(templateName, indexPatterns, aliases), new SimpleResponse(_))
 
   def insertTemplateAndWaitForIndexing(templateName: String,
                                        indexPatterns: NonEmptyList[String],
@@ -77,58 +64,76 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
   def deleteAllTemplates(): SimpleResponse =
     call(createDeleteAllTemplatesRequest(), new SimpleResponse(_))
 
-  // new API
-  def putIndexTemplate(templateName: String,
-                       indexPatterns: NonEmptyList[String],
-                       template: JSON): SimpleResponse = {
-    call(createPutIndexTemplateRequest(templateName, indexPatterns, template), new SimpleResponse(_))
+  protected def createGetTemplateRequest(name: String): HttpGet
+
+  protected def createGetTemplatesRequest: HttpGet
+
+  protected def createDeleteTemplateRequest(templateName: String): HttpDelete
+
+  protected def createDeleteAllTemplatesRequest(): HttpDelete
+
+  protected def createInsertTemplateRequest(templateName: String,
+                                            indexPatterns: NonEmptyList[String],
+                                            aliases: Set[String]): HttpPut
+
+  private def isTemplateIndexed(templateName: String) =
+    getTemplates.responseJson.obj.contains(templateName)
+
+  private def isNotIndexedYet: BiPredicate[Boolean, Throwable] =
+    (indexed: Boolean, throwable: Throwable) => throwable != null || !indexed
+}
+
+object BaseTemplateManager {
+  class TemplateResponse(response: HttpResponse,
+                         parseTemplates: JSON => List[Template])
+    extends TemplatesResponse(response, parseTemplates) {
+
+    lazy val template: Template = templates.head
   }
 
-  private def createGetTemplateRequest(name: String) = {
+  class TemplatesResponse(response: HttpResponse,
+                          parseTemplates: JSON => List[Template])
+    extends JsonResponse(response) {
+
+    lazy val templates: List[Template] = parseTemplates(responseJson)
+  }
+
+  final case class Template(name: String, patterns: Set[String], aliases: Set[String])
+}
+
+class LegacyTemplateManager(client: RestClient, esVersion: String)
+  extends BaseTemplateManager(client, LegacyTemplateManager.parseTemplates) {
+
+  override protected def createGetTemplateRequest(name: String): HttpGet = {
     val request = new HttpGet(client.from("/_template/" + name))
     request.setHeader("timeout", "50s")
     request
   }
 
-  private def createGetTemplatesRequest = {
+  override protected def createGetTemplatesRequest: HttpGet = {
     val request = new HttpGet(client.from("/_template"))
     request.setHeader("timeout", "50s")
     request
   }
 
-  private def createDeleteTemplateRequest(templateName: String) = {
+  override protected def createDeleteTemplateRequest(templateName: String): HttpDelete = {
     val request = new HttpDelete(client.from(s"/_template/$templateName"))
     request.setHeader("timeout", "50s")
     request
   }
 
-  private def createDeleteAllTemplatesRequest() = {
+  override protected def createDeleteAllTemplatesRequest(): HttpDelete = {
     val request = new HttpDelete(client.from("/_template/*"))
     request.setHeader("timeout", "50s")
     request
   }
 
-  private def createInsertLegacyTemplateRequest(templateName: String,
-                                                indexPatterns: NonEmptyList[String],
-                                                aliases: Set[String]) = {
+  override protected def createInsertTemplateRequest(templateName: String,
+                                                     indexPatterns: NonEmptyList[String],
+                                                     aliases: Set[String]): HttpPut = {
     val request = new HttpPut(client.from(s"/_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases))))
-    request
-  }
-
-  private def createPutIndexTemplateRequest(templateName: String,
-                                            indexPatterns: NonEmptyList[String],
-                                            template: JSON) = {
-    val request = new HttpPut(client.from(s"/_index_template/$templateName"))
-    request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(
-      s"""
-         |{
-         |  "index_patterns": ${indexPatterns.toList.mkJsonStringArray},
-         |  "template": ${ujson.write(template)}
-         |}
-       """.stripMargin))
     request
   }
 
@@ -177,35 +182,94 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
       }
     }
   }
-
-  private def isTemplateIndexed(templateName: String) =
-    getTemplates.responseJson.obj.contains(templateName)
-
-  private def isNotIndexedYet: BiPredicate[Boolean, Throwable] =
-    (indexed: Boolean, throwable: Throwable) => throwable != null || !indexed
 }
 
 object LegacyTemplateManager {
+  private def parseTemplates(content: JSON) = {
+    content
+      .obj
+      .map { case (name, templateContent) =>
+        Template(
+          name,
+          templateContent.obj("index_patterns").arr.map(_.str).toSet,
+          templateContent.obj("aliases").obj.keys.toSet
+        )
+      }
+      .toList
+  }
+}
 
-  class TemplateResponse(response: HttpResponse) extends TemplatesResponse(response) {
-    lazy val template: Template = templates.head
+class TemplateManager(client: RestClient, esVersion: String)
+  extends BaseTemplateManager(client, TemplateManager.parseTemplates) {
+
+  require(
+    Version.greaterOrEqualThan(esVersion, 7, 8, 0),
+    "New template API is supported starting from ES 7.8.0"
+  )
+
+  override protected def createGetTemplateRequest(name: String): HttpGet = {
+    val request = new HttpGet(client.from("/_index_template/" + name))
+    request.setHeader("timeout", "50s")
+    request
   }
 
-  class TemplatesResponse(response: HttpResponse) extends JsonResponse(response) {
-    lazy val templates: List[Template] =
-      responseJson
-        .obj
-        .map { case (name, templateContent) =>
-          Template(
-            name,
-            templateContent.obj("index_patterns").arr.map(_.str).toSet,
-            templateContent.obj("aliases").obj.keys.toSet
-          )
-        }
-        .toList
-
+  override protected def createGetTemplatesRequest: HttpGet = {
+    val request = new HttpGet(client.from("/_index_template"))
+    request.setHeader("timeout", "50s")
+    request
   }
 
-  final case class Template(name: String, patterns: Set[String], aliases: Set[String])
+  override protected def createDeleteTemplateRequest(templateName: String): HttpDelete = {
+    val request = new HttpDelete(client.from(s"/_index_template/$templateName"))
+    request.setHeader("timeout", "50s")
+    request
+  }
 
+  override protected def createDeleteAllTemplatesRequest(): HttpDelete = {
+    val request = new HttpDelete(client.from("/_index_template/*"))
+    request.setHeader("timeout", "50s")
+    request
+  }
+
+  override protected def createInsertTemplateRequest(templateName: String,
+                                                     indexPatterns: NonEmptyList[String],
+                                                     aliases: Set[String]): HttpPut = {
+    val request = new HttpPut(client.from(s"/_index_template/$templateName"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases))))
+    request
+  }
+
+  private def putTemplateBodyJson(indexPatterns: NonEmptyList[String], aliases: Set[String]): JSON = {
+    val allIndexPattern = indexPatterns.toList
+    val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
+    ujson.read {
+      s"""
+         |{
+         |  "index_patterns":[$patternsString],
+         |  "template": {
+         |    "aliases":{
+         |      ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
+         |    },
+         |    "settings":{"number_of_shards":1},
+         |    "mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}
+         |  }
+         |}""".stripMargin
+    }
+  }
+}
+
+object TemplateManager {
+  private def parseTemplates(content: JSON) = {
+    content("index_templates")
+      .arr
+      .map { templateJson =>
+        Template(
+          templateJson("name").str,
+          templateJson.obj("index_template")("index_patterns").arr.map(_.str).toSet,
+          templateJson.obj("index_template")("aliases").obj.keys.toSet
+        )
+      }
+      .toList
+  }
 }
