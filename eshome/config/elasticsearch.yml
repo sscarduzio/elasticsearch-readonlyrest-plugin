@@ -1,3 +1,4 @@
 node.name: n1_it
 readonlyrest.force_load_from_file: true
 path.repo: "/tmp/test"
+reindex.remote.whitelist: localhost:9201

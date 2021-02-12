@@ -39,7 +39,8 @@ trait ReIndexMultipleDifferentEsSuite extends WordSpec
       name = "ROR_OLD_ES",
       nodeDataInitializer = nodeDataInitializer(),
       xPackSupport = false,
-      esVersion = EsVersion.SpecificVersion("es55x")
+      esVersion = EsVersion.SpecificVersion("es55x"),
+      configHotReloadingEnabled = false
     )(sourceEsRorConfigFileName)
   )
 
@@ -52,11 +53,12 @@ trait ReIndexMultipleDifferentEsSuite extends WordSpec
           "reindex.ssl.verification_mode" -> "none"
         )),
       xPackSupport = false,
+      configHotReloadingEnabled = false
     )(rorConfigFileName)
   )
 
-  private lazy val oldEsActionManager = new ActionManagerJ(clients.head.adminClient)
-  private lazy val newEsActionManager = new ActionManagerJ(clients.last.adminClient)
+  private lazy val oldEsActionManager = new ActionManagerJ(clients.head.basicAuthClient("dev1", "test"))
+  private lazy val newEsActionManager = new ActionManagerJ(clients.last.basicAuthClient("dev1", "test"))
 
   private lazy val oldEsContainer = oldEsCluster.nodes.head
   private lazy val newEsContainer = newEsCluster.nodes.head
@@ -68,14 +70,29 @@ trait ReIndexMultipleDifferentEsSuite extends WordSpec
 
   "A remote reindex request" should {
     "be able to proceed" when {
-      "request specifies type which name is not on allowed indices list" in {
-        val result = newEsActionManager.actionPost("_reindex", ReIndexMultipleDifferentEsSuite.reindexPayload("test1_index", "dev1", oldEsContainerAddress))
+      "request specifies source and dest index that is allowed on both source and dest ES" in {
+        val result = newEsActionManager.actionPost("_reindex", ReIndexMultipleDifferentEsSuite.reindexPayload("test1_index", "test1_index_reindexed", "dev1", oldEsContainerAddress))
         assertEquals(200, result.getResponseCode)
       }
-
-      "request specifies type which name is on allowed indices list"  in {
-        val result = newEsActionManager.actionPost("_reindex", ReIndexMultipleDifferentEsSuite.reindexPayload("test1_index", "dev2", oldEsContainerAddress))
-        assertEquals(200, result.getResponseCode)
+    }
+    "be blocked by dest ES" when {
+      "request specifies source index that is allowed, but dest that isn't allowed" in {
+        val result = newEsActionManager.actionPost("_reindex", ReIndexMultipleDifferentEsSuite.reindexPayload("test1_index", "not_allowed_index","dev1", oldEsContainerAddress))
+        assertEquals(401, result.getResponseCode)
+      }
+      "request specifies source index that isn't allowed, but dest that is allowed" in {
+        val result = newEsActionManager.actionPost("_reindex", ReIndexMultipleDifferentEsSuite.reindexPayload("not_allowed_index", "test1_index_reindexed","dev1", oldEsContainerAddress))
+        assertEquals(401, result.getResponseCode)
+      }
+    }
+    "be blocked by source ES" when {
+      "request specifies source index that is allowed on dest ES, but is not allowed on source ES" in {
+        val result = newEsActionManager.actionPost("_reindex", ReIndexMultipleDifferentEsSuite.reindexPayload("test1_index", "test1_index_reindexed","dev3", oldEsContainerAddress))
+        assertEquals(401, result.getResponseCode)
+      }
+      "request specifies index which is allowed, but is not present in source ES"  in {
+        val result = newEsActionManager.actionPost("_reindex", ReIndexMultipleDifferentEsSuite.reindexPayload("test2_index", "test2_index_reindexed","dev4", oldEsContainerAddress))
+        assertEquals(404, result.getResponseCode)
       }
     }
   }
@@ -83,18 +100,17 @@ trait ReIndexMultipleDifferentEsSuite extends WordSpec
   protected def nodeDataInitializer(): ElasticsearchNodeDataInitializer = {
     (esVersion: String, adminRestClient: RestClient) => {
       val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}"""))
-      documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}"""))
+      documentManager.createDoc("test1_index", "Sometype", 1, ujson.read("""{"hello":"world"}"""))
     }
   }
 }
 
 object ReIndexMultipleDifferentEsSuite {
-  private def reindexPayload(indexName: String, username: String, sourceHost: String) = {
+  private def reindexPayload(sourceIndexName: String, destIndexName: String, username: String, sourceHost: String) = {
     s"""
        |{
        |	"source": {
-       |		"index": "$indexName",
+       |		"index": "$sourceIndexName",
        |    "type": "Sometype",
        |		"remote": {
        |			"host": "${sourceHost}",
@@ -103,7 +119,7 @@ object ReIndexMultipleDifferentEsSuite {
        |		}
        |	},
        |	"dest": {
-       |		"index": "${indexName}_reindexed"
+       |		"index": "$destIndexName"
        |	}
        |}""".stripMargin
   }
