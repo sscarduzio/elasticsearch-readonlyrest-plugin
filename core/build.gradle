@@ -139,7 +139,7 @@ dependencies {
     testCompile group: 'org.scalamock',                     name: 'scalamock-scalatest-support_2.12',       version: '3.6.0'
     testCompile group: 'org.scalatestplus',                 name: 'scalacheck-1-14_2.12',                   version: '3.1.0.0'
     testCompile group: 'org.scalatest',                     name: 'scalatest_2.12',                         version: '3.1.0'
-    testCompile group: 'com.dimafeng',                      name: 'testcontainers-scala_2.12',              version: '0.38.4'
+    testCompile group: 'com.dimafeng',                      name: 'testcontainers-scala_2.12',              version: '0.39.0'
 
     constraints{
         compile group: 'io.netty',                          name: 'netty-codec-http2',                      version: '4.1.53.Final'
