@@ -49,7 +49,7 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         RunCommandCombiner.empty
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(config.xPackSupport && Version.greaterOrEqualThan(esVersion, 6, 3, 0),
+          .runWhen(!shouldUseEsOssImage(config),
             "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
@@ -113,6 +113,8 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
   private def rorHotReloading(enabled: Boolean) = List(if(!enabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else "")
 
   private def shouldUseEsOssImage(config: Config) = {
-    !config.xPackSupport && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
+    !config.xPackSupport &&
+      Version.greaterOrEqualThan(config.esVersion, 6, 3, 0) &&
+      Version.lowerThan(config.esVersion, 7, 11, 0)
   }
 }
