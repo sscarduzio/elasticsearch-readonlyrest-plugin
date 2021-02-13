@@ -115,16 +115,16 @@ object LdapAuthorizationRuleDecoder {
 }
 
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
-                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
+                          caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[LdapAuthRule](
-    LdapAuthRuleDecoder.instance(ldapDefinitions)
+    LdapAuthRuleDecoder.instance(ldapDefinitions, caseMappingEquality)
       .map(RuleWithVariableUsageDefinition.create(_))
   )
 
 object LdapAuthRuleDecoder {
 
-  private def instance(ldapDefinitions: Definitions[LdapService])
-                      (implicit caseMappingEquality: UserIdCaseMappingEquality): Decoder[LdapAuthRule] =
+  private def instance(ldapDefinitions: Definitions[LdapService],
+                      caseMappingEquality: UserIdCaseMappingEquality): Decoder[LdapAuthRule] =
     Decoder
       .instance { c =>
         for {
@@ -141,17 +141,18 @@ object LdapAuthRuleDecoder {
             .findLdapService[LdapAuthService](ldapDefinitions.items, name, LdapAuthRule.name)
             .map(new CacheableLdapServiceDecorator(_, ttl))
             .map(new LoggableLdapServiceDecorator(_))
-            .map(createLdapAuthRule(_, groups))
+            .map(createLdapAuthRule(_, groups, caseMappingEquality))
         case (name, None, groups) =>
           LdapRulesDecodersHelper
             .findLdapService[LdapAuthService](ldapDefinitions.items, name, LdapAuthRule.name)
             .map(new LoggableLdapServiceDecorator(_))
-            .map(createLdapAuthRule(_, groups))
+            .map(createLdapAuthRule(_, groups, caseMappingEquality))
       }
       .decoder
 
-  private def createLdapAuthRule(ldapService: LdapAuthService, groups: UniqueNonEmptyList[Group])
-                                (implicit caseMappingEquality: UserIdCaseMappingEquality) = {
+  private def createLdapAuthRule(ldapService: LdapAuthService,
+                                 groups: UniqueNonEmptyList[Group],
+                                 caseMappingEquality: UserIdCaseMappingEquality) = {
     new LdapAuthRule(
       new LdapAuthenticationRule(LdapAuthenticationRule.Settings(ldapService), caseMappingEquality),
       new LdapAuthorizationRule(LdapAuthorizationRule.Settings(ldapService, groups, groups)),

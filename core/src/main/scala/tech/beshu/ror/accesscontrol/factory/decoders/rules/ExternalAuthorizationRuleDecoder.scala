@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
+import cats.Order
 import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.api.Refined
@@ -44,14 +45,15 @@ class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[Extern
                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
     ExternalAuthorizationRuleDecoder
-      .settingsDecoder(authotizationServices)
+      .settingsDecoder(authotizationServices, caseMappingEquality)
       .map(settings => RuleWithVariableUsageDefinition.create(new ExternalAuthorizationRule(settings, caseMappingEquality)))
   )
 
 object ExternalAuthorizationRuleDecoder {
 
-  private def settingsDecoder(authorizationServices: Definitions[ExternalAuthorizationService])
-                             (implicit caseMappingEquality: UserIdCaseMappingEquality): Decoder[ExternalAuthorizationRule.Settings] = {
+  private def settingsDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
+                              caseMappingEquality: UserIdCaseMappingEquality): Decoder[ExternalAuthorizationRule.Settings] = {
+    implicit val orderUserId: Order[User.Id] = caseMappingEquality.toOrder
     Decoder
       .instance { c =>
         for {

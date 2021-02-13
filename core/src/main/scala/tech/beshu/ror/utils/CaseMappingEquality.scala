@@ -18,12 +18,10 @@ package tech.beshu.ror.utils
 
 import cats._
 import cats.implicits._
-import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, RepositoryName, SnapshotName}
 
-import language.implicitConversions
+import scala.language.implicitConversions
 
-trait CaseMappingEquality[A] {
-  def show: Show[A]
+trait CaseMappingEquality[A] extends Show[A] {
   def mapCases: String => String
 }
 
@@ -32,13 +30,13 @@ object CaseMappingEquality {
 
   def summonJava[A](implicit caseMappingEquality: CaseMappingEquality[A]): CaseMappingEqualityJava[A] =
     new CaseMappingEqualityJava[A] {
-      override def show(a: A): String = caseMappingEquality.show.show(a)
+      override def show(a: A): String = caseMappingEquality.show(a)
 
       override def mapCases(from: String): String = caseMappingEquality.mapCases(from)
     }
 
-  def instance[A: Show](_mapCases: String => String): CaseMappingEquality[A] = new CaseMappingEquality[A] {
-    override def show: Show[A] = implicitly[Show[A]]
+  def instance[A](_show:A => String, _mapCases: String => String): CaseMappingEquality[A] = new CaseMappingEquality[A] {
+    override def show(t: A): String = _show(t)
 
     override def mapCases: String => String = _mapCases
   }
@@ -48,13 +46,14 @@ object CaseMappingEquality {
       .contramap(caseMappingEquality.mapCases)
       .contramap(_.show)
 
-  implicit def showCaseMappingEquality[A](implicit caseMappingEquality: CaseMappingEquality[A]): Show[A] =
-    caseMappingEquality.show
+  implicit final class Ops[A](val value:CaseMappingEquality[A]) extends AnyVal {
+    def toOrder: Order[A] = orderCaseMappingEquality(value)
+  }
 
   implicit val contravariantCaseMappingEquality: Contravariant[CaseMappingEquality] = {
     new Contravariant[CaseMappingEquality] {
       override def contramap[A, B](fa: CaseMappingEquality[A])(f: B => A): CaseMappingEquality[B] =
-        CaseMappingEquality.instance[B](fa.mapCases)(fa.show.contramap(f))
+        CaseMappingEquality.instance[B](Show(fa).contramap(f).show, fa.mapCases)
     }
   }
 }

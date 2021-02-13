@@ -18,10 +18,7 @@ package tech.beshu.ror.utils
 
 import java.util.Locale
 
-import cats.Eq
-import cats.implicits._
-
 object StringCaseMapping {
-  val caseSensitiveEquality: CaseMappingEquality[String] = CaseMappingEquality.instance(identity)
-  val caseInsensitiveEquality: CaseMappingEquality[String] = CaseMappingEquality.instance(_.toUpperCase(Locale.ENGLISH))
+  val caseSensitiveEquality: CaseMappingEquality[String] = CaseMappingEquality.instance(identity, identity)
+  val caseInsensitiveEquality: CaseMappingEquality[String] = CaseMappingEquality.instance(identity, _.toUpperCase(Locale.ENGLISH))
 }

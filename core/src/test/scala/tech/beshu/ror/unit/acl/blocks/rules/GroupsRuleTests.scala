@@ -47,6 +47,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import cats.Eq
 
 class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
@@ -209,7 +210,7 @@ object GroupsRuleTests {
     override val name: Rule.Name = Rule.Name("dummy-rejecting")
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = Task.now(Rejected())
     override def exists(user: User.Id)
-                       (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] =
+                       (implicit userIdEq: Eq[User.Id]): Task[UserExistence] =
       Task.now(UserExistence.CannotCheck)
 
     override protected val caseMappingEquality: UserIdCaseMappingEquality = TestsUtils.userIdEq
@@ -221,7 +222,7 @@ object GroupsRuleTests {
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
       Task.raiseError(new Exception("Sth went wrong"))
     override def exists(user: User.Id)
-                       (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
+                       (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
     override protected val caseMappingEquality: UserIdCaseMappingEquality = TestsUtils.userIdEq
   }
 

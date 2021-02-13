@@ -43,6 +43,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
   import tech.beshu.ror.utils.TestsUtils.userIdEq

@@ -28,7 +28,6 @@ import io.circe.parser._
 import io.circe.{Decoder, Encoder}
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.domain.Header.Name.setCookie
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Header, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.request.RorSessionCookie.ExtractingError.{Absent, Expired, Invalid}
 import tech.beshu.ror.accesscontrol.show.logs._
@@ -37,7 +36,6 @@ import tech.beshu.ror.providers.UuidProvider
 
 import scala.collection.JavaConverters._
 import scala.util.Try
-import tech.beshu.ror.utils.CaseMappingEquality._
 
 final case class RorSessionCookie(userId: User.Id, expiryDate: Instant)
 
@@ -55,7 +53,7 @@ object RorSessionCookie extends Logging {
                   user: LoggedUser)
                  (implicit clock: Clock,
                   uuidProvider: UuidProvider,
-                  caseMappingEquality: UserIdCaseMappingEquality): Either[ExtractingError, RorSessionCookie] = {
+                  userIdEq: Eq[User.Id]): Either[ExtractingError, RorSessionCookie] = {
     for {
       httpCookie <- extractRorHttpCookie(context).toRight(Absent)
       cookieAndSignature <- parseRorSessionCookieAndSignature(httpCookie).left.map(_ => Invalid: ExtractingError)
@@ -91,7 +89,7 @@ object RorSessionCookie extends Logging {
                           loggedUser: LoggedUser)
                          (implicit clock: Clock,
                           uuidProvider: UuidProvider,
-                          caseMappingEquality: UserIdCaseMappingEquality): Either[ExtractingError, Unit] = {
+                          userIdEq: Eq[User.Id]): Either[ExtractingError, Unit] = {
     val now = Instant.now(clock)
     if (cookie.userId =!= loggedUser.id) {
       logger.warn(s"this cookie does not belong to the user logged in as. Found in Cookie: ${cookie.userId.show} whilst in Authentication: ${loggedUser.id.show}")

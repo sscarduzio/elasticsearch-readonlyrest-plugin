@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.domain.Credentials
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 
 final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings,
-                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+                                       implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseBasicAuthenticationRule
     with NoImpersonationSupport {
 

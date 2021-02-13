@@ -173,11 +173,11 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                                         definitions: DefinitionsPack,
                                         rorIndexNameConfiguration: RorConfigurationIndex,
                                         globalSettings: GlobalSettings): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] = {
-    implicit val caseMappingEquality: UserIdCaseMappingEquality = createUserMapingEquality(globalSettings)
+    val caseMappingEquality: UserIdCaseMappingEquality = createUserMapingEquality(globalSettings)
     State(cursor => {
       if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
-        ruleDecoderBy(Rule.Name(name), definitions, rorIndexNameConfiguration, globalSettings) match {
+        ruleDecoderBy(Rule.Name(name), definitions, rorIndexNameConfiguration, globalSettings, caseMappingEquality) match {
           case Some(decoder) =>
             val decodingResult = decoder.decode(
               cursor.downField(name),
@@ -188,7 +188,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                 .associatedFields
                 .foldLeft(json.remove(name)) {
                   case (currentJson, field) =>
-                    ruleDecoderBy(Rule.Name(field), definitions, rorIndexNameConfiguration, globalSettings) match {
+                    ruleDecoderBy(Rule.Name(field), definitions, rorIndexNameConfiguration, globalSettings, caseMappingEquality) match {
                       case Some(_) => currentJson
                       case None => currentJson.remove(field)
                     }
@@ -275,7 +275,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                          rorIndexNameConfiguration: RorConfigurationIndex,
                          globalSettings: GlobalSettings): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] = {
-    implicit val caseMappingEquality: UserIdCaseMappingEquality = createUserMapingEquality(globalSettings)
+    val caseMappingEquality: UserIdCaseMappingEquality = createUserMapingEquality(globalSettings)
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
@@ -284,8 +284,8 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
-        impersonationDefs <- AsyncDecoderCreator.from(ImpersonationDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, caseMappingEquality))
-        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, impersonationDefs, caseMappingEquality))
+        impersonationDefs <- AsyncDecoderCreator.from(ImpersonationDefinitionsDecoder.instance(caseMappingEquality)(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
+        userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(caseMappingEquality)(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs, impersonationDefs))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocks <- {
           implicit val loggingContext: LoggingContext = LoggingContext(obfuscatedHeaders)

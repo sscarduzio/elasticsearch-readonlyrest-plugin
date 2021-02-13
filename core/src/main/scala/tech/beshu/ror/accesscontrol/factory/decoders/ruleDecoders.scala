@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
+import cats.Eq
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules._
-import tech.beshu.ror.accesscontrol.domain.RorConfigurationIndex
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{RorConfigurationIndex, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
@@ -34,10 +35,11 @@ object ruleDecoders {
   def ruleDecoderBy(name: Rule.Name,
                     definitions: DefinitionsPack,
                     rorIndexNameConfiguration: RorConfigurationIndex,
-                    globalSettings: GlobalSettings)
+                    globalSettings: GlobalSettings,
+                    caseMappingEquality: UserIdCaseMappingEquality)
                    (implicit clock: Clock,
-                    uuidProvider: UuidProvider,
-                    caseMappingEquality: UserIdCaseMappingEquality): Option[RuleBaseDecoder[_ <: Rule]] =
+                    uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] = {
+    implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
@@ -59,7 +61,7 @@ object ruleDecoders {
       case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.name => Some(MethodsRuleDecoder)
       case RepositoriesRule.name => Some(new RepositoriesRuleDecoder)
-      case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder)
+      case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder())
       case SnapshotsRule.name => Some(new SnapshotsRuleDecoder)
       case UriRegexRule.name => Some(new UriRegexRuleDecoder)
       case UsersRule.name => Some(new UsersRuleDecoder()(caseMappingEquality))
@@ -76,6 +78,7 @@ object ruleDecoders {
           caseMappingEquality
         )
     }
+  }
 
   def authenticationRuleDecoderBy(name: Rule.Name,
                                   authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],

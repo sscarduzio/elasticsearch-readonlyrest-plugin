@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
+import cats.Order
 import cats.data.NonEmptySet
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.ProxyAuth
@@ -53,7 +54,7 @@ private object ProxyAuthRuleDecoder {
       .map(ProxyAuthRule.Settings(_, defaultUserHeaderName))
 
   private def extendedSettingsDecoder(authProxiesDefinitions: Definitions[ProxyAuth])
-                                     (implicit caseMappingEquality: UserIdCaseMappingEquality): Decoder[ProxyAuthRule.Settings] =
+                                     (implicit orderUserId: Order[User.Id]): Decoder[ProxyAuthRule.Settings] =
     Decoder.instance { c =>
       for {
         users <- nonEmptySetOfUserIdsDecoder.tryDecode(c.downField("users"))
@@ -69,7 +70,7 @@ private object ProxyAuthRuleDecoder {
       } yield settings
     }
 
-  implicit def nonEmptySetOfUserIdsDecoder(implicit caseMappingEquality: UserIdCaseMappingEquality): Decoder[NonEmptySet[User.Id]] =
+  implicit def nonEmptySetOfUserIdsDecoder(implicit orderUserId: Order[User.Id]): Decoder[NonEmptySet[User.Id]] =
     DecoderHelpers.decodeNonEmptyStringLikeOrNonEmptySet(User.Id.apply)
 
 }

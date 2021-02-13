@@ -32,7 +32,7 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec w
   override protected def configYaml: String =
     """
       |readonlyrest:
-      |  username_mapping: case_insensitive
+      |  username_case_sensitivity: case_insensitive
       |
       |  access_control_rules:
       |  - name: "Allowed only for group1 and group2"

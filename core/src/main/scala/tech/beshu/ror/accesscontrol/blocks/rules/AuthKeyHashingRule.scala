@@ -47,7 +47,7 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[Has
   }
 
   override final def exists(user: User.Id)
-                           (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] = Task.now {
+                           (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now {
     settings.credentials match {
       case HashedUserAndPassword(_) => UserExistence.CannotCheck
       case HashedOnlyPassword(userId, _) if userId === user => UserExistence.Exists

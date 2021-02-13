@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.Show
 import cats.data.EitherT
 import cats.implicits._
+import cats.{Eq, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
@@ -103,18 +103,19 @@ object Rule {
     protected def impersonators: List[ImpersonatorDef]
 
     protected def exists(user: User.Id)
-                        (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence]
+                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence]
 
     def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
 
     override final def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
+      implicit val eqUserId: Eq[User.Id] = caseMappingEquality.toOrder
       val requestContext = blockContext.requestContext
       requestContext.impersonateAs match {
         case Some(theImpersonatedUserId) => toRuleResult[B] {
           for {
-            impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, requestContext)(caseMappingEquality)
+            impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, requestContext)
             _ <- authenticateImpersonator(impersonatorDef, blockContext)
-            _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId)(caseMappingEquality)
+            _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId)
           } yield {
             blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, impersonatorDef.id)))
           }
@@ -128,7 +129,7 @@ object Rule {
 
     private def findImpersonatorWithProperRights[B <: BlockContext](theImpersonatedUserId: User.Id,
                                                                     requestContext: RequestContext)
-                                                                   (implicit caseMappingEquality: UserIdCaseMappingEquality) = {
+                                                                   (implicit userIdEq: Eq[User.Id]) = {
       EitherT.fromOption[Task](
         requestContext
           .basicAuth
@@ -155,7 +156,7 @@ object Rule {
     }
 
     private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id)
-                                                                  (implicit caseMappingEquality: UserIdCaseMappingEquality) = EitherT {
+                                                                  (implicit userIdEq: Eq[User.Id]) = EitherT {
       exists(theImpersonatedUserId)
         .map {
           case Exists => Right(())
@@ -188,7 +189,7 @@ object Rule {
     override protected val impersonators: List[ImpersonatorDef] = Nil
 
     override final protected def exists(user: User.Id)
-                                       (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] =
+                                       (implicit userIdEq: Eq[User.Id]): Task[UserExistence] =
       Task.now(CannotCheck)
   }
 

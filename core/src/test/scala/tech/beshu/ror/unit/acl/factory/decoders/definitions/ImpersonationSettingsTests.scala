@@ -30,13 +30,12 @@ import tech.beshu.ror.utils.{TestsUtils, UserIdEq}
 import tech.beshu.ror.utils.CaseMappingEquality._
 
 class ImpersonationSettingsTests extends BaseDecoderTest(
-  ImpersonationDefinitionsDecoder.instance(
+  ImpersonationDefinitionsDecoder.instance(UserIdEq.caseSensitive)(
     Definitions[ExternalAuthenticationService](Nil),
     Definitions[ProxyAuth](Nil),
     Definitions[JwtDef](Nil),
     Definitions[LdapService](Nil),
     Definitions[RorKbnDef](Nil),
-    UserIdEq.caseSensitive,
   )
 ) {
 

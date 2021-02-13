@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
+import cats.Eq
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -25,7 +26,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCrede
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
-import tech.beshu.ror.utils.CaseMappingEquality._
 
 import java.util.regex.Pattern
 
@@ -38,12 +38,13 @@ final class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashe
 
   override protected def compare(configuredCredentials: UnixHashedCredentials,
                                  credentials: Credentials): Task[Boolean] = Task {
+    import tech.beshu.ror.utils.CaseMappingEquality._
     configuredCredentials.userId === credentials.user &&
       configuredCredentials.from(credentials).contains(configuredCredentials)
   }
 
   override def exists(user: User.Id)
-                     (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] = Task.now {
+                     (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now {
     if (user === settings.credentials.userId) UserExistence.Exists
     else UserExistence.NotExist
   }

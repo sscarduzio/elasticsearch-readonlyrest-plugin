@@ -15,7 +15,7 @@
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
-
+import cats.Eq
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
-import tech.beshu.ror.utils.CaseMappingEquality._
 
 final class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
                         override val impersonators: List[ImpersonatorDef],
@@ -35,11 +34,12 @@ final class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
 
   override protected def compare(configuredCredentials: Credentials,
                                  credentials: Credentials): Task[Boolean] = Task.now {
+    import tech.beshu.ror.utils.CaseMappingEquality._
     configuredCredentials === credentials
   }
 
   override def exists(user: User.Id)
-                     (implicit caseMappingEquality: UserIdCaseMappingEquality): Task[UserExistence] = Task.now {
+                     (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now {
     if (user === settings.credentials.user) UserExistence.Exists
     else UserExistence.NotExist
   }

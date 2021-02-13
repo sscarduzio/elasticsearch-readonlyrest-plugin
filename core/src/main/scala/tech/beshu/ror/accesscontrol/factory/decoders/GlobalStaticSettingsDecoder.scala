@@ -36,7 +36,7 @@ object GlobalStaticSettingsDecoder {
           basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
           forbiddenMessage <- c.downField("response_if_req_forbidden").as[Option[String]]
           flsEngine <- c.downField("fls_engine").as[GlobalSettings.FlsEngine](flsEngineDecoder(rorMode))
-          caseMapping <- c.downField("username_mapping").as[GlobalSettings.UsernameCaseMapping]
+          caseMapping <- c.downField("username_case_sensitivity").as[GlobalSettings.UsernameCaseMapping]
         } yield new GlobalSettings(
           basicAuthPrompt.getOrElse(true),
           forbiddenMessage.getOrElse("forbidden"),

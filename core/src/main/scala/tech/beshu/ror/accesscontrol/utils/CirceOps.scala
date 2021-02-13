@@ -306,14 +306,14 @@ object CirceOps {
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
 
-    def tryDecodeAuthRule(username: User.Id)
+    def tryDecodeAuthRule(username: User.Id,
+                         caseMappingEquality: UserIdCaseMappingEquality)
                          (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                           authProxyDefinitions: Definitions[ProxyAuth],
                           jwtDefinitions: Definitions[JwtDef],
                           ldapDefinitions: Definitions[LdapService],
                           rorKbnDefinitions: Definitions[RorKbnDef],
-                          imperonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
-                          caseMappingEquality: UserIdCaseMappingEquality) = {
+                          imperonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
       value.keys.map(_.toList) match {
         case None | Some(Nil) =>
           Left(Message(s"No authentication method defined for user ['${username.show}']"))

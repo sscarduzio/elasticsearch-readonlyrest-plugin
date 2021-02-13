@@ -18,8 +18,7 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import java.net.URI
 import java.util.concurrent.TimeUnit
-
-import cats.Show
+import cats.{Show, Order}
 import cats.data.NonEmptySet
 import cats.implicits._
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
@@ -48,6 +47,7 @@ import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import tech.beshu.ror.utils.CaseMappingEquality._
+
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -122,7 +122,7 @@ object common extends Logging {
       .withError(ValueLevelCreationError(Message("Non empty list of groups are required")))
       .decoder
 
-  implicit def usersNesDecoder(implicit caseMappingEquality: UserIdCaseMappingEquality): Decoder[NonEmptySet[User.Id]] =
+  implicit def usersNesDecoder(implicit userIdEq: Order[User.Id]): Decoder[NonEmptySet[User.Id]] =
     DecoderHelpers
       .decodeStringLikeOrNonEmptySet[User.Id]
       .toSyncDecoder
