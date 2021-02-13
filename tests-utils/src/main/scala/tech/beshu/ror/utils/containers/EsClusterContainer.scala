@@ -129,7 +129,7 @@ final case class EsClusterSettings(name: String,
                                    rorContainerSpecification: ContainerSpecification = ContainerSpecification(Map.empty),
                                    dependentServicesContainers: List[DependencyDef] = Nil,
                                    xPackSupport: Boolean,
-                                   configHotReloadingEnabled: Boolean = true,
+                                   configHotReloadingEnabled: Boolean = false,
                                    customRorIndexName: Option[String] = None,
                                    internodeSslEnabled: Boolean = false,
                                    esVersion: EsVersion = EsVersion.DeclaredInProject)(implicit val rorConfigFileName: String)

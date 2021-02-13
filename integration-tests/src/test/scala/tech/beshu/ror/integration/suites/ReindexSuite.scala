@@ -40,13 +40,17 @@ trait ReindexSuite
   "A reindex request" should {
     "be able to proceed" when {
       "user has permission to source index and dest index"  in {
-        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test1_index"))
+        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test1_index", "test1_index_reindexed"))
         assertEquals(200, result.getResponseCode)
       }
     }
     "not be able to proceed" when {
-      "user has no permission to source index and dest index"  in {
-        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test2_index"))
+      "user has no permission to source index and dest index which are present on ES"  in {
+        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test2_index", "test2_index_reindexed"))
+        assertEquals(401, result.getResponseCode)
+      }
+      "user has no permission to source index and dest index which are absent on ES"  in {
+        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("not_allowed_index", "not_allowed_index_reindexed"))
         assertEquals(401, result.getResponseCode)
       }
     }
@@ -61,7 +65,7 @@ object ReindexSuite {
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
   }
 
-  private def reindexPayload(indexName: String) = {
-    s"""{"source":{"index":"$indexName"},"dest":{"index":"${indexName}_reindexed"}}"""
+  private def reindexPayload(sourceIndexName: String, destIndexName: String) = {
+    s"""{"source":{"index":"$sourceIndexName"},"dest":{"index":"${destIndexName}"}}"""
   }
 }
