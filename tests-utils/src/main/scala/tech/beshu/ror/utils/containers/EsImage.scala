@@ -36,8 +36,8 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
   def create(config: CONFIG): ImageFromDockerfile = {
     import config._
     val baseDockerImage =
-      if (shouldUseEsOssImage(config)) "docker.elastic.co/elasticsearch/elasticsearch-oss"
-      else "docker.elastic.co/elasticsearch/elasticsearch"
+      if (shouldUseEsNonOssImage(config)) "docker.elastic.co/elasticsearch/elasticsearch"
+      else "docker.elastic.co/elasticsearch/elasticsearch-oss"
 
     entry(config)
       .withDockerfileFromBuilder((builder: DockerfileBuilder) => {
@@ -49,14 +49,14 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         RunCommandCombiner.empty
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(!shouldUseEsOssImage(config),
+          .runWhen(shouldUseEsNonOssImage(config),
             "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(customRorIndexName.isDefined, s"echo 'readonlyrest.settings_index: ${customRorIndexName.get}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-          .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
+//          .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties") // todo:
           .applyTo(builder)
           .user("root")
 
@@ -112,9 +112,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
 
   private def rorHotReloading(enabled: Boolean) = List(if(!enabled) "-Dcom.readonlyrest.settings.refresh.interval=0" else "")
 
-  private def shouldUseEsOssImage(config: Config) = {
-    !config.xPackSupport &&
-      Version.greaterOrEqualThan(config.esVersion, 6, 3, 0) &&
-      Version.lowerThan(config.esVersion, 7, 11, 0)
+  private def shouldUseEsNonOssImage(config: Config) = {
+    config.xPackSupport ||
+      Version.lowerThan(config.esVersion, 6, 3, 0) ||
+      Version.greaterOrEqualThan(config.esVersion, 7, 11, 0)
   }
 }
