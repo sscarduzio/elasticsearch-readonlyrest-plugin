@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.plugin
 
-import tech.beshu.ror.integration.suites.ReIndexMultipleDifferentEsSuite
+import tech.beshu.ror.integration.suites.RemoteReindexSuite
 import tech.beshu.ror.integration.utils.PluginTestSupport
 
-class ReIndexMultipleDifferentEsPluginTests extends ReIndexMultipleDifferentEsSuite with PluginTestSupport
+class RemoteReindexPluginTests extends RemoteReindexSuite with PluginTestSupport
