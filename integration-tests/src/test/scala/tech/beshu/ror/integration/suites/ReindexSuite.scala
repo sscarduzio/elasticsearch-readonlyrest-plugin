@@ -53,6 +53,14 @@ trait ReindexSuite
         val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("not_allowed_index", "not_allowed_index_reindexed"))
         assertEquals(401, result.getResponseCode)
       }
+      "user has permission to source index and but no permission to dest index"  in {
+        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test1_index", "not_allowed_index_reindexed"))
+        assertEquals(401, result.getResponseCode)
+      }
+      "user has permission to dest index and but no permission to source index"  in {
+        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("not_allowed_index", "test1_index_reindexed"))
+        assertEquals(401, result.getResponseCode)
+      }
     }
   }
 }

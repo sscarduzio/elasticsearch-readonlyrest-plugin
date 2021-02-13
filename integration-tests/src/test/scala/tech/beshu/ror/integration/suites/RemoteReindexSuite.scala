@@ -46,7 +46,6 @@ trait RemoteReindexSuite extends WordSpec
   private lazy val destEsCluster = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR_DEST_ES",
-      nodeDataInitializer = destEsDataInitializer(),
       rorContainerSpecification = ContainerSpecification(
         Map(
           "reindex.remote.whitelist" -> "*:9200",
@@ -100,40 +99,10 @@ trait RemoteReindexSuite extends WordSpec
     }
   }
 
-  "A local reindex request on dest ES" should {
-    "be able to proceed" when {
-      "request specifies source and dest index that are allowed" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.localReindexPayload("test3_index", "test3_index_reindexed"))
-        assertEquals(200, result.getResponseCode)
-      }
-    }
-    "be blocked" when {
-      "request specifies source index that is allowed, but dest that isn't allowed" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.localReindexPayload("test3_index", "not_allowed_index"))
-        assertEquals(401, result.getResponseCode)
-      }
-      "request specifies source index that isn't allowed, but dest that is allowed" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.localReindexPayload("not_allowed_index", "test3_index_reindexed"))
-        assertEquals(401, result.getResponseCode)
-      }
-      "request specifies both source index and dest index that are not allowed" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.localReindexPayload("not_allowed_index", "not_allowed_index_reindexed"))
-        assertEquals(401, result.getResponseCode)
-      }
-    }
-  }
-
   protected def sourceEsDataInitializer(): ElasticsearchNodeDataInitializer = {
     (esVersion: String, adminRestClient: RestClient) => {
       val documentManager = new DocumentManager(adminRestClient, esVersion)
       documentManager.createDoc("test1_index", "Sometype", 1, ujson.read("""{"hello":"world"}"""))
-    }
-  }
-
-  protected def destEsDataInitializer(): ElasticsearchNodeDataInitializer = {
-    (esVersion: String, adminRestClient: RestClient) => {
-      val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc("test3_index", 1, ujson.read("""{"hello":"world"}"""))
     }
   }
 }
@@ -150,18 +119,6 @@ object RemoteReindexSuite {
        |			"username": "$username",
        |			"password": "test"
        |		}
-       |	},
-       |	"dest": {
-       |		"index": "$destIndexName"
-       |	}
-       |}""".stripMargin
-  }
-
-  private def localReindexPayload(sourceIndexName: String, destIndexName: String) = {
-    s"""
-       |{
-       |	"source": {
-       |		"index": "$sourceIndexName"
        |	},
        |	"dest": {
        |		"index": "$destIndexName"
