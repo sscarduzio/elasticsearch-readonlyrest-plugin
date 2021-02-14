@@ -33,7 +33,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
-import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction}
+import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
@@ -244,6 +244,12 @@ object domain {
     def isRepository: Boolean = value.contains("/repository/")
     def isTemplate: Boolean = value.contains("/template/")
     def isPutTemplate: Boolean = value == "indices:admin/template/put"
+    def isRorAction: Boolean = List(
+      rorUserMetadataAction,
+      rorConfigAction,
+      rorAuditEventAction,
+      rorOldConfigAction
+    ).contains(this)
     def isSearchAction: Boolean = List(
       searchAction,
       mSearchAction,
