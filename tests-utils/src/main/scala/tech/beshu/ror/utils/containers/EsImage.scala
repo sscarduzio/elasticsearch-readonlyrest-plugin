@@ -49,14 +49,14 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
         RunCommandCombiner.empty
           .run("/usr/share/elasticsearch/bin/elasticsearch-plugin remove x-pack --purge || rm -rf /usr/share/elasticsearch/plugins/*")
           .run("grep -v xpack /usr/share/elasticsearch/config/elasticsearch.yml > /tmp/xxx.yml && mv /tmp/xxx.yml /usr/share/elasticsearch/config/elasticsearch.yml")
-          .runWhen(shouldUseEsNonOssImage(config),
+          .runWhen(shouldDisableXpack(config),
             "echo 'xpack.security.enabled: false' >> /usr/share/elasticsearch/config/elasticsearch.yml"
           )
           .runWhen(externalSslEnabled, "echo 'http.type: ssl_netty4' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(internodeSslEnabled, "echo 'transport.type: ror_ssl_internode' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(!configHotReloadingEnabled, "echo 'readonlyrest.force_load_from_file: true' >> /usr/share/elasticsearch/config/elasticsearch.yml")
           .runWhen(customRorIndexName.isDefined, s"echo 'readonlyrest.settings_index: ${customRorIndexName.get}' >> /usr/share/elasticsearch/config/elasticsearch.yml")
-//          .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties") // todo:
+          .run("sed -i \"s|debug|info|g\" /usr/share/elasticsearch/config/log4j2.properties")
           .applyTo(builder)
           .user("root")
 
@@ -116,5 +116,9 @@ trait EsImage[CONFIG <: EsContainer.Config] extends StrictLogging {
     config.xPackSupport ||
       Version.lowerThan(config.esVersion, 6, 3, 0) ||
       Version.greaterOrEqualThan(config.esVersion, 7, 11, 0)
+  }
+
+  private def shouldDisableXpack(config: Config) = {
+    shouldUseEsNonOssImage(config) && Version.greaterOrEqualThan(config.esVersion, 6, 3, 0)
   }
 }
