@@ -162,15 +162,15 @@ stages:
       fetchDepth: 1
       clean: false
       persistCredentials: true
-    
+
     # Populate the global variable mvn_status for later
     - script: |
        PLUGIN_VER=$(awk -F= '$1=="pluginVersion" {print $2}' gradle.properties)
        URL="https://oss.sonatype.org/service/local/repositories/releases/content/tech/beshu/ror/audit_2.12/$PLUGIN_VER/"
        echo "Maven artifact URL to check: $URL"
        MVN_STATUS=$(curl --write-out '%{http_code}' --output /dev/null "$URL")
-       echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS" 
-    
+       echo "##vso[task.setvariable variable=mvn_status]$MVN_STATUS"
+
     - script: |
        echo ">> MVN_STATUS WAS 200. Artifact already present, no need to proceed further with Maven publishing."
       condition: eq(200, variables.mvn_status)
@@ -178,8 +178,8 @@ stages:
     - script: |
        echo ">> MVN_STATUS WAS 404. Artifact not present in Maven repository, proceeding with publishing."
       condition: eq(404, variables.mvn_status)
+
     - task: DownloadSecureFile@1
-      #condition: eq(404, variables.mvn_status)
       name: pgp
       displayName: 'Download secret.pgp secret file'
       inputs:

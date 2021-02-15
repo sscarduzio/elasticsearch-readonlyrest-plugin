@@ -45,10 +45,9 @@ class FieldsRule(val settings: Settings)
   override val name: Rule.Name = FieldsRule.name
 
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    if (blockContext.requestContext.isReadOnlyRequest) {
-      handleReadOnlyRequest(blockContext)
-    } else {
-      RuleResult.Rejected()
+    blockContext.requestContext match {
+      case r if r.isReadOnlyRequest && !r.action.isRorAction => handleReadOnlyRequest(blockContext)
+      case _ => RuleResult.Rejected()
     }
   }
 

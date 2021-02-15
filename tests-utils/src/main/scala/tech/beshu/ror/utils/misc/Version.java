@@ -33,6 +33,14 @@ public class Version {
     return compare(esVersion, maj, min, patchLevel, result -> result > 0);
   }
 
+  public static boolean lowerOrEqualThan(String esVersion, int maj, int min, int patchLevel) {
+    return compare(esVersion, maj, min, patchLevel, result -> result <= 0);
+  }
+
+  public static boolean lowerThan(String esVersion, int maj, int min, int patchLevel) {
+    return compare(esVersion, maj, min, patchLevel, result -> result < 0);
+  }
+
   private static boolean compare(String esVersion, int maj, int min, int patchLevel, Function<Integer, Boolean> comparator) {
     if (Strings.isNullOrEmpty(esVersion)) {
       throw new IllegalArgumentException("invalid esVersion: " + esVersion);
