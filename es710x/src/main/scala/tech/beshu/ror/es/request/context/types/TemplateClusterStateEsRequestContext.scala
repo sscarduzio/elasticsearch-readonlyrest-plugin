@@ -24,7 +24,6 @@ import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
 import org.elasticsearch.cluster.ClusterState
 import org.elasticsearch.cluster.metadata.Metadata
-import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
@@ -86,28 +85,40 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
         val filteredTemplates = oldMetadata
           .templates().valuesIt().asScala.toSet
           .filter { t =>
-            // todo: here is template name and we want to check if tempalte pattern applies to it
+            // todo: here is template name and we want to check if template pattern applies to it
             TemplateNamePattern
               .fromString(t.name())
               .exists(allowedTemplates.contains)
           }
-
-        val newMetadataWithFilteredTemplates = oldMetadata.templates().valuesIt().asScala
-          .foldLeft(new Metadata.Builder(oldMetadata)) {
-            case (acc, elem) => acc.removeTemplate(elem.name())
+          .map(_.name())
+        val filteredTemplatesV2 = oldMetadata
+          .templatesV2().keySet().asScala.toSet
+          .filter { name =>
+            TemplateNamePattern
+              .fromString(name)
+              .exists(allowedTemplates.contains)
           }
-          .templates(
-            ImmutableOpenMap
-              .builder(filteredTemplates.size)
-              .putAll(filteredTemplates.map(t => (t.name(), t)).toMap.asJava)
-              .build()
-          )
+
+        val newMetadataWithFilteredTemplates = oldMetadata
+          .templates().keysIt().asScala
+          .foldLeft(new Metadata.Builder(oldMetadata)) {
+            case (acc, templateName) if filteredTemplates.contains(templateName) => acc
+            case (acc, templateName) => acc.removeTemplate(templateName)
+          }
+          .build()
+
+        val newMetadataWithFilteredTemplatesV2 = newMetadataWithFilteredTemplates
+          .templatesV2().keySet().asScala
+          .foldLeft(new Metadata.Builder(newMetadataWithFilteredTemplates)) {
+            case (acc, templateName) if filteredTemplatesV2.contains(templateName) => acc
+            case (acc, templateName) => acc.removeIndexTemplate(templateName)
+          }
           .build()
 
         val modifiedClusterState =
           ClusterState
             .builder(response.getState)
-            .metadata(newMetadataWithFilteredTemplates)
+            .metadata(newMetadataWithFilteredTemplatesV2)
             .build()
 
         new ClusterStateResponse(

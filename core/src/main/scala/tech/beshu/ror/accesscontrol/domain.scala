@@ -247,6 +247,12 @@ object domain {
       putTemplateAction,
       putIndexTemplateAction
     ).contains(this)
+    def isRorAction: Boolean = List(
+      rorUserMetadataAction,
+      rorConfigAction,
+      rorAuditEventAction,
+      rorOldConfigAction
+    ).contains(this)
     def isSearchAction: Boolean = List(
       searchAction,
       mSearchAction,

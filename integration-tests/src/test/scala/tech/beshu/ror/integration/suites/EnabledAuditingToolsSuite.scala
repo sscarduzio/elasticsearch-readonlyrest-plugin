@@ -197,7 +197,7 @@ trait EnabledAuditingToolsSuite
         "no JSON kay attribute from request body payload is defined in audit serializer" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"))
 
-          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
+          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }""")).force()
 
           response.responseCode shouldBe 204
 

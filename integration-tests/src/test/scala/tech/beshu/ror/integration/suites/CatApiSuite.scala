@@ -32,6 +32,7 @@ trait CatApiSuite
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/cat_api/readonlyrest.yml"
+
   override lazy val rorContainer: EsClusterContainer = SingletonEsContainer.singleton
 
   private lazy val dev1ClusterStateManager = new CatManager(basicAuthClient("dev1", "test"), esVersion = targetEs.esVersion)
@@ -155,8 +156,7 @@ trait CatApiSuite
               val templates = dev1ClusterStateManager.templates()
 
               templates.responseCode should be(200)
-              templates.results.size should be(1)
-              templates.results(0)("name") should be(Str("temp1"))
+              templates.results.arr.map(_("name").str).toList should contain("temp1")
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing(
@@ -167,8 +167,7 @@ trait CatApiSuite
               val templates = dev1ClusterStateManager.templates()
 
               templates.responseCode should be(200)
-              templates.results.size should be(1)
-              templates.results(0)("name") should be(Str("temp1"))
+              templates.results.arr.map(_("name").str).toList should contain("temp1")
             }
           }
           "template has index pattern with no wildcard" when {
@@ -181,8 +180,7 @@ trait CatApiSuite
               val templates = dev1ClusterStateManager.templates()
 
               templates.responseCode should be(200)
-              templates.results.size should be(1)
-              templates.results(0)("name") should be(Str("temp1"))
+              templates.results.arr.map(_("name").str).toList should contain("temp1")
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing(
@@ -193,8 +191,7 @@ trait CatApiSuite
               val templates = dev1ClusterStateManager.templates()
 
               templates.responseCode should be(200)
-              templates.results.size should be(1)
-              templates.results(0)("name") should be(Str("temp1"))
+              templates.results.arr.map(_("name").str).toList should contain("temp1")
             }
           }
         }
@@ -210,8 +207,7 @@ trait CatApiSuite
               val templates = dev1ClusterStateManager.templates()
 
               templates.responseCode should be(200)
-              templates.results.size should be(1)
-              templates.results(0)("name") should be(Str("temp1"))
+              templates.results.arr.map(_("name").str).toList should contain("temp1")
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing(
@@ -223,8 +219,7 @@ trait CatApiSuite
               val templates = dev1ClusterStateManager.templates()
 
               templates.responseCode should be(200)
-              templates.results.size should be(1)
-              templates.results(0)("name") should be(Str("temp1"))
+              templates.results.arr.map(_("name").str).toList should contain("temp1")
             }
           }
           "template has index pattern with no wildcard" when {
@@ -238,8 +233,7 @@ trait CatApiSuite
               val templates = dev1ClusterStateManager.templates()
 
               templates.responseCode should be(200)
-              templates.results.size should be(1)
-              templates.results(0)("name") should be(Str("temp1"))
+              templates.results.arr.map(_("name").str).toList should contain("temp1")
             }
             "rule has index pattern with no wildcard" in {
               adminTemplateManager.insertTemplateAndWaitForIndexing(
@@ -251,19 +245,12 @@ trait CatApiSuite
               val templates = dev1ClusterStateManager.templates()
 
               templates.responseCode should be(200)
-              templates.results.size should be(1)
-              templates.results(0)("name") should be(Str("temp1"))
+              templates.results.arr.map(_("name").str).toList should contain("temp1")
             }
           }
         }
       }
       "be allowed to get specific template using /_cat/templates API" when {
-        "there is no template at all" in {
-          val templates = dev1ClusterStateManager.templates()
-
-          templates.responseCode should be(200)
-          templates.results.size should be(0)
-        }
         "there is no index defined for it" when {
           "template has index pattern with wildcard" when {
             "rule has index pattern with wildcard" in {

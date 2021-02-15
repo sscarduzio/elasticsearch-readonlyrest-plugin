@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
+import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{RequestFieldsUsage, Strategy}
@@ -203,6 +204,18 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         )
       }
     }
+    "request is ROR admin request" should {
+      "not match" in {
+        assertRejectRule(
+          config = Configuration(
+            flsEngine = FlsEngine.ESWithLucene,
+            fields = Fields(NonEmptyList.of("_field1", "_field2"), AccessMode.Whitelist)
+          ),
+          requestContext = MockRequestContext.readOnlyAdmin[FilterableRequestBlockContext],
+          incomingBlockContext = emptyFilterable(requestFieldsUsage = RequestFieldsUsage.NotUsingFields)
+        )
+      }
+    }
     "some other non filterable request is readonly" should {
       "not update block context with fields security strategy" in {
         val rule = createRule(
@@ -215,6 +228,7 @@ class FieldsRuleTests extends WordSpec with MockFactory with Inside {
         val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         (requestContext.isReadOnlyRequest _).expects().returning(true)
+        (requestContext.action _).expects().returning(MockRequestContext.DefaultAction)
 
         inside(rule.check(incomingBlockContext).runSyncStep) {
           case Right(Fulfilled(outBlockContext)) =>

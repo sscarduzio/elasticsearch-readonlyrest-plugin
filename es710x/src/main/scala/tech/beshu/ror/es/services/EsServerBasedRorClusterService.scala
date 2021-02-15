@@ -94,7 +94,8 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           indexPatterns <- UniqueNonEmptyList.fromList(
             templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString).toList
           )
-          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
+          aliases = templateMetaData.template().asSafeSet
+            .flatMap(_.aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet)
         } yield Template.IndexTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
