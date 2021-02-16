@@ -56,7 +56,7 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       customRorIndexName = clusterSettings.customRorIndexName,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
       xPackSupport = clusterSettings.xPackSupport,
-      externalSslEnabled = true)
+      externalSslEnabled = clusterSettings.externalSslEnabled)
 
     EsWithRorPluginContainer.create(
       containerConfig,

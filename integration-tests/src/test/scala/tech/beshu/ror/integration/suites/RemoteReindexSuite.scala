@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.junit.Assert.assertEquals
 import org.scalatest.{BeforeAndAfterEach, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
 import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManager}
@@ -28,7 +29,8 @@ import tech.beshu.ror.utils.httpclient.RestClient
 trait RemoteReindexSuite extends WordSpec
   with BaseManyEsClustersIntegrationTest
   with MultipleClientsSupport
-  with BeforeAndAfterEach {
+  with BeforeAndAfterEach
+  with ESVersionSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/reindex_multi_containers/readonlyrest_dest_es.yml"
@@ -39,7 +41,8 @@ trait RemoteReindexSuite extends WordSpec
       name = "ROR_SOURCE_ES",
       nodeDataInitializer = sourceEsDataInitializer(),
       xPackSupport = false,
-      esVersion = EsVersion.SpecificVersion("es55x")
+      esVersion = EsVersion.SpecificVersion("es55x"),
+      externalSslEnabled = false
     )(sourceEsRorConfigFileName)
   )
 
@@ -48,10 +51,10 @@ trait RemoteReindexSuite extends WordSpec
       name = "ROR_DEST_ES",
       rorContainerSpecification = ContainerSpecification(
         Map(
-          "reindex.remote.whitelist" -> "*:9200",
-          "reindex.ssl.verification_mode" -> "none"
+          "reindex.remote.whitelist" -> "*:9200"
         )),
-      xPackSupport = false
+      xPackSupport = false,
+      externalSslEnabled = false
     )(rorConfigFileName)
   )
 
@@ -61,7 +64,7 @@ trait RemoteReindexSuite extends WordSpec
   private lazy val sourceEsContainer = sourceEsCluster.nodes.head
   private lazy val destEsContainer = destEsCluster.nodes.head
 
-  private lazy val oldEsContainerAddress = s"https://${sourceEsContainer.containerInfo.getConfig.getHostName}:9200"
+  private lazy val oldEsContainerAddress = s"http://${sourceEsContainer.containerInfo.getConfig.getHostName}:9200"
 
   lazy val clusterContainers: NonEmptyList[EsClusterContainer] = NonEmptyList.of(sourceEsCluster, destEsCluster)
   lazy val esTargets: NonEmptyList[EsContainer] = NonEmptyList.of(sourceEsCluster.nodes.head, destEsCluster.nodes.head)
@@ -92,7 +95,7 @@ trait RemoteReindexSuite extends WordSpec
         val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.remoteReindexPayload("test1_index", "test1_index_reindexed","dev3", oldEsContainerAddress))
         assertEquals(401, result.getResponseCode)
       }
-      "request specifies index which is allowed, but is not present in source ES"  in {
+      "request specifies index which is allowed, but is not present in source ES" in {
         val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.remoteReindexPayload("test2_index", "test2_index_reindexed","dev4", oldEsContainerAddress))
         assertEquals(404, result.getResponseCode)
       }
