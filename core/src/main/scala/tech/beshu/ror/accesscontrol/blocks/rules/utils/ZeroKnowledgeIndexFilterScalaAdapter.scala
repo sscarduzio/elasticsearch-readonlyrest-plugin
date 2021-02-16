@@ -25,11 +25,11 @@ import scala.collection.JavaConverters._
 
 class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
 
-  def check(indices: Set[IndexName], matcher: Matcher): CheckResult = {
+  def check(indices: Set[IndexName], matcher: Matcher[IndexName]): CheckResult = {
     val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
       indices.map(_.value.value).asJava,
-      matcher.underlying,
+      Matcher.asMatcherWithWildcards(matcher),
       processedIndices.addAll _
     )
     if(result) CheckResult.Ok(processedIndices.asScala.map(str => IndexName(NonEmptyString.unsafeFrom(str))).toSet)

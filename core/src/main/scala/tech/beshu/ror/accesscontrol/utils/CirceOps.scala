@@ -35,6 +35,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, Reason, ValueLevelCreationError}
@@ -305,7 +306,8 @@ object CirceOps {
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
 
-    def tryDecodeAuthRule(username: User.Id)
+    def tryDecodeAuthRule(username: User.Id,
+                         caseMappingEquality: UserIdCaseMappingEquality)
                          (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                           authProxyDefinitions: Definitions[ProxyAuth],
                           jwtDefinitions: Definitions[JwtDef],
@@ -323,7 +325,8 @@ object CirceOps {
             jwtDefinitions,
             ldapDefinitions,
             rorKbnDefinitions,
-            imperonatorsDefinitions
+            imperonatorsDefinitions,
+            caseMappingEquality
           ) match {
             case Some(authRuleDecoder) => authRuleDecoder
             case None => DecoderHelpers.failed[RuleWithVariableUsageDefinition[AuthenticationRule]](

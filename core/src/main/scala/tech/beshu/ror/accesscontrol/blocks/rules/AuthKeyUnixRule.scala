@@ -16,8 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import java.util.regex.Pattern
-
+import cats.Eq
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
@@ -25,21 +24,27 @@ import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
-class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
-                      override val impersonators: List[ImpersonatorDef])
+import java.util.regex.Pattern
+
+final class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
+                            override val impersonators: List[ImpersonatorDef],
+                            implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings) {
 
   override val name: Rule.Name = AuthKeyUnixRule.name
 
   override protected def compare(configuredCredentials: UnixHashedCredentials,
                                  credentials: Credentials): Task[Boolean] = Task {
-    configuredCredentials.userId == credentials.user &&
+    import tech.beshu.ror.utils.CaseMappingEquality._
+    configuredCredentials.userId === credentials.user &&
       configuredCredentials.from(credentials).contains(configuredCredentials)
   }
 
-  override def exists(user: User.Id): Task[UserExistence] = Task.now {
+  override def exists(user: User.Id)
+                     (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now {
     if (user === settings.credentials.userId) UserExistence.Exists
     else UserExistence.NotExist
   }

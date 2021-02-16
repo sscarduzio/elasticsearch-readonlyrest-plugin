@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.IndexNotFound
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher.filterAllowedTemplateIndexPatterns
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, TemplateMatcher, ZeroKnowledgeIndexFilterScalaAdapter, ZeroKnowledgeRepositoryFilterScalaAdapter}
@@ -74,11 +73,11 @@ class IndicesRule(val settings: Settings)
   }
 
   private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): RuleResult[B] = {
-    if(settings.mustInvolveIndices) Rejected()
+    if (settings.mustInvolveIndices) Rejected()
     else Fulfilled(blockContext)
   }
 
-  private def processIndicesRequest[B <: BlockContext: BlockContextWithIndicesUpdater](blockContext: B): RuleResult[B] = {
+  private def processIndicesRequest[B <: BlockContext : BlockContextWithIndicesUpdater](blockContext: B): RuleResult[B] = {
     val allAllowedIndices = resolveAll(settings.allowedIndices.toNonEmptyList, blockContext).toSet
     val result = processIndices(blockContext.requestContext, allAllowedIndices, blockContext.indices)
     result match {
@@ -87,7 +86,7 @@ class IndicesRule(val settings: Settings)
     }
   }
 
-  private def processIndicesPacks[B <: BlockContext: BlockContextWithIndexPacksUpdater: HasIndexPacks](blockContext: B): RuleResult[B] = {
+  private def processIndicesPacks[B <: BlockContext : BlockContextWithIndexPacksUpdater : HasIndexPacks](blockContext: B): RuleResult[B] = {
     import tech.beshu.ror.accesscontrol.blocks.BlockContext.HasIndexPacks._
     def atLeastOneFound(indices: Vector[Indices]) = indices.exists(_.isInstanceOf[Indices.Found])
 
@@ -130,7 +129,7 @@ class IndicesRule(val settings: Settings)
         if (!requestContext.hasRemoteClusters) {
           // Only requested X-cluster when we don't have remote, will return empty.
           val crossClusterIndices = indices.filter(_.isClusterIndex)
-          if (indices.nonEmpty && indices.size == crossClusterIndices.size) {
+          if (indices.nonEmpty && indices.size === crossClusterIndices.size) {
             return ProcessResult.Ok(indices)
           }
           // If you requested local + X-cluster indices while we don't have remotes, it's like you asked for only local indices.
@@ -357,7 +356,7 @@ class IndicesRule(val settings: Settings)
   }
 
   private def processSnapshotRequest(blockContext: SnapshotRequestBlockContext): RuleResult[SnapshotRequestBlockContext] = {
-    if(blockContext.filteredIndices.isEmpty) processRequestWithoutIndices(blockContext)
+    if (blockContext.filteredIndices.isEmpty) processRequestWithoutIndices(blockContext)
     else processIndicesRequest(blockContext)
   }
 
@@ -402,7 +401,7 @@ class IndicesRule(val settings: Settings)
           val templatePatterns = template.patterns.toSet
           val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices)
           val narrowedOriginPatterns = narrowedPatterns.map(_._1)
-          if (narrowedOriginPatterns == templatePatterns) {
+          if (narrowedOriginPatterns === templatePatterns) {
             UniqueNonEmptyList
               .fromList(narrowedPatterns.map(_._2).toList)
               .map(nel => template.copy(patterns = nel))
@@ -416,7 +415,7 @@ class IndicesRule(val settings: Settings)
             None
           }
         }
-      if (modifiedTemplates.size == blockContext.templates.size) {
+      if (modifiedTemplates.size === blockContext.templates.size) {
         stop(CanPass.Yes(modifiedTemplates))
       } else {
         stop(CanPass.No())
@@ -441,7 +440,7 @@ class IndicesRule(val settings: Settings)
   private def canTemplateBeChanged(template: Template, allowedIndices: Set[IndexName]) = {
     val templatePatterns = template.patterns.toSet
     val narrowedPatterns = TemplateMatcher.narrowAllowedTemplateIndexPatterns(templatePatterns, allowedIndices).map(_._2)
-    narrowedPatterns.intersect(templatePatterns) == templatePatterns
+    narrowedPatterns.intersect(templatePatterns) === templatePatterns
   }
 
   private val matchAll = settings.allowedIndices.exists {

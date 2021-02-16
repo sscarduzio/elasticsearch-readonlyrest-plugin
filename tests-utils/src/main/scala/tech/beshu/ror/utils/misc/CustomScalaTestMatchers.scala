@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.utils.misc
 
-import org.scalatest.{Assertion, Matchers}
+import org.scalatest.Assertion
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.{MatchResult, Matcher}
 import ujson._
 

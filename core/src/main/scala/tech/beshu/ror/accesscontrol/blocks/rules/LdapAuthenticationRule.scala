@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-//import com.github.ghik.silencer.silent
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.NoImpersonationSupport
-import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
+import tech.beshu.ror.accesscontrol.domain.Credentials
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 
-class LdapAuthenticationRule(val settings: Settings)
+final class LdapAuthenticationRule(val settings: Settings,
+                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseBasicAuthenticationRule
     with NoImpersonationSupport {
 
@@ -33,8 +33,6 @@ class LdapAuthenticationRule(val settings: Settings)
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.ldap.authenticate(credentials.user, credentials.secret)
 
-//  @silent
-  override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
 }
 
 

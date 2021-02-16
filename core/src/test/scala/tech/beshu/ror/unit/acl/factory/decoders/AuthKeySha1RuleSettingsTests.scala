@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeySha1Rule
 import tech.beshu.ror.accesscontrol.domain.User

@@ -22,8 +22,10 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterAll, Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{BeforeAndAfterAll, Inside}
+
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
@@ -37,7 +39,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class UnboundidLdapAuthenticationServiceTests
-  extends WordSpec
+  extends AnyWordSpec
     with BeforeAndAfterAll
     with ForAllTestContainer
     with Inside {

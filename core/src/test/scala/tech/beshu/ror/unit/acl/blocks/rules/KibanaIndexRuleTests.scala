@@ -18,8 +18,8 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule
@@ -30,7 +30,7 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.rules.utils.IndexNameRuntimeResolvableVariable
 import tech.beshu.ror.utils.TestsUtils._
 
-class KibanaIndexRuleTests extends WordSpec with MockFactory {
+class KibanaIndexRuleTests extends AnyWordSpec with MockFactory {
 
   "A KibanaIndexRule" should {
     "always match" should {

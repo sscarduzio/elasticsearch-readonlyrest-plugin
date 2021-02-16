@@ -20,8 +20,9 @@ import cats.data.NonEmptySet
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.Inside
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
@@ -30,8 +31,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Group, Header, User}
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
@@ -39,7 +40,9 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class ExternalAuthorizationRuleTests
-  extends WordSpec with MockFactory with Inside with BlockContextAssertion {
+  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
+  import TestsUtils.userIdEq
+  import tech.beshu.ror.utils.CaseMappingEquality._
 
   "An ExternalAuthorizationRule" should {
     "match" when {
@@ -197,7 +200,7 @@ class ExternalAuthorizationRuleTests
                          loggedUser: Option[User.Id],
                          preferredGroup: Option[Group],
                          blockContextAssertion: Option[BlockContext => Unit]): Unit = {
-    val rule = new ExternalAuthorizationRule(settings)
+    val rule = new ExternalAuthorizationRule(settings, TestsUtils.userIdEq)
     val requestContext = MockRequestContext.metadata.copy(
       headers = preferredGroup.map(_.value).map(v => new Header(Header.Name.currentGroup, v)).toSet[Header]
     )

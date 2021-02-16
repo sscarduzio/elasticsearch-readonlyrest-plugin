@@ -23,8 +23,9 @@ import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.impl.DefaultClaims
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockContext, GeneralIndexRequestBlockContext}
@@ -40,7 +41,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
 
-class VariableResolvingYamlLoadedAccessControlTests extends WordSpec
+class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
   private lazy val (pub, secret) = Random.generateRsaRandomKeys

@@ -17,8 +17,8 @@
 package tech.beshu.ror.integration.suites
 
 import org.junit.Assert.assertEquals
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.TestSuiteWithClosedTaskAssertion
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import scala.collection.JavaConverters._
 
 trait ImpersonationSuite
-  extends WordSpec
+  extends AnyWordSpec
     with TestSuiteWithClosedTaskAssertion
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>

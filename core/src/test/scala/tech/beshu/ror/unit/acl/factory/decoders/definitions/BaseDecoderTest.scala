@@ -19,7 +19,8 @@ package tech.beshu.ror.unit.acl.factory.decoders.definitions
 import cats.implicits._
 import cats.{Comonad, Functor}
 import io.circe.DecodingFailure
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.utils.ADecoder
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecodingFailureOps
@@ -29,7 +30,7 @@ import scala.language.higherKinds
 
 abstract class BaseDecoderTest[F[_] : Functor, A, B](decoder: ADecoder[F, A])
                                                     (implicit C: Comonad[F])
-  extends WordSpec with Inside {
+  extends AnyWordSpec with Inside {
 
   def assertDecodingSuccess(yaml: String,
                             assertion: A => Unit): Unit = {

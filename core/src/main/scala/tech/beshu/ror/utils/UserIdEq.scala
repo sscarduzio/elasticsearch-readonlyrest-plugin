@@ -14,14 +14,19 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.utils
+package tech.beshu.ror.utils
 
-import tech.beshu.ror.utils.MatcherWithWildcards
-import scala.collection.JavaConverters._
+import cats.implicits._
+import tech.beshu.ror.accesscontrol.domain.User
 
-object SimpleMatcher {
+import scala.language.implicitConversions
 
-  def isMatched(pattern: String, value: String): Boolean = {
-    new MatcherWithWildcards(List(pattern).asJava).`match`(value)
-  }
+object UserIdEq {
+  val caseSensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(StringCaseMapping.caseSensitiveEquality)
+  val caseInsensitive: User.Id.UserIdCaseMappingEquality = eqUserWith(StringCaseMapping.caseInsensitiveEquality)
+
+  private def eqUserWith(eqString: CaseMappingEquality[String]): User.Id.UserIdCaseMappingEquality =
+    eqString.contramap[User.Id](_.value.value)
 }
+
+

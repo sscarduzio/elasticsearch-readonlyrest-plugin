@@ -17,7 +17,7 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.accesscontrol.blocks.rules.ApiKeysRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue

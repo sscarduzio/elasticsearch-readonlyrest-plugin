@@ -18,8 +18,8 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.BasicAuthenticationRule
@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
 
-trait BasicAuthenticationTestTemplate extends WordSpec with MockFactory {
+trait BasicAuthenticationTestTemplate extends AnyWordSpec with MockFactory {
 
   protected def ruleName: String
   protected def rule: BasicAuthenticationRule[_]

@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.unit.utils
 
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.fls.FieldsPolicy
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class FieldsPolicyTests extends WordSpec {
+class FieldsPolicyTests extends AnyWordSpec {
 
   "A FieldMatcher" should {
     "work in whitelist mode" in {

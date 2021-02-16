@@ -20,6 +20,7 @@ import cats.Id
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -27,10 +28,11 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, HCursorOps, _}
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-
+import language.implicitConversions
 object UsersDefinitionsDecoder {
 
-  def instance(authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+  def instance(caseMappingEquality: UserIdCaseMappingEquality)
+              (authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                authProxyDefinitions: Definitions[ProxyAuth],
                jwtDefinitions: Definitions[JwtDef],
                ldapDefinitions: Definitions[LdapService],
@@ -39,7 +41,7 @@ object UsersDefinitionsDecoder {
     implicit val userDefDecoder: SyncDecoder[UserDef] =
       SyncDecoderCreator.from(
         UsersDefinitionsDecoder
-          .userDefDecoder(
+          .userDefDecoder(caseMappingEquality)(
             authenticationServiceDefinitions,
             authProxyDefinitions,
             jwtDefinitions,
@@ -51,13 +53,14 @@ object UsersDefinitionsDecoder {
     DefinitionsBaseDecoder.instance[Id, UserDef]("users")
   }
 
-  private implicit def userDefDecoder(implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+  private implicit def userDefDecoder(caseMappingEquality: UserIdCaseMappingEquality)
+                                     (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
                                       authProxyDefinitions: Definitions[ProxyAuth],
                                       jwtDefinitions: Definitions[JwtDef],
                                       ldapDefinitions: Definitions[LdapService],
                                       rorKbnDefinitions: Definitions[RorKbnDef],
                                       impersonatorDefs: Definitions[ImpersonatorDef]): Decoder[UserDef] = {
-    implicit val _ = Some(impersonatorDefs)
+    implicit val someImpersonatorDefs = Some(impersonatorDefs)
     SyncDecoderCreator
       .instance { c =>
         val usernameKey = "username"
@@ -66,7 +69,7 @@ object UsersDefinitionsDecoder {
           username <- c.downField(usernameKey).as[User.Id]
           groups <- c.downField(groupsKey).as[UniqueNonEmptyList[Group]]
           ruleWithVariableUsage <- c.withoutKeys(Set(usernameKey, groupsKey))
-            .tryDecodeAuthRule(username)
+            .tryDecodeAuthRule(username, caseMappingEquality)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))
         } yield UserDef(username, groups, ruleWithVariableUsage.rule)
       }

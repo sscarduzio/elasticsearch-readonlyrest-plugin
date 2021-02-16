@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.rules.JwtAuthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.Group
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -32,22 +33,23 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.decodeUniqueLi
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef])
+class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
+                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
-  JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
-    .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
-    .toSyncDecoder
-    .emapE { case (name, groups) =>
-      jwtDefinitions.items.find(_.id === name) match {
-        case Some(jwtDef) => Right((jwtDef, groups))
-        case None => Left(RulesLevelCreationError(Message(s"Cannot find JWT definition with name: ${name.show}")))
+    JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
+      .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
+      .toSyncDecoder
+      .emapE { case (name, groups) =>
+        jwtDefinitions.items.find(_.id === name) match {
+          case Some(jwtDef) => Right((jwtDef, groups))
+          case None => Left(RulesLevelCreationError(Message(s"Cannot find JWT definition with name: ${name.show}")))
+        }
       }
-    }
-    .map { case (jwtDef, groups) =>
-      RuleWithVariableUsageDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups)))
-    }
-    .decoder
-)
+      .map { case (jwtDef, groups) =>
+        RuleWithVariableUsageDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups), caseMappingEquality))
+      }
+      .decoder
+  )
 
 private object JwtAuthRuleDecoder {
 

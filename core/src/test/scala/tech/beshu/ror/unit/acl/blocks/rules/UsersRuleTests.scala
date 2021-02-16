@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -30,11 +30,12 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolv
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 
-class UsersRuleTests extends WordSpec with MockFactory {
+class UsersRuleTests extends AnyWordSpec with MockFactory {
 
   "An UsersRule" should {
     "match" when {
@@ -80,7 +81,7 @@ class UsersRuleTests extends WordSpec with MockFactory {
     assertRule(configuredIds, loggedUser, isMatched = false)
 
   private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser], isMatched: Boolean) = {
-    val rule = new UsersRule(UsersRule.Settings(configuredIds))
+    val rule = new UsersRule(UsersRule.Settings(configuredIds), TestsUtils.userIdEq)
     val requestContext = MockRequestContext.metadata
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,

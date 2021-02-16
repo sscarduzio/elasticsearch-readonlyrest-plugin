@@ -17,13 +17,14 @@
 package tech.beshu.ror.integration.utils
 
 import cats.data.NonEmptyList
+import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatest.{Tag, WordSpecLike}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 import scala.language.implicitConversions
 import scala.util.matching.Regex
 
-trait ESVersionSupport extends WordSpecLike {
+trait ESVersionSupport extends AnyWordSpecLike {
 
   val allEs5x = "^es5\\dx$".r
   val allEs6x = "^es6\\dx$".r

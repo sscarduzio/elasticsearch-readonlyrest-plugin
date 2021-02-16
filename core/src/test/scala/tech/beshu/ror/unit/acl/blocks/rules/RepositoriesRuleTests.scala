@@ -18,8 +18,9 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.RepositoryRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule
@@ -34,7 +35,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class RepositoriesRuleTests extends WordSpec with Inside {
+class RepositoriesRuleTests extends AnyWordSpec with Inside {
 
   "A RepositoriesRule" should {
     "match" when {

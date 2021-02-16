@@ -17,13 +17,13 @@
 package tech.beshu.ror.unit.acl.blocks
 
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{HasIndexPacks, HasIndices}
 
-class BlockContextContainsIndicesTest extends WordSpec with MockFactory {
+class BlockContextContainsIndicesTest extends AnyWordSpec with MockFactory {
 
-  import org.scalatest.Matchers._
+  import org.scalatest.matchers.should.Matchers._
 
   "find HasIndexPacks" in {
     implicitly[HasIndexPacks[BlockContext.FilterableMultiRequestBlockContext]]

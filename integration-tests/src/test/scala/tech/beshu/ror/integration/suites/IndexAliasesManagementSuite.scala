@@ -16,8 +16,9 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterEach, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
@@ -25,7 +26,7 @@ import tech.beshu.ror.utils.elasticsearch.IndexManager.AliasAction.{Add, Delete}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, DocumentManager, IndexManager}
 
 trait IndexAliasesManagementSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with BeforeAndAfterEach
     with ESVersionSupport {

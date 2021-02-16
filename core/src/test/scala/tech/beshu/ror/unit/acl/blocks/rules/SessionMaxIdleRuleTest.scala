@@ -25,8 +25,8 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.TestsUtils.scalaFiniteDuration2JavaDuration
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -43,8 +43,10 @@ import tech.beshu.ror.unit.acl.blocks.rules.SessionMaxIdleRuleTest.{fixedClock, 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.CaseMappingEquality._
 
-class SessionMaxIdleRuleTest extends WordSpec with MockFactory {
+class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
+  import tech.beshu.ror.utils.TestsUtils.userIdEq
 
   "A SessionMaxIdleRule" should {
     "match" when {

@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.unit.boot
 
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.buildinfo.BuildInfoReader
 
-class BuildInfoReaderTest extends WordSpec {
+class BuildInfoReaderTest extends AnyWordSpec {
 
-  import org.scalatest.Matchers._
+  import org.scalatest.matchers.should.Matchers._
 
   "BuildInfoReader" should {
     "fail create from nonexistent file" in {

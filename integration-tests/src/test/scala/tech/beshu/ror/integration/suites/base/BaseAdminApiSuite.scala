@@ -18,8 +18,9 @@ package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
 import org.apache.commons.lang.StringEscapeUtils.escapeJava
-import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterEach, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManager, IndexManagerJ, SearchManager}
@@ -27,7 +28,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Resources.getResourceContent
 
 trait BaseAdminApiSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseManyEsClustersIntegrationTest
     with MultipleClientsSupport
     with BeforeAndAfterEach {

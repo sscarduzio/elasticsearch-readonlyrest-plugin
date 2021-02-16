@@ -16,39 +16,44 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
+import cats.Order
 import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthorizationServiceDecorator, ExternalAuthorizationService}
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthorizationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
+import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthorizationServicesDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-
-import scala.concurrent.duration.FiniteDuration
-import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[ExternalAuthorizationService])
+import scala.concurrent.duration.FiniteDuration
+
+class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[ExternalAuthorizationService],
+                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
     ExternalAuthorizationRuleDecoder
-      .settingsDecoder(authotizationServices)
-      .map(settings => RuleWithVariableUsageDefinition.create(new ExternalAuthorizationRule(settings)))
+      .settingsDecoder(authotizationServices, caseMappingEquality)
+      .map(settings => RuleWithVariableUsageDefinition.create(new ExternalAuthorizationRule(settings, caseMappingEquality)))
   )
 
 object ExternalAuthorizationRuleDecoder {
 
-  private def settingsDecoder(authorizationServices: Definitions[ExternalAuthorizationService]): Decoder[ExternalAuthorizationRule.Settings] = {
+  private def settingsDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
+                              caseMappingEquality: UserIdCaseMappingEquality): Decoder[ExternalAuthorizationRule.Settings] = {
+    implicit val orderUserId: Order[User.Id] = caseMappingEquality.toOrder
     Decoder
       .instance { c =>
         for {

@@ -19,8 +19,9 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import cats.data.NonEmptyList
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext, HasFieldLevelSecurity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -39,7 +40,7 @@ import tech.beshu.ror.unit.acl.blocks.rules.FieldsRuleTests.{BlockContextCreator
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class FieldsRuleTests extends WordSpec with MockFactory with Inside {
+class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
 
   "A FieldsRule" when {
     "filterable request is readonly" should {
