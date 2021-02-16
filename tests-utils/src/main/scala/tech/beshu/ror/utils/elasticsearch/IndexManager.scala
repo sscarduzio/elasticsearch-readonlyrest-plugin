@@ -21,7 +21,7 @@ import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
-import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, ResolveResponse}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.{AliasAction, AliasesResponse, ReindexSource, ResolveResponse}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 class IndexManager(client: RestClient,
@@ -113,6 +113,10 @@ class IndexManager(client: RestClient,
 
   def resolve(indexPattern: String, otherIndexPatterns: String*): ResolveResponse = {
     call(createResolveRequest(indexPattern :: otherIndexPatterns.toList), new ResolveResponse(_))
+  }
+
+  def reindex(source: ReindexSource, destIndexName: String): JsonResponse = {
+    call(createReindexRequest(source, destIndexName), new JsonResponse(_))
   }
 
   private def getAliasRequest(indexOpt: Option[String] = None,
@@ -227,9 +231,54 @@ class IndexManager(client: RestClient,
   private def createResolveRequest(indicesPatterns: List[String]) = {
     new HttpGet(client.from(s"/_resolve/index/${indicesPatterns.mkString(",")}"))
   }
+
+  private def createReindexRequest(source: ReindexSource, destIndexName: String): HttpPost = {
+    def sourceSection(source: ReindexSource) = {
+      source match {
+        case ReindexSource.Local(index, indexType) =>
+          s"""
+             |"index": "$index",
+             |"type": "$indexType"
+             |""".stripMargin
+        case ReindexSource.Remote(index, address, username, password, indexType) =>
+          s"""
+             |"index": "$index",
+             |"type": "$indexType",
+             |"remote": {
+             |  "host": "$address",
+             |  "username": "$username",
+             |  "password": "$password"
+             |}
+             |""".stripMargin
+      }
+    }
+
+    val request = new HttpPost(client.from("/_reindex"))
+    request.addHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(
+      s"""
+        |{
+        |	"source": {
+        |		${sourceSection(source)}
+        |	},
+        |	"dest": {
+        |		"index": "$destIndexName"
+        |	}
+        |}""".stripMargin))
+    request
+  }
 }
 
 object IndexManager {
+
+  sealed trait ReindexSource {
+    def indexName: String
+    def `type`: Option[String]
+  }
+  object ReindexSource {
+    final case class Local(indexName: String, `type`: Option[String] = None) extends ReindexSource
+    final case class Remote(indexName: String, address: String, username: String, password: String, `type`: Option[String] = None) extends ReindexSource
+  }
 
   sealed trait AliasAction
   object AliasAction {

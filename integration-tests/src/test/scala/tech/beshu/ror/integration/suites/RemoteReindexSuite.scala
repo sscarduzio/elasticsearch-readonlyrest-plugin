@@ -17,20 +17,21 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import org.junit.Assert.assertEquals
-import org.scalatest.{BeforeAndAfterEach, WordSpec}
+import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
 import tech.beshu.ror.utils.containers._
-import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManager}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait RemoteReindexSuite extends WordSpec
   with BaseManyEsClustersIntegrationTest
   with MultipleClientsSupport
   with BeforeAndAfterEach
-  with ESVersionSupport {
+  with ESVersionSupport
+  with Matchers {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/reindex_multi_containers/readonlyrest_dest_es.yml"
@@ -39,7 +40,7 @@ trait RemoteReindexSuite extends WordSpec
   private lazy val sourceEsCluster = createLocalClusterContainer(
     EsClusterSettings(
       name = "ROR_SOURCE_ES",
-      nodeDataInitializer = sourceEsDataInitializer(),
+      nodeDataInitializer = RemoteReindexSuite.sourceEsDataInitializer(),
       xPackSupport = false,
       esVersion = EsVersion.SpecificVersion("es55x"),
       externalSslEnabled = false
@@ -58,13 +59,9 @@ trait RemoteReindexSuite extends WordSpec
     )(rorConfigFileName)
   )
 
-  private lazy val sourceEsActionManager = new ActionManagerJ(clients.head.basicAuthClient("dev1", "test"))
-  private lazy val destEsActionManager = new ActionManagerJ(clients.last.basicAuthClient("dev1", "test"))
+  private lazy val destEsIndexManager = new IndexManager(clients.last.basicAuthClient("dev1", "test"))
 
   private lazy val sourceEsContainer = sourceEsCluster.nodes.head
-  private lazy val destEsContainer = destEsCluster.nodes.head
-
-  private lazy val oldEsContainerAddress = s"http://${sourceEsContainer.containerInfo.getConfig.getHostName}:9200"
 
   lazy val clusterContainers: NonEmptyList[EsClusterContainer] = NonEmptyList.of(sourceEsCluster, destEsCluster)
   lazy val esTargets: NonEmptyList[EsContainer] = NonEmptyList.of(sourceEsCluster.nodes.head, destEsCluster.nodes.head)
@@ -72,60 +69,52 @@ trait RemoteReindexSuite extends WordSpec
   "A remote reindex request" should {
     "be able to proceed" when {
       "request specifies source and dest index that are allowed on both source and dest ES" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.remoteReindexPayload("test1_index", "test1_index_reindexed", "dev1", oldEsContainerAddress))
-        assertEquals(200, result.getResponseCode)
+        val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev1"), "test1_index_reindexed")
+
+        result.isSuccess should be(true)
       }
     }
     "be blocked by dest ES" when {
       "request specifies source index that is allowed, but dest that isn't allowed" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.remoteReindexPayload("test1_index", "not_allowed_index","dev1", oldEsContainerAddress))
-        assertEquals(401, result.getResponseCode)
+        val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev1"), "not_allowed_index")
+
+        result.isForbidden should be(true)
       }
       "request specifies source index that isn't allowed, but dest that is allowed" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.remoteReindexPayload("not_allowed_index", "test1_index_reindexed","dev1", oldEsContainerAddress))
-        assertEquals(401, result.getResponseCode)
+        val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "test1_index_reindexed")
+
+        result.isForbidden should be(true)
       }
       "request specifies both source index and dest index that are not allowed" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.remoteReindexPayload("not_allowed_index", "not_allowed_index_reindexed","dev1", oldEsContainerAddress))
-        assertEquals(401, result.getResponseCode)
+        val result = destEsIndexManager.reindex(createReindexSource("not_allowed_index", "dev1"), "not_allowed_index_reindexed")
+
+        result.isForbidden should be(true)
       }
     }
     "be blocked by source ES" when {
       "request specifies source index that is allowed on dest ES, but is not allowed on source ES" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.remoteReindexPayload("test1_index", "test1_index_reindexed","dev3", oldEsContainerAddress))
-        assertEquals(401, result.getResponseCode)
+        val result = destEsIndexManager.reindex(createReindexSource("test1_index", "dev3"), "test1_index_reindexed")
+
+        result.isForbidden should be(true)
       }
       "request specifies index which is allowed, but is not present in source ES" in {
-        val result = destEsActionManager.actionPost("_reindex", RemoteReindexSuite.remoteReindexPayload("test2_index", "test2_index_reindexed","dev4", oldEsContainerAddress))
-        assertEquals(404, result.getResponseCode)
+        val result = destEsIndexManager.reindex(createReindexSource("test2_index", "dev4"), "test2_index_reindexed")
+
+        result.isNotFound should be(true)
       }
     }
   }
 
-  protected def sourceEsDataInitializer(): ElasticsearchNodeDataInitializer = {
-    (esVersion: String, adminRestClient: RestClient) => {
-      val documentManager = new DocumentManager(adminRestClient, esVersion)
-      documentManager.createDoc("test1_index", "Sometype", 1, ujson.read("""{"hello":"world"}"""))
-    }
+  private def createReindexSource(sourceIndex: String, username: String): ReindexSource.Remote = {
+    ReindexSource.Remote(sourceIndex, s"http://${sourceEsContainer.getAddressInInternalNetwork}", username, "test")
   }
 }
 
 object RemoteReindexSuite {
-  private def remoteReindexPayload(sourceIndexName: String, destIndexName: String, username: String, sourceHost: String) = {
-    s"""
-       |{
-       |	"source": {
-       |		"index": "$sourceIndexName",
-       |    "type": "Sometype",
-       |		"remote": {
-       |			"host": "${sourceHost}",
-       |			"username": "$username",
-       |			"password": "test"
-       |		}
-       |	},
-       |	"dest": {
-       |		"index": "$destIndexName"
-       |	}
-       |}""".stripMargin
+  private def sourceEsDataInitializer(): ElasticsearchNodeDataInitializer = {
+    (esVersion: String, adminRestClient: RestClient) => {
+      val documentManager = new DocumentManager(adminRestClient, esVersion)
+      documentManager.createDoc("test1_index", "Sometype", 1, ujson.read("""{"hello":"world"}"""))
+    }
   }
 }

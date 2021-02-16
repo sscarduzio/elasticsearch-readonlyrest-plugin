@@ -59,7 +59,12 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
     if (isDestinationIndexOnFilteredIndicesList && isSearchRequestComposedOnlyOfAllowedIndices) {
       Modified
     } else {
-      logger.info(s"[${id.show}] Destination index of _reindex request is forbidden")
+      if (!isDestinationIndexOnFilteredIndicesList) {
+        logger.info(s"[${id.show}] Destination index of _reindex request is forbidden")
+      }
+      if (!isSearchRequestComposedOnlyOfAllowedIndices) {
+        logger.info(s"[${id.show}] At least one index from sources indices list of _reindex request is forbidden")
+      }
       ShouldBeInterrupted
     }
   }

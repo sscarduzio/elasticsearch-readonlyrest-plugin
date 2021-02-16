@@ -54,6 +54,8 @@ abstract class EsContainer(val name: String,
 
   def port: Integer = container.getMappedPort(9200)
 
+  def getAddressInInternalNetwork = s"${containerInfo.getConfig.getHostName}:9200"
+
   override def client(credentials: Credentials): RestClient = credentials match {
     case BasicAuth(user, password) => new RestClient(sslEnabled, ip, port, Optional.of(Tuple.from(user, password)))
     case Token(token) => new RestClient(sslEnabled, "localhost", port, Optional.empty[Tuple[String, String]](), new BasicHeader("Authorization", token))

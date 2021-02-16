@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.junit.Assert.assertEquals
 import org.scalatest.{Matchers, WordSpec}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ActionManagerJ, DocumentManagerJ}
+import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
+import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ReindexSuite
@@ -35,45 +35,45 @@ trait ReindexSuite
 
   override def nodeDataInitializer = Some(ReindexSuite.nodeDataInitializer())
 
-  private lazy val user1ActionManager = new ActionManagerJ(basicAuthClient("dev1", "test"))
+  private lazy val user1IndexManager = new IndexManager(basicAuthClient("dev1", "test"))
 
   "A reindex request" should {
     "be able to proceed" when {
       "user has permission to source index and dest index"  in {
-        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test1_index", "test1_index_reindexed"))
-        assertEquals(200, result.getResponseCode)
+        val result = user1IndexManager.reindex(ReindexSource.Local("test1_index"), "test1_index_reindexed")
+
+        result.isSuccess should be(true)
       }
     }
     "not be able to proceed" when {
       "user has no permission to source index and dest index which are present on ES"  in {
-        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test2_index", "test2_index_reindexed"))
-        assertEquals(401, result.getResponseCode)
+        val result = user1IndexManager.reindex(ReindexSource.Local("test2_index"), "test2_index_reindexed")
+
+        result.isForbidden should be(true)
       }
       "user has no permission to source index and dest index which are absent on ES"  in {
-        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("not_allowed_index", "not_allowed_index_reindexed"))
-        assertEquals(401, result.getResponseCode)
+        val result = user1IndexManager.reindex(ReindexSource.Local("not_allowed_index"), "not_allowed_index_reindexed")
+
+        result.isForbidden should be(true)
       }
       "user has permission to source index and but no permission to dest index"  in {
-        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("test1_index", "not_allowed_index_reindexed"))
-        assertEquals(401, result.getResponseCode)
+        val result = user1IndexManager.reindex(ReindexSource.Local("test1_index"), "not_allowed_index_reindexed")
+
+        result.isForbidden should be(true)
       }
       "user has permission to dest index and but no permission to source index"  in {
-        val result = user1ActionManager.actionPost("_reindex", ReindexSuite.reindexPayload("not_allowed_index", "test1_index_reindexed"))
-        assertEquals(401, result.getResponseCode)
+        val result = user1IndexManager.reindex(ReindexSource.Local("not_allowed_index"), "test1_index_reindexed")
+
+        result.isForbidden should be(true)
       }
     }
   }
 }
 
 object ReindexSuite {
-
   private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
     val documentManager = new DocumentManagerJ(adminRestClient)
     documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
     documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
-  }
-
-  private def reindexPayload(sourceIndexName: String, destIndexName: String) = {
-    s"""{"source":{"index":"$sourceIndexName"},"dest":{"index":"${destIndexName}"}}"""
   }
 }
