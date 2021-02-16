@@ -38,7 +38,7 @@ Some suggest to spin up a new HTTP proxy (Varnish, NGNix, HAProxy) between ES an
 Just set a few rules with this plugin and confidently open it up to the external world.
 
 ## All the available rules in detail
-* [Official website detailed documentation](https://github.com/beshu-tech/readonlyrest-docs/blob/master/elasticsearch.md#rules)
+* [Official website detailed documentation](https://docs.readonlyrest.com/elasticsearch#rules)
 
 ## Contributor License Agreement
 
