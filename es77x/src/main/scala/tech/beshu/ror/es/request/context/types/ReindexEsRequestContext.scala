@@ -42,46 +42,30 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
   extends BaseIndicesEsRequestContext[ReindexRequest](actionRequest, esContext, aclContext, clusterService, threadPool) {
 
   override protected def indicesFrom(request: ReindexRequest): Set[IndexName] = {
-    Try {
-      val sr = invokeMethodCached(request, request.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
-      val ir = invokeMethodCached(request, request.getClass, "getDestination").asInstanceOf[IndexRequest]
-      sr.indices.asSafeSet ++ Set(ir.index())
-    } fold(
-      ex => {
-        logger.errorEx(s"[${id.show}] Cannot extract indices from ReindexRequest", ex)
-        Set.empty[String]
-      },
-      identity
-    ) flatMap {
-      IndexName.fromString
-    }
+    val searchRequestIndices = request.getSearchRequest.indices.asSafeSet
+    val indexOfIndexRequest = request.getDestination.index()
+
+    (searchRequestIndices + indexOfIndexRequest)
+      .flatMap(IndexName.fromString)
   }
 
   override protected def update(request: ReindexRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
-    modifyIndicesOf(actionRequest, indices) match {
-      case Success(modificationResult) =>
-        modificationResult
-      case Failure(ex) =>
-        logger.error(s"[${id.show}] Cannot modify ReindexRequest", ex)
-        CannotModify
-    }
-  }
+    val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(IndexName.fromString)
+    val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- indices.toList).isEmpty
 
-  private def modifyIndicesOf(actionRequest: ReindexRequest, indices: NonEmptyList[IndexName]) = {
-    Try {
-      val sr = invokeMethodCached(actionRequest, actionRequest.getClass, "getSearchRequest").asInstanceOf[SearchRequest]
-      val expandedIndicesOfSearchRequest = clusterService.expandIndices(sr.indices().asSafeSet.flatMap(IndexName.fromString))
-      val remainingSearchIndices = expandedIndicesOfSearchRequest.intersect(indices.toList.toSet).toList
-      sr.indices(remainingSearchIndices.map(_.value.value): _*)
+    val indexOfIndexRequest = actionRequest.getDestination.index()
+    val isDestinationIndexOnFilteredIndicesList = IndexName.fromString(indexOfIndexRequest).exists(indices.toList.contains(_))
 
-      val ir = invokeMethodCached(actionRequest, actionRequest.getClass, "getDestination").asInstanceOf[IndexRequest]
-      IndexName.fromString(ir.index()) match {
-        case Some(destinationIndex) if indices.toList.contains(destinationIndex) =>
-          Modified
-        case Some(_) | None =>
-          logger.info(s"[${id.show}] Destination index of _reindex request is forbidden")
-          ShouldBeInterrupted
+    if (isDestinationIndexOnFilteredIndicesList && isSearchRequestComposedOnlyOfAllowedIndices) {
+      Modified
+    } else {
+      if (!isDestinationIndexOnFilteredIndicesList) {
+        logger.info(s"[${id.show}] Destination index of _reindex request is forbidden")
       }
+      if (!isSearchRequestComposedOnlyOfAllowedIndices) {
+        logger.info(s"[${id.show}] At least one index from sources indices list of _reindex request is forbidden")
+      }
+      ShouldBeInterrupted
     }
   }
 }

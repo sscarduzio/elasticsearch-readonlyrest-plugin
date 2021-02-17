@@ -28,13 +28,14 @@ class EsWithRorPluginContainer private(name: String,
                                        esVersion: String,
                                        startedClusterDependencies: StartedClusterDependencies,
                                        esClusterSettings: EsClusterSettings,
-                                       image: ImageFromDockerfile)
+                                       image: ImageFromDockerfile,
+                                       externalSslEnabled: Boolean)
   extends EsContainer(name, esVersion, startedClusterDependencies, esClusterSettings, image)
     with StrictLogging {
 
   logger.info(s"[$name] Creating ES with ROR plugin installed container ...")
 
-  override val sslEnabled: Boolean = true
+  override val sslEnabled: Boolean = externalSslEnabled
 }
 
 object EsWithRorPluginContainer extends StrictLogging {
@@ -61,7 +62,8 @@ object EsWithRorPluginContainer extends StrictLogging {
       config.esVersion,
       startedClusterDependencies,
       esClusterSettings,
-      ESWithRorPluginImage.create(config)
+      ESWithRorPluginImage.create(config),
+      config.externalSslEnabled
     )
     EsContainer.init(rorContainer, config, initializer, logger)
   }

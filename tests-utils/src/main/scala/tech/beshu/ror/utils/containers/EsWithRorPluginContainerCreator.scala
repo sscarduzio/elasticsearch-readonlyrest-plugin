@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.utils.containers
 
-import java.io.File
-
 import better.files._
 import cats.data.NonEmptyList
+import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
+
+import java.io.File
 
 trait EsWithRorPluginContainerCreator extends EsContainerCreator {
 
@@ -29,9 +30,12 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
                       nodeNames: NonEmptyList[String],
                       clusterSettings: EsClusterSettings,
                       startedClusterDependencies: StartedClusterDependencies): EsContainer = {
-    val project = RorPluginGradleProject.fromSystemProperty
-    val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
+    val project = clusterSettings.esVersion match {
+      case EsVersion.DeclaredInProject => RorPluginGradleProject.fromSystemProperty
+      case EsVersion.SpecificVersion(version) => RorPluginGradleProject.customModule(version)
+    }
     val esVersion = project.getESVersion
+    val rorPluginFile: File = project.assemble.getOrElse(throw new ContainerCreationException("Plugin file assembly failed"))
     val rawRorConfigFile = ContainerUtils.getResourceFile(clusterSettings.rorConfigFileName)
 
     val adjustedRorConfig = RorConfigAdjuster.adjustUsingDependencies(
@@ -52,7 +56,7 @@ trait EsWithRorPluginContainerCreator extends EsContainerCreator {
       customRorIndexName = clusterSettings.customRorIndexName,
       internodeSslEnabled = clusterSettings.internodeSslEnabled,
       xPackSupport = clusterSettings.xPackSupport,
-      externalSslEnabled = true)
+      externalSslEnabled = clusterSettings.externalSslEnabled)
 
     EsWithRorPluginContainer.create(
       containerConfig,

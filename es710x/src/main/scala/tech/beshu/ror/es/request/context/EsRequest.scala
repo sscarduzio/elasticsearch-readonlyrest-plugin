@@ -30,7 +30,8 @@ trait EsRequest[B <: BlockContext] extends Logging {
 
   final def modifyUsing(blockContext: B): ModificationResult = {
     modifyCommonParts(blockContext)
-    Try(modifyRequest(blockContext))
+    Try(
+      modifyRequest(blockContext))
       .fold(
         ex => {
           logger.error(s"[${blockContext.requestContext.id.show}] Cannot modify request with filtered data", ex)

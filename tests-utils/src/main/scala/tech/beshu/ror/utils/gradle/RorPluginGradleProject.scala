@@ -30,6 +30,9 @@ object RorPluginGradleProject {
       .map(new RorPluginGradleProject(_))
       .getOrElse(throw new IllegalStateException("No 'esModule' system property set"))
 
+  def customModule(moduleName: String): RorPluginGradleProject =
+      new RorPluginGradleProject(moduleName)
+
   def getRootProject: JFile = {
     Option(System.getProperty("project.dir"))
       .map(projectDir => Paths.get(projectDir).toFile)
