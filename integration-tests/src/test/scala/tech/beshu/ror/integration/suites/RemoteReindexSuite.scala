@@ -17,7 +17,9 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseManyEsClustersIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
@@ -26,7 +28,8 @@ import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
-trait RemoteReindexSuite extends WordSpec
+trait RemoteReindexSuite
+  extends AnyWordSpec
   with BaseManyEsClustersIntegrationTest
   with MultipleClientsSupport
   with BeforeAndAfterEach
