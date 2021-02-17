@@ -16,44 +16,40 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
-import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
-import tech.beshu.ror.utils.MatcherWithWildcards
+import cats.Show
+import cats.implicits._
+import tech.beshu.ror.utils.{CaseMappingEquality, MatcherWithWildcards, StringMatcherWithWildcards}
 
 import scala.collection.JavaConverters._
 
-trait Matcher {
-  def underlying: MatcherWithWildcards
-  def filter[T : StringTNaturalTransformation](items: Set[T]): Set[T]
-  def filter[T : StringTNaturalTransformation](remoteClusterAware: Boolean, items: Set[T]): Set[T]
-  def `match`[T : StringTNaturalTransformation](value: T): Boolean
+trait Matcher[A] {
+  def underlying: MatcherWithWildcards[A]
+
+  def filter(items: Set[A]): Set[A]
+
+  def `match`(value: A): Boolean
+
   def contains(str: String): Boolean
 }
+object Matcher {
+  def asMatcherWithWildcards[A](matcher: Matcher[A]): StringMatcherWithWildcards = {
+    new StringMatcherWithWildcards(matcher.underlying.getMatchers)
+  }
 
-class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildcards)
-  extends Matcher {
+}
 
-  override def filter[T : StringTNaturalTransformation](remoteClusterAware: Boolean, items: Set[T]): Set[T] = {
-    val nt = implicitly[StringTNaturalTransformation[T]]
+class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWildcards[A])
+  extends Matcher[A] {
+
+  override def filter(items: Set[A]): Set[A] = {
     underlying
-      .filter(remoteClusterAware, items.map(nt.toAString(_)).asJava)
+      .filter(items.asJava)
       .asScala
-      .map(nt.fromString)
       .toSet
   }
 
-  override def filter[T: StringTNaturalTransformation](items: Set[T]): Set[T] = {
-    val nt = implicitly[StringTNaturalTransformation[T]]
-    underlying
-      .filter(items.map(nt.toAString(_)).asJava)
-      .asScala
-      .map(nt.fromString)
-      .toSet
-  }
-
-  override def `match`[T: StringTNaturalTransformation](value: T): Boolean = {
-    val nt = implicitly[StringTNaturalTransformation[T]]
-    underlying.`match`(nt.toAString(value))
+  override def `match`(value: A): Boolean = {
+    underlying.`match`(value)
   }
 
   override def contains(str: String): Boolean =
@@ -61,20 +57,21 @@ class MatcherWithWildcardsScalaAdapter(override val underlying: MatcherWithWildc
 }
 
 object MatcherWithWildcardsScalaAdapter {
-  def create[T: StringTNaturalTransformation](items: Iterable[T]): Matcher =
-    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(
-      items.map(implicitly[StringTNaturalTransformation[T]].toAString).asJava
-    ))
-}
 
-final case class StringTNaturalTransformation[T](fromString: String => T, toAString: T => String)
-object StringTNaturalTransformation {
-  object instances {
-    implicit val stringUserIdNT: StringTNaturalTransformation[User.Id] =
-      StringTNaturalTransformation[User.Id](str => User.Id(NonEmptyString.unsafeFrom(str)), _.value.value)
-    implicit val identityNT: StringTNaturalTransformation[String] =
-      StringTNaturalTransformation[String](identity, identity)
-    implicit val stringIndexNameNT: StringTNaturalTransformation[IndexName] =
-      StringTNaturalTransformation[IndexName](str => IndexName(NonEmptyString.unsafeFrom(str)), _.value.value)
-  }
+  import tech.beshu.ror.utils.CaseMappingEquality._
+
+  def create[T: CaseMappingEquality](items: Iterable[T]): Matcher[T] =
+    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(items.map(Show[T].show).asJava, CaseMappingEquality.summonJava))
+
+  def apply[A: CaseMappingEquality](patterns: Set[A]): MatcherWithWildcardsScalaAdapter[A] =
+    fromJavaSetString(patterns.map(_.show).asJava)
+
+  def fromJavaSetString[A: CaseMappingEquality](patterns: java.util.Set[String]): MatcherWithWildcardsScalaAdapter[A] =
+    new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards[A](patterns, CaseMappingEquality.summonJava))
+
+  def fromSetString[A: CaseMappingEquality](patterns: Set[String]): MatcherWithWildcardsScalaAdapter[A] =
+    fromJavaSetString(patterns.asJava)
+
+  def isMatched(pattern: String, value: String): Boolean =
+    new StringMatcherWithWildcards(List(pattern).asJava).`match`(value)
 }

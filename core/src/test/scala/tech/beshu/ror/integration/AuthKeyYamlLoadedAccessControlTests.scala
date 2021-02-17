@@ -19,19 +19,20 @@ package tech.beshu.ror.integration
 import java.util.Base64
 
 import eu.timepit.refined.types.string.NonEmptyString
+import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, Tag, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{Inside, Tag}
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Allow
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
-import monix.execution.Scheduler.Implicits.global
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Allow
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 
-class AuthKeyYamlLoadedAccessControlTests extends WordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
+class AuthKeyYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
   protected def configYaml: String =
     """

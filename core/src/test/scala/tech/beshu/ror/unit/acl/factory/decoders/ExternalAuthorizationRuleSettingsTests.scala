@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.factory.decoders
 import cats.data.NonEmptySet
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.blocks.definitions._
@@ -32,6 +32,8 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.TestsUtils
 
 class ExternalAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthorizationRule] with MockFactory with Inside {

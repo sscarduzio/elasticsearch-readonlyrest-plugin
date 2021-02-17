@@ -19,8 +19,9 @@ package tech.beshu.ror.integration.plugin
 import java.util
 
 import cats.data.NonEmptyList
-import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterEach, Entry, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{BeforeAndAfterEach, Entry}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, MultipleClientsSupport}
 import tech.beshu.ror.integration.utils.{IndexConfigInitializer, PluginTestSupport}
 import tech.beshu.ror.utils.containers.EsClusterProvider.ClusterNodeData
@@ -31,7 +32,7 @@ import tech.beshu.ror.utils.misc.Resources.getResourceContent
 import scala.collection.JavaConverters._
 
 final class LoadClusterConfigsWithNoRorNodeTest
-  extends WordSpec
+  extends AnyWordSpec
     with BeforeAndAfterEach
     with PluginTestSupport
     with BaseEsClusterIntegrationTest

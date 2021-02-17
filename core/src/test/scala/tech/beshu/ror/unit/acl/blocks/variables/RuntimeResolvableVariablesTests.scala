@@ -19,8 +19,8 @@ package tech.beshu.ror.unit.acl.blocks.variables
 import cats.data.NonEmptyList
 import io.jsonwebtoken.impl.DefaultClaims
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
@@ -35,7 +35,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 import scala.collection.JavaConverters._
 
-class RuntimeResolvableVariablesTests extends WordSpec with MockFactory {
+class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
 
   "A header variable" should {
     "have been resolved" when {

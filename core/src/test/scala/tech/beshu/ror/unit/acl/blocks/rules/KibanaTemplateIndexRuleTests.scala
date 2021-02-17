@@ -18,7 +18,7 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaTemplateIndexRule
@@ -30,10 +30,10 @@ import tech.beshu.ror.unit.acl.blocks.rules.utils.IndexNameRuntimeResolvableVari
 import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaTemplateIndexRuleTests
-  extends WordSpec
+  extends AnyWordSpec
     with MockFactory {
 
-  import org.scalatest.Matchers._
+  import org.scalatest.matchers.should.Matchers._
 
   "A KibanaTemplateIndexRule" should {
     "always match" should {

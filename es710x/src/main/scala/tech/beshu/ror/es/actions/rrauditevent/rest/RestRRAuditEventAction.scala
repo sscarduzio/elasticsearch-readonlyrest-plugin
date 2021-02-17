@@ -44,21 +44,24 @@ class RestRRAuditEventAction()
 
   override val getName: String = "ror-audit-event-collector-handler"
 
-  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = (channel: RestChannel) => {
-    val result = for {
+  override def prepareRequest(request: RestRequest, client: NodeClient): RestChannelConsumer = new RestChannelConsumer {
+    private val rorAuditRequest =  for {
       _ <- validateContentSize(request)
       json <- validateBodyJson(request)
-    } yield json
-    result match {
-      case Right(json) =>
-        client
-          .execute(
-            new RRAuditEventActionType,
-            new RRAuditEventRequest(json),
-            new RestRRAuditEventActionResponseBuilder(channel)
-          )
-      case Left(errorResponseCreator) =>
-        channel.sendResponse(errorResponseCreator(channel))
+    } yield new RRAuditEventRequest(json)
+
+    override def accept(channel: RestChannel): Unit = {
+      rorAuditRequest match {
+        case Right(req) =>
+          client
+            .execute(
+              new RRAuditEventActionType,
+              req,
+              new RestRRAuditEventActionResponseBuilder(channel)
+            )
+        case Left(errorResponseCreator) =>
+          channel.sendResponse(errorResponseCreator(channel))
+      }
     }
   }
 
@@ -96,4 +99,5 @@ class RestRRAuditEventAction()
       (builder: XContentBuilder) => builder.field("reason", s"Max request content allowed = ${maxContentSize.toKilobits}KB")
     )
   )
+
 }

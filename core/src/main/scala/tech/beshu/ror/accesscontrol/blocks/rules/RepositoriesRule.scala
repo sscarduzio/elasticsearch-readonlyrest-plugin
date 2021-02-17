@@ -23,16 +23,14 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RepositoryRequestBlockC
 import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeRepositoryFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.{MatcherWithWildcards, ZeroKnowledgeIndexFilter}
-
-import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 class RepositoriesRule(val settings: Settings)
   extends RegularRule {
@@ -82,11 +80,11 @@ class RepositoriesRule(val settings: Settings)
     } else {
       zeroKnowledgeMatchFilter.check(
         repositoriesToCheck,
-        new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(allowedRepositories.map(_.value.value).asJava))
+        MatcherWithWildcardsScalaAdapter.fromSetString[RepositoryName](allowedRepositories.map(_.value.value))
       ) match {
         case CheckResult.Ok(processedRepositories) if requestContext.isReadOnlyRequest =>
           Right(processedRepositories)
-        case CheckResult.Ok(processedRepositories) if processedRepositories.size == repositoriesToCheck.size =>
+        case CheckResult.Ok(processedRepositories) if processedRepositories.size === repositoriesToCheck.size =>
           Right(processedRepositories)
         case CheckResult.Ok(_) | CheckResult.Failed =>
           Left(())

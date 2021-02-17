@@ -20,14 +20,16 @@ import java.util.UUID
 
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{AuditIndexManager, ElasticsearchTweetsInitializer, IndexManager, RorApiManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait EnabledAuditingToolsSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with BeforeAndAfterEach
@@ -197,7 +199,7 @@ trait EnabledAuditingToolsSuite
         "no JSON kay attribute from request body payload is defined in audit serializer" in {
           val rorApiManager = new RorApiManager(basicAuthClient("username", "dev"))
 
-          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }"""))
+          val response = rorApiManager.sendAuditEvent(ujson.read("""{ "event": "logout" }""")).force()
 
           response.responseCode shouldBe 204
 

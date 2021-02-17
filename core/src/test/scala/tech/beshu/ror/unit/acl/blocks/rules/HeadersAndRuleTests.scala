@@ -18,9 +18,9 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptySet
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.HeadersAndRule
@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
 
-class HeadersAndRuleTests extends WordSpec with MockFactory {
+class HeadersAndRuleTests extends AnyWordSpec with MockFactory {
 
   "A HeadersAndRule" should {
     "match" when {

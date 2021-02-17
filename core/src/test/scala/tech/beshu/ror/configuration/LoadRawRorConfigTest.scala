@@ -18,8 +18,8 @@ package tech.beshu.ror.configuration
 
 import cats.{Id, ~>}
 import io.circe.Json
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
@@ -27,7 +27,7 @@ import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig, P
 
 import scala.language.existentials
 
-class LoadRawRorConfigTest extends WordSpec {
+class LoadRawRorConfigTest extends AnyWordSpec {
   import LoadRawRorConfigTest._
   "Free monad loader program" should {
     "load forced file" in {

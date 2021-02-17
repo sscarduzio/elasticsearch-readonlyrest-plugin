@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthent
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
@@ -38,7 +39,8 @@ import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
 
 import scala.concurrent.duration.FiniteDuration
 
-class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService])
+class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService],
+                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthenticationRule](
     simpleExternalAuthenticationServiceNameAndLocalConfig
       .orElse(complexExternalAuthenticationServiceNameAndLocalConfig)
@@ -50,7 +52,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
         case (name, None) =>
           findAuthenticationService(authenticationServices.items, name)
       }
-      .map(service => RuleWithVariableUsageDefinition.create(new ExternalAuthenticationRule(Settings(service))))
+      .map(service => RuleWithVariableUsageDefinition.create(new ExternalAuthenticationRule(Settings(service), caseMappingEquality)))
       .decoder
   )
 

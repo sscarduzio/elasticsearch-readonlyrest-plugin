@@ -16,15 +16,15 @@
  */
 package tech.beshu.ror.configuration.loader.external.dto
 
-import org.scalatest.WordSpec
 import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}
 import cats.implicits._
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
 
 import scala.language.postfixOps
 
-class ResultDTOTest extends WordSpec {
+class ResultDTOTest extends AnyWordSpec {
   "ResultDTO" when {
     "result failed" should {
       "return current node " in {

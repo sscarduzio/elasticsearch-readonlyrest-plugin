@@ -17,12 +17,13 @@
 package tech.beshu.ror.unit.logging
 
 import eu.timepit.refined.types.string.NonEmptyString
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.Header
 
 class ObfuscatedHeaderShowFactoryTest
-  extends WordSpec
+  extends AnyWordSpec
     with TableDrivenPropertyChecks
     with Matchers {
   import tech.beshu.ror.accesscontrol.show.logs._

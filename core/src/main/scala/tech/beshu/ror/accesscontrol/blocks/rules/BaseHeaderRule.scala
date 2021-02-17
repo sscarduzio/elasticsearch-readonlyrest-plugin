@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.SimpleMatcher.isMatched
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 
 abstract class BaseHeaderRule extends RegularRule with Logging {
@@ -36,7 +36,7 @@ abstract class BaseHeaderRule extends RegularRule with Logging {
 
   private def matches(pattern: Header, header: Header) = {
     if (pattern.name === header.name) {
-      isMatched(pattern.value.value, header.value.value)
+      MatcherWithWildcardsScalaAdapter.isMatched(pattern.value.value, header.value.value)
     } else {
       false
     }

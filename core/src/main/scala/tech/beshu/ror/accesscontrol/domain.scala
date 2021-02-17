@@ -21,7 +21,7 @@ import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 import java.util.{Base64, Locale, UUID}
 
-import cats.Eq
+import cats.{Eq, Show}
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
@@ -31,19 +31,19 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
-import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, searchAction, searchTemplateAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction}
+import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction, searchAction, searchTemplateAction}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.CaseMappingEquality
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-import scala.util.{Failure, Success, Try, Random}
-
+import scala.util.{Failure, Random, Success, Try}
+import tech.beshu.ror.utils.CaseMappingEquality._
 object domain {
 
   final case class CorrelationId(value: NonEmptyString)
@@ -64,7 +64,7 @@ object domain {
   object User {
     final case class Id(value: NonEmptyString)
     object Id {
-      implicit val eqId: Eq[Id] = Eq.fromUniversalEquals
+      type UserIdCaseMappingEquality = CaseMappingEquality[User.Id]
     }
   }
 
@@ -161,6 +161,10 @@ object domain {
   }
 
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
+  object Credentials {
+    implicit def eqCredentials(implicit userIdEq: Eq[User.Id]): Eq[Credentials] =
+      Eq.and(Eq.by(_.user), Eq.by(_.secret))
+  }
   final case class BasicAuth private(credentials: Credentials) {
     def header: Header = new Header(
       Header.Name.authorization,
@@ -274,6 +278,7 @@ object domain {
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualityAction:CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
   }
 
   final case class IndexName(value: NonEmptyString) {
@@ -288,6 +293,8 @@ object domain {
     }
   }
   object IndexName {
+    implicit val caseMappingEqualityIndexName: CaseMappingEquality[IndexName] =
+      CaseMappingEquality.instance(_.value.value, identity)
     val wildcard: IndexName = fromUnsafeString("*")
     val all: IndexName = fromUnsafeString("_all")
     val devNullKibana: IndexName = fromUnsafeString(".kibana-devnull")
@@ -362,6 +369,7 @@ object domain {
     val wildcard: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualityRepositoryName:CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(_.value.value, identity)
   }
   final case class SnapshotName(value: NonEmptyString)
   object SnapshotName {
@@ -369,6 +377,8 @@ object domain {
     val wildcard: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualitySnapshotName:CaseMappingEquality[SnapshotName] =
+      CaseMappingEquality.instance(_.value.value, identity)
   }
 
   final case class Template(name: TemplateName, patterns: UniqueNonEmptyList[IndexName])

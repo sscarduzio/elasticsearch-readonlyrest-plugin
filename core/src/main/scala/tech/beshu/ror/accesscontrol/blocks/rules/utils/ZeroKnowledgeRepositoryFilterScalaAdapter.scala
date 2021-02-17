@@ -25,11 +25,11 @@ import scala.collection.JavaConverters._
 
 class ZeroKnowledgeRepositoryFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
 
-  def check(indices: Set[RepositoryName], matcher: Matcher): CheckResult = {
+  def check(indices: Set[RepositoryName], matcher: Matcher[RepositoryName]): CheckResult = {
     val processedRepositories: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
       indices.map(_.value.value).asJava,
-      matcher.underlying,
+      Matcher.asMatcherWithWildcards(matcher),
       processedRepositories.addAll _
     )
     if(result) CheckResult.Ok(processedRepositories.asScala.map(str => RepositoryName(NonEmptyString.unsafeFrom(str))).toSet)

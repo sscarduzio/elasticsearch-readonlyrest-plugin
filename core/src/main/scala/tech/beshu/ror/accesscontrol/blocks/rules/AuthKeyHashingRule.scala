@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import cats.implicits._
+import cats.kernel.Eq
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -24,7 +25,9 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.Hasher
 
 abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
@@ -36,13 +39,15 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[Has
                                  credentials: Credentials): Task[Boolean] = Task {
     configuredCredentials match {
       case secret: HashedUserAndPassword =>
-        secret == HashedUserAndPassword.from(credentials, hasher)
+        secret === HashedUserAndPassword.from(credentials, hasher)
       case secret: HashedOnlyPassword =>
-        secret == HashedOnlyPassword.from(credentials, hasher)
+        implicit val caseMappingEquality: UserIdCaseMappingEquality = this.caseMappingEquality
+        secret === HashedOnlyPassword.from(credentials, hasher)
     }
   }
 
-  override def exists(user: User.Id): Task[UserExistence] = Task.now {
+  override final def exists(user: User.Id)
+                           (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now {
     settings.credentials match {
       case HashedUserAndPassword(_) => UserExistence.CannotCheck
       case HashedOnlyPassword(userId, _) if userId === user => UserExistence.Exists
@@ -64,6 +69,8 @@ object AuthKeyHashingRule {
         NonEmptyString.unsafeFrom(
           hasher.hashString(s"${credentials.user.value.value}:${credentials.secret.value}"))
       }
+
+      implicit val eqHashedUserAndPassword: Eq[HashedUserAndPassword] = Eq.by(_.hash.value)
     }
 
     final case class HashedOnlyPassword(userId: User.Id, hash: NonEmptyString) extends HashedCredentials
@@ -72,13 +79,18 @@ object AuthKeyHashingRule {
         credentials.user,
         NonEmptyString.unsafeFrom(hasher.hashString(credentials.secret.value.value))
       )
+
+      implicit def eqHashedOnlyPassword(implicit caseMappingEquality: UserIdCaseMappingEquality): Eq[HashedOnlyPassword] =
+        Eq.and(Eq.by(_.hash.value), Eq.by(_.userId))
+
     }
   }
 
 }
 
-class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
-                      override val impersonators: List[ImpersonatorDef])
+final class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+                            override val impersonators: List[ImpersonatorDef],
+                            implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthKeyHashingRule(settings, hasher = Hasher.Sha1) {
 
   override val name: Rule.Name = AuthKeySha1Rule.name
@@ -88,8 +100,9 @@ object AuthKeySha1Rule {
   val name = Rule.Name("auth_key_sha1")
 }
 
-class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
-                        override val impersonators: List[ImpersonatorDef])
+final class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+                              override val impersonators: List[ImpersonatorDef],
+                              implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthKeyHashingRule(settings, hasher = Hasher.Sha256) {
 
   override val name: Rule.Name = AuthKeySha256Rule.name
@@ -99,8 +112,9 @@ object AuthKeySha256Rule {
   val name = Rule.Name("auth_key_sha256")
 }
 
-class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
-                        override val impersonators: List[ImpersonatorDef])
+final class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+                              override val impersonators: List[ImpersonatorDef],
+                              implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthKeyHashingRule(settings, hasher = Hasher.Sha512) {
 
   override val name: Rule.Name = AuthKeySha512Rule.name
@@ -110,8 +124,9 @@ object AuthKeySha512Rule {
   val name = Rule.Name("auth_key_sha512")
 }
 
-class AuthKeyPBKDF2WithHmacSHA512Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
-                                      override val impersonators: List[ImpersonatorDef])
+final class AuthKeyPBKDF2WithHmacSHA512Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+                                            override val impersonators: List[ImpersonatorDef],
+                                            implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthKeyHashingRule(settings, hasher = Hasher.PBKDF2WithHmacSHA512) {
 
   override val name: Rule.Name = AuthKeyPBKDF2WithHmacSHA512Rule.name

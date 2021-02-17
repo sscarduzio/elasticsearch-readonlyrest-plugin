@@ -25,7 +25,6 @@ import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, StringTNaturalTransformation}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
@@ -33,14 +32,12 @@ import tech.beshu.ror.accesscontrol.domain.KibanaAccess._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.utils.MatcherWithWildcards
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
 
 import scala.util.Try
 
 class KibanaAccessRule(val settings: Settings)
   extends RegularRule with Logging {
-
-  import KibanaAccessRule.stringActionNT
 
   override val name: Rule.Name = KibanaAccessRule.name
 
@@ -48,7 +45,7 @@ class KibanaAccessRule(val settings: Settings)
 
     val requestContext = blockContext.requestContext
 
-    if (settings.access == KibanaAccess.Unrestricted) Fulfilled(modifyMatched(blockContext))
+    if (settings.access === KibanaAccess.Unrestricted) Fulfilled(modifyMatched(blockContext))
     else if (requestContext.uriPath.isCurrentUserMetadataPath) Fulfilled(modifyMatched(blockContext))
     // Allow other actions if devnull is targeted to readers and writers
     else if (blockContext.requestContext.initialBlockContext.indices.contains(devNullKibana)) Fulfilled(modifyMatched(blockContext))
@@ -115,7 +112,7 @@ class KibanaAccessRule(val settings: Settings)
 
   private def isKibanaSimplaData(requestContext: RequestContext) = {
     val originRequestIndices = requestContext.initialBlockContext.indices
-    kibanaCanBeModified && originRequestIndices.size == 1 && originRequestIndices.head.hasPrefix("kibana_sample_data_")
+    kibanaCanBeModified && originRequestIndices.size === 1 && originRequestIndices.head.hasPrefix("kibana_sample_data_")
   }
 
   private def emptyIndicesMatch(requestContext: RequestContext) = {
@@ -169,12 +166,10 @@ object KibanaAccessRule {
                             rorIndex: RorConfigurationIndex)
 
   private object Matchers {
-    val roMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RO_ACTIONS))
-    val rwMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.RW_ACTIONS))
-    val adminMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.ADMIN_ACTIONS))
-    val clusterMatcher = new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(Constants.CLUSTER_ACTIONS))
+    val roMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RO_ACTIONS)
+    val rwMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.RW_ACTIONS)
+    val adminMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.ADMIN_ACTIONS)
+    val clusterMatcher = MatcherWithWildcardsScalaAdapter.fromJavaSetString[Action](Constants.CLUSTER_ACTIONS)
   }
 
-  private implicit val stringActionNT: StringTNaturalTransformation[Action] =
-    StringTNaturalTransformation[Action](Action.apply, _.value)
 }

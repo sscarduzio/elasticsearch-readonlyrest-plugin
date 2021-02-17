@@ -19,9 +19,8 @@ package tech.beshu.ror.unit.utils
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import monix.eval.Task
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.accesscontrol.utils.CacheableActionWithKeyMapping
 
@@ -29,8 +28,9 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.exceptions.TestFailedException
+import org.scalatest.wordspec.AnyWordSpec
 
-class CacheableActionWithKeyMappingTests extends WordSpec with MockFactory {
+class CacheableActionWithKeyMappingTests extends AnyWordSpec with MockFactory {
 
   "A cache" should {
     "call provider only once and then cache the result" in {

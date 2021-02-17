@@ -16,9 +16,9 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.Show
 import cats.data.EitherT
 import cats.implicits._
+import cats.{Eq, Show}
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
@@ -27,16 +27,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
-import tech.beshu.ror.utils.MatcherWithWildcards
-
-import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.CaseMappingEquality._
 
 sealed trait Rule {
   def name: Name
@@ -98,19 +96,19 @@ object Rule {
     private lazy val enhancedImpersonatorDefs =
       impersonators
         .map { i =>
-          val matcher = new MatcherWithWildcardsScalaAdapter(
-            new MatcherWithWildcards(i.users.map(_.value.value).toSortedSet.asJava)
-          )
-          (i, matcher)
+           val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSortedSet)(caseMappingEquality)
+          (i, userMatcher)
         }
 
     protected def impersonators: List[ImpersonatorDef]
 
-    protected def exists(user: User.Id): Task[UserExistence]
+    protected def exists(user: User.Id)
+                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence]
 
     def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
 
-    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
+    override final def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
+      implicit val eqUserId: Eq[User.Id] = caseMappingEquality.toOrder
       val requestContext = blockContext.requestContext
       requestContext.impersonateAs match {
         case Some(theImpersonatedUserId) => toRuleResult[B] {
@@ -127,8 +125,11 @@ object Rule {
       }
     }
 
+    protected def caseMappingEquality: UserIdCaseMappingEquality
+
     private def findImpersonatorWithProperRights[B <: BlockContext](theImpersonatedUserId: User.Id,
-                                                                    requestContext: RequestContext) = {
+                                                                    requestContext: RequestContext)
+                                                                   (implicit userIdEq: Eq[User.Id]) = {
       EitherT.fromOption[Task](
         requestContext
           .basicAuth
@@ -154,7 +155,8 @@ object Rule {
         }
     }
 
-    private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id) = EitherT {
+    private def checkIfTheImpersonatedUserExist[B <: BlockContext](theImpersonatedUserId: User.Id)
+                                                                  (implicit userIdEq: Eq[User.Id]) = EitherT {
       exists(theImpersonatedUserId)
         .map {
           case Exists => Right(())
@@ -186,7 +188,9 @@ object Rule {
 
     override protected val impersonators: List[ImpersonatorDef] = Nil
 
-    override protected def exists(user: User.Id): Task[UserExistence] = Task.now(CannotCheck)
+    override final protected def exists(user: User.Id)
+                                       (implicit userIdEq: Eq[User.Id]): Task[UserExistence] =
+      Task.now(CannotCheck)
   }
 
 }

@@ -95,6 +95,7 @@ trait ReadonlyRest extends Logging {
     val action = ConfigLoading.loadEsConfig(esConfigPath)
     runStartingFailureProgram(indexConfigManager, action)
   }
+
   private def loadRorConfig(esConfigPath: Path,
                             esConfig: EsConfig,
                             indexConfigManager: IndexConfigManager)
@@ -109,6 +110,7 @@ trait ReadonlyRest extends Logging {
     EitherT(action.foldMap(compiler))
       .leftMap(toStartingFailure)
   }
+
   private def toStartingFailure(error: LoadedRorConfig.Error) = {
     error match {
       case LoadedRorConfig.FileParsingError(message) =>
@@ -208,7 +210,7 @@ class RorInstance private(boot: ReadonlyRest,
                           rorConfigurationIndex: RorConfigurationIndex,
                           auditSink: AuditSinkService)
                          (implicit propertiesProvider: PropertiesProvider,
-                         scheduler: Scheduler)
+                          scheduler: Scheduler)
   extends Logging {
 
   import RorInstance.ScheduledReloadError.{EngineReloadError, ReloadingInProgress}
@@ -405,7 +407,7 @@ object RorInstance {
                                    rorConfigurationIndex: RorConfigurationIndex,
                                    auditSink: AuditSinkService)
                                   (implicit propertiesProvider: PropertiesProvider,
-                                  scheduler: Scheduler): Task[RorInstance] = {
+                                   scheduler: Scheduler): Task[RorInstance] = {
     create(boot, Mode.WithPeriodicIndexCheck, engine, config, indexConfigManager, rorConfigurationIndex, auditSink)
   }
 

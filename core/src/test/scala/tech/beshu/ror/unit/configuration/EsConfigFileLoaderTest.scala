@@ -19,14 +19,14 @@ package tech.beshu.ror.unit.configuration
 import better.files.File
 import cats.implicits._
 import io.circe.Decoder
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.configuration.{EsConfigFileLoader, MalformedSettings}
 
 import scala.language.postfixOps
 
-class EsConfigFileLoaderTest extends WordSpec {
+class EsConfigFileLoaderTest extends AnyWordSpec {
   private implicit val envVarsProvider: EnvVarsProvider = name =>
     name.value.value match {
       case "USER_NAME" => Some("John")

@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import java.security.Key
-
 import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
@@ -27,8 +25,9 @@ import io.jsonwebtoken.{Jwts, SignatureAlgorithm}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.Inside
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService.Name
@@ -42,16 +41,18 @@ import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
+import java.security.Key
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class JwtAuthRuleTests
-  extends WordSpec with MockFactory with Inside with BlockContextAssertion {
+  extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
 
   "A JwtAuthRule" should {
     "match" when {
@@ -503,7 +504,7 @@ class JwtAuthRuleTests
                          configuredGroups: UniqueList[Group] = UniqueList.empty,
                          tokenHeader: Header,
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups))
+    val rule = new JwtAuthRule(JwtAuthRule.Settings(configuredJwtDef, configuredGroups), TestsUtils.userIdEq)
     val requestContext = MockRequestContext.metadata.copy(headers = Set(tokenHeader))
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)

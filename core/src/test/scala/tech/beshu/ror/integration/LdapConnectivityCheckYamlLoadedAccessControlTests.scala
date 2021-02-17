@@ -18,8 +18,10 @@ package tech.beshu.ror.integration
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
-import org.scalatest.{BeforeAndAfterAll, Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{BeforeAndAfterAll, Inside}
+
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
 import tech.beshu.ror.accesscontrol.blocks.Block
@@ -33,7 +35,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.Forbidden
 import cats.data.NonEmptySet
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
-  extends WordSpec
+  extends AnyWordSpec
     with BaseYamlLoadedAccessControlTest
     with BeforeAndAfterAll
     with ForAllTestContainer

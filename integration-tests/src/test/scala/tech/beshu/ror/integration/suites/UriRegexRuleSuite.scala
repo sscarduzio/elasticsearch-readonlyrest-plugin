@@ -17,13 +17,14 @@
 package tech.beshu.ror.integration.suites
 
 import org.junit.Assert.assertEquals
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.CatManager
 
 trait UriRegexRuleSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with Matchers {
   this: EsContainerCreator =>

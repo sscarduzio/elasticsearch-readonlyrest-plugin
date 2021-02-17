@@ -20,7 +20,7 @@ import java.security.KeyPairGenerator
 import java.util.Base64
 
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.accesscontrol.domain.{AuthorizationTokenDef, ClaimName, Header}
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod

@@ -17,14 +17,14 @@
 package tech.beshu.ror.integration.suites
 
 import org.junit.Assert.assertEquals
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.DocumentManager
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ActionsSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 

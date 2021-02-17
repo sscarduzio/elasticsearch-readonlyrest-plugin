@@ -17,8 +17,8 @@
 package tech.beshu.ror.integration.suites
 
 import io.jsonwebtoken.{JwtBuilder, Jwts, SignatureAlgorithm}
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.CatManager
@@ -27,7 +27,7 @@ import scala.collection.mutable
 
 //TODO change test names. Current names are copies from old java integration tests
 trait RorKbnAuthSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 

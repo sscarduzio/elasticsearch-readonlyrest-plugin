@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.integration.suites
 
-import org.scalatest.WordSpec
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager}
@@ -25,7 +25,7 @@ import tech.beshu.ror.utils.misc.CustomScalaTestMatchers._
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 
 trait ClusterApiSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport {
   this: EsContainerCreator =>
