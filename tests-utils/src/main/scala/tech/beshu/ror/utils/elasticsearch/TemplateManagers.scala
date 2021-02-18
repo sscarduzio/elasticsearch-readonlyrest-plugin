@@ -267,7 +267,10 @@ object TemplateManager {
         Template(
           templateJson("name").str,
           templateJson.obj("index_template")("index_patterns").arr.map(_.str).toSet,
-          templateJson.obj("index_template")("aliases").obj.keys.toSet
+          (for {
+            template <- templateJson.obj("index_template").obj.get("template")
+            aliases <- template.obj.get("aliases")
+          } yield aliases.obj.keys.toSet).getOrElse(Set.empty)
         )
       }
       .toList

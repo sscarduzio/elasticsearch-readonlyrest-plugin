@@ -22,7 +22,6 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, LegacyTemplateManager, TemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -35,8 +34,8 @@ trait IndexTemplatesManagementSuite
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
+//  indexTemplateApiTest("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
   indexTemplateApiTest("A new template API")(new TemplateManager(_, esTargets.head.esVersion))
-  indexTemplateApiTest("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
 
   def indexTemplateApiTest(name: String)
                           (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
@@ -44,6 +43,7 @@ trait IndexTemplatesManagementSuite
     val dev1TemplateManager = templateManagerCreator(basicAuthClient("dev1", "test"))
     val dev2TemplateManager = templateManagerCreator(basicAuthClient("dev2", "test"))
     val dev3TemplateManager = templateManagerCreator(basicAuthClient("dev3", "test"))
+    val adminTemplateManager = templateManagerCreator(adminClient)
 
     s"$name" when {
       "user is dev1" should {
@@ -1044,85 +1044,6 @@ trait IndexTemplatesManagementSuite
           }
         }
       }
-    }
-  }
-
-  //  "A new template API" when {
-  //    "put index template operation is used" should {
-  //      "be allowed" when {
-  //        "there is an index defined for it" when {
-  //          "template has index pattern with wildcard" in {}
-  //        }
-  //        "indices rule is not used in matched block" in {
-  //          val result = adminTemplateManager.putIndexTemplate(
-  //            templateName = "temp1",
-  //            indexPatterns = NonEmptyList.of("dev*"),
-  //            template = indexTemplate("dev")
-  //          )
-  //          result.responseCode should be(200)
-  //        }
-  //        "user has access to all indices related data from request (index patterns, aliases, aliases patterns)" in {
-  //          val result = dev1TemplateManager.putIndexTemplate(
-  //            templateName = "temp1",
-  //            indexPatterns = NonEmptyList.of("custom_dev1_index_a_*", "custom_dev1_index_b_*"),
-  //            template = indexTemplate("dev1_index", "{index}_alias")
-  //          )
-  //          result.responseCode should be(200)
-  //        }
-  //      }
-  //      "not be allowed" when {
-  //        "user has no access to at least one requested index pattern" in {
-  //          val result = dev2TemplateManager.putIndexTemplate(
-  //            templateName = "temp1",
-  //            indexPatterns = NonEmptyList.of("dev1*"),
-  //            template = indexTemplate()
-  //          )
-  //          result.responseCode should be(401)
-  //        }
-  //        "user has no access to at least one requested alias" in {
-  //          val result = dev2TemplateManager.putIndexTemplate(
-  //            templateName = "temp1",
-  //            indexPatterns = NonEmptyList.of("custom_dev2_index_a_**"),
-  //            template = indexTemplate("dev1", "dev2_index")
-  //          )
-  //          result.responseCode should be(401)
-  //        }
-  //        "user has no access to at least one requested alias pattern" in {
-  //          val result = dev2TemplateManager.putIndexTemplate(
-  //            templateName = "temp1",
-  //            indexPatterns = NonEmptyList.of("custom_dev2_index_a_**"),
-  //            template = indexTemplate("alias_{index}", "dev2_index")
-  //          )
-  //          result.responseCode should be(401)
-  //        }
-  //      }
-  //    }
-  //    "delete index template operation is used" should {
-  //      "be allowed" in {
-  //
-  //      }
-  //      "not be allowed" in {
-  //
-  //      }
-  //    }
-  //  }
-}
-
-object IndexTemplatesManagementSuite {
-
-  private object examples {
-
-    def indexTemplate(aliases: String*): JSON = ujson.read {
-      s"""
-         |{
-         |  "settings" : {
-         |    "number_of_shards" : 1
-         |  },
-         |  "aliases" : {
-         |    ${aliases.toList.map(alias => s""""$alias":{}""").mkString(",")}
-         |  }
-         |}
-       """.stripMargin
     }
   }
 }

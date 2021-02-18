@@ -22,7 +22,7 @@ import org.scalatest.WordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator, SingletonEsContainer}
-import tech.beshu.ror.utils.elasticsearch.CatManager
+import tech.beshu.ror.utils.elasticsearch.{CatManager, TemplateManager}
 import ujson.Str
 
 trait CatApiSuite
@@ -38,6 +38,7 @@ trait CatApiSuite
   private lazy val dev1ClusterStateManager = new CatManager(basicAuthClient("dev1", "test"), esVersion = targetEs.esVersion)
   private lazy val dev2ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
   private lazy val dev3ClusterStateManager = new CatManager(basicAuthClient("dev3", "test"), esVersion = targetEs.esVersion)
+  private lazy val adminTemplateManager = new TemplateManager(adminClient, targetEs.esVersion)
 
   "A _cat/state" should {
     "work as expected" in {

@@ -20,9 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.{BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, LegacyTemplateManager}
-import tech.beshu.ror.utils.misc.Version
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, LegacyTemplateManager, TemplateManager}
 
 trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
@@ -31,85 +29,39 @@ trait BaseTemplatesSuite
 
   def rorContainer: EsClusterContainer
 
-  protected lazy val adminTemplateManager = new LegacyTemplateManager(adminClient, targetEs.esVersion)
-  protected lazy val adminIndexManager = new IndexManager(adminClient)
+  private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, targetEs.esVersion)
+  private lazy val adminTemplateManager = new TemplateManager(adminClient, targetEs.esVersion)
+  private lazy val adminIndexManager = new IndexManager(adminClient)
   protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
   protected def createIndexWithExampleDoc(documentManager: DocumentManager, index: String): Unit = {
     adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}""")).force()
   }
 
-  protected def templateExample(indexPattern: String,
-                                otherIndexPatterns: Set[String],
-                                aliases: Set[String]): JSON = {
-    putTemplateBodyJson(otherIndexPatterns + indexPattern, aliases)
-  }
-
-  protected def templateExample(indexPattern: String,
-                                otherIndexPatterns: String*): JSON = {
-    putTemplateBodyJson(otherIndexPatterns.toSet + indexPattern, Set.empty)
-  }
-
-  private def putTemplateBodyJson(indexPatterns: Set[String], aliases: Set[String]): JSON = {
-    val esVersion = rorContainer.esVersion
-    val allIndexPattern = indexPatterns.toList
-    val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
-    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-      ujson.read {
-        s"""
-           |{
-           |  "index_patterns":[$patternsString],
-           |  "aliases":{
-           |    ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
-           |  },
-           |  "settings":{"number_of_shards":1},
-           |  "mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}
-           |}""".stripMargin
-      }
-    } else if (Version.greaterOrEqualThan(esVersion, 6, 0, 0)) {
-      ujson.read {
-        s"""
-           |{
-           |  "index_patterns":[$patternsString],
-           |  "aliases":{
-           |    ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
-           |  },
-           |  "settings":{"number_of_shards":1},
-           |  "mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}
-           ||}""".stripMargin
-      }
-    } else {
-      if (allIndexPattern.size == 1) {
-        ujson.read {
-          s"""
-             |{
-             |  "template":"${allIndexPattern.head}",
-             |  "aliases":{
-             |    ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
-             |  },
-             |  "settings":{"number_of_shards":1},
-             |  "mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}
-             |}""".stripMargin
-        }
-      } else {
-        throw new IllegalArgumentException("Cannot create template with more than one index pattern for the ES version < 6.0.0")
-      }
-    }
-  }
-
   override protected def beforeEach(): Unit = {
     super.beforeEach()
+    truncateLegacyTemplates()
     truncateTemplates()
     truncateIndices()
+    addControlLegacyTemplate()
     addControlTemplate()
+  }
+
+  private def truncateLegacyTemplates(): Unit = {
+    adminLegacyTemplateManager
+      .getTemplates.force()
+      .templates
+      .foreach { template =>
+        adminLegacyTemplateManager.deleteTemplate(template.name).force()
+      }
   }
 
   private def truncateTemplates(): Unit = {
     adminTemplateManager
       .getTemplates.force()
-      .responseJson.obj.keys
+      .templates
       .foreach { template =>
-        adminTemplateManager.deleteTemplate(template).force()
+        adminTemplateManager.deleteTemplate(template.name).force()
       }
   }
 
@@ -119,10 +71,20 @@ trait BaseTemplatesSuite
       .force()
   }
 
+  private def addControlLegacyTemplate(): Unit = {
+    adminLegacyTemplateManager
+      .insertTemplate(
+        templateName = "control_one",
+        indexPatterns = NonEmptyList.one("control_*"),
+        aliases = Set("control")
+      )
+      .force()
+  }
+
   private def addControlTemplate(): Unit = {
     adminTemplateManager
       .insertTemplate(
-        templateName = "control_one",
+        templateName = "control_two",
         indexPatterns = NonEmptyList.one("control_*"),
         aliases = Set("control")
       )
