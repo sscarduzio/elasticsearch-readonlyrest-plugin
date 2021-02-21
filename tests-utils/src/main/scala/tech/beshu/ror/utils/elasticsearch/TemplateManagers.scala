@@ -26,6 +26,7 @@ import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager._
+import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplatesResponse
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
 
@@ -39,15 +40,15 @@ abstract class BaseTemplateManager(client: RestClient,
   def getTemplates: TemplatesResponse =
     call(createGetTemplatesRequest, new TemplatesResponse(_, parseTemplates))
 
-  def insertTemplate(templateName: String,
-                     indexPatterns: NonEmptyList[String],
-                     aliases: Set[String] = Set.empty): SimpleResponse =
+  def putTemplate(templateName: String,
+                  indexPatterns: NonEmptyList[String],
+                  aliases: Set[String] = Set.empty): SimpleResponse =
     call(createInsertTemplateRequest(templateName, indexPatterns, aliases), new SimpleResponse(_))
 
   def insertTemplateAndWaitForIndexing(templateName: String,
                                        indexPatterns: NonEmptyList[String],
                                        aliases: Set[String] = Set.empty): Unit = {
-    val result = insertTemplate(templateName, indexPatterns, aliases)
+    val result = putTemplate(templateName, indexPatterns, aliases)
     if (!result.isSuccess) throw new IllegalStateException("Cannot insert template: [" + result.responseCode + "]\nResponse: " + result.body)
     val retryPolicy = new RetryPolicy[Boolean]()
       .handleIf(isNotIndexedYet)
@@ -219,6 +220,15 @@ class TemplateManager(client: RestClient, esVersion: String)
     request
   }
 
+  override protected def createInsertTemplateRequest(templateName: String,
+                                                     indexPatterns: NonEmptyList[String],
+                                                     aliases: Set[String]): HttpPut = {
+    val request = new HttpPut(client.from(s"/_index_template/$templateName"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases))))
+    request
+  }
+
   override protected def createDeleteTemplateRequest(templateName: String): HttpDelete = {
     val request = new HttpDelete(client.from(s"/_index_template/$templateName"))
     request.setHeader("timeout", "50s")
@@ -228,15 +238,6 @@ class TemplateManager(client: RestClient, esVersion: String)
   override protected def createDeleteAllTemplatesRequest(): HttpDelete = {
     val request = new HttpDelete(client.from("/_index_template/*"))
     request.setHeader("timeout", "50s")
-    request
-  }
-
-  override protected def createInsertTemplateRequest(templateName: String,
-                                                     indexPatterns: NonEmptyList[String],
-                                                     aliases: Set[String]): HttpPut = {
-    val request = new HttpPut(client.from(s"/_index_template/$templateName"))
-    request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases))))
     request
   }
 
@@ -275,4 +276,83 @@ object TemplateManager {
       }
       .toList
   }
+}
+
+class ComponentTemplateManager(client: RestClient, esVersion: String)
+  extends BaseManager(client) {
+
+  require(
+    Version.greaterOrEqualThan(esVersion, 7, 8, 0),
+    "New template API is supported starting from ES 7.8.0"
+  )
+
+  def getTemplates: ComponentTemplatesResponse = {
+    call(createGetComponentTemplatesRequest("*"), new ComponentTemplatesResponse(_))
+  }
+
+  def getTemplate(templateName: String): ComponentTemplatesResponse = {
+    call(createGetComponentTemplatesRequest(templateName), new ComponentTemplatesResponse(_))
+  }
+
+  def putTemplate(templateName: String, aliases: Set[String]): SimpleResponse = {
+    call(createPutComponentTemplateRequest(templateName, aliases), new SimpleResponse(_))
+  }
+
+  def deleteTemplate(templateName: String): SimpleResponse = {
+    call(createDeleteComponentTemplateRequest(templateName), new SimpleResponse(_))
+  }
+
+  private def createGetComponentTemplatesRequest(templateName: String) = {
+    new HttpGet(client.from("/_component_template/" + templateName))
+  }
+
+  private def createPutComponentTemplateRequest(templateName: String, aliases: Set[String]) = {
+    val request = new HttpPut(client.from(s"/_component_template/$templateName"))
+    request.setHeader("Content-Type", "application/json")
+    request.setEntity(new StringEntity(ujson.write(putComponentTemplateBodyJson(aliases))))
+    request
+  }
+
+  private def createDeleteComponentTemplateRequest(templateName: String) = {
+    new HttpDelete(client.from("/_component_template/" + templateName))
+  }
+
+  private def putComponentTemplateBodyJson(aliases: Set[String]) = {
+    s"""
+       |{
+       |  "template": {
+       |    "settings" : {
+       |      "number_of_shards" : 1
+       |    },
+       |    "aliases" : {
+       |      ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
+       |    }
+       |  }
+       |}
+     """.stripMargin
+  }
+}
+
+object ComponentTemplateManager {
+
+  class ComponentTemplatesResponse(response: HttpResponse)
+    extends JsonResponse(response) {
+
+    lazy val templates: List[ComponentTemplate] = {
+      responseJson("component_templates")
+        .arr
+        .map { templateJson =>
+          ComponentTemplate(
+            templateJson("name").str,
+            (for {
+              template <- templateJson.obj("component_template").obj.get("template")
+              aliases <- template.obj.get("aliases")
+            } yield aliases.obj.keys.toSet).getOrElse(Set.empty)
+          )
+        }
+        .toList
+    }
+  }
+
+  final case class ComponentTemplate(name: String, aliases: Set[String])
 }

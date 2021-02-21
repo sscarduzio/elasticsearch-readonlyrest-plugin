@@ -141,7 +141,7 @@ private[indicesrule] trait LegacyTemplatesIndices
                                       allowedIndices: AllowedIndices) = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * checking if Template [${newTemplateName.show}] with indices
-         | patterns [${newTemplateIndicesPatterns.show}] can be added ...""".oneLiner
+         | patterns [${newTemplateIndicesPatterns.show}] and aliases [${newTemplateAliases.show}] can be added ...""".oneLiner
     )
     lazy val allPatternAllowed =
       newTemplateIndicesPatterns.toList

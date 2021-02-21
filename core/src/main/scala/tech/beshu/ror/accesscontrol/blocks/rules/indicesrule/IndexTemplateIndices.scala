@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
 import tech.beshu.ror.accesscontrol.domain._
@@ -55,7 +56,7 @@ private[indicesrule] trait IndexTemplateIndices
               .withResponseTemplateTransformation(filterTemplatesNotAllowedPatternsAndAliases)
           )
         case None =>
-          RuleResult.rejected()
+          RuleResult.rejected(Some(Cause.TemplateNotFound))
       }
     }
   }
@@ -139,20 +140,22 @@ private[indicesrule] trait IndexTemplateIndices
                                     (implicit blockContext: TemplateRequestBlockContext,
                                      allowedIndices: AllowedIndices) = {
     logger.debug(
-      s"""[${blockContext.requestContext.id.show}] * checking if Index Template [${newTemplateName.show}] can be added ..."""
+      s"""[${blockContext.requestContext.id.show}] * checking if Index Template [${newTemplateName.show}] with indices
+         | patterns [${newTemplateIndicesPatterns.show}] and aliases [${newTemplateAliases.show}] can be added ...""".oneLiner
     )
     lazy val allPatternAllowed =
       newTemplateIndicesPatterns.toList
-      .forall { pattern =>
-        val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
-        if (!isPatternAllowed) logger.debug(
-          s"""[${blockContext.requestContext.id.show}] STOP: one of Template's [${newTemplateName.show}]
-             | index pattern [${pattern.show}] is forbidden.""".oneLiner
-        )
-        isPatternAllowed
-      }
+        .forall { pattern =>
+          val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
+          if (!isPatternAllowed) logger.debug(
+            s"""[${blockContext.requestContext.id.show}] STOP: one of Template's [${newTemplateName.show}]
+               | index pattern [${pattern.show}] is forbidden.""".oneLiner
+          )
+          isPatternAllowed
+        }
+
     lazy val allAliasesAllowed =
-      if(newTemplateAliases.isEmpty) true
+      if (newTemplateAliases.isEmpty) true
       else {
         newTemplateAliases.forall { alias =>
           val allowed = isAliasAllowed(alias)
@@ -188,17 +191,17 @@ private[indicesrule] trait IndexTemplateIndices
     )
     lazy val allPatternAllowed =
       existingTemplate.patterns.toList
-      .forall { pattern =>
-        val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
-        if (!isPatternAllowed) logger.debug(
-          s"""[${blockContext.requestContext.id.show}] STOP: cannot allow to modify existing Index Template
-             | [${existingTemplate.name.show}], because its index pattern [${pattern.show}] is not allowed by rule
-             | (it means that user has no access to it)""".oneLiner
-        )
-        isPatternAllowed
-      }
+        .forall { pattern =>
+          val isPatternAllowed = allowedIndices.resolved.exists(pattern.isSubsetOf)
+          if (!isPatternAllowed) logger.debug(
+            s"""[${blockContext.requestContext.id.show}] STOP: cannot allow to modify existing Index Template
+               | [${existingTemplate.name.show}], because its index pattern [${pattern.show}] is not allowed by rule
+               | (it means that user has no access to it)""".oneLiner
+          )
+          isPatternAllowed
+        }
     lazy val allAliasesAllowed =
-      if(existingTemplate.aliases.isEmpty) true
+      if (existingTemplate.aliases.isEmpty) true
       else {
         existingTemplate.aliases.forall { alias =>
           val allowed = isAliasAllowed(alias)

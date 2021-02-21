@@ -18,35 +18,35 @@ package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
 import cats.implicits._
-import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
+import org.elasticsearch.action.admin.indices.template.delete.{DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{DeletingLegacyTemplates, GettingLegacyTemplates}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.DeletingIndexTemplates
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
-class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
-                                     esContext: EsContext,
-                                     clusterService: RorClusterService,
-                                     override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[DeleteIndexTemplateRequest, DeletingLegacyTemplates](
+class DeleteComposableIndexTemplateEsRequestContext(actionRequest: DeleteComposableIndexTemplateAction.Request,
+                                                    esContext: EsContext,
+                                                    clusterService: RorClusterService,
+                                                    override val threadPool: ThreadPool)
+  extends BaseTemplatesEsRequestContext[DeleteComposableIndexTemplateAction.Request, DeletingIndexTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  override protected def templateOperationFrom(request: DeleteIndexTemplateRequest): DeletingLegacyTemplates = {
+  override protected def templateOperationFrom(request: DeleteComposableIndexTemplateAction.Request): DeletingIndexTemplates = {
     TemplateNamePattern.fromString(request.name()) match {
-      case Some(pattern) => DeletingLegacyTemplates(NonEmptyList.one(pattern))
+      case Some(pattern) => DeletingIndexTemplates(NonEmptyList.one(pattern))
       case None => throw RequestSeemsToBeInvalid[DeleteIndexTemplateRequest]("No template name patterns found")
     }
   }
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
-      case DeletingLegacyTemplates(namePatterns) =>
+      case DeletingIndexTemplates(namePatterns) =>
         namePatterns.tail match {
           case Nil =>
           case _ =>

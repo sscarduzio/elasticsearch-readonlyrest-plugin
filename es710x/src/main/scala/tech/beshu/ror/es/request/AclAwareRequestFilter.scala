@@ -40,7 +40,7 @@ import org.elasticsearch.action.admin.indices.rollover.RolloverRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
-import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
+import org.elasticsearch.action.admin.indices.template.delete.{DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
 import org.elasticsearch.action.admin.indices.template.get.{GetComposableIndexTemplateAction, GetIndexTemplatesRequest}
 import org.elasticsearch.action.admin.indices.template.put.{PutComposableIndexTemplateAction, PutIndexTemplateRequest}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
@@ -127,6 +127,8 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new GetComposableIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       case request: PutComposableIndexTemplateAction.Request =>
         regularRequestHandler.handle(new PutComposableIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: DeleteComposableIndexTemplateAction.Request =>
+        regularRequestHandler.handle(new DeleteComposableIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       // aliases
       case request: GetAliasesRequest =>
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))

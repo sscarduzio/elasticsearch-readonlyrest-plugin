@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.{BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, LegacyTemplateManager, TemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{ComponentTemplateManager, DocumentManager, IndexManager, LegacyTemplateManager, TemplateManager}
 
 trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
@@ -31,6 +31,7 @@ trait BaseTemplatesSuite
 
   private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, targetEs.esVersion)
   private lazy val adminTemplateManager = new TemplateManager(adminClient, targetEs.esVersion)
+  private lazy val adminComponentTemplateManager = new ComponentTemplateManager(adminClient, targetEs.esVersion)
   private lazy val adminIndexManager = new IndexManager(adminClient)
   protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
@@ -42,9 +43,11 @@ trait BaseTemplatesSuite
     super.beforeEach()
     truncateLegacyTemplates()
     truncateTemplates()
+    truncateComponentTemplates()
     truncateIndices()
     addControlLegacyTemplate()
     addControlTemplate()
+    addControlComponentTemplate()
   }
 
   private def truncateLegacyTemplates(): Unit = {
@@ -65,6 +68,15 @@ trait BaseTemplatesSuite
       }
   }
 
+  private def truncateComponentTemplates(): Unit = {
+    adminComponentTemplateManager
+      .getTemplates.force()
+      .templates
+      .foreach { template =>
+        adminComponentTemplateManager.deleteTemplate(template.name).force()
+      }
+  }
+
   private def truncateIndices(): Unit = {
     adminIndexManager
       .removeAllIndices()
@@ -73,9 +85,9 @@ trait BaseTemplatesSuite
 
   private def addControlLegacyTemplate(): Unit = {
     adminLegacyTemplateManager
-      .insertTemplate(
+      .putTemplate(
         templateName = "control_one",
-        indexPatterns = NonEmptyList.one("control_*"),
+        indexPatterns = NonEmptyList.one("control_one_*"),
         aliases = Set("control")
       )
       .force()
@@ -83,9 +95,18 @@ trait BaseTemplatesSuite
 
   private def addControlTemplate(): Unit = {
     adminTemplateManager
-      .insertTemplate(
+      .putTemplate(
         templateName = "control_two",
-        indexPatterns = NonEmptyList.one("control_*"),
+        indexPatterns = NonEmptyList.one("control_two_*"),
+        aliases = Set("control")
+      )
+      .force()
+  }
+
+  private def addControlComponentTemplate(): Unit = {
+    adminComponentTemplateManager
+      .putTemplate(
+        templateName = "control_two",
         aliases = Set("control")
       )
       .force()
