@@ -29,10 +29,10 @@ import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class CreateTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
-                                     esContext: EsContext,
-                                     clusterService: RorClusterService,
-                                     override val threadPool: ThreadPool)
+class PutTemplateEsRequestContext(actionRequest: PutIndexTemplateRequest,
+                                  esContext: EsContext,
+                                  clusterService: RorClusterService,
+                                  override val threadPool: ThreadPool)
   extends BaseTemplatesEsRequestContext[PutIndexTemplateRequest, AddingLegacyTemplate](
     actionRequest, esContext, clusterService, threadPool
   ) {

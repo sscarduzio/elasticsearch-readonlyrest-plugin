@@ -20,29 +20,29 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.auto._
 import monix.eval.Task
-import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
+import org.elasticsearch.action.admin.indices.template.get.GetComponentTemplateAction
 import org.elasticsearch.cluster.metadata
-import org.elasticsearch.cluster.metadata.ComposableIndexTemplate
+import org.elasticsearch.cluster.metadata.{ComponentTemplate => MetadataComponentTemplate}
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
-import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingComponentTemplates
+import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
 
-class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableIndexTemplateAction.Request,
-                                                 esContext: EsContext,
-                                                 clusterService: RorClusterService,
-                                                 override val threadPool: ThreadPool)
-                                                (implicit generator: UniqueIdentifierGenerator)
-  extends BaseTemplatesEsRequestContext[GetComposableIndexTemplateAction.Request, GettingIndexTemplates](
+class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAction.Request,
+                                           esContext: EsContext,
+                                           clusterService: RorClusterService,
+                                           override val threadPool: ThreadPool)
+                                          (implicit generator: UniqueIdentifierGenerator)
+  extends BaseTemplatesEsRequestContext[GetComponentTemplateAction.Request, GettingComponentTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
@@ -55,8 +55,8 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
     )
     .getOrElse(NonEmptyList.one(TemplateNamePattern("*")))
 
-  override protected def templateOperationFrom(request: GetComposableIndexTemplateAction.Request): GettingIndexTemplates = {
-    GettingIndexTemplates(requestTemplateNamePatterns)
+  override protected def templateOperationFrom(request: GetComponentTemplateAction.Request): GettingComponentTemplates = {
+    GettingComponentTemplates(requestTemplateNamePatterns)
   }
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
@@ -65,9 +65,9 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
     ModificationResult.Modified
   }
 
-  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
+  override protected def modifyRequest(blockContext: BlockContext.TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
-      case GettingIndexTemplates(namePatterns) =>
+      case GettingComponentTemplates(namePatterns) =>
         actionRequest.name(namePatterns.map(_.value.value).toList.mkString(","))
         updateResponse(using = blockContext)
       case other =>
@@ -80,10 +80,10 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
 
   private def updateResponse(using: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
-      case r: GetComposableIndexTemplateAction.Response =>
-        Task.now(new GetComposableIndexTemplateAction.Response(
+      case r: GetComponentTemplateAction.Response =>
+        Task.now(new GetComponentTemplateAction.Response(
           filter(
-            templates = r.indexTemplates().asSafeMap,
+            templates = r.getComponentTemplates.asSafeMap,
             using = using.responseTemplateTransformation
           )
         ))
@@ -92,30 +92,30 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
     }
   }
 
-  private def filter(templates: Map[String, ComposableIndexTemplate],
+  private def filter(templates: Map[String, MetadataComponentTemplate],
                      using: Set[Template] => Set[Template]) = {
     val templatesMap = templates
-      .flatMap { case (name, composableIndexTemplate) =>
-        toIndexTemplate(name, composableIndexTemplate) match {
+      .flatMap { case (name, componentTemplate) =>
+        toComponentTemplate(name, componentTemplate) match {
           case Right(template) =>
-            Some((template, (name, composableIndexTemplate)))
+            Some((template, (name, componentTemplate)))
           case Left(msg) =>
             logger.error(
-              s"""[${id.show}] Template response filtering issue: $msg. For security reasons template
+              s"""[${id.show}] Component Template response filtering issue: $msg. For security reasons template
                  | [$name] will be skipped.""".oneLiner)
             None
         }
       }
     val filteredTemplates = using(templatesMap.keys.toSet)
     templatesMap
-      .flatMap { case (template, (name, composableIndexTemplate)) =>
+      .flatMap { case (template, (name, componentTemplate)) =>
         filteredTemplates
-          .find(_.name == template.name)
+          .find(_.name.value.value == name)
           .flatMap {
-            case t: IndexTemplate if t == template =>
-              Some((name, composableIndexTemplate))
-            case t: IndexTemplate =>
-              Some((name, filterMetadataData(composableIndexTemplate, t)))
+            case t: ComponentTemplate if t == template =>
+              Some((name, componentTemplate))
+            case t: ComponentTemplate =>
+              Some((name, filterMetadataData(componentTemplate, t)))
             case t =>
               logger.error(s"""[${id.show}] Expected IndexTemplate, but got: $t. Skipping""")
               None
@@ -124,24 +124,19 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
       .asJava
   }
 
-  private def filterMetadataData(composableIndexTemplate: ComposableIndexTemplate, basedOn: IndexTemplate) = {
-    new ComposableIndexTemplate(
-      basedOn.patterns.toList.map(_.value.value).asJava,
+  private def filterMetadataData(componentTemplate: MetadataComponentTemplate, basedOn: ComponentTemplate) = {
+    new MetadataComponentTemplate(
       new metadata.Template(
-        composableIndexTemplate.template().settings(),
-        composableIndexTemplate.template().mappings(),
-        filterAliases(composableIndexTemplate.template(), basedOn)
+        componentTemplate.template.settings,
+        componentTemplate.template.mappings,
+        filterAliases(componentTemplate.template, basedOn)
       ),
-      composableIndexTemplate.composedOf(),
-      composableIndexTemplate.priority(),
-      composableIndexTemplate.version(),
-      composableIndexTemplate.metadata(),
-      composableIndexTemplate.getDataStreamTemplate,
-      composableIndexTemplate.getAllowAutoCreate
+      componentTemplate.version(),
+      componentTemplate.metadata()
     )
   }
 
-  private def filterAliases(template: metadata.Template, basedOn: IndexTemplate) = {
+  private def filterAliases(template: metadata.Template, basedOn: ComponentTemplate) = {
     val aliasesStrings = basedOn.aliases.map(_.value.value)
     template
       .aliases().asSafeMap
@@ -149,17 +144,14 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
       .asJava
   }
 
-  private def toIndexTemplate(name: String, composableIndexTemplate: ComposableIndexTemplate) = {
+  private def toComponentTemplate(name: String, componentTemplate: MetadataComponentTemplate) = {
     for {
       name <- TemplateName
         .fromString(name)
         .toRight("Template name should be non-empty")
-      patterns <- UniqueNonEmptyList
-        .fromList(composableIndexTemplate.indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
-        .toRight("Template indices pattern list should not be empty")
-      aliases = Option(composableIndexTemplate.template())
+      aliases = Option(componentTemplate.template())
         .map(_.aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet)
         .getOrElse(Set.empty)
-    } yield IndexTemplate(name, patterns, aliases)
+    } yield ComponentTemplate(name, aliases)
   }
 }

@@ -1074,13 +1074,26 @@ trait IndexTemplatesManagementSuite
             result.responseCode should be (200)
           }
           "the template has aliases and the user has access to them" in {
-            val result = dev1TemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_*"))
+            val result = dev1TemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_1"))
 
             result.responseCode should be (200)
           }
         }
         "be allowed to override an existing template" when {
+          "the exising template has no aliases" in {
+            adminTemplateManager.putTemplate("temp1", Set.empty).force()
 
+            val result = dev1TemplateManager.putTemplate("temp1", Set("dev1_index"))
+
+            result.responseCode should be (200)
+          }
+          "the existing template has only aliases which are allowed" in {
+            adminTemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_1")).force()
+
+            val result = dev1TemplateManager.putTemplate("temp1", Set("custom_dev1_index_2"))
+
+            result.responseCode should be (200)
+          }
         }
         "be allowed to remove a template" when {
 
@@ -1094,10 +1107,21 @@ trait IndexTemplatesManagementSuite
 
         }
         "not be allowed to create a new template" when {
+          "template has at least one non allowed alias" in {
 
+            val result = dev2TemplateManager.putTemplate("temp1", Set("dev2_index", "custom_dev1_index_1"))
+
+            result.responseCode should be (401)
+          }
         }
         "not be allowed to override an existing template" when {
+          "the existing template has alias which is forbidden for the user" in {
+            adminTemplateManager.putTemplate("temp1", Set("dev2_index", "custom_dev1_index_1")).force()
 
+            val result = dev2TemplateManager.putTemplate("temp1", Set.empty)
+
+            result.responseCode should be (401)
+          }
         }
         "not be allowed to remove a template" when {
 

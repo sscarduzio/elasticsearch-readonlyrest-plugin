@@ -17,14 +17,15 @@
 package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
-import org.scalatest.{BeforeAndAfterEach, Suite}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{ComponentTemplateManager, DocumentManager, IndexManager, LegacyTemplateManager, TemplateManager}
 
 trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach
+    with BeforeAndAfterAll {
   this: Suite with EsContainerCreator =>
 
   def rorContainer: EsClusterContainer
@@ -35,8 +36,23 @@ trait BaseTemplatesSuite
   private lazy val adminIndexManager = new IndexManager(adminClient)
   protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
+  private var originIndexTemplateNames: List[String] = List.empty
+  private var originComponentTemplateNames: List[String] = List.empty
+
   protected def createIndexWithExampleDoc(documentManager: DocumentManager, index: String): Unit = {
     adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}""")).force()
+  }
+
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    originIndexTemplateNames = adminTemplateManager
+      .getTemplates.force()
+      .templates
+      .map(_.name)
+    originComponentTemplateNames = adminComponentTemplateManager
+        .getTemplates.force()
+        .templates
+        .map(_.name)
   }
 
   override protected def beforeEach(): Unit = {
@@ -64,7 +80,8 @@ trait BaseTemplatesSuite
       .getTemplates.force()
       .templates
       .foreach { template =>
-        adminTemplateManager.deleteTemplate(template.name).force()
+        if(!originIndexTemplateNames.contains(template.name))
+          adminTemplateManager.deleteTemplate(template.name).force()
       }
   }
 
@@ -73,7 +90,8 @@ trait BaseTemplatesSuite
       .getTemplates.force()
       .templates
       .foreach { template =>
-        adminComponentTemplateManager.deleteTemplate(template.name).force()
+        if(!originComponentTemplateNames.contains(template.name))
+          adminComponentTemplateManager.deleteTemplate(template.name).force()
       }
   }
 
@@ -106,7 +124,7 @@ trait BaseTemplatesSuite
   private def addControlComponentTemplate(): Unit = {
     adminComponentTemplateManager
       .putTemplate(
-        templateName = "control_two",
+        templateName = "control_three",
         aliases = Set("control")
       )
       .force()

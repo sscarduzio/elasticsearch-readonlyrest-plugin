@@ -303,7 +303,7 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
   }
 
   private def createGetComponentTemplatesRequest(templateName: String) = {
-    new HttpGet(client.from("/_component_template/" + templateName))
+    new HttpGet(client.from(s"/_component_template/$templateName"))
   }
 
   private def createPutComponentTemplateRequest(templateName: String, aliases: Set[String]) = {
@@ -314,10 +314,10 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
   }
 
   private def createDeleteComponentTemplateRequest(templateName: String) = {
-    new HttpDelete(client.from("/_component_template/" + templateName))
+    new HttpDelete(client.from(s"/_component_template/$templateName"))
   }
 
-  private def putComponentTemplateBodyJson(aliases: Set[String]) = {
+  private def putComponentTemplateBodyJson(aliases: Set[String]) = ujson.read {
     s"""
        |{
        |  "template": {
@@ -328,8 +328,7 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
        |      ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}
        |    }
        |  }
-       |}
-     """.stripMargin
+       |}""".stripMargin
   }
 }
 

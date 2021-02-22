@@ -16,41 +16,37 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import org.elasticsearch.action.admin.indices.template.put.{PutComposableIndexTemplateAction, PutIndexTemplateRequest}
+import org.elasticsearch.action.admin.indices.template.put.PutComponentTemplateAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingIndexTemplate
-import tech.beshu.ror.accesscontrol.domain.{IndexName, IndexPattern, TemplateName}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingComponentTemplate
+import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName}
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.es.request.context.ModificationResult.Modified
 import tech.beshu.ror.utils.ScalaOps._
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class PutComposableIndexTemplateEsRequestContext(actionRequest: PutComposableIndexTemplateAction.Request,
-                                                 esContext: EsContext,
-                                                 clusterService: RorClusterService,
-                                                 override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[PutComposableIndexTemplateAction.Request, AddingIndexTemplate](
+class PutComponentTemplateEsRequestContext(actionRequest: PutComponentTemplateAction.Request,
+                                           esContext: EsContext,
+                                           clusterService: RorClusterService,
+                                           override val threadPool: ThreadPool)
+  extends BaseTemplatesEsRequestContext[PutComponentTemplateAction.Request, AddingComponentTemplate](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
-  override protected def templateOperationFrom(request: PutComposableIndexTemplateAction.Request): AddingIndexTemplate = {
+  override protected def templateOperationFrom(request: PutComponentTemplateAction.Request): AddingComponentTemplate = {
     val templateOperation = for {
       name <- TemplateName
         .fromString(request.name())
         .toRight("Template name should be non-empty")
-      patterns <- UniqueNonEmptyList
-        .fromList(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
-        .toRight("Template indices pattern list should not be empty")
-      aliases = request.indexTemplate().template().aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet
-    } yield AddingIndexTemplate(name, patterns, aliases)
+      aliases = request.componentTemplate().template().aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet
+    } yield AddingComponentTemplate(name, aliases)
 
     templateOperation match {
       case Right(operation) => operation
-      case Left(msg) => throw RequestSeemsToBeInvalid[PutComposableIndexTemplateAction.Request](msg)
+      case Left(msg) => throw RequestSeemsToBeInvalid[PutComponentTemplateAction.Request](msg)
     }
   }
 

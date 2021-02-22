@@ -40,9 +40,9 @@ import org.elasticsearch.action.admin.indices.rollover.RolloverRequest
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
-import org.elasticsearch.action.admin.indices.template.delete.{DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
-import org.elasticsearch.action.admin.indices.template.get.{GetComposableIndexTemplateAction, GetIndexTemplatesRequest}
-import org.elasticsearch.action.admin.indices.template.put.{PutComposableIndexTemplateAction, PutIndexTemplateRequest}
+import org.elasticsearch.action.admin.indices.template.delete.{DeleteComponentTemplateAction, DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
+import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction, GetIndexTemplatesRequest}
+import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutComposableIndexTemplateAction, PutIndexTemplateRequest}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.{GetRequest, MultiGetRequest}
@@ -120,7 +120,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: GetIndexTemplatesRequest =>
         regularRequestHandler.handle(new GetTemplatesEsRequestContext(request, esContext, clusterService, threadPool))
       case request: PutIndexTemplateRequest =>
-        regularRequestHandler.handle(new CreateTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new PutTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       case request: DeleteIndexTemplateRequest =>
         regularRequestHandler.handle(new DeleteTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       case request: GetComposableIndexTemplateAction.Request =>
@@ -129,6 +129,12 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new PutComposableIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       case request: DeleteComposableIndexTemplateAction.Request =>
         regularRequestHandler.handle(new DeleteComposableIndexTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: GetComponentTemplateAction.Request =>
+        regularRequestHandler.handle(new GetComponentTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: PutComponentTemplateAction.Request =>
+        regularRequestHandler.handle(new PutComponentTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: DeleteComponentTemplateAction.Request =>
+        regularRequestHandler.handle(new DeleteComponentTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       // aliases
       case request: GetAliasesRequest =>
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
