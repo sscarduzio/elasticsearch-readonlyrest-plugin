@@ -23,6 +23,7 @@ import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
+import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, LegacyTemplateManager, TemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
@@ -1056,16 +1057,46 @@ trait IndexTemplatesManagementSuite
 
     "A component template API" when {
       "user is dev1" should {
-        "see empty list of templates" when {
-          "there is none" in {
+        "be allowed to get all user templates" in {
+          adminTemplateManager.putTemplate("temp1", Set.empty).force()
+          adminTemplateManager.putTemplate("temp2", Set("dev1_index")).force()
+          adminTemplateManager.putTemplate("temp3", Set("dev2_index")).force()
+          adminTemplateManager.putTemplate("temp4", Set("dev1_index", "dev2_index")).force()
 
-          }
-        }
-        "be allowed to get all templates" when {
+          val result = dev1TemplateManager.getTemplates
 
+          result.responseCode should be (200)
+          result.templates should contain allOf (
+            ComponentTemplate("temp1", Set.empty),
+            ComponentTemplate("temp2", Set("dev1_index")),
+            ComponentTemplate("temp3", Set.empty),
+            ComponentTemplate("temp4", Set("dev1_index"))
+          )
         }
         "be allowed to get a specific template" when {
+          "full name template is used" in {
+            adminTemplateManager.putTemplate("temp1", Set.empty).force()
+            adminTemplateManager.putTemplate("temp2", Set("dev1_index")).force()
 
+            val result = dev1TemplateManager.getTemplate("temp2")
+
+            result.responseCode should be (200)
+            result.templates should be (List(
+              ComponentTemplate("temp2", Set("dev1_index"))
+            ))
+          }
+          "wildcard is used" in {
+            adminTemplateManager.putTemplate("temp1", Set("dev1_index")).force()
+            adminTemplateManager.putTemplate("temp2", Set("dev2_index")).force()
+
+            val result = dev1TemplateManager.getTemplate("temp*")
+
+            result.responseCode should be (200)
+            result.templates should be (List(
+              ComponentTemplate("temp2", Set("dev1_index")),
+              ComponentTemplate("temp2", Set.empty)
+            ))
+          }
         }
         "be allowed to create a new template" when {
           "the template has no aliases" in {
@@ -1080,7 +1111,7 @@ trait IndexTemplatesManagementSuite
           }
         }
         "be allowed to override an existing template" when {
-          "the exising template has no aliases" in {
+          "the existing template has no aliases" in {
             adminTemplateManager.putTemplate("temp1", Set.empty).force()
 
             val result = dev1TemplateManager.putTemplate("temp1", Set("dev1_index"))
@@ -1096,7 +1127,20 @@ trait IndexTemplatesManagementSuite
           }
         }
         "be allowed to remove a template" when {
+          "the template has no aliases" in {
+            adminTemplateManager.putTemplate("temp1", Set.empty).force()
 
+            val result = dev1TemplateManager.deleteTemplate("temp1")
+
+            result.responseCode should be (200)
+          }
+          "the template has aliases which user is allowed to see" in {
+            adminTemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_1")).force()
+
+            val result = dev1TemplateManager.deleteTemplate("temp1")
+
+            result.responseCode should be (200)
+          }
         }
       }
       "user is dev2" should {
@@ -1124,7 +1168,13 @@ trait IndexTemplatesManagementSuite
           }
         }
         "not be allowed to remove a template" when {
+          "the template has at least one index which user is not allowed to see" in {
+            adminTemplateManager.putTemplate("temp1", Set("dev2_index", "custom_dev1_index_1")).force()
 
+            val result = dev2TemplateManager.deleteTemplate("temp1")
+
+            result.responseCode should be (401)
+          }
         }
       }
     }

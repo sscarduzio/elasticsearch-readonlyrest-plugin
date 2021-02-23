@@ -49,7 +49,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
   private lazy val requestTemplateNamePatterns = NonEmptyList
     .fromList(
       Option(actionRequest.name()).toSet
-        .flatMap { names: String => names.split(",").asSafeSet }
+        .flatMap { names: String => names.split(",").asSafeSet } // todo: double check it
         .flatMap(TemplateNamePattern.fromString)
         .toList
     )
@@ -117,7 +117,7 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
             case t: ComponentTemplate =>
               Some((name, filterMetadataData(componentTemplate, t)))
             case t =>
-              logger.error(s"""[${id.show}] Expected IndexTemplate, but got: $t. Skipping""")
+              logger.error(s"""[${id.show}] Expected ComponentTemplate, but got: $t. Skipping""")
               None
           }
       }

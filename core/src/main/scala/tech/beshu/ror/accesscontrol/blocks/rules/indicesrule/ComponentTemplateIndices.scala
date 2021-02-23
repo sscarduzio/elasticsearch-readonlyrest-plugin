@@ -43,18 +43,12 @@ private[indicesrule] trait ComponentTemplateIndices
       )
       RuleResult.fulfilled(blockContext)
     } else {
-      val templateNamePatterns = existingTemplates.map(t => TemplateNamePattern.from(t.name)).toList
-      NonEmptyList.fromList(templateNamePatterns) match {
-        case Some(names) =>
-          val modifiedOperation = TemplateOperation.GettingComponentTemplates(names)
-          RuleResult.fulfilled(
-            blockContext
-              .withTemplateOperation(modifiedOperation)
-              .withResponseTemplateTransformation(filterTemplatesNotAllowedAliases)
-          )
-        case None =>
-          RuleResult.rejected()
-      }
+      val operation = TemplateOperation.GettingComponentTemplates(templateNamePatterns)
+      RuleResult.fulfilled(
+        blockContext
+          .withTemplateOperation(operation)
+          .withResponseTemplateTransformation(filterTemplatesNotAllowedAliases)
+      )
     }
   }
 
