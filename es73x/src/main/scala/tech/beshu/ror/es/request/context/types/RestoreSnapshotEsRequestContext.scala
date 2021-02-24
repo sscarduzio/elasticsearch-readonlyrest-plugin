@@ -79,7 +79,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
         Left(())
       case snapshot :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. Whole set of repositories [${snapshots.mkString(",")}]")
+          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one snapshot. First was taken. The whole set of repositories [${snapshots.mkString(",")}]")
         }
         Right(snapshot)
     }
@@ -92,7 +92,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
         Left(())
       case repository :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. Whole set of repositories [${repositories.mkString(",")}]")
+          logger.warn(s"[${blockContext.requestContext.id.show}] Filtered result contains more than one repository. First was taken. The whole set of repositories [${repositories.mkString(",")}]")
         }
         Right(repository)
     }

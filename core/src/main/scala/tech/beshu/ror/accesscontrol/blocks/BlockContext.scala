@@ -440,39 +440,4 @@ object BlockContext {
                                               hasIndexPacks: Option[HasIndexPacks[B]] = None) =
       hasIndices.nonEmpty || hasIndexPacks.nonEmpty
   }
-
-  implicit class IndicesFrom(val b: BlockContext) extends AnyVal {
-
-    def allUsedIndices: Set[IndexName] = b match {
-      case _: CurrentUserMetadataRequestBlockContext => Set.empty
-      case _: GeneralNonIndexRequestBlockContext => Set.empty
-      case _: RepositoryRequestBlockContext => Set.empty
-      case bc: SnapshotRequestBlockContext => bc.filteredIndices
-      case bc: AliasRequestBlockContext => bc.aliases ++ bc.indices
-      case bc: TemplateRequestBlockContext =>
-        ??? // todo:
-//        bc.templateOperations.flatMap {
-//          case TemplateOperation.IndexTemplate(_, patterns, aliases) => patterns.toSet ++ aliases
-//          case TemplateOperation.ComponentTemplate(_, aliases) => aliases
-//        }
-      case bc: GeneralIndexRequestBlockContext => bc.filteredIndices
-      case bc: FilterableRequestBlockContext => bc.filteredIndices
-      case bc: FilterableMultiRequestBlockContext =>
-        bc
-          .indexPacks
-          .flatMap {
-            case Indices.Found(indices) => indices.toList
-            case Indices.NotFound => List.empty
-          }
-          .toSet
-      case bc: MultiIndexRequestBlockContext =>
-        bc
-          .indexPacks
-          .flatMap {
-            case Indices.Found(indices) => indices.toList
-            case Indices.NotFound => List.empty
-          }
-          .toSet
-    }
-  }
 }

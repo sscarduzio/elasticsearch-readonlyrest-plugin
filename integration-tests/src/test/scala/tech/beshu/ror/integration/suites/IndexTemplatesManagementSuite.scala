@@ -35,8 +35,8 @@ trait IndexTemplatesManagementSuite
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
-//  indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
-//  indexTemplateApiTests("A new template API")(new TemplateManager(_, esTargets.head.esVersion))
+  indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
+  indexTemplateApiTests("A new template API")(new TemplateManager(_, esTargets.head.esVersion))
   componentTemplateApiTests()
 
   def indexTemplateApiTests(name: String)
@@ -1081,9 +1081,9 @@ trait IndexTemplatesManagementSuite
             val result = dev1TemplateManager.getTemplate("temp2")
 
             result.responseCode should be (200)
-            result.templates should be (List(
+            result.templates should contain (
               ComponentTemplate("temp2", Set("dev1_index"))
-            ))
+            )
           }
           "wildcard is used" in {
             adminTemplateManager.putTemplate("temp1", Set("dev1_index")).force()
@@ -1092,10 +1092,10 @@ trait IndexTemplatesManagementSuite
             val result = dev1TemplateManager.getTemplate("temp*")
 
             result.responseCode should be (200)
-            result.templates should be (List(
-              ComponentTemplate("temp2", Set("dev1_index")),
+            result.templates should contain allOf (
+              ComponentTemplate("temp1", Set("dev1_index")),
               ComponentTemplate("temp2", Set.empty)
-            ))
+            )
           }
         }
         "be allowed to create a new template" when {
@@ -1144,12 +1144,6 @@ trait IndexTemplatesManagementSuite
         }
       }
       "user is dev2" should {
-        "not be allowed to get all templates" when {
-
-        }
-        "not be allowed to get a specific template" when {
-
-        }
         "not be allowed to create a new template" when {
           "template has at least one non allowed alias" in {
 

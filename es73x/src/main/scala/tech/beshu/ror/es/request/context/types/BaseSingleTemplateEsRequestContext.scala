@@ -40,7 +40,7 @@ abstract class BaseSingleTemplateEsRequestContext[R <: ActionRequest](actionRequ
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     val templates = blockContext.templates
     if (templates.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one template. First was taken. Whole set of templates [${templates.toList.mkString(",")}]")
+      logger.warn(s"[${id.show}] Filtered result contains more than one template. First was taken. The whole set of templates [${templates.toList.mkString(",")}]")
     }
     update(actionRequest, templates.head)
   }

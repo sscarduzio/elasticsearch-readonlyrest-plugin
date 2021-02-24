@@ -52,7 +52,7 @@ class DeleteTemplateEsRequestContext(actionRequest: DeleteIndexTemplateRequest,
           case _ =>
             logger.warn(
               s"""[${id.show}] Filtered result contains more than one template pattern. First was taken.
-                 | Whole set of patterns [${namePatterns.toList.mkString(",")}]""".oneLiner)
+                 | The whole set of patterns [${namePatterns.toList.mkString(",")}]""".oneLiner)
         }
         actionRequest.name(namePatterns.head.value.value)
         ModificationResult.Modified

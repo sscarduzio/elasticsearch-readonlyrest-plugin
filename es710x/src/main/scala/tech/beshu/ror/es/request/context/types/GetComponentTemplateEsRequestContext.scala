@@ -31,6 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingComponentTemplates
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName, TemplateNamePattern}
 import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
@@ -47,13 +48,13 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
   ) {
 
   private lazy val requestTemplateNamePatterns = NonEmptyList
-    .fromList(
-      Option(actionRequest.name()).toSet
-        .flatMap { names: String => names.split(",").asSafeSet } // todo: double check it
+    .fromList {
+      Option(actionRequest.name()).toList
         .flatMap(TemplateNamePattern.fromString)
-        .toList
-    )
-    .getOrElse(NonEmptyList.one(TemplateNamePattern("*")))
+    }
+    .getOrElse {
+      NonEmptyList.one(TemplateNamePattern("*"))
+    }
 
   override protected def templateOperationFrom(request: GetComponentTemplateAction.Request): GettingComponentTemplates = {
     GettingComponentTemplates(requestTemplateNamePatterns)
@@ -68,7 +69,12 @@ class GetComponentTemplateEsRequestContext(actionRequest: GetComponentTemplateAc
   override protected def modifyRequest(blockContext: BlockContext.TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
       case GettingComponentTemplates(namePatterns) =>
-        actionRequest.name(namePatterns.map(_.value.value).toList.mkString(","))
+        if(namePatterns.tail.nonEmpty) {
+          logger.warn(
+            s"""[${id.show}] Filtered result contains more than one template. First was taken. The whole set of
+               | component templates [${namePatterns.show}]""".stripMargin)
+        }
+        actionRequest.name(namePatterns.head.value.value)
         updateResponse(using = blockContext)
       case other =>
         logger.error(

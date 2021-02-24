@@ -30,6 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
@@ -47,13 +48,13 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
   ) {
 
   private lazy val requestTemplateNamePatterns = NonEmptyList
-    .fromList(
-      Option(actionRequest.name()).toSet
-        .flatMap { names: String => names.split(",").asSafeSet }
+    .fromList {
+      Option(actionRequest.name()).toList
         .flatMap(TemplateNamePattern.fromString)
-        .toList
-    )
-    .getOrElse(NonEmptyList.one(TemplateNamePattern("*")))
+    }
+    .getOrElse {
+      NonEmptyList.one(TemplateNamePattern("*"))
+    }
 
   override protected def templateOperationFrom(request: GetComposableIndexTemplateAction.Request): GettingIndexTemplates = {
     GettingIndexTemplates(requestTemplateNamePatterns)
@@ -68,7 +69,12 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
       case GettingIndexTemplates(namePatterns) =>
-        actionRequest.name(namePatterns.map(_.value.value).toList.mkString(","))
+        if(namePatterns.tail.nonEmpty) {
+          logger.warn(
+            s"""[${id.show}] Filtered result contains more than one template. First was taken. The whole set of
+               | index templates [${namePatterns.show}]""".stripMargin)
+        }
+        actionRequest.name(namePatterns.head.value.value)
         updateResponse(using = blockContext)
       case other =>
         logger.error(
