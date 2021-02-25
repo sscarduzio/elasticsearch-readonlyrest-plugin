@@ -42,6 +42,7 @@ import org.elasticsearch.action.admin.indices.shards.IndicesShardStoresRequest
 import org.elasticsearch.action.admin.indices.stats.IndicesStatsRequest
 import org.elasticsearch.action.admin.indices.template.delete.{DeleteComponentTemplateAction, DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
 import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction, GetIndexTemplatesRequest}
+import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateRequest, SimulateTemplateAction}
 import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutComposableIndexTemplateAction, PutIndexTemplateRequest}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkShardRequest}
 import org.elasticsearch.action.delete.DeleteRequest
@@ -50,6 +51,7 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
@@ -69,6 +71,7 @@ import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
+                            settings: Settings,
                             threadPool: ThreadPool)
                            (implicit generator: UniqueIdentifierGenerator,
                             scheduler: Scheduler)
@@ -135,6 +138,10 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
         regularRequestHandler.handle(new PutComponentTemplateEsRequestContext(request, esContext, clusterService, threadPool))
       case request: DeleteComponentTemplateAction.Request =>
         regularRequestHandler.handle(new DeleteComponentTemplateEsRequestContext(request, esContext, clusterService, threadPool))
+      case request: SimulateIndexTemplateRequest =>
+        regularRequestHandler.handle(new SimulateIndexTemplateRequestEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+      case request: SimulateTemplateAction.Request =>
+        regularRequestHandler.handle(new SimulateTemplateRequestEsRequestContext(request, esContext, clusterService, threadPool))
       // aliases
       case request: GetAliasesRequest =>
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
@@ -166,7 +173,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: IndicesShardStoresRequest =>
         regularRequestHandler.handle(new IndicesShardStoresEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ClusterStateRequest =>
-        TemplateClusterStateEsRequestContext.from(request, esContext, clusterService, threadPool) match {
+        TemplateClusterStateEsRequestContext.from(request, esContext, clusterService, settings, threadPool) match {
           case Some(requestContext) =>
             regularRequestHandler.handle(requestContext)
           case None =>

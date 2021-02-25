@@ -20,7 +20,7 @@ import cats.data.NonEmptyList
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ComponentTemplateManager, DocumentManager, IndexManager, LegacyTemplateManager, TemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{ComponentTemplateManager, DocumentManager, IndexManager, LegacyTemplateManager, IndexTemplateManager}
 
 trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
@@ -31,7 +31,7 @@ trait BaseTemplatesSuite
   def rorContainer: EsClusterContainer
 
   private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, targetEs.esVersion)
-  private lazy val adminTemplateManager = new TemplateManager(adminClient, targetEs.esVersion)
+  private lazy val adminTemplateManager = new IndexTemplateManager(adminClient, targetEs.esVersion)
   private lazy val adminComponentTemplateManager = new ComponentTemplateManager(adminClient, targetEs.esVersion)
   private lazy val adminIndexManager = new IndexManager(adminClient)
   protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)

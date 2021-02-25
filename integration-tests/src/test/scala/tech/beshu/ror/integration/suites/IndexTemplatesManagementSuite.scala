@@ -24,7 +24,7 @@ import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
-import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, LegacyTemplateManager, TemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, IndexTemplateManager, LegacyTemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait IndexTemplatesManagementSuite
@@ -35,9 +35,10 @@ trait IndexTemplatesManagementSuite
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
-  indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
-  indexTemplateApiTests("A new template API")(new TemplateManager(_, esTargets.head.esVersion))
-  componentTemplateApiTests()
+//  indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
+//  indexTemplateApiTests("A new template API")(new IndexTemplateManager(_, esTargets.head.esVersion))
+//  componentTemplateApiTests()
+  simulateTemplatesApiTests()
 
   def indexTemplateApiTests(name: String)
                            (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
@@ -1065,8 +1066,8 @@ trait IndexTemplatesManagementSuite
 
           val result = dev1TemplateManager.getTemplates
 
-          result.responseCode should be (200)
-          result.templates should contain allOf (
+          result.responseCode should be(200)
+          result.templates should contain allOf(
             ComponentTemplate("temp1", Set.empty),
             ComponentTemplate("temp2", Set("dev1_index")),
             ComponentTemplate("temp3", Set.empty),
@@ -1080,8 +1081,8 @@ trait IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.getTemplate("temp2")
 
-            result.responseCode should be (200)
-            result.templates should contain (
+            result.responseCode should be(200)
+            result.templates should contain(
               ComponentTemplate("temp2", Set("dev1_index"))
             )
           }
@@ -1091,8 +1092,8 @@ trait IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.getTemplate("temp*")
 
-            result.responseCode should be (200)
-            result.templates should contain allOf (
+            result.responseCode should be(200)
+            result.templates should contain allOf(
               ComponentTemplate("temp1", Set("dev1_index")),
               ComponentTemplate("temp2", Set.empty)
             )
@@ -1102,12 +1103,12 @@ trait IndexTemplatesManagementSuite
           "the template has no aliases" in {
             val result = dev1TemplateManager.putTemplate("temp1", Set.empty)
 
-            result.responseCode should be (200)
+            result.responseCode should be(200)
           }
           "the template has aliases and the user has access to them" in {
             val result = dev1TemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_1"))
 
-            result.responseCode should be (200)
+            result.responseCode should be(200)
           }
         }
         "be allowed to override an existing template" when {
@@ -1116,14 +1117,14 @@ trait IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.putTemplate("temp1", Set("dev1_index"))
 
-            result.responseCode should be (200)
+            result.responseCode should be(200)
           }
           "the existing template has only aliases which are allowed" in {
             adminTemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_1")).force()
 
             val result = dev1TemplateManager.putTemplate("temp1", Set("custom_dev1_index_2"))
 
-            result.responseCode should be (200)
+            result.responseCode should be(200)
           }
         }
         "be allowed to remove a template" when {
@@ -1132,24 +1133,23 @@ trait IndexTemplatesManagementSuite
 
             val result = dev1TemplateManager.deleteTemplate("temp1")
 
-            result.responseCode should be (200)
+            result.responseCode should be(200)
           }
           "the template has aliases which user is allowed to see" in {
             adminTemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_1")).force()
 
             val result = dev1TemplateManager.deleteTemplate("temp1")
 
-            result.responseCode should be (200)
+            result.responseCode should be(200)
           }
         }
       }
       "user is dev2" should {
         "not be allowed to create a new template" when {
           "template has at least one non allowed alias" in {
-
             val result = dev2TemplateManager.putTemplate("temp1", Set("dev2_index", "custom_dev1_index_1"))
 
-            result.responseCode should be (401)
+            result.responseCode should be(401)
           }
         }
         "not be allowed to override an existing template" when {
@@ -1158,7 +1158,7 @@ trait IndexTemplatesManagementSuite
 
             val result = dev2TemplateManager.putTemplate("temp1", Set.empty)
 
-            result.responseCode should be (401)
+            result.responseCode should be(401)
           }
         }
         "not be allowed to remove a template" when {
@@ -1167,8 +1167,33 @@ trait IndexTemplatesManagementSuite
 
             val result = dev2TemplateManager.deleteTemplate("temp1")
 
-            result.responseCode should be (401)
+            result.responseCode should be(401)
           }
+        }
+      }
+    }
+  }
+
+  def simulateTemplatesApiTests(): Unit = {
+    val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esTargets.head.esVersion)
+    val user1IndexTemplateManager = new IndexTemplateManager(basicAuthClient("dev1", "test"), esTargets.head.esVersion)
+
+    "A simulate index API" should {
+      "be allowed for user" which {
+        "has access to given index" in {
+          adminIndexTemplateManager
+            .putTemplate(
+              templateName = "temp1",
+              indexPatterns = NonEmptyList.of("custom_dev1_index_*", "custom_dev2_index_*"),
+              aliases = Set("dev1_index", "dev2_index")
+            )
+            .force()
+
+          val result = user1IndexTemplateManager.simulateIndex("custom_dev1_index_test")
+
+          result.responseCode should be (200)
+          val body = result.responseJson
+          body should be ("")
         }
       }
     }

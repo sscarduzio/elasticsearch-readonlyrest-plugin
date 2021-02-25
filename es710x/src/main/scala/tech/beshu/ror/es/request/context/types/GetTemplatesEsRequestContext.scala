@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.auto._
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest, GetIndexTemplatesResponse}
 import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexTemplateMetadata}
 import org.elasticsearch.common.collect.ImmutableOpenMap
@@ -29,6 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -80,19 +82,27 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
   private def updateResponse(using: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetIndexTemplatesResponse =>
+        implicit val _ = id
         Task.now(new GetIndexTemplatesResponse(
-          filter(
-            templates = r.getIndexTemplates.asSafeList,
-            using = using.responseTemplateTransformation
-          )
+          GetTemplatesEsRequestContext
+            .filter(
+              templates = r.getIndexTemplates.asSafeList,
+              using = using.responseTemplateTransformation
+            )
+            .asJava
         ))
       case other =>
         Task.now(other)
     }
   }
 
-  private def filter(templates: List[IndexTemplateMetadata],
-                     using: Set[Template] => Set[Template]) = {
+}
+
+private[types] object GetTemplatesEsRequestContext extends Logging {
+
+  def filter(templates: List[IndexTemplateMetadata],
+             using: Set[Template] => Set[Template])
+            (implicit requestContextId: RequestContext.Id): List[IndexTemplateMetadata] = {
     val templatesMap = templates
       .flatMap { metadata =>
         toLegacyTemplate(metadata) match {
@@ -100,7 +110,7 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
             Some((template, metadata))
           case Left(msg) =>
             logger.error(
-              s"""[${id.show}] Template response filtering issue: $msg. For security reasons template
+              s"""[${requestContextId.show}] Template response filtering issue: $msg. For security reasons template
                  | [${metadata.name()}] will be skipped.""".oneLiner)
             None
         }
@@ -117,12 +127,11 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
             case t: LegacyTemplate =>
               Some(filterMetadataData(metadata, t))
             case t =>
-              logger.error(s"""[${id.show}] Expected IndexTemplate, but got: $t. Skipping""")
+              logger.error(s"""[${requestContextId.show}] Expected IndexTemplate, but got: $t. Skipping""")
               None
           }
       }
       .toList
-      .asJava
   }
 
   private def filterMetadataData(metadata: IndexTemplateMetadata, basedOn: LegacyTemplate) = {

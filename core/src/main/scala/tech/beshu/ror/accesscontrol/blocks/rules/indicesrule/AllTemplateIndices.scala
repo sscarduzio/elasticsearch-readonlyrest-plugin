@@ -16,15 +16,14 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
 
-import eu.timepit.refined.auto._
 import cats.Show
 import cats.data.NonEmptySet
-import eu.timepit.refined.types.string.NonEmptyString
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.implicits._
@@ -48,20 +47,53 @@ private[indicesrule] trait AllTemplateIndices
     )
     implicit val _ = blockContext
     blockContext.templateOperation match {
-      case TemplateOperation.GettingLegacyTemplates(namePatterns) => gettingLegacyTemplates(namePatterns)
-      case TemplateOperation.AddingLegacyTemplate(name, patterns, aliases) => addingLegacyTemplate(name, patterns, aliases)
-      case TemplateOperation.DeletingLegacyTemplates(namePatterns) => deletingLegacyTemplates(namePatterns)
-      case TemplateOperation.GettingIndexTemplates(namePatterns) => gettingIndexTemplates(namePatterns)
-      case TemplateOperation.AddingIndexTemplate(name, patterns, aliases) => addingIndexTemplate(name, patterns, aliases)
-      case TemplateOperation.DeletingIndexTemplates(namePatterns) => deletingIndexTemplates(namePatterns)
-      case TemplateOperation.GettingComponentTemplates(namePatterns) => gettingComponentTemplates(namePatterns)
-      case TemplateOperation.AddingComponentTemplate(name, aliases) => addingComponentTemplate(name, aliases)
-      case TemplateOperation.DeletingComponentTemplates(namePatterns) => deletingComponentTemplates(namePatterns)
+      case GettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates) =>
+        gettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates)
+      case GettingLegacyTemplates(namePatterns) => gettingLegacyTemplates(namePatterns)
+      case AddingLegacyTemplate(name, patterns, aliases) => addingLegacyTemplate(name, patterns, aliases)
+      case DeletingLegacyTemplates(namePatterns) => deletingLegacyTemplates(namePatterns)
+      case GettingIndexTemplates(namePatterns) => gettingIndexTemplates(namePatterns)
+      case AddingIndexTemplate(name, patterns, aliases) => addingIndexTemplate(name, patterns, aliases)
+      case DeletingIndexTemplates(namePatterns) => deletingIndexTemplates(namePatterns)
+      case GettingComponentTemplates(namePatterns) => gettingComponentTemplates(namePatterns)
+      case AddingComponentTemplate(name, aliases) => addingComponentTemplate(name, aliases)
+      case DeletingComponentTemplates(namePatterns) => deletingComponentTemplates(namePatterns)
     }
   }
 
-  private [indicesrule] def isAliasAllowed(alias: IndexName)
-                                          (implicit allowedIndices: AllowedIndices) = {
+  private def gettingLegacyAndIndexTemplates(gettingLegacyTemplates: GettingLegacyTemplates, gettingIndexTemplates: GettingIndexTemplates)
+                                            (implicit blockContext: TemplateRequestBlockContext,
+                                             allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+    val gettingLegacyTemplatesResult = processGettingLegacyTemplates(gettingLegacyTemplates.namePatterns)
+    val gettingIndexTemplatesResult = processGettingIndexTemplates(gettingIndexTemplates.namePatterns)
+
+    (gettingLegacyTemplatesResult, gettingIndexTemplatesResult) match {
+      case (Right((o1, t1)), Right((o2, t2))) =>
+        val finalOperation = GettingLegacyAndIndexTemplates(o1, o2)
+        RuleResult.fulfilled {
+          blockContext
+            .withTemplateOperation(finalOperation)
+            .withResponseTemplateTransformation(t1 andThen t2)
+        }
+      case (Right((o1, t1)), _) =>
+        RuleResult.fulfilled {
+          blockContext
+            .withTemplateOperation(o1)
+            .withResponseTemplateTransformation(t1)
+        }
+      case (_, Right((o2, t2))) =>
+        RuleResult.fulfilled {
+          blockContext
+            .withTemplateOperation(o2)
+            .withResponseTemplateTransformation(t2)
+        }
+      case (Left(cause), Left(_)) =>
+        RuleResult.rejected(Some(cause))
+    }
+  }
+
+  private[indicesrule] def isAliasAllowed(alias: IndexName)
+                                         (implicit allowedIndices: AllowedIndices) = {
     alias match {
       case Placeholder(placeholder) =>
         val potentialAliases = allowedIndices.resolved.map(i => placeholder.index(i.value))

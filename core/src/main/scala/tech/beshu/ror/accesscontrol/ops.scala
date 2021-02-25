@@ -207,6 +207,7 @@ object show {
     }
 
     implicit val templateOperationShow: Show[TemplateOperation] = Show.show {
+      case TemplateOperation.GettingLegacyAndIndexTemplates(op1, op2) => s"GETALL(${showTraversable(op1.namePatterns.toList)}|${showTraversable(op2.namePatterns.toList)})"
       case TemplateOperation.GettingLegacyTemplates(namePatterns) => s"GET(${showTraversable(namePatterns.toList)})"
       case TemplateOperation.AddingLegacyTemplate(name, patterns, aliases) => s"ADD(${name.show}:${showTraversable(patterns)}:${showTraversable(aliases)})"
       case TemplateOperation.DeletingLegacyTemplates(namePatterns) => s"DEL(${showTraversable(namePatterns.toList)})"

@@ -19,6 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
 import cats.data.NonEmptyList
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
@@ -35,6 +36,21 @@ private[indicesrule] trait IndexTemplateIndices
   protected def gettingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                      (implicit blockContext: TemplateRequestBlockContext,
                                       allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+    processGettingIndexTemplates(templateNamePatterns) match {
+      case Right((operation, transformation)) =>
+        RuleResult.fulfilled(
+          blockContext
+            .withTemplateOperation(operation)
+            .withResponseTemplateTransformation(transformation)
+        )
+      case Left(cause) =>
+        RuleResult.rejected(Some(cause))
+    }
+  }
+
+  protected def processGettingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
+                                            (implicit blockContext: TemplateRequestBlockContext,
+                                             allowedIndices: AllowedIndices): Either[Cause, (TemplateOperation.GettingIndexTemplates, TemplatesTransformation)] = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * getting Index Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
@@ -43,20 +59,16 @@ private[indicesrule] trait IndexTemplateIndices
       logger.debug(
         s"""[${blockContext.requestContext.id.show}] * no Index Templates for name patterns [${templateNamePatterns.show}] found ..."""
       )
-      RuleResult.fulfilled(blockContext)
+      Right((TemplateOperation.GettingIndexTemplates(templateNamePatterns), identity))
     } else {
       val filteredExistingTemplates = existingTemplates.filter(canViewExistingTemplate).toList
       NonEmptyList.fromList(filteredExistingTemplates) match {
         case Some(nonEmptyFilterTemplates) =>
-          val templateNamePatterns = nonEmptyFilterTemplates.map(t => TemplateNamePattern.from(t.name))
-          val modifiedOperation = TemplateOperation.GettingIndexTemplates(templateNamePatterns)
-          RuleResult.fulfilled(
-            blockContext
-              .withTemplateOperation(modifiedOperation)
-              .withResponseTemplateTransformation(filterTemplatesNotAllowedPatternsAndAliases)
-          )
+          val namePatterns = nonEmptyFilterTemplates.map(t => TemplateNamePattern.from(t.name))
+          val modifiedOperation = TemplateOperation.GettingIndexTemplates(namePatterns)
+          Right((modifiedOperation, filterTemplatesNotAllowedPatternsAndAliases(_)))
         case None =>
-          RuleResult.rejected(Some(Cause.TemplateNotFound))
+          Left(Cause.TemplateNotFound)
       }
     }
   }
@@ -239,10 +251,6 @@ private[indicesrule] trait IndexTemplateIndices
           case Some(nonEmptyAllowedPatterns) =>
             Set[Template](Template.IndexTemplate(name, nonEmptyAllowedPatterns, onlyAllowedAliases))
           case None =>
-            logger.error(
-              s"""[${blockContext.requestContext.id.show} Index Template [${name.show}] has no allowed patterns, even if
-                 | it was allowed to be returned by ES. Please, report it as soon as possible!""".oneLiner
-            )
             Set.empty[Template]
         }
       case other =>

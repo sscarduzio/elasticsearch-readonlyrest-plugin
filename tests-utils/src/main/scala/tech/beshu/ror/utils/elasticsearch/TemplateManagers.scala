@@ -22,7 +22,7 @@ import java.util.function.BiPredicate
 import cats.data.NonEmptyList
 import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.apache.http.HttpResponse
-import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPut}
+import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager._
@@ -200,13 +200,17 @@ object LegacyTemplateManager {
   }
 }
 
-class TemplateManager(client: RestClient, esVersion: String)
-  extends BaseTemplateManager(client, TemplateManager.parseTemplates) {
+class IndexTemplateManager(client: RestClient, esVersion: String)
+  extends BaseTemplateManager(client, IndexTemplateManager.parseTemplates) {
 
   require(
     Version.greaterOrEqualThan(esVersion, 7, 8, 0),
     "New template API is supported starting from ES 7.8.0"
   )
+
+  def simulateIndex(indexName: String): JsonResponse = {
+    call(createSimulateIndexRequest(indexName), new JsonResponse(_))
+  }
 
   override protected def createGetTemplateRequest(name: String): HttpGet = {
     val request = new HttpGet(client.from("/_index_template/" + name))
@@ -258,9 +262,16 @@ class TemplateManager(client: RestClient, esVersion: String)
          |}""".stripMargin
     }
   }
+
+  private def createSimulateIndexRequest(indexName: String) = {
+    val request = new HttpPost(client.from(s"/_index_template/_simulate_index/$indexName"))
+    request.setHeader("timeout", "50s")
+    request
+  }
+
 }
 
-object TemplateManager {
+object IndexTemplateManager {
   private def parseTemplates(content: JSON) = {
     content("index_templates")
       .arr
