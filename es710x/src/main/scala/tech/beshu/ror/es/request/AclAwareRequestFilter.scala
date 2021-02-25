@@ -50,6 +50,7 @@ import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{MultiSearchRequest, SearchRequest}
 import org.elasticsearch.action.support.ActionFilterChain
 import org.elasticsearch.action.termvectors.MultiTermVectorsRequest
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.index.reindex.ReindexRequest
 import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
@@ -69,6 +70,7 @@ import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 class AclAwareRequestFilter(clusterService: RorClusterService,
+                            settings: Settings,
                             threadPool: ThreadPool)
                            (implicit generator: UniqueIdentifierGenerator,
                             scheduler: Scheduler)
@@ -166,7 +168,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: IndicesShardStoresRequest =>
         regularRequestHandler.handle(new IndicesShardStoresEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: ClusterStateRequest =>
-        TemplateClusterStateEsRequestContext.from(request, esContext, clusterService, threadPool) match {
+        TemplateClusterStateEsRequestContext.from(request, esContext, clusterService, settings, threadPool) match {
           case Some(requestContext) =>
             regularRequestHandler.handle(requestContext)
           case None =>

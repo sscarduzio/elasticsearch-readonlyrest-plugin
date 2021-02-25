@@ -454,6 +454,10 @@ object domain {
     final case class DeletingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
 
+    final case class GettingLegacyAndIndexTemplates(gettingLegacyTemplates: GettingLegacyTemplates,
+                                                    gettingIndexTemplates: GettingIndexTemplates)
+      extends TemplateOperation
+
     final case class GettingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
 

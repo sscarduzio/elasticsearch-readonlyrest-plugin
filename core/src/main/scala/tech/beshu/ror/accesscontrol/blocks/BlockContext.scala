@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
@@ -76,8 +77,11 @@ object BlockContext {
                                                override val responseHeaders: Set[Header],
                                                override val responseTransformations: List[ResponseTransformation],
                                                templateOperation: TemplateOperation,
-                                               responseTemplateTransformation: Set[Template] => Set[Template])
+                                               responseTemplateTransformation: TemplatesTransformation)
     extends BlockContext
+  object TemplateRequestBlockContext {
+    type TemplatesTransformation = Set[Template] => Set[Template]
+  }
 
   final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
                                                    override val userMetadata: UserMetadata,
@@ -310,6 +314,7 @@ object BlockContext {
         case bc: SnapshotRequestBlockContext => bc.filteredIndices
         case bc: TemplateRequestBlockContext =>
           bc.templateOperation match {
+            case TemplateOperation.GettingLegacyAndIndexTemplates(_, _) => Set.empty
             case TemplateOperation.GettingLegacyTemplates(_) => Set.empty
             case TemplateOperation.AddingLegacyTemplate(_, patterns, aliases) => patterns.map(_.toIndexName).toSet ++ aliases
             case TemplateOperation.DeletingLegacyTemplates(_) => Set.empty

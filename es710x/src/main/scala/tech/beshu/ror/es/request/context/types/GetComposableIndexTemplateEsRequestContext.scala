@@ -20,6 +20,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.auto._
 import monix.eval.Task
+import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.template.get.GetComposableIndexTemplateAction
 import org.elasticsearch.cluster.metadata
 import org.elasticsearch.cluster.metadata.ComposableIndexTemplate
@@ -29,8 +30,9 @@ import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.es.RorClusterService
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
@@ -69,7 +71,7 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
       case GettingIndexTemplates(namePatterns) =>
-        if(namePatterns.tail.nonEmpty) {
+        if (namePatterns.tail.nonEmpty) {
           logger.warn(
             s"""[${id.show}] Filtered result contains more than one template. First was taken. The whole set of
                | index templates [${namePatterns.show}]""".stripMargin)
@@ -87,19 +89,27 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
   private def updateResponse(using: TemplateRequestBlockContext) = {
     ModificationResult.UpdateResponse {
       case r: GetComposableIndexTemplateAction.Response =>
+        implicit val _ = id
         Task.now(new GetComposableIndexTemplateAction.Response(
-          filter(
-            templates = r.indexTemplates().asSafeMap,
-            using = using.responseTemplateTransformation
-          )
+          GetComposableIndexTemplateEsRequestContext
+            .filter(
+              templates = r.indexTemplates().asSafeMap,
+              using = using.responseTemplateTransformation
+            )
+            .asJava
         ))
       case other =>
         Task.now(other)
     }
   }
 
-  private def filter(templates: Map[String, ComposableIndexTemplate],
-                     using: Set[Template] => Set[Template]) = {
+}
+
+private[types] object GetComposableIndexTemplateEsRequestContext extends Logging {
+
+  def filter(templates: Map[String, ComposableIndexTemplate],
+             using: Set[Template] => Set[Template])
+            (implicit requestContextId: RequestContext.Id): Map[String, ComposableIndexTemplate] = {
     val templatesMap = templates
       .flatMap { case (name, composableIndexTemplate) =>
         toIndexTemplate(name, composableIndexTemplate) match {
@@ -107,7 +117,7 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
             Some((template, (name, composableIndexTemplate)))
           case Left(msg) =>
             logger.error(
-              s"""[${id.show}] Template response filtering issue: $msg. For security reasons template
+              s"""[${requestContextId.show}] Template response filtering issue: $msg. For security reasons template
                  | [$name] will be skipped.""".oneLiner)
             None
         }
@@ -123,11 +133,10 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
             case t: IndexTemplate =>
               Some((name, filterMetadataData(composableIndexTemplate, t)))
             case t =>
-              logger.error(s"""[${id.show}] Expected IndexTemplate, but got: $t. Skipping""")
+              logger.error(s"""[${requestContextId.show}] Expected IndexTemplate, but got: $t. Skipping""")
               None
           }
       }
-      .asJava
   }
 
   private def filterMetadataData(composableIndexTemplate: ComposableIndexTemplate, basedOn: IndexTemplate) = {

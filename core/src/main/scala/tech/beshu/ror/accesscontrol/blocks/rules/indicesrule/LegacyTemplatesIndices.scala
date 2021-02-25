@@ -19,10 +19,12 @@ package tech.beshu.ror.accesscontrol.blocks.rules.indicesrule
 import cats.data.NonEmptyList
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.implicits._
 import tech.beshu.ror.utils.ScalaOps._
@@ -35,6 +37,21 @@ private[indicesrule] trait LegacyTemplatesIndices
   protected def gettingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                       (implicit blockContext: TemplateRequestBlockContext,
                                        allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+    processGettingLegacyTemplates(templateNamePatterns) match {
+      case Right((operation, transformation)) =>
+        RuleResult.fulfilled(
+          blockContext
+            .withTemplateOperation(operation)
+            .withResponseTemplateTransformation(transformation)
+        )
+      case Left(cause) =>
+        RuleResult.rejected(Some(cause))
+    }
+  }
+
+  protected def processGettingLegacyTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
+                                             (implicit blockContext: TemplateRequestBlockContext,
+                                              allowedIndices: AllowedIndices): Either[Cause, (GettingLegacyTemplates, TemplatesTransformation)] = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * getting Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
@@ -43,20 +60,16 @@ private[indicesrule] trait LegacyTemplatesIndices
       logger.debug(
         s"""[${blockContext.requestContext.id.show}] * no Templates for name patterns [${templateNamePatterns.show}] found ..."""
       )
-      RuleResult.fulfilled(blockContext)
+      Right((TemplateOperation.GettingLegacyTemplates(templateNamePatterns), identity))
     } else {
       val filteredExistingTemplates = existingTemplates.filter(canViewExistingTemplate).toList
       NonEmptyList.fromList(filteredExistingTemplates) match {
         case Some(nonEmptyFilterTemplates) =>
-          val templateNamePatterns = nonEmptyFilterTemplates.map(t => TemplateNamePattern.from(t.name))
-          val modifiedOperation = TemplateOperation.GettingLegacyTemplates(templateNamePatterns)
-          RuleResult.fulfilled(
-            blockContext
-              .withTemplateOperation(modifiedOperation)
-              .withResponseTemplateTransformation(filterTemplatesNotAllowedPatternsAndAliases)
-          )
+          val namePatterns = nonEmptyFilterTemplates.map(t => TemplateNamePattern.from(t.name))
+          val modifiedOperation = TemplateOperation.GettingLegacyTemplates(namePatterns)
+          Right((modifiedOperation, filterTemplatesNotAllowedPatternsAndAliases(_)))
         case None =>
-          RuleResult.rejected(Some(Cause.TemplateNotFound))
+          Left(Cause.TemplateNotFound)
       }
     }
   }
