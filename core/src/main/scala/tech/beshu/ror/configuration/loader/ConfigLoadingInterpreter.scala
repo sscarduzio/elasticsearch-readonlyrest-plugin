@@ -70,11 +70,11 @@ object ConfigLoadingInterpreter extends Logging {
       case ConfigLoading.LoadConfigAction.LoadRorConfigFromIndex(configIndex) =>
         logger.info(s"[CLUSTERWIDE SETTINGS] Loading ReadonlyREST settings from index (${configIndex.index.value}) ...")
         loadFromIndex(indexConfigManager, configIndex, inIndexLoadingDelay)
-          .bimap(convertIndexError, IndexConfig(configIndex, _))
-          .map { indexRawRorConfig =>
-            logger.info(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index (${indexRawRorConfig.value.raw})")
-            indexRawRorConfig
+          .map { rawRorConfig =>
+            logger.debug(s"[CLUSTERWIDE SETTINGS] Loaded raw config from index: ${rawRorConfig.raw}")
+            rawRorConfig
           }
+          .bimap(convertIndexError, IndexConfig(configIndex, _))
           .leftMap { error =>
             logIndexLoadingError(error)
             error
