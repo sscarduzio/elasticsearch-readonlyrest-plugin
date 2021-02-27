@@ -185,9 +185,7 @@ private[indicesrule] trait IndexTemplateIndices
                                      (implicit blockContext: TemplateRequestBlockContext,
                                       allowedIndices: AllowedIndices) = {
     val isTemplateAllowed = existingTemplate.patterns.toList
-      .exists { pattern =>
-        allowedIndices.resolved.exists(pattern.isAllowedBy)
-      }
+      .exists { pattern => pattern.isAllowedByAny(allowedIndices.resolved) }
     if (!isTemplateAllowed) logger.debug(
       s"""[${blockContext.requestContext.id.show}] WARN: Index Template [${existingTemplate.name.show}] is forbidden
          | because none of its index patterns [${existingTemplate.patterns.show}] is allowed by the rule""".oneLiner
@@ -245,7 +243,7 @@ private[indicesrule] trait IndexTemplateIndices
                                                           allowedIndices: AllowedIndices): Set[Template] = {
     templates.flatMap {
       case Template.IndexTemplate(name, patterns, aliases) =>
-        val onlyAllowedPatterns = patterns.filter(p => allowedIndices.resolved.exists(p.isAllowedBy))
+        val onlyAllowedPatterns = patterns.filter(p => p.isAllowedByAny(allowedIndices.resolved))
         val onlyAllowedAliases = aliases.filter(isAliasAllowed)
         UniqueNonEmptyList.fromSortedSet(onlyAllowedPatterns) match {
           case Some(nonEmptyAllowedPatterns) =>

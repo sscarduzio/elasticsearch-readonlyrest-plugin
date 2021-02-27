@@ -94,13 +94,7 @@ private[indicesrule] trait AllTemplateIndices
 
   private[indicesrule] def isAliasAllowed(alias: IndexName)
                                          (implicit allowedIndices: AllowedIndices) = {
-    alias match {
-      case Placeholder(placeholder) =>
-        val potentialAliases = allowedIndices.resolved.map(i => placeholder.index(i.value))
-        potentialAliases.exists { alias => allowedIndices.resolved.exists(_.matches(alias)) }
-      case _ =>
-        allowedIndices.resolved.exists(_.matches(alias))
-    }
+    alias.isAllowedBy(allowedIndices.resolved)
   }
 
   private[indicesrule] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],

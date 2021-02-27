@@ -27,6 +27,7 @@ import org.apache.http.entity.StringEntity
 import tech.beshu.ror.utils.elasticsearch.BaseManager.{JSON, JsonResponse, SimpleResponse}
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager._
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplatesResponse
+import tech.beshu.ror.utils.elasticsearch.IndexTemplateManager.SimulateResponse
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.Version
 
@@ -208,8 +209,16 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     "New template API is supported starting from ES 7.8.0"
   )
 
-  def simulateIndex(indexName: String): JsonResponse = {
-    call(createSimulateIndexRequest(indexName), new JsonResponse(_))
+  def simulateIndex(indexName: String): SimulateResponse = {
+    call(createSimulateIndexRequest(indexName), new SimulateResponse(_))
+  }
+
+  def simulateTemplate(): SimulateResponse = {
+    call(createSimulateTemplateRequest(None), new SimulateResponse(_))
+  }
+
+  def simulateTemplate(templateName: String): SimulateResponse = {
+    call(createSimulateTemplateRequest(Some(templateName)), new SimulateResponse(_))
   }
 
   override protected def createGetTemplateRequest(name: String): HttpGet = {
@@ -269,6 +278,11 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     request
   }
 
+  private def createSimulateTemplateRequest(templateName: Option[String]) = {
+    val request = new HttpPost(client.from(s"/_index_template/_simulate/${templateName.getOrElse("")}"))
+    request.setHeader("timeout", "50s")
+    request
+  }
 }
 
 object IndexTemplateManager {
@@ -286,6 +300,21 @@ object IndexTemplateManager {
         )
       }
       .toList
+  }
+
+  class SimulateResponse(response: HttpResponse)
+    extends JsonResponse(response) {
+
+    lazy val templateAliases: Set[String] = (for {
+      template <- responseJson.obj.get("template")
+      aliasesMap <- template.obj.get("aliases")
+      aliases = aliasesMap.obj.keys.toSet
+    } yield aliases).getOrElse(Set.empty)
+
+    lazy val overlappingTemplates: List[Template] =
+      responseJson
+        .obj.get("overlapping").map(_.arr.toList).getOrElse(List.empty)
+        .map(t => Template(t("name").str, t("index_patterns").arr.map(_.str).toSet, Set.empty))
   }
 }
 

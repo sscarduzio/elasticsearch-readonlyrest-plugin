@@ -1192,8 +1192,8 @@ trait IndexTemplatesManagementSuite
           val result = user1IndexTemplateManager.simulateIndex("custom_dev1_index_test")
 
           result.responseCode should be (200)
-          val body = result.responseJson
-          body should be ("")
+          result.templateAliases should be (Set("dev1_index"))
+          result.overlappingTemplates should be (List.empty)
         }
       }
     }

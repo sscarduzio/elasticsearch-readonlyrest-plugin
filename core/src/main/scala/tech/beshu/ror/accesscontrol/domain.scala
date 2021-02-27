@@ -291,6 +291,15 @@ object domain {
       if(hasWildcard) matcher.`match`(indexName)
       else this == indexName
     }
+    def isAllowedBy(allowedIndices: Traversable[IndexName]): Boolean = {
+      this match {
+        case Placeholder(placeholder) =>
+          val potentialAliases = allowedIndices.map(i => placeholder.index(i.value))
+          potentialAliases.exists { alias => allowedIndices.exists(_.matches(alias)) }
+        case _ =>
+          allowedIndices.exists(_.matches(this))
+      }
+    }
   }
   object IndexName {
     val wildcard: IndexName = fromUnsafeString("*")
@@ -327,6 +336,10 @@ object domain {
 
     def isAllowedBy(index: IndexName): Boolean = {
       matcher.`match`(index) || index.matches(toIndexName)
+    }
+
+    def isAllowedByAny(anyIndexFrom: Traversable[IndexName]): Boolean = {
+      anyIndexFrom.exists(this.isAllowedBy)
     }
 
     def isSubsetOf(index: IndexName): Boolean = {
