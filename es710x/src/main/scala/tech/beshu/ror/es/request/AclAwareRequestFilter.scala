@@ -141,7 +141,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: SimulateIndexTemplateRequest =>
         regularRequestHandler.handle(new SimulateIndexTemplateRequestEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: SimulateTemplateAction.Request =>
-        regularRequestHandler.handle(new SimulateTemplateRequestEsRequestContext(request, esContext, clusterService, threadPool))
+        regularRequestHandler.handle(new SimulateTemplateRequestEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       // aliases
       case request: GetAliasesRequest =>
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))

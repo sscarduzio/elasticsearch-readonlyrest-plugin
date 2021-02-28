@@ -43,8 +43,9 @@ abstract class BaseTemplateManager(client: RestClient,
 
   def putTemplate(templateName: String,
                   indexPatterns: NonEmptyList[String],
-                  aliases: Set[String] = Set.empty): SimpleResponse =
-    call(createInsertTemplateRequest(templateName, indexPatterns, aliases), new SimpleResponse(_))
+                  aliases: Set[String] = Set.empty,
+                  priority: Int = 0): SimpleResponse =
+    call(createInsertTemplateRequest(templateName, indexPatterns, aliases, priority), new SimpleResponse(_))
 
   def insertTemplateAndWaitForIndexing(templateName: String,
                                        indexPatterns: NonEmptyList[String],
@@ -76,7 +77,8 @@ abstract class BaseTemplateManager(client: RestClient,
 
   protected def createInsertTemplateRequest(templateName: String,
                                             indexPatterns: NonEmptyList[String],
-                                            aliases: Set[String]): HttpPut
+                                            aliases: Set[String],
+                                            priority: Int): HttpPut
 
   private def isTemplateIndexed(templateName: String) =
     getTemplates.responseJson.obj.contains(templateName)
@@ -132,7 +134,8 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
 
   override protected def createInsertTemplateRequest(templateName: String,
                                                      indexPatterns: NonEmptyList[String],
-                                                     aliases: Set[String]): HttpPut = {
+                                                     aliases: Set[String],
+                                                     ignored: Int): HttpPut = {
     val request = new HttpPut(client.from(s"/_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
     request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases))))
@@ -235,10 +238,11 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
 
   override protected def createInsertTemplateRequest(templateName: String,
                                                      indexPatterns: NonEmptyList[String],
-                                                     aliases: Set[String]): HttpPut = {
+                                                     aliases: Set[String],
+                                                     priority: Int): HttpPut = {
     val request = new HttpPut(client.from(s"/_index_template/$templateName"))
     request.setHeader("Content-Type", "application/json")
-    request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases))))
+    request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases, priority))))
     request
   }
 
@@ -254,13 +258,16 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     request
   }
 
-  private def putTemplateBodyJson(indexPatterns: NonEmptyList[String], aliases: Set[String]): JSON = {
+  private def putTemplateBodyJson(indexPatterns: NonEmptyList[String],
+                                  aliases: Set[String],
+                                  priority: Int): JSON = {
     val allIndexPattern = indexPatterns.toList
     val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
     ujson.read {
       s"""
          |{
          |  "index_patterns":[$patternsString],
+         |  "priority": $priority,
          |  "template": {
          |    "aliases":{
          |      ${aliases.toList.map(a => s""""$a":{}""").mkString(",\n")}

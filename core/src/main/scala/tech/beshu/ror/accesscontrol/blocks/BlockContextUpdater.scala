@@ -145,7 +145,6 @@ object BlockContextUpdater {
                                                  responseTransformation: ResponseTransformation): TemplateRequestBlockContext =
       blockContext.copy(responseTransformations = responseTransformation :: blockContext.responseTransformations)
 
-
     def withTemplateOperation(blockContext: TemplateRequestBlockContext,
                               templateOperation: TemplateOperation): TemplateRequestBlockContext =
       blockContext.copy(templateOperation = templateOperation)
@@ -153,6 +152,7 @@ object BlockContextUpdater {
     def withResponseTemplateTransformation(blockContext: TemplateRequestBlockContext,
                                            transformation: Set[Template] => Set[Template]): TemplateRequestBlockContext =
       blockContext.copy(responseTemplateTransformation = transformation)
+
   }
 
   implicit object AliasRequestBlockContextUpdater

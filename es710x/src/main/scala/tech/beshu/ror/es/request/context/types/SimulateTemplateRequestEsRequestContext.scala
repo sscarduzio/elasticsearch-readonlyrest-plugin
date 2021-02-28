@@ -16,36 +16,43 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import eu.timepit.refined.auto._
+import cats.implicits._
 import cats.data.NonEmptyList
 import monix.eval.Task
 import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateResponse, SimulateTemplateAction}
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.BlockContext
+import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
-import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
+import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
 
 class SimulateTemplateRequestEsRequestContext(actionRequest: SimulateTemplateAction.Request,
                                               esContext: EsContext,
+                                              aclContext: AccessControlStaticContext,
                                               clusterService: RorClusterService,
                                               override val threadPool: ThreadPool)
                                              (implicit generator: UniqueIdentifierGenerator)
-  extends BaseTemplatesEsRequestContext[SimulateTemplateAction.Request, GettingIndexTemplates](
-    actionRequest, esContext, clusterService, threadPool
-  ) {
+  extends BaseSimulateIndexTemplateEsRequestContext(actionRequest, esContext, aclContext, clusterService, threadPool) {
 
-  override protected def templateOperationFrom(actionRequest: SimulateTemplateAction.Request): GettingIndexTemplates =
-    GettingIndexTemplates(NonEmptyList.one(TemplateNamePattern("*")))
+  override protected def indicesFrom(request: SimulateTemplateAction.Request): Set[IndexName] = Set(IndexName.wildcard)
 
-  override protected def modifyRequest(blockContext: BlockContext.TemplateRequestBlockContext): ModificationResult = {
+  override protected def update(request: SimulateTemplateAction.Request,
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    if (filteredIndices.tail.nonEmpty) {
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.toList.mkString(",")}]")
+    }
+    update(request, filteredIndices.head, allAllowedIndices)
+  }
+
+  private def update(request: SimulateTemplateAction.Request,
+                     index: IndexName,
+                     allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
     ModificationResult.UpdateResponse {
-      case r: SimulateIndexTemplateResponse =>
-        // todo: filter pattern and aliases
-        Task.now(r)
+      case response: SimulateIndexTemplateResponse =>
+        Task.now(filterAliasesAndIndexPatternsIn(response, allAllowedIndices))
       case other =>
         Task.now(other)
     }
