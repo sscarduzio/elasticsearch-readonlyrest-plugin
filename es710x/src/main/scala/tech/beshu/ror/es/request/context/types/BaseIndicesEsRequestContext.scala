@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
 abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
@@ -59,14 +59,12 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
           .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
         update(actionRequest, nonExistingIndices, nonExistingIndices)
-        Modified
       } else {
         ShouldBeInterrupted
       }
     } else {
       val randomNonexistingIndex = initialBlockContext.randomNonexistentIndex()
       update(actionRequest, NonEmptyList.of(randomNonexistingIndex), NonEmptyList.of(randomNonexistingIndex))
-      Modified
     }
   }
 

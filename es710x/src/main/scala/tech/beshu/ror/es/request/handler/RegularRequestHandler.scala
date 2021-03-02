@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es.request.handler
 
+import java.time.{Duration, Instant}
+
 import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
@@ -215,11 +217,18 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit =
+  private def proceed(listener: ActionListener[ActionResponse] = esContext.listener): Unit = {
+    logRequestProcessingTime()
     esContext.chain.proceed(esContext.task, esContext.actionType, esContext.actionRequest, listener)
+  }
 
   private def respond(response: ActionResponse): Unit = {
+    logRequestProcessingTime()
     esContext.listener.onResponse(response)
+  }
+
+  private def logRequestProcessingTime() = {
+    logger.debug(s"[${esContext.requestId}] Request processing time: ${Duration.between(esContext.timestamp, Instant.now()).toMillis}ms")
   }
 
   private class UpdateResponseListener(update: ActionResponse => Task[ActionResponse]) extends ActionListener[ActionResponse] {

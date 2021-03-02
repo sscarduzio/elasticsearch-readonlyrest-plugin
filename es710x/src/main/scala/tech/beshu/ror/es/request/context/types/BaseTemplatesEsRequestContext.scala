@@ -40,6 +40,7 @@ abstract class BaseTemplatesEsRequestContext[R <: ActionRequest, T <: TemplateOp
     Set.empty,
     List.empty,
     templateOperationFrom(actionRequest),
-    identity
+    identity,
+    Set.empty
   )
 }

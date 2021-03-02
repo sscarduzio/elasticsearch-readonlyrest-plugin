@@ -24,7 +24,7 @@ import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager.Template
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplate
-import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, IndexTemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, ComponentTemplateManager, IndexTemplateManager, LegacyTemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait IndexTemplatesManagementSuite
@@ -35,9 +35,9 @@ trait IndexTemplatesManagementSuite
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
-  //  indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
-  //  indexTemplateApiTests("A new template API")(new IndexTemplateManager(_, esTargets.head.esVersion))
-  //  componentTemplateApiTests()
+  indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
+  indexTemplateApiTests("A new template API")(new IndexTemplateManager(_, esTargets.head.esVersion))
+  componentTemplateApiTests()
   simulateTemplatesApiTests()
 
   def indexTemplateApiTests(name: String)
@@ -1179,8 +1179,8 @@ trait IndexTemplatesManagementSuite
     val user1IndexTemplateManager = new IndexTemplateManager(basicAuthClient("dev1", "test"), esTargets.head.esVersion)
 
     "A simulate index API" should {
-      "be allowed for user" which {
-        "has access to given index" in {
+      "be allowed for a user" which {
+        "has access to the given index" in {
           adminIndexTemplateManager
             .putTemplate(
               templateName = "temp1",
@@ -1192,7 +1192,7 @@ trait IndexTemplatesManagementSuite
           adminIndexTemplateManager
             .putTemplate(
               templateName = "temp2",
-              indexPatterns = NonEmptyList.of("custom*"),
+              indexPatterns = NonEmptyList.of("custom*", "custom_dev2*"),
               aliases = Set.empty,
               priority = 1
             )
@@ -1202,14 +1202,11 @@ trait IndexTemplatesManagementSuite
 
           result.responseCode should be(200)
           result.templateAliases should be(Set("dev1_index"))
-          result.overlappingTemplates should be(List.empty)
+          result.overlappingTemplates should be(List(Template("temp2", Set("custom*"), Set.empty)))
         }
       }
-    }
-
-    "A simulate template API" should {
-      "be allowed for user" which {
-        "has access to given index" in {
+      "not be allowed for a user" which {
+        "has no access to the given index" in {
           adminIndexTemplateManager
             .putTemplate(
               templateName = "temp1",
@@ -1218,11 +1215,87 @@ trait IndexTemplatesManagementSuite
             )
             .force()
 
+          val result = user1IndexTemplateManager.simulateIndex("custom_dev2_index_test")
+
+          result.responseCode should be(401)
+        }
+      }
+    }
+
+    "A simulate template API" should {
+      "be allowed for a user" which {
+        "has an access to the given existing template" in {
+          adminIndexTemplateManager
+            .putTemplate(
+              templateName = "temp1",
+              indexPatterns = NonEmptyList.of("custom_dev1_index_*", "custom_dev2_index_*"),
+              aliases = Set("dev1_index", "dev2_index"),
+              priority = 4
+            )
+            .force()
+          adminIndexTemplateManager
+            .putTemplate(
+              templateName = "temp2",
+              indexPatterns = NonEmptyList.of("custom*", "custom_dev2*"),
+              aliases = Set.empty,
+              priority = 1
+            )
+            .force()
+
           val result = user1IndexTemplateManager.simulateTemplate("temp1")
 
           result.responseCode should be(200)
           result.templateAliases should be(Set("dev1_index"))
           result.overlappingTemplates should be(List.empty)
+        }
+        "has an access to given non-existing template" in {
+          adminIndexTemplateManager
+            .putTemplate(
+              templateName = "temp2",
+              indexPatterns = NonEmptyList.of("custom*", "custom_dev2*"),
+              aliases = Set("dev2_index"),
+              priority = 0
+            )
+            .force()
+
+          val result = user1IndexTemplateManager.simulateNewTemplate(
+            indexPatterns = NonEmptyList.of("custom_dev1_index_temp*"),
+            aliases = Set("dev1_index")
+          )
+
+          result.responseCode should be(200)
+          result.templateAliases should be(Set("dev1_index"))
+          result.overlappingTemplates should be(List(
+            Template("temp2", Set("custom*"), Set.empty)
+          ))
+        }
+      }
+      "not to be allowed for a user" which {
+        "has no access to the given existing template" in {
+          adminIndexTemplateManager
+            .putTemplate(
+              templateName = "temp1",
+              indexPatterns = NonEmptyList.of("custom_dev2_index_*"),
+              aliases = Set("dev2_index")
+            )
+            .force()
+
+          val result = user1IndexTemplateManager.simulateTemplate("temp1")
+
+          result.responseCode should be(400)
+        }
+        "has no access to the given non-existing template" in {
+          adminIndexTemplateManager
+            .putTemplate(
+              templateName = "temp1",
+              indexPatterns = NonEmptyList.of("custom_dev2_index_*"),
+              aliases = Set("dev2_index")
+            )
+            .force()
+
+          val result = user1IndexTemplateManager.simulateTemplate("temp1")
+
+          result.responseCode should be(400)
         }
       }
     }

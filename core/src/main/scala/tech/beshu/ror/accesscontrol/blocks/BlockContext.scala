@@ -77,7 +77,8 @@ object BlockContext {
                                                override val responseHeaders: Set[Header],
                                                override val responseTransformations: List[ResponseTransformation],
                                                templateOperation: TemplateOperation,
-                                               responseTemplateTransformation: TemplatesTransformation)
+                                               responseTemplateTransformation: TemplatesTransformation,
+                                               allAllowedIndices: Set[IndexName])
     extends BlockContext
   object TemplateRequestBlockContext {
     type TemplatesTransformation = Set[Template] => Set[Template]
@@ -293,6 +294,9 @@ object BlockContext {
     def withResponseTemplateTransformation(transformation: Set[Template] => Set[Template]): TemplateRequestBlockContext = {
       TemplateRequestBlockContextUpdater.withResponseTemplateTransformation(blockContext, transformation)
     }
+    def withAllAllowedIndices(indices: Set[IndexName]): TemplateRequestBlockContext = {
+      TemplateRequestBlockContextUpdater.withAllAllowedIndices(blockContext, indices)
+    }
   }
 
   implicit class AliasRequestBlockContextUpdaterOps(val blockContext: AliasRequestBlockContext) extends AnyVal {
@@ -320,6 +324,7 @@ object BlockContext {
             case TemplateOperation.DeletingLegacyTemplates(_) => Set.empty
             case TemplateOperation.GettingIndexTemplates(_) => Set.empty
             case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.map(_.toIndexName).toSet ++ aliases
+            case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(_, patterns, aliases, _) => patterns.map(_.toIndexName).toSet ++ aliases
             case TemplateOperation.DeletingIndexTemplates(_) => Set.empty
             case TemplateOperation.GettingComponentTemplates(_) => Set.empty
             case TemplateOperation.AddingComponentTemplate(_, aliases) => aliases

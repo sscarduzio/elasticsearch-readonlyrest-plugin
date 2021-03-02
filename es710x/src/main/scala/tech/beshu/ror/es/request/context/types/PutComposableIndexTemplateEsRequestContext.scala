@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.es.request.context.types
 
-import org.elasticsearch.action.admin.indices.template.put.{PutComposableIndexTemplateAction, PutIndexTemplateRequest}
+import org.elasticsearch.action.admin.indices.template.put.PutComposableIndexTemplateAction
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingIndexTemplate
@@ -38,17 +38,7 @@ class PutComposableIndexTemplateEsRequestContext(actionRequest: PutComposableInd
   ) {
 
   override protected def templateOperationFrom(request: PutComposableIndexTemplateAction.Request): AddingIndexTemplate = {
-    val templateOperation = for {
-      name <- TemplateName
-        .fromString(request.name())
-        .toRight("Template name should be non-empty")
-      patterns <- UniqueNonEmptyList
-        .fromList(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
-        .toRight("Template indices pattern list should not be empty")
-      aliases = request.indexTemplate().template().aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet
-    } yield AddingIndexTemplate(name, patterns, aliases)
-
-    templateOperation match {
+    PutComposableIndexTemplateEsRequestContext.templateOperationFrom(request) match {
       case Right(operation) => operation
       case Left(msg) => throw RequestSeemsToBeInvalid[PutComposableIndexTemplateAction.Request](msg)
     }
@@ -57,5 +47,20 @@ class PutComposableIndexTemplateEsRequestContext(actionRequest: PutComposableInd
   override protected def modifyRequest(blockContext: BlockContext.TemplateRequestBlockContext): ModificationResult = {
     // nothing to modify - if it wasn't blocked, we are good
     Modified
+  }
+}
+
+object PutComposableIndexTemplateEsRequestContext {
+
+  private [types] def templateOperationFrom(request: PutComposableIndexTemplateAction.Request): Either[String, AddingIndexTemplate] = {
+    for {
+      name <- TemplateName
+        .fromString(request.name())
+        .toRight("Template name should be non-empty")
+      patterns <- UniqueNonEmptyList
+        .fromList(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
+        .toRight("Template indices pattern list should not be empty")
+      aliases = request.indexTemplate().template().aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet
+    } yield AddingIndexTemplate(name, patterns, aliases)
   }
 }

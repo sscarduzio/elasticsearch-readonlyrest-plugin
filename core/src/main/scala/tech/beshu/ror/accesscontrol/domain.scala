@@ -464,6 +464,12 @@ object domain {
                                          aliases: Set[IndexName])
       extends TemplateOperation
 
+    final case class AddingIndexTemplateAndGetAllowedOnes(name: TemplateName,
+                                                          patterns: UniqueNonEmptyList[IndexPattern],
+                                                          aliases: Set[IndexName],
+                                                          allowedTemplates: List[TemplateNamePattern])
+      extends TemplateOperation
+
     final case class DeletingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
       extends TemplateOperation
 
@@ -492,6 +498,8 @@ object domain {
 
   final case class TemplateNamePattern(value: NonEmptyString)
   object TemplateNamePattern {
+    val wildcard: TemplateNamePattern = TemplateNamePattern("*")
+
     def fromString(value: String): Option[TemplateNamePattern] = {
       NonEmptyString
         .from(value).toOption

@@ -24,6 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.implicits._
 import tech.beshu.ror.utils.ScalaOps._
@@ -51,6 +52,16 @@ private[indicesrule] trait IndexTemplateIndices
   protected def processGettingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
                                             (implicit blockContext: TemplateRequestBlockContext,
                                              allowedIndices: AllowedIndices): Either[Cause, (TemplateOperation.GettingIndexTemplates, TemplatesTransformation)] = {
+    val (names, transformation) = getAllowedExistingIndexTemplates(templateNamePatterns)
+    NonEmptyList
+      .fromList(names)
+      .map(names => (GettingIndexTemplates(names), transformation))
+      .toRight(Cause.TemplateNotFound: Cause)
+  }
+
+  private def getAllowedExistingIndexTemplates(templateNamePatterns: NonEmptyList[TemplateNamePattern])
+                                              (implicit blockContext: TemplateRequestBlockContext,
+                                               allowedIndices: AllowedIndices): (List[TemplateNamePattern], TemplatesTransformation) = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * getting Index Templates for name patterns [${templateNamePatterns.show}] ...""".oneLiner
     )
@@ -59,16 +70,15 @@ private[indicesrule] trait IndexTemplateIndices
       logger.debug(
         s"""[${blockContext.requestContext.id.show}] * no Index Templates for name patterns [${templateNamePatterns.show}] found ..."""
       )
-      Right((TemplateOperation.GettingIndexTemplates(templateNamePatterns), identity))
+      (templateNamePatterns.toList, ignoreAnyTemplate)
     } else {
       val filteredExistingTemplates = existingTemplates.filter(canViewExistingTemplate).toList
       NonEmptyList.fromList(filteredExistingTemplates) match {
         case Some(nonEmptyFilterTemplates) =>
           val namePatterns = nonEmptyFilterTemplates.map(t => TemplateNamePattern.from(t.name))
-          val modifiedOperation = TemplateOperation.GettingIndexTemplates(namePatterns)
-          Right((modifiedOperation, filterTemplatesNotAllowedPatternsAndAliases(_)))
+          (namePatterns.toList, filterTemplatesNotAllowedPatternsAndAliases(_))
         case None =>
-          Left(Cause.TemplateNotFound)
+          (Nil, ignoreAnyTemplate)
       }
     }
   }
@@ -78,6 +88,38 @@ private[indicesrule] trait IndexTemplateIndices
                                     aliases: Set[IndexName])
                                    (implicit blockContext: TemplateRequestBlockContext,
                                     allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+    resultBasedOnCondition(blockContext) {
+      processAddingIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
+    }
+  }
+
+  protected def addingIndexTemplateAndGetAllowedOnes(newTemplateName: TemplateName,
+                                                     newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
+                                                     aliases: Set[IndexName],
+                                                     requestedTemplateNames: List[TemplateNamePattern])
+                                                    (implicit blockContext: TemplateRequestBlockContext,
+                                                     allowedIndices: AllowedIndices): RuleResult[TemplateRequestBlockContext] = {
+    processAddingIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases) match {
+      case true =>
+        val (filteredAllowedTemplates, transformation) = NonEmptyList.fromList(requestedTemplateNames) match {
+          case Some(nonEmptyAllowedTemplateNames) => getAllowedExistingIndexTemplates(nonEmptyAllowedTemplateNames)
+          case None => (List.empty, ignoreAnyTemplate)
+        }
+        RuleResult.fulfilled {
+          blockContext
+            .withTemplateOperation(AddingIndexTemplateAndGetAllowedOnes(newTemplateName, newTemplateIndicesPatterns, aliases, filteredAllowedTemplates))
+            .withResponseTemplateTransformation(transformation)
+        }
+      case false =>
+        RuleResult.rejected()
+    }
+  }
+
+  private def processAddingIndexTemplate(newTemplateName: TemplateName,
+                                           newTemplateIndicesPatterns: UniqueNonEmptyList[IndexPattern],
+                                           aliases: Set[IndexName])
+                                          (implicit blockContext: TemplateRequestBlockContext,
+                                           allowedIndices: AllowedIndices): Boolean = {
     logger.debug(
       s"""[${blockContext.requestContext.id.show}] * adding Index Template [${newTemplateName.show}] with index
          | patterns [${newTemplateIndicesPatterns.show}] and aliases [${aliases.show}] ...""".oneLiner
@@ -88,14 +130,10 @@ private[indicesrule] trait IndexTemplateIndices
           s"""[${blockContext.requestContext.id.show}] * Index Template with name [${existingTemplate.name.show}]
              | (indices patterns [${existingTemplate.patterns.show}]) exits ...""".oneLiner
         )
-        resultBasedOnCondition(blockContext) {
-          canModifyExistingIndexTemplate(existingTemplate) &&
-            canAddNewIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
-        }
-      case None =>
-        resultBasedOnCondition(blockContext) {
+        canModifyExistingIndexTemplate(existingTemplate) &&
           canAddNewIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
-        }
+      case None =>
+        canAddNewIndexTemplate(newTemplateName, newTemplateIndicesPatterns, aliases)
     }
   }
 
@@ -255,4 +293,6 @@ private[indicesrule] trait IndexTemplateIndices
         Set[Template](other)
     }
   }
+
+  private lazy val ignoreAnyTemplate: TemplatesTransformation = templates => Set.empty
 }

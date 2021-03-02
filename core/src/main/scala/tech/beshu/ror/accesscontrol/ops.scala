@@ -207,16 +207,28 @@ object show {
     }
 
     implicit val templateOperationShow: Show[TemplateOperation] = Show.show {
-      case TemplateOperation.GettingLegacyAndIndexTemplates(op1, op2) => s"GETALL(${showTraversable(op1.namePatterns.toList)}|${showTraversable(op2.namePatterns.toList)})"
-      case TemplateOperation.GettingLegacyTemplates(namePatterns) => s"GET(${showTraversable(namePatterns.toList)})"
-      case TemplateOperation.AddingLegacyTemplate(name, patterns, aliases) => s"ADD(${name.show}:${showTraversable(patterns)}:${showTraversable(aliases)})"
-      case TemplateOperation.DeletingLegacyTemplates(namePatterns) => s"DEL(${showTraversable(namePatterns.toList)})"
-      case TemplateOperation.GettingIndexTemplates(namePatterns) => s"GET(${showTraversable(namePatterns.toList)})"
-      case TemplateOperation.AddingIndexTemplate(name, patterns, aliases) => s"ADD(${name.show}:${showTraversable(patterns.toList)}:${showTraversable(aliases)})"
-      case TemplateOperation.DeletingIndexTemplates(namePatterns) => s"DEL(${showTraversable(namePatterns.toList)})"
-      case TemplateOperation.GettingComponentTemplates(namePatterns) => s"GET(${showTraversable(namePatterns.toList)})"
-      case TemplateOperation.AddingComponentTemplate(name, aliases) => s"ADD(${name.show}:${showTraversable(aliases)})"
-      case TemplateOperation.DeletingComponentTemplates(namePatterns) => s"DEL(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.GettingLegacyAndIndexTemplates(op1, op2) =>
+        s"GETALL(${showTraversable(op1.namePatterns.toList)}|${showTraversable(op2.namePatterns.toList)})"
+      case TemplateOperation.GettingLegacyTemplates(namePatterns) =>
+        s"GET(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.AddingLegacyTemplate(name, patterns, aliases) =>
+        s"ADD(${name.show}:${showTraversable(patterns)}:${showTraversable(aliases)})"
+      case TemplateOperation.DeletingLegacyTemplates(namePatterns) =>
+        s"DEL(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.GettingIndexTemplates(namePatterns) =>
+        s"GET(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.AddingIndexTemplate(name, patterns, aliases) =>
+        s"ADD(${name.show}:${showTraversable(patterns.toList)}:${showTraversable(aliases)})"
+      case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(name, patterns, aliases, allowedTemplates) =>
+        s"ADDGET(${name.show}:${showTraversable(patterns.toList)}:${showTraversable(aliases)}:${showTraversable(allowedTemplates)})"
+      case TemplateOperation.DeletingIndexTemplates(namePatterns) =>
+        s"DEL(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.GettingComponentTemplates(namePatterns) =>
+        s"GET(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.AddingComponentTemplate(name, aliases) =>
+        s"ADD(${name.show}:${showTraversable(aliases)})"
+      case TemplateOperation.DeletingComponentTemplates(namePatterns) =>
+        s"DEL(${showTraversable(namePatterns.toList)})"
     }
 
     implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)

@@ -288,7 +288,7 @@ final case class MockTemplateRequestContext(override val timestamp: Instant,
   override type BLOCK_CONTEXT = TemplateRequestBlockContext
 
   override def initialBlockContext: TemplateRequestBlockContext = TemplateRequestBlockContext(
-    this, UserMetadata.empty, Set.empty, List.empty, templateOperation, identity
+    this, UserMetadata.empty, Set.empty, List.empty, templateOperation, identity, Set.empty
   )
 }
 

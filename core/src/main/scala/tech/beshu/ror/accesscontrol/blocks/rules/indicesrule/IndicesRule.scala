@@ -210,9 +210,7 @@ class IndicesRule(override val settings: Settings,
                                matcher: IndicesMatcher): CheckContinuation[Set[IndexName]] = {
     logger.debug(s"[${requestContext.id.show}] Checking - none or all indices ...")
     val allIndicesAndAliases = requestContext.allIndicesAndAliases.flatMap(_.all)
-    if (allIndicesAndAliases.isEmpty) {
-      stop(CanPass.Yes(indices))
-    } else if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
+    if (indices.isEmpty || indices.contains(IndexName.all) || indices.contains(IndexName.wildcard)) {
       val allowedIdxs = matcher.filterIndices(allIndicesAndAliases)
       stop(
         if (allowedIdxs.nonEmpty) CanPass.Yes(allowedIdxs)

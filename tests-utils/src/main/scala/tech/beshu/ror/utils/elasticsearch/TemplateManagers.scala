@@ -216,12 +216,12 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     call(createSimulateIndexRequest(indexName), new SimulateResponse(_))
   }
 
-  def simulateTemplate(): SimulateResponse = {
-    call(createSimulateTemplateRequest(None), new SimulateResponse(_))
+  def simulateTemplate(templateName: String): SimulateResponse = {
+    call(createSimulateTemplateRequest(templateName), new SimulateResponse(_))
   }
 
-  def simulateTemplate(templateName: String): SimulateResponse = {
-    call(createSimulateTemplateRequest(Some(templateName)), new SimulateResponse(_))
+  def simulateNewTemplate(indexPatterns: NonEmptyList[String], aliases: Set[String]): SimulateResponse = {
+    call(createSimulateTemplateRequest(indexPatterns, aliases), new SimulateResponse(_))
   }
 
   override protected def createGetTemplateRequest(name: String): HttpGet = {
@@ -285,8 +285,16 @@ class IndexTemplateManager(client: RestClient, esVersion: String)
     request
   }
 
-  private def createSimulateTemplateRequest(templateName: Option[String]) = {
-    val request = new HttpPost(client.from(s"/_index_template/_simulate/${templateName.getOrElse("")}"))
+  private def createSimulateTemplateRequest(templateName: String) = {
+    val request = new HttpPost(client.from(s"/_index_template/_simulate/$templateName"))
+    request.setHeader("timeout", "50s")
+    request
+  }
+
+  private def createSimulateTemplateRequest(indexPatterns: NonEmptyList[String], aliases: Set[String]) = {
+    val request = new HttpPost(client.from(s"/_index_template/_simulate/"))
+    request.setEntity(new StringEntity(ujson.write(putTemplateBodyJson(indexPatterns, aliases, 1))))
+    request.setHeader("Content-Type", "application/json")
     request.setHeader("timeout", "50s")
     request
   }

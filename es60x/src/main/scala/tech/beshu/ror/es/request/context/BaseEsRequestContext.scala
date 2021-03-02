@@ -45,12 +45,11 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   private val restRequest = esContext.channel.request()
 
-  override lazy val timestamp: Instant =
-    Instant.now()
+  override val timestamp: Instant = Instant.now()
 
   override val taskId: Long = esContext.task.getId
 
-  override lazy val id: RequestContext.Id = RequestContext.Id(s"${restRequest.hashCode()}-${esContext.actionRequest.hashCode()}#$taskId")
+  override lazy val id: RequestContext.Id = RequestContext.Id(esContext.requestId)
 
   override lazy val action: Action = Action(esContext.actionType)
 

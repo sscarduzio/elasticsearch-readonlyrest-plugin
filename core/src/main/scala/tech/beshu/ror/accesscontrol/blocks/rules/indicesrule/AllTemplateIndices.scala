@@ -46,7 +46,7 @@ private[indicesrule] trait AllTemplateIndices
          | Allowed indices by the rule: [${allowedIndices.show}]:""".oneLiner
     )
     implicit val _ = blockContext
-    blockContext.templateOperation match {
+    val result = blockContext.templateOperation match {
       case GettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates) =>
         gettingLegacyAndIndexTemplates(gettingLegacyTemplates, gettingIndexTemplates)
       case GettingLegacyTemplates(namePatterns) => gettingLegacyTemplates(namePatterns)
@@ -54,10 +54,16 @@ private[indicesrule] trait AllTemplateIndices
       case DeletingLegacyTemplates(namePatterns) => deletingLegacyTemplates(namePatterns)
       case GettingIndexTemplates(namePatterns) => gettingIndexTemplates(namePatterns)
       case AddingIndexTemplate(name, patterns, aliases) => addingIndexTemplate(name, patterns, aliases)
+      case AddingIndexTemplateAndGetAllowedOnes(name, patterns, aliases, templateNamePatterns) =>
+        addingIndexTemplateAndGetAllowedOnes(name, patterns, aliases, templateNamePatterns)
       case DeletingIndexTemplates(namePatterns) => deletingIndexTemplates(namePatterns)
       case GettingComponentTemplates(namePatterns) => gettingComponentTemplates(namePatterns)
       case AddingComponentTemplate(name, aliases) => addingComponentTemplate(name, aliases)
       case DeletingComponentTemplates(namePatterns) => deletingComponentTemplates(namePatterns)
+    }
+    result match {
+      case RuleResult.Fulfilled(b) => RuleResult.fulfilled(b.withAllAllowedIndices(allowedIndices.resolved))
+      case rejected@RuleResult.Rejected(_) => rejected
     }
   }
 

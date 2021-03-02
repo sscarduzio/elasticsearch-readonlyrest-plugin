@@ -35,7 +35,6 @@ import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.utils.RCUtils
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
                                                        clusterService: RorClusterService)
@@ -45,12 +44,11 @@ abstract class BaseEsRequestContext[B <: BlockContext](esContext: EsContext,
 
   private val restRequest = esContext.channel.request()
 
-  override lazy val timestamp: Instant =
-    Instant.now()
+  override val timestamp: Instant = Instant.now()
 
   override val taskId: Long = esContext.task.getId
 
-  override lazy val id: RequestContext.Id = RequestContext.Id(s"${restRequest.hashCode()}-${esContext.actionRequest.hashCode()}#$taskId")
+  override lazy val id: RequestContext.Id = RequestContext.Id(esContext.requestId)
 
   override lazy val action: Action = Action(esContext.actionType)
 

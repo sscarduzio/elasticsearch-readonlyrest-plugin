@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es.request
 
+import java.time.Instant
+
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -58,6 +60,7 @@ import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
@@ -141,7 +144,7 @@ class AclAwareRequestFilter(clusterService: RorClusterService,
       case request: SimulateIndexTemplateRequest =>
         regularRequestHandler.handle(new SimulateIndexTemplateRequestEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
       case request: SimulateTemplateAction.Request =>
-        regularRequestHandler.handle(new SimulateTemplateRequestEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
+        regularRequestHandler.handle(SimulateTemplateRequestEsRequestContext.from(request, esContext, clusterService, threadPool))
       // aliases
       case request: GetAliasesRequest =>
         regularRequestHandler.handle(new GetAliasesEsRequestContext(request, esContext, aclContext, clusterService, threadPool))
@@ -226,7 +229,10 @@ object AclAwareRequestFilter {
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
                              chain: ActionFilterChain[ActionRequest, ActionResponse],
-                             crossClusterSearchEnabled: Boolean)
+                             crossClusterSearchEnabled: Boolean) {
+    lazy val requestId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
+    val timestamp: Instant = Instant.now()
+  }
 }
 
 final case class RequestSeemsToBeInvalid[T: ClassTag](message: String, cause: Throwable = null)
