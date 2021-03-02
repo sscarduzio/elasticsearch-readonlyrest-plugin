@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.domain
 
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, PlainTextSecret, User}
 import tech.beshu.ror.utils.TestsUtils._
 
-class BasicAuthTest extends WordSpec with Inside {
+class BasicAuthTest extends AnyWordSpec with Inside {
 
   "BasicAuth class" should {
     "be able to be created from Authentication header" when {

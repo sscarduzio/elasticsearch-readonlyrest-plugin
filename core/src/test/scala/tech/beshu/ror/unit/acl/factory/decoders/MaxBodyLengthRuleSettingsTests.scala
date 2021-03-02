@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
 import squants.information.Bytes
 
 import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule

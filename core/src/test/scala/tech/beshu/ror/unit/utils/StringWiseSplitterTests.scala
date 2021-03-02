@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.unit.utils
 
-import org.scalatest.WordSpec
 import tech.beshu.ror.utils.StringWiseSplitter._
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.StringWiseSplitter
 import tech.beshu.ror.utils.TestsUtils._
 
-class StringWiseSplitterTests extends WordSpec {
+class StringWiseSplitterTests extends AnyWordSpec {
 
   "A StringOps method toNonEmptyStringsTuple" should {
     "be able to create two non-empty string tuple from string" when {

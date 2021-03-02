@@ -16,8 +16,9 @@
  */
 package tech.beshu.ror.integration.suites.fields.engine
 
-import org.scalatest.Matchers._
-import org.scalatest.{Assertion, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Assertion
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
@@ -25,7 +26,7 @@ import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait FieldRuleEngineSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseSingleNodeEsClusterTest
     with ESVersionSupport {
   this: EsContainerCreator =>

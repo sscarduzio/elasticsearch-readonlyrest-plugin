@@ -17,11 +17,11 @@
 package tech.beshu.ror.unit.acl.domain
 
 import eu.timepit.refined.auto._
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.IndexName
 
-class IndexNameTests extends WordSpec {
+class IndexNameTests extends AnyWordSpec {
 
   "IndexName.match" should {
     "follow given rules" in {

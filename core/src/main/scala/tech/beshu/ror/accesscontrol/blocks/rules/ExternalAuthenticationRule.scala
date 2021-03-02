@@ -18,20 +18,20 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.NoImpersonationSupport
-import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
+import tech.beshu.ror.accesscontrol.domain.Credentials
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 
-class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings)
+final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.Settings,
+                                       implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BaseBasicAuthenticationRule
-    with NoImpersonationSupport{
+    with NoImpersonationSupport {
 
   override val name: Rule.Name = ExternalAuthenticationRule.name
 
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.service.authenticate(credentials)
 
-  override def exists(user: User.Id): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
 }
 
 object ExternalAuthenticationRule {

@@ -17,8 +17,8 @@
 package tech.beshu.ror.accesscontrol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneId}
 import java.util.{Base64, Locale, UUID}
 
 import cats.Eq
@@ -31,14 +31,14 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
-import tech.beshu.ror.accesscontrol.domain.Action._
+import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction, searchAction, searchTemplateAction, _}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
 import tech.beshu.ror.accesscontrol.header.ToHeaderValue
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
+import tech.beshu.ror.utils.CaseMappingEquality
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -64,7 +64,7 @@ object domain {
   object User {
     final case class Id(value: NonEmptyString)
     object Id {
-      implicit val eqId: Eq[Id] = Eq.fromUniversalEquals
+      type UserIdCaseMappingEquality = CaseMappingEquality[User.Id]
     }
   }
 
@@ -161,6 +161,10 @@ object domain {
   }
 
   final case class Credentials(user: User.Id, secret: PlainTextSecret)
+  object Credentials {
+    implicit def eqCredentials(implicit userIdEq: Eq[User.Id]): Eq[Credentials] =
+      Eq.and(Eq.by(_.user), Eq.by(_.secret))
+  }
   final case class BasicAuth private(credentials: Credentials) {
     def header: Header = new Header(
       Header.Name.authorization,
@@ -279,6 +283,7 @@ object domain {
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
   }
 
   final case class IndexName(value: NonEmptyString) {
@@ -302,6 +307,8 @@ object domain {
     }
   }
   object IndexName {
+    implicit val caseMappingEqualityIndexName: CaseMappingEquality[IndexName] = CaseMappingEquality.instance(_.value.value, identity)
+
     val wildcard: IndexName = fromUnsafeString("*")
     val all: IndexName = fromUnsafeString("_all")
     val devNullKibana: IndexName = fromUnsafeString(".kibana-devnull")
@@ -414,6 +421,7 @@ object domain {
     val wildcard: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualityRepositoryName:CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(_.value.value, identity)
   }
   final case class SnapshotName(value: NonEmptyString)
   object SnapshotName {
@@ -421,6 +429,8 @@ object domain {
     val wildcard: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
+    implicit val caseMappingEqualitySnapshotName:CaseMappingEquality[SnapshotName] =
+      CaseMappingEquality.instance(_.value.value, identity)
   }
 
   sealed trait Template {
@@ -498,6 +508,8 @@ object domain {
 
   final case class TemplateNamePattern(value: NonEmptyString)
   object TemplateNamePattern {
+    implicit val caseMappingEqualityTemplateNamePattern: CaseMappingEquality[TemplateNamePattern] = CaseMappingEquality.instance(_.value.value, identity)
+
     val wildcard: TemplateNamePattern = TemplateNamePattern("*")
 
     def fromString(value: String): Option[TemplateNamePattern] = {

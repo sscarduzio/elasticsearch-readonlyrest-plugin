@@ -91,7 +91,6 @@ object orders {
     case Address.Name(value) => value.toString
   }
   implicit val methodOrder: Order[Method] = Order.by(_.m)
-  implicit val userIdOrder: Order[User.Id] = Order.by(_.value)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
   implicit val documentFieldOrder: Order[DocumentField] = Order.by(_.value)
@@ -148,8 +147,6 @@ object show {
     implicit val dnShow: Show[Dn] = Show.show(_.value.value)
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
-    implicit val repositoryShow: Show[RepositoryName] = Show.show(_.value.value)
-    implicit val snapshotShow: Show[SnapshotName] = Show.show(_.value.value)
     implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
     implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
 

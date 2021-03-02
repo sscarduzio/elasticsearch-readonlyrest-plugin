@@ -17,8 +17,8 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator, SingletonEsContainer}
@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.Str
 
 trait CatApiSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseTemplatesSuite
     with ESVersionSupport {
   this: EsContainerCreator =>

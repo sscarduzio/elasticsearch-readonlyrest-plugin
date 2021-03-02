@@ -17,15 +17,14 @@
 package tech.beshu.ror.accesscontrol.blocks.rules.utils
 
 import tech.beshu.ror.accesscontrol.domain.{Template, TemplateNamePattern}
-import StringTNaturalTransformation.instances._
 
 // todo:
 class TemplateMatcher(namePatterns: Set[TemplateNamePattern]) {
 
-  private val matcher = MatcherWithWildcardsScalaAdapter.create(namePatterns.map(_.value.value))
+  private val matcher = MatcherWithWildcardsScalaAdapter.create(namePatterns)
 
   def filterTemplates[T <: Template](templates: Set[T]): Set[T] = {
-    val templateByName: Map[String, Set[T]] = templates.groupBy(t => t.name.value.value)
+    val templateByName: Map[TemplateNamePattern, Set[T]] = templates.groupBy(t => TemplateNamePattern(t.name.value))
     val filteredTemplateNames = matcher.filter(templateByName.keys.toSet)
     templateByName.filterKeys(filteredTemplateNames.contains).values.toSet.flatten
   }

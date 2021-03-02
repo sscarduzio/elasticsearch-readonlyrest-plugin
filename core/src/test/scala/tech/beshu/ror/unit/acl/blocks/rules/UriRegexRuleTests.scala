@@ -22,8 +22,8 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
@@ -41,7 +41,7 @@ import tech.beshu.ror.utils.TestsUtils._
 import scala.util.Try
 import eu.timepit.refined.auto._
 
-class UriRegexRuleTests extends WordSpec with MockFactory {
+class UriRegexRuleTests extends AnyWordSpec with MockFactory {
 
   "An UriRegexRule" should {
     "match" when {

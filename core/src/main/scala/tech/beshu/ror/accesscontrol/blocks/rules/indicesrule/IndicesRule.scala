@@ -32,7 +32,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain._
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass.No.Reason
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.StringTNaturalTransformation.instances.stringIndexNameNT
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator, ZeroKnowledgeIndexFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -73,7 +72,7 @@ class IndicesRule(override val settings: Settings,
   }
 
   private def processRequestWithoutIndices[B <: BlockContext](blockContext: B): RuleResult[B] = {
-    if(settings.mustInvolveIndices) Rejected()
+    if (settings.mustInvolveIndices) Rejected()
     else Fulfilled(blockContext)
   }
 
@@ -137,7 +136,7 @@ class IndicesRule(override val settings: Settings,
         if (!requestContext.hasRemoteClusters) {
           // Only requested X-cluster when we don't have remote, will return empty.
           val crossClusterIndices = indices.filter(_.isClusterIndex)
-          if (indices.nonEmpty && indices.size == crossClusterIndices.size) {
+          if (indices.nonEmpty && indices.size === crossClusterIndices.size) {
             return ProcessResult.Ok(indices)
           }
           // If you requested local + X-cluster indices while we don't have remotes, it's like you asked for only local indices.

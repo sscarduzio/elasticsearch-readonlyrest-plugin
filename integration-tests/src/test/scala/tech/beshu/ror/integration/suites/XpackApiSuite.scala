@@ -17,7 +17,9 @@
 package tech.beshu.ror.integration.suites
 
 import monix.execution.atomic.Atomic
-import org.scalatest.{BeforeAndAfterEach, Matchers, WordSpec}
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.XpackApiSuite.NextRollupJobName
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
 import tech.beshu.ror.integration.utils.ESVersionSupport
@@ -27,7 +29,7 @@ import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.{Null, Num, Str}
 
 trait XpackApiSuite
-  extends WordSpec
+  extends AnyWordSpec
     with BaseEsClusterIntegrationTest
     with SingleClientSupport
     with ESVersionSupport
@@ -220,14 +222,17 @@ trait XpackApiSuite
         "user has access to requested index pattern" excludeES(allEs5x, allEs6xBelowEs63x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
+          val jobName3 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test4_index_a", s"rollup_test4_$jobName1").force()
-          adminXpackApiManager.rollup(jobName2, "test3_index_a", s"rollup_test3_$jobName2").force()
+          adminXpackApiManager.rollup(jobName2, "test4_index_b", s"rollup_test4_$jobName2").force()
+          adminXpackApiManager.rollup(jobName3, "test3_index_a", s"rollup_test3_$jobName3").force()
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test4*")
 
           result.responseCode should be (200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs should have size 1
+          jobs.map(_("job_id").str) should contain (jobName2)
           jobs.foreach { job =>
             job("rollup_index").str should startWith ("rollup_test4")
             job("index_pattern").str should startWith ("test4")
@@ -236,14 +241,17 @@ trait XpackApiSuite
         "user has access to one index of requested index patten" excludeES(allEs5x, allEs6xBelowEs63x) in {
           val jobName1 = NextRollupJobName.get
           val jobName2 = NextRollupJobName.get
+          val jobName3 = NextRollupJobName.get
           adminXpackApiManager.rollup(jobName1, "test4_index_a", s"rollup_test4_$jobName1").force()
-          adminXpackApiManager.rollup(jobName2, "test3_index_a", s"rollup_test3_$jobName2").force()
+          adminXpackApiManager.rollup(jobName2, "test4_index_b", s"rollup_test4_$jobName2").force()
+          adminXpackApiManager.rollup(jobName3, "test3_index_a", s"rollup_test3_$jobName3").force()
 
           val result = dev4XpackApiManager.getRollupJobCapabilities("test4*")
 
           result.responseCode should be (200)
           val jobs = result.capabilities.values.toList.flatten
-          jobs.map(_("job_id").str) should contain (jobName1)
+          jobs should have size 2
+          jobs.map(_("job_id").str) should contain (jobName2)
           jobs.foreach { job =>
             job("rollup_index").str should startWith ("rollup_test4")
             job("index_pattern").str should startWith ("test4")

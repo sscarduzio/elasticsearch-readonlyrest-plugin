@@ -36,11 +36,13 @@ object GlobalStaticSettingsDecoder {
           basicAuthPrompt <- c.downField("prompt_for_basic_auth").as[Option[Boolean]]
           forbiddenMessage <- c.downField("response_if_req_forbidden").as[Option[String]]
           flsEngine <- c.downField("fls_engine").as[GlobalSettings.FlsEngine](flsEngineDecoder(rorMode))
+          caseMapping <- c.downField("username_case_sensitivity").as[GlobalSettings.UsernameCaseMapping]
         } yield new GlobalSettings(
           basicAuthPrompt.getOrElse(true),
           forbiddenMessage.getOrElse("forbidden"),
           flsEngine,
           rorConfigurationIndex,
+          caseMapping,
           rorAuditIndexTemplate
         )
       }
@@ -56,6 +58,17 @@ object GlobalStaticSettingsDecoder {
           case RorMode.Proxy =>
             createFlsEngineForProxy(flsEngineStr)
         }
+      }
+      .decoder
+  }
+
+  implicit private val usernameCaseMappingDecoder: Decoder[GlobalSettings.UsernameCaseMapping] = {
+    Decoder.decodeOption[String]
+      .toSyncDecoder
+      .emap[GlobalSettings.UsernameCaseMapping] {
+        case Some("case_insensitive") => Right(GlobalSettings.UsernameCaseMapping.CaseInsensitive)
+        case Some("case_sensitive") | None => Right(GlobalSettings.UsernameCaseMapping.CaseSensitive)
+        case Some(other) => Left(s"Unknown username case mapping: '$other'. Supported: 'case_insensitive', 'case_sensitive'(default).")
       }
       .decoder
   }

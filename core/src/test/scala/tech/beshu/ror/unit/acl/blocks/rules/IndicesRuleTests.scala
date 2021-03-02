@@ -24,8 +24,9 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Assertion, Succeeded, WordSpec}
+import org.scalatest.{Assertion, Succeeded}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, GeneralIndexRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -44,7 +45,7 @@ import tech.beshu.ror.mocks.{MockFilterableMultiRequestContext, MockGeneralIndex
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-class IndicesRuleTests extends WordSpec with MockFactory {
+class IndicesRuleTests extends AnyWordSpec with MockFactory {
 
   "An IndicesRule" should {
     "match" when {
@@ -2201,15 +2202,17 @@ class IndicesRuleTests extends WordSpec with MockFactory {
   private def assertMatchRule2(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                                requestContext: MockTemplateRequestContext,
                                templateOperationAfterProcessing: TemplateOperation,
+                               allAllowedIndices: Set[IndexName] = Set.empty,
                                additionalAssertions: TemplateRequestBlockContext => Assertion = noTransformation): Assertion = {
     val rule = createIndicesRule(configured)
     val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.right.get
     ruleResult should matchPattern {
-      case Fulfilled(blockContext@TemplateRequestBlockContext(rc, metadata, headers, Nil, operation, _))
+      case Fulfilled(blockContext@TemplateRequestBlockContext(rc, metadata, headers, Nil, operation, _, allowedIndices))
         if rc == requestContext
           && metadata == requestContext.initialBlockContext.userMetadata
           && headers.isEmpty
           && operation == templateOperationAfterProcessing
+          && allowedIndices == allAllowedIndices
           && additionalAssertions(blockContext) == Succeeded =>
     }
   }

@@ -14,141 +14,84 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-
 package tech.beshu.ror.utils;
-
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
-public class MatcherWithWildcards {
-  private static Set<String> empty = new HashSet<>(0);
-  private final Set<String> matchers;
-  private List<String[]> patternsList = new LinkedList<>();
+public class MatcherWithWildcards<T> {
 
-  public MatcherWithWildcards(Iterable<String> patterns) {
-    this.matchers = Sets.newHashSet(patterns);
-    for (String p : patterns) {
-      if (p == null) {
-        continue;
-      }
-      patternsList.add(p.split("\\*+", -1 /* want empty trailing token if any */));
-    }
-  }
+    private final Set<String> matchers;
+    private final List<String[]> patternsList;
+    private final CaseMappingEqualityJava<T> caseMappingEquality;
 
-  private static boolean miniglob(String[] pattern, String line) {
-    if (pattern.length == 0) {
-      return Strings.isNullOrEmpty(line);
-    }
-    else if (pattern.length == 1) {
-      return line.equals(pattern[0]);
-    }
-    if (!line.startsWith(pattern[0])) {
-      return false;
-    }
-
-    int idx = pattern[0].length();
-    for (int i = 1; i < pattern.length - 1; ++i) {
-      String patternTok = pattern[i];
-      int nextIdx = line.indexOf(patternTok, idx);
-      if (nextIdx < 0) {
-        return false;
-      }
-      else {
-        idx = nextIdx + patternTok.length();
-      }
-    }
-
-    return line.endsWith(pattern[pattern.length - 1]);
-  }
-
-  public Set<String> getMatchers() {
-    return matchers;
-  }
-
-  public boolean match(String haystack) {
-    if (haystack == null) {
-      return false;
-    }
-    for (String[] p : patternsList) {
-      if (miniglob(p, haystack)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public boolean match(boolean remoteClusterAware, String haystack) {
-    return remoteClusterAware ? matchRemoteClusterAware(haystack) : match(haystack);
-  }
-
-  public Set<String> filter(boolean remoteClusterAware, Set<String> haystack) {
-    return remoteClusterAware ? filterRemoteClusterAware(haystack) : filter(haystack);
-  }
-
-  public boolean matchRemoteClusterAware(String haystack) {
-    if (haystack == null) {
-      return false;
-    }
-
-    boolean remoteClusterRequested = haystack.contains(":");
-
-    for (String[] p : patternsList) {
-      // Ignore remote cluster related permissions if request didn't mean it
-      if (!remoteClusterRequested && Arrays.asList(p).contains(":")) {
-        continue;
-      }
-      if (miniglob(p, haystack)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  public Set<String> filter(Set<String> haystack) {
-    if (haystack == null) {
-      return empty;
-    }
-    Set<String> filtered = Sets.newHashSet();
-    for (String hs : haystack) {
-      if (match(hs)) {
-        filtered.add(hs);
-      }
-    }
-    return filtered;
-  }
-  
-  public Set<String> matchingMatchers(Set<String> haystack) {
-    if (haystack == null) {
-      return empty;
-    }
-    Set<String> filtered = Sets.newHashSet();
-    for (String hs : haystack) {
-      for (String m : matchers) {
-        if (new MatcherWithWildcards(Sets.newHashSet(m)).match(hs)) {
-          filtered.add(m);
+    public MatcherWithWildcards(Iterable<String> patterns,
+                                CaseMappingEqualityJava<T> caseMappingEquality) {
+        this.caseMappingEquality = caseMappingEquality;
+        this.patternsList = new LinkedList<>();
+        this.matchers = Sets.newHashSet(patterns);
+        for (String p : patterns) {
+            if (p == null) {
+                continue;
+            }
+            patternsList.add(p.split("\\*+", -1 /* want empty trailing token if any */));
         }
-      }
     }
-    return filtered;
-}
 
-  public Set<String> filterRemoteClusterAware(Set<String> haystack) {
-    if (haystack == null) {
-      return empty;
+    public Set<String> getMatchers() {
+        return matchers;
     }
-    Set<String> filtered = Sets.newHashSet();
-    for (String hs : haystack) {
-      if (matchRemoteClusterAware(hs)) {
-        filtered.add(hs);
-      }
+
+    public boolean match(T haystack) {
+        if (haystack == null) {
+            return false;
+        }
+        for (String[] p : patternsList) {
+            if (miniglob(caseMappingEquality, p, haystack)) {
+                return true;
+            }
+        }
+        return false;
     }
-    return filtered;
-  }
+
+    private static <T> boolean miniglob(CaseMappingEqualityJava<T> caseMappingEquality, String[] pattern, T line) {
+        String showedLine = caseMappingEquality.mapCases(caseMappingEquality.show(line));
+        if (pattern.length == 0) {
+            return Strings.isNullOrEmpty(showedLine);
+        } else if (pattern.length == 1) {
+            return showedLine.equals(caseMappingEquality.mapCases(pattern[0]));
+        }
+        if (!showedLine.startsWith(caseMappingEquality.mapCases(pattern[0]))) {
+            return false;
+        }
+
+        int idx = pattern[0].length();
+        for (int i = 1; i < pattern.length - 1; ++i) {
+            String patternTok = caseMappingEquality.mapCases(pattern[i]);
+            int nextIdx = showedLine.indexOf(patternTok, idx);
+            if (nextIdx < 0) {
+                return false;
+            } else {
+                idx = nextIdx + patternTok.length();
+            }
+        }
+
+        return showedLine.endsWith(caseMappingEquality.mapCases(pattern[pattern.length - 1]));
+    }
+
+    public Set<T> filter(Set<T> haystack) {
+        if (haystack == null) {
+            return Collections.emptySet();
+        }
+        Set<T> filtered = Sets.newHashSet();
+        for (T hs : haystack) {
+            if (match(hs)) {
+                filtered.add(hs);
+            }
+        }
+        return filtered;
+    }
+
 }

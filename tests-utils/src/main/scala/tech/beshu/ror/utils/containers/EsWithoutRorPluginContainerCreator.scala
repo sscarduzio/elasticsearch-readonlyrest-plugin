@@ -17,6 +17,7 @@
 package tech.beshu.ror.utils.containers
 
 import cats.data.NonEmptyList
+import tech.beshu.ror.utils.containers.EsClusterSettings.EsVersion
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
@@ -25,7 +26,10 @@ trait EsWithoutRorPluginContainerCreator extends EsContainerCreator {
                       nodeNames: NonEmptyList[String],
                       clusterSettings: EsClusterSettings,
                       startedClusterDependencies: StartedClusterDependencies): EsContainer = {
-    val project = RorPluginGradleProject.fromSystemProperty
+    val project = clusterSettings.esVersion match {
+      case EsVersion.DeclaredInProject => RorPluginGradleProject.fromSystemProperty
+      case EsVersion.SpecificVersion(version) => RorPluginGradleProject.customModule(version)
+    }
     val esVersion = project.getESVersion
 
     val containerConfig = EsWithoutRorPluginContainer.Config(

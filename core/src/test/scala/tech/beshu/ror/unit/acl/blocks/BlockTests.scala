@@ -21,8 +21,9 @@ import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
@@ -35,7 +36,7 @@ import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpd
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.{FlsEngine, UsernameCaseMapping}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
 import tech.beshu.ror.utils.TestsUtils._
@@ -44,7 +45,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Failure
 
-class BlockTests extends WordSpec with BlockContextAssertion with Inside {
+class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
 
   "A block execution result" should {
     "be mismatched and contain all history, up to mismatched rule" when {
@@ -241,6 +242,7 @@ object BlockTests extends MockFactory {
     forbiddenRequestMessage = "forbidden",
     flsEngine = FlsEngine.ESWithLucene,
     configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
-    indexAuditTemplate = None
+    usernameCaseMapping = UsernameCaseMapping.CaseSensitive,
+    indexAuditTemplate = None,
   )
 }

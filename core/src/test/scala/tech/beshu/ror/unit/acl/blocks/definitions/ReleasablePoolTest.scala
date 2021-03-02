@@ -21,8 +21,8 @@ import cats.{Id, Monad}
 import monix.eval.Task
 import monix.execution.atomic.{AtomicBoolean, AtomicInt}
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.ReleseablePool
 import tech.beshu.ror.unit.acl.blocks.definitions.ReleasablePoolTest.Counter
 
@@ -47,7 +47,7 @@ private final class ReleasablePoolIdTest extends ReleasablePoolTest[Id] {
   override protected def await[A](a: Id[A]): A = a
 }
 
-private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends WordSpec {
+private sealed abstract class ReleasablePoolTest[M[_] : Monad] extends AnyWordSpec {
 
   protected def acquire(counter: Counter):M[counter.ReleasableResource]
   protected def release(counter: Counter)(resource:counter.ReleasableResource):M[Unit]

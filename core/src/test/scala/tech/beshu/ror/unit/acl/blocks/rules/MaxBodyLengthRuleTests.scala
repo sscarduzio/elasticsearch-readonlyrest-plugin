@@ -18,8 +18,8 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import squants.information.{Bytes, Information, Kilobytes}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 
-class MaxBodyLengthRuleTests extends WordSpec with MockFactory {
+class MaxBodyLengthRuleTests extends AnyWordSpec with MockFactory {
 
   "A MaxBodyLengthRule" should {
     "match" when {

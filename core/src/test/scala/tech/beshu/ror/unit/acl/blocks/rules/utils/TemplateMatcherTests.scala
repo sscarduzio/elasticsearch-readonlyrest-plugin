@@ -16,12 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules.utils
 
-import org.scalatest.WordSpec
+
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
 import tech.beshu.ror.accesscontrol.domain.TemplateNamePattern
-import org.scalatest.Matchers._
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 
-class TemplateMatcherTests extends WordSpec {
+class TemplateMatcherTests extends AnyWordSpec {
 
   val matcher = new TemplateMatcher(Set(
     TemplateNamePattern.fromString("temp*").get,

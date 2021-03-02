@@ -19,12 +19,13 @@ package tech.beshu.ror.unit.acl.domain
 import java.time.Instant
 
 import eu.timepit.refined.auto._
-import org.scalatest.Matchers._
-import org.scalatest.{Inside, WordSpec}
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate.CreationError
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorAuditIndexTemplate}
 
-class RorAuditIndexTemplateTests extends WordSpec with Inside {
+class RorAuditIndexTemplateTests extends AnyWordSpec with Inside {
 
   private val template = RorAuditIndexTemplate.from("'.ror_'yyyy_MM").right.get
 

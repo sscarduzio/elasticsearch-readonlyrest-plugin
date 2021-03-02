@@ -19,8 +19,8 @@ package tech.beshu.ror.configuration.loader.distributed
 import cats.implicits._
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
+import org.scalatest.matchers.should.Matchers._
+import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
 import tech.beshu.ror.configuration.loader.distributed.Summary.CurrentNodeHaveToProduceResult
@@ -28,7 +28,7 @@ import tech.beshu.ror.configuration.loader.LoadedRorConfig
 
 import scala.language.postfixOps
 
-class SummaryTest extends WordSpec {
+class SummaryTest extends AnyWordSpec {
   "Summary" when {
     "there are no configs" should {
       "throw exception, current node have to give response" in {
