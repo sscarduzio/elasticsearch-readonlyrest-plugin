@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es.request
 
+import java.time.Instant
+
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
@@ -202,7 +204,10 @@ object AclAwareRequestFilter {
                              actionRequest: ActionRequest,
                              listener: ActionListener[ActionResponse],
                              chain: ActionFilterChain[ActionRequest, ActionResponse],
-                             crossClusterSearchEnabled: Boolean)
+                             crossClusterSearchEnabled: Boolean){
+    lazy val requestId = s"${channel.request().hashCode()}-${actionRequest.hashCode()}#${task.getId}"
+    val timestamp: Instant = Instant.now()
+  }
 }
 
 final case class RequestSeemsToBeInvalid[T: ClassTag](message: String, cause: Throwable = null)
