@@ -320,7 +320,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           assertMatchRule2(
             configured = NonEmptySet.of(index("test*")),
             requestContext = MockRequestContext.template(gettingTemplateOperation),
-            templateOperationAfterProcessing = gettingTemplateOperation
+            templateOperationAfterProcessing = gettingTemplateOperation,
+            allAllowedIndices = Set(IndexName("test*"))
           )
         }
         "template exists" when {
@@ -337,6 +338,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 .template(gettingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
               templateOperationAfterProcessing = gettingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set(existingTemplate)) should be (Set(existingTemplate))
             )
@@ -364,6 +366,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 .addExistingTemplates(existingTemplate1, existingTemplate2, existingTemplate3),
               templateOperationAfterProcessing =
                 GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
+              allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
                   LegacyTemplate(
@@ -397,6 +400,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 .addExistingTemplates(existingTemplate1, existingTemplate2, existingTemplate3),
               templateOperationAfterProcessing =
                 GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
+              allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
                   LegacyTemplate(
@@ -447,6 +451,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set.empty) should be (Set.empty)
             )
@@ -460,7 +465,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test1"))
             )
           }
           "rule allows access to index name with wildcard which is a superset of the pattern in template's pattern list" in {
@@ -472,7 +478,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches both patterns in template's pattern list" in {
@@ -484,7 +491,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches pattern in template's pattern list and all aliases (without index placeholder)" in {
@@ -496,7 +504,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches pattern in template's pattern list and all aliases (with index placeholder)" in {
@@ -508,7 +517,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
         }
@@ -529,7 +539,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "rule allows access to index name which is used in existing template's pattern list" in {
@@ -544,7 +555,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test1"))
             )
           }
           "rule allows access to index name with wildcard which is a superset of the patten in existing template's pattern list" in {
@@ -563,7 +575,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches both patterns in existing template's pattern list" in {
@@ -582,7 +595,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches pattern in existing template's pattern list and all aliases (without index placeholder)" in {
@@ -601,7 +615,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches pattern in existing template's pattern list and all aliases (with index placeholder)" in {
@@ -620,7 +635,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
         }
@@ -809,7 +825,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
               templateOperationAfterProcessing =
-                DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000")))
+                DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000"))),
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "rule allows access to specific index" in {
@@ -818,7 +835,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
               templateOperationAfterProcessing =
-                DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000")))
+                DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000"))),
+              allAllowedIndices = Set(IndexName("index1"))
             )
           }
         }
@@ -840,7 +858,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "all requested existing templates have only allowed indices" in {
@@ -860,7 +879,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("index1"), IndexName("index2"))
             )
           }
           "all requested existing templates have only allowed indices patterns" in {
@@ -880,7 +900,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("a*"))
             )
           }
           "all requested existing templates have only allowed indices patterns and aliases" in {
@@ -900,7 +921,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("a*"))
             )
           }
         }
@@ -987,7 +1009,12 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           assertMatchRule2(
             configured = NonEmptySet.of(index("test*")),
             requestContext = MockRequestContext.template(gettingTemplateOperation),
-            templateOperationAfterProcessing = gettingTemplateOperation
+            templateOperationAfterProcessing = gettingTemplateOperation,
+            allAllowedIndices = Set(IndexName("test*")),
+            additionalAssertions = blockContext =>
+              blockContext.responseTemplateTransformation(
+                Set(IndexTemplate(TemplateName("example"), UniqueNonEmptyList.of(IndexPattern("test*")), Set.empty))
+              ) should be (Set.empty)
           )
         }
         "template exists" when {
@@ -1004,6 +1031,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 .template(gettingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
               templateOperationAfterProcessing = gettingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set(existingTemplate)) should be (Set(existingTemplate))
             )
@@ -1031,6 +1059,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 .addExistingTemplates(existingTemplate1, existingTemplate2, existingTemplate3),
               templateOperationAfterProcessing =
                 GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
+              allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
                   IndexTemplate(
@@ -1064,6 +1093,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 .addExistingTemplates(existingTemplate1, existingTemplate2, existingTemplate3),
               templateOperationAfterProcessing =
                 GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
+              allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
                   IndexTemplate(
@@ -1094,7 +1124,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               configured = NonEmptySet.of(index("test3")),
               requestContext = MockRequestContext
                 .template(gettingTemplateOperation)
-                .addExistingTemplates(existingTemplate1, existingTemplate2)
+                .addExistingTemplates(existingTemplate1, existingTemplate2),
+              specialCause = Some(Cause.TemplateNotFound)
             )
           }
         }
@@ -1113,6 +1144,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set.empty) should be (Set.empty)
             )
@@ -1126,7 +1158,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test1"))
             )
           }
           "rule allows access to index name with wildcard which is a superset of the pattern in template's pattern list" in {
@@ -1138,7 +1171,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches both patterns in template's pattern list" in {
@@ -1150,7 +1184,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches pattern in template's pattern list and all aliases (without index placeholder)" in {
@@ -1162,7 +1197,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches pattern in template's pattern list and all aliases (with index placeholder)" in {
@@ -1174,7 +1210,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
         }
@@ -1195,7 +1232,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "rule allows access to index name which is used in existing template's pattern list" in {
@@ -1210,7 +1248,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test1"))
             )
           }
           "rule allows access to index name with wildcard which is a superset of the patten in existing template's pattern list" in {
@@ -1229,7 +1268,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches both patterns in existing template's pattern list" in {
@@ -1248,7 +1288,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches pattern in existing template's pattern list and all aliases (without index placeholder)" in {
@@ -1267,7 +1308,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches pattern in existing template's pattern list and all aliases (with index placeholder)" in {
@@ -1286,7 +1328,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
         }
@@ -1475,7 +1518,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
               templateOperationAfterProcessing =
-                DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000")))
+                DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000"))),
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "rule allows access to specific index" in {
@@ -1484,7 +1528,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
               templateOperationAfterProcessing =
-                DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000")))
+                DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000"))),
+              allAllowedIndices = Set(IndexName("index1"))
             )
           }
         }
@@ -1506,7 +1551,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "all requested existing templates have only allowed indices" in {
@@ -1526,7 +1572,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("index1"), IndexName("index2"))
             )
           }
           "all requested existing templates have only allowed indices patterns" in {
@@ -1546,7 +1593,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("a*"))
             )
           }
           "all requested existing templates have only allowed indices patterns and aliases" in {
@@ -1566,7 +1614,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("a*"))
             )
           }
         }
@@ -1653,7 +1702,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
           assertMatchRule2(
             configured = NonEmptySet.of(index("test*")),
             requestContext = MockRequestContext.template(gettingTemplateOperation),
-            templateOperationAfterProcessing = gettingTemplateOperation
+            templateOperationAfterProcessing = gettingTemplateOperation,
+            allAllowedIndices = Set(IndexName("test*"))
           )
         }
         "template exists" when {
@@ -1669,6 +1719,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 .template(gettingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
               templateOperationAfterProcessing = gettingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set(existingTemplate)) should be (Set(existingTemplate))
             )
@@ -1692,7 +1743,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 .template(GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
                 .addExistingTemplates(existingTemplate1, existingTemplate2, existingTemplate3),
               templateOperationAfterProcessing =
-                GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t1"), TemplateNamePattern("t2"))),
+                GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
+              allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set(existingTemplate1, existingTemplate2)) should be (Set(
                   ComponentTemplate(
@@ -1715,6 +1767,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 .template(gettingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
               templateOperationAfterProcessing = gettingTemplateOperation,
+              allAllowedIndices = Set(IndexName("index1")),
               additionalAssertions = blockContext =>
                 blockContext.responseTemplateTransformation(Set(existingTemplate)) should be (Set(
                   ComponentTemplate(
@@ -1738,7 +1791,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "rule allows access to index name which is used in template's aliases list" in {
@@ -1749,7 +1803,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("alias1")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("alias1"))
             )
           }
           "rule allows access to index name with wildcard which is a superset of the pattern in template's aliases list" in {
@@ -1760,7 +1815,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches both patterns in template's aliases list" in {
@@ -1771,7 +1827,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             assertMatchRule2(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
         }
@@ -1790,7 +1847,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "rule allows access to index name which is used in existing template's aliases list" in {
@@ -1804,7 +1862,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test1"))
             )
           }
           "rule allows access to index name with wildcard which is a superset of the patten in existing template's aliases list" in {
@@ -1821,7 +1880,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
           "rule allows access to index name with wildcard which matches both patterns in existing template's aliases list" in {
@@ -1838,7 +1898,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
                 .addExistingTemplates(existingTemplate),
-              templateOperationAfterProcessing = addingTemplateOperation
+              templateOperationAfterProcessing = addingTemplateOperation,
+              allAllowedIndices = Set(IndexName("test*"))
             )
           }
         }
@@ -1959,7 +2020,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
               templateOperationAfterProcessing =
-                DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000")))
+                DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000"))),
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "rule allows access to specific index" in {
@@ -1968,7 +2030,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
               templateOperationAfterProcessing =
-                DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000")))
+                DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*_ROR_0000000000"))),
+              allAllowedIndices = Set(IndexName("index1"))
             )
           }
         }
@@ -1988,7 +2051,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("*"))
             )
           }
           "all requested existing templates have only allowed aliases" in {
@@ -2006,7 +2070,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("index1"), IndexName("index2"))
             )
           }
           "all requested existing templates have only allowed aliases patterns" in {
@@ -2024,7 +2089,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
                 .addExistingTemplates(existingTemplate1, existingTemplate2),
-              templateOperationAfterProcessing = deletingTemplateOperation
+              templateOperationAfterProcessing = deletingTemplateOperation,
+              allAllowedIndices = Set(IndexName("a*"))
             )
           }
         }
@@ -2199,6 +2265,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
+  // todo: rename
   private def assertMatchRule2(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                                requestContext: MockTemplateRequestContext,
                                templateOperationAfterProcessing: TemplateOperation,
