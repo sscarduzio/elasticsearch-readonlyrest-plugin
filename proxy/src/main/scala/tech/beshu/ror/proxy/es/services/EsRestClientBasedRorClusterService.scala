@@ -105,7 +105,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       }
   }
 
-  // todo:
+  // todo: implement properly during fixes proxy issues related to new templates API
   private def templateFrom(metaData: IndexTemplateMetadata): Option[TemplateLike] = {
     TemplateName
       .fromString(metaData.name())

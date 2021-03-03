@@ -21,7 +21,7 @@ import cats.data.NonEmptySet
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation._
 import tech.beshu.ror.accesscontrol.domain._
@@ -101,6 +101,14 @@ private[indicesrule] trait AllTemplateIndices
   private[indicesrule] def isAliasAllowed(alias: IndexName)
                                          (implicit allowedIndices: AllowedIndices) = {
     alias.isAllowedBy(allowedIndices.resolved)
+  }
+
+  private[indicesrule] def filterTemplates[T <: Template](allowedNamePatterns: Set[TemplateNamePattern],
+                                                          requestedTemplates: Set[T]): Set[T] = {
+    val matcher = MatcherWithWildcardsScalaAdapter.create(allowedNamePatterns)
+    val templateByName: Map[TemplateNamePattern, Set[T]] = requestedTemplates.groupBy(t => TemplateNamePattern(t.name.value))
+    val filteredTemplateNames = matcher.filter(templateByName.keys.toSet)
+    templateByName.filterKeys(filteredTemplateNames.contains).values.toSet.flatten
   }
 
   private[indicesrule] class AllowedIndices(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],

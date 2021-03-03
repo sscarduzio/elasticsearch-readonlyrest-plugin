@@ -23,7 +23,6 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{AddingIndexTemplateAndGetAllowedOnes, GettingIndexTemplates}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.implicits._
@@ -273,7 +272,7 @@ private[indicesrule] trait IndexTemplateIndices
   }
 
   private def findTemplatesBy(namePatterns: Set[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.IndexTemplate] = {
-    new TemplateMatcher(namePatterns).filterTemplates(in.requestContext.indexTemplates)
+    filterTemplates(namePatterns, in.requestContext.indexTemplates)
   }
 
   private def filterTemplatesNotAllowedPatternsAndAliases(templates: Set[Template])

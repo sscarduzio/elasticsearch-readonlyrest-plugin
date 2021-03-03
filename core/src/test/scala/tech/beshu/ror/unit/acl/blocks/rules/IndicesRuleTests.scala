@@ -24,9 +24,9 @@ import eu.timepit.refined.numeric.Positive
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{Assertion, Succeeded}
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatest.{Assertion, Succeeded}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, GeneralIndexRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -50,7 +50,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
   "An IndicesRule" should {
     "match" when {
       "no index passed, one is configured, there is one real index" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test")),
           requestIndices = Set.empty,
           modifyRequestContext = _.copy(
@@ -60,7 +60,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "'_all' passed, one is configured, there is one real index" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test")),
           requestIndices = Set(IndexName("_all")),
           modifyRequestContext = _.copy(
@@ -70,7 +70,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "'*' passed, one is configured, there is one real index" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test")),
           requestIndices = Set(IndexName("*")),
           modifyRequestContext = _.copy(
@@ -80,14 +80,14 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "one full name index passed, one full name index configured, no real indices" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test")),
           requestIndices = Set(IndexName("test")),
           found = Set(IndexName("test"))
         )
       }
       "one wildcard index passed, one full name index configured, no real indices" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test")),
           requestIndices = Set(IndexName("te*")),
           modifyRequestContext = _.copy(
@@ -97,56 +97,56 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "one full name index passed, one wildcard index configured, no real indices" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("t*")),
           requestIndices = Set(IndexName("test")),
           found = Set(IndexName("test"))
         )
       }
       "two full name indexes passed, the same two full name indexes configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test1"), index("test2")),
           requestIndices = Set(IndexName("test2"), IndexName("test1")),
           found = Set(IndexName("test2"), IndexName("test1"))
         )
       }
       "two full name indexes passed, one the same, one different index configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test1"), index("test2")),
           requestIndices = Set(IndexName("test1"), IndexName("test3")),
           found = Set(IndexName("test1"))
         )
       }
       "two matching wildcard indexes passed, two full name indexes configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test1"), index("test2")),
           requestIndices = Set(IndexName("*2"), IndexName("*1")),
           found = Set(IndexName("test1"), IndexName("test2"))
         )
       }
       "two full name indexes passed, two matching wildcard indexes configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("*1"), index("*2")),
           requestIndices = Set(IndexName("test2"), IndexName("test1")),
           found = Set(IndexName("test2"), IndexName("test1"))
         )
       }
       "two full name indexes passed, one matching full name and one non-matching wildcard index configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test1"), index("*2")),
           requestIndices = Set(IndexName("test1"), IndexName("test3")),
           found = Set(IndexName("test1"))
         )
       }
       "one matching wildcard index passed and one non-matching full name index, two full name indexes configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test1"), index("*2")),
           requestIndices = Set(IndexName("*1"), IndexName("test3")),
           found = Set(IndexName("test1"))
         )
       }
       "one full name alias passed, full name index related to that alias configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test-index")),
           requestIndices = Set(IndexName("test-alias")),
           modifyRequestContext = _.copy(
@@ -156,7 +156,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "wildcard alias passed, full name index related to alias matching passed one configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test-index")),
           requestIndices = Set(IndexName("*-alias")),
           modifyRequestContext = _.copy(
@@ -166,7 +166,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "one full name alias passed, wildcard index configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("*-index")),
           requestIndices = Set(IndexName("test-alias")),
           modifyRequestContext = _.copy(
@@ -176,7 +176,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "one alias passed, only subset of alias indices configured" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test-index1"), index("test-index2")),
           requestIndices = Set(IndexName("test-alias")),
           modifyRequestContext = _.copy(
@@ -191,7 +191,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "cross cluster index is used together with local index" in {
-        assertMatchRule(
+        assertMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("odd:test1*"), index("local*")),
           requestIndices = Set(IndexName("local_index*"), IndexName("odd:test1_index*")),
           modifyRequestContext = _.copy(
@@ -209,7 +209,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "multi filterable request tries to fetch data for allowed and not allowed index" in {
-        assertMatchRuleMultiIndexRequest(
+        assertMatchRuleForMultiIndexRequest(
           configured = NonEmptySet.of(index("test1")),
           indexPacks = Indices.Found(Set(IndexName("test1".nonempty), IndexName("test2".nonempty))) :: Nil,
           allowed = Indices.Found(Set(IndexName("test1".nonempty))) :: Nil
@@ -218,61 +218,61 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
     }
     "not match" when {
       "no index passed, one is configured, no real indices" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test")),
           requestIndices = Set.empty
         )
       }
       "'_all' passed, one is configured, no real indices" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test")),
           requestIndices = Set(IndexName("_all"))
         )
       }
       "'*' passed, one is configured, no real indices" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test")),
           requestIndices = Set(IndexName("*"))
         )
       }
       "one full name index passed, different one full name index configured" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test1")),
           requestIndices = Set(IndexName("test2"))
         )
       }
       "one wildcard index passed, non-matching index with full name configured" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test1")),
           requestIndices = Set(IndexName("*2"))
         )
       }
       "one full name index passed, non-matching index with wildcard configured" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("*1")),
           requestIndices = Set(IndexName("test2"))
         )
       }
       "two full name indexes passed, different two full name indexes configured" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test1"), index("test2")),
           requestIndices = Set(IndexName("test4"), IndexName("test3"))
         )
       }
       "two wildcard indexes passed, non-matching two full name indexes configured" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test1"), index("test2")),
           requestIndices = Set(IndexName("*4"), IndexName("*3"))
         )
       }
       "two full name indexes passed, non-matching two wildcard indexes configured" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("*1"), index("*2")),
           requestIndices = Set(IndexName("test4"), IndexName("test3"))
         )
       }
       "one full name alias passed, full name index with no alias configured" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test-index")),
           requestIndices = Set(IndexName("test-alias")),
           modifyRequestContext = _.copy(
@@ -284,7 +284,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "wildcard alias passed, full name index with no alias configured" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test-index")),
           requestIndices = Set(IndexName("*-alias")),
           modifyRequestContext = _.copy(
@@ -296,7 +296,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         )
       }
       "full name index passed, index alias configured" in {
-        assertNotMatchRule(
+        assertNotMatchRuleForIndexRequest(
           configured = NonEmptySet.of(index("test12-alias")),
           requestIndices = Set(IndexName("test-index1")),
           modifyRequestContext = _.copy(
@@ -317,7 +317,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "match" when {
         "template doesn't exist" in {
           val gettingTemplateOperation = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-          assertMatchRule2(
+          assertMatchRuleForTemplateRequest(
             configured = NonEmptySet.of(index("test*")),
             requestContext = MockRequestContext.template(gettingTemplateOperation),
             templateOperationAfterProcessing = gettingTemplateOperation,
@@ -332,7 +332,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val gettingTemplateOperation = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(gettingTemplateOperation)
@@ -340,7 +340,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               templateOperationAfterProcessing = gettingTemplateOperation,
               allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be (Set(existingTemplate))
+                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be(Set(existingTemplate))
             )
           }
           "rule allows access not to all indices, but there is at least one matching template with at least one index pattern allowed and no alias allowed" in {
@@ -359,7 +359,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("t*1*")),
               requestContext = MockRequestContext
                 .template(GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -368,7 +368,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
               allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
+                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be(Set(
                   LegacyTemplate(
                     name = TemplateName("t1"),
                     patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
@@ -393,7 +393,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("t*1*")),
               requestContext = MockRequestContext
                 .template(GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -402,7 +402,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
               allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
+                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be(Set(
                   LegacyTemplate(
                     name = TemplateName("t1"),
                     patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
@@ -426,7 +426,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 aliases = Set.empty
               )
               val gettingTemplateOperation = GettingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
-              assertNotMatchRule2(
+              assertNotMatchRuleForTemplateRequest(
                 configured = NonEmptySet.of(index("test3")),
                 requestContext = MockRequestContext
                   .template(gettingTemplateOperation)
@@ -447,13 +447,13 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
               allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set.empty) should be (Set.empty)
+                blockContext.responseTemplateTransformation(Set.empty) should be(Set.empty)
             )
           }
           "rule allows access to index name which is used in template's pattern list" in {
@@ -462,7 +462,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -475,7 +475,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -488,7 +488,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -501,7 +501,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set(IndexName("test1_alias"), IndexName("test2_alias"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -514,7 +514,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set(IndexName("{index}_alias"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -534,7 +534,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test2")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -550,7 +550,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val addingTemplateOperation = AddingLegacyTemplate(existingTemplate.name, existingTemplate.patterns, Set.empty)
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -570,7 +570,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test2*")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -590,7 +590,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -610,7 +610,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3")),
               aliases = Set(IndexName("test1_alias"), IndexName("test2_alias"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -630,7 +630,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3")),
               aliases = Set(IndexName("{index}_alias"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -644,7 +644,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "not match" when {
         "template with given name doesn't exist" when {
           "rule allows access to index name which is not used in template's pattern list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -655,7 +655,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access to index name which matches the pattern in template's pattern list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -666,7 +666,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access to index name with wildcard which is a subset of the pattern in template's pattern list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -677,7 +677,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access ot index name with wildcard which matches only one pattern in template's pattern list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -688,7 +688,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (without index placeholder)" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -699,7 +699,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (with index placeholder)" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -717,7 +717,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test2")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -734,7 +734,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -751,7 +751,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -768,7 +768,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -785,7 +785,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -802,7 +802,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingLegacyTemplate(
@@ -820,7 +820,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "match" when {
         "template with given name doesn't exist" when {
           "rule allows access to all indices" in {
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
@@ -830,7 +830,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access to specific index" in {
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1")),
               requestContext = MockRequestContext
                 .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
@@ -853,7 +853,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -874,7 +874,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1"), index("index2")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -895,7 +895,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("a*")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -916,7 +916,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set(IndexName("balias"))
             )
             val deletingTemplateOperation = DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("a*")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -940,7 +940,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("index1"), IndexPattern("index2")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1")),
               requestContext = MockRequestContext
                 .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -958,7 +958,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("index1*"), IndexPattern("index2*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1*")),
               requestContext = MockRequestContext
                 .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -976,7 +976,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("index12*")),
               aliases = Set(IndexName("alias"))
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1*")),
               requestContext = MockRequestContext
                 .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -989,7 +989,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("i*1")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index*")),
               requestContext = MockRequestContext
                 .template(DeletingLegacyTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -1006,7 +1006,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "match" when {
         "template doesn't exist" in {
           val gettingTemplateOperation = GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-          assertMatchRule2(
+          assertMatchRuleForTemplateRequest(
             configured = NonEmptySet.of(index("test*")),
             requestContext = MockRequestContext.template(gettingTemplateOperation),
             templateOperationAfterProcessing = gettingTemplateOperation,
@@ -1014,7 +1014,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             additionalAssertions = blockContext =>
               blockContext.responseTemplateTransformation(
                 Set(IndexTemplate(TemplateName("example"), UniqueNonEmptyList.of(IndexPattern("test*")), Set.empty))
-              ) should be (Set.empty)
+              ) should be(Set.empty)
           )
         }
         "template exists" when {
@@ -1025,7 +1025,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set(IndexName("alias1"))
             )
             val gettingTemplateOperation = GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(gettingTemplateOperation)
@@ -1033,7 +1033,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               templateOperationAfterProcessing = gettingTemplateOperation,
               allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be (Set(existingTemplate))
+                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be(Set(existingTemplate))
             )
           }
           "rule allows access not to all indices, but there is at least one matching template with at least one index pattern allowed and no alias allowed" in {
@@ -1052,7 +1052,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("t*1*")),
               requestContext = MockRequestContext
                 .template(GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -1061,7 +1061,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
               allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
+                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be(Set(
                   IndexTemplate(
                     name = TemplateName("t1"),
                     patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
@@ -1086,7 +1086,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("test2*")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("t*1*")),
               requestContext = MockRequestContext
                 .template(GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -1095,7 +1095,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1"))),
               allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be (Set(
+                blockContext.responseTemplateTransformation(Set(existingTemplate1)) should be(Set(
                   IndexTemplate(
                     name = TemplateName("t1"),
                     patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
@@ -1120,7 +1120,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val gettingTemplateOperation = GettingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test3")),
               requestContext = MockRequestContext
                 .template(gettingTemplateOperation)
@@ -1140,13 +1140,13 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
               aliases = Set(IndexName("alias1"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
               allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set.empty) should be (Set.empty)
+                blockContext.responseTemplateTransformation(Set.empty) should be(Set.empty)
             )
           }
           "rule allows access to index name which is used in template's pattern list" in {
@@ -1155,7 +1155,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -1168,7 +1168,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -1181,7 +1181,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -1194,7 +1194,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set(IndexName("test1_alias"), IndexName("test2_alias"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -1207,7 +1207,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2")),
               aliases = Set(IndexName("{index}_alias"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -1227,7 +1227,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test2")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1243,7 +1243,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val addingTemplateOperation = AddingIndexTemplate(existingTemplate.name, existingTemplate.patterns, existingTemplate.aliases)
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1263,7 +1263,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test2*")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1283,7 +1283,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3")),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1303,7 +1303,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3")),
               aliases = Set(IndexName("test1_alias"), IndexName("test2_alias"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1323,7 +1323,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1"), IndexPattern("test2"), IndexPattern("test3")),
               aliases = Set(IndexName("{index}_alias"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1337,7 +1337,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "not match" when {
         "template with given name doesn't exist" when {
           "rule allows access to index name which is not used in template's pattern list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1348,7 +1348,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access to index name which matches the pattern in template's pattern list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1359,7 +1359,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access to index name with wildcard which is a subset of the pattern in template's pattern list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1*")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1370,7 +1370,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access ot index name with wildcard which matches only one pattern in template's pattern list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1381,7 +1381,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (without index placeholder)" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1392,7 +1392,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access ot index name with wildcard which matches pattern in template's pattern list but doesn't match all aliases (with index placeholder)" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1410,7 +1410,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test2")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1427,7 +1427,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1444,7 +1444,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1*")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1461,7 +1461,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1478,7 +1478,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1495,7 +1495,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("test1*"), IndexPattern("index1*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingIndexTemplate(
@@ -1513,7 +1513,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "match" when {
         "template with given name doesn't exist" when {
           "rule allows access to all indices" in {
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
@@ -1523,7 +1523,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access to specific index" in {
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1")),
               requestContext = MockRequestContext
                 .template(DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
@@ -1546,7 +1546,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val deletingTemplateOperation = DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -1567,7 +1567,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val deletingTemplateOperation = DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1"), index("index2")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -1588,7 +1588,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set.empty
             )
             val deletingTemplateOperation = DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("a*")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -1609,7 +1609,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set(IndexName("balias"))
             )
             val deletingTemplateOperation = DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("a*")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -1633,7 +1633,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("index1"), IndexPattern("index2")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1")),
               requestContext = MockRequestContext
                 .template(DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -1651,7 +1651,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("index1*"), IndexPattern("index2*")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1*")),
               requestContext = MockRequestContext
                 .template(DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -1669,7 +1669,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("index12*")),
               aliases = Set(IndexName("alias"))
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1*")),
               requestContext = MockRequestContext
                 .template(DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -1682,7 +1682,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               patterns = UniqueNonEmptyList.of(IndexPattern("i*1")),
               aliases = Set.empty
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index*")),
               requestContext = MockRequestContext
                 .template(DeletingIndexTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -1699,7 +1699,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "match" when {
         "template doesn't exist" in {
           val gettingTemplateOperation = GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-          assertMatchRule2(
+          assertMatchRuleForTemplateRequest(
             configured = NonEmptySet.of(index("test*")),
             requestContext = MockRequestContext.template(gettingTemplateOperation),
             templateOperationAfterProcessing = gettingTemplateOperation,
@@ -1713,7 +1713,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set(IndexName("alias1"))
             )
             val gettingTemplateOperation = GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(gettingTemplateOperation)
@@ -1721,7 +1721,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               templateOperationAfterProcessing = gettingTemplateOperation,
               allAllowedIndices = Set(IndexName("*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be (Set(existingTemplate))
+                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be(Set(existingTemplate))
             )
           }
           "rule allows access not to all indices, but there is at least one alias allowed" in {
@@ -1737,7 +1737,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("d3"),
               aliases = Set.empty
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("t*1*")),
               requestContext = MockRequestContext
                 .template(GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -1746,7 +1746,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
                 GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))),
               allAllowedIndices = Set(IndexName("t*1*")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate1, existingTemplate2)) should be (Set(
+                blockContext.responseTemplateTransformation(Set(existingTemplate1, existingTemplate2)) should be(Set(
                   ComponentTemplate(
                     name = TemplateName("t1"),
                     aliases = Set(IndexName("test1_alias"))
@@ -1761,7 +1761,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set(IndexName("alias1"))
             )
             val gettingTemplateOperation = GettingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1")),
               requestContext = MockRequestContext
                 .template(gettingTemplateOperation)
@@ -1769,7 +1769,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               templateOperationAfterProcessing = gettingTemplateOperation,
               allAllowedIndices = Set(IndexName("index1")),
               additionalAssertions = blockContext =>
-                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be (Set(
+                blockContext.responseTemplateTransformation(Set(existingTemplate)) should be(Set(
                   ComponentTemplate(
                     name = TemplateName("t1"),
                     aliases = Set.empty
@@ -1788,7 +1788,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t1"),
               aliases = Set(IndexName("alias1"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -1800,7 +1800,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t1"),
               aliases = Set(IndexName("alias1"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("alias1")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -1812,7 +1812,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t1"),
               aliases = Set(IndexName("test1*"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -1824,7 +1824,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t1"),
               aliases = Set(IndexName("test1"), IndexName("test2"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext.template(addingTemplateOperation),
               templateOperationAfterProcessing = addingTemplateOperation,
@@ -1842,7 +1842,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = existingTemplate.name,
               aliases = Set(IndexName("test2"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1857,7 +1857,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set(IndexName("test1"))
             )
             val addingTemplateOperation = AddingComponentTemplate(existingTemplate.name, existingTemplate.aliases)
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1875,7 +1875,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = existingTemplate.name,
               aliases = Set(IndexName("test2*"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1893,7 +1893,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = existingTemplate.name,
               aliases = Set(IndexName("test1"), IndexName("test2"), IndexName("test3"))
             )
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(addingTemplateOperation)
@@ -1907,7 +1907,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "not match" when {
         "template with given name doesn't exit" when {
           "rule allows access to index name which is not used in template's aliases list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
@@ -1917,7 +1917,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access to index name which matches the pattern in template's aliases list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
@@ -1927,7 +1927,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access to index name with wildcard which is a subset of the pattern in template's aliases list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1*")),
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
@@ -1937,7 +1937,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access ot index name with wildcard which matches only one pattern in template's aliases list" in {
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
@@ -1953,7 +1953,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t1"),
               aliases = Set(IndexName("test2"))
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
@@ -1968,7 +1968,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t1"),
               aliases = Set(IndexName("test*"))
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1")),
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
@@ -1983,7 +1983,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t1"),
               aliases = Set(IndexName("test*"))
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test1*")),
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
@@ -1998,7 +1998,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t1"),
               aliases = Set(IndexName("test1*"), IndexName("index1*"))
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("test*")),
               requestContext = MockRequestContext
                 .template(AddingComponentTemplate(
@@ -2015,7 +2015,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "match" when {
         "template with given name doesn't exist" when {
           "rule allows access to all indices" in {
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
@@ -2025,7 +2025,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
             )
           }
           "rule allows access to specific index" in {
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1")),
               requestContext = MockRequestContext
                 .template(DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*")))),
@@ -2046,7 +2046,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set(IndexName("index1"))
             )
             val deletingTemplateOperation = DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("*")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -2065,7 +2065,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set(IndexName("index3"))
             )
             val deletingTemplateOperation = DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t1")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1"), index("index2")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -2084,7 +2084,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               aliases = Set(IndexName("b*"))
             )
             val deletingTemplateOperation = DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*")))
-            assertMatchRule2(
+            assertMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("a*")),
               requestContext = MockRequestContext
                 .template(deletingTemplateOperation)
@@ -2106,7 +2106,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t2"),
               aliases = Set(IndexName("index1"), IndexName("index2"))
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1")),
               requestContext = MockRequestContext
                 .template(DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -2122,7 +2122,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t2"),
               aliases = Set(IndexName("index1*"), IndexName("index2*"))
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index1*")),
               requestContext = MockRequestContext
                 .template(DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -2134,7 +2134,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
               name = TemplateName("t1"),
               aliases = Set(IndexName("i*1"))
             )
-            assertNotMatchRule2(
+            assertNotMatchRuleForTemplateRequest(
               configured = NonEmptySet.of(index("index*")),
               requestContext = MockRequestContext
                 .template(DeletingComponentTemplates(NonEmptyList.of(TemplateNamePattern("t*"))))
@@ -2144,7 +2144,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         }
       }
       "multi filterable request tries to fetch data for not allowed index" in {
-        assertNotMatchRuleMultiIndexRequest(
+        assertNotMatchRuleForMultiIndexRequest(
           configured = NonEmptySet.of(index("test1")),
           indexPacks = Indices.Found(Set(IndexName("test2".nonempty))) :: Nil
         )
@@ -2152,22 +2152,22 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRule(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                              requestIndices: Set[IndexName],
-                              modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
-                              found: Set[IndexName] = Set.empty) =
-    assertRule(configured, requestIndices, isMatched = true, modifyRequestContext, found)
+  private def assertMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                             requestIndices: Set[IndexName],
+                                             modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity,
+                                             found: Set[IndexName] = Set.empty) =
+    assertRuleForIndexRequest(configured, requestIndices, isMatched = true, modifyRequestContext, found)
 
-  private def assertNotMatchRule(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                                 requestIndices: Set[IndexName],
-                                 modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity) =
-    assertRule(configured, requestIndices, isMatched = false, modifyRequestContext, Set.empty)
+  private def assertNotMatchRuleForIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                                requestIndices: Set[IndexName],
+                                                modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext = identity) =
+    assertRuleForIndexRequest(configured, requestIndices, isMatched = false, modifyRequestContext, Set.empty)
 
-  private def assertRule(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                         requestIndices: Set[IndexName],
-                         isMatched: Boolean,
-                         modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext,
-                         found: Set[IndexName]) = {
+  private def assertRuleForIndexRequest(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                        requestIndices: Set[IndexName],
+                                        isMatched: Boolean,
+                                        modifyRequestContext: MockGeneralIndexRequestContext => MockGeneralIndexRequestContext,
+                                        found: Set[IndexName]) = {
     val rule = createIndicesRule(configuredValues)
     val requestContext = modifyRequestContext apply MockRequestContext.indices
       .copy(
@@ -2208,24 +2208,24 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertMatchRuleMultiIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                                               indexPacks: List[Indices],
-                                               modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext = identity,
-                                               allowed: List[Indices]) = {
-    assertRuleForMultiIndexRequest(configured, indexPacks, isMatched = true, modifyRequestContext, allowed)
-  }
-
-  private def assertNotMatchRuleMultiIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+  private def assertMatchRuleForMultiIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                                                   indexPacks: List[Indices],
-                                                  modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext = identity) = {
-    assertRuleForMultiIndexRequest(configured, indexPacks, isMatched = false, modifyRequestContext, List.empty)
+                                                  modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext = identity,
+                                                  allowed: List[Indices]) = {
+    assertRuleForMultiForIndexRequest(configured, indexPacks, isMatched = true, modifyRequestContext, allowed)
   }
 
-  private def assertRuleForMultiIndexRequest(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                                             indexPacks: List[Indices],
-                                             isMatched: Boolean,
-                                             modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext,
-                                             allowed: List[Indices]) = {
+  private def assertNotMatchRuleForMultiIndexRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                                     indexPacks: List[Indices],
+                                                     modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext = identity) = {
+    assertRuleForMultiForIndexRequest(configured, indexPacks, isMatched = false, modifyRequestContext, List.empty)
+  }
+
+  private def assertRuleForMultiForIndexRequest(configuredValues: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                                indexPacks: List[Indices],
+                                                isMatched: Boolean,
+                                                modifyRequestContext: MockFilterableMultiRequestContext => MockFilterableMultiRequestContext,
+                                                allowed: List[Indices]) = {
     val rule = new IndicesRule(
       settings = IndicesRule.Settings(configuredValues, mustInvolveIndices = false),
       identifierGenerator = RandomBasedUniqueIdentifierGenerator
@@ -2265,12 +2265,11 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  // todo: rename
-  private def assertMatchRule2(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                               requestContext: MockTemplateRequestContext,
-                               templateOperationAfterProcessing: TemplateOperation,
-                               allAllowedIndices: Set[IndexName] = Set.empty,
-                               additionalAssertions: TemplateRequestBlockContext => Assertion = noTransformation): Assertion = {
+  private def assertMatchRuleForTemplateRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                                requestContext: MockTemplateRequestContext,
+                                                templateOperationAfterProcessing: TemplateOperation,
+                                                allAllowedIndices: Set[IndexName] = Set.empty,
+                                                additionalAssertions: TemplateRequestBlockContext => Assertion = noTransformation): Assertion = {
     val rule = createIndicesRule(configured)
     val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.right.get
     ruleResult should matchPattern {
@@ -2284,9 +2283,9 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
     }
   }
 
-  private def assertNotMatchRule2(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
-                                  requestContext: MockTemplateRequestContext,
-                                  specialCause: Option[Cause] = None): Assertion = {
+  private def assertNotMatchRuleForTemplateRequest(configured: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
+                                                   requestContext: MockTemplateRequestContext,
+                                                   specialCause: Option[Cause] = None): Assertion = {
     val rule = createIndicesRule(configured)
     val ruleResult = rule.check(requestContext.initialBlockContext).runSyncStep.right.get
     ruleResult shouldBe Rejected(specialCause)

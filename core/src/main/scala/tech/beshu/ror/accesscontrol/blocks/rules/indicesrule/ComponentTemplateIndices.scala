@@ -21,7 +21,6 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.resultBasedOnCondition
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
 import tech.beshu.ror.accesscontrol.domain.{IndexName, TemplateName, TemplateNamePattern, TemplateOperation, _}
 import tech.beshu.ror.implicits._
 import tech.beshu.ror.utils.ScalaOps._
@@ -176,7 +175,7 @@ private[indicesrule] trait ComponentTemplateIndices
   }
 
   private def findTemplatesBy(namePatterns: Set[TemplateNamePattern], in: TemplateRequestBlockContext): Set[Template.ComponentTemplate] = {
-    new TemplateMatcher(namePatterns).filterTemplates(in.requestContext.componentTemplates)
+    filterTemplates(namePatterns, in.requestContext.componentTemplates)
   }
 
   private def filterTemplatesNotAllowedAliases(templates: Set[Template])

@@ -123,7 +123,6 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
         transformation
       )
       .filter { t =>
-        // todo: here is template name and we want to check if template pattern applies to it
         TemplateNamePattern
           .fromString(t.name())
           .exists(allowedTemplates.contains)
