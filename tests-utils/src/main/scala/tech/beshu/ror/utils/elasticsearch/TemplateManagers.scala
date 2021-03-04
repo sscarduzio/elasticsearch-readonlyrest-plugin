@@ -16,11 +16,7 @@
  */
 package tech.beshu.ror.utils.elasticsearch
 
-import java.time.Duration
-import java.util.function.BiPredicate
-
 import cats.data.NonEmptyList
-import net.jodah.failsafe.{Failsafe, RetryPolicy}
 import org.apache.http.HttpResponse
 import org.apache.http.client.methods.{HttpDelete, HttpGet, HttpPost, HttpPut}
 import org.apache.http.entity.StringEntity
@@ -29,6 +25,7 @@ import tech.beshu.ror.utils.elasticsearch.BaseTemplateManager._
 import tech.beshu.ror.utils.elasticsearch.ComponentTemplateManager.ComponentTemplatesResponse
 import tech.beshu.ror.utils.elasticsearch.IndexTemplateManager.SimulateResponse
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
 
 abstract class BaseTemplateManager(client: RestClient,
@@ -47,18 +44,14 @@ abstract class BaseTemplateManager(client: RestClient,
                   priority: Int = 0): SimpleResponse =
     call(createInsertTemplateRequest(templateName, indexPatterns, aliases, priority), new SimpleResponse(_))
 
-  def insertTemplateAndWaitForIndexing(templateName: String,
-                                       indexPatterns: NonEmptyList[String],
-                                       aliases: Set[String] = Set.empty): Unit = {
-    val result = putTemplate(templateName, indexPatterns, aliases)
-    if (!result.isSuccess) throw new IllegalStateException("Cannot insert template: [" + result.responseCode + "]\nResponse: " + result.body)
-    val retryPolicy = new RetryPolicy[Boolean]()
-      .handleIf(isNotIndexedYet)
-      .withMaxRetries(20)
-      .withDelay(Duration.ofMillis(200))
-    Failsafe
-      .`with`[Boolean, RetryPolicy[Boolean]](retryPolicy)
-      .get(() => isTemplateIndexed(templateName))
+  def putTemplateAndWaitForIndexing(templateName: String,
+                                    indexPatterns: NonEmptyList[String],
+                                    aliases: Set[String] = Set.empty,
+                                    priority: Int = 0): Unit = {
+    putTemplate(templateName, indexPatterns, aliases, priority).force()
+    waitForCondition(s"Putting index template $templateName") {
+      getTemplate(templateName).responseCode == 200
+    }
   }
 
   def deleteTemplate(name: String): SimpleResponse =
@@ -79,12 +72,6 @@ abstract class BaseTemplateManager(client: RestClient,
                                             indexPatterns: NonEmptyList[String],
                                             aliases: Set[String],
                                             priority: Int): HttpPut
-
-  private def isTemplateIndexed(templateName: String) =
-    getTemplates.responseJson.obj.contains(templateName)
-
-  private def isNotIndexedYet: BiPredicate[Boolean, Throwable] =
-    (indexed: Boolean, throwable: Throwable) => throwable != null || !indexed
 }
 
 object BaseTemplateManager {
@@ -352,6 +339,15 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
   def putTemplate(templateName: String, aliases: Set[String]): SimpleResponse = {
     call(createPutComponentTemplateRequest(templateName, aliases), new SimpleResponse(_))
   }
+
+  def putTemplateAndWaitForIndexing(templateName: String,
+                                    aliases: Set[String] = Set.empty): Unit = {
+    putTemplate(templateName, aliases).force()
+    waitForCondition(s"Putting index template $templateName") {
+      getTemplate(templateName).responseCode == 200
+    }
+  }
+
 
   def deleteTemplate(templateName: String): SimpleResponse = {
     call(createDeleteComponentTemplateRequest(templateName), new SimpleResponse(_))

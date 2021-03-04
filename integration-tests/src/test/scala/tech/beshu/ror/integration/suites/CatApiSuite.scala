@@ -156,7 +156,7 @@ trait CatApiSuite
           "there is no index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*")
                 )
@@ -167,7 +167,7 @@ trait CatApiSuite
                 templates.results.arr.map(_ ("name").str).toList should contain("temp1")
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*")
                 )
@@ -180,7 +180,7 @@ trait CatApiSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                 )
@@ -191,7 +191,7 @@ trait CatApiSuite
                 templates.results.arr.map(_ ("name").str).toList should contain("temp1")
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index")
                 )
@@ -206,7 +206,7 @@ trait CatApiSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*")
                 )
@@ -218,7 +218,7 @@ trait CatApiSuite
                 templates.results.arr.map(_ ("name").str).toList should contain("temp1")
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*")
                 )
@@ -232,7 +232,7 @@ trait CatApiSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                 )
@@ -244,7 +244,7 @@ trait CatApiSuite
                 templates.results.arr.map(_ ("name").str).toList should contain("temp1")
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index")
                 )
@@ -262,7 +262,7 @@ trait CatApiSuite
           "there is no index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*")
                 )
@@ -274,7 +274,7 @@ trait CatApiSuite
                 templates.results(0)("name") should be(Str("temp1"))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*")
                 )
@@ -288,7 +288,7 @@ trait CatApiSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                 )
@@ -300,7 +300,7 @@ trait CatApiSuite
                 templates.results(0)("name") should be(Str("temp1"))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index")
                 )
@@ -316,7 +316,7 @@ trait CatApiSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*")
                 )
@@ -329,7 +329,7 @@ trait CatApiSuite
                 templates.results(0)("name") should be(Str("temp1"))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*")
                 )
@@ -344,7 +344,7 @@ trait CatApiSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                 )
@@ -357,7 +357,7 @@ trait CatApiSuite
                 templates.results(0)("name") should be(Str("temp1"))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index")
                 )
@@ -379,7 +379,7 @@ trait CatApiSuite
             "there is no index defined for it" when {
               "template has index pattern with wildcard" when {
                 "rule has index pattern with wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("custom_dev1_*")
                   )
@@ -391,7 +391,7 @@ trait CatApiSuite
                   templates.results.size should be(0)
                 }
                 "rule has index pattern with no wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("dev1_*")
                   )
@@ -405,7 +405,7 @@ trait CatApiSuite
               }
               "template has index pattern with no wildcard" when {
                 "rule has index pattern with wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                   )
@@ -417,7 +417,7 @@ trait CatApiSuite
                   templates.results.size should be(0)
                 }
                 "rule has index pattern with no wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("dev1_index")
                   )
@@ -433,7 +433,7 @@ trait CatApiSuite
             "there is an index defined for it" when {
               "template has index pattern with wildcard" when {
                 "rule has index pattern with wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("custom_dev1_*")
                   )
@@ -445,7 +445,7 @@ trait CatApiSuite
                   templates.results.size should be(0)
                 }
                 "rule has index pattern with no wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("dev1_*")
                   )
@@ -459,7 +459,7 @@ trait CatApiSuite
               }
               "template has index pattern with no wildcard" when {
                 "rule has index pattern with wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                   )
@@ -471,7 +471,7 @@ trait CatApiSuite
                   templates.results.size should be(0)
                 }
                 "rule has index pattern with no wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("dev1_index")
                   )
@@ -490,7 +490,7 @@ trait CatApiSuite
           "there is no index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*")
                 )
@@ -502,7 +502,7 @@ trait CatApiSuite
                 templates.results.size should be(0)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*")
                 )
@@ -516,7 +516,7 @@ trait CatApiSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                 )
@@ -528,7 +528,7 @@ trait CatApiSuite
                 templates.results.size should be(0)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index")
                 )
@@ -544,7 +544,7 @@ trait CatApiSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*")
                 )
@@ -557,7 +557,7 @@ trait CatApiSuite
                 templates.results.size should be(0)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*")
                 )
@@ -572,7 +572,7 @@ trait CatApiSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                 )
@@ -585,7 +585,7 @@ trait CatApiSuite
                 templates.results.size should be(0)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index")
                 )

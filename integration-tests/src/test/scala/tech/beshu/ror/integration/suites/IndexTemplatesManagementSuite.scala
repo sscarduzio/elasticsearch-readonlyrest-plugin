@@ -62,7 +62,7 @@ trait IndexTemplatesManagementSuite
           "there is no index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("custom_dev1_*"),
                   aliases = Set("dev1_index")
@@ -74,7 +74,7 @@ trait IndexTemplatesManagementSuite
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set("dev1_index"))))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("dev1_*"),
                   aliases = Set.empty
@@ -88,7 +88,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -100,7 +100,7 @@ trait IndexTemplatesManagementSuite
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_index_test"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("dev1_index"),
                   aliases = Set.empty
@@ -116,7 +116,7 @@ trait IndexTemplatesManagementSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("custom_dev1_*"),
                   aliases = Set.empty
@@ -130,7 +130,7 @@ trait IndexTemplatesManagementSuite
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("dev1_*"),
                   aliases = Set.empty
@@ -146,7 +146,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -160,7 +160,7 @@ trait IndexTemplatesManagementSuite
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_index_test"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("dev1_index"),
                   aliases = Set.empty
@@ -180,7 +180,7 @@ trait IndexTemplatesManagementSuite
           "there is no index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("custom_dev1_*"),
                   aliases = Set.empty
@@ -192,7 +192,7 @@ trait IndexTemplatesManagementSuite
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("dev1_*"),
                   aliases = Set.empty
@@ -206,7 +206,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -218,7 +218,7 @@ trait IndexTemplatesManagementSuite
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_index_test"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("dev1_index"),
                   aliases = Set.empty
@@ -234,7 +234,7 @@ trait IndexTemplatesManagementSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("custom_dev1_*"),
                   aliases = Set.empty
@@ -247,7 +247,7 @@ trait IndexTemplatesManagementSuite
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("dev1_*"),
                   aliases = Set.empty
@@ -262,7 +262,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -275,7 +275,7 @@ trait IndexTemplatesManagementSuite
                 templates.templates should be(List(Template("temp1", Set("custom_dev1_index_test"), Set.empty)))
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.one("dev1_index"),
                   aliases = Set.empty
@@ -290,7 +290,7 @@ trait IndexTemplatesManagementSuite
             }
           }
           "with filtered not allowed pattern and alias" in {
-            adminTemplateManager.insertTemplateAndWaitForIndexing(
+            adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp1",
               indexPatterns = NonEmptyList.one("custom_dev1_*"),
               aliases = Set("not_allowed_alias", "dev1_index")
@@ -302,7 +302,7 @@ trait IndexTemplatesManagementSuite
             templates.templates should be(List(Template("temp1", Set("custom_dev1_*"), Set("dev1_index"))))
           }
           "at least one template index pattern matches user's allowed indices" excludeES (allEs5x) in {
-            adminTemplateManager.insertTemplateAndWaitForIndexing(
+            adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp1",
               indexPatterns = NonEmptyList.of("custom_dev1_*", "custom_dev2_*"),
               aliases = Set.empty
@@ -445,7 +445,7 @@ trait IndexTemplatesManagementSuite
           "there is no index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp_to_remove",
                   indexPatterns = NonEmptyList.one("custom_dev1_index_*"),
                   aliases = Set("dev1_index")
@@ -456,7 +456,7 @@ trait IndexTemplatesManagementSuite
                 result.responseCode should be(200)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp_to_remove",
                   indexPatterns = NonEmptyList.one("dev1_index"),
                   aliases = Set.empty
@@ -469,7 +469,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp_to_remove",
                   indexPatterns = NonEmptyList.one("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -480,7 +480,7 @@ trait IndexTemplatesManagementSuite
                 result.responseCode should be(200)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp_to_remove",
                   indexPatterns = NonEmptyList.one("dev1_index"),
                   aliases = Set.empty
@@ -495,7 +495,7 @@ trait IndexTemplatesManagementSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp_to_remove",
                   indexPatterns = NonEmptyList.one("custom_dev1_index_*"),
                   aliases = Set("dev1_index")
@@ -507,7 +507,7 @@ trait IndexTemplatesManagementSuite
                 result.responseCode should be(200)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp_to_remove",
                   indexPatterns = NonEmptyList.one("dev1_index"),
                   aliases = Set.empty
@@ -521,7 +521,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp_to_remove",
                   indexPatterns = NonEmptyList.one("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -533,7 +533,7 @@ trait IndexTemplatesManagementSuite
                 result.responseCode should be(200)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp_to_remove",
                   indexPatterns = NonEmptyList.one("dev1_index"),
                   aliases = Set.empty
@@ -547,7 +547,7 @@ trait IndexTemplatesManagementSuite
             }
           }
           "all indices patterns defined in template are allowed to the user" excludeES (allEs5x) in {
-            adminTemplateManager.insertTemplateAndWaitForIndexing(
+            adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp",
               indexPatterns = NonEmptyList.of("custom_dev1_index_*", "dev1_index"),
               aliases = Set.empty
@@ -558,7 +558,7 @@ trait IndexTemplatesManagementSuite
             result.responseCode should be(200)
           }
           "index pattern defined in template is allowed to the user" in {
-            adminTemplateManager.insertTemplateAndWaitForIndexing(
+            adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp",
               indexPatterns = NonEmptyList.of("custom_dev1_index_*"),
               aliases = Set.empty
@@ -576,7 +576,7 @@ trait IndexTemplatesManagementSuite
             "there is no index defined for it" when {
               "template has index pattern with wildcard" when {
                 "rule has index pattern with wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("custom_dev1_*"),
                     aliases = Set.empty
@@ -588,7 +588,7 @@ trait IndexTemplatesManagementSuite
                   templates.templates should be(List.empty)
                 }
                 "rule has index pattern with no wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("dev1_*"),
                     aliases = Set.empty
@@ -602,7 +602,7 @@ trait IndexTemplatesManagementSuite
               }
               "template has index pattern with no wildcard" when {
                 "rule has index pattern with wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("custom_dev1_index_test"),
                     aliases = Set.empty
@@ -614,7 +614,7 @@ trait IndexTemplatesManagementSuite
                   templates.templates should be(List.empty)
                 }
                 "rule has index pattern with no wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("dev1_index"),
                     aliases = Set.empty
@@ -630,7 +630,7 @@ trait IndexTemplatesManagementSuite
             "there is an index defined for it" when {
               "template has index pattern with wildcard" when {
                 "rule has index pattern with wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("custom_dev1_*"),
                     aliases = Set.empty
@@ -643,7 +643,7 @@ trait IndexTemplatesManagementSuite
                   templates.templates should be(List.empty)
                 }
                 "rule has index pattern with no wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("dev1_*"),
                     aliases = Set.empty
@@ -658,7 +658,7 @@ trait IndexTemplatesManagementSuite
               }
               "template has index pattern with no wildcard" when {
                 "rule has index pattern with wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("custom_dev1_index_test"),
                     aliases = Set.empty
@@ -671,7 +671,7 @@ trait IndexTemplatesManagementSuite
                   templates.templates should be(List.empty)
                 }
                 "rule has index pattern with no wildcard" in {
-                  adminTemplateManager.insertTemplateAndWaitForIndexing(
+                  adminTemplateManager.putTemplateAndWaitForIndexing(
                     templateName = "temp1",
                     indexPatterns = NonEmptyList.of("dev1_index"),
                     aliases = Set.empty
@@ -691,7 +691,7 @@ trait IndexTemplatesManagementSuite
           "there is no index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*"),
                   aliases = Set.empty
@@ -702,7 +702,7 @@ trait IndexTemplatesManagementSuite
                 templates.responseCode should be(404)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*"),
                   aliases = Set.empty
@@ -715,7 +715,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -726,7 +726,7 @@ trait IndexTemplatesManagementSuite
                 templates.responseCode should be(404)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index"),
                   aliases = Set.empty
@@ -741,7 +741,7 @@ trait IndexTemplatesManagementSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*"),
                   aliases = Set.empty
@@ -753,7 +753,7 @@ trait IndexTemplatesManagementSuite
                 templates.responseCode should be(404)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*"),
                   aliases = Set.empty
@@ -767,7 +767,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -779,7 +779,7 @@ trait IndexTemplatesManagementSuite
                 templates.responseCode should be(404)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index"),
                   aliases = Set.empty
@@ -879,7 +879,7 @@ trait IndexTemplatesManagementSuite
             result2.responseCode should be(401)
           }
           "doesn't belong to him (not allowed aliases)" in {
-            adminTemplateManager.insertTemplateAndWaitForIndexing(
+            adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "new_template",
               indexPatterns = NonEmptyList.of("custom_dev2_index_*"),
               aliases = Set("dev1_index")
@@ -897,7 +897,7 @@ trait IndexTemplatesManagementSuite
           "there is no index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*"),
                   aliases = Set.empty
@@ -908,7 +908,7 @@ trait IndexTemplatesManagementSuite
                 result.responseCode should be(401)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*"),
                   aliases = Set.empty
@@ -921,7 +921,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -932,7 +932,7 @@ trait IndexTemplatesManagementSuite
                 result.responseCode should be(401)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index"),
                   aliases = Set.empty
@@ -947,7 +947,7 @@ trait IndexTemplatesManagementSuite
           "there is an index defined for it" when {
             "template has index pattern with wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_*"),
                   aliases = Set.empty
@@ -959,7 +959,7 @@ trait IndexTemplatesManagementSuite
                 result.responseCode should be(401)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_*"),
                   aliases = Set.empty
@@ -973,7 +973,7 @@ trait IndexTemplatesManagementSuite
             }
             "template has index pattern with no wildcard" when {
               "rule has index pattern with wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test"),
                   aliases = Set.empty
@@ -985,7 +985,7 @@ trait IndexTemplatesManagementSuite
                 result.responseCode should be(401)
               }
               "rule has index pattern with no wildcard" in {
-                adminTemplateManager.insertTemplateAndWaitForIndexing(
+                adminTemplateManager.putTemplateAndWaitForIndexing(
                   templateName = "temp1",
                   indexPatterns = NonEmptyList.of("dev1_index"),
                   aliases = Set.empty
@@ -999,7 +999,7 @@ trait IndexTemplatesManagementSuite
             }
           }
           "not all index patterns defined in template are allowed to the user" excludeES (allEs5x) in {
-            adminTemplateManager.insertTemplateAndWaitForIndexing(
+            adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp",
               indexPatterns = NonEmptyList.of("custom_dev1_index_*", "custom_dev2_index_*"),
               aliases = Set.empty
@@ -1010,7 +1010,7 @@ trait IndexTemplatesManagementSuite
             result.responseCode should be(401)
           }
           "index pattern defined in template are too generic" in {
-            adminTemplateManager.insertTemplateAndWaitForIndexing(
+            adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp",
               indexPatterns = NonEmptyList.of("dev*"),
               aliases = Set.empty
@@ -1021,7 +1021,7 @@ trait IndexTemplatesManagementSuite
             result.responseCode should be(401)
           }
           "one of aliases is not allowed" in {
-            adminTemplateManager.insertTemplateAndWaitForIndexing(
+            adminTemplateManager.putTemplateAndWaitForIndexing(
               templateName = "temp",
               indexPatterns = NonEmptyList.of("dev2_index"),
               aliases = Set("dev1_index")
@@ -1059,10 +1059,10 @@ trait IndexTemplatesManagementSuite
     "A component template API" when {
       "user is dev1" should {
         "be allowed to get all user templates" in {
-          adminTemplateManager.putTemplate("temp1", Set.empty).force()
-          adminTemplateManager.putTemplate("temp2", Set("dev1_index")).force()
-          adminTemplateManager.putTemplate("temp3", Set("dev2_index")).force()
-          adminTemplateManager.putTemplate("temp4", Set("dev1_index", "dev2_index")).force()
+          adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set.empty)
+          adminTemplateManager.putTemplateAndWaitForIndexing("temp2", Set("dev1_index"))
+          adminTemplateManager.putTemplateAndWaitForIndexing("temp3", Set("dev2_index"))
+          adminTemplateManager.putTemplateAndWaitForIndexing("temp4", Set("dev1_index", "dev2_index"))
 
           val result = dev1TemplateManager.getTemplates
 
@@ -1076,8 +1076,8 @@ trait IndexTemplatesManagementSuite
         }
         "be allowed to get a specific template" when {
           "full name template is used" in {
-            adminTemplateManager.putTemplate("temp1", Set.empty).force()
-            adminTemplateManager.putTemplate("temp2", Set("dev1_index")).force()
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set.empty)
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp2", Set("dev1_index"))
 
             val result = dev1TemplateManager.getTemplate("temp2")
 
@@ -1087,8 +1087,8 @@ trait IndexTemplatesManagementSuite
             )
           }
           "wildcard is used" in {
-            adminTemplateManager.putTemplate("temp1", Set("dev1_index")).force()
-            adminTemplateManager.putTemplate("temp2", Set("dev2_index")).force()
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set("dev1_index"))
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp2", Set("dev2_index"))
 
             val result = dev1TemplateManager.getTemplate("temp*")
 
@@ -1113,14 +1113,14 @@ trait IndexTemplatesManagementSuite
         }
         "be allowed to override an existing template" when {
           "the existing template has no aliases" in {
-            adminTemplateManager.putTemplate("temp1", Set.empty).force()
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set.empty)
 
             val result = dev1TemplateManager.putTemplate("temp1", Set("dev1_index"))
 
             result.responseCode should be(200)
           }
           "the existing template has only aliases which are allowed" in {
-            adminTemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_1")).force()
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set("dev1_index", "custom_dev1_index_1"))
 
             val result = dev1TemplateManager.putTemplate("temp1", Set("custom_dev1_index_2"))
 
@@ -1129,14 +1129,14 @@ trait IndexTemplatesManagementSuite
         }
         "be allowed to remove a template" when {
           "the template has no aliases" in {
-            adminTemplateManager.putTemplate("temp1", Set.empty).force()
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set.empty)
 
             val result = dev1TemplateManager.deleteTemplate("temp1")
 
             result.responseCode should be(200)
           }
           "the template has aliases which user is allowed to see" in {
-            adminTemplateManager.putTemplate("temp1", Set("dev1_index", "custom_dev1_index_1")).force()
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set("dev1_index", "custom_dev1_index_1"))
 
             val result = dev1TemplateManager.deleteTemplate("temp1")
 
@@ -1154,7 +1154,7 @@ trait IndexTemplatesManagementSuite
         }
         "not be allowed to override an existing template" when {
           "the existing template has alias which is forbidden for the user" in {
-            adminTemplateManager.putTemplate("temp1", Set("dev2_index", "custom_dev1_index_1")).force()
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set("dev2_index", "custom_dev1_index_1"))
 
             val result = dev2TemplateManager.putTemplate("temp1", Set.empty)
 
@@ -1163,7 +1163,7 @@ trait IndexTemplatesManagementSuite
         }
         "not be allowed to remove a template" when {
           "the template has at least one index which user is not allowed to see" in {
-            adminTemplateManager.putTemplate("temp1", Set("dev2_index", "custom_dev1_index_1")).force()
+            adminTemplateManager.putTemplateAndWaitForIndexing("temp1", Set("dev2_index", "custom_dev1_index_1"))
 
             val result = dev2TemplateManager.deleteTemplate("temp1")
 
@@ -1182,21 +1182,19 @@ trait IndexTemplatesManagementSuite
       "be allowed for a user" which {
         "has access to the given index" in {
           adminIndexTemplateManager
-            .putTemplate(
+            .putTemplateAndWaitForIndexing(
               templateName = "temp1",
               indexPatterns = NonEmptyList.of("custom_dev1_index_*", "custom_dev2_index_*"),
               aliases = Set("dev1_index", "dev2_index"),
               priority = 4
             )
-            .force()
           adminIndexTemplateManager
-            .putTemplate(
+            .putTemplateAndWaitForIndexing(
               templateName = "temp2",
               indexPatterns = NonEmptyList.of("custom*", "custom_dev2*"),
               aliases = Set.empty,
               priority = 1
             )
-            .force()
 
           val result = user1IndexTemplateManager.simulateIndex("custom_dev1_index_test")
 
@@ -1208,12 +1206,11 @@ trait IndexTemplatesManagementSuite
       "not be allowed for a user" which {
         "has no access to the given index" in {
           adminIndexTemplateManager
-            .putTemplate(
+            .putTemplateAndWaitForIndexing(
               templateName = "temp1",
               indexPatterns = NonEmptyList.of("custom_dev1_index_*", "custom_dev2_index_*"),
               aliases = Set("dev1_index", "dev2_index")
             )
-            .force()
 
           val result = user1IndexTemplateManager.simulateIndex("custom_dev2_index_test")
 
@@ -1226,21 +1223,19 @@ trait IndexTemplatesManagementSuite
       "be allowed for a user" which {
         "has an access to the given existing template" in {
           adminIndexTemplateManager
-            .putTemplate(
+            .putTemplateAndWaitForIndexing(
               templateName = "temp1",
               indexPatterns = NonEmptyList.of("custom_dev1_index_*", "custom_dev2_index_*"),
               aliases = Set("dev1_index", "dev2_index"),
               priority = 4
             )
-            .force()
           adminIndexTemplateManager
-            .putTemplate(
+            .putTemplateAndWaitForIndexing(
               templateName = "temp2",
               indexPatterns = NonEmptyList.of("custom*", "custom_dev2*"),
               aliases = Set.empty,
               priority = 1
             )
-            .force()
 
           val result = user1IndexTemplateManager.simulateTemplate("temp1")
 
@@ -1250,13 +1245,12 @@ trait IndexTemplatesManagementSuite
         }
         "has an access to given non-existing template" in {
           adminIndexTemplateManager
-            .putTemplate(
+            .putTemplateAndWaitForIndexing(
               templateName = "temp2",
               indexPatterns = NonEmptyList.of("custom*", "custom_dev2*"),
               aliases = Set("dev2_index"),
               priority = 0
             )
-            .force()
 
           val result = user1IndexTemplateManager.simulateNewTemplate(
             indexPatterns = NonEmptyList.of("custom_dev1_index_temp*"),
@@ -1273,12 +1267,11 @@ trait IndexTemplatesManagementSuite
       "not to be allowed for a user" which {
         "has no access to the given existing template" in {
           adminIndexTemplateManager
-            .putTemplate(
+            .putTemplateAndWaitForIndexing(
               templateName = "temp1",
               indexPatterns = NonEmptyList.of("custom_dev2_index_*"),
               aliases = Set("dev2_index")
             )
-            .force()
 
           val result = user1IndexTemplateManager.simulateTemplate("temp1")
 
@@ -1286,12 +1279,11 @@ trait IndexTemplatesManagementSuite
         }
         "has no access to the given non-existing template" in {
           adminIndexTemplateManager
-            .putTemplate(
+            .putTemplateAndWaitForIndexing(
               templateName = "temp1",
               indexPatterns = NonEmptyList.of("custom_dev2_index_*"),
               aliases = Set("dev2_index")
             )
-            .force()
 
           val result = user1IndexTemplateManager.simulateTemplate("temp1")
 

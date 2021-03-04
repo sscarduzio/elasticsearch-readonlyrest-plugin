@@ -20,7 +20,8 @@ import cats.data.NonEmptyList
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ComponentTemplateManager, DocumentManager, IndexManager, LegacyTemplateManager, IndexTemplateManager}
+import tech.beshu.ror.utils.elasticsearch.{ComponentTemplateManager, DocumentManager, IndexManager, IndexTemplateManager, LegacyTemplateManager}
+import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 
 trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
@@ -36,6 +37,7 @@ trait BaseTemplatesSuite
   private lazy val adminIndexManager = new IndexManager(adminClient)
   protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
 
+  private var originLegacyTemplateNames: List[String] = List.empty
   private var originIndexTemplateNames: List[String] = List.empty
   private var originComponentTemplateNames: List[String] = List.empty
 
@@ -45,6 +47,10 @@ trait BaseTemplatesSuite
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
+    originLegacyTemplateNames = adminLegacyTemplateManager
+        .getTemplates.force()
+        .templates
+        .map(_.name)
     originIndexTemplateNames = adminTemplateManager
       .getTemplates.force()
       .templates
@@ -58,7 +64,7 @@ trait BaseTemplatesSuite
   override protected def beforeEach(): Unit = {
     super.beforeEach()
     truncateLegacyTemplates()
-    truncateTemplates()
+    truncateIndexTemplates()
     truncateComponentTemplates()
     truncateIndices()
     addControlLegacyTemplate()
@@ -71,11 +77,18 @@ trait BaseTemplatesSuite
       .getTemplates.force()
       .templates
       .foreach { template =>
-        adminLegacyTemplateManager.deleteTemplate(template.name).force()
+        if(!originLegacyTemplateNames.contains(template.name))
+          adminLegacyTemplateManager.deleteTemplate(template.name).force()
       }
+    waitForCondition("Waiting for removing all Legacy Templates") {
+      adminLegacyTemplateManager
+        .getTemplates.force().templates.map(_.name)
+        .diff(originLegacyTemplateNames)
+        .isEmpty
+    }
   }
 
-  private def truncateTemplates(): Unit = {
+  private def truncateIndexTemplates(): Unit = {
     adminTemplateManager
       .getTemplates.force()
       .templates
@@ -83,6 +96,12 @@ trait BaseTemplatesSuite
         if(!originIndexTemplateNames.contains(template.name))
           adminTemplateManager.deleteTemplate(template.name).force()
       }
+    waitForCondition("Waiting for removing all Index Templates") {
+      adminTemplateManager
+        .getTemplates.force().templates.map(_.name)
+        .diff(originIndexTemplateNames)
+        .isEmpty
+    }
   }
 
   private def truncateComponentTemplates(): Unit = {
@@ -93,6 +112,12 @@ trait BaseTemplatesSuite
         if(!originComponentTemplateNames.contains(template.name))
           adminComponentTemplateManager.deleteTemplate(template.name).force()
       }
+    waitForCondition("Waiting for removing all Component Templates") {
+      adminComponentTemplateManager
+        .getTemplates.force().templates.map(_.name)
+        .diff(originComponentTemplateNames)
+        .isEmpty
+    }
   }
 
   private def truncateIndices(): Unit = {
@@ -103,30 +128,27 @@ trait BaseTemplatesSuite
 
   private def addControlLegacyTemplate(): Unit = {
     adminLegacyTemplateManager
-      .putTemplate(
+      .putTemplateAndWaitForIndexing(
         templateName = "control_one",
         indexPatterns = NonEmptyList.one("control_one_*"),
         aliases = Set("control")
       )
-      .force()
   }
 
   private def addControlTemplate(): Unit = {
     adminTemplateManager
-      .putTemplate(
+      .putTemplateAndWaitForIndexing(
         templateName = "control_two",
         indexPatterns = NonEmptyList.one("control_two_*"),
         aliases = Set("control")
       )
-      .force()
   }
 
   private def addControlComponentTemplate(): Unit = {
     adminComponentTemplateManager
-      .putTemplate(
+      .putTemplateAndWaitForIndexing(
         templateName = "control_three",
         aliases = Set("control")
       )
-      .force()
   }
 }
