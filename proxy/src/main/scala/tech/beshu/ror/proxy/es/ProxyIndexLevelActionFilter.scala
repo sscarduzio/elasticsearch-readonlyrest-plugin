@@ -10,8 +10,10 @@ import monix.eval.{Task => MTask}
 import monix.execution.Scheduler
 import org.elasticsearch.action.support.{ActionFilter, ActionFilterChain}
 import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode, StartingFailure}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -28,14 +30,15 @@ import scala.util.{Failure, Success, Try}
 class ProxyIndexLevelActionFilter private(rorInstance: RorInstance,
                                           esClient: RestHighLevelClientAdapter,
                                           threadPool: ThreadPool)
-                                         (implicit override val scheduler: Scheduler)
+                                         (implicit override val scheduler: Scheduler,
+                                          generator: UniqueIdentifierGenerator)
   extends ActionFilter
     with ProxyFilterable {
 
   override val proxyFilter: ProxyIndexLevelActionFilter = this
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsRestClientBasedRorClusterService(esClient), threadPool
+    new EsRestClientBasedRorClusterService(esClient), Settings.EMPTY, threadPool
   )
 
   override def order(): Int = 0
@@ -98,6 +101,7 @@ object ProxyIndexLevelActionFilter {
              esClient: RestHighLevelClientAdapter,
              threadPool: ThreadPool)
             (implicit scheduler: Scheduler,
+             generator: UniqueIdentifierGenerator,
              envVarsProvider: EnvVarsProvider): MTask[Either[StartingFailure, ProxyIndexLevelActionFilter]] = {
     val result = for {
       instance <- EitherT(

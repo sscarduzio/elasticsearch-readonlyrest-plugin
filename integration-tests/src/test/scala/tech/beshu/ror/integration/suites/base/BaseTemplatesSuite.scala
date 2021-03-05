@@ -20,8 +20,9 @@ import cats.data.NonEmptyList
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{ComponentTemplateManager, DocumentManager, IndexManager, IndexTemplateManager, LegacyTemplateManager}
+import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
+import tech.beshu.ror.utils.misc.Version
 
 trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
@@ -48,28 +49,30 @@ trait BaseTemplatesSuite
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     originLegacyTemplateNames = adminLegacyTemplateManager
-        .getTemplates.force()
-        .templates
-        .map(_.name)
+      .getTemplates.force()
+      .templates
+      .map(_.name)
     originIndexTemplateNames = adminTemplateManager
       .getTemplates.force()
       .templates
       .map(_.name)
-    originComponentTemplateNames = adminComponentTemplateManager
+    if (doesSupportComponentTemplates) {
+      originComponentTemplateNames = adminComponentTemplateManager
         .getTemplates.force()
         .templates
         .map(_.name)
+    }
   }
 
   override protected def beforeEach(): Unit = {
     super.beforeEach()
     truncateLegacyTemplates()
     truncateIndexTemplates()
-    truncateComponentTemplates()
+    if (doesSupportComponentTemplates) truncateComponentTemplates()
     truncateIndices()
     addControlLegacyTemplate()
     addControlTemplate()
-    addControlComponentTemplate()
+    if (doesSupportComponentTemplates) addControlComponentTemplate()
   }
 
   private def truncateLegacyTemplates(): Unit = {
@@ -77,7 +80,7 @@ trait BaseTemplatesSuite
       .getTemplates.force()
       .templates
       .foreach { template =>
-        if(!originLegacyTemplateNames.contains(template.name))
+        if (!originLegacyTemplateNames.contains(template.name))
           adminLegacyTemplateManager.deleteTemplate(template.name).force()
       }
     waitForCondition("Waiting for removing all Legacy Templates") {
@@ -93,7 +96,7 @@ trait BaseTemplatesSuite
       .getTemplates.force()
       .templates
       .foreach { template =>
-        if(!originIndexTemplateNames.contains(template.name))
+        if (!originIndexTemplateNames.contains(template.name))
           adminTemplateManager.deleteTemplate(template.name).force()
       }
     waitForCondition("Waiting for removing all Index Templates") {
@@ -109,7 +112,7 @@ trait BaseTemplatesSuite
       .getTemplates.force()
       .templates
       .foreach { template =>
-        if(!originComponentTemplateNames.contains(template.name))
+        if (!originComponentTemplateNames.contains(template.name))
           adminComponentTemplateManager.deleteTemplate(template.name).force()
       }
     waitForCondition("Waiting for removing all Component Templates") {
@@ -150,5 +153,9 @@ trait BaseTemplatesSuite
         templateName = "control_three",
         aliases = Set("control")
       )
+  }
+
+  protected def doesSupportComponentTemplates = {
+    Version.greaterOrEqualThan(esTargets.head.esVersion, 7, 9, 0)
   }
 }

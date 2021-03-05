@@ -34,6 +34,7 @@ import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
+import tech.beshu.ror.utils.ScalaOps._
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
                                      nodeClient: NodeClient)
@@ -62,6 +63,10 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   }
 
   override def allTemplates: Set[Template] = {
+    legacyTemplates() ++ indexTemplates() ++ componentTemplates()
+  }
+
+  private def legacyTemplates() = {
     val templates = clusterService.state.metadata().templates()
     templates
       .keysIt().asScala
@@ -70,9 +75,42 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
           indexPatterns <- UniqueNonEmptyList.fromList(
-            templateMetaData.patterns().asScala.flatMap(IndexName.fromString).toList
+            templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
           )
-        } yield Template(templateName, indexPatterns)
+          aliases = templateMetaData.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+        } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
+      }
+      .toSet
+  }
+
+  private def indexTemplates() = {
+    val templates = clusterService.state.metadata().templatesV2()
+    templates
+      .keySet().asScala
+      .flatMap { templateNameString =>
+        val templateMetaData = templates.get(templateNameString)
+        for {
+          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
+          indexPatterns <- UniqueNonEmptyList.fromList(
+            templateMetaData.indexPatterns().asScala.flatMap(IndexPattern.fromString).toList
+          )
+          aliases = templateMetaData.template().asSafeSet
+            .flatMap(_.aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet)
+        } yield Template.IndexTemplate(templateName, indexPatterns, aliases)
+      }
+      .toSet
+  }
+
+  private def componentTemplates() = {
+    val templates = clusterService.state.metadata().componentTemplates()
+    templates
+      .keySet().asScala
+      .flatMap { templateNameString =>
+        val templateMetaData = templates.get(templateNameString)
+        for {
+          templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
+          aliases = templateMetaData.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
+        } yield Template.ComponentTemplate(templateName, aliases)
       }
       .toSet
   }

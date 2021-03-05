@@ -20,6 +20,7 @@ import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.node.Node
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, Header}
 import tech.beshu.ror.boot.StartingFailure
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
@@ -37,6 +38,7 @@ trait RorProxy {
   implicit protected def contextShift: ContextShift[IO]
 
   implicit def envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  implicit def generator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
   def start(config: RorProxy.Config): IO[Either[StartingFailure, CloseHandler]] = {
     for {

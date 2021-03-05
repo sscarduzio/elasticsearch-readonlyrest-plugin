@@ -63,10 +63,10 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   }
 
   override def allTemplates: Set[Template] = {
-    templates() ++ templatesV2() ++ templatesV3()
+    legacyTemplates() ++ indexTemplates() ++ componentTemplates()
   }
 
-  private def templates() = {
+  private def legacyTemplates() = {
     val templates = clusterService.state.metadata().templates()
     templates
       .keysIt().asScala
@@ -83,7 +83,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toSet
   }
 
-  private def templatesV2() = {
+  private def indexTemplates() = {
     val templates = clusterService.state.metadata().templatesV2()
     templates
       .keySet().asScala
@@ -101,7 +101,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toSet
   }
 
-  private def templatesV3() = {
+  private def componentTemplates() = {
     val templates = clusterService.state.metadata().componentTemplates()
     templates
       .keySet().asScala

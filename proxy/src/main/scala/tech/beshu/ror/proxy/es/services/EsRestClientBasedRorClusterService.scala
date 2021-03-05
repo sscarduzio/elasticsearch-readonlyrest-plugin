@@ -54,7 +54,8 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .runSyncUnsafe()
   }
 
-  override def allTemplates: Set[TemplateLike] = {
+  // todo: is it all?
+  override def allTemplates: Set[Template] = {
     client
       .getTemplate(new GetIndexTemplatesRequest())
       .map { response =>
@@ -64,10 +65,6 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
           .toSet
       }
       .runSyncUnsafe()
-  }
-
-  override def getTemplate(name: TemplateName): Option[TemplateLike] = {
-    allTemplates.find(_.name === name)
   }
 
   override def verifyDocumentAccessibility(document: Document,
@@ -106,7 +103,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
   }
 
   // todo: implement properly during fixes proxy issues related to new templates API
-  private def templateFrom(metaData: IndexTemplateMetadata): Option[TemplateLike] = {
+  private def templateFrom(metaData: IndexTemplateMetadata): Option[Template] = {
     TemplateName
       .fromString(metaData.name())
       .flatMap { templateName =>
@@ -114,11 +111,11 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
           .fromList {
             metaData
               .patterns().asScala.toList
-              .flatMap(IndexName.fromString)
+              .flatMap(IndexPattern.fromString)
           }
           .map { patterns =>
             val aliases = metaData.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
-            TemplateLike.IndexTemplate(templateName, patterns, aliases)
+            Template.IndexTemplate(templateName, patterns, aliases)
           }
       }
   }

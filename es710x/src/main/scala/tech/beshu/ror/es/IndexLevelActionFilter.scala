@@ -49,10 +49,9 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              env: Environment,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              esInitListener: EsInitListener)
-                            (implicit generator: UniqueIdentifierGenerator)
+                            (implicit envVarsProvider: EnvVarsProvider,
+                             generator: UniqueIdentifierGenerator)
   extends ActionFilter with Logging {
-
-  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)

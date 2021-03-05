@@ -37,7 +37,7 @@ trait IndexTemplatesManagementSuite
 
   indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
   indexTemplateApiTests("A new template API")(new IndexTemplateManager(_, esTargets.head.esVersion))
-  componentTemplateApiTests()
+  if (doesSupportComponentTemplates) componentTemplateApiTests()
   simulateTemplatesApiTests()
 
   def indexTemplateApiTests(name: String)
@@ -1221,7 +1221,7 @@ trait IndexTemplatesManagementSuite
 
     "A simulate template API" should {
       "be allowed for a user" which {
-        "has an access to the given existing template" in {
+        "has an access to the given existing template" excludeES(allEs5x, allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
@@ -1243,7 +1243,7 @@ trait IndexTemplatesManagementSuite
           result.templateAliases should be(Set("dev1_index"))
           result.overlappingTemplates should be(List.empty)
         }
-        "has an access to given non-existing template" in {
+        "has an access to given non-existing template" excludeES(allEs5x, allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp2",
@@ -1265,7 +1265,7 @@ trait IndexTemplatesManagementSuite
         }
       }
       "not to be allowed for a user" which {
-        "has no access to the given existing template" in {
+        "has no access to the given existing template" excludeES(allEs5x, allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
@@ -1277,7 +1277,7 @@ trait IndexTemplatesManagementSuite
 
           result.responseCode should be(400)
         }
-        "has no access to the given non-existing template" in {
+        "has no access to the given non-existing template" excludeES(allEs5x, allEs6x, allEs7xBelowEs79x) in {
           adminIndexTemplateManager
             .putTemplateAndWaitForIndexing(
               templateName = "temp1",
