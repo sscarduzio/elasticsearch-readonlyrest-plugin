@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration.suites.base
 
 import cats.data.NonEmptyList
+import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
@@ -27,13 +28,14 @@ import tech.beshu.ror.utils.misc.Version
 trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
     with BeforeAndAfterEach
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with LazyLogging {
   this: Suite with EsContainerCreator =>
 
   def rorContainer: EsClusterContainer
 
   private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, targetEs.esVersion)
-  private lazy val adminTemplateManager = new IndexTemplateManager(adminClient, targetEs.esVersion)
+  private lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, targetEs.esVersion)
   private lazy val adminComponentTemplateManager = new ComponentTemplateManager(adminClient, targetEs.esVersion)
   private lazy val adminIndexManager = new IndexManager(adminClient)
   protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
@@ -52,15 +54,18 @@ trait BaseTemplatesSuite
       .getTemplates.force()
       .templates
       .map(_.name)
-    originIndexTemplateNames = adminTemplateManager
+    logger.info(s"Found origin Legacy Templates: [${originLegacyTemplateNames.mkString(",")}]")
+    originIndexTemplateNames = adminIndexTemplateManager
       .getTemplates.force()
       .templates
       .map(_.name)
+    logger.info(s"Found origin Index Templates: [${originIndexTemplateNames.mkString(",")}]")
     if (doesSupportComponentTemplates) {
       originComponentTemplateNames = adminComponentTemplateManager
         .getTemplates.force()
         .templates
         .map(_.name)
+      logger.info(s"Found origin Component Templates: [${originComponentTemplateNames.mkString(",")}]")
     }
   }
 
@@ -71,7 +76,7 @@ trait BaseTemplatesSuite
     if (doesSupportComponentTemplates) truncateComponentTemplates()
     truncateIndices()
     addControlLegacyTemplate()
-    addControlTemplate()
+    addControlIndexTemplate()
     if (doesSupportComponentTemplates) addControlComponentTemplate()
   }
 
@@ -92,15 +97,15 @@ trait BaseTemplatesSuite
   }
 
   private def truncateIndexTemplates(): Unit = {
-    adminTemplateManager
+    adminIndexTemplateManager
       .getTemplates.force()
       .templates
       .foreach { template =>
         if (!originIndexTemplateNames.contains(template.name))
-          adminTemplateManager.deleteTemplate(template.name).force()
+          adminIndexTemplateManager.deleteTemplate(template.name).force()
       }
     waitForCondition("Waiting for removing all Index Templates") {
-      adminTemplateManager
+      adminIndexTemplateManager
         .getTemplates.force().templates.map(_.name)
         .diff(originIndexTemplateNames)
         .isEmpty
@@ -138,8 +143,8 @@ trait BaseTemplatesSuite
       )
   }
 
-  private def addControlTemplate(): Unit = {
-    adminTemplateManager
+  private def addControlIndexTemplate(): Unit = {
+    adminIndexTemplateManager
       .putTemplateAndWaitForIndexing(
         templateName = "control_two",
         indexPatterns = NonEmptyList.one("control_two_*"),
