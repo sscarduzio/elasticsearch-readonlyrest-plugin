@@ -151,7 +151,7 @@ class RegularRequestHandler(engine: Engine,
   private def onTemplateNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
     BlockContextUpdater[B] match {
       case TemplateRequestBlockContextUpdater =>
-        handleTemplateNotFoundForAliasRequest(request.asInstanceOf[EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]])
+        handleTemplateNotFoundForTemplateRequest(request.asInstanceOf[EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]])
       case FilterableMultiRequestBlockContextUpdater |
            FilterableRequestBlockContextUpdater |
            GeneralIndexRequestBlockContextUpdater |
@@ -190,7 +190,7 @@ class RegularRequestHandler(engine: Engine,
     handleModificationResult(modificationResult)
   }
 
-  private def handleTemplateNotFoundForAliasRequest(request: EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]): Unit = {
+  private def handleTemplateNotFoundForTemplateRequest(request: EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenTemplateNotFound
     handleModificationResult(modificationResult)
   }

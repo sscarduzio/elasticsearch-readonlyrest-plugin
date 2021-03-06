@@ -69,6 +69,11 @@ trait BaseTemplatesSuite
     }
   }
 
+  override protected def afterAll(): Unit = {
+    truncateDataCreatedDuringTest()
+    super.afterAll()
+  }
+
   override protected def beforeEach(): Unit = {
     super.beforeEach()
     addControlData()
@@ -77,11 +82,6 @@ trait BaseTemplatesSuite
   override protected def afterEach(): Unit = {
     truncateDataCreatedDuringTest()
     super.afterEach()
-  }
-
-  override protected def afterAll(): Unit = {
-    truncateDataCreatedDuringTest()
-    super.afterAll()
   }
 
   private def addControlData(): Unit = {

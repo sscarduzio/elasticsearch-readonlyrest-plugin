@@ -49,12 +49,14 @@ class ReindexEsRequestContext(actionRequest: ReindexRequest,
       .flatMap(IndexName.fromString)
   }
 
-  override protected def update(request: ReindexRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
+  override protected def update(request: ReindexRequest,
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
     val searchRequestIndices = actionRequest.getSearchRequest.indices().asSafeSet.flatMap(IndexName.fromString)
-    val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- indices.toList).isEmpty
+    val isSearchRequestComposedOnlyOfAllowedIndices = (searchRequestIndices -- filteredIndices.toList).isEmpty
 
     val indexOfIndexRequest = actionRequest.getDestination.index()
-    val isDestinationIndexOnFilteredIndicesList = IndexName.fromString(indexOfIndexRequest).exists(indices.toList.contains(_))
+    val isDestinationIndexOnFilteredIndicesList = IndexName.fromString(indexOfIndexRequest).exists(filteredIndices.toList.contains(_))
 
     if (isDestinationIndexOnFilteredIndicesList && isSearchRequestComposedOnlyOfAllowedIndices) {
       Modified

@@ -35,7 +35,6 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
 
   override protected def indicesFrom(request: R): Set[IndexName] = Set(indexFrom(request))
 
-
   override protected def update(request: R,
                                 filteredIndices: NonEmptyList[IndexName],
                                 allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {

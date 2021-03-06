@@ -26,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
-import tech.beshu.ror.es.request.context.ModificationResult.{Modified, ShouldBeInterrupted}
+import tech.beshu.ror.es.request.context.ModificationResult.ShouldBeInterrupted
 import tech.beshu.ror.es.request.context.{BaseEsRequestContext, EsRequest, ModificationResult}
 
 abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
@@ -58,21 +58,23 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
         val nonExistingIndices = NonEmptyList
           .fromList(initialBlockContext.nonExistingIndicesFromInitialIndices().toList)
           .getOrElse(NonEmptyList.of(nonExistentIndex))
-        update(actionRequest, nonExistingIndices)
-        Modified
+        update(actionRequest, nonExistingIndices, nonExistingIndices)
       } else {
         ShouldBeInterrupted
       }
     } else {
-      update(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()))
-      Modified
+      val randomNonexistingIndex = initialBlockContext.randomNonexistentIndex()
+      update(actionRequest, NonEmptyList.of(randomNonexistingIndex), NonEmptyList.of(randomNonexistingIndex))
     }
   }
 
   override protected def modifyRequest(blockContext: GeneralIndexRequestBlockContext): ModificationResult = {
-    NonEmptyList.fromList(blockContext.filteredIndices.toList) match {
-      case Some(indices) =>
-        update(actionRequest, indices)
+    (for {
+      filteredIndices <- NonEmptyList.fromList(blockContext.filteredIndices.toList)
+      allAllowedIndices <- NonEmptyList.fromList(blockContext.allAllowedIndices.toList)
+    } yield (filteredIndices, allAllowedIndices)) match {
+      case Some((filteredIndices, allAllowedIndices)) =>
+        update(actionRequest, filteredIndices, allAllowedIndices)
       case None =>
         logger.warn(s"[${id.show}] empty list of indices produced, so we have to interrupt the request processing")
         ShouldBeInterrupted
@@ -81,6 +83,8 @@ abstract class BaseIndicesEsRequestContext[R <: ActionRequest](actionRequest: R,
 
   protected def indicesFrom(request: R): Set[IndexName]
 
-  protected def update(request: R, indices: NonEmptyList[IndexName]): ModificationResult
+  protected def update(request: R,
+                       filteredIndices: NonEmptyList[IndexName],
+                       allAllowedIndices: NonEmptyList[IndexName]): ModificationResult
 
 }
