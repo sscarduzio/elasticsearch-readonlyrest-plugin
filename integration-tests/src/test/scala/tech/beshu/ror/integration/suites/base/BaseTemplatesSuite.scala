@@ -71,13 +71,30 @@ trait BaseTemplatesSuite
 
   override protected def beforeEach(): Unit = {
     super.beforeEach()
+    addControlData()
+  }
+
+  override protected def afterEach(): Unit = {
+    truncateDataCreatedDuringTest()
+    super.afterEach()
+  }
+
+  override protected def afterAll(): Unit = {
+    truncateDataCreatedDuringTest()
+    super.afterAll()
+  }
+
+  private def addControlData(): Unit = {
+    addControlLegacyTemplate()
+    addControlIndexTemplate()
+    if (doesSupportComponentTemplates) addControlComponentTemplate()
+  }
+
+  private def truncateDataCreatedDuringTest(): Unit = {
     truncateLegacyTemplates()
     truncateIndexTemplates()
     if (doesSupportComponentTemplates) truncateComponentTemplates()
     truncateIndices()
-    addControlLegacyTemplate()
-    addControlIndexTemplate()
-    if (doesSupportComponentTemplates) addControlComponentTemplate()
   }
 
   private def truncateLegacyTemplates(): Unit = {
@@ -160,7 +177,7 @@ trait BaseTemplatesSuite
       )
   }
 
-  protected def doesSupportComponentTemplates = {
+  protected def doesSupportComponentTemplates: Boolean = {
     Version.greaterOrEqualThan(esTargets.head.esVersion, 7, 9, 0)
   }
 }
