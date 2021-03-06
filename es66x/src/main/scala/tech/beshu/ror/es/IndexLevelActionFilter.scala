@@ -29,6 +29,7 @@ import org.elasticsearch.env.Environment
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.{Engine, EsInitListener, Ror, RorInstance, RorMode}
 import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
@@ -50,15 +51,15 @@ class IndexLevelActionFilter(clusterService: ClusterService,
                              remoteClusterServiceSupplier: Supplier[Option[RemoteClusterService]],
                              emptyClusterStateResponse:  ClusterStateResponse,
                              esInitListener: EsInitListener)
+                            (implicit generator: UniqueIdentifierGenerator,
+                             envVarsProvider: EnvVarsProvider)
   extends ActionFilter with Logging {
-
-  private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService, client), threadPool
+    new EsServerBasedRorClusterService(clusterService, client), clusterService.getSettings, threadPool
   )
 
   private val startingTaskCancellable = startRorInstance()

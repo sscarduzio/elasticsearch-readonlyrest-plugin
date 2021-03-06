@@ -25,9 +25,10 @@ import org.elasticsearch.common.component.AbstractComponent
 import org.elasticsearch.common.inject.{Inject, Singleton}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.env.Environment
-import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
+import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -38,7 +39,6 @@ import tech.beshu.ror.exceptions.StartingFailureException
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.RorInstanceSupplier
-import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 
 import scala.language.postfixOps
 
@@ -61,12 +61,13 @@ class IndexLevelActionFilter(settings: Settings,
   }
 
   private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  private implicit val generator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
 
   private val rorInstanceState: Atomic[RorInstanceStartingState] =
     Atomic(RorInstanceStartingState.Starting: RorInstanceStartingState)
 
   private val aclAwareRequestFilter = new AclAwareRequestFilter(
-    new EsServerBasedRorClusterService(clusterService, client), threadPool
+    new EsServerBasedRorClusterService(clusterService, client), settings, threadPool
   )
 
   private val startingTaskCancellable = startRorInstance()

@@ -55,6 +55,7 @@ import org.elasticsearch.transport.Transport
 import org.elasticsearch.transport.netty4.Netty4Utils
 import org.elasticsearch.watcher.ResourceWatcherService
 import tech.beshu.ror.Constants
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.boot.EsInitListener
 import tech.beshu.ror.configuration.RorSsl
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
@@ -96,6 +97,8 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
   }
 
   private implicit val envVarsProvider: EnvVarsProvider = OsEnvVarsProvider
+  private implicit val uniqueIdentifierGenerator: UniqueIdentifierGenerator = RandomBasedUniqueIdentifierGenerator
+
   private val environment = new Environment(s, p)
   private val timeout: FiniteDuration = 10 seconds
   private val sslConfig = RorSsl

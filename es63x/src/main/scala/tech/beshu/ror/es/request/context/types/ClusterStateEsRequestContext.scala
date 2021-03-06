@@ -41,13 +41,14 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
   }
 
   override protected def update(request: ClusterStateRequest,
-                                indices: NonEmptyList[domain.IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
     indicesFrom(request).toList match {
-      case Nil if indices.exists(_ === IndexName.wildcard) =>
+      case Nil if filteredIndices.exists(_ === IndexName.wildcard) =>
         // hack: when empty indices list is replaced with wildcard index, returned result is wrong
         Modified
       case _ =>
-        request.indices(indices.toList.map(_.value.value): _*)
+        request.indices(filteredIndices.toList.map(_.value.value): _*)
         Modified
     }
   }
@@ -55,7 +56,8 @@ class ClusterStateEsRequestContext(actionRequest: ClusterStateRequest,
   override def modifyWhenIndexNotFound: ModificationResult = {
     uriPath match {
       case CatIndicesPath(_) =>
-        update(actionRequest, NonEmptyList.of(initialBlockContext.randomNonexistentIndex()))
+        val nonExistentIndices = NonEmptyList.of(initialBlockContext.randomNonexistentIndex())
+        update(actionRequest, nonExistentIndices, nonExistentIndices)
       case _ =>
         super.modifyWhenIndexNotFound
     }

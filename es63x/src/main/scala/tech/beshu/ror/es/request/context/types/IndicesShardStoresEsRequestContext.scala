@@ -39,8 +39,9 @@ class IndicesShardStoresEsRequestContext(actionRequest: IndicesShardStoresReques
   }
 
   override protected def update(request: IndicesShardStoresRequest,
-                                indices: NonEmptyList[IndexName]): ModificationResult = {
-    actionRequest.indices(indices.toList.map(_.value.value): _*)
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    actionRequest.indices(filteredIndices.toList.map(_.value.value): _*)
     Modified
   }
 }

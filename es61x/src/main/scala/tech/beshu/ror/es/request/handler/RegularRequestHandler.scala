@@ -72,6 +72,8 @@ class RegularRequestHandler(engine: Engine,
           onIndexNotFound(request)
         case RegularRequestResult.AliasNotFound() =>
           onAliasNotFound(request)
+        case RegularRequestResult.TemplateNotFound() =>
+          onTemplateNotFound(request)
         case RegularRequestResult.Failed(ex) =>
           esContext.listener.onFailure(ex.asInstanceOf[Exception])
         case RegularRequestResult.PassedThrough() =>
@@ -144,10 +146,20 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
-  private def configureResponseTransformations(responseTransformations: List[ResponseTransformation]) = {
-    responseTransformations.map {
-      case FilteredResponseFields(responseFieldsRestrictions) =>
-        esContext.channel.setResponseFieldRestrictions(responseFieldsRestrictions)
+  private def onTemplateNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
+    BlockContextUpdater[B] match {
+      case TemplateRequestBlockContextUpdater =>
+        handleTemplateNotFoundForTemplateRequest(request.asInstanceOf[EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]])
+      case FilterableMultiRequestBlockContextUpdater |
+           FilterableRequestBlockContextUpdater |
+           GeneralIndexRequestBlockContextUpdater |
+           CurrentUserMetadataRequestBlockContextUpdater |
+           GeneralNonIndexRequestBlockContextUpdater |
+           RepositoryRequestBlockContextUpdater |
+           SnapshotRequestBlockContextUpdater |
+           AliasRequestBlockContextUpdater |
+           MultiIndexRequestBlockContextUpdater =>
+        onForbidden(NonEmptyList.one(OperationNotAllowed))
     }
   }
 
@@ -176,6 +188,11 @@ class RegularRequestHandler(engine: Engine,
     handleModificationResult(modificationResult)
   }
 
+  private def handleTemplateNotFoundForTemplateRequest(request: EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]): Unit = {
+    val modificationResult = request.modifyWhenTemplateNotFound
+    handleModificationResult(modificationResult)
+  }
+
   private def handleModificationResult(modificationResult: ModificationResult): Unit = {
     modificationResult match {
       case ModificationResult.Modified =>
@@ -188,6 +205,13 @@ class RegularRequestHandler(engine: Engine,
         respond(response)
       case UpdateResponse(updateFunc) =>
         proceed(new UpdateResponseListener(updateFunc))
+    }
+  }
+
+  private def configureResponseTransformations(responseTransformations: List[ResponseTransformation]): Unit = {
+    responseTransformations.foreach {
+      case FilteredResponseFields(responseFieldsRestrictions) =>
+        esContext.channel.setResponseFieldRestrictions(responseFieldsRestrictions)
     }
   }
 
