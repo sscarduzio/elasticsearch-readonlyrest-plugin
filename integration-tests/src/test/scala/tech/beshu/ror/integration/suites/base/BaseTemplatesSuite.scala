@@ -180,4 +180,8 @@ trait BaseTemplatesSuite
   protected def doesSupportComponentTemplates: Boolean = {
     Version.greaterOrEqualThan(esTargets.head.esVersion, 7, 9, 0)
   }
+
+  protected def doesSupportIndexTemplates: Boolean = {
+    Version.greaterOrEqualThan(esTargets.head.esVersion, 7, 8, 0)
+  }
 }
