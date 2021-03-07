@@ -21,8 +21,8 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.BaseTemplatesSuite
 import tech.beshu.ror.integration.utils.ESVersionSupport
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator, SingletonEsContainer}
-import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, CatManager, LegacyTemplateManager, IndexTemplateManager}
+import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, CatManager, IndexTemplateManager, LegacyTemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import ujson.Str
 
@@ -34,15 +34,13 @@ trait CatApiSuite
 
   override implicit val rorConfigFileName = "/cat_api/readonlyrest.yml"
 
-  override lazy val rorContainer: EsClusterContainer = SingletonEsContainer.singleton
-
-  private lazy val dev1ClusterStateManager = new CatManager(basicAuthClient("dev1", "test"), esVersion = targetEs.esVersion)
-  private lazy val dev2ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
-  private lazy val dev3ClusterStateManager = new CatManager(basicAuthClient("dev3", "test"), esVersion = targetEs.esVersion)
+  private lazy val dev1ClusterStateManager = new CatManager(basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
+  private lazy val dev2ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
+  private lazy val dev3ClusterStateManager = new CatManager(basicAuthClient("dev3", "test"), esVersion = esVersionUsed)
 
   "A _cat/state" should {
     "work as expected" in {
-      lazy val adminClusterStateManager = new CatManager(adminClient, esVersion = targetEs.esVersion)
+      lazy val adminClusterStateManager = new CatManager(adminClient, esVersion = esVersionUsed)
       val response = adminClusterStateManager.healthCheck()
 
       response.responseCode should be(200)
@@ -61,14 +59,6 @@ trait CatApiSuite
         createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
 
         val indices = dev1ClusterStateManager.indices()
-
-        indices.responseCode should be(200)
-        indices.results.size should be(0)
-      }
-      "user asked for index with no access to it" excludeES(allEs5x, allEs6x, "^es70x$".r) in {
-        createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
-
-        val indices = dev1ClusterStateManager.indices("dev2_index")
 
         indices.responseCode should be(200)
         indices.results.size should be(0)
@@ -133,7 +123,7 @@ trait CatApiSuite
 
         indices.responseCode should be(404)
       }
-      "user asked for index with no access to it" excludeES (allEs7xExceptEs70x) in {
+      "user asked for index with no access to it" in {
         createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
 
         val indices = dev1ClusterStateManager.indices("dev2_index")
@@ -143,8 +133,8 @@ trait CatApiSuite
     }
   }
 
-  indexTemplateApiTests("A _cat/template API (legacy templates)")(new LegacyTemplateManager(_, esTargets.head.esVersion))
-  indexTemplateApiTests("A _cat/template API (index templates)")(new IndexTemplateManager(_, esTargets.head.esVersion))
+  indexTemplateApiTests("A _cat/template API (legacy templates)")(new LegacyTemplateManager(_, esVersionUsed))
+  indexTemplateApiTests("A _cat/template API (index templates)")(new IndexTemplateManager(_, esVersionUsed))
 
   def indexTemplateApiTests(name: String)
                            (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
@@ -376,7 +366,7 @@ trait CatApiSuite
                     indexPatterns = NonEmptyList.of("custom_dev1_*")
                   )
 
-                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
@@ -388,7 +378,7 @@ trait CatApiSuite
                     indexPatterns = NonEmptyList.of("dev1_*")
                   )
 
-                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
@@ -402,7 +392,7 @@ trait CatApiSuite
                     indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                   )
 
-                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
@@ -414,7 +404,7 @@ trait CatApiSuite
                     indexPatterns = NonEmptyList.of("dev1_index")
                   )
 
-                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                  val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                   val templates = dev1ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
@@ -487,7 +477,7 @@ trait CatApiSuite
                   indexPatterns = NonEmptyList.of("custom_dev1_*")
                 )
 
-                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
@@ -499,7 +489,7 @@ trait CatApiSuite
                   indexPatterns = NonEmptyList.of("dev1_*")
                 )
 
-                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
@@ -513,7 +503,7 @@ trait CatApiSuite
                   indexPatterns = NonEmptyList.of("custom_dev1_index_test")
                 )
 
-                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
@@ -525,7 +515,7 @@ trait CatApiSuite
                   indexPatterns = NonEmptyList.of("dev1_index")
                 )
 
-                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
@@ -542,7 +532,7 @@ trait CatApiSuite
                 )
                 createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
@@ -555,7 +545,7 @@ trait CatApiSuite
                 )
                 createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
@@ -570,7 +560,7 @@ trait CatApiSuite
                 )
                 createIndexWithExampleDoc(adminDocumentManager, "custom_dev1_index_test")
 
-                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
@@ -583,7 +573,7 @@ trait CatApiSuite
                 )
                 createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
 
-                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = targetEs.esVersion)
+                val dev1ClusterStateManager = new CatManager(basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)

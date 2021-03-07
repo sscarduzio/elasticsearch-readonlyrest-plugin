@@ -36,7 +36,7 @@ trait DocumentApiSuite
 
   override lazy val targetEs: EsContainer = container.nodes.head
 
-  private lazy val dev1documentManager = new DocumentManager(basicAuthClient("dev1", "test"), targetEs.esVersion)
+  private lazy val dev1documentManager = new DocumentManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
   override lazy val clusterContainer: EsClusterContainer = createLocalClusterContainer(
     EsClusterSettings(
@@ -153,8 +153,7 @@ trait DocumentApiSuite
   }
 
   private def bulkCreateIndexDocEntry(index: String, docId: Int) = {
-    val esVersion = esTargets.head.esVersion
-    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
+    if (Version.greaterOrEqualThan(esVersionUsed, 7, 0, 0)) {
       Seq(
         s"""{ "create" : { "_index" : "$index", "_id" : "$docId" } }""",
         """{ "message" : "hello" }"""

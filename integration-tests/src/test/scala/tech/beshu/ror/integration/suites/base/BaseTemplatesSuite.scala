@@ -20,7 +20,8 @@ import cats.data.NonEmptyList
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
+import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch._
 import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
@@ -29,16 +30,15 @@ trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
     with BeforeAndAfterEach
     with BeforeAndAfterAll
+    with ESVersionSupport
     with LazyLogging {
   this: Suite with EsContainerCreator =>
 
-  def rorContainer: EsClusterContainer
-
-  private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, targetEs.esVersion)
-  private lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, targetEs.esVersion)
-  private lazy val adminComponentTemplateManager = new ComponentTemplateManager(adminClient, targetEs.esVersion)
+  private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, esVersionUsed)
+  private lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esVersionUsed)
+  private lazy val adminComponentTemplateManager = new ComponentTemplateManager(adminClient, esVersionUsed)
   private lazy val adminIndexManager = new IndexManager(adminClient)
-  protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
+  protected lazy val adminDocumentManager = new DocumentManager(adminClient, esVersionUsed)
 
   private var originLegacyTemplateNames: List[String] = List.empty
   private var originIndexTemplateNames: List[String] = List.empty
@@ -180,10 +180,10 @@ trait BaseTemplatesSuite
   }
 
   protected def doesSupportComponentTemplates: Boolean = {
-    Version.greaterOrEqualThan(esTargets.head.esVersion, 7, 9, 0)
+    Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
   }
 
   protected def doesSupportIndexTemplates: Boolean = {
-    Version.greaterOrEqualThan(esTargets.head.esVersion, 7, 8, 0)
+    Version.greaterOrEqualThan(esVersionUsed, 7, 8, 0)
   }
 }

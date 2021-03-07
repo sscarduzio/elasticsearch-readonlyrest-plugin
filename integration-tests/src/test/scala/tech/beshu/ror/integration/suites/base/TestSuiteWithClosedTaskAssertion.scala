@@ -18,18 +18,19 @@ package tech.beshu.ror.integration.suites.base
 
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest._
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.providers.{MultipleClients, MultipleEsTargets}
 import tech.beshu.ror.utils.elasticsearch.CatManager
 import tech.beshu.ror.utils.misc.CustomMatchers
 
 import scala.util.{Failure, Success, Try}
 
-trait TestSuiteWithClosedTaskAssertion extends TestSuite with CustomMatchers {
+trait TestSuiteWithClosedTaskAssertion extends TestSuite with ESVersionSupport with CustomMatchers {
   this: MultipleClients with MultipleEsTargets =>
 
   private lazy val adminCatManager = new CatManager(
     clients.head.basicAuthClient("admin", "container"),
-    esVersion = esTargets.head.esVersion
+    esVersion = esVersionUsed
   )
 
   override def withFixture(test: NoArgTest): Outcome = {

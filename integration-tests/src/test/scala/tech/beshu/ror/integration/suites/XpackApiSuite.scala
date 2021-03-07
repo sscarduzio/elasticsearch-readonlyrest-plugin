@@ -49,18 +49,18 @@ trait XpackApiSuite
     )
   )
 
-  private lazy val adminXpackApiManager = new XpackApiManager(basicAuthClient("admin", "container"), targetEs.esVersion)
+  private lazy val adminXpackApiManager = new XpackApiManager(basicAuthClient("admin", "container"), esVersionUsed)
   private lazy val dev1SearchManager = new SearchManager(basicAuthClient("dev1", "test"))
   private lazy val dev2SearchManager = new SearchManager(basicAuthClient("dev2", "test"))
-  private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), targetEs.esVersion)
-  private lazy val dev4XpackApiManager = new XpackApiManager(basicAuthClient("dev4", "test"), targetEs.esVersion)
-  private lazy val dev5XpackApiManager = new XpackApiManager(basicAuthClient("dev5", "test"), targetEs.esVersion)
-  private lazy val dev6XpackApiManager = new XpackApiManager(basicAuthClient("dev6", "test"), targetEs.esVersion)
+  private lazy val dev3XpackApiManager = new XpackApiManager(basicAuthClient("dev3", "test"), esVersionUsed)
+  private lazy val dev4XpackApiManager = new XpackApiManager(basicAuthClient("dev4", "test"), esVersionUsed)
+  private lazy val dev5XpackApiManager = new XpackApiManager(basicAuthClient("dev5", "test"), esVersionUsed)
+  private lazy val dev6XpackApiManager = new XpackApiManager(basicAuthClient("dev6", "test"), esVersionUsed)
 
-  private lazy val adminSqlManager = new SqlApiManager(basicAuthClient("sqladmin", "pass"), container.esVersion)
-  private lazy val dev3SqlManager = new SqlApiManager(basicAuthClient("dev1sql", "test"), container.esVersion)
-  private lazy val dev4SqlManager = new SqlApiManager(basicAuthClient("dev2sql", "test"), container.esVersion)
-  private lazy val dev5SqlManager = new SqlApiManager(basicAuthClient("dev5sql", "test"), container.esVersion)
+  private lazy val adminSqlManager = new SqlApiManager(basicAuthClient("sqladmin", "pass"), esVersionUsed)
+  private lazy val dev3SqlManager = new SqlApiManager(basicAuthClient("dev1sql", "test"), esVersionUsed)
+  private lazy val dev4SqlManager = new SqlApiManager(basicAuthClient("dev2sql", "test"), esVersionUsed)
+  private lazy val dev5SqlManager = new SqlApiManager(basicAuthClient("dev5sql", "test"), esVersionUsed)
 
   "Async search" should {
     "be allowed for dev1 and test1_index_a" excludeES(allEs5x, allEs6x, allEs7xBelowEs77x) in {

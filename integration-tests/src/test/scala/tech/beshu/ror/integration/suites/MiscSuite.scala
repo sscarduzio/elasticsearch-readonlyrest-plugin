@@ -48,7 +48,7 @@ trait MiscSuite
   private lazy val userClusterStateManager = new CatManager(
     client = basicAuthClient("user1", "pass"),
     additionalHeaders = Map("X-Forwarded-For" -> "es-pub7"),
-    esVersion = targetEs.esVersion
+    esVersion = esVersionUsed
   )
 
   private lazy val dev1IndexManager = new IndexManager(basicAuthClient("admin", "container"))

@@ -18,8 +18,5 @@ package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.IndexTemplatesManagementSuite
 import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
-import tech.beshu.ror.utils.containers.EsClusterContainer
 
-class IndexTemplatesManagementProxyTests extends IndexTemplatesManagementSuite with BasicClusterProxyTestSupport {
-  override lazy val rorContainer: EsClusterContainer = container
-}
+class IndexTemplatesManagementProxyTests extends IndexTemplatesManagementSuite with BasicClusterProxyTestSupport

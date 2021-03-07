@@ -352,7 +352,7 @@ trait FieldRuleSourceFilteringSuite
         //since ES 7.9.0 empty json array is included even when all its items are blacklisted
 
         val expectedSource =
-          if (Version.greaterOrEqualThan(targetEs.esVersion, 7, 9, 0)) {
+          if (Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)) {
             """
               |{
               |  "id":1,

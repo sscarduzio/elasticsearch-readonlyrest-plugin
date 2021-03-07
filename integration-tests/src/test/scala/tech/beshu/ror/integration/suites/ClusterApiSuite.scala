@@ -18,6 +18,7 @@ package tech.beshu.ror.integration.suites
 
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseEsClusterIntegrationTest, SingleClientSupport}
+import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{CatManager, ClusterManager, DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
@@ -27,7 +28,8 @@ import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 trait ClusterApiSuite
   extends AnyWordSpec
     with BaseEsClusterIntegrationTest
-    with SingleClientSupport {
+    with SingleClientSupport 
+    with ESVersionSupport {
   this: EsContainerCreator =>
 
   override implicit val rorConfigFileName = "/cluster_api/readonlyrest.yml"
@@ -42,12 +44,12 @@ trait ClusterApiSuite
     )
   )
 
-  private lazy val adminCatManager = new CatManager(esTargets.head.basicAuthClient("admin", "container"), esVersion = esTargets.head.esVersion)
-  private lazy val adminClusterManager = new ClusterManager(esTargets.head.basicAuthClient("admin", "container"), esVersion = esTargets.head.esVersion)
-  private lazy val dev1ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esTargets.head.esVersion)
-  private lazy val dev2ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev2", "test"), esVersion = esTargets.head.esVersion)
-  private lazy val dev3ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev3", "test"), esVersion = esTargets.head.esVersion)
-  private lazy val dev4ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev4", "test"), esVersion = esTargets.head.esVersion)
+  private lazy val adminCatManager = new CatManager(esTargets.head.basicAuthClient("admin", "container"), esVersion = esVersionUsed)
+  private lazy val adminClusterManager = new ClusterManager(esTargets.head.basicAuthClient("admin", "container"), esVersion = esVersionUsed)
+  private lazy val dev1ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
+  private lazy val dev2ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev2", "test"), esVersion = esVersionUsed)
+  private lazy val dev3ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev3", "test"), esVersion = esVersionUsed)
+  private lazy val dev4ClusterManager = new ClusterManager(esTargets.head.basicAuthClient("dev4", "test"), esVersion = esVersionUsed)
 
   "Cluster allocation explain API" should {
     "allow to be used" when {

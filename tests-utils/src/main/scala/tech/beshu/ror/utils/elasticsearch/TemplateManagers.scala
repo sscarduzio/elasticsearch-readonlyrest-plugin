@@ -329,7 +329,7 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
   )
 
   def getTemplates: ComponentTemplatesResponse = {
-    call(createGetComponentTemplatesRequest("*"), new ComponentTemplatesResponse(_))
+    call(createGetComponentTemplatesRequest, new ComponentTemplatesResponse(_))
   }
 
   def getTemplate(templateName: String): ComponentTemplatesResponse = {
@@ -351,6 +351,10 @@ class ComponentTemplateManager(client: RestClient, esVersion: String)
 
   def deleteTemplate(templateName: String): SimpleResponse = {
     call(createDeleteComponentTemplateRequest(templateName), new SimpleResponse(_))
+  }
+
+  private def createGetComponentTemplatesRequest = {
+    new HttpGet(client.from(s"/_component_template"))
   }
 
   private def createGetComponentTemplatesRequest(templateName: String) = {

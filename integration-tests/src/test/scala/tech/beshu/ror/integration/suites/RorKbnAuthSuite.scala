@@ -41,7 +41,7 @@ trait RorKbnAuthSuite
   override implicit val rorConfigFileName = "/ror_kbn_auth/readonlyrest.yml"
 
   "rejectRequestWithoutAuthorizationHeader" in {
-    val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = targetEs.esVersion)
+    val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -51,7 +51,7 @@ trait RorKbnAuthSuite
     val token = makeToken(wrongKey)
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
+      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -61,7 +61,7 @@ trait RorKbnAuthSuite
     val token = makeToken(validKey)
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
+      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -72,7 +72,7 @@ trait RorKbnAuthSuite
     val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user", groupsClaim, ""))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
+      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(200)
@@ -82,7 +82,7 @@ trait RorKbnAuthSuite
     val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user", "exp", 0))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
+      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -92,7 +92,7 @@ trait RorKbnAuthSuite
     val token = makeToken(validKeyRole)
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
+      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -102,7 +102,7 @@ trait RorKbnAuthSuite
     val token = makeTokenWithClaims(validKeyRole, makeClaimMap(groupsClaim, "wrong_group"))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
+      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -112,7 +112,7 @@ trait RorKbnAuthSuite
     val token = makeTokenWithClaims(validKeyRole, makeClaimMap(groupsClaim, "viewer_group"))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = targetEs.esVersion)
+      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(200)

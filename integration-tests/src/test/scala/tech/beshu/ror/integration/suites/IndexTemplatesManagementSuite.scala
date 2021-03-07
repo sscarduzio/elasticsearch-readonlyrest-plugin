@@ -35,18 +35,18 @@ trait IndexTemplatesManagementSuite
 
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
-  indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
-  if (doesSupportIndexTemplates) indexTemplateApiTests("A new template API")(new IndexTemplateManager(_, esTargets.head.esVersion))
+  indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esVersionUsed))
+  if (doesSupportIndexTemplates) indexTemplateApiTests("A new template API")(new IndexTemplateManager(_, esVersionUsed))
   if (doesSupportComponentTemplates) componentTemplateApiTests()
   if (doesSupportIndexTemplates) simulateTemplatesApiTests()
 
   def indexTemplateApiTests(name: String)
                            (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
 
-    val dev1TemplateManager = templateManagerCreator(basicAuthClient("dev1", "test"))
-    val dev2TemplateManager = templateManagerCreator(basicAuthClient("dev2", "test"))
-    val dev3TemplateManager = templateManagerCreator(basicAuthClient("dev3", "test"))
-    val adminTemplateManager = templateManagerCreator(adminClient)
+    lazy val dev1TemplateManager = templateManagerCreator(basicAuthClient("dev1", "test"))
+    lazy val dev2TemplateManager = templateManagerCreator(basicAuthClient("dev2", "test"))
+    lazy val dev3TemplateManager = templateManagerCreator(basicAuthClient("dev3", "test"))
+    lazy val adminTemplateManager = templateManagerCreator(adminClient)
 
     s"$name" when {
       "user is dev1" should {
@@ -1052,9 +1052,9 @@ trait IndexTemplatesManagementSuite
 
   def componentTemplateApiTests(): Unit = {
 
-    val dev1TemplateManager = new ComponentTemplateManager(basicAuthClient("dev1", "test"), targetEs.esVersion)
-    val dev2TemplateManager = new ComponentTemplateManager(basicAuthClient("dev2", "test"), targetEs.esVersion)
-    val adminTemplateManager = new ComponentTemplateManager(adminClient, targetEs.esVersion)
+    lazy val dev1TemplateManager = new ComponentTemplateManager(basicAuthClient("dev1", "test"), esVersionUsed)
+    lazy val dev2TemplateManager = new ComponentTemplateManager(basicAuthClient("dev2", "test"), esVersionUsed)
+    lazy val adminTemplateManager = new ComponentTemplateManager(adminClient, esVersionUsed)
 
     "A component template API" when {
       "user is dev1" should {
@@ -1175,8 +1175,8 @@ trait IndexTemplatesManagementSuite
   }
 
   def simulateTemplatesApiTests(): Unit = {
-    val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esTargets.head.esVersion)
-    val user1IndexTemplateManager = new IndexTemplateManager(basicAuthClient("dev1", "test"), esTargets.head.esVersion)
+    lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esVersionUsed)
+    lazy val user1IndexTemplateManager = new IndexTemplateManager(basicAuthClient("dev1", "test"), esVersionUsed)
 
     "A simulate index API" should {
       "be allowed for a user" which {
