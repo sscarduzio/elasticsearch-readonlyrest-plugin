@@ -36,9 +36,9 @@ trait IndexTemplatesManagementSuite
   override implicit val rorConfigFileName = "/templates/readonlyrest.yml"
 
   indexTemplateApiTests("A legacy template API")(new LegacyTemplateManager(_, esTargets.head.esVersion))
-  if(doesSupportIndexTemplates) indexTemplateApiTests("A new template API")(new IndexTemplateManager(_, esTargets.head.esVersion))
+  if (doesSupportIndexTemplates) indexTemplateApiTests("A new template API")(new IndexTemplateManager(_, esTargets.head.esVersion))
   if (doesSupportComponentTemplates) componentTemplateApiTests()
-  simulateTemplatesApiTests()
+  if (doesSupportIndexTemplates) simulateTemplatesApiTests()
 
   def indexTemplateApiTests(name: String)
                            (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {

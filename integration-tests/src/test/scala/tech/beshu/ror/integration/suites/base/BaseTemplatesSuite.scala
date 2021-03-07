@@ -54,11 +54,13 @@ trait BaseTemplatesSuite
       .getTemplates.force()
       .templates
       .map(_.name)
-    logger.info(s"Found origin Legacy Templates: [${originLegacyTemplateNames.mkString(",")}]")
-    originIndexTemplateNames = adminIndexTemplateManager
-      .getTemplates.force()
-      .templates
-      .map(_.name)
+    if (doesSupportIndexTemplates) {
+      logger.info(s"Found origin Legacy Templates: [${originLegacyTemplateNames.mkString(",")}]")
+      originIndexTemplateNames = adminIndexTemplateManager
+        .getTemplates.force()
+        .templates
+        .map(_.name)
+    }
     logger.info(s"Found origin Index Templates: [${originIndexTemplateNames.mkString(",")}]")
     if (doesSupportComponentTemplates) {
       originComponentTemplateNames = adminComponentTemplateManager
@@ -86,13 +88,13 @@ trait BaseTemplatesSuite
 
   private def addControlData(): Unit = {
     addControlLegacyTemplate()
-    addControlIndexTemplate()
+    if (doesSupportIndexTemplates) addControlIndexTemplate()
     if (doesSupportComponentTemplates) addControlComponentTemplate()
   }
 
   private def truncateDataCreatedDuringTest(): Unit = {
     truncateLegacyTemplates()
-    truncateIndexTemplates()
+    if (doesSupportIndexTemplates) truncateIndexTemplates()
     if (doesSupportComponentTemplates) truncateComponentTemplates()
     truncateIndices()
   }
