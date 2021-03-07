@@ -134,7 +134,7 @@ trait CatApiSuite
   }
 
   indexTemplateApiTests("A _cat/template API (legacy templates)")(new LegacyTemplateManager(_, esVersionUsed))
-  indexTemplateApiTests("A _cat/template API (index templates)")(new IndexTemplateManager(_, esVersionUsed))
+  if(doesSupportIndexTemplates) indexTemplateApiTests("A _cat/template API (index templates)")(new IndexTemplateManager(_, esVersionUsed))
 
   def indexTemplateApiTests(name: String)
                            (templateManagerCreator: RestClient => BaseTemplateManager): Unit = {
