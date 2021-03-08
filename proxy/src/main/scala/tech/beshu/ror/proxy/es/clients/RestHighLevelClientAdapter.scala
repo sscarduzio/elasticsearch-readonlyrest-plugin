@@ -41,9 +41,9 @@ import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, 
 import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest
 import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsResponse}
-import org.elasticsearch.action.admin.indices.template.delete.DeleteIndexTemplateRequest
-import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
-import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
+import org.elasticsearch.action.admin.indices.template.delete.{DeleteComponentTemplateAction, DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
+import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction, GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
+import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutComposableIndexTemplateAction, PutIndexTemplateRequest}
 import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryRequest, ValidateQueryResponse}
 import org.elasticsearch.action.admin.indices.{create, shrink}
 import org.elasticsearch.action.bulk.{BulkRequest, BulkResponse}
@@ -238,6 +238,38 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
 
   def deleteTemplate(request: DeleteIndexTemplateRequest): Task[AcknowledgedResponse] = {
     executeAsync(client.indices().deleteTemplate(request, RequestOptions.DEFAULT))
+  }
+
+  def getComposableTemplate(request: GetComposableIndexTemplateAction.Request): Task[GetComposableIndexTemplateAction.Response] = {
+    import tech.beshu.ror.proxy.es.clients.actions.GetComposableTemplate._
+    executeAsync(client.indices().getIndexTemplate(request.toGetComposableTemplateRequest, RequestOptions.DEFAULT))
+      .map(_.toGetComposableTemplateResponse)
+  }
+
+  def putComposableTemplate(request: PutComposableIndexTemplateAction.Request): Task[AcknowledgedResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.PutComposableTemplate._
+    executeAsync(client.indices().putIndexTemplate(request.toPutComposableTemplateRequest, RequestOptions.DEFAULT))
+  }
+
+  def deleteComposableTemplate(request: DeleteComposableIndexTemplateAction.Request): Task[AcknowledgedResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.DeleteComposableTemplate._
+    executeAsync(client.indices().deleteIndexTemplate(request.toDeleteComposableTemplateRequest, RequestOptions.DEFAULT))
+  }
+
+  def getComponentTemplate(request: GetComponentTemplateAction.Request): Task[GetComponentTemplateAction.Response] = {
+    import tech.beshu.ror.proxy.es.clients.actions.GetComponentTemplate._
+    executeAsync(client.cluster().getComponentTemplate(request.toGetComponentTemplateRequest, RequestOptions.DEFAULT))
+      .map(_.toGetComponentTemplateResponse)
+  }
+
+  def putComponentTemplate(request: PutComponentTemplateAction.Request): Task[AcknowledgedResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.PutComponentTemplate._
+    executeAsync(client.cluster().putComponentTemplate(request.toPutComponentTemplateRequest, RequestOptions.DEFAULT))
+  }
+
+  def deleteComponentTemplate(request: DeleteComponentTemplateAction.Request): Task[AcknowledgedResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.DeleteComponentTemplate._
+    executeAsync(client.cluster().deleteComponentTemplate(request.toDeleteComponentTemplateRequest, RequestOptions.DEFAULT))
   }
 
   def stats(request: IndicesStatsRequest): Task[IndicesStatsResponse] = {

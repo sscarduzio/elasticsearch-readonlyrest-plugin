@@ -6,6 +6,9 @@ package tech.beshu.ror.proxy.es
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.elasticsearch.action.admin.cluster.remote.RemoteInfoRequest
+import org.elasticsearch.action.admin.indices.template.delete.{DeleteComponentTemplateAction, DeleteComposableIndexTemplateAction}
+import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction}
+import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutComposableIndexTemplateAction}
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.fieldcaps.FieldCapabilitiesRequest
@@ -56,6 +59,12 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
     case request: GenericRequest => esClient.generic(request)
     case request: ClearScrollRequest => esClient.clearScroll(request)
     case request: SearchScrollRequest => esClient.searchScroll(request)
+    case request: GetComposableIndexTemplateAction.Request => esClient.getComposableTemplate(request)
+    case request: PutComposableIndexTemplateAction.Request => esClient.putComposableTemplate(request)
+    case request: DeleteComposableIndexTemplateAction.Request => esClient.deleteComposableTemplate(request)
+    case request: GetComponentTemplateAction.Request => esClient.getComponentTemplate(request)
+    case request: PutComponentTemplateAction.Request => esClient.putComponentTemplate(request)
+    case request: DeleteComponentTemplateAction.Request => esClient.deleteComponentTemplate(request)
     case other => Task(throw new IllegalStateException(s"not implemented: ${other.getClass.getSimpleName}")) // todo:
   }
 }
