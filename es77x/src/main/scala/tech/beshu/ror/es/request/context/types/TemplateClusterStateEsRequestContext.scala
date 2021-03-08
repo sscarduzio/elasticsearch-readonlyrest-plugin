@@ -21,14 +21,14 @@ import cats.implicits._
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
-import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.cluster.metadata.MetaData
+import org.elasticsearch.cluster.{ClusterName, ClusterState}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
-import tech.beshu.ror.accesscontrol.domain.TemplateOperation.{GettingIndexTemplates, GettingLegacyAndIndexTemplates, GettingLegacyTemplates}
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
 import tech.beshu.ror.accesscontrol.domain.{TemplateNamePattern, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -62,17 +62,14 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
                                                    settings: Settings,
                                                    override val threadPool: ThreadPool)
                                                   (implicit generator: UniqueIdentifierGenerator)
-  extends BaseTemplatesEsRequestContext[ClusterStateRequest, GettingLegacyAndIndexTemplates](
+  extends BaseTemplatesEsRequestContext[ClusterStateRequest, GettingLegacyTemplates](
     actionRequest, esContext, clusterService, threadPool
   ) {
 
   private lazy val allTemplatesNamePattern = TemplateNamePattern("*")
 
-  override protected def templateOperationFrom(request: ClusterStateRequest): GettingLegacyAndIndexTemplates = {
-    GettingLegacyAndIndexTemplates(
-      GettingLegacyTemplates(NonEmptyList.one(allTemplatesNamePattern)),
-      GettingIndexTemplates(NonEmptyList.one(allTemplatesNamePattern))
-    )
+  override protected def templateOperationFrom(request: ClusterStateRequest): GettingLegacyTemplates = {
+    GettingLegacyTemplates(NonEmptyList.one(allTemplatesNamePattern))
   }
 
   override def modifyWhenTemplateNotFound: ModificationResult = {
@@ -81,19 +78,9 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
 
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
-      case GettingLegacyAndIndexTemplates(legacyTemplatesOperation, indexTemplatesOperation) =>
-        updateResponse {
-          val func1 = modifyLegacyTemplatesOfResponse(_, legacyTemplatesOperation.namePatterns.toList.toSet, blockContext.responseTemplateTransformation)
-          val func2 = modifyIndexTemplatesOfResponse(_, indexTemplatesOperation.namePatterns.toList.toSet, blockContext.responseTemplateTransformation)
-          func1 andThen func2
-        }
       case GettingLegacyTemplates(namePatterns) =>
         updateResponse(
           modifyLegacyTemplatesOfResponse(_, namePatterns.toList.toSet, blockContext.responseTemplateTransformation)
-        )
-      case GettingIndexTemplates(namePatterns) =>
-        updateResponse(
-          modifyIndexTemplatesOfResponse(_, namePatterns.toList.toSet, blockContext.responseTemplateTransformation)
         )
       case other =>
         logger.error(

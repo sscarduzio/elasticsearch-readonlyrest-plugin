@@ -93,7 +93,11 @@ object BaseTemplateManager {
 }
 
 class LegacyTemplateManager(client: RestClient, esVersion: String)
-  extends BaseTemplateManager(client, LegacyTemplateManager.parseTemplates) {
+  extends BaseTemplateManager(
+    client,
+    if(Version.greaterOrEqualThan(esVersion, 6, 0, 0)) LegacyTemplateManager.parseTemplates
+    else LegacyTemplateManager.parseTemplatesEs5x
+  ) {
 
   override protected def createGetTemplateRequest(name: String): HttpGet = {
     val request = new HttpGet(client.from("/_template/" + name))
@@ -154,7 +158,7 @@ class LegacyTemplateManager(client: RestClient, esVersion: String)
            |  },
            |  "settings":{"number_of_shards":1},
            |  "mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}
-           ||}""".stripMargin
+           |}""".stripMargin
       }
     } else {
       if (allIndexPattern.size == 1) {
@@ -184,6 +188,19 @@ object LegacyTemplateManager {
         Template(
           name,
           templateContent.obj("index_patterns").arr.map(_.str).toSet,
+          templateContent.obj("aliases").obj.keys.toSet
+        )
+      }
+      .toList
+  }
+
+  private def parseTemplatesEs5x(content: JSON) = {
+    content
+      .obj
+      .map { case (name, templateContent) =>
+        Template(
+          name,
+          Set(templateContent.obj("template").str),
           templateContent.obj("aliases").obj.keys.toSet
         )
       }

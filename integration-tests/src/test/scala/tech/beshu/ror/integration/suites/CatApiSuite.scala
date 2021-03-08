@@ -24,7 +24,6 @@ import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.{BaseTemplateManager, CatManager, IndexTemplateManager, LegacyTemplateManager}
 import tech.beshu.ror.utils.httpclient.RestClient
-import ujson.Str
 
 trait CatApiSuite
   extends AnyWordSpec
@@ -53,7 +52,7 @@ trait CatApiSuite
         val indices = dev1ClusterStateManager.indices()
 
         indices.responseCode should be(200)
-        indices.results.size should be(0)
+        indices.results.map(_("index").str) should be (Vector.empty)
       }
       "dev1 has no indices" in {
         createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
@@ -61,7 +60,7 @@ trait CatApiSuite
         val indices = dev1ClusterStateManager.indices()
 
         indices.responseCode should be(200)
-        indices.results.size should be(0)
+        indices.results.map(_("index").str) should be (Vector.empty)
       }
       "user asked for index with wildcard but there is no matching index which belongs to the user" in {
         createIndexWithExampleDoc(adminDocumentManager, "dev2_index")
@@ -69,7 +68,7 @@ trait CatApiSuite
         val indices = dev1ClusterStateManager.indices("dev2_*")
 
         indices.responseCode should be(200)
-        indices.results.size should be(0)
+        indices.results.map(_("index").str) should be (Vector.empty)
       }
     }
     "return only dev1 indices" when {
@@ -80,8 +79,7 @@ trait CatApiSuite
         val indices = dev1ClusterStateManager.indices()
 
         indices.responseCode should be(200)
-        indices.results.size should be(1)
-        indices.results(0)("index") should be(Str("dev1_index"))
+        indices.results.map(_("index").str) should be (Vector("dev1_index"))
       }
       "request is related to one index" in {
         createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
@@ -90,8 +88,7 @@ trait CatApiSuite
         val indices = dev1ClusterStateManager.indices("dev1_index")
 
         indices.responseCode should be(200)
-        indices.results.size should be(1)
-        indices.results(0)("index") should be(Str("dev1_index"))
+        indices.results.map(_("index").str) should be (Vector("dev1_index"))
       }
       "request index has wildcard" in {
         createIndexWithExampleDoc(adminDocumentManager, "dev1_index")
@@ -100,8 +97,7 @@ trait CatApiSuite
         val indices = dev1ClusterStateManager.indices("dev*")
 
         indices.responseCode should be(200)
-        indices.results.size should be(1)
-        indices.results(0)("index") should be(Str("dev1_index"))
+        indices.results.map(_("index").str) should be (Vector("dev1_index"))
       }
     }
     "return all indices" when {
@@ -112,9 +108,7 @@ trait CatApiSuite
         val indices = dev3ClusterStateManager.indices()
 
         indices.responseCode should be(200)
-        indices.results.size should be(2)
-        indices.results(0)("index") should be(Str("dev1_index"))
-        indices.results(1)("index") should be(Str("dev2_index"))
+        indices.results.map(_("index").str) should contain allOf ("dev1_index", "dev2_index")
       }
     }
     "return 404" when {
@@ -370,7 +364,7 @@ trait CatApiSuite
                   val templates = dev1ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
-                  templates.results.size should be(0)
+                  templates.results.map(_("name").str) should be (Vector.empty)
                 }
                 "rule has index pattern with no wildcard" in {
                   adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -382,7 +376,7 @@ trait CatApiSuite
                   val templates = dev1ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
-                  templates.results.size should be(0)
+                  templates.results.map(_("name").str) should be (Vector.empty)
                 }
               }
               "template has index pattern with no wildcard" when {
@@ -396,7 +390,7 @@ trait CatApiSuite
                   val templates = dev1ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
-                  templates.results.size should be(0)
+                  templates.results.map(_("name").str) should be (Vector.empty)
                 }
                 "rule has index pattern with no wildcard" in {
                   adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -408,7 +402,7 @@ trait CatApiSuite
                   val templates = dev1ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
-                  templates.results.size should be(0)
+                  templates.results.map(_("name").str) should be (Vector.empty)
                 }
               }
             }
@@ -424,7 +418,7 @@ trait CatApiSuite
                   val templates = dev2ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
-                  templates.results.size should be(0)
+                  templates.results.map(_("name").str) should be (Vector.empty)
                 }
                 "rule has index pattern with no wildcard" in {
                   adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -436,7 +430,7 @@ trait CatApiSuite
                   val templates = dev2ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
-                  templates.results.size should be(0)
+                  templates.results.map(_("name").str) should be (Vector.empty)
                 }
               }
               "template has index pattern with no wildcard" when {
@@ -450,7 +444,7 @@ trait CatApiSuite
                   val templates = dev2ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
-                  templates.results.size should be(0)
+                  templates.results.map(_("name").str) should be (Vector.empty)
                 }
                 "rule has index pattern with no wildcard" in {
                   adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -462,7 +456,7 @@ trait CatApiSuite
                   val templates = dev2ClusterStateManager.templates()
 
                   templates.responseCode should be(200)
-                  templates.results.size should be(0)
+                  templates.results.map(_("name").str) should be (Vector.empty)
                 }
               }
             }
@@ -481,7 +475,7 @@ trait CatApiSuite
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
-                templates.results.size should be(0)
+                templates.results.map(_("name").str) should be (Vector.empty)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -493,7 +487,7 @@ trait CatApiSuite
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
-                templates.results.size should be(0)
+                templates.results.map(_("name").str) should be (Vector.empty)
               }
             }
             "template has index pattern with no wildcard" when {
@@ -507,7 +501,7 @@ trait CatApiSuite
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
-                templates.results.size should be(0)
+                templates.results.map(_("name").str) should be (Vector.empty)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -519,7 +513,7 @@ trait CatApiSuite
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
-                templates.results.size should be(0)
+                templates.results.map(_("name").str) should be (Vector.empty)
               }
             }
           }
@@ -536,7 +530,7 @@ trait CatApiSuite
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
-                templates.results.size should be(0)
+                templates.results.map(_("name").str) should be (Vector.empty)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -549,7 +543,7 @@ trait CatApiSuite
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
-                templates.results.size should be(0)
+                templates.results.map(_("name").str) should be (Vector.empty)
               }
             }
             "template has index pattern with no wildcard" when {
@@ -564,7 +558,7 @@ trait CatApiSuite
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
-                templates.results.size should be(0)
+                templates.results.map(_("name").str) should be (Vector.empty)
               }
               "rule has index pattern with no wildcard" in {
                 adminTemplateManager.putTemplateAndWaitForIndexing(
@@ -577,7 +571,7 @@ trait CatApiSuite
                 val templates = dev1ClusterStateManager.templates("temp1")
 
                 templates.responseCode should be(200)
-                templates.results.size should be(0)
+                templates.results.map(_("name").str) should be (Vector.empty)
               }
             }
           }
