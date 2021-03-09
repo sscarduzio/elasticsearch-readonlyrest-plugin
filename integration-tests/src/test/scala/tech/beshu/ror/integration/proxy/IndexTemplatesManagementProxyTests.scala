@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.IndexTemplatesManagementSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.OssEsClusterProxyTestSupport
 
-class IndexTemplatesManagementProxyTests extends IndexTemplatesManagementSuite with BasicClusterProxyTestSupport
+class IndexTemplatesManagementProxyTests extends IndexTemplatesManagementSuite with OssEsClusterProxyTestSupport

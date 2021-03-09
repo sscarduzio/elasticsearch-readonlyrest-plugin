@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.LocalGroupsSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
 
-class LocalGroupsProxyTests extends LocalGroupsSuite with BasicClusterProxyTestSupport
+class LocalGroupsProxyTests extends LocalGroupsSuite with XpackEsClusterProxyTestSupport

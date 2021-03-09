@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.SearchWithAliasesSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
 
-class SearchWithAliasesProxyTests extends SearchWithAliasesSuite with BasicClusterProxyTestSupport
+class SearchWithAliasesProxyTests extends SearchWithAliasesSuite with XpackEsClusterProxyTestSupport

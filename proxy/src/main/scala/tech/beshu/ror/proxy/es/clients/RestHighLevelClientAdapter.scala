@@ -43,6 +43,7 @@ import org.elasticsearch.action.admin.indices.shrink.ResizeRequest
 import org.elasticsearch.action.admin.indices.stats.{IndicesStatsRequest, IndicesStatsResponse}
 import org.elasticsearch.action.admin.indices.template.delete.{DeleteComponentTemplateAction, DeleteComposableIndexTemplateAction, DeleteIndexTemplateRequest}
 import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction, GetIndexTemplatesRequest => AdminGetIndexTemplatesRequest, GetIndexTemplatesResponse => AdminGetIndexTemplatesResponse}
+import org.elasticsearch.action.admin.indices.template.post.{SimulateIndexTemplateRequest => AdminSimulateIndexTemplateRequest, SimulateIndexTemplateResponse => AdminSimulateIndexTemplateResponse}
 import org.elasticsearch.action.admin.indices.template.put.{PutComponentTemplateAction, PutComposableIndexTemplateAction, PutIndexTemplateRequest}
 import org.elasticsearch.action.admin.indices.validate.query.{ValidateQueryRequest, ValidateQueryResponse}
 import org.elasticsearch.action.admin.indices.{create, shrink}
@@ -66,6 +67,7 @@ import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventRequest, RRAuditEvent
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter._
 import tech.beshu.ror.proxy.es.clients.actions.ResolveIndex._
+import tech.beshu.ror.proxy.es.clients.actions.utils.ElasticsearchStatusExceptionOps._
 import tech.beshu.ror.proxy.es.exceptions._
 import tech.beshu.ror.proxy.es.proxyaction.{ByProxyProcessedRequest, ByProxyProcessedResponse}
 
@@ -227,7 +229,7 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     import tech.beshu.ror.proxy.es.clients.actions.GetTemplate._
     executeAsync(client.indices().getIndexTemplate(request.toGetTemplateRequest, RequestOptions.DEFAULT))
       .map(_.toGetTemplateResponse)
-      .onErrorRecover { case ex: ElasticsearchStatusException if ex.status().getStatus == 404 =>
+      .onErrorRecover { case ex: ElasticsearchStatusException if ex.isNotFound =>
         new AdminGetIndexTemplatesResponse(List.empty[org.elasticsearch.cluster.metadata.IndexTemplateMetadata].asJava)
       }
   }
@@ -240,10 +242,17 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     executeAsync(client.indices().deleteTemplate(request, RequestOptions.DEFAULT))
   }
 
+  def simulateIndexTemplate(request: AdminSimulateIndexTemplateRequest): Task[AdminSimulateIndexTemplateResponse] = {
+    import tech.beshu.ror.proxy.es.clients.actions.SimulateIndexTemplate._
+    executeAsync(client.indices().simulateIndexTemplate(request.toSimulateIndexTemplateRequest, RequestOptions.DEFAULT))
+      .map(_.toSimulateIndexTemplateResponse)
+  }
+
   def getComposableTemplate(request: GetComposableIndexTemplateAction.Request): Task[GetComposableIndexTemplateAction.Response] = {
     import tech.beshu.ror.proxy.es.clients.actions.GetComposableTemplate._
     executeAsync(client.indices().getIndexTemplate(request.toGetComposableTemplateRequest, RequestOptions.DEFAULT))
       .map(_.toGetComposableTemplateResponse)
+      .onErrorRecover(notFoundResponseOf(request))
   }
 
   def putComposableTemplate(request: PutComposableIndexTemplateAction.Request): Task[AcknowledgedResponse] = {
@@ -260,6 +269,7 @@ class RestHighLevelClientAdapter(client: RestHighLevelClient) {
     import tech.beshu.ror.proxy.es.clients.actions.GetComponentTemplate._
     executeAsync(client.cluster().getComponentTemplate(request.toGetComponentTemplateRequest, RequestOptions.DEFAULT))
       .map(_.toGetComponentTemplateResponse)
+      .onErrorRecover(notFoundResponseOf(request))
   }
 
   def putComponentTemplate(request: PutComponentTemplateAction.Request): Task[AcknowledgedResponse] = {

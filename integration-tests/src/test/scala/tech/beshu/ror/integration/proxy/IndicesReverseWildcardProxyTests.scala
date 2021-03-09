@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.IndicesReverseWildcardSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
 
-class IndicesReverseWildcardProxyTests extends IndicesReverseWildcardSuite with BasicClusterProxyTestSupport
+class IndicesReverseWildcardProxyTests extends IndicesReverseWildcardSuite with XpackEsClusterProxyTestSupport
