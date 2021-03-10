@@ -37,7 +37,7 @@ trait ActionsSuite
     }
   }
 
-  private lazy val actionManager = new DocumentManager(basicAuthClient("any", "whatever"), targetEs.esVersion)
+  private lazy val actionManager = new DocumentManager(basicAuthClient("any", "whatever"), esVersionUsed)
 
   "A actions rule" should {
     "work for delete request" which {

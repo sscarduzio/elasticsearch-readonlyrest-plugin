@@ -31,7 +31,7 @@ trait FieldRuleGetApiSourceFilteringSuite
   override protected def fetchDocument(client: RestClient,
                                        index: String,
                                        clientSourceParams: Option[FieldRuleSourceFilteringSuite.ClientSourceOptions]): JsonResponse = {
-    val documentManager = new DocumentManager(client, targetEs.esVersion)
+    val documentManager = new DocumentManager(client, esVersionUsed)
 
     val queryParams = clientSourceParams match {
       case Some(DoNotFetchSource) => Map("_source" -> "false")

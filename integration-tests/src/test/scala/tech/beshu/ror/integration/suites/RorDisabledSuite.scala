@@ -42,7 +42,7 @@ trait RorDisabledSuite
 
   "ROR with `enable: false` in settings" should {
     "pass ES request through" in {
-      val user1ClusterStateManager = new CatManager(basicAuthClient("user1", "pass"), esVersion = targetEs.esVersion)
+      val user1ClusterStateManager = new CatManager(basicAuthClient("user1", "pass"), esVersion = esVersionUsed)
 
       val result = user1ClusterStateManager.templates()
 

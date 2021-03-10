@@ -40,8 +40,10 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
     request.getRequests.asScala.flatMap(r => IndexName.fromString(r.index())).toSet
   }
 
-  override protected def update(request: MultiTermVectorsRequest, indices: NonEmptyList[IndexName]): ModificationResult = {
-    request.getRequests.removeIf { request => removeOrAlter(request, indices.toList.toSet) }
+  override protected def update(request: MultiTermVectorsRequest,
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    request.getRequests.removeIf { request => removeOrAlter(request, filteredIndices.toList.toSet) }
     if (request.getRequests.asScala.isEmpty) {
       logger.error(s"[${id.show}] Cannot update ${actionRequest.getClass.getSimpleName} request. All indices were filtered out.")
       ShouldBeInterrupted
@@ -59,7 +61,7 @@ class MultiTermVectorsEsRequestContext(actionRequest: MultiTermVectorsRequest,
         true
       case index :: rest =>
         if (rest.nonEmpty) {
-          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. Whole set of indices [${remaining.mkString(",")}]")
+          logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${remaining.mkString(",")}]")
         }
         request.index(index.value.value)
         false

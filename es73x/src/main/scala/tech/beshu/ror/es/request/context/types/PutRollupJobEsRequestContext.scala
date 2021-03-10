@@ -44,8 +44,10 @@ class PutRollupJobEsRequestContext private(actionRequest: ActionRequest,
 
   override protected def indicesFrom(request: ActionRequest): Set[domain.IndexName] = originIndices
 
-  override protected def update(request: ActionRequest, indices: NonEmptyList[domain.IndexName]): ModificationResult = {
-    if(originIndices == indices.toList.toSet) {
+  override protected def update(request: ActionRequest,
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    if(originIndices == filteredIndices.toList.toSet) {
       Modified
     } else {
       logger.error(s"[${id.show}] Write request with indices requires the same set of indices after filtering as at the beginning. Please report the issue.")

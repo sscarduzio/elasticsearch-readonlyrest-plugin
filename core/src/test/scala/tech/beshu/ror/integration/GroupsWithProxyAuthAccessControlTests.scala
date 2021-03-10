@@ -16,10 +16,11 @@
  */
 package tech.beshu.ror.integration
 
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, IndexWithAliases, User}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.uniquelist.UniqueList
@@ -65,7 +66,14 @@ class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoa
     "proxy auth is used together with groups" should {
       "allow to proceed" when {
         "proxy auth user is correct one" in {
-          val request = MockRequestContext.indices.copy(headers = Set(header("X-Auth-Token", "user1-proxy-id")))
+          val request = MockRequestContext.indices.copy(
+            headers = Set(header("X-Auth-Token", "user1-proxy-id")),
+            filteredIndices = Set(IndexName("g12_index")),
+            allIndicesAndAliases = Set(
+              IndexWithAliases(IndexName("g12_index"), Set.empty),
+              IndexWithAliases(IndexName("g34_index"), Set.empty)
+            )
+          )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
           inside(result.result) { case Allow(blockContext, _) =>
@@ -76,7 +84,14 @@ class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoa
       }
       "not allow to proceed" when {
         "proxy auth user is unknown" in {
-          val request = MockRequestContext.indices.copy(headers = Set(header("X-Auth-Token", "user1-invalid")))
+          val request = MockRequestContext.indices.copy(
+            headers = Set(header("X-Auth-Token", "user1-invalid")),
+            filteredIndices = Set(IndexName("g12_index")),
+            allIndicesAndAliases = Set(
+              IndexWithAliases(IndexName("g12_index"), Set.empty),
+              IndexWithAliases(IndexName("g34_index"), Set.empty)
+            )
+          )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
           inside(result.result) { case ForbiddenByMismatched(causes) =>

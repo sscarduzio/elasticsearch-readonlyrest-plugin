@@ -35,7 +35,7 @@ class MethodsRule(val settings: Settings)
     It's actually interpreted by all means as a GET!
    */
   override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    RuleResult.fromCondition(blockContext) {
+    RuleResult.resultBasedOnCondition(blockContext) {
       settings.methods.contains(blockContext.requestContext.method)
     }
   }

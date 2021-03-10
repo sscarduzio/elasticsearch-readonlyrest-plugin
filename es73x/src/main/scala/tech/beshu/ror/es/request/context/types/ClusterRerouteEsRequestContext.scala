@@ -45,10 +45,11 @@ class ClusterRerouteEsRequestContext(actionRequest: ClusterRerouteRequest,
   }
 
   override protected def update(request: ClusterRerouteRequest,
-                                indices: NonEmptyList[domain.IndexName]): ModificationResult = {
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
     val modifiedCommands = request
       .getCommands.commands().asScala
-      .map(modifiedCommand(_, indices))
+      .map(modifiedCommand(_, filteredIndices))
     request.commands(new AllocationCommands(modifiedCommands: _*))
     Modified
   }

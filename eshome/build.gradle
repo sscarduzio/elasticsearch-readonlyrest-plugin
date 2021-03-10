@@ -61,10 +61,12 @@ task copyRorJar(type: Copy) {
     }
     into "$buildDir/plugins/readonlyrest"
 }
+
 task copyNettyJar(type: Copy) {
     from configurations.netty
     into "$buildDir/modules/transport-netty4"
 }
+
 task copyConfigFiles(type: Copy) {
     from('.'){
         include 'config/**', 'lib/**', 'config/**', 'modules/**', 'plugins/**'
@@ -72,7 +74,8 @@ task copyConfigFiles(type: Copy) {
     from "sec-all.policy"
     into "$buildDir"
 }
-task runEs(type: JavaExec, dependsOn: [copyConfigFiles, copyRorJar, copyNettyJar]) {
+
+task runEs(type: JavaExec, dependsOn: [clean, copyConfigFiles, copyRorJar, copyNettyJar]) {
     workingDir = buildDir
     classpath = configurations.runtime
     systemProperties = ["java.awt.headless"                     : "true",
@@ -92,4 +95,10 @@ task runEs(type: JavaExec, dependsOn: [copyConfigFiles, copyRorJar, copyNettyJar
                         "java.security.policy"                  : "$buildDir/sec-all.policy",
     ]
     main = "org.elasticsearch.bootstrap.Elasticsearch"
+}
+
+clean {
+    delete fileTree("plugins/readonlyrest") {
+        include '*.jar'
+    }
 }

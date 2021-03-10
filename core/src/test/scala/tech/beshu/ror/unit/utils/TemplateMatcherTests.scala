@@ -17,9 +17,9 @@
 package tech.beshu.ror.unit.utils
 
 import org.scalatest.prop.TableDrivenPropertyChecks._
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplatePatternsMatcher
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.TemplateMatcher
 import tech.beshu.ror.accesscontrol.domain.IndexName
 
 class TemplateMatcherTests extends AnyWordSpec {
@@ -40,7 +40,7 @@ class TemplateMatcherTests extends AnyWordSpec {
         )
 
       forAll(templatePatterns) { (templatePatterns, allowedIndices, filteredPatterns) =>
-        TemplateMatcher.filterAllowedTemplateIndexPatterns(
+        TemplatePatternsMatcher.filterAllowedTemplateIndexPatterns(
           templatePatterns.map(IndexName.fromUnsafeString),
           allowedIndices.map(IndexName.fromUnsafeString)
         ) should be (filteredPatterns.map(IndexName.fromUnsafeString))
@@ -59,7 +59,7 @@ class TemplateMatcherTests extends AnyWordSpec {
         )
 
       forAll(templatePatterns) { (templatePatterns, allowedIndices, filteredPatterns) =>
-        TemplateMatcher.narrowAllowedTemplateIndexPatterns(
+        TemplatePatternsMatcher.narrowAllowedTemplateIndexPatterns(
           templatePatterns.map(IndexName.fromUnsafeString),
           allowedIndices.map(IndexName.fromUnsafeString)
         ) should be (filteredPatterns.map { case (a, b) => (IndexName.fromUnsafeString(a), IndexName.fromUnsafeString(b)) })

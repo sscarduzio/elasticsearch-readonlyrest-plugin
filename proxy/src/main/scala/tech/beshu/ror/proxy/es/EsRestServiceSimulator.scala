@@ -33,6 +33,7 @@ import org.elasticsearch.tasks
 import org.elasticsearch.tasks.TaskManager
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.StartingFailure
 import tech.beshu.ror.es.actions.rradmin._
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
@@ -281,7 +282,8 @@ object EsRestServiceSimulator {
              esConfigFile: File,
              threadPool: ThreadPool)
             (implicit scheduler: Scheduler,
-             envVarsProvider: EnvVarsProvider): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
+             envVarsProvider: EnvVarsProvider,
+             generator: UniqueIdentifierGenerator): Task[Either[StartingFailure, EsRestServiceSimulator]] = {
     val simulatorEsSettingsFolder = esConfigFile.parent.path
     val rrAdminActionHandler = new RRAdminActionHandler(ProxyIndexJsonContentService, simulatorEsSettingsFolder)
     val result = for {

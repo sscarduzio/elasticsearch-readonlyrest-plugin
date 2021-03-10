@@ -17,11 +17,11 @@
 package tech.beshu.ror.accesscontrol
 
 import java.nio.charset.StandardCharsets.UTF_8
-import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZoneId}
 import java.util.{Base64, Locale, UUID}
 
-import cats.{Eq, Show}
+import cats.Eq
 import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
@@ -31,8 +31,8 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter}
-import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction, searchAction, searchTemplateAction}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction, searchAction, searchTemplateAction, _}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError.{EmptyAuthorizationValue, InvalidHeaderFormat, RorMetadataInvalidFormat}
@@ -43,7 +43,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.util.{Failure, Random, Success, Try}
-import tech.beshu.ror.utils.CaseMappingEquality._
+
 object domain {
 
   final case class CorrelationId(value: NonEmptyString)
@@ -247,7 +247,10 @@ object domain {
     def isSnapshot: Boolean = value.contains("/snapshot/")
     def isRepository: Boolean = value.contains("/repository/")
     def isTemplate: Boolean = value.contains("/template/")
-    def isPutTemplate: Boolean = value == "indices:admin/template/put"
+    def isPutTemplate: Boolean = List(
+      putTemplateAction,
+      putIndexTemplateAction
+    ).contains(this)
     def isRorAction: Boolean = List(
       rorUserMetadataAction,
       rorConfigAction,
@@ -271,6 +274,8 @@ object domain {
     val asyncSearchAction = Action("indices:data/read/async_search/submit")
     val rollupSearchAction = Action("indices:data/read/xpack/rollup/search")
     val searchTemplateAction = Action("indices:data/read/search/template")
+    val putTemplateAction = Action("indices:admin/template/put")
+    val putIndexTemplateAction = Action("indices:admin/index_template/put")
     // ROR actions
     val rorUserMetadataAction = Action("cluster:ror/user_metadata/get")
     val rorConfigAction = Action("cluster:ror/config/manage")
@@ -278,7 +283,7 @@ object domain {
     val rorOldConfigAction = Action("cluster:ror/config/refreshsettings")
 
     implicit val eqAction: Eq[Action] = Eq.fromUniversalEquals
-    implicit val caseMappingEqualityAction:CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
+    implicit val caseMappingEqualityAction: CaseMappingEquality[Action] = CaseMappingEquality.instance(_.value, identity)
   }
 
   final case class IndexName(value: NonEmptyString) {
@@ -291,10 +296,19 @@ object domain {
       if(hasWildcard) matcher.`match`(indexName)
       else this == indexName
     }
+    def isAllowedBy(allowedIndices: Traversable[IndexName]): Boolean = {
+      this match {
+        case Placeholder(placeholder) =>
+          val potentialAliases = allowedIndices.map(i => placeholder.index(i.value))
+          potentialAliases.exists { alias => allowedIndices.exists(_.matches(alias)) }
+        case _ =>
+          allowedIndices.exists(_.matches(this))
+      }
+    }
   }
   object IndexName {
-    implicit val caseMappingEqualityIndexName: CaseMappingEquality[IndexName] =
-      CaseMappingEquality.instance(_.value.value, identity)
+    implicit val caseMappingEqualityIndexName: CaseMappingEquality[IndexName] = CaseMappingEquality.instance(_.value.value, identity)
+
     val wildcard: IndexName = fromUnsafeString("*")
     val all: IndexName = fromUnsafeString("_all")
     val devNullKibana: IndexName = fromUnsafeString(".kibana-devnull")
@@ -320,6 +334,44 @@ object domain {
         case index => index
       }
     }
+  }
+
+  final case class IndexPattern(value: NonEmptyString) {
+    private lazy val matcher = MatcherWithWildcardsScalaAdapter.create(toIndexName :: Nil)
+
+    lazy val toIndexName: IndexName = IndexName(value)
+
+    def isAllowedBy(index: IndexName): Boolean = {
+      matcher.`match`(index) || index.matches(toIndexName)
+    }
+
+    def isAllowedByAny(anyIndexFrom: Traversable[IndexName]): Boolean = {
+      anyIndexFrom.exists(this.isAllowedBy)
+    }
+
+    def isSubsetOf(index: IndexName): Boolean = {
+      index.matches(toIndexName)
+    }
+  }
+  object IndexPattern {
+
+    def fromString(value: String): Option[IndexPattern] = NonEmptyString.from(value).map(IndexPattern.apply).toOption
+  }
+
+  final case class AliasPlaceholder private (alias: IndexName) extends AnyVal {
+    def index(value: NonEmptyString): IndexName =
+      IndexName.fromUnsafeString(alias.value.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value))
+  }
+  object AliasPlaceholder {
+    private val placeholder = "{index}"
+    private val escapedPlaceholder = placeholder.replaceAllLiterally("{", "\\{").replaceAllLiterally("}", "\\}")
+
+    def from(alias: IndexName): Option[AliasPlaceholder] =
+      if(alias.value.contains(placeholder)) Some(AliasPlaceholder(alias)) else None
+  }
+
+  object Placeholder {
+    def unapply(alias: IndexName): Option[AliasPlaceholder] = AliasPlaceholder.from(alias)
   }
 
   final case class IndexWithAliases(index: IndexName, aliases: Set[IndexName]) {
@@ -381,7 +433,71 @@ object domain {
       CaseMappingEquality.instance(_.value.value, identity)
   }
 
-  final case class Template(name: TemplateName, patterns: UniqueNonEmptyList[IndexName])
+  sealed trait Template {
+    def name: TemplateName
+  }
+  object Template {
+    final case class LegacyTemplate(override val name: TemplateName,
+                                    patterns: UniqueNonEmptyList[IndexPattern],
+                                    aliases: Set[IndexName])
+      extends Template
+
+    final case class IndexTemplate(override val name: TemplateName,
+                                   patterns: UniqueNonEmptyList[IndexPattern],
+                                   aliases: Set[IndexName])
+      extends Template
+
+    final case class ComponentTemplate(override val name: TemplateName,
+                                       aliases: Set[IndexName])
+      extends Template
+  }
+
+  sealed trait TemplateOperation
+  object TemplateOperation {
+
+    final case class GettingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
+      extends TemplateOperation
+
+    final case class AddingLegacyTemplate(name: TemplateName,
+                                          patterns: UniqueNonEmptyList[IndexPattern],
+                                          aliases: Set[IndexName])
+      extends TemplateOperation
+
+    final case class DeletingLegacyTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
+      extends TemplateOperation
+
+    final case class GettingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
+      extends TemplateOperation
+
+    final case class AddingIndexTemplate(name: TemplateName,
+                                         patterns: UniqueNonEmptyList[IndexPattern],
+                                         aliases: Set[IndexName])
+      extends TemplateOperation
+
+    final case class AddingIndexTemplateAndGetAllowedOnes(name: TemplateName,
+                                                          patterns: UniqueNonEmptyList[IndexPattern],
+                                                          aliases: Set[IndexName],
+                                                          allowedTemplates: List[TemplateNamePattern])
+      extends TemplateOperation
+
+    final case class DeletingIndexTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
+      extends TemplateOperation
+
+    final case class GettingLegacyAndIndexTemplates(gettingLegacyTemplates: GettingLegacyTemplates,
+                                                    gettingIndexTemplates: GettingIndexTemplates)
+      extends TemplateOperation
+
+    final case class GettingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
+      extends TemplateOperation
+
+    final case class AddingComponentTemplate(name: TemplateName,
+                                             aliases: Set[IndexName])
+      extends TemplateOperation
+
+    final case class DeletingComponentTemplates(namePatterns: NonEmptyList[TemplateNamePattern])
+      extends TemplateOperation
+  }
+
   final case class TemplateName(value: NonEmptyString)
   object TemplateName {
     def fromString(value: String): Option[TemplateName] = {
@@ -389,6 +505,30 @@ object domain {
     }
     implicit val eqTemplateName: Eq[TemplateName] = Eq.fromUniversalEquals
   }
+
+  final case class TemplateNamePattern(value: NonEmptyString)
+  object TemplateNamePattern {
+    implicit val caseMappingEqualityTemplateNamePattern: CaseMappingEquality[TemplateNamePattern] = CaseMappingEquality.instance(_.value.value, identity)
+
+    val wildcard: TemplateNamePattern = TemplateNamePattern("*")
+
+    def fromString(value: String): Option[TemplateNamePattern] = {
+      NonEmptyString
+        .from(value).toOption
+        .map(TemplateNamePattern.apply)
+    }
+
+    def from(templateName: TemplateName): TemplateNamePattern = TemplateNamePattern(templateName.value)
+
+    def generateNonExistentBasedOn(templateNamePattern: TemplateNamePattern)
+                                  (implicit identifierGenerator: UniqueIdentifierGenerator): TemplateNamePattern = {
+      val nonexistentTemplateNamePattern = s"${templateNamePattern.value}_ROR_${identifierGenerator.generate(10)}"
+      TemplateNamePattern(NonEmptyString.unsafeFrom(nonexistentTemplateNamePattern))
+    }
+
+    implicit val eqTemplateName: Eq[TemplateNamePattern] = Eq.fromUniversalEquals
+  }
+
 
   final case class ApiKey(value: NonEmptyString)
   object ApiKey {

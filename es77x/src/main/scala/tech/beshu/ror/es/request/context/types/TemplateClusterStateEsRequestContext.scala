@@ -16,19 +16,26 @@
  */
 package tech.beshu.ror.es.request.context.types
 
+import cats.data.NonEmptyList
+import cats.implicits._
+import eu.timepit.refined.auto._
 import monix.eval.Task
-import org.elasticsearch.action.ActionResponse
 import org.elasticsearch.action.admin.cluster.state.{ClusterStateRequest, ClusterStateResponse}
-import org.elasticsearch.cluster.ClusterState
 import org.elasticsearch.cluster.metadata.MetaData
-import org.elasticsearch.common.collect.ImmutableOpenMap
+import org.elasticsearch.cluster.{ClusterName, ClusterState}
+import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
-import tech.beshu.ror.accesscontrol.domain.{Template, TemplateName, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{TemplateNamePattern, UriPath}
+import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
+import tech.beshu.ror.utils.ScalaOps._
 
 import scala.collection.JavaConverters._
 
@@ -37,10 +44,12 @@ object TemplateClusterStateEsRequestContext {
   def from(actionRequest: ClusterStateRequest,
            esContext: EsContext,
            clusterService: RorClusterService,
-           threadPool: ThreadPool): Option[TemplateClusterStateEsRequestContext] = {
+           settings: Settings,
+           threadPool: ThreadPool)
+          (implicit generator: UniqueIdentifierGenerator): Option[TemplateClusterStateEsRequestContext] = {
     UriPath.from(esContext.channel.request().uri()) match {
       case Some(TemplatePath(_) | CatTemplatePath(_)) =>
-        Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, clusterService, threadPool))
+        Some(new TemplateClusterStateEsRequestContext(actionRequest, esContext, clusterService, settings, threadPool))
       case _ =>
         None
     }
@@ -50,54 +59,114 @@ object TemplateClusterStateEsRequestContext {
 class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRequest,
                                                    esContext: EsContext,
                                                    clusterService: RorClusterService,
+                                                   settings: Settings,
                                                    override val threadPool: ThreadPool)
-  extends BaseTemplatesEsRequestContext[ClusterStateRequest](actionRequest, esContext, clusterService, threadPool) {
+                                                  (implicit generator: UniqueIdentifierGenerator)
+  extends BaseTemplatesEsRequestContext[ClusterStateRequest, GettingLegacyTemplates](
+    actionRequest, esContext, clusterService, threadPool
+  ) {
 
-  override protected def templatesFrom(actionRequest: ClusterStateRequest): Set[Template] = this.allTemplates
+  private lazy val allTemplatesNamePattern = TemplateNamePattern("*")
 
-  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
-    val allowedTemplates = blockContext.templates.map(_.name)
-    ModificationResult.UpdateResponse(updateCatTemplateResponse(allowedTemplates))
+  override protected def templateOperationFrom(request: ClusterStateRequest): GettingLegacyTemplates = {
+    GettingLegacyTemplates(NonEmptyList.one(allTemplatesNamePattern))
   }
 
-  private def updateCatTemplateResponse(allowedTemplates: Set[TemplateName])
-                                       (actionResponse: ActionResponse): Task[ActionResponse] = Task.now {
-    actionResponse match {
-      case response: ClusterStateResponse =>
-        val oldMetadata = response.getState.metaData()
-        val filteredTemplates = oldMetadata
-          .templates().valuesIt().asScala.toSet
-          .filter { t =>
-            TemplateName
-              .fromString(t.name())
-              .exists(allowedTemplates.contains)
-          }
+  override def modifyWhenTemplateNotFound: ModificationResult = {
+    ModificationResult.UpdateResponse(_ => Task.now(emptyClusterResponse))
+  }
 
-        val newMetadataWithFilteredTemplates = oldMetadata.templates().valuesIt().asScala
-          .foldLeft(new MetaData.Builder(oldMetadata)) {
-            case (acc, elem) => acc.removeTemplate(elem.name())
-          }
-          .templates(
-            ImmutableOpenMap
-              .builder(filteredTemplates.size)
-              .putAll(filteredTemplates.map(t => (t.name(), t)).toMap.asJava)
-              .build()
-          )
-          .build()
-
-        val modifiedClusterState =
-          ClusterState
-            .builder(response.getState)
-            .metaData(newMetadataWithFilteredTemplates)
-            .build()
-
-        new ClusterStateResponse(
-          response.getClusterName,
-          modifiedClusterState,
-          response.isWaitForTimedOut
+  override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
+    blockContext.templateOperation match {
+      case GettingLegacyTemplates(namePatterns) =>
+        updateResponse(
+          modifyLegacyTemplatesOfResponse(_, namePatterns.toList.toSet, blockContext.responseTemplateTransformation)
         )
-      case response => response
+      case other =>
+        logger.error(
+          s"""[${id.show}] Cannot modify templates request because of invalid operation returned by ACL (operation
+             | type [${other.getClass}]]. Please report the issue!""".oneLiner)
+        ModificationResult.ShouldBeInterrupted
     }
   }
 
+  private def updateResponse(func: ClusterStateResponse => ClusterStateResponse) = {
+    ModificationResult.UpdateResponse {
+      case response: ClusterStateResponse =>
+        Task.now(func(response))
+      case other =>
+        Task.now(other)
+    }
+  }
+
+  private def modifyLegacyTemplatesOfResponse(response: ClusterStateResponse,
+                                              allowedTemplates: Set[TemplateNamePattern],
+                                              transformation: TemplatesTransformation) = {
+    implicit val idImplicit: RequestContext.Id = id
+    val oldMetadata = response.getState.metaData()
+    val filteredTemplates = GetTemplatesEsRequestContext
+      .filter(
+        oldMetadata.templates().valuesIt().asScala.toList,
+        transformation
+      )
+      .filter { t =>
+        TemplateNamePattern
+          .fromString(t.name())
+          .exists(allowedTemplates.contains)
+      }
+      .map(_.name())
+
+    val newMetadataWithFilteredTemplates = oldMetadata
+      .templates().keysIt().asScala
+      .foldLeft(new MetaData.Builder(oldMetadata)) {
+        case (acc, templateName) if filteredTemplates.contains(templateName) => acc
+        case (acc, templateName) => acc.removeTemplate(templateName)
+      }
+      .build()
+
+    val modifiedClusterState =
+      ClusterState
+        .builder(response.getState)
+        .metaData(newMetadataWithFilteredTemplates)
+        .build()
+
+    new ClusterStateResponse(
+      response.getClusterName,
+      modifiedClusterState,
+      response.isWaitForTimedOut
+    )
+  }
+
+  private def modifyIndexTemplatesOfResponse(response: ClusterStateResponse,
+                                             allowedTemplates: Set[TemplateNamePattern],
+                                             transformation: TemplatesTransformation) = {
+    implicit val idImplicit: RequestContext.Id = id
+    val oldMetadata = response.getState.metaData()
+
+    val newMetadataWithFilteredTemplatesV2 = oldMetadata
+      .templatesV2().keySet().asScala
+      .foldLeft(new MetaData.Builder(oldMetadata)) {
+        case (acc, templateName) => acc.removeIndexTemplate(templateName)
+      }
+      .build()
+
+    // remove all (just in case)
+    val modifiedClusterState =
+      ClusterState
+        .builder(response.getState)
+        .metaData(newMetadataWithFilteredTemplatesV2)
+        .build()
+
+    new ClusterStateResponse(
+      response.getClusterName,
+      modifiedClusterState,
+      response.isWaitForTimedOut
+    )
+  }
+
+  private lazy val emptyClusterResponse = {
+    new ClusterStateResponse(
+      ClusterName.CLUSTER_NAME_SETTING.get(settings), ClusterState.EMPTY_STATE, false
+    )
+  }
 }

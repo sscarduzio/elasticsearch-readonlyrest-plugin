@@ -17,13 +17,10 @@
 package tech.beshu.ror.es.request.context.types
 
 import cats.data.NonEmptyList
-import org.elasticsearch.action.admin.indices.settings.get.{GetSettingsRequest, GetSettingsResponse}
-import org.elasticsearch.common.collect.ImmutableOpenMap
-import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.domain.UriPath.CatIndicesPath
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.context.ModificationResult
@@ -42,24 +39,9 @@ class GetSettingsEsRequestContext(actionRequest: GetSettingsRequest,
   }
 
   override protected def update(request: GetSettingsRequest,
-                                indices: NonEmptyList[IndexName]): ModificationResult = {
-    request.indices(indices.toList.map(_.value.value): _*)
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    request.indices(filteredIndices.toList.map(_.value.value): _*)
     Modified
-  }
-
-  override def modifyWhenIndexNotFound: ModificationResult = {
-    uriPath match {
-      case CatIndicesPath(_) =>
-        ModificationResult.CustomResponse(emptyCatIndicesResponse)
-      case _ =>
-        super.modifyWhenIndexNotFound
-    }
-  }
-
-  private def emptyCatIndicesResponse: GetSettingsResponse = {
-    new GetSettingsResponse(
-      ImmutableOpenMap.of[String, Settings](),
-      ImmutableOpenMap.of[String, Settings]()
-    )
   }
 }

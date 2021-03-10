@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.ReindexSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
 
-class ReindexProxyTests extends ReindexSuite with BasicClusterProxyTestSupport
+class ReindexProxyTests extends ReindexSuite with XpackEsClusterProxyTestSupport

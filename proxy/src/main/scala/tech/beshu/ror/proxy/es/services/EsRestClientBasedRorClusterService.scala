@@ -5,15 +5,16 @@ package tech.beshu.ror.proxy.es.services
 
 import cats.data.NonEmptyList
 import cats.implicits._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
-import org.elasticsearch.action.admin.indices.template.get.GetIndexTemplatesRequest
+import org.elasticsearch.action.admin.indices.template.get.{GetComponentTemplateAction, GetComposableIndexTemplateAction, GetIndexTemplatesRequest}
 import org.elasticsearch.action.search.{MultiSearchRequest, MultiSearchResponse, SearchResponse}
 import org.elasticsearch.client.Requests
 import org.elasticsearch.client.indices.GetIndexRequest
-import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexMetadata, IndexTemplateMetadata}
+import org.elasticsearch.cluster.metadata.{AliasMetadata, IndexMetadata}
 import org.elasticsearch.index.query.QueryBuilders
 import tech.beshu.ror.accesscontrol.domain
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
@@ -22,6 +23,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
+import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
@@ -55,19 +57,68 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
   }
 
   override def allTemplates: Set[Template] = {
-    client
-      .getTemplate(new GetIndexTemplatesRequest())
-      .map { response =>
-        response
-          .getIndexTemplates.asScala
-          .flatMap(templateFrom)
-          .toSet
-      }
+    Task
+      .gatherUnordered(
+        legacyTemplates() :: indexTemplates() :: componentTemplates() :: Nil
+      )
+      .map(_.flatten.toSet[Template])
       .runSyncUnsafe()
   }
 
-  override def getTemplate(name: TemplateName): Option[Template] = {
-    allTemplates.find(_.name === name)
+  private def legacyTemplates() = {
+    client
+      .getTemplate(new GetIndexTemplatesRequest())
+      .map(_.getIndexTemplates.asSafeList)
+      .map { templates =>
+        templates.flatMap { template =>
+          for {
+            templateName <- NonEmptyString.unapply(template.getName).map(TemplateName.apply)
+            indexPatterns <- UniqueNonEmptyList.fromList(
+              template.patterns().asSafeList.flatMap(IndexPattern.fromString)
+            )
+            aliases = template.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+          } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
+        }
+      }
+      .handleError { _ => List.empty }
+  }
+
+  private def indexTemplates() = {
+    client
+      .getComposableTemplate(new GetComposableIndexTemplateAction.Request())
+      .map(_.indexTemplates().asSafeMap)
+      .map { templates =>
+        templates
+          .flatMap { case (name, template) =>
+            for {
+              templateName <- NonEmptyString.unapply(name).map(TemplateName.apply)
+              indexPatterns <- UniqueNonEmptyList.fromList(
+                template.indexPatterns().asSafeList.flatMap(IndexPattern.fromString)
+              )
+              aliases = template.template().asSafeSet
+                .flatMap(_.aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet)
+            } yield Template.IndexTemplate(templateName, indexPatterns, aliases)
+          }
+          .toList
+      }
+      .handleError { _ => List.empty }
+  }
+
+  private def componentTemplates() = {
+    client
+      .getComponentTemplate(new GetComponentTemplateAction.Request())
+      .map(_.getComponentTemplates.asSafeMap)
+      .map { templates =>
+        templates
+          .flatMap { case (name, template) =>
+            for {
+              templateName <- NonEmptyString.unapply(name).map(TemplateName.apply)
+              aliases = template.template().aliases().asSafeMap.values.flatMap(a => IndexName.fromString(a.alias())).toSet
+            } yield Template.ComponentTemplate(templateName, aliases)
+          }
+          .toList
+      }
+      .handleError { _ => List.empty }
   }
 
   override def verifyDocumentAccessibility(document: Document,
@@ -102,22 +153,6 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .fromString(indexNameString)
       .map { index =>
         (index, aliasMetadata.flatMap(am => IndexName.fromString(am.alias())))
-      }
-  }
-
-  private def templateFrom(metaData: IndexTemplateMetadata): Option[Template] = {
-    TemplateName
-      .fromString(metaData.name())
-      .flatMap { templateName =>
-        UniqueNonEmptyList
-          .fromList {
-            metaData
-              .patterns().asScala.toList
-              .flatMap(IndexName.fromString)
-          }
-          .map { patterns =>
-            Template(templateName, patterns)
-          }
       }
   }
 

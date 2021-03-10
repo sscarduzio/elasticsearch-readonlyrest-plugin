@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.utils.uniquelist
 
+import cats.implicits._
+import cats.Show
 import cats.data.NonEmptyList
 
 import scala.collection.SortedSet
@@ -52,4 +54,14 @@ object UniqueNonEmptyList {
   def fromSortedSet[T](set: SortedSet[T]): Option[UniqueNonEmptyList[T]] =
     if(set.nonEmpty) Some(new UniqueNonEmptyList[T](set.toVector.distinct))
     else None
+
+  def unsafeFromSet[T](set: Set[T]): UniqueNonEmptyList[T] =
+    fromSet(set).getOrElse(throw new IllegalArgumentException("Cannot create UniqueNonEmptyList from empty set"))
+
+  def fromSet[T](set: Set[T]): Option[UniqueNonEmptyList[T]] =
+    if(set.nonEmpty) Some(new UniqueNonEmptyList[T](set.toVector.distinct))
+    else None
+
+  implicit def show[T: Show]: Show[UniqueNonEmptyList[T]] =
+    Show.show(_.toList.map(_.show).mkString(","))
 }

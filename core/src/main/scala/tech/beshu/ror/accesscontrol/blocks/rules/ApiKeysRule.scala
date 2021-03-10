@@ -32,7 +32,7 @@ class ApiKeysRule(val settings: Settings)
   override val name: Rule.Name = ApiKeysRule.name
 
   def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-    RuleResult.fromCondition(blockContext) {
+    RuleResult.resultBasedOnCondition(blockContext) {
       blockContext
         .requestContext
         .headers

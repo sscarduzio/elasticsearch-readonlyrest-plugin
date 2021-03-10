@@ -24,14 +24,14 @@ import monix.eval.Task
 import os.SubProcess
 import tech.beshu.ror.utils.containers.exceptions.ContainerCreationException
 import tech.beshu.ror.utils.containers.providers.ClientProvider.adminCredentials
-import tech.beshu.ror.utils.gradle.RorProxyGradleProject
+import tech.beshu.ror.utils.gradle.{RorPluginGradleProject, RorProxyGradleProject}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.{EsStartupChecker, Tuple}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class RorProxyInstance private(val port: Int, proxyProcess: SubProcess)
+class RorProxyInstance private(val esVersion: String, val port: Int, proxyProcess: SubProcess)
   extends LazyLogging {
 
   def close(): Unit = {
@@ -79,7 +79,7 @@ object RorProxyInstance extends LazyLogging {
         stdout = os.Inherit,
         env = environmentVariables
       )
-    new RorProxyInstance(proxyPort, proc)
+    new RorProxyInstance(RorPluginGradleProject.fromSystemProperty.getESVersion, proxyPort, proc)
   }
 
   private def waitForProxyStart(port: Int): Unit = {

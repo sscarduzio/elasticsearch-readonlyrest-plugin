@@ -72,6 +72,8 @@ class RegularRequestHandler(engine: Engine,
           onIndexNotFound(request)
         case RegularRequestResult.AliasNotFound() =>
           onAliasNotFound(request)
+        case RegularRequestResult.TemplateNotFound() =>
+          onTemplateNotFound(request)
         case RegularRequestResult.Failed(ex) =>
           esContext.listener.onFailure(ex.asInstanceOf[Exception])
         case RegularRequestResult.PassedThrough() =>
@@ -144,6 +146,23 @@ class RegularRequestHandler(engine: Engine,
     }
   }
 
+  private def onTemplateNotFound[B <: BlockContext : BlockContextUpdater](request: EsRequest[B] with RequestContext.Aux[B]): Unit = {
+    BlockContextUpdater[B] match {
+      case TemplateRequestBlockContextUpdater =>
+        handleTemplateNotFoundForTemplateRequest(request.asInstanceOf[EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]])
+      case FilterableMultiRequestBlockContextUpdater |
+           FilterableRequestBlockContextUpdater |
+           GeneralIndexRequestBlockContextUpdater |
+           CurrentUserMetadataRequestBlockContextUpdater |
+           GeneralNonIndexRequestBlockContextUpdater |
+           RepositoryRequestBlockContextUpdater |
+           SnapshotRequestBlockContextUpdater |
+           AliasRequestBlockContextUpdater |
+           MultiIndexRequestBlockContextUpdater =>
+        onForbidden(NonEmptyList.one(OperationNotAllowed))
+    }
+  }
+
   private def handleIndexNotFoundForGeneralIndexRequest(request: EsRequest[GeneralIndexRequestBlockContext] with RequestContext.Aux[GeneralIndexRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenIndexNotFound
     handleModificationResult(modificationResult)
@@ -166,6 +185,11 @@ class RegularRequestHandler(engine: Engine,
 
   private def handleAliasNotFoundForAliasRequest(request: EsRequest[AliasRequestBlockContext] with RequestContext.Aux[AliasRequestBlockContext]): Unit = {
     val modificationResult = request.modifyWhenAliasNotFound
+    handleModificationResult(modificationResult)
+  }
+
+  private def handleTemplateNotFoundForTemplateRequest(request: EsRequest[TemplateRequestBlockContext] with RequestContext.Aux[TemplateRequestBlockContext]): Unit = {
+    val modificationResult = request.modifyWhenTemplateNotFound
     handleModificationResult(modificationResult)
   }
 

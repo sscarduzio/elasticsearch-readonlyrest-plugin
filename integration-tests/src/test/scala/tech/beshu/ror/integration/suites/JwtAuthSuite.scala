@@ -45,7 +45,7 @@ trait JwtAuthSuite
   override implicit val rorConfigFileName = "/jwt_auth/readonlyrest.yml"
 
   "rejectRequestWithoutAuthorizationHeader" in {
-    val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = targetEs.esVersion)
+    val clusterStateManager = new CatManager(noBasicAuthClient, esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -56,7 +56,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -67,7 +67,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -78,7 +78,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(200)
@@ -89,7 +89,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("x-custom-header" -> s"$token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(200)
@@ -100,7 +100,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("x-custom-header2" -> s"x-custom-prefix$token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(200)
@@ -111,7 +111,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("x-custom-header" -> s"$token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -122,7 +122,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -133,7 +133,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -144,7 +144,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -156,7 +156,7 @@ trait JwtAuthSuite
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
       additionalHeaders = Map("Authorization" -> s"Bearer $token"),
-      esVersion = targetEs.esVersion)
+      esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(200)

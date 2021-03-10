@@ -44,7 +44,7 @@ trait ClusterStateWithInternodeSslSuite
     )
   )
 
-  private lazy val adminClusterStateManager = new CatManager(adminClient, esVersion = targetEs.esVersion)
+  private lazy val adminClusterStateManager = new CatManager(adminClient, esVersion = esVersionUsed)
 
   "Health check" should {
     "be successful" when {

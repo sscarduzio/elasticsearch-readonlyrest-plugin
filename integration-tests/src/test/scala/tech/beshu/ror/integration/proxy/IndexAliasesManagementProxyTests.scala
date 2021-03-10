@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.IndexAliasesManagementSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
 
-class IndexAliasesManagementProxyTests extends IndexAliasesManagementSuite with BasicClusterProxyTestSupport
+class IndexAliasesManagementProxyTests extends IndexAliasesManagementSuite with XpackEsClusterProxyTestSupport

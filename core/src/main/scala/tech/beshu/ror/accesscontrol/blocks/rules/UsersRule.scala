@@ -44,7 +44,7 @@ class UsersRule(val settings: Settings,
 
   private def matchUser[B <: BlockContext](user: LoggedUser, blockContext: B): RuleResult[B] = {
     val resolvedIds = resolveAll(settings.userIds.toNonEmptyList, blockContext).toSet
-    RuleResult.fromCondition(blockContext) {
+    RuleResult.resultBasedOnCondition(blockContext) {
       MatcherWithWildcardsScalaAdapter[User.Id](resolvedIds).`match`(user.id)
     }
   }

@@ -17,6 +17,6 @@
 package tech.beshu.ror.integration.proxy
 
 import tech.beshu.ror.integration.suites.fields.sourcefiltering.FieldRuleSearchApiSourceFilteringSuite
-import tech.beshu.ror.integration.utils.BasicClusterProxyTestSupport
+import tech.beshu.ror.integration.utils.XpackEsClusterProxyTestSupport
 
-class FieldRuleSourceFilteringSearchApiProxyTests extends FieldRuleSearchApiSourceFilteringSuite with BasicClusterProxyTestSupport
+class FieldRuleSourceFilteringSearchApiProxyTests extends FieldRuleSearchApiSourceFilteringSuite with XpackEsClusterProxyTestSupport

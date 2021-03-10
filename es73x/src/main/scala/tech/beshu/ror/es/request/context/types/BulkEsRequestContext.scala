@@ -97,7 +97,7 @@ class BulkEsRequestContext(actionRequest: BulkRequest,
 
   private def updateRequestWithIndices(request: DocWriteRequest[_], indices: NonEmptyList[IndexName]) = {
     if (indices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. Whole set of indices [${indices.toList.mkString(",")}]")
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${indices.toList.mkString(",")}]")
     }
     request.index(indices.head.value.value)
   }

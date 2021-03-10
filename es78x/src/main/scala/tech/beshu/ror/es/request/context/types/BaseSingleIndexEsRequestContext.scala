@@ -35,13 +35,14 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
 
   override protected def indicesFrom(request: R): Set[IndexName] = Set(indexFrom(request))
 
-  override protected def update(request: R, indices: NonEmptyList[IndexName]): ModificationResult = {
-    if (indices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. Whole set of indices [${indices.toList.mkString(",")}]")
+  override protected def update(request: R,
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    if (filteredIndices.tail.nonEmpty) {
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.toList.mkString(",")}]")
     }
-    update(request, indices.head)
+    update(request, filteredIndices.head)
   }
-
 
   protected def indexFrom(request: R): IndexName
 

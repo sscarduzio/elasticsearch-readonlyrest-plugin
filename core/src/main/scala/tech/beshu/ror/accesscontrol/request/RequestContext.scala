@@ -26,9 +26,8 @@ import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.scala.Logging
 import org.json.JSONObject
 import squants.information.{Bytes, Information}
-import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, FilteredResponseFields, ResponseTransformation}
+import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.{DirectlyLoggedUser, ImpersonatedUser}
-import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext.Id
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
@@ -36,6 +35,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.language.implicitConversions
+import tech.beshu.ror.utils.ScalaOps._
 
 trait RequestContext {
 
@@ -70,6 +70,15 @@ trait RequestContext {
   def allIndicesAndAliases: Set[IndexWithAliases]
 
   def allTemplates: Set[Template]
+
+  lazy val legacyTemplates: Set[Template.LegacyTemplate] =
+    allTemplates.collect { case t: Template.LegacyTemplate => t }
+
+  lazy val indexTemplates: Set[Template.IndexTemplate] =
+    allTemplates.collect { case t: Template.IndexTemplate => t }
+
+  lazy val componentTemplates: Set[Template.ComponentTemplate] =
+    allTemplates.collect { case t: Template.ComponentTemplate => t }
 
   def isReadOnlyRequest: Boolean
 
@@ -140,7 +149,7 @@ object RequestContext extends Logging {
          | CNT:$stringifyContentLength,
          | HDR:${r.headers.map(_.show).toList.sorted.mkString(", ")},
          | HIS:${history.map(h => historyShow(headerShow).show(h)).mkString(", ")},
-         | }""".stripMargin.replaceAll("\n", " ")
+         | }""".oneLiner
     }
 }
 

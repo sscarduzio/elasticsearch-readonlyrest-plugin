@@ -39,7 +39,7 @@ abstract class BaseSingleIndexEsRequestContext[R <: ActionRequest](actionRequest
                                 filteredIndices: NonEmptyList[IndexName],
                                 allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
     if (filteredIndices.tail.nonEmpty) {
-      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. Whole set of indices [${filteredIndices.toList.mkString(",")}]")
+      logger.warn(s"[${id.show}] Filtered result contains more than one index. First was taken. The whole set of indices [${filteredIndices.toList.mkString(",")}]")
     }
     update(request, filteredIndices.head)
   }

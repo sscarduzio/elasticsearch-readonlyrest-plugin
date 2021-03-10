@@ -57,7 +57,7 @@ class HostsRule(val settings: Settings,
         checkAllowedAddresses(blockContext)(
           allowedAddresses = settings.allowedHosts,
           addressToCheck = remoteAddress
-        ).map(condition => RuleResult.fromCondition(blockContext)(condition))
+        ).map(condition => RuleResult.resultBasedOnCondition(blockContext)(condition))
       case None =>
         logger.warn(s"[${blockContext.requestContext.id.show}] Remote address is unavailable!")
         Task.now(Rejected())

@@ -58,8 +58,6 @@ class MatcherWithWildcardsScalaAdapter[A](override val underlying: MatcherWithWi
 
 object MatcherWithWildcardsScalaAdapter {
 
-  import tech.beshu.ror.utils.CaseMappingEquality._
-
   def create[T: CaseMappingEquality](items: Iterable[T]): Matcher[T] =
     new MatcherWithWildcardsScalaAdapter(new MatcherWithWildcards(items.map(Show[T].show).asJava, CaseMappingEquality.summonJava))
 

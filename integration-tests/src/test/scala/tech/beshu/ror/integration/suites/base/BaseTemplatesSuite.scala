@@ -16,72 +16,174 @@
  */
 package tech.beshu.ror.integration.suites.base
 
-import org.scalatest.{BeforeAndAfterEach, Suite}
+import cats.data.NonEmptyList
+import com.typesafe.scalalogging.LazyLogging
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Suite}
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
-import tech.beshu.ror.utils.containers.{EsClusterContainer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager, TemplateManager}
+import tech.beshu.ror.integration.utils.ESVersionSupport
+import tech.beshu.ror.utils.containers.EsContainerCreator
+import tech.beshu.ror.utils.elasticsearch._
+import tech.beshu.ror.utils.misc.ScalaUtils.waitForCondition
 import tech.beshu.ror.utils.misc.Version
 
 trait BaseTemplatesSuite
   extends BaseSingleNodeEsClusterTest
-    with BeforeAndAfterEach {
+    with BeforeAndAfterEach
+    with BeforeAndAfterAll
+    with ESVersionSupport
+    with LazyLogging {
   this: Suite with EsContainerCreator =>
 
-  def rorContainer: EsClusterContainer
+  private lazy val adminLegacyTemplateManager = new LegacyTemplateManager(adminClient, esVersionUsed)
+  private lazy val adminIndexTemplateManager = new IndexTemplateManager(adminClient, esVersionUsed)
+  private lazy val adminComponentTemplateManager = new ComponentTemplateManager(adminClient, esVersionUsed)
+  private lazy val adminIndexManager = new IndexManager(adminClient)
+  protected lazy val adminDocumentManager = new DocumentManager(adminClient, esVersionUsed)
 
-  protected lazy val adminTemplateManager = new TemplateManager(adminClient)
-  protected lazy val adminDocumentManager = new DocumentManager(adminClient, targetEs.esVersion)
+  private var originLegacyTemplateNames: List[String] = List.empty
+  private var originIndexTemplateNames: List[String] = List.empty
+  private var originComponentTemplateNames: List[String] = List.empty
 
   protected def createIndexWithExampleDoc(documentManager: DocumentManager, index: String): Unit = {
-    adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}"""))
+    adminDocumentManager.createFirstDoc(index, ujson.read("""{"hello":"world"}""")).force()
   }
 
-  protected def templateExample(indexPattern: String, otherIndexPatterns: String*): String = {
-    val esVersion = rorContainer.esVersion
-    val allIndexPattern = indexPattern :: otherIndexPatterns.toList
-    val patternsString = allIndexPattern.mkString("\"", "\",\"", "\"")
-    if (Version.greaterOrEqualThan(esVersion, 7, 0, 0)) {
-      s"""{"index_patterns":[$patternsString],"settings":{"number_of_shards":1},"mappings":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}"""
-    } else if (Version.greaterOrEqualThan(esVersion, 6, 0, 0)) {
-      s"""{"index_patterns":[$patternsString],"settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
-    } else {
-      if(otherIndexPatterns.isEmpty) {
-        s"""{"template":"$indexPattern","settings":{"number_of_shards":1},"mappings":{"doc":{"properties":{"created_at":{"type":"date","format":"EEE MMM dd HH:mm:ss Z yyyy"}}}}}"""
-      } else {
-        throw new IllegalArgumentException("Cannot create template with more than one index pattern for the ES version < 6.0.0")
-      }
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    originLegacyTemplateNames = adminLegacyTemplateManager
+      .getTemplates.force()
+      .templates
+      .map(_.name)
+    if (doesSupportIndexTemplates) {
+      logger.info(s"Found origin Legacy Templates: [${originLegacyTemplateNames.mkString(",")}]")
+      originIndexTemplateNames = adminIndexTemplateManager
+        .getTemplates.force()
+        .templates
+        .map(_.name)
     }
+    logger.info(s"Found origin Index Templates: [${originIndexTemplateNames.mkString(",")}]")
+    if (doesSupportComponentTemplates) {
+      originComponentTemplateNames = adminComponentTemplateManager
+        .getTemplates.force()
+        .templates
+        .map(_.name)
+      logger.info(s"Found origin Component Templates: [${originComponentTemplateNames.mkString(",")}]")
+    }
+  }
+
+  override protected def afterAll(): Unit = {
+    truncateDataCreatedDuringTest()
+    super.afterAll()
   }
 
   override protected def beforeEach(): Unit = {
     super.beforeEach()
-    truncateTemplates()
-    truncateIndices()
-    addControlTemplate()
+    addControlData()
   }
 
-  private def truncateTemplates(): Unit = {
-    val templates = adminTemplateManager.getTemplates
-    if(templates.responseCode != 200) throw new IllegalStateException("Cannot get all templates by admin")
-    templates
-      .responseJson.obj.keys
+  override protected def afterEach(): Unit = {
+    truncateDataCreatedDuringTest()
+    super.afterEach()
+  }
+
+  private def addControlData(): Unit = {
+    addControlLegacyTemplate()
+    if (doesSupportIndexTemplates) addControlIndexTemplate()
+    if (doesSupportComponentTemplates) addControlComponentTemplate()
+  }
+
+  private def truncateDataCreatedDuringTest(): Unit = {
+    truncateLegacyTemplates()
+    if (doesSupportIndexTemplates) truncateIndexTemplates()
+    if (doesSupportComponentTemplates) truncateComponentTemplates()
+    truncateIndices()
+  }
+
+  private def truncateLegacyTemplates(): Unit = {
+    adminLegacyTemplateManager
+      .getTemplates.force()
+      .templates
       .foreach { template =>
-        val deleteTemplateResult = adminTemplateManager.deleteTemplate(template)
-        if (deleteTemplateResult.responseCode != 200) throw new IllegalStateException(s"Admin cannot delete '$template' template")
+        if (!originLegacyTemplateNames.contains(template.name))
+          adminLegacyTemplateManager.deleteTemplate(template.name).force()
       }
+    waitForCondition("Waiting for removing all Legacy Templates") {
+      adminLegacyTemplateManager
+        .getTemplates.force().templates.map(_.name)
+        .diff(originLegacyTemplateNames)
+        .isEmpty
+    }
+  }
+
+  private def truncateIndexTemplates(): Unit = {
+    adminIndexTemplateManager
+      .getTemplates.force()
+      .templates
+      .foreach { template =>
+        if (!originIndexTemplateNames.contains(template.name))
+          adminIndexTemplateManager.deleteTemplate(template.name).force()
+      }
+    waitForCondition("Waiting for removing all Index Templates") {
+      adminIndexTemplateManager
+        .getTemplates.force().templates.map(_.name)
+        .diff(originIndexTemplateNames)
+        .isEmpty
+    }
+  }
+
+  private def truncateComponentTemplates(): Unit = {
+    adminComponentTemplateManager
+      .getTemplates.force()
+      .templates
+      .foreach { template =>
+        if (!originComponentTemplateNames.contains(template.name))
+          adminComponentTemplateManager.deleteTemplate(template.name).force()
+      }
+    waitForCondition("Waiting for removing all Component Templates") {
+      adminComponentTemplateManager
+        .getTemplates.force().templates.map(_.name)
+        .diff(originComponentTemplateNames)
+        .isEmpty
+    }
   }
 
   private def truncateIndices(): Unit = {
-    val indicesManager = new IndexManager(rorContainer.nodes.head.adminClient)
-    if(indicesManager.removeAllIndices().responseCode != 200) {
-      throw new IllegalStateException("Admin cannot remove all indices")
-    }
+    adminIndexManager
+      .removeAllIndices()
+      .force()
   }
 
-  private def addControlTemplate(): Unit = {
-    val response = adminTemplateManager.insertTemplate("control_one", templateExample("control_*"))
-    if (response.responseCode != 200) {
-      throw new IllegalStateException("Cannot add control template")
-    }
+  private def addControlLegacyTemplate(): Unit = {
+    adminLegacyTemplateManager
+      .putTemplateAndWaitForIndexing(
+        templateName = "control_one",
+        indexPatterns = NonEmptyList.one("control_one_*"),
+        aliases = Set("control")
+      )
+  }
+
+  private def addControlIndexTemplate(): Unit = {
+    adminIndexTemplateManager
+      .putTemplateAndWaitForIndexing(
+        templateName = "control_two",
+        indexPatterns = NonEmptyList.one("control_two_*"),
+        aliases = Set("control")
+      )
+  }
+
+  private def addControlComponentTemplate(): Unit = {
+    adminComponentTemplateManager
+      .putTemplateAndWaitForIndexing(
+        templateName = "control_three",
+        aliases = Set("control")
+      )
+  }
+
+  protected def doesSupportComponentTemplates: Boolean = {
+    Version.greaterOrEqualThan(esVersionUsed, 7, 9, 0)
+  }
+
+  protected def doesSupportIndexTemplates: Boolean = {
+    Version.greaterOrEqualThan(esVersionUsed, 7, 8, 0)
   }
 }

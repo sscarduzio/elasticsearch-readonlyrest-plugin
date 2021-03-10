@@ -30,6 +30,7 @@ import tech.beshu.ror.utils.proxy.RorProxyInstance
 object providers {
 
   trait ClientProvider {
+
     def basicAuthClient(user: String, pass: String): RestClient = client(Credentials.BasicAuth(user, pass))
 
     def tokenAuthClient(token: String): RestClient = client(Credentials.Token(token))

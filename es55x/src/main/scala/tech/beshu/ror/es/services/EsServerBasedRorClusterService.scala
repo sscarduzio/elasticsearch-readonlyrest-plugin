@@ -61,16 +61,21 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .toMap
   }
 
-  override def allTemplates: Set[Template] = {
-    val templates = clusterService.state.getMetaData.templates()
+  override def allTemplates: Set[Template] = legacyTemplates()
+
+  private def legacyTemplates(): Set[Template] = {
+    val templates = clusterService.state.metaData().templates()
     templates
       .keysIt().asScala
       .flatMap { templateNameString =>
         val templateMetaData = templates.get(templateNameString)
         for {
           templateName <- NonEmptyString.unapply(templateNameString).map(TemplateName.apply)
-          indexPattern <- NonEmptyString.unapply(templateMetaData.template()).map(IndexName.apply)
-        } yield Template(templateName, UniqueNonEmptyList.of(indexPattern))
+          indexPatterns <- UniqueNonEmptyList.fromList(
+            IndexPattern.fromString(templateMetaData.template()).toList
+          )
+          aliases = templateMetaData.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+        } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toSet
   }

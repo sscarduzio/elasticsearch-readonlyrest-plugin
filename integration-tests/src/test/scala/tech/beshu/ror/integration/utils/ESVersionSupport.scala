@@ -17,8 +17,8 @@
 package tech.beshu.ror.integration.utils
 
 import cats.data.NonEmptyList
+import org.scalatest.Tag
 import org.scalatest.wordspec.AnyWordSpecLike
-import org.scalatest.{Tag, WordSpecLike}
 import tech.beshu.ror.utils.gradle.RorPluginGradleProject
 
 import scala.language.implicitConversions
@@ -61,4 +61,5 @@ trait ESVersionSupport extends AnyWordSpecLike {
 
   private final class ExcludeESModule(value: String) extends Tag(s"tech.beshu.tags.ExcludeESModule.$value")
 
+  lazy val esVersionUsed: String = RorPluginGradleProject.fromSystemProperty.getESVersion
 }

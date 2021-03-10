@@ -36,7 +36,7 @@ trait ResponseFieldRuleSuite
   "A response_field rule" should {
 
     "filter cluster health response in whitelist mode using json format" in {
-      val dev1ClusterStateManager = new ClusterManager(basicAuthClient("dev1", "test"), esVersion = targetEs.esVersion)
+      val dev1ClusterStateManager = new ClusterManager(basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
       val healthCheck = dev1ClusterStateManager.health()
 
       healthCheck.responseJson.obj.isDefinedAt("cluster_name") should equal(true)
@@ -47,7 +47,7 @@ trait ResponseFieldRuleSuite
     }
 
     "filter cluster health response in whitelist mode using yaml format" in {
-      val dev1ClusterStateManager = new ClusterManagerYaml(basicAuthClient("dev1", "test"), esVersion = targetEs.esVersion)
+      val dev1ClusterStateManager = new ClusterManagerYaml(basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
       val yamlHealthCheck = dev1ClusterStateManager.health()
 
       yamlHealthCheck.responseYaml.isDefinedAt("cluster_name") should equal(true)
@@ -58,7 +58,7 @@ trait ResponseFieldRuleSuite
     }
 
     "filter cat health response in blacklist mode " in {
-      val dev1CatManager = new CatManager(basicAuthClient("dev1", "test"), esVersion = targetEs.esVersion)
+      val dev1CatManager = new CatManager(basicAuthClient("dev1", "test"), esVersion = esVersionUsed)
       val healthCheck = dev1CatManager.healthCheck()
 
       healthCheck.responseJson.arr.head.obj.isDefinedAt("status") should equal(true)

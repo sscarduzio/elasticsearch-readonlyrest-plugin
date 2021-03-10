@@ -17,12 +17,13 @@
 package tech.beshu.ror.mocks
 
 import java.time.{Clock, Instant}
+
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.auto._
 import squants.information.{Bytes, Information}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
-import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, MultiIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext}
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.{CurrentUserMetadataRequestBlockContext, FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralIndexRequestBlockContext, GeneralNonIndexRequestBlockContext, RepositoryRequestBlockContext, SnapshotRequestBlockContext, TemplateRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
 import tech.beshu.ror.accesscontrol.domain._
@@ -30,10 +31,10 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.MockRequestContext.DefaultAction
 
 object MockRequestContext {
-  
+
   val DefaultAction = Action("default-action")
   val AdminAction = Action("cluster:ror/user_metadata/get")
-  
+
   def indices(implicit clock: Clock = Clock.systemUTC()): MockGeneralIndexRequestContext =
     MockGeneralIndexRequestContext(timestamp = clock.instant(), filteredIndices = Set.empty, allAllowedIndices = Set.empty)
 
@@ -54,6 +55,10 @@ object MockRequestContext {
 
   def metadata(implicit clock: Clock = Clock.systemUTC()): MockUserMetadataRequestContext =
     MockUserMetadataRequestContext(timestamp = clock.instant())
+
+  def template(templateOperation: TemplateOperation)
+              (implicit clock: Clock = Clock.systemUTC()): MockTemplateRequestContext =
+    MockTemplateRequestContext(clock.instant(), templateOperation = templateOperation)
 
   def readOnly[BC <: BlockContext](blockContextCreator: RequestContext => BC): MockSimpleRequestContext[BC] =
     MockSimpleRequestContext(blockContextCreator, isReadOnly = true, customAction = DefaultAction)
@@ -257,6 +262,33 @@ final case class MockUserMetadataRequestContext(override val timestamp: Instant,
 
   override def initialBlockContext: CurrentUserMetadataRequestBlockContext = CurrentUserMetadataRequestBlockContext(
     this, UserMetadata.empty, Set.empty, List.empty
+  )
+}
+
+final case class MockTemplateRequestContext(override val timestamp: Instant,
+                                            override val taskId: Long = 0L,
+                                            override val id: RequestContext.Id = RequestContext.Id("mock"),
+                                            override val `type`: Type = Type("default-type"),
+                                            override val action: Action = Action("default-action"),
+                                            override val headers: Set[Header] = Set.empty,
+                                            override val remoteAddress: Option[Address] = Address.from("localhost"),
+                                            override val localAddress: Address = Address.from("localhost").get,
+                                            override val method: Method = Method("GET"),
+                                            override val uriPath: UriPath = UriPath.from("/_template").get,
+                                            override val contentLength: Information = Bytes(0),
+                                            override val content: String = "",
+                                            override val allIndicesAndAliases: Set[IndexWithAliases] = Set.empty,
+                                            override val allTemplates: Set[Template] = Set.empty,
+                                            override val isCompositeRequest: Boolean = false,
+                                            override val isReadOnlyRequest: Boolean = true,
+                                            override val isAllowedForDLS: Boolean = true,
+                                            override val hasRemoteClusters: Boolean = false,
+                                            templateOperation: TemplateOperation)
+  extends RequestContext {
+  override type BLOCK_CONTEXT = TemplateRequestBlockContext
+
+  override def initialBlockContext: TemplateRequestBlockContext = TemplateRequestBlockContext(
+    this, UserMetadata.empty, Set.empty, List.empty, templateOperation, identity, Set.empty
   )
 }
 

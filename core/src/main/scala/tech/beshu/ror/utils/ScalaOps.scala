@@ -48,8 +48,16 @@ object ScalaOps {
     def getOr(mapEx: Throwable => T): T = `try`.fold(mapEx, identity)
   }
 
+  implicit class JavaMapOps[K : ClassTag, V : ClassTag](val map: java.util.Map[K, V]) {
+    def asSafeMap: Map[K, V] = Option(map).map(_.asScala.toMap).getOrElse(Map.empty)
+  }
+
   implicit class JavaListOps[T : ClassTag](val list: java.util.List[T]) {
     def asSafeList: List[T] = Option(list).map(_.asScala.toList).getOrElse(Nil)
+  }
+
+  implicit class JavaSetOps[T : ClassTag](val set: java.util.Set[T]) {
+    def asSafeSet: Set[T] = Option(set).map(_.asScala.toSet).getOrElse(Set.empty)
   }
 
   implicit class ArrayOps[T : ClassTag](val array: Array[T]) {
@@ -194,5 +202,8 @@ object ScalaOps {
     def safeNonEmpty: Option[NonEmptyString] = {
       Option(value).flatMap(NonEmptyString.unapply)
     }
+    def oneLiner: String = value.stripMargin.replaceAll("\n", "")
   }
+
+
 }

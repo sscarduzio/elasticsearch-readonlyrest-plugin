@@ -19,7 +19,7 @@ package tech.beshu.ror.integration.suites
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.{BaseSingleNodeEsClusterTest, SingleClientSupport}
-import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsClusterContainer, EsClusterSettings, EsContainerCreator}
+import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 import tech.beshu.ror.utils.misc.ScalaUtils.retry
@@ -101,7 +101,7 @@ trait FilterRuleSuite
       "get api is used" when {
         "document is accessible" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.get("test1_index", 1)
 
             result.responseCode shouldBe 200
@@ -111,7 +111,7 @@ trait FilterRuleSuite
         }
         "index is inaccessible" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.get("test2_index", 1)
 
             result.responseCode shouldBe 401
@@ -119,7 +119,7 @@ trait FilterRuleSuite
         }
         "index is not found" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(adminClient, targetEs.esVersion)
+            val documentManager = new DocumentManager(adminClient, esVersionUsed)
             val result = documentManager.get("test3_index", 1)
 
             result.responseCode shouldBe 404
@@ -127,7 +127,7 @@ trait FilterRuleSuite
         }
         "document is filtered and inaccessible" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.get("test1_index", 4)
 
             result.responseCode shouldBe 404
@@ -138,7 +138,7 @@ trait FilterRuleSuite
       "mget api is used" when {
         "both requested documents are accessible" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.mGet(
               ujson.read(
                 """{
@@ -169,7 +169,7 @@ trait FilterRuleSuite
         }
         "one of requested documents is filtered and inaccessible" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.mGet(
               ujson.read(
                 """{
@@ -199,7 +199,7 @@ trait FilterRuleSuite
         }
         "one of requested documents is filtered and inaccessible and second is nonexistent" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.mGet(
               ujson.read(
                 """{
@@ -228,7 +228,7 @@ trait FilterRuleSuite
         }
         "both requested documents are filtered and inaccessible" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.mGet(
               ujson.read(
                 """{
@@ -257,7 +257,7 @@ trait FilterRuleSuite
         }
         "both requested documents are nonexistent" in {
           retry(times = 3) {
-            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+            val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
             val result = documentManager.mGet(
               ujson.read(
                 """{
@@ -287,7 +287,7 @@ trait FilterRuleSuite
     }
     "not allow request" when {
       "request is not read only" in {
-        val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), targetEs.esVersion)
+        val documentManager = new DocumentManager(basicAuthClient("user1", "pass"), esVersionUsed)
         val result = documentManager.createDoc("test1_index", 5, ujson.read("""{"db_name":"db_user4", "code": 2}"""))
 
         result.responseCode shouldBe 401
@@ -322,7 +322,7 @@ trait FilterRuleSuite
           val searchManager = new SearchManager(basicAuthClient("user4", "pass"))
           val result = searchManager.search("test1_index", ujson.read("""{ "query": { "term": { "code": 1 }}}"""))
 
-          if (Version.greaterOrEqualThan(targetEs.esVersion, 7, 6, 0)) {
+          if (Version.greaterOrEqualThan(esVersionUsed, 7, 6, 0)) {
             result.responseCode shouldBe 400
           } else {
             result.responseCode shouldBe 500

@@ -119,7 +119,7 @@ object orders {
 }
 
 object show {
-  object logs {
+  trait LogsShowInstances {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
     implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
     implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value.value)
@@ -136,6 +136,9 @@ object show {
     implicit val headerNameShow: Show[Header.Name] = Show.show(_.value.value)
     implicit val kibanaAppShow: Show[KibanaApp] = Show.show(_.value.value)
     implicit val proxyAuthNameShow: Show[ProxyAuth.Name] = Show.show(_.value)
+    implicit val indexNameShow: Show[IndexName] = Show.show(_.value.value)
+    implicit val indexPatternShow: Show[IndexPattern] = Show.show(_.value.value)
+    implicit val aliasPlaceholderShow: Show[AliasPlaceholder] = Show.show(_.alias.show)
     implicit val externalAuthenticationServiceNameShow: Show[ExternalAuthenticationService.Name] = Show.show(_.value)
     implicit val groupShow: Show[Group] = Show.show(_.value.value)
     implicit val tokenShow: Show[AuthorizationToken] = Show.show(_.value.value)
@@ -145,19 +148,21 @@ object show {
     implicit val envNameShow: Show[EnvVarName] = Show.show(_.value.value)
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
+    implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
 
     implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
       Show.show { bc =>
         (showOption("user", bc.userMetadata.loggedUser) ::
           showOption("group", bc.userMetadata.currentGroup) ::
-          showTraversable("av_groups", bc.userMetadata.availableGroups) ::
-          showTraversable("indices", bc.indices) ::
+          showNamedTraversable("av_groups", bc.userMetadata.availableGroups) ::
+          showNamedTraversable("indices", bc.indices) ::
           showOption("kibana_idx", bc.userMetadata.kibanaIndex) ::
           showOption("fls", bc.fieldLevelSecurity) ::
-          showTraversable("response_hdr", bc.responseHeaders) ::
-          showTraversable("repositories", bc.repositories) ::
-          showTraversable("snapshots", bc.snapshots) ::
-          showTraversable("response_transformations", bc.responseTransformations) ::
+          showNamedTraversable("response_hdr", bc.responseHeaders) ::
+          showNamedTraversable("repositories", bc.repositories) ::
+          showNamedTraversable("snapshots", bc.snapshots) ::
+          showNamedTraversable("response_transformations", bc.responseTransformations) ::
+          showOption("template", bc.templateOperation) ::
           Nil flatten) mkString ";"
       }
 
@@ -182,9 +187,9 @@ object show {
     implicit val userMetadataShow: Show[UserMetadata] = Show.show { u =>
       (showOption("user", u.loggedUser) ::
         showOption("curr_group", u.currentGroup) ::
-        showTraversable("av_groups", u.availableGroups) ::
+        showNamedTraversable("av_groups", u.availableGroups) ::
         showOption("kibana_idx", u.kibanaIndex) ::
-        showTraversable("hidden_apps", u.hiddenKibanaApps) ::
+        showNamedTraversable("hidden_apps", u.hiddenKibanaApps) ::
         showOption("kibana_access", u.kibanaAccess) ::
         showOption("user_origin", u.userOrigin) ::
         Nil flatten) mkString ";"
@@ -194,8 +199,33 @@ object show {
       fls.strategy match {
         case Strategy.FlsAtLuceneLevelApproach => "[strategy: fls_at_lucene_level]"
         case Strategy.BasedOnBlockContextOnly.EverythingAllowed => "[strategy: fls_at_es_level]"
-        case Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(fields) => s"[strategy: fls_at_es_level, ${showNonEmptyList("not_allowed_fields_used", fields)}]"
+        case Strategy.BasedOnBlockContextOnly.NotAllowedFieldsUsed(fields) => s"[strategy: fls_at_es_level, ${showNamedNonEmptyList("not_allowed_fields_used", fields)}]"
       }
+    }
+
+    implicit val templateOperationShow: Show[TemplateOperation] = Show.show {
+      case TemplateOperation.GettingLegacyAndIndexTemplates(op1, op2) =>
+        s"GETALL(${showTraversable(op1.namePatterns.toList)}|${showTraversable(op2.namePatterns.toList)})"
+      case TemplateOperation.GettingLegacyTemplates(namePatterns) =>
+        s"GET(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.AddingLegacyTemplate(name, patterns, aliases) =>
+        s"ADD(${name.show}:${showTraversable(patterns)}:${showTraversable(aliases)})"
+      case TemplateOperation.DeletingLegacyTemplates(namePatterns) =>
+        s"DEL(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.GettingIndexTemplates(namePatterns) =>
+        s"GET(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.AddingIndexTemplate(name, patterns, aliases) =>
+        s"ADD(${name.show}:${showTraversable(patterns.toList)}:${showTraversable(aliases)})"
+      case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(name, patterns, aliases, allowedTemplates) =>
+        s"ADDGET(${name.show}:${showTraversable(patterns.toList)}:${showTraversable(aliases)}:${showTraversable(allowedTemplates)})"
+      case TemplateOperation.DeletingIndexTemplates(namePatterns) =>
+        s"DEL(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.GettingComponentTemplates(namePatterns) =>
+        s"GET(${showTraversable(namePatterns.toList)})"
+      case TemplateOperation.AddingComponentTemplate(name, aliases) =>
+        s"ADD(${name.show}:${showTraversable(aliases)})"
+      case TemplateOperation.DeletingComponentTemplates(namePatterns) =>
+        s"DEL(${showTraversable(namePatterns.toList)})"
     }
 
     implicit val specificFieldShow: Show[FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField] = Show.show(_.value)
@@ -281,17 +311,21 @@ object show {
         s"The '${block.show}' block doesn't meet requirements for defined variables. ${complianceResult.show}"
     }
 
-    private def showTraversable[T: Show](name: String, traversable: Traversable[T]) = {
+    private def showNamedTraversable[T: Show](name: String, traversable: Traversable[T]) = {
       if (traversable.isEmpty) None
-      else Some(s"$name=${traversable.map(_.show).mkString(",")}")
+      else Some(s"$name=${showTraversable(traversable)}")
     }
 
-    private def showNonEmptyList[T: Show](name: String, nonEmptyList: NonEmptyList[T]) = {
-      s"$name=${nonEmptyList.map(_.show).toList.mkString(",")}"
+    private def showNamedNonEmptyList[T: Show](name: String, nonEmptyList: NonEmptyList[T]) = {
+      showNamedTraversable(name, nonEmptyList.toList)
     }
 
     private def showOption[T: Show](name: String, option: Option[T]) = {
-      option.map(v => s"$name=${v.show}")
+      showNamedTraversable(name, option.toList)
+    }
+
+    private def showTraversable[T: Show](traversable: Traversable[T]) = {
+      traversable.map(_.show).mkString(",")
     }
 
     implicit val authorizationValueErrorShow: Show[AuthorizationValueError] = Show.show {
@@ -305,6 +339,7 @@ object show {
       case AccessRequirement.MustBeAbsent(value) => s"~${value.show}"
     }
   }
+  object logs extends LogsShowInstances
 }
 
 object refined {

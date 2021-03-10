@@ -39,8 +39,9 @@ class IndicesStatsEsRequestContext(actionRequest: IndicesStatsRequest,
   }
 
   override protected def update(request: IndicesStatsRequest,
-                                indices: NonEmptyList[IndexName]): ModificationResult = {
-    request.indices(indices.map(_.value.value).toList: _*)
+                                filteredIndices: NonEmptyList[IndexName],
+                                allAllowedIndices: NonEmptyList[IndexName]): ModificationResult = {
+    request.indices(filteredIndices.map(_.value.value).toList: _*)
     Modified
   }
 }

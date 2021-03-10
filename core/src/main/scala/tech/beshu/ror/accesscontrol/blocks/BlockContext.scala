@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks
 
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage
@@ -75,8 +76,13 @@ object BlockContext {
                                                override val userMetadata: UserMetadata,
                                                override val responseHeaders: Set[Header],
                                                override val responseTransformations: List[ResponseTransformation],
-                                               templates: Set[Template])
+                                               templateOperation: TemplateOperation,
+                                               responseTemplateTransformation: TemplatesTransformation,
+                                               allAllowedIndices: Set[IndexName])
     extends BlockContext
+  object TemplateRequestBlockContext {
+    type TemplatesTransformation = Set[Template] => Set[Template]
+  }
 
   final case class GeneralIndexRequestBlockContext(override val requestContext: RequestContext,
                                                    override val userMetadata: UserMetadata,
@@ -282,8 +288,14 @@ object BlockContext {
   }
 
   implicit class TemplateRequestBlockContextUpdaterOps(val blockContext: TemplateRequestBlockContext) extends AnyVal {
-    def withTemplates(templates: Set[Template]): TemplateRequestBlockContext = {
-      TemplateRequestBlockContextUpdater.withTemplates(blockContext, templates)
+    def withTemplateOperation(templateOperation: TemplateOperation): TemplateRequestBlockContext = {
+      TemplateRequestBlockContextUpdater.withTemplateOperation(blockContext, templateOperation)
+    }
+    def withResponseTemplateTransformation(transformation: Set[Template] => Set[Template]): TemplateRequestBlockContext = {
+      TemplateRequestBlockContextUpdater.withResponseTemplateTransformation(blockContext, transformation)
+    }
+    def withAllAllowedIndices(indices: Set[IndexName]): TemplateRequestBlockContext = {
+      TemplateRequestBlockContextUpdater.withAllAllowedIndices(blockContext, indices)
     }
   }
 
@@ -304,7 +316,20 @@ object BlockContext {
         case _: GeneralNonIndexRequestBlockContext => Set.empty
         case _: RepositoryRequestBlockContext => Set.empty
         case bc: SnapshotRequestBlockContext => bc.filteredIndices
-        case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
+        case bc: TemplateRequestBlockContext =>
+          bc.templateOperation match {
+            case TemplateOperation.GettingLegacyAndIndexTemplates(_, _) => Set.empty
+            case TemplateOperation.GettingLegacyTemplates(_) => Set.empty
+            case TemplateOperation.AddingLegacyTemplate(_, patterns, aliases) => patterns.map(_.toIndexName).toSet ++ aliases
+            case TemplateOperation.DeletingLegacyTemplates(_) => Set.empty
+            case TemplateOperation.GettingIndexTemplates(_) => Set.empty
+            case TemplateOperation.AddingIndexTemplate(_, patterns, aliases) => patterns.map(_.toIndexName).toSet ++ aliases
+            case TemplateOperation.AddingIndexTemplateAndGetAllowedOnes(_, patterns, aliases, _) => patterns.map(_.toIndexName).toSet ++ aliases
+            case TemplateOperation.DeletingIndexTemplates(_) => Set.empty
+            case TemplateOperation.GettingComponentTemplates(_) => Set.empty
+            case TemplateOperation.AddingComponentTemplate(_, aliases) => aliases
+            case TemplateOperation.DeletingComponentTemplates(_) => Set.empty
+          }
         case bc: AliasRequestBlockContext => bc.indices ++ bc.aliases
         case bc: GeneralIndexRequestBlockContext => bc.filteredIndices
         case bc: FilterableRequestBlockContext => bc.filteredIndices
@@ -353,6 +378,23 @@ object BlockContext {
         case _: MultiIndexRequestBlockContext => Set.empty
         case _: FilterableRequestBlockContext => Set.empty
         case _: FilterableMultiRequestBlockContext => Set.empty
+      }
+    }
+  }
+
+  implicit class TemplatesFromBlockContext(val blockContext: BlockContext) extends AnyVal {
+    def templateOperation: Option[TemplateOperation] = {
+      blockContext match {
+        case _: CurrentUserMetadataRequestBlockContext => None
+        case _: GeneralNonIndexRequestBlockContext => None
+        case _: RepositoryRequestBlockContext => None
+        case _: SnapshotRequestBlockContext => None
+        case bc: TemplateRequestBlockContext => Some(bc.templateOperation)
+        case _: AliasRequestBlockContext => None
+        case _: GeneralIndexRequestBlockContext => None
+        case _: MultiIndexRequestBlockContext => None
+        case _: FilterableRequestBlockContext => None
+        case _: FilterableMultiRequestBlockContext => None
       }
     }
   }
@@ -407,35 +449,5 @@ object BlockContext {
     private def hasIndices[B <: BlockContext](implicit hasIndices: Option[HasIndices[B]] = None,
                                               hasIndexPacks: Option[HasIndexPacks[B]] = None) =
       hasIndices.nonEmpty || hasIndexPacks.nonEmpty
-  }
-
-  implicit class IndicesFrom(val b: BlockContext) extends AnyVal {
-
-    def allUsedIndices: Set[IndexName] = b match {
-      case _: CurrentUserMetadataRequestBlockContext => Set.empty
-      case _: GeneralNonIndexRequestBlockContext => Set.empty
-      case _: RepositoryRequestBlockContext => Set.empty
-      case bc: SnapshotRequestBlockContext => bc.filteredIndices
-      case bc: AliasRequestBlockContext => bc.aliases ++ bc.indices
-      case bc: TemplateRequestBlockContext => bc.templates.flatMap(_.patterns.toSet)
-      case bc: GeneralIndexRequestBlockContext => bc.filteredIndices
-      case bc: FilterableRequestBlockContext => bc.filteredIndices
-      case bc: FilterableMultiRequestBlockContext =>
-        bc
-          .indexPacks
-          .flatMap {
-            case Indices.Found(indices) => indices.toList
-            case Indices.NotFound => List.empty
-          }
-          .toSet
-      case bc: MultiIndexRequestBlockContext =>
-        bc
-          .indexPacks
-          .flatMap {
-            case Indices.Found(indices) => indices.toList
-            case Indices.NotFound => List.empty
-          }
-          .toSet
-    }
   }
 }
