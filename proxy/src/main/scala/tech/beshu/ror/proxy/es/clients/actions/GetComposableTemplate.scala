@@ -26,14 +26,7 @@ object GetComposableTemplate {
   }
 
   def notFoundResponseOf(request: GetComposableIndexTemplateAction.Request): PartialFunction[Throwable, GetComposableIndexTemplateAction.Response] = {
-    case ex: ElasticsearchStatusException if ex.isNotFound && isAllTemplatesRequest(request) =>
+    case ex: ElasticsearchStatusException if ex.isNotFound =>
       new GetComposableIndexTemplateAction.Response(Map.empty[String, ComposableIndexTemplate].asJava)
-  }
-
-  private def isAllTemplatesRequest(request: GetComposableIndexTemplateAction.Request) = {
-    Option(request.name()) match {
-      case None | Some("*") => true
-      case Some(_) => false
-    }
   }
 }

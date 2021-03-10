@@ -25,14 +25,8 @@ object GetComponentTemplate {
   }
 
   def notFoundResponseOf(request: GetComponentTemplateAction.Request): PartialFunction[Throwable, GetComponentTemplateAction.Response] = {
-    case ex: ElasticsearchStatusException if ex.isNotFound && isAllTemplatesRequest(request) =>
+    case ex: ElasticsearchStatusException if ex.isNotFound =>
       new GetComponentTemplateAction.Response(Map.empty[String, ComponentTemplate].asJava)
   }
 
-  private def isAllTemplatesRequest(request: GetComponentTemplateAction.Request) = {
-    Option(request.name()) match {
-      case None | Some("*") => true
-      case Some(_) => false
-    }
-  }
 }
