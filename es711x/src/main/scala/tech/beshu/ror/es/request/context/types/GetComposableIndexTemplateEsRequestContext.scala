@@ -152,7 +152,8 @@ private[types] object GetComposableIndexTemplateEsRequestContext extends Logging
       composableIndexTemplate.priority(),
       composableIndexTemplate.version(),
       composableIndexTemplate.metadata(),
-      composableIndexTemplate.getDataStreamTemplate
+      composableIndexTemplate.getDataStreamTemplate,
+      composableIndexTemplate.getAllowAutoCreate
     )
   }
 
