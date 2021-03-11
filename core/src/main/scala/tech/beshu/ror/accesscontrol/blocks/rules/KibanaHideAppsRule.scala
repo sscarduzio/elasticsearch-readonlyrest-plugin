@@ -23,12 +23,12 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RegularRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.MatchingAlwaysRule
 import tech.beshu.ror.accesscontrol.domain.KibanaApp
 import tech.beshu.ror.accesscontrol.show.logs._
 
 class KibanaHideAppsRule(val settings: Settings)
-  extends RegularRule with MatchingAlwaysRule with Logging {
+  extends MatchingAlwaysRule with Logging {
 
   override val name: Rule.Name = KibanaHideAppsRule.name
 

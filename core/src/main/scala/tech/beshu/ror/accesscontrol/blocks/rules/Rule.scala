@@ -20,6 +20,8 @@ import cats.data.EitherT
 import cats.implicits._
 import cats.{Eq, Show}
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
+import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence.{CannotCheck, Exists, NotExist}
@@ -82,16 +84,31 @@ object Rule {
     implicit val show: Show[Name] = Show.show(_.value)
   }
 
-  trait MatchingAlwaysRule {
-    this: Rule =>
+  trait MatchingAlwaysRule extends RegularRule {
 
     def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B]
 
-    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       process(blockContext).map(RuleResult.Fulfilled.apply)
   }
 
-  trait RegularRule extends Rule
+  trait RegularRule extends Rule {
+    override final def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+      BlockContextUpdater[B] match {
+        case GeneralNonIndexRequestBlockContextUpdater if isAuditEventRequest(blockContext) =>
+          Task.now(RuleResult.fulfilled(blockContext))
+        case _ =>
+          regularCheck(blockContext)
+      }
+    }
+
+    protected def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
+
+    private def isAuditEventRequest(blockContext: GeneralNonIndexRequestBlockContext): Boolean = {
+      blockContext.requestContext.uriPath.isAuditEventPath
+    }
+
+  }
 
   trait AuthorizationRule extends Rule
 

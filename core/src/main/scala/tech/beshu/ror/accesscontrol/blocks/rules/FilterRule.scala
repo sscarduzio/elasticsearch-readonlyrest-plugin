@@ -35,7 +35,7 @@ class FilterRule(val settings: Settings)
 
   override val name: Rule.Name = FilterRule.name
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     blockContext.requestContext match {
       case r if !r.isAllowedForDLS => Rejected()
       case r if r.action.isRorAction => Rejected()

@@ -31,7 +31,7 @@ class UriRegexRule(val settings: Settings)
 
   override val name: Rule.Name = UriRegexRule.name
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.resultBasedOnCondition(blockContext) {
       settings
         .uriPatterns

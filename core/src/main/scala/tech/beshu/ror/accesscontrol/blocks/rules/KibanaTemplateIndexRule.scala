@@ -18,13 +18,13 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaTemplateIndexRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RegularRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.MatchingAlwaysRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.IndexName
 
 class KibanaTemplateIndexRule(val settings: Settings)
-  extends RegularRule with MatchingAlwaysRule {
+  extends MatchingAlwaysRule {
 
   override val name: Rule.Name = KibanaTemplateIndexRule.name
 
