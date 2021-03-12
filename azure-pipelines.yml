@@ -99,7 +99,7 @@ stages:
         IT_es55x:
           ROR_TASK: integration_es55x
 
-- stage: BLD&UP
+- stage: BLD_UP
   condition: succeeded()
   jobs:
   - job:
