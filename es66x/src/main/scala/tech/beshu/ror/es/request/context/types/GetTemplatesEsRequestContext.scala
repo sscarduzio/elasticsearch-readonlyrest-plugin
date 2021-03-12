@@ -25,6 +25,7 @@ import org.elasticsearch.action.admin.indices.template.get.{GetIndexTemplatesReq
 import org.elasticsearch.cluster.metadata.{AliasMetaData, IndexTemplateMetaData}
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
+import org.joor.Reflect.onClass
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
@@ -83,19 +84,23 @@ class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
     ModificationResult.UpdateResponse {
       case r: GetIndexTemplatesResponse =>
         implicit val _ = id
-        Task.now(new GetIndexTemplatesResponse(
+        Task.now(newGetIndexTemplatesResponse(
           GetTemplatesEsRequestContext
             .filter(
               templates = r.getIndexTemplates.asSafeList,
               using = using.responseTemplateTransformation
             )
-            .asJava
         ))
       case other =>
         Task.now(other)
     }
   }
 
+  private def newGetIndexTemplatesResponse(templates: List[IndexTemplateMetaData]) = {
+    onClass(classOf[GetIndexTemplatesResponse])
+      .create(templates.asJava)
+      .get[GetIndexTemplatesResponse]()
+  }
 }
 
 private[types] object GetTemplatesEsRequestContext extends Logging {
