@@ -17,47 +17,67 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptySet
-import eu.timepit.refined.types.string.NonEmptyString
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.accesscontrol.domain.ApiKey
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.ApiKeysRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
+import tech.beshu.ror.accesscontrol.domain.{ApiKey, Header, UriPath}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
+import tech.beshu.ror.utils.TestsUtils._
 
 class ApiKeysRuleTests extends AnyWordSpec with MockFactory {
-
-  private val rule = new ApiKeysRule(ApiKeysRule.Settings(NonEmptySet.of(ApiKey(NonEmptyString.unsafeFrom("1234567890")))))
 
   "An ApiKeysRule" should {
     "match" when {
       "x-api-key header contains defined in settings value" in {
-        val requestContext = mock[RequestContext]
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-        (requestContext.headers _).expects().returning(Set(headerFrom("X-Api-Key" -> "1234567890")))
-        rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(blockContext))
+        assertMatchRule(
+          configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
+          requestHeaders = Set(headerFrom("X-Api-Key" -> "1234567890"))
+        )
       }
     }
 
     "not match" when {
       "x-api-key header contains not defined in settings value" in {
-        val requestContext = mock[RequestContext]
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-        (requestContext.headers _).expects().returning(Set(headerFrom("X-Api-Key" -> "x")))
-        rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
+        assertNotMatchRule(
+          configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
+          requestHeaders = Set(headerFrom("X-Api-Key" -> "x"))
+        )
       }
       "x-api-key header is absent" in {
-        val requestContext = mock[RequestContext]
-        val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
-        (requestContext.headers _).expects().returning(Set.empty)
-        rule.check(blockContext).runSyncStep shouldBe Right(Rejected())
+        assertNotMatchRule(
+          configuredApiKeys = NonEmptySet.of(ApiKey("1234567890")),
+          requestHeaders = Set.empty
+        )
       }
+    }
+  }
+
+  private def assertMatchRule(configuredApiKeys: NonEmptySet[ApiKey],
+                              requestHeaders: Set[Header]) =
+    assertRule(configuredApiKeys, requestHeaders, isMatched = true)
+
+  private def assertNotMatchRule(configuredApiKeys: NonEmptySet[ApiKey],
+                                 requestHeaders: Set[Header]) =
+    assertRule(configuredApiKeys, requestHeaders, isMatched = false)
+
+  private def assertRule(configuredApiKeys: NonEmptySet[ApiKey],
+                         requestHeaders: Set[Header],
+                         isMatched: Boolean) = {
+    val rule = new ApiKeysRule(ApiKeysRule.Settings(configuredApiKeys))
+    val requestContext = mock[RequestContext]
+    (requestContext.headers _).expects().returning(requestHeaders)
+    (requestContext.uriPath _).expects().returning(UriPath("/_cat/indices"))
+    val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
+    rule.check(blockContext).runSyncStep shouldBe Right {
+      if (isMatched) Fulfilled(blockContext)
+      else Rejected()
     }
   }
 }

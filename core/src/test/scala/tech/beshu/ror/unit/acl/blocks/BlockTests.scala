@@ -21,9 +21,9 @@ import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.Block.HistoryItem.RuleHistoryItem
 import tech.beshu.ror.accesscontrol.blocks.Block.{ExecutionResult, History}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralIndexRequestBlockContext
@@ -34,9 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{Block, BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex, User}
-import tech.beshu.ror.accesscontrol.factory.GlobalSettings
-import tech.beshu.ror.accesscontrol.factory.GlobalSettings.{FlsEngine, UsernameCaseMapping}
+import tech.beshu.ror.accesscontrol.domain.{IndexName, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.BlockTests.{notPassingRule, passingRule, throwingRule}
 import tech.beshu.ror.utils.TestsUtils._
@@ -216,7 +214,7 @@ object BlockTests extends MockFactory {
     new RegularRule {
       override val name: Rule.Name = Rule.Name(ruleName)
 
-      override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+      override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
         BlockContextUpdater[B] match {
           case GeneralIndexRequestBlockContextUpdater => Task.now(Fulfilled(modifyBlockContext(blockContext)))
           case _ => throw new IllegalStateException("Assuming that only GeneralIndexRequestBlockContext can be used in this test")
@@ -226,23 +224,15 @@ object BlockTests extends MockFactory {
   private def notPassingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       Task.now(Rejected())
   }
 
   private def throwingRule(ruleName: String) = new RegularRule {
     override val name: Rule.Name = Rule.Name(ruleName)
 
-    override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
+    override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
       Task.fromTry(Failure(new Exception("sth went wrong")))
   }
 
-  private val defaultGlobalSettings = GlobalSettings(
-    showBasicAuthPrompt = true,
-    forbiddenRequestMessage = "forbidden",
-    flsEngine = FlsEngine.ESWithLucene,
-    configurationIndex = RorConfigurationIndex(IndexName(".readonlyrest")),
-    usernameCaseMapping = UsernameCaseMapping.CaseSensitive,
-    indexAuditTemplate = None,
-  )
 }

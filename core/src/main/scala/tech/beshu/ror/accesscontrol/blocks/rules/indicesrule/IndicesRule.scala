@@ -56,7 +56,7 @@ class IndicesRule(override val settings: Settings,
 
   private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     BlockContextUpdater[B] match {
       case CurrentUserMetadataRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)
       case GeneralNonIndexRequestBlockContextUpdater => processRequestWithoutIndices(blockContext)

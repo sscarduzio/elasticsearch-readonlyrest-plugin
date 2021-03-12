@@ -33,7 +33,7 @@ class HostsRule(val settings: Settings,
 
   override val name: Rule.Name = HostsRule.name
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     val requestContext = blockContext.requestContext
     requestContext.xForwardedForHeaderValue match {
       case Some(xForwardedHeaderValue) if settings.acceptXForwardedForHeader =>

@@ -30,7 +30,7 @@ class ResponseFieldsRule(val settings: Settings)
 
   override val name: Rule.Name = ResponseFieldsRule.name
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     val maybeResolvedFields = resolveAll(settings.responseFields.toNonEmptyList, blockContext)
     UniqueNonEmptyList.fromList(maybeResolvedFields) match {
       case Some(resolvedFields) =>

@@ -32,10 +32,9 @@ class ActionsRule(val settings: Settings)
 
   override val name: Rule.Name = ActionsRule.name
 
-
   private val matcher: MatcherWithWildcardsScalaAdapter[Action] = MatcherWithWildcardsScalaAdapter[Action](settings.actions.toSortedSet)
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     val requestContext = blockContext.requestContext
     if (matcher.`match`(requestContext.action)) {
       RuleResult.Fulfilled(blockContext)
