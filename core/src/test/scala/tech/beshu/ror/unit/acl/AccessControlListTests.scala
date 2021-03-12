@@ -71,7 +71,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
       NonEmptyList.of(
         new RegularRule {
           override val name: Rule.Name = Rule.Name("auth")
-          override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
+          override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
             Task.now(Rule.RuleResult.Fulfilled(blockContext.withUserMetadata(_ => userMetadata)))
           }
         }

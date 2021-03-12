@@ -563,6 +563,7 @@ object domain {
   }
 
   final case class UriPath(value: NonEmptyString) {
+    def isAuditEventPath: Boolean = UriPath.auditEventPath.value.value.startsWith(value.value)
     def isCurrentUserMetadataPath: Boolean = UriPath.currentUserMetadataPath.value.value.startsWith(value.value)
     def isCatTemplatePath: Boolean = value.value.startsWith("/_cat/templates")
     def isTemplatePath: Boolean = value.value.startsWith("/_template")
@@ -575,6 +576,8 @@ object domain {
   }
   object UriPath {
     val currentUserMetadataPath = UriPath(NonEmptyString.unsafeFrom(Constants.CURRENT_USER_METADATA_PATH))
+    val auditEventPath = UriPath(NonEmptyString.unsafeFrom(Constants.AUDIT_EVENT_COLLECTOR_PATH))
+
     implicit val eqUriPath: Eq[UriPath] = Eq.fromUniversalEquals
 
     def from(value: String): Option[UriPath] = {

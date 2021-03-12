@@ -29,13 +29,14 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.SnapshotName
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
+
 class SnapshotsRule(val settings: Settings)
   extends RegularRule {
 
   override val name: Rule.Name = SnapshotsRule.name
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     BlockContextUpdater[B] match {
       case BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater =>
         Fulfilled(blockContext)

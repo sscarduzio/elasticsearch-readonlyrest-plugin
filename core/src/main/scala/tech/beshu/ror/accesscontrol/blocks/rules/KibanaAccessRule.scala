@@ -41,7 +41,7 @@ class KibanaAccessRule(val settings: Settings)
 
   override val name: Rule.Name = KibanaAccessRule.name
 
-  override def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
+  override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
 
     val requestContext = blockContext.requestContext
 

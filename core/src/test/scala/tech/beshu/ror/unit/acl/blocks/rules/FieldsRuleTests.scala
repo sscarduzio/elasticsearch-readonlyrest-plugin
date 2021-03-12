@@ -17,11 +17,12 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableMultiRequestBlockContext, FilterableRequestBlockContext, GeneralNonIndexRequestBlockContext, HasFieldLevelSecurity}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.FilterableRequestBlockContextUpdater
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
@@ -29,10 +30,10 @@ import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{RequestFieldsUsage, Strategy}
+import tech.beshu.ror.accesscontrol.domain.UriPath
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.mocks.{MockRequestContext, MockSimpleRequestContext}
@@ -228,6 +229,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
         val requestContext = mock[RequestContext]
         val incomingBlockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
+        (requestContext.uriPath _).expects().returning(UriPath("/_search"))
         (requestContext.isReadOnlyRequest _).expects().returning(true)
         (requestContext.action _).expects().returning(MockRequestContext.DefaultAction)
 
