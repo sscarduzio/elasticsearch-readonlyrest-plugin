@@ -22,7 +22,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.TestSuiteWithClosedTaskAssertion
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, SearchManagerJ}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, SearchManagerJ}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 import scala.collection.JavaConverters._
@@ -110,9 +110,9 @@ trait ImpersonationSuite
 
 object ImpersonationSuite {
 
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
   }
 }
