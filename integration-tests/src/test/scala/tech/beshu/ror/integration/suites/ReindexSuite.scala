@@ -22,7 +22,7 @@ import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTes
 import tech.beshu.ror.integration.utils.ESVersionSupport
 import tech.beshu.ror.utils.containers.{ElasticsearchNodeDataInitializer, EsContainerCreator}
 import tech.beshu.ror.utils.elasticsearch.IndexManager.ReindexSource
-import tech.beshu.ror.utils.elasticsearch.{DocumentManagerJ, IndexManager}
+import tech.beshu.ror.utils.elasticsearch.{DocumentManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
 
 trait ReindexSuite
@@ -72,9 +72,11 @@ trait ReindexSuite
 }
 
 object ReindexSuite {
-  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (_, adminRestClient: RestClient) => {
-    val documentManager = new DocumentManagerJ(adminRestClient)
-    documentManager.insertDoc("/test1_index/test/1", "{\"hello\":\"world\"}")
-    documentManager.insertDoc("/test2_index/test/1", "{\"hello\":\"world\"}")
+
+  private def nodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion: String, adminRestClient: RestClient) => {
+    val documentManager = new DocumentManager(adminRestClient, esVersion)
+    documentManager.createDoc("test1_index", 1, ujson.read("""{"hello":"world"}""")).force()
+    documentManager.createDoc("test2_index", 1, ujson.read("""{"hello":"world"}""")).force()
   }
+
 }
