@@ -116,8 +116,6 @@ stages:
         secureFile: 'gh_deploy_key.priv'
 
     - script: |
-        set -e
-
         echo Installing $(ghKey.secureFilePath) to directory...
         mkdir -p ~/.ssh && chmod 0700 ~/.ssh
         touch $(ssh_file)
