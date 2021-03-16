@@ -29,6 +29,7 @@ import tech.beshu.ror.utils.containers._
 import tech.beshu.ror.utils.elasticsearch.BaseManager.JSON
 import tech.beshu.ror.utils.elasticsearch.{ClusterManager, DocumentManager, IndexLifecycleManager, IndexManager}
 import tech.beshu.ror.utils.httpclient.RestClient
+import tech.beshu.ror.utils.misc.Version
 
 trait IndexLifecycleManagementApiSuite
   extends AnyWordSpec
@@ -433,18 +434,20 @@ object IndexLifecycleManagementApiSuite {
     documentManager.createDoc("index2", "1", document).force()
     documentManager.createDoc("index2_1", "1", document).force()
 
-    val clusterManager = new ClusterManager(adminRestClient, esVersion)
-    clusterManager
-      .putSettings(ujson.read {
-        s"""
-           |{
-           |  "persistent" : {
-           |    "indices.lifecycle.poll_interval": "100ms"
-           |  }
-           |}
+    if(Version.greaterOrEqualThan(esVersion, 6, 6, 0)) {
+      val clusterManager = new ClusterManager(adminRestClient, esVersion)
+      clusterManager
+        .putSettings(ujson.read {
+          s"""
+             |{
+             |  "persistent" : {
+             |    "indices.lifecycle.poll_interval": "100ms"
+             |  }
+             |}
        """.stripMargin
-      })
-      .force()
+        })
+        .force()
+    }
   }
 
   private object PolicyGenerator {
