@@ -380,7 +380,7 @@ trait XpackApiSuite
         }
       }
       "return 404" when {
-        "user has no access to called rollup index" excludeES(allEs5x, allEs6xBelowEs63x) in {
+        "user has no access to called rollup index" excludeES(allEs5x, allEs6xBelowEs65x) in {
           val jobName = NextRollupJobName.get
           val rollupIndex = s"rollup_test4_$jobName"
           adminXpackApiManager.rollup(jobName, "test4*", rollupIndex).force()
