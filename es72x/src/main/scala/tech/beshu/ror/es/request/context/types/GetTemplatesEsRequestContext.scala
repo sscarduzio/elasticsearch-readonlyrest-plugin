@@ -38,6 +38,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 
 class GetTemplatesEsRequestContext(actionRequest: GetIndexTemplatesRequest,
                                    esContext: EsContext,
@@ -148,11 +149,12 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
 
   private def filterAliases(metadata: IndexTemplateMetaData, template: LegacyTemplate) = {
     val aliasesStrings = template.aliases.map(_.value.value)
-    val filteredAliasesMap = metadata
-      .aliases().valuesIt().asScala
-      .filter { a => aliasesStrings.contains(a.alias()) }
-      .map(a => (a.alias(), a))
-      .toMap
+    val filteredAliasesMap =
+      metadata
+        .aliases().asSafeValues
+        .filter { a => aliasesStrings.contains(a.alias()) }
+        .map(a => (a.alias(), a))
+        .toMap
     new ImmutableOpenMap.Builder[String, AliasMetaData]()
       .putAll(filteredAliasesMap.asJava)
       .build()
@@ -166,7 +168,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
       patterns <- UniqueNonEmptyList
         .fromList(metadata.patterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
-      aliases = metadata.aliases().keysIt().asScala.flatMap(IndexName.fromString).toSet
+      aliases = metadata.aliases().asSafeKeys.flatMap(IndexName.fromString)
     } yield LegacyTemplate(name, patterns, aliases)
   }
 }

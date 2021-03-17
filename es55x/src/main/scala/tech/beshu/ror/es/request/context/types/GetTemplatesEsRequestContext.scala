@@ -26,6 +26,7 @@ import org.elasticsearch.cluster.metadata.{AliasMetaData, IndexTemplateMetaData}
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.threadpool.ThreadPool
 import org.joor.Reflect.onClass
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.LegacyTemplate
@@ -163,11 +164,12 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
 
   private def filterAliases(metadata: IndexTemplateMetaData, template: LegacyTemplate) = {
     val aliasesStrings = template.aliases.map(_.value.value)
-    val filteredAliasesMap = metadata
-      .aliases().valuesIt().asScala
-      .filter { a => aliasesStrings.contains(a.alias()) }
-      .map(a => (a.alias(), a))
-      .toMap
+    val filteredAliasesMap =
+      metadata
+        .aliases().asSafeValues
+        .filter { a => aliasesStrings.contains(a.alias()) }
+        .map(a => (a.alias(), a))
+        .toMap
     new ImmutableOpenMap.Builder[String, AliasMetaData]()
       .putAll(filteredAliasesMap.asJava)
       .build()
@@ -181,7 +183,7 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
       patterns <- UniqueNonEmptyList
         .fromList(IndexPattern.fromString(metadata.template()).toList)
         .toRight("Template indices pattern list should not be empty")
-      aliases = metadata.aliases().keysIt().asScala.flatMap(IndexName.fromString).toSet
+      aliases = metadata.aliases().asSafeKeys.flatMap(IndexName.fromString)
     } yield LegacyTemplate(name, patterns, aliases)
   }
 }
