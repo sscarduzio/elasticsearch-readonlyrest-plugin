@@ -148,7 +148,8 @@ private[types] object GetTemplatesEsRequestContext extends Logging {
       basedOn.patterns.toList.map(_.value.value).asJava,
       metadata.settings(),
       metadata.mappings(),
-      filterAliases(metadata, basedOn)
+      filterAliases(metadata, basedOn),
+      metadata.customs()
     )
   }
 
