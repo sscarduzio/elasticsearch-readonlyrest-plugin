@@ -17,6 +17,7 @@
 package tech.beshu.ror.es.request.context.types
 
 import org.elasticsearch.action.admin.indices.template.put.PutComposableIndexTemplateAction
+import org.elasticsearch.cluster.metadata.ComposableIndexTemplate
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.AddingIndexTemplate
@@ -60,7 +61,8 @@ object PutComposableIndexTemplateEsRequestContext {
       patterns <- UniqueNonEmptyList
         .fromList(request.indexTemplate().indexPatterns().asSafeList.flatMap(IndexPattern.fromString))
         .toRight("Template indices pattern list should not be empty")
-      aliases = request.indexTemplate().template().aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet
+      aliases = request.indexTemplate().template().asSafeSet
+        .flatMap(_.aliases().asSafeMap.keys.flatMap(IndexName.fromString).toSet)
     } yield AddingIndexTemplate(name, patterns, aliases)
   }
 }
