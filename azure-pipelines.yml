@@ -101,7 +101,9 @@ stages:
           ROR_TASK: integration_es55x
 
 - stage: BLD_TEST
-  condition: and(succeeded(), eq(variables.isPullRequest, true))
+  dependsOn:
+    - TEST
+  condition: and(succeeded('TEST'), eq(variables.isPullRequest, true))
   jobs:
   - job:
     steps:
@@ -125,7 +127,9 @@ stages:
           ROR_TASK: package_es5xx
 
 - stage: S3_UP
-  condition: and(in('Succeeded', 'Skipped'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+  dependsOn:
+    - TEST
+  condition: and(succeeded('TEST'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
   jobs:
   - job:
     steps:
@@ -182,7 +186,9 @@ stages:
           ROR_TASK: package_es5xx
 
 - stage: MVN_PUB
-  condition: and(succeeded(), eq(variables.isMaster, true))
+  dependsOn:
+    - TEST
+  condition: and(succeeded('TEST'), eq(variables.isMaster, true))
   jobs:
   - job:
     steps:
