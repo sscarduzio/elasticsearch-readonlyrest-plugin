@@ -125,7 +125,7 @@ stages:
           ROR_TASK: package_es5xx
 
 - stage: S3_UP
-  condition: and(succeeded(), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
+  condition: and(in('Succeeded', 'Skipped'), or(eq(variables.isDevelop, true), eq(variables.isMaster, true)))
   jobs:
   - job:
     steps:
