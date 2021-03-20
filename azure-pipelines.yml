@@ -101,7 +101,7 @@ stages:
           ROR_TASK: integration_es55x
 
 - stage: BLD_TEST
-  condition: and(succeeded(), or(eq(variables.isPullRequest, true)))
+  condition: and(succeeded(), eq(variables.isPullRequest, true))
   jobs:
   - job:
     steps:
