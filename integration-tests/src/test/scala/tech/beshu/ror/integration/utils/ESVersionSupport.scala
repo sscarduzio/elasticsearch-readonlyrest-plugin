@@ -29,6 +29,7 @@ trait ESVersionSupport extends AnyWordSpecLike {
   val allEs5x = "^es5\\dx$".r
   val allEs6x = "^es6\\dx$".r
   val allEs6xBelowEs63x = "^es6[0-2]x$".r
+  val allEs6xBelowEs65x = "^es6[0-4]x$".r
   val allEs6xBelowEs66x = "^es6[0-5]x$".r
   val allEs6xExceptEs66x = "^es6(?!(?:6x)$)\\dx$".r
   val allEs7x = "^es7\\d+x$".r
