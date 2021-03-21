@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockCont
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
-import tech.beshu.ror.accesscontrol.domain.{TemplateNamePattern, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -110,9 +110,11 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
         transformation
       )
       .filter { t =>
-        TemplateNamePattern
+        TemplateName
           .fromString(t.name())
-          .exists(allowedTemplates.contains)
+          .exists { templateName =>
+            allowedTemplates.exists(_.matches(templateName))
+          }
       }
       .map(_.name())
 
