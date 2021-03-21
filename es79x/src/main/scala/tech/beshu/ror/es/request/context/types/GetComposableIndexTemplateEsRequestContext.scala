@@ -71,12 +71,10 @@ class GetComposableIndexTemplateEsRequestContext(actionRequest: GetComposableInd
   override protected def modifyRequest(blockContext: TemplateRequestBlockContext): ModificationResult = {
     blockContext.templateOperation match {
       case GettingIndexTemplates(namePatterns) =>
-        if (namePatterns.tail.nonEmpty) {
-          logger.warn(
-            s"""[${id.show}] Filtered result contains more than one template. First was taken. The whole set of
-               | index templates [${namePatterns.show}]""".stripMargin)
-        }
-        actionRequest.name(namePatterns.head.value.value)
+        val templateNamePatternToUse =
+          if (namePatterns.tail.isEmpty) namePatterns.head
+          else TemplateNamePattern.findMostGenericTemplateNamePatten(namePatterns)
+        actionRequest.name(templateNamePatternToUse.value.value)
         updateResponse(using = blockContext)
       case other =>
         logger.error(

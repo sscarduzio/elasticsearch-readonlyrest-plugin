@@ -31,7 +31,7 @@ import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.blocks.rules.utils.{IndicesMatcher, MatcherWithWildcardsScalaAdapter, TemplateNamePatternMatcher, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.domain.Action.{asyncSearchAction, fieldCapsAction, mSearchAction, rollupSearchAction, rorAuditEventAction, rorConfigAction, rorOldConfigAction, rorUserMetadataAction, searchAction, searchTemplateAction, _}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.RequestFieldsUsage.UsedField.SpecificField
@@ -95,8 +95,10 @@ object domain {
     }
 
     def apply(name: Name, value: NonEmptyString): Header = new Header(name, value)
+
     def apply[T](name: Name, value: T)
                 (implicit ev: ToHeaderValue[T]): Header = new Header(name, ev.toRawValue(value))
+
     def apply(nameAndValue: (NonEmptyString, NonEmptyString)): Header = new Header(Name(nameAndValue._1), nameAndValue._2)
 
     def fromAuthorizationValue(value: NonEmptyString): Either[AuthorizationValueError, NonEmptyList[Header]] = {
@@ -114,7 +116,7 @@ object domain {
 
     private def createHeaderFromAuthorizationString(authStr: String) = {
       val trimmed = authStr.trim
-      val sanitized = if(trimmed.endsWith(",")) trimmed.substring(0, trimmed.length - 1) else trimmed
+      val sanitized = if (trimmed.endsWith(",")) trimmed.substring(0, trimmed.length - 1) else trimmed
       NonEmptyString
         .from(sanitized)
         .map(new Header(Name.authorization, _))
@@ -182,7 +184,7 @@ object domain {
     private def parse(headerValue: NonEmptyString) = {
       val authMethodName = "Basic "
       val rawValue = headerValue.value
-      if(rawValue.startsWith(authMethodName) && rawValue.length > authMethodName.length) {
+      if (rawValue.startsWith(authMethodName) && rawValue.length > authMethodName.length) {
         val basicAuth = fromBase64(rawValue.substring(authMethodName.length))
         basicAuth match {
           case None =>
@@ -245,18 +247,23 @@ object domain {
     def hasPrefix(prefix: String): Boolean = value.startsWith(prefix)
 
     def isSnapshot: Boolean = value.contains("/snapshot/")
+
     def isRepository: Boolean = value.contains("/repository/")
+
     def isTemplate: Boolean = value.contains("/template/")
+
     def isPutTemplate: Boolean = List(
       putTemplateAction,
       putIndexTemplateAction
     ).contains(this)
+
     def isRorAction: Boolean = List(
       rorUserMetadataAction,
       rorConfigAction,
       rorAuditEventAction,
       rorOldConfigAction
     ).contains(this)
+
     def isSearchAction: Boolean = List(
       searchAction,
       mSearchAction,
@@ -290,12 +297,16 @@ object domain {
     private lazy val matcher = MatcherWithWildcardsScalaAdapter.create(this :: Nil)
 
     def isClusterIndex: Boolean = value.value.contains(":")
+
     def hasPrefix(prefix: String): Boolean = value.value.startsWith(prefix)
+
     def hasWildcard: Boolean = value.value.contains("*")
+
     def matches(indexName: IndexName): Boolean = {
-      if(hasWildcard) matcher.`match`(indexName)
+      if (hasWildcard) matcher.`match`(indexName)
       else this == indexName
     }
+
     def isAllowedBy(allowedIndices: Traversable[IndexName]): Boolean = {
       this match {
         case Placeholder(placeholder) =>
@@ -323,7 +334,7 @@ object domain {
     def randomNonexistentIndex(prefix: String = ""): IndexName = from {
       NonEmptyString.unsafeFrom {
         val nonexistentIndex = s"${NonEmptyString.unapply(prefix).map(i => s"${i}_").getOrElse("")}ROR_${Random.alphanumeric.take(10).mkString("")}"
-        if(prefix.contains("*")) s"$nonexistentIndex*"
+        if (prefix.contains("*")) s"$nonexistentIndex*"
         else nonexistentIndex
       }
     }
@@ -358,7 +369,7 @@ object domain {
     def fromString(value: String): Option[IndexPattern] = NonEmptyString.from(value).map(IndexPattern.apply).toOption
   }
 
-  final case class AliasPlaceholder private (alias: IndexName) extends AnyVal {
+  final case class AliasPlaceholder private(alias: IndexName) extends AnyVal {
     def index(value: NonEmptyString): IndexName =
       IndexName.fromUnsafeString(alias.value.replaceAll(AliasPlaceholder.escapedPlaceholder, value.value))
   }
@@ -367,7 +378,7 @@ object domain {
     private val escapedPlaceholder = placeholder.replaceAllLiterally("{", "\\{").replaceAllLiterally("}", "\\}")
 
     def from(alias: IndexName): Option[AliasPlaceholder] =
-      if(alias.value.contains(placeholder)) Some(AliasPlaceholder(alias)) else None
+      if (alias.value.contains(placeholder)) Some(AliasPlaceholder(alias)) else None
   }
 
   object Placeholder {
@@ -388,7 +399,7 @@ object domain {
     }
 
     def conforms(index: IndexName): Boolean = {
-      if(index.hasWildcard) {
+      if (index.hasWildcard) {
         IndicesMatcher
           .create(Set(index))
           .`match`(IndexName.fromUnsafeString(rawPattern))
@@ -421,7 +432,7 @@ object domain {
     val wildcard: RepositoryName = RepositoryName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
-    implicit val caseMappingEqualityRepositoryName:CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(_.value.value, identity)
+    implicit val caseMappingEqualityRepositoryName: CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(_.value.value, identity)
   }
   final case class SnapshotName(value: NonEmptyString)
   object SnapshotName {
@@ -429,7 +440,7 @@ object domain {
     val wildcard: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("*"))
 
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
-    implicit val caseMappingEqualitySnapshotName:CaseMappingEquality[SnapshotName] =
+    implicit val caseMappingEqualitySnapshotName: CaseMappingEquality[SnapshotName] =
       CaseMappingEquality.instance(_.value.value, identity)
   }
 
@@ -503,13 +514,19 @@ object domain {
     def fromString(value: String): Option[TemplateName] = {
       NonEmptyString.from(value).map(TemplateName.apply).toOption
     }
+
     implicit val eqTemplateName: Eq[TemplateName] = Eq.fromUniversalEquals
   }
 
-  final case class TemplateNamePattern(value: NonEmptyString)
-  object TemplateNamePattern {
-    implicit val caseMappingEqualityTemplateNamePattern: CaseMappingEquality[TemplateNamePattern] = CaseMappingEquality.instance(_.value.value, identity)
+  final case class TemplateNamePattern(value: NonEmptyString) {
+    private lazy val matcher = TemplateNamePatternMatcher.create(Set(this))
 
+    def matches(templateName: TemplateName): Boolean = matcher.`match`(templateName)
+
+  }
+  object TemplateNamePattern {
+    implicit val caseMappingEqualityTemplateNamePattern: CaseMappingEquality[TemplateNamePattern] =
+      CaseMappingEquality.instance(_.value.value, identity)
     val wildcard: TemplateNamePattern = TemplateNamePattern("*")
 
     def fromString(value: String): Option[TemplateNamePattern] = {
@@ -526,9 +543,35 @@ object domain {
       TemplateNamePattern(NonEmptyString.unsafeFrom(nonexistentTemplateNamePattern))
     }
 
+    def findMostGenericTemplateNamePatten(in: NonEmptyList[TemplateNamePattern]): TemplateNamePattern = {
+      def allTheSame(letters: List[Char]) = letters.size > 1 && letters.distinct.size == 1
+      import tech.beshu.ror.accesscontrol.show.logs._
+
+      if (in.size > 1) {
+        TemplateNamePattern
+          .fromString {
+            in
+              .toList.map(_.value.value.toCharArray)
+              .transpose
+              .foldLeft((false, StringBuilder.newBuilder)) {
+                case ((false, builder), letters) if allTheSame(letters) =>
+                  (false, builder.append(letters.head))
+                case ((false, builder), _) =>
+                  (true, builder.append("*"))
+                case (acc, _) =>
+                  acc
+              }
+              ._2
+              .toString
+          }
+          .getOrElse(throw new IllegalMonitorStateException(s"Cannot find the most generic template name patten in ${in.toList.map(_.show).mkString(",")}"))
+      } else {
+        in.head
+      }
+    }
+
     implicit val eqTemplateName: Eq[TemplateNamePattern] = Eq.fromUniversalEquals
   }
-
 
   final case class ApiKey(value: NonEmptyString)
   object ApiKey {
@@ -564,10 +607,15 @@ object domain {
 
   final case class UriPath(value: NonEmptyString) {
     def isAuditEventPath: Boolean = UriPath.auditEventPath.value.value.startsWith(value.value)
+
     def isCurrentUserMetadataPath: Boolean = UriPath.currentUserMetadataPath.value.value.startsWith(value.value)
+
     def isCatTemplatePath: Boolean = value.value.startsWith("/_cat/templates")
+
     def isTemplatePath: Boolean = value.value.startsWith("/_template")
+
     def isCatIndicesPath: Boolean = value.value.startsWith("/_cat/indices")
+
     def isAliasesPath: Boolean =
       value.value.startsWith("/_cat/aliases") ||
         value.value.startsWith("/_alias") ||
@@ -588,35 +636,35 @@ object domain {
 
     object CatTemplatePath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
-        if(uriPath.isCatTemplatePath) Some(uriPath)
+        if (uriPath.isCatTemplatePath) Some(uriPath)
         else None
       }
     }
 
     object CatIndicesPath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
-        if(uriPath.isCatIndicesPath) Some(uriPath)
+        if (uriPath.isCatIndicesPath) Some(uriPath)
         else None
       }
     }
 
     object TemplatePath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
-        if(uriPath.isTemplatePath) Some(uriPath)
+        if (uriPath.isTemplatePath) Some(uriPath)
         else None
       }
     }
 
     object AliasesPath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
-        if(uriPath.isAliasesPath) Some(uriPath)
+        if (uriPath.isAliasesPath) Some(uriPath)
         else None
       }
     }
 
     object CurrentUserMetadataPath {
       def unapply(uriPath: UriPath): Option[UriPath] = {
-        if(uriPath.isCurrentUserMetadataPath) Some(uriPath)
+        if (uriPath.isCurrentUserMetadataPath) Some(uriPath)
         else None
       }
     }
@@ -711,7 +759,7 @@ object domain {
         final case class SpecificField private(value: String) extends UsedField
 
         object SpecificField {
-          implicit class Ops (val specificField: SpecificField) extends AnyVal {
+          implicit class Ops(val specificField: SpecificField) extends AnyVal {
             def obfuscate: ObfuscatedRandomField = ObfuscatedRandomField(specificField)
           }
         }
