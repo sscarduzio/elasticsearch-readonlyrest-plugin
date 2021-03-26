@@ -20,7 +20,7 @@ import org.elasticsearch.client.{RestClient, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.node.Node
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
+import tech.beshu.ror.accesscontrol.matchers.{RandomBasedUniqueIdentifierGenerator, UniqueIdentifierGenerator}
 import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, Header}
 import tech.beshu.ror.boot.StartingFailure
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}

@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.auto._
 import cats.data.NonEmptySet
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
@@ -59,7 +61,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
       "impersonator has proper rights, can be authenticated and underlying rule support impersonation" when {
         "admin1 is impersonator" in {
           val requestContext = MockRequestContext.indices.copy(
-            headers = Set(basicAuthHeader("admin1:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
+            headers = Set(basicAuthHeader("admin1:pass"), new Header(Header.Name.impersonateAs, "user1"))
           )
           val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
@@ -67,13 +69,13 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
 
           inside(result) { case Fulfilled(newBlockContext: GeneralIndexRequestBlockContext) =>
             newBlockContext.userMetadata should be(
-              UserMetadata.empty.withLoggedUser(ImpersonatedUser(User.Id("user1".nonempty), User.Id("admin1".nonempty)))
+              UserMetadata.empty.withLoggedUser(ImpersonatedUser(User.Id("user1"), User.Id("admin1")))
             )
           }
         }
         "admin3 is impersonator" in {
           val requestContext = MockRequestContext.indices.copy(
-            headers = Set(basicAuthHeader("admin3:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
+            headers = Set(basicAuthHeader("admin3:pass"), new Header(Header.Name.impersonateAs, "user1"))
           )
           val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
@@ -81,7 +83,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
 
           inside(result) { case Fulfilled(newBlockContext: GeneralIndexRequestBlockContext) =>
             newBlockContext.userMetadata should be(
-              UserMetadata.empty.withLoggedUser(ImpersonatedUser(User.Id("user1".nonempty), User.Id("admin3".nonempty)))
+              UserMetadata.empty.withLoggedUser(ImpersonatedUser(User.Id("user1"), User.Id("admin3")))
             )
           }
         }
@@ -90,7 +92,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
     "not allow to impersonate user" when {
       "impersonator has no rights to do it" in {
         val requestContext = MockRequestContext.indices.copy(
-          headers = Set(basicAuthHeader("regularuser:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
+          headers = Set(basicAuthHeader("regularuser:pass"), new Header(Header.Name.impersonateAs, "user1"))
         )
         val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
@@ -100,7 +102,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
       }
       "impersonator has no rights to impersonate given user" in {
         val requestContext = MockRequestContext.indices.copy(
-          headers = Set(basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
+          headers = Set(basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "user1"))
         )
         val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
@@ -110,7 +112,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
       }
       "impersonator authentication failed" in {
         val requestContext = MockRequestContext.indices.copy(
-          headers = Set(basicAuthHeader("admin1:invalid_password"), new Header(Header.Name.impersonateAs, "user1".nonempty))
+          headers = Set(basicAuthHeader("admin1:invalid_password"), new Header(Header.Name.impersonateAs, "user1"))
         )
         val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
@@ -120,13 +122,13 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
       }
       "impersonation is not supported by underlying rule" in {
         val requestContext = MockRequestContext.indices.copy(
-          headers = Set(basicAuthHeader("admin1:pass"), new Header(Header.Name.impersonateAs, "user1".nonempty))
+          headers = Set(basicAuthHeader("admin1:pass"), new Header(Header.Name.impersonateAs, "user1"))
         )
         val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
         val rule = authRuleWithImpersonation { defs =>
           new AuthKeySha1Rule(
-            settings = BasicAuthenticationRule.Settings(HashedCredentials.HashedUserAndPassword("xxxxxxxxxxx".nonempty)),
+            settings = BasicAuthenticationRule.Settings(HashedCredentials.HashedUserAndPassword("xxxxxxxxxxx")),
             impersonators = defs,
             caseMappingEquality = TestsUtils.userIdEq,
           )
@@ -137,7 +139,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
       }
       "underlying rule returns info that given user doesn't exist" in {
         val requestContext = MockRequestContext.indices.copy(
-          headers = Set(basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "user2".nonempty))
+          headers = Set(basicAuthHeader("admin2:pass"), new Header(Header.Name.impersonateAs, "user2"))
         )
         val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)
 
@@ -151,7 +153,10 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
   private def authKeyRuleWithConfiguredImpersonation(user: String, password: String) = {
     authRuleWithImpersonation { defs =>
       new AuthKeyRule(
-        BasicAuthenticationRule.Settings(Credentials(User.Id(user.nonempty), PlainTextSecret(password.nonempty))),
+        BasicAuthenticationRule.Settings(Credentials(
+          User.Id(NonEmptyString.unsafeFrom(user)),
+          PlainTextSecret(NonEmptyString.unsafeFrom(password))
+        )),
         defs,
         TestsUtils.userIdEq
       )
@@ -162,19 +167,19 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
     authKeyRuleCreator {
       List(
         ImpersonatorDef(
-          User.Id("admin1".nonempty),
+          User.Id("admin1"),
           authKeyRule("admin1", "pass"),
-          NonEmptySet.one(User.Id("*".nonempty))
+          NonEmptySet.one(User.Id("*"))
         ),
         ImpersonatorDef(
-          User.Id("admin2".nonempty),
+          User.Id("admin2"),
           authKeyRule("admin2", "pass"),
-          NonEmptySet.of(User.Id("user2".nonempty), User.Id("user3".nonempty))
+          NonEmptySet.of(User.Id("user2"), User.Id("user3"))
         ),
         ImpersonatorDef(
-          User.Id("admin3".nonempty),
+          User.Id("admin3"),
           authKeyRule("admin3", "pass"),
-          NonEmptySet.one(User.Id("user1".nonempty))
+          NonEmptySet.one(User.Id("user1"))
         )
       )
     }
@@ -182,7 +187,10 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
 
   private def authKeyRule(user: String, password: String) = {
     new AuthKeyRule(
-      BasicAuthenticationRule.Settings(Credentials(User.Id(user.nonempty), PlainTextSecret(password.nonempty))),
+      BasicAuthenticationRule.Settings(Credentials(
+        User.Id(NonEmptyString.unsafeFrom(user)),
+        PlainTextSecret(NonEmptyString.unsafeFrom(password))
+      )),
       Nil,
       TestsUtils.userIdEq
     )

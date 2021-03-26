@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import cats.data.NonEmptySet
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -24,10 +25,8 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolva
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.orders._
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.CaseMappingEquality._
-import tech.beshu.ror.utils.TestsUtils
+import tech.beshu.ror.utils.TestsUtils._
 
 class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
 
@@ -46,7 +45,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |
               |""".stripMargin,
           assertion = rule => {
-            val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] = NonEmptySet.one(AlreadyResolved(User.Id("user1".nonempty).nel))
+            val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] = NonEmptySet.one(AlreadyResolved(User.Id("user1").nel))
             rule.settings.userIds should be(userIds)
           }
         )
@@ -84,7 +83,7 @@ class UsersRuleSettingsTests extends BaseRuleSettingsDecoderTest[UsersRule] {
               |""".stripMargin,
           assertion = rule => {
             val userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]] =
-              NonEmptySet.of(AlreadyResolved(User.Id("user1".nonempty).nel), AlreadyResolved(User.Id("user2".nonempty).nel))
+              NonEmptySet.of(AlreadyResolved(User.Id("user1").nel), AlreadyResolved(User.Id("user2").nel))
             rule.settings.userIds should be(userIds)
           }
         )

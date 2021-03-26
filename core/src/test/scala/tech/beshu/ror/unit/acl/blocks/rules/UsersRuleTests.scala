@@ -34,6 +34,8 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
+import eu.timepit.refined.auto._
+import eu.timepit.refined.types.string.NonEmptyString
 
 class UsersRuleTests extends AnyWordSpec with MockFactory {
 
@@ -42,13 +44,13 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
       "configured user id is the same as logged user id" in {
         assertMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("asd")),
-          loggedUser = Some(DirectlyLoggedUser(Id("asd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("asd")))
         )
       }
       "configured user id has wildcard and can be applied to logged user id" in {
         assertMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
-          loggedUser = Some(DirectlyLoggedUser(Id("asd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("asd")))
         )
       }
     }
@@ -56,13 +58,13 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
       "configured user id is different than logged user id" in {
         assertNotMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("_asd")),
-          loggedUser = Some(DirectlyLoggedUser(Id("asd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("asd")))
         )
       }
       "configured user id has wildcard but cannot be applied to logged user id" in {
         assertNotMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
-          loggedUser = Some(DirectlyLoggedUser(Id("aXsd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("aXsd")))
         )
       }
       "user is not logged" in {
@@ -100,7 +102,7 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
 
   private def userIdValueFrom(value: String): RuntimeMultiResolvableVariable[User.Id] = {
     RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(User.Id.apply))
+      .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(User.Id.apply))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create User Id Value from $value"))
   }

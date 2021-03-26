@@ -26,7 +26,7 @@ import org.elasticsearch.cluster.metadata.{ComponentTemplate => MetadataComponen
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.ComponentTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingComponentTemplates
 import tech.beshu.ror.accesscontrol.domain.{IndexName, Template, TemplateName, TemplateNamePattern}

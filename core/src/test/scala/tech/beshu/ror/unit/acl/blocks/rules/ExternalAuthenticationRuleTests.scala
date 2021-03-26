@@ -32,7 +32,8 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils
-import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
+import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
+import eu.timepit.refined.auto._
 
 class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
@@ -42,7 +43,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { credentials: Credentials => credentials.user.value === "user".nonempty && credentials.secret.value == "pass".nonempty })
+          .expects(where { credentials: Credentials => credentials.user.value === "user" && credentials.secret.value.value == "pass" })
           .returning(Task.now(true))
 
         val requestContext = mock[RequestContext]
@@ -55,7 +56,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           GeneralNonIndexRequestBlockContext(
             requestContext,
-            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("user".nonempty))),
+            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("user"))),
             Set.empty,
             List.empty
           )
@@ -67,7 +68,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { credentials: Credentials => credentials.user.value === "user".nonempty && credentials.secret.value == "pass".nonempty })
+          .expects(where { credentials: Credentials => credentials.user.value === "user" && credentials.secret.value.value == "pass" })
           .returning(Task.now(false))
 
         val requestContext = mock[RequestContext]

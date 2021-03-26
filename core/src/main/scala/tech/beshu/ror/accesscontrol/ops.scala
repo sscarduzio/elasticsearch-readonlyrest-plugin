@@ -17,7 +17,7 @@
 package tech.beshu.ror.accesscontrol
 
 import java.util.Base64
-import java.util.regex.Pattern
+import java.util.regex.{Pattern => RegexPattern}
 
 import cats.data.NonEmptyList
 import cats.implicits._
@@ -48,6 +48,7 @@ import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.{FieldsRestriction
 import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
+import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
@@ -90,6 +91,7 @@ object orders {
     case Address.Ip(value) => value.toString()
     case Address.Name(value) => value.toString
   }
+  implicit val idPatternOrder: Order[UserIdPattern] = Order.by(_.value)
   implicit val methodOrder: Order[Method] = Order.by(_.m)
   implicit val apiKeyOrder: Order[ApiKey] = Order.by(_.value)
   implicit val kibanaAppOrder: Order[KibanaApp] = Order.by(_.value)
@@ -97,11 +99,11 @@ object orders {
   implicit val actionOrder: Order[Action] = Order.by(_.value)
   implicit val authKeyOrder: Order[PlainTextSecret] = Order.by(_.value)
   implicit val indexOrder: Order[IndexName] = Order.by(_.value)
-  implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value)
+  implicit val userDefOrder: Order[UserDef] = Order.by(_.id.value.patterns)
   implicit val ruleNameOrder: Order[Rule.Name] = Order.by(_.value)
   implicit val ruleOrder: Order[Rule] = Order.fromOrdering(new RuleOrdering)
   implicit val ruleWithVariableUsageDefinitionOrder: Order[RuleWithVariableUsageDefinition[Rule]] = Order.by(_.rule)
-  implicit val patternOrder: Order[Pattern] = Order.by(_.pattern)
+  implicit val patternOrder: Order[RegexPattern] = Order.by(_.pattern)
   implicit val forbiddenByMismatchedCauseOrder: Order[ForbiddenByMismatched.Cause] = Order.by {
     case ForbiddenByMismatched.Cause.OperationNotAllowed => 1
     case ForbiddenByMismatched.Cause.ImpersonationNotAllowed => 2
@@ -121,7 +123,10 @@ object orders {
 object show {
   trait LogsShowInstances {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
+    implicit val patternShow: Show[Pattern[_]] = Show.show(_.value.value)
     implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
+    implicit val userIdPatternsShow: Show[UserDef.UserIdPatterns] = Show.show(_.patterns.map(_.value.value).mkString_(","))
+    implicit val idPatternShow: Show[User.UserIdPattern] = patternShow.contramap(identity[Pattern[User.Id]])
     implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value.value)
     implicit val typeShow: Show[Type] = Show.show(_.value)
     implicit val actionShow: Show[Action] = Show.show(_.value)
@@ -149,6 +154,8 @@ object show {
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
     implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
+
+    implicit def nonEmptyList[T : Show]: Show[NonEmptyList[T]] = Show[List[T]].contramap(_.toList)
 
     implicit def blockContextShow[B <: BlockContext](implicit showHeader: Show[Header]): Show[B] =
       Show.show { bc =>

@@ -18,9 +18,10 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import java.net.URI
 import java.util.concurrent.TimeUnit
-import cats.{Show, Order}
+
 import cats.data.NonEmptySet
 import cats.implicits._
+import cats.{Order, Show}
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.{Refined, Validate}
@@ -32,12 +33,11 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.ConvertError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{Address, Group, Header, User}
 import tech.beshu.ror.accesscontrol.factory.HttpClientsFactory
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, ValueLevelCreationError}
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.refined._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -46,7 +46,6 @@ import tech.beshu.ror.com.jayway.jsonpath.JsonPath
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
-import tech.beshu.ror.utils.CaseMappingEquality._
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
@@ -116,6 +115,9 @@ object common extends Logging {
   implicit val userIdDecoder: Decoder[User.Id] =
     DecoderHelpers.decodeStringLikeNonEmpty.map(User.Id.apply)
 
+  implicit val idPatternDecoder: Decoder[UserIdPattern] =
+    DecoderHelpers.decodeStringLikeNonEmpty.map(UserIdPattern.apply)
+
   implicit val groupsUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[Group]] =
     SyncDecoderCreator
       .from(DecoderHelpers.decoderStringLikeOrUniqueNonEmptyList[Group])
@@ -128,6 +130,14 @@ object common extends Logging {
       .toSyncDecoder
       .withError(ValueLevelCreationError(Message("Non empty list of user IDs are required")))
       .decoder
+
+  implicit def userPatternNesDecoder(implicit userIdEq: Order[UserIdPattern]): Decoder[NonEmptySet[UserIdPattern]] = {
+    DecoderHelpers
+      .decodeStringLikeOrNonEmptySet[UserIdPattern]
+      .toSyncDecoder
+      .withError(ValueLevelCreationError(Message("Non empty list of user ID patterns are required")))
+      .decoder
+  }
 
   implicit val headerName: Decoder[Header.Name] =
     Decoder

@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration
 
 import eu.timepit.refined.auto._
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
@@ -67,8 +68,8 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec w
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id".nonempty))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1".nonempty)))
+            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1")))
           }
         }
         "user i User1" in {
@@ -83,8 +84,8 @@ class CaseInsensitiveGroupsWithProxyAuthAccessControlTests extends AnyWordSpec w
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("User1-proxy-id".nonempty))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1".nonempty)))
+            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("User1-proxy-id"))))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1")))
           }
         }
       }

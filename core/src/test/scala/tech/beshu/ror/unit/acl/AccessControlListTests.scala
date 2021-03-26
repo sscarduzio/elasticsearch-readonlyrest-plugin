@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.unit.acl
 
+import eu.timepit.refined.auto._
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import org.scalatest.matchers.should.Matchers._
 import monix.execution.Scheduler.Implicits.global
@@ -79,9 +81,9 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
     )
   }
 
-  private def user(userName: String) = LoggedUser.DirectlyLoggedUser(User.Id(userName.nonempty))
+  private def user(userName: String) = LoggedUser.DirectlyLoggedUser(User.Id(NonEmptyString.unsafeFrom(userName)))
 
-  private def group(groupName: String) = Group(groupName.nonempty)
+  private def group(groupName: String) = Group(NonEmptyString.unsafeFrom(groupName))
 
   private def mockMetadataRequestContext(preferredGroup: String) = {
     val rc = mock[MetadataRequestContext]
@@ -91,7 +93,7 @@ class AccessControlListTests extends AnyWordSpec with MockFactory with Inside {
       .anyNumberOfTimes()
     (rc.headers _)
       .expects()
-      .returning(Set(new Header(Header.Name("x-ror-current-group".nonempty), preferredGroup.nonempty)))
+      .returning(Set(new Header(Header.Name("x-ror-current-group"), NonEmptyString.unsafeFrom(preferredGroup))))
     (rc.action _)
       .expects()
       .returning(Action.rorUserMetadataAction)

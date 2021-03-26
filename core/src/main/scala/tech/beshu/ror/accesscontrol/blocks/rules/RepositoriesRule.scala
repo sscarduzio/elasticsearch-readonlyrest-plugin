@@ -23,8 +23,8 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RepositoryRequestBlockC
 import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeRepositoryFilterScalaAdapter}
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
+import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeRepositoryFilterScalaAdapter}
+import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.RepositoryName

@@ -26,7 +26,7 @@ import org.elasticsearch.cluster.metadata
 import org.elasticsearch.cluster.metadata.ComposableIndexTemplate
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.Template.IndexTemplate
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingIndexTemplates
 import tech.beshu.ror.accesscontrol.domain._

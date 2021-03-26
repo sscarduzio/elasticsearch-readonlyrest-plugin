@@ -18,6 +18,7 @@ package tech.beshu.ror.integration
 
 import java.util.Base64
 
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -30,7 +31,7 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
+import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 
 class AuthKeyYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
 
@@ -62,7 +63,7 @@ class AuthKeyYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoade
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin".nonempty)))) {
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin")))) {
               blockContext
             }
           }
@@ -79,7 +80,7 @@ class AuthKeyYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoade
           result.history should have size 1
           inside(result.result) { case Allow(blockContext, block) =>
             block.name should be(Block.Name("CONTAINER ADMIN"))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin".nonempty)))) {
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("admin")))) {
               blockContext
             }
           }

@@ -21,6 +21,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.domain.{BasicAuth, Credentials, PlainTextSecret, User}
 import tech.beshu.ror.utils.TestsUtils._
+import eu.timepit.refined.auto._
 
 class BasicAuthTest extends AnyWordSpec with Inside {
 
@@ -30,8 +31,8 @@ class BasicAuthTest extends AnyWordSpec with Inside {
         val basicAuth = BasicAuth.fromHeader(header("Authorization", "Basic a2liYW5hOmtpYmFuYQ=="))
         inside(basicAuth) {
           case Some(BasicAuth(Credentials(userId, secret))) =>
-            userId should be (User.Id("kibana".nonempty))
-            secret should be (PlainTextSecret("kibana".nonempty))
+            userId should be (User.Id("kibana"))
+            secret should be (PlainTextSecret("kibana"))
         }
       }
     }

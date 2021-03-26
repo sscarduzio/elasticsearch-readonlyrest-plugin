@@ -16,24 +16,24 @@
  */
 package tech.beshu.ror.unit.utils
 
-import tech.beshu.ror.utils.StringWiseSplitter._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.utils.StringWiseSplitter
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.StringWiseSplitter._
+import eu.timepit.refined.auto._
 
 class StringWiseSplitterTests extends AnyWordSpec {
 
   "A StringOps method toNonEmptyStringsTuple" should {
     "be able to create two non-empty string tuple from string" when {
       "string contains one colon somewhere in the middle" in {
-        "example:test".toNonEmptyStringsTuple should be (Right("example".nonempty, "test".nonempty))
+        "example:test".toNonEmptyStringsTuple should be (Right("example", "test"))
       }
       "string contains two colons" in {
-        "example:test:test".toNonEmptyStringsTuple should be (Right("example".nonempty, "test:test".nonempty))
+        "example:test:test".toNonEmptyStringsTuple should be (Right("example", "test:test"))
       }
       "there are two colons at the end of string" in {
-        "example::".toNonEmptyStringsTuple should be (Right("example".nonempty, ":".nonempty))
+        "example::".toNonEmptyStringsTuple should be (Right("example", ":"))
       }
     }
     "not be able to create two non-empty string tuple from string" when {

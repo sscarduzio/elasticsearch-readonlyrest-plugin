@@ -14,21 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.unit.acl.blocks.rules
+package tech.beshu.ror.accesscontrol.matchers
 
-import eu.timepit.refined.auto._
-import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, BasicAuthenticationRule}
-import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
-import tech.beshu.ror.utils.TestsUtils
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.accesscontrol.domain.IndexName
 
-class AuthKeyRuleTests extends BasicAuthenticationTestTemplate {
+class IndicesMatcher(indices: Set[IndexName]) {
+  val availableIndicesMatcher: Matcher[IndexName] = MatcherWithWildcardsScalaAdapter[IndexName](indices)
 
-  override protected def ruleName: String = classOf[AuthKeyRule].getSimpleName
+  def filterIndices(indices: Set[IndexName]): Set[IndexName] = availableIndicesMatcher.filter(indices)
 
-  override protected val rule = new AuthKeyRule(
-    BasicAuthenticationRule.Settings(Credentials(User.Id("logstash"), PlainTextSecret("logstash"))),
-    Nil,
-    TestsUtils.userIdEq
-  )
+  def `match`(value: IndexName): Boolean = availableIndicesMatcher.`match`(value)
+
+  def contains(str: String): Boolean = availableIndicesMatcher.contains(str)
+}
+
+object IndicesMatcher {
+  def create(indices: Set[IndexName]): IndicesMatcher = {
+    new IndicesMatcher(indices)
+  }
 }

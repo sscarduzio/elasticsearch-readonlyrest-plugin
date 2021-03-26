@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.utils
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import cats.{Applicative, Order}
+import cats.{Applicative, Order, Show}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.CursorOp.DownField
 import io.circe._
@@ -34,7 +34,6 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
@@ -105,7 +104,7 @@ object CirceOps {
         Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
       }
 
-    def decoderStringLikeOrUniqueNonEmptyList[T : Decoder]: Decoder[UniqueNonEmptyList[T]] =
+    def decoderStringLikeOrUniqueNonEmptyList[T: Decoder]: Decoder[UniqueNonEmptyList[T]] =
       decodeStringLikeOrUniqueNonEmptyListE { str =>
         Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
       }
@@ -124,7 +123,7 @@ object CirceOps {
       }
     }
 
-    def decodeStringLikeOrUniqueList[T : Decoder]: Decoder[UniqueList[T]] = {
+    def decodeStringLikeOrUniqueList[T: Decoder]: Decoder[UniqueList[T]] = {
       decodeStringLike.map(str => UniqueList.fromList(str :: Nil)).or(decodeUniqueList[String]).emap { uniqueList =>
         val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
           case ((errors, values), elem) =>
@@ -140,25 +139,25 @@ object CirceOps {
 
     val decodeStringLikeWithSingleVarResolvedInPlace: Decoder[String] = {
       alwaysRightSingleVariableDecoder(AlwaysRightConvertible.stringAlwaysRightConvertible)
-          .toSyncDecoder
-          .emapE {
-            case AlreadyResolved(resolved) => Right(resolved)
-            case _: ToBeResolved[String] => Left(ValueLevelCreationError(Message(s"Only statically resolved variables can be used")))
-          }
-          .decoder
+        .toSyncDecoder
+        .emapE {
+          case AlreadyResolved(resolved) => Right(resolved)
+          case _: ToBeResolved[String] => Left(ValueLevelCreationError(Message(s"Only statically resolved variables can be used")))
+        }
+        .decoder
     }
 
-    def singleVariableDecoder[T : Convertible]: Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
+    def singleVariableDecoder[T: Convertible]: Decoder[Either[CreationError, RuntimeSingleResolvableVariable[T]]] =
       DecoderHelpers
         .decodeStringLikeNonEmpty
         .map { str => createSingleResolvableVariableFrom(str) }
 
-    def multiVariableDecoder[T : Convertible]: Decoder[Either[CreationError, RuntimeMultiResolvableVariable[T]]] =
+    def multiVariableDecoder[T: Convertible]: Decoder[Either[CreationError, RuntimeMultiResolvableVariable[T]]] =
       DecoderHelpers
         .decodeStringLikeNonEmpty
         .map { str => createMultiResolvableVariableFrom(str) }
 
-    def alwaysRightSingleVariableDecoder[T : AlwaysRightConvertible]: Decoder[RuntimeSingleResolvableVariable[T]] =
+    def alwaysRightSingleVariableDecoder[T: AlwaysRightConvertible]: Decoder[RuntimeSingleResolvableVariable[T]] =
       SyncDecoderCreator
         .from(singleVariableDecoder[T])
         .emapE {
@@ -166,7 +165,7 @@ object CirceOps {
         }
         .decoder
 
-    def alwaysRightMultiVariableDecoder[T : AlwaysRightConvertible]: Decoder[RuntimeMultiResolvableVariable[T]] =
+    def alwaysRightMultiVariableDecoder[T: AlwaysRightConvertible]: Decoder[RuntimeMultiResolvableVariable[T]] =
       SyncDecoderCreator
         .from(multiVariableDecoder[T])
         .emapE {
@@ -300,23 +299,23 @@ object CirceOps {
 
   implicit class ACursorOps(val value: ACursor) extends AnyVal {
 
-    def asWithError[T : Decoder](error: String): Decoder.Result[T] =
+    def asWithError[T: Decoder](error: String): Decoder.Result[T] =
       value
         .as[T](implicitly[Decoder[T]])
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
 
-    def tryDecodeAuthRule(username: User.Id,
-                         caseMappingEquality: UserIdCaseMappingEquality)
-                         (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                          authProxyDefinitions: Definitions[ProxyAuth],
-                          jwtDefinitions: Definitions[JwtDef],
-                          ldapDefinitions: Definitions[LdapService],
-                          rorKbnDefinitions: Definitions[RorKbnDef],
-                          imperonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
+    def tryDecodeAuthRule[U: Show](userDefId: U,
+                                   caseMappingEquality: UserIdCaseMappingEquality)
+                                  (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                                   authProxyDefinitions: Definitions[ProxyAuth],
+                                   jwtDefinitions: Definitions[JwtDef],
+                                   ldapDefinitions: Definitions[LdapService],
+                                   rorKbnDefinitions: Definitions[RorKbnDef],
+                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
       value.keys.map(_.toList) match {
         case None | Some(Nil) =>
-          Left(Message(s"No authentication method defined for user ['${username.show}']"))
+          Left(Message(s"No authentication method defined for [${userDefId.show}]"))
         case Some(key :: Nil) =>
           val decoder = authenticationRuleDecoderBy(
             Rule.Name(key),
@@ -325,7 +324,7 @@ object CirceOps {
             jwtDefinitions,
             ldapDefinitions,
             rorKbnDefinitions,
-            imperonatorsDefinitions,
+            impersonatorsDefinitions,
             caseMappingEquality
           ) match {
             case Some(authRuleDecoder) => authRuleDecoder
@@ -335,9 +334,9 @@ object CirceOps {
           }
           decoder
             .tryDecode(value.downField(key))
-            .left.map(_ => Message(s"Cannot parse '$key' rule declared in user '${username.show}' definition"))
+            .left.map(_ => Message(s"Cannot parse '$key' rule declared for [${userDefId.show}]"))
         case Some(keys) =>
-          Left(Message(s"Only one authentication should be defined for user ['${username.show}']. Found ${keys.mkString(", ")}"))
+          Left(Message(s"Only one authentication should be defined for [${userDefId.show}]. Found ${keys.mkString(", ")}"))
       }
     }
   }

@@ -32,6 +32,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
+import eu.timepit.refined.auto._
 
 class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
 
@@ -39,14 +40,14 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
     "match" when {
       "one user id is configured and the same id can be find in auth header" in {
         assertMatchRule(
-          settings = ProxyAuthRule.Settings(NonEmptySet.of(User.Id("userA".nonempty)), headerNameFrom("custom-user-auth-header")),
+          settings = ProxyAuthRule.Settings(NonEmptySet.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
           header = headerFrom("custom-user-auth-header" -> "userA")
         )
       }
       "several user ids are configured and one of them can be find in auth header" in {
         assertMatchRule(
           settings = ProxyAuthRule.Settings(
-            NonEmptySet.of(User.Id("userA".nonempty), User.Id("userB".nonempty), User.Id("userC".nonempty)),
+            NonEmptySet.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
             headerNameFrom("custom-user-auth-header")
           ),
           header = headerFrom("custom-user-auth-header" -> "userB")
@@ -57,7 +58,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
       "none of configured user ids corresponds to the auth header one" in {
         assertNotMatchRule(
           settings = ProxyAuthRule.Settings(
-            NonEmptySet.of(User.Id("userA".nonempty), User.Id("userB".nonempty), User.Id("userC".nonempty)),
+            NonEmptySet.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
             headerNameFrom("custom-user-auth-header")
           ),
           header = headerFrom("custom-user-auth-header" -> "userD")
@@ -66,7 +67,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
       "user id is passed in different header than the configured one" in {
         assertNotMatchRule(
           settings = ProxyAuthRule.Settings(
-            NonEmptySet.of(User.Id("userA".nonempty)),
+            NonEmptySet.of(User.Id("userA")),
             headerNameFrom("custom-user-auth-header")
           ),
           header = headerFrom("X-Forwarded-User" -> "userD")

@@ -34,6 +34,7 @@ import tech.beshu.ror.mocks.MockHttpClientsFactoryWithFixedHttpClient
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.TestsUtils
+import eu.timepit.refined.auto._
 
 class ExternalAuthorizationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[ExternalAuthorizationRule] with MockFactory with Inside {
@@ -70,7 +71,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[HttpExternalAuthorizationService]
               permittedGroups should be(UniqueNonEmptyList.of(groupFrom("group3")))
-              users should be(NonEmptySet.one(User.Id("user1".nonempty)))
+              users should be(NonEmptySet.one(User.Id("user1")))
             }
           }
         )
@@ -110,7 +111,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService2"))
               service shouldBe a[HttpExternalAuthorizationService]
               permittedGroups should be(UniqueNonEmptyList.of(groupFrom("group3")))
-              users should be(NonEmptySet.of(User.Id("user1".nonempty), User.Id("user2".nonempty)))
+              users should be(NonEmptySet.of(User.Id("user1"), User.Id("user2")))
             }
           }
         )
@@ -146,7 +147,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroups should be(UniqueNonEmptyList.of(groupFrom("group3")))
-              users should be(NonEmptySet.one(User.Id("user1".nonempty)))
+              users should be(NonEmptySet.one(User.Id("user1")))
             }
           }
         )
@@ -179,7 +180,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[HttpExternalAuthorizationService]
               permittedGroups should be(UniqueNonEmptyList.of(groupFrom("group3")))
-              users should be(NonEmptySet.of(User.Id("*".nonempty)))
+              users should be(NonEmptySet.of(User.Id("*")))
             }
           }
         )
@@ -217,7 +218,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroups should be(UniqueNonEmptyList.of(groupFrom("group3")))
-              users should be(NonEmptySet.of(User.Id("*".nonempty)))
+              users should be(NonEmptySet.of(User.Id("*")))
             }
           }
         )
@@ -259,7 +260,7 @@ class ExternalAuthorizationRuleSettingsTests
               service.id should be(ExternalAuthorizationService.Name("GroupsService1"))
               service shouldBe a[CacheableExternalAuthorizationServiceDecorator]
               permittedGroups should be(UniqueNonEmptyList.of(groupFrom("group3")))
-              users should be(NonEmptySet.of(User.Id("*".nonempty)))
+              users should be(NonEmptySet.of(User.Id("*")))
             }
           }
         )

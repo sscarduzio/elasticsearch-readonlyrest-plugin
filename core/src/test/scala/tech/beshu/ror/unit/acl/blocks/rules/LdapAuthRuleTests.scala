@@ -38,6 +38,7 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
+import eu.timepit.refined.auto._
 
 class LdapAuthRuleTests
   extends AnyWordSpec
@@ -50,17 +51,17 @@ class LdapAuthRuleTests
       "user can be authenticated and has at least one LDAP group which is permitted" in {
         assertMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1".nonempty), PlainTextSecret("pass".nonempty), Task.now(true))
+            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.now(UniqueList.of(Group("g1".nonempty)))),
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
+            mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.of(Group("g1")))),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
           ),
           basicHeader = basicAuthHeader("user1:pass")
         )(
           blockContextAssertion = defaultOutputBlockContextAssertion(
-            user = User.Id("user1".nonempty),
+            user = User.Id("user1"),
             group = groupFrom("g1"),
             availableGroups = UniqueList.of(groupFrom("g1"))
           )
@@ -73,8 +74,8 @@ class LdapAuthRuleTests
           authenticationSettings = LdapAuthenticationRule.Settings(mock[LdapAuthenticationService]),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
+            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
           ),
           basicHeader = None
         )
@@ -82,12 +83,12 @@ class LdapAuthRuleTests
       "user cannot be authenticated" in {
         assertNotMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1".nonempty), PlainTextSecret("pass".nonempty), Task.now(false))
+            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(false))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
+            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
           ),
           basicHeader = Some(basicAuthHeader("user1:pass"))
         )
@@ -95,12 +96,12 @@ class LdapAuthRuleTests
       "user don't have permitted group" in {
         assertNotMatchRule(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1".nonempty), PlainTextSecret("pass".nonempty), Task.now(true))
+            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.now(UniqueList.empty)),
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
+            mockLdapAuthorizationService(User.Id("user1"), Task.now(UniqueList.empty)),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
           ),
           basicHeader = Some(basicAuthHeader("user1:pass"))
         )
@@ -108,12 +109,12 @@ class LdapAuthRuleTests
       "LDAP authentication fails" in {
         assertRuleThrown(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1".nonempty), PlainTextSecret("pass".nonempty), Task.raiseError(TestException("authentication failure")))
+            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.raiseError(TestException("authentication failure")))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
             mock[LdapAuthorizationService],
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
+            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
           ),
           basicHeader = basicAuthHeader("user1:pass"),
           TestException("authentication failure")
@@ -122,12 +123,12 @@ class LdapAuthRuleTests
       "LDAP authorization fails" in {
         assertRuleThrown(
           authenticationSettings = LdapAuthenticationRule.Settings(
-            mockLdapAuthenticationService(User.Id("user1".nonempty), PlainTextSecret("pass".nonempty), Task.now(true))
+            mockLdapAuthenticationService(User.Id("user1"), PlainTextSecret("pass"), Task.now(true))
           ),
           authorizationSettings = LdapAuthorizationRule.Settings(
-            mockLdapAuthorizationService(User.Id("user1".nonempty), Task.raiseError(TestException("authorization failure"))),
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty)),
-            UniqueNonEmptyList.of(Group("g1".nonempty), Group("g2".nonempty))
+            mockLdapAuthorizationService(User.Id("user1"), Task.raiseError(TestException("authorization failure"))),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2")),
+            UniqueNonEmptyList.of(Group("g1"), Group("g2"))
           ),
           basicHeader = basicAuthHeader("user1:pass"),
           TestException("authorization failure")

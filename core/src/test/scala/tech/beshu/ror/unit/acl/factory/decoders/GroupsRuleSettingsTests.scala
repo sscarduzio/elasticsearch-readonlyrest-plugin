@@ -28,6 +28,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import eu.timepit.refined.auto._
 
 class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] with Inside {
 
@@ -55,11 +56,11 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("cartman".nonempty))
+              name should be(User.Id("cartman"))
               userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be {
-                BasicAuthenticationRule.Settings(Credentials(User.Id("cartman".nonempty), PlainTextSecret("pass".nonempty)))
+                BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
               }
             }
           }
@@ -93,19 +94,19 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions.toSortedSet
             inside(sortedUserDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("cartman".nonempty))
+              name should be(User.Id("cartman"))
               userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be {
-                BasicAuthenticationRule.Settings(Credentials(User.Id("cartman".nonempty), PlainTextSecret("pass".nonempty)))
+                BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
               }
             }
             inside(sortedUserDefinitions.tail.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("morgan".nonempty))
+              name should be(User.Id("morgan"))
               userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
               authRule shouldBe an[AuthKeySha1Rule]
               authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
-                BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty))
+                BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
               }
             }
           }
@@ -136,11 +137,11 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
 
             rule.settings.usersDefinitions.length should be(1)
             inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("cartman".nonempty))
+              name should be(User.Id("cartman"))
               userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be {
-                BasicAuthenticationRule.Settings(Credentials(User.Id("cartman".nonempty), PlainTextSecret("pass".nonempty)))
+                BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
               }
             }
           }

@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import cats.data.NonEmptySet
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, JwtDef, ProxyAuth, RorKbnDef}
@@ -25,9 +26,9 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ImpersonationDefinitionsDecoder}
-import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.{TestsUtils, UserIdEq}
 import tech.beshu.ror.utils.CaseMappingEquality._
+import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.UserIdEq
 
 class ImpersonationSettingsTests extends BaseDecoderTest(
   ImpersonationDefinitionsDecoder.instance(UserIdEq.caseSensitive)(
@@ -54,8 +55,8 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
             assertion = { definitions =>
               definitions.items should have size 1
               val impersonator = definitions.items.head
-              impersonator.id should be(User.Id("admin".nonempty))
-              impersonator.users should be(NonEmptySet.one(User.Id("*".nonempty)))
+              impersonator.id should be(User.Id("admin"))
+              impersonator.users should be(NonEmptySet.one(User.Id("*")))
               impersonator.authenticationRule shouldBe a[AuthKeyRule]
             }
           )
@@ -77,13 +78,13 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
             definitions.items should have size 2
 
             val impersonator1 = definitions.items.head
-            impersonator1.id should be(User.Id("admin".nonempty))
-            impersonator1.users should be(NonEmptySet.one(User.Id("*".nonempty)))
+            impersonator1.id should be(User.Id("admin"))
+            impersonator1.users should be(NonEmptySet.one(User.Id("*")))
             impersonator1.authenticationRule shouldBe a[AuthKeySha1Rule]
 
             val impersonator2 = definitions.items.tail.head
-            impersonator2.id should be(User.Id("admin2".nonempty))
-            impersonator2.users should be(NonEmptySet.of(User.Id("user1".nonempty), User.Id("user2".nonempty)))
+            impersonator2.id should be(User.Id("admin2"))
+            impersonator2.users should be(NonEmptySet.of(User.Id("user1"), User.Id("user2")))
             impersonator2.authenticationRule shouldBe a[AuthKeyRule]
           }
         )

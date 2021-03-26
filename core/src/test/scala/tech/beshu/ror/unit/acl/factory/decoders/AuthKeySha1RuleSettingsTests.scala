@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeySha1Rule
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.TestsUtils._
 
 class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha1Rule] {
 
@@ -42,7 +42,7 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
               |""".stripMargin,
           assertion = rule => {
             rule.settings.credentials should be {
-              HashedCredentials.HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty)
+              HashedCredentials.HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a")
             }
           }
         )
@@ -61,7 +61,7 @@ class AuthKeySha1RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySh
               |""".stripMargin,
           assertion = rule => {
             rule.settings.credentials should be {
-              HashedCredentials.HashedOnlyPassword(User.Id("user1".nonempty), "d27aaf7fa3c1603948bb29b7339f2559dc02019a".nonempty)
+              HashedCredentials.HashedOnlyPassword(User.Id("user1"), "d27aaf7fa3c1603948bb29b7339f2559dc02019a")
             }
           }
         )

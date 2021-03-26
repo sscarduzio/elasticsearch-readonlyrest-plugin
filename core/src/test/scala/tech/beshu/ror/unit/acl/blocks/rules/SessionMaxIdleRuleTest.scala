@@ -44,6 +44,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.CaseMappingEquality._
+import eu.timepit.refined.auto._
 
 class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
   import tech.beshu.ror.utils.TestsUtils.userIdEq
@@ -56,7 +57,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           assertRule(
             sessionMaxIdle = positive(10 minutes),
             setRawCookie = rorSessionCookie.forUser1,
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             isMatched = true
           )
         }
@@ -66,7 +67,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
               sessionMaxIdle = positive(5 minutes),
               rawCookie = rorSessionCookie.forUser1,
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               isMatched = true
             )
           }
@@ -75,7 +76,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
               sessionMaxIdle = positive(5 minutes),
               rawCookie = s"cookie1=test;${rorSessionCookie.forUser1};last_cookie=123",
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               isMatched = true
             )
           }
@@ -96,7 +97,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
           isMatched = false
         )
       }
@@ -106,7 +107,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
           isMatched = false
         )
       }
@@ -116,7 +117,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.wrongSignature,
           setRawCookie = "",
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
           isMatched = false
         )
       }
@@ -126,7 +127,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.malformed,
           setRawCookie = "",
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
           isMatched = false
         )
       }

@@ -31,19 +31,20 @@ import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import eu.timepit.refined.auto._
 
 class KibanaHideAppsRuleTests extends AnyWordSpec with MockFactory {
 
   "A KibanaHideAppsRule" should {
     "always match" should {
       "set kibana app header if user is logged" in {
-        val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1".nonempty))))
+        val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1"))))
         val requestContext = mock[RequestContext]
         val blockContext = CurrentUserMetadataRequestBlockContext(
           requestContext,
           UserMetadata
             .empty
-            .withLoggedUser(DirectlyLoggedUser(Id("user1".nonempty))),
+            .withLoggedUser(DirectlyLoggedUser(Id("user1"))),
           Set.empty,
           List.empty
         )
@@ -52,15 +53,15 @@ class KibanaHideAppsRuleTests extends AnyWordSpec with MockFactory {
             requestContext,
             UserMetadata
               .empty
-              .withLoggedUser(DirectlyLoggedUser(Id("user1".nonempty)))
-              .withHiddenKibanaApps(NonEmptySet.one(KibanaApp("app1".nonempty))),
+              .withLoggedUser(DirectlyLoggedUser(Id("user1")))
+              .withHiddenKibanaApps(NonEmptySet.one(KibanaApp("app1"))),
             Set.empty,
             List.empty
           )
         ))
       }
       "not set kibana app header if user is not logged" in {
-        val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1".nonempty))))
+        val rule = new KibanaHideAppsRule(KibanaHideAppsRule.Settings(NonEmptySet.of(KibanaApp("app1"))))
         val requestContext = mock[RequestContext]
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(

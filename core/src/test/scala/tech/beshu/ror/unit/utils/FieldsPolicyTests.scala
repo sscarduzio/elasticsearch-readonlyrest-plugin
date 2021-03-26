@@ -16,12 +16,12 @@
  */
 package tech.beshu.ror.unit.utils
 
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.fls.FieldsPolicy
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class FieldsPolicyTests extends AnyWordSpec {
@@ -29,7 +29,7 @@ class FieldsPolicyTests extends AnyWordSpec {
   "A FieldMatcher" should {
     "work in whitelist mode" in {
       val fields = UniqueNonEmptyList.of(
-        DocumentField("it*re*bus1".nonempty), DocumentField("item.*Date".nonempty)
+        DocumentField("it*re*bus1"), DocumentField("item.*Date")
       )
       val fieldsRestrictions = FieldsRestrictions(fields, AccessMode.Whitelist)
       val matcher = new FieldsPolicy(fieldsRestrictions)
@@ -42,7 +42,7 @@ class FieldsPolicyTests extends AnyWordSpec {
     }
     "work in blacklist mode" in {
       val fields = UniqueNonEmptyList.of(
-        DocumentField("it*re*bus1".nonempty), DocumentField("item.*Date".nonempty)
+        DocumentField("it*re*bus1"), DocumentField("item.*Date")
       )
       val fieldsRestrictions = FieldsRestrictions(fields, AccessMode.Blacklist)
       val matcher = new FieldsPolicy(fieldsRestrictions)
