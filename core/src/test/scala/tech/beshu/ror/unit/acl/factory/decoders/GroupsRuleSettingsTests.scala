@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
+import cats.data.NonEmptySet
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
@@ -24,11 +25,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, 
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.{Credentials, Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 import eu.timepit.refined.auto._
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.UserIdPatterns
 
 class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] with Inside {
 
@@ -55,8 +58,8 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(1)
-            inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("cartman"))
+            inside(rule.settings.usersDefinitions.head) { case UserDef(patterns, userGroups, authRule) =>
+              patterns should be(UserIdPatterns(NonEmptySet.one(User.UserIdPattern("cartman"))))
               userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be {
@@ -93,16 +96,16 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             rule.settings.groups should be(groups)
             rule.settings.usersDefinitions.length should be(2)
             val sortedUserDefinitions = rule.settings.usersDefinitions.toSortedSet
-            inside(sortedUserDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("cartman"))
+            inside(sortedUserDefinitions.head) { case UserDef(patterns, userGroups, authRule) =>
+              patterns should be(UserIdPatterns(NonEmptySet.one(User.UserIdPattern("cartman"))))
               userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be {
                 BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
               }
             }
-            inside(sortedUserDefinitions.tail.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("morgan"))
+            inside(sortedUserDefinitions.tail.head) { case UserDef(patterns, userGroups, authRule) =>
+              patterns should be(UserIdPatterns(NonEmptySet.one(User.UserIdPattern("morgan"))))
               userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
               authRule shouldBe an[AuthKeySha1Rule]
               authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
@@ -136,8 +139,8 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
             rule.settings.groups.tail.head shouldBe a [ToBeResolved[_]]
 
             rule.settings.usersDefinitions.length should be(1)
-            inside(rule.settings.usersDefinitions.head) { case UserDef(name, userGroups, authRule) =>
-              name should be(User.Id("cartman"))
+            inside(rule.settings.usersDefinitions.head) { case UserDef(patterns, userGroups, authRule) =>
+              patterns should be(UserIdPatterns(NonEmptySet.one(User.UserIdPattern("cartman"))))
               userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
               authRule shouldBe an[AuthKeyRule]
               authRule.asInstanceOf[AuthKeyRule].settings should be {
@@ -189,7 +192,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(RulesLevelCreationError(Message("No user definitions was defined. Rule `groups` requires them.")))
+            errors.head should be(RulesLevelCreationError(Message("Non empty list of user ID patterns are required")))
           }
         )
       }
@@ -212,7 +215,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("User definition malformed")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Non empty list of user ID patterns are required")))
           }
         )
       }
@@ -304,7 +307,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for user ['cartman']. Found auth_key, auth_key_sha1")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found auth_key, auth_key_sha1")))
           }
         )
       }
@@ -328,7 +331,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Cannot parse 'auth_key' rule declared in user 'cartman' definition")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Cannot parse 'auth_key' rule declared for [cartman]")))
           }
         )
       }
@@ -379,7 +382,7 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for user ['cartman']. Found unknown_field, auth_key")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found unknown_field, auth_key")))
           }
         )
       }

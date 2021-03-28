@@ -27,7 +27,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.domain.Credentials
+import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -43,7 +43,9 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { credentials: Credentials => credentials.user.value === "user" && credentials.secret.value.value == "pass" })
+          .expects(where { credentials: Credentials =>
+            credentials.user === User.Id("user") && credentials.secret == PlainTextSecret("pass")
+          })
           .returning(Task.now(true))
 
         val requestContext = mock[RequestContext]
@@ -68,7 +70,9 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         val baHeader = basicAuthHeader("user:pass")
         val externalAuthenticationService = mock[ExternalAuthenticationService]
         (externalAuthenticationService.authenticate _)
-          .expects(where { credentials: Credentials => credentials.user.value === "user" && credentials.secret.value.value == "pass" })
+          .expects(where { credentials: Credentials =>
+            credentials.user === User.Id("user") && credentials.secret == PlainTextSecret("pass")
+          })
           .returning(Task.now(false))
 
         val requestContext = mock[RequestContext]

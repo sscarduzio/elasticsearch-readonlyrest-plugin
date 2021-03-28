@@ -22,14 +22,14 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.UserIdPatterns
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
-import tech.beshu.ror.accesscontrol.show.logs._
+import tech.beshu.ror.accesscontrol.show.logs.userIdPatternsShow
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final case class UserDef(id: UserDef#Id,
                          groups: UniqueNonEmptyList[Group],
                          authenticationRule: AuthenticationRule) extends Item {
   override type Id = UserIdPatterns
-  override implicit val show: Show[UserIdPatterns] = Show.show(_.patterns.show)
+  override implicit val show: Show[UserIdPatterns] = userIdPatternsShow
 }
 object UserDef {
   final case class UserIdPatterns(patterns: NonEmptySet[User.UserIdPattern])

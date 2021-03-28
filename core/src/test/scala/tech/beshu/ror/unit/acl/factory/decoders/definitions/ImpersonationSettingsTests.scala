@@ -134,7 +134,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
                |   users: ["*"]
            """.stripMargin,
           assertion = { error =>
-            error should be(DefinitionsLevelCreationError(Message("No authentication method defined for user ['admin']")))
+            error should be(DefinitionsLevelCreationError(Message("No authentication method defined for [admin]")))
           }
         )
       }
@@ -148,7 +148,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
                |   users: ["*"]
            """.stripMargin,
           assertion = { error =>
-            error should be(DefinitionsLevelCreationError(Message("Cannot parse 'unknown_auth' rule declared in user 'admin' definition")))
+            error should be(DefinitionsLevelCreationError(Message("Cannot parse 'unknown_auth' rule declared for [admin]")))
           }
         )
       }
