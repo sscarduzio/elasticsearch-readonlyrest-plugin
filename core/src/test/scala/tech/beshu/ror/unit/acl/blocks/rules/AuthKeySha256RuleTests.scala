@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeySha256Rule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.utils.TestsUtils
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.UserIdEq
 
 class AuthKeySha256RuleTests extends BasicAuthenticationTestTemplate {
 
   override protected def ruleName: String = classOf[AuthKeySha256Rule].getSimpleName
 
   override protected val rule = new AuthKeySha256Rule(
-    BasicAuthenticationRule.Settings(HashedUserAndPassword("280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9".nonempty)),
+    BasicAuthenticationRule.Settings(HashedUserAndPassword("280ac6f756a64a80143447c980289e7e4c6918b92588c8095c7c3f049a13fbf9")),
     Nil,
-    TestsUtils.userIdEq
+    UserIdEq.caseSensitive
   )
 }
 
@@ -39,9 +39,9 @@ class AuthKeySha256RuleAltSyntaxTests extends BasicAuthenticationTestTemplate {
 
   override protected val rule = new AuthKeySha256Rule(
     BasicAuthenticationRule.Settings(
-      HashedOnlyPassword(User.Id("logstash".nonempty), "76cd2c0d589e224531fc6af2c5850e3c9b2aca6902d813ce598833c7c1b28bee".nonempty)
+      HashedOnlyPassword(User.Id("logstash"), "76cd2c0d589e224531fc6af2c5850e3c9b2aca6902d813ce598833c7c1b28bee")
     ),
     Nil,
-    TestsUtils.userIdEq
+    UserIdEq.caseSensitive
   )
 }

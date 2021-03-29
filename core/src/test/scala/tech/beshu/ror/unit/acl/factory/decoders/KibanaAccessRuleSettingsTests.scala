@@ -23,7 +23,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.MalformedValue
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.TestsUtils.StringOps
+import eu.timepit.refined.auto._
 
 class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAccessRule] with MockFactory {
 
@@ -43,7 +43,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RO)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
           }
         )
       }
@@ -61,7 +61,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.RW)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
           }
         )
       }
@@ -79,7 +79,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.ROStrict)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
           }
         )
       }
@@ -97,7 +97,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
           }
         )
       }
@@ -115,7 +115,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Unrestricted)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana".nonempty)))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana")))
           }
         )
       }
@@ -134,7 +134,7 @@ class KibanaAccessRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaAc
               |""".stripMargin,
           assertion = rule => {
             rule.settings.access should be(KibanaAccess.Admin)
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana_admin".nonempty)))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName(".kibana_admin")))
           }
         )
       }

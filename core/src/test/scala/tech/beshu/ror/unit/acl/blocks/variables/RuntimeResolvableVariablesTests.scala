@@ -16,7 +16,9 @@
  */
 package tech.beshu.ror.unit.acl.blocks.variables
 
+import eu.timepit.refined.auto._
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.impl.DefaultClaims
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
@@ -106,21 +108,21 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
       "user variable is used and there is logged user" in {
         val variable = forceCreateSingleVariable("@{user}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withLoggedUser(DirectlyLoggedUser(User.Id("simone".nonempty)))
+            _.withLoggedUser(DirectlyLoggedUser(User.Id("simone")))
           ))
         variable shouldBe Right("simone")
       }
       "user variable is used with namespace and there is logged user" in {
         val variable = forceCreateSingleVariable("@{acl:user}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withLoggedUser(DirectlyLoggedUser(User.Id("simone".nonempty)))
+            _.withLoggedUser(DirectlyLoggedUser(User.Id("simone")))
           ))
         variable shouldBe Right("simone")
       }
       "user multivariable is used and there is logged user" in {
         val variable = forceCreateMultiVariable("@explode{user}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withLoggedUser(DirectlyLoggedUser(User.Id("simone,tony".nonempty)))
+            _.withLoggedUser(DirectlyLoggedUser(User.Id("simone,tony")))
           ))
         variable shouldBe Right(NonEmptyList.of("simone,tony"))
       }
@@ -253,7 +255,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "JSON path cannot compile" in {
-        createSingleResolvableVariableFrom("@{jwt:tech[[.beshu}".nonempty)(AlwaysRightConvertible.stringAlwaysRightConvertible) shouldBe {
+        createSingleResolvableVariableFrom("@{jwt:tech[[.beshu}")(AlwaysRightConvertible.stringAlwaysRightConvertible) shouldBe {
           Left(CreationError.InvalidVariableDefinition("cannot compile 'tech[[.beshu' to JsonPath"))
         }
       }
@@ -283,7 +285,7 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
         val requestContext = MockRequestContext.metadata.copy(headers = Set(headerFrom("key1" -> "x")))
         val variable = forceCreateSingleVariable("u:@{user}_@{key1}")
           .resolve(currentUserMetadataRequestBlockContextFrom(
-            _.withLoggedUser(DirectlyLoggedUser(User.Id("simone".nonempty))),
+            _.withLoggedUser(DirectlyLoggedUser(User.Id("simone"))),
             requestContext = requestContext
           ))
         variable shouldBe Right("u:simone_x")
@@ -304,13 +306,13 @@ class RuntimeResolvableVariablesTests extends AnyWordSpec with MockFactory {
   private def forceCreateSingleVariable(text: String) = createSingleVariable(text).right.get
 
   private def createSingleVariable(text: String) = {
-    createSingleResolvableVariableFrom(text.nonempty)(AlwaysRightConvertible.stringAlwaysRightConvertible)
+    createSingleResolvableVariableFrom(NonEmptyString.unsafeFrom(text))(AlwaysRightConvertible.stringAlwaysRightConvertible)
   }
 
   private def forceCreateMultiVariable(text: String) = createMultiVariable(text).right.get
 
   private def createMultiVariable(text: String) = {
-    createMultiResolvableVariableFrom(text.nonempty)(AlwaysRightConvertible.stringAlwaysRightConvertible)
+    createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(text))(AlwaysRightConvertible.stringAlwaysRightConvertible)
   }
 
   private def currentUserMetadataRequestBlockContextFrom(update: UserMetadata => UserMetadata = identity,

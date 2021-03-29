@@ -17,17 +17,16 @@
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
-import org.scalatest.{BeforeAndAfterAll, Ignore}
+import eu.timepit.refined.auto._
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthService, LdapAuthenticationService, LdapService}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
-import tech.beshu.ror.mocks.MockLdapConnectionPoolProvider
-import tech.beshu.ror.utils.TestsUtils.StringOps
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
-import tech.beshu.ror.utils.containers.{DnsServerContainer, LdapContainer, LdapWithDnsContainer}
+import tech.beshu.ror.utils.containers.{LdapContainer, LdapWithDnsContainer}
 
 import scala.language.postfixOps
 
@@ -79,7 +78,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             definitions.items should have size 1
             val ldapService = definitions.items.head
             ldapService shouldBe a[LdapAuthService]
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
       }
@@ -123,11 +122,11 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
           assertion = { definitions =>
             definitions.items should have size 2
             val ldap1Service = definitions.items.head
-            ldap1Service.id should be(LdapService.Name("ldap1".nonempty))
+            ldap1Service.id should be(LdapService.Name("ldap1"))
             ldap1Service shouldBe a[LdapAuthService]
 
             val ldap2Service = definitions.items(1)
-            ldap2Service.id should be(LdapService.Name("ldap2".nonempty))
+            ldap2Service.id should be(LdapService.Name("ldap2"))
             ldap2Service shouldBe a[LdapAuthService]
           }
         )
@@ -146,7 +145,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
             ldapService shouldBe a[LdapAuthenticationService]
           }
         )
@@ -166,7 +165,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
             ldapService shouldBe a[LdapAuthenticationService]
           }
         )
@@ -187,7 +186,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
           assertion = { definitions =>
             definitions.items should have size 1
             val ldapService = definitions.items.head
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
             ldapService shouldBe a[LdapAuthenticationService]
           }
         )
@@ -218,7 +217,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             definitions.items should have size 1
             val ldapService = definitions.items.head
             ldapService shouldBe a[LdapAuthService]
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
       }
@@ -247,7 +246,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             definitions.items should have size 1
             val ldapService = definitions.items.head
             ldapService shouldBe a[LdapAuthService]
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
       }
@@ -277,7 +276,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             definitions.items should have size 1
             val ldapService = definitions.items.head
             ldapService shouldBe a[LdapAuthService]
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
       }
@@ -308,7 +307,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             definitions.items should have size 1
             val ldapService = definitions.items.head
             ldapService shouldBe a[LdapAuthService]
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
       }
@@ -334,7 +333,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             definitions.items should have size 1
             val ldapService = definitions.items.head
             ldapService shouldBe a[LdapAuthService]
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
       }

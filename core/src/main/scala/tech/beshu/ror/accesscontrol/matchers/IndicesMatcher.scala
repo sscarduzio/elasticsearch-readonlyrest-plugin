@@ -14,20 +14,22 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.definitions
+package tech.beshu.ror.accesscontrol.matchers
 
-import cats.Show
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
-import tech.beshu.ror.accesscontrol.show.logs.userIdShow
-import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
+import tech.beshu.ror.accesscontrol.domain.IndexName
 
-final case class ImpersonatorDef(id: User.Id,
-                                 authenticationRule: AuthenticationRule,
-                                 users: UniqueNonEmptyList[User.Id])
-  extends Item {
+class IndicesMatcher(indices: Set[IndexName]) {
+  val availableIndicesMatcher: Matcher[IndexName] = MatcherWithWildcardsScalaAdapter[IndexName](indices)
 
-  override type Id = User.Id
-  override implicit def show: Show[User.Id] = userIdShow
+  def filterIndices(indices: Set[IndexName]): Set[IndexName] = availableIndicesMatcher.filter(indices)
+
+  def `match`(value: IndexName): Boolean = availableIndicesMatcher.`match`(value)
+
+  def contains(str: String): Boolean = availableIndicesMatcher.contains(str)
+}
+
+object IndicesMatcher {
+  def create(indices: Set[IndexName]): IndicesMatcher = {
+    new IndicesMatcher(indices)
+  }
 }

@@ -152,7 +152,7 @@ class XForwardedForRuleTests extends AnyWordSpec with MockFactory {
 
   private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
     RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(extracted => Address.from(extracted.value).get))
+      .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(extracted => Address.from(extracted.value).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

@@ -40,6 +40,8 @@ import tech.beshu.ror.utils.TestsUtils._
 
 import scala.util.Try
 import eu.timepit.refined.auto._
+import eu.timepit.refined.auto._
+import eu.timepit.refined.types.string.NonEmptyString
 
 class UriRegexRuleTests extends AnyWordSpec with MockFactory {
 
@@ -61,21 +63,21 @@ class UriRegexRuleTests extends AnyWordSpec with MockFactory {
         assertMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{user}$""")),
           uriPath = UriPath("/mia"),
-          loggedUser = Some(User.Id("mia".nonempty))
+          loggedUser = Some(User.Id("mia"))
         )
       }
       "configured pattern with variable containing namespace matches uri from request when user is logged" in {
         assertMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{acl:user}$""")),
           uriPath = UriPath("/mia"),
-          loggedUser = Some(User.Id("mia".nonempty))
+          loggedUser = Some(User.Id("mia"))
         )
       }
       "second configured pattern with variable matches uri from request when user is logged" in {
         assertMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/mi\d$""", """^\/@{user}$""")),
           uriPath = UriPath("/mia"),
-          loggedUser = Some(User.Id("mia".nonempty))
+          loggedUser = Some(User.Id("mia"))
         )
       }
     }
@@ -102,7 +104,7 @@ class UriRegexRuleTests extends AnyWordSpec with MockFactory {
         assertNotMatchRule(
           uriRegex = patternValueFrom(NonEmptySet.of("""^\/@{user}$""")),
           uriPath = UriPath("/mia"),
-          loggedUser = Some(User.Id("[".nonempty))
+          loggedUser = Some(User.Id("["))
         )
       }
     }
@@ -148,7 +150,7 @@ class UriRegexRuleTests extends AnyWordSpec with MockFactory {
           }
         }
         RuntimeResolvableVariableCreator
-          .createMultiResolvableVariableFrom[Pattern](value.nonempty)
+          .createMultiResolvableVariableFrom[Pattern](NonEmptyString.unsafeFrom(value))
           .right
           .getOrElse(throw new IllegalStateException(s"Cannot create Pattern Value from $value"))
       }

@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions
 
+import eu.timepit.refined.auto._
 import cats.data._
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import eu.timepit.refined.api.Refined
@@ -59,19 +60,19 @@ class UnboundidLdapAuthenticationServiceTests
       "returns true" when {
         "user exists in LDAP and its credentials are correct" in {
           createSimpleAuthenticationService()
-            .authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty))
+            .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
             .runSyncUnsafe() should be(true)
         }
       }
       "returns false" when {
         "user doesn't exist in LDAP" in {
           createSimpleAuthenticationService()
-            .authenticate(User.Id("unknown".nonempty), PlainTextSecret("user1".nonempty))
+            .authenticate(User.Id("unknown"), PlainTextSecret("user1"))
             .runSyncUnsafe() should be(false)
         }
         "user has invalid credentials" in {
           createSimpleAuthenticationService()
-            .authenticate(User.Id("morgan".nonempty), PlainTextSecret("invalid_secret".nonempty))
+            .authenticate(User.Id("morgan"), PlainTextSecret("invalid_secret"))
             .runSyncUnsafe() should be(false)
         }
       }
@@ -81,7 +82,7 @@ class UnboundidLdapAuthenticationServiceTests
         "one of servers goes down" in {
           def assertMorganCanAuthenticate(service: UnboundidLdapAuthenticationService) = {
             service
-              .authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty))
+              .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
               .runSyncUnsafe() should be(true)
           }
           val service = createHaAuthenticationService()
@@ -102,7 +103,7 @@ class UnboundidLdapAuthenticationServiceTests
   private def createSimpleAuthenticationService() = {
     UnboundidLdapAuthenticationService
       .create(
-        Name("my_ldap".nonempty),
+        Name("my_ldap"),
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${ldap1Container.ldapHost}:${ldap1Container.ldapPort}").get),
@@ -111,12 +112,12 @@ class UnboundidLdapAuthenticationServiceTests
           requestTimeout = Refined.unsafeApply(5 seconds),
           trustAllCerts = false,
           BindRequestUser.CustomUser(
-            Dn("cn=admin,dc=example,dc=com".nonempty),
-            PlainTextSecret("password".nonempty)
+            Dn("cn=admin,dc=example,dc=com"),
+            PlainTextSecret("password")
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid"),
         global
       )
       .runSyncUnsafe()
@@ -126,7 +127,7 @@ class UnboundidLdapAuthenticationServiceTests
   private def createHaAuthenticationService() = {
     UnboundidLdapAuthenticationService
       .create(
-        Name("my_ldap".nonempty),
+        Name("my_ldap"),
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SeveralServers(
@@ -141,12 +142,12 @@ class UnboundidLdapAuthenticationServiceTests
           requestTimeout = Refined.unsafeApply(5 seconds),
           trustAllCerts = false,
           BindRequestUser.CustomUser(
-            Dn("cn=admin,dc=example,dc=com".nonempty),
-            PlainTextSecret("password".nonempty)
+            Dn("cn=admin,dc=example,dc=com"),
+            PlainTextSecret("password")
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid"),
         global
       )
       .runSyncUnsafe()

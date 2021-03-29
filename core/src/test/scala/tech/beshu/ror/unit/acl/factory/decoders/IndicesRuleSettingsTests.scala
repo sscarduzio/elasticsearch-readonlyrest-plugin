@@ -27,6 +27,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
+import eu.timepit.refined.auto._
 
 class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] with MockFactory {
 
@@ -45,7 +46,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |
               |""".stripMargin,
           assertion = rule => {
-            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1".nonempty).nel))
+            val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] = NonEmptySet.one(AlreadyResolved(IndexName("index1").nel))
             rule.settings.allowedIndices should be(indices)
             rule.settings.mustInvolveIndices shouldBe false
           }
@@ -85,7 +86,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
               |""".stripMargin,
           assertion = rule => {
             val indices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]] =
-              NonEmptySet.of(AlreadyResolved(IndexName("index1".nonempty).nel), AlreadyResolved(IndexName("index2".nonempty).nel))
+              NonEmptySet.of(AlreadyResolved(IndexName("index1").nel), AlreadyResolved(IndexName("index2").nel))
             rule.settings.allowedIndices should be(indices)
             rule.settings.mustInvolveIndices shouldBe false
           }
@@ -107,7 +108,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           assertion = rule => {
             rule.settings.allowedIndices.length == 2
 
-            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1".nonempty).nel))
+            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1").nel))
             rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
             rule.settings.mustInvolveIndices shouldBe false
           }
@@ -131,7 +132,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           assertion = rule => {
             rule.settings.allowedIndices.length == 2
 
-            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1".nonempty).nel))
+            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1").nel))
             rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
             rule.settings.mustInvolveIndices shouldBe true
           }
@@ -154,7 +155,7 @@ class IndicesRuleSettingsTests extends BaseRuleSettingsDecoderTest[IndicesRule] 
           assertion = rule => {
             rule.settings.allowedIndices.length == 2
 
-            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1".nonempty).nel))
+            rule.settings.allowedIndices.head should be(AlreadyResolved(IndexName("index1").nel))
             rule.settings.allowedIndices.tail.head shouldBe a [ToBeResolved[_]]
             rule.settings.mustInvolveIndices shouldBe false
           }

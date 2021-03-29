@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptySet
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
@@ -31,7 +32,6 @@ import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
-import tech.beshu.ror.utils.TestsUtils._
 
 class LocalHostsRuleTests extends AnyWordSpec with MockFactory {
 
@@ -87,7 +87,7 @@ class LocalHostsRuleTests extends AnyWordSpec with MockFactory {
 
   private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
     RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(str => Address.from(str.value).get))
+      .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(str => Address.from(str.value).get))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

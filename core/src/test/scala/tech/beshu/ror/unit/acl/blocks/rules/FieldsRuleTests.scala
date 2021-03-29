@@ -18,6 +18,7 @@ package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
@@ -268,7 +269,7 @@ class FieldsRuleTests extends AnyWordSpec with MockFactory with Inside {
   }
 
   private def createRule(configuredFLS: Configuration) = {
-    val resolvedFields = configuredFLS.fields.values.map(field => AlreadyResolved(DocumentField(field.nonempty).nel))
+    val resolvedFields = configuredFLS.fields.values.map(field => AlreadyResolved(DocumentField(NonEmptyString.unsafeFrom(field)).nel))
     new FieldsRule(FieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), configuredFLS.fields.accessMode, configuredFLS.flsEngine))
   }
 

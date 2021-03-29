@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration
 
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.Inside
@@ -93,9 +94,9 @@ class CurrentUserMetadataAccessControlTests extends AnyWordSpec with BaseYamlLoa
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata, _) =>
-            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1".nonempty))))
-            userMetadata.currentGroup should be (Some(Group("group3".nonempty)))
-            userMetadata.availableGroups should be (UniqueList.of(Group("group3".nonempty), Group("group1".nonempty)))
+            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user1"))))
+            userMetadata.currentGroup should be (Some(Group("group3")))
+            userMetadata.availableGroups should be (UniqueList.of(Group("group3"), Group("group1")))
             userMetadata.kibanaIndex should be (None)
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
@@ -109,10 +110,10 @@ class CurrentUserMetadataAccessControlTests extends AnyWordSpec with BaseYamlLoa
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata, _) =>
-            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4".nonempty))))
-            userMetadata.currentGroup should be (Some(Group("group6".nonempty)))
-            userMetadata.availableGroups should be (UniqueList.of(Group("group5".nonempty), Group("group6".nonempty)))
-            userMetadata.kibanaIndex should be (Some(IndexName("user4_group6_kibana_index".nonempty)))
+            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user4"))))
+            userMetadata.currentGroup should be (Some(Group("group6")))
+            userMetadata.availableGroups should be (UniqueList.of(Group("group5"), Group("group6")))
+            userMetadata.kibanaIndex should be (Some(IndexName("user4_group6_kibana_index")))
             userMetadata.hiddenKibanaApps should be (Set.empty)
             userMetadata.kibanaAccess should be (None)
             userMetadata.userOrigin should be (None)
@@ -123,11 +124,11 @@ class CurrentUserMetadataAccessControlTests extends AnyWordSpec with BaseYamlLoa
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata, _) =>
-            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2".nonempty))))
-            userMetadata.currentGroup should be (Some(Group("group2".nonempty)))
-            userMetadata.availableGroups should be (UniqueList.of(Group("group2".nonempty)))
-            userMetadata.kibanaIndex should be (Some(IndexName("user2_kibana_index".nonempty)))
-            userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1".nonempty), KibanaApp("user2_app2".nonempty)))
+            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user2"))))
+            userMetadata.currentGroup should be (Some(Group("group2")))
+            userMetadata.availableGroups should be (UniqueList.of(Group("group2")))
+            userMetadata.kibanaIndex should be (Some(IndexName("user2_kibana_index")))
+            userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user2_app1"), KibanaApp("user2_app2")))
             userMetadata.kibanaAccess should be (Some(KibanaAccess.RO))
             userMetadata.userOrigin should be (None)
           }
@@ -137,11 +138,11 @@ class CurrentUserMetadataAccessControlTests extends AnyWordSpec with BaseYamlLoa
           val result = acl.handleMetadataRequest(request).runSyncUnsafe()
           result.history should have size 6
           inside(result.result) { case Allow(userMetadata, _) =>
-            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3".nonempty))))
+            userMetadata.loggedUser should be (Some(DirectlyLoggedUser(User.Id("user3"))))
             userMetadata.currentGroup should be (None)
             userMetadata.availableGroups should be (UniqueList.empty)
-            userMetadata.kibanaIndex should be (Some(IndexName("user3_kibana_index".nonempty)))
-            userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user3_app1".nonempty), KibanaApp("user3_app2".nonempty)))
+            userMetadata.kibanaIndex should be (Some(IndexName("user3_kibana_index")))
+            userMetadata.hiddenKibanaApps should be (Set(KibanaApp("user3_app1"), KibanaApp("user3_app2")))
             userMetadata.kibanaAccess should be (None)
             userMetadata.userOrigin should be (None)
           }

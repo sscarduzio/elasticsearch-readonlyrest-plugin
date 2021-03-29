@@ -41,7 +41,8 @@ import tech.beshu.ror.es.IndexJsonContentService.{CannotReachContentSource, Cont
 import tech.beshu.ror.es.{AuditSinkService, IndexJsonContentService}
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider, PropertiesProvider}
 import tech.beshu.ror.utils.TestsPropertiesProvider
-import tech.beshu.ror.utils.TestsUtils.{StringOps, getResourceContent, getResourcePath, rorConfigFromResource}
+import tech.beshu.ror.utils.TestsUtils.{getResourceContent, getResourcePath, rorConfigFromResource}
+import eu.timepit.refined.auto._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -58,7 +59,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
       "index is not available but file config is provided" in {
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         (mockedIndexJsonContentManager.sourceOf _)
-          .expects(IndexName(".readonlyrest".nonempty), "1")
+          .expects(IndexName(".readonlyrest"), "1")
           .repeated(5)
           .returns(Task.now(Left(CannotReachContentSource)))
 
@@ -299,7 +300,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
       "index config doesn't exist and file config is malformed" in {
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         (mockedIndexJsonContentManager.sourceOf _)
-          .expects(IndexName(".readonlyrest".nonempty), "1")
+          .expects(IndexName(".readonlyrest"), "1")
           .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
@@ -318,7 +319,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
       "index config doesn't exist and file config cannot be loaded" in {
         val mockedIndexJsonContentManager = mock[IndexJsonContentService]
         (mockedIndexJsonContentManager.sourceOf _)
-          .expects(IndexName(".readonlyrest".nonempty), "1")
+          .expects(IndexName(".readonlyrest"), "1")
           .repeated(5)
           .returns(Task.now(Left(ContentNotFound)))
 
@@ -535,7 +536,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
                                                       resourceFileName: String,
                                                       repeatedCount: Int = 1) = {
     (mockedManager.sourceOf _)
-      .expects(IndexName(".readonlyrest".nonempty), "1")
+      .expects(IndexName(".readonlyrest"), "1")
       .repeated(repeatedCount)
       .returns(Task.now(Right(
         Map("settings" -> getResourceContent(resourceFileName).asInstanceOf[Any]).asJava
@@ -547,7 +548,7 @@ class ReadonlyRestStartingTests extends AnyWordSpec with Inside with MockFactory
                                                   resourceFileName: String,
                                                   saveResult: Task[Either[WriteError, Unit]] = Task.now(Right(()))) = {
     (mockedManager.saveContent _)
-      .expects(IndexName(".readonlyrest".nonempty), "1", Map("settings" -> getResourceContent(resourceFileName)).asJava)
+      .expects(IndexName(".readonlyrest"), "1", Map("settings" -> getResourceContent(resourceFileName)).asJava)
       .once()
       .returns(saveResult)
     mockedManager

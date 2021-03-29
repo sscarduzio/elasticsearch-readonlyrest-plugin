@@ -25,6 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{GeneralReadonlyrestSettingsError, RulesLevelCreationError}
 import tech.beshu.ror.boot.RorMode
 import tech.beshu.ror.utils.TestsUtils._
+import eu.timepit.refined.auto._
 
 class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
 
@@ -44,7 +45,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
               rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
             }
@@ -64,8 +65,8 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
                 |""".stripMargin,
             assertion = rule => {
               val decodedFields = rule.settings.fields
-              decodedFields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
-              decodedFields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
+              decodedFields.head should be(AlreadyResolved(DocumentField("field1").nel))
+              decodedFields.last should be(AlreadyResolved(DocumentField("field2").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
               rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
             }
@@ -84,7 +85,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1").nel))
               rule.settings.accessMode should be(AccessMode.Blacklist)
               rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
             }
@@ -104,8 +105,8 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
                 |""".stripMargin,
             assertion = rule => {
               val decodedFields = rule.settings.fields
-              decodedFields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
-              decodedFields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
+              decodedFields.head should be(AlreadyResolved(DocumentField("field1").nel))
+              decodedFields.last should be(AlreadyResolved(DocumentField("field2").nel))
               rule.settings.accessMode should be(AccessMode.Blacklist)
               rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
             }
@@ -125,7 +126,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.fields.head shouldBe a[ToBeResolved[_]]
-              rule.settings.fields.last should be(AlreadyResolved(DocumentField("field2".nonempty).nel))
+              rule.settings.fields.last should be(AlreadyResolved(DocumentField("field2").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
               rule.settings.flsEngine should be(FlsEngine.ESWithLucene)
             }
@@ -146,7 +147,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
               rule.settings.flsEngine should be(FlsEngine.Lucene)
             }
@@ -167,7 +168,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+              rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
               rule.settings.flsEngine should be(FlsEngine.ES)
             }
@@ -189,7 +190,7 @@ class FieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[FieldsRule] {
                   |
                   |""".stripMargin,
               assertion = rule => {
-                rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1".nonempty).nel))
+                rule.settings.fields.head should be(AlreadyResolved(DocumentField("field1").nel))
                 rule.settings.accessMode should be(AccessMode.Whitelist)
                 rule.settings.flsEngine should be(FlsEngine.ES)
               },
