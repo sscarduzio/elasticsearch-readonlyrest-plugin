@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
-import cats.data.NonEmptySet
+import cats.data.NonEmptyList
 import cats.implicits._
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule
@@ -29,10 +29,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
-
-import scala.collection.SortedSet
 
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
@@ -42,9 +39,11 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
     .toSyncDecoder
     .mapError(RulesLevelCreationError.apply)
     .emapE { groups =>
-      NonEmptySet.fromSet(SortedSet.empty[UserDef] ++ usersDefinitions.items) match {
-        case Some(userDefs) => Right(RuleWithVariableUsageDefinition.create(new GroupsRule(GroupsRule.Settings(groups, userDefs), caseMappingEquality)))
-        case None => Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.name.show}` requires them.")))
+      NonEmptyList.fromList(usersDefinitions.items) match {
+        case Some(userDefs) =>
+          Right(RuleWithVariableUsageDefinition.create(new GroupsRule(GroupsRule.Settings(groups, userDefs), caseMappingEquality)))
+        case None =>
+          Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.name.show}` requires them.")))
       }
     }
     .decoder

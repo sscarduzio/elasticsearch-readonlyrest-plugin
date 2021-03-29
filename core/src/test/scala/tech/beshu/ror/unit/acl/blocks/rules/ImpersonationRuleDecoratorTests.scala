@@ -17,7 +17,6 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import eu.timepit.refined.auto._
-import cats.data.NonEmptySet
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -33,14 +32,15 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.UserIdEq
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
-
-  import tech.beshu.ror.utils.CaseMappingEquality._
+  private implicit val defaultUserIdEq: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
   private val rule = authKeyRuleWithConfiguredImpersonation("user1", "secret")
 
@@ -130,7 +130,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
           new AuthKeySha1Rule(
             settings = BasicAuthenticationRule.Settings(HashedCredentials.HashedUserAndPassword("xxxxxxxxxxx")),
             impersonators = defs,
-            caseMappingEquality = TestsUtils.userIdEq,
+            caseMappingEquality = UserIdEq.caseSensitive,
           )
         }
         val result = rule.check(blockContext).runSyncUnsafe()
@@ -158,7 +158,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
           PlainTextSecret(NonEmptyString.unsafeFrom(password))
         )),
         defs,
-        TestsUtils.userIdEq
+        UserIdEq.caseSensitive
       )
     }
   }
@@ -169,17 +169,17 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
         ImpersonatorDef(
           User.Id("admin1"),
           authKeyRule("admin1", "pass"),
-          NonEmptySet.one(User.Id("*"))
+          UniqueNonEmptyList.of(User.Id("*"))
         ),
         ImpersonatorDef(
           User.Id("admin2"),
           authKeyRule("admin2", "pass"),
-          NonEmptySet.of(User.Id("user2"), User.Id("user3"))
+          UniqueNonEmptyList.of(User.Id("user2"), User.Id("user3"))
         ),
         ImpersonatorDef(
           User.Id("admin3"),
           authKeyRule("admin3", "pass"),
-          NonEmptySet.one(User.Id("user1"))
+          UniqueNonEmptyList.of(User.Id("user1"))
         )
       )
     }
@@ -192,7 +192,7 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
         PlainTextSecret(NonEmptyString.unsafeFrom(password))
       )),
       Nil,
-      TestsUtils.userIdEq
+      defaultUserIdEq
     )
   }
 }

@@ -67,11 +67,10 @@ object CirceOps {
         .or(Decoder.decodeNonEmptySet[String])
         .map(_.map(fromString))
 
-    def decodeNonEmptyStringLikeOrNonEmptySet[T: Order](fromString: NonEmptyString => T): Decoder[NonEmptySet[T]] =
-      decodeStringLikeNonEmpty
-        .map(NonEmptySet.one(_))
-        .or(Decoder.decodeNonEmptySet[NonEmptyString])
-        .map(_.map(fromString))
+    def decodeStringLikeOrNonEmptySet[T: Order : Decoder]: Decoder[NonEmptySet[T]] =
+      decodeStringLikeOrNonEmptySetE { str =>
+        Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
+      }
 
     def decodeStringLikeOrNonEmptySetE[T: Order](fromString: String => Either[String, T]): Decoder[NonEmptySet[T]] =
       decodeStringLike.map(NonEmptySet.one(_)).or(Decoder.decodeNonEmptySet[String]).emap { set =>
@@ -86,6 +85,15 @@ object CirceOps {
         else Right(NonEmptySet.fromSetUnsafe(SortedSet.empty[T] ++ valuesSet))
       }
 
+    def decodeNonEmptyStringLikeOrNonEmptySet[T: Order](fromString: NonEmptyString => T): Decoder[NonEmptySet[T]] =
+      decodeStringLikeNonEmpty
+        .map(NonEmptySet.one(_))
+        .or(Decoder.decodeNonEmptySet[NonEmptyString])
+        .map(_.map(fromString))
+
+    def decodeStringLikeOrUniqueNonEmptyList[T](fromString: String => T): Decoder[UniqueNonEmptyList[T]] =
+      decodeStringLikeOrUniqueNonEmptyListE(str => Right(fromString(str)))
+
     def decodeStringLikeOrUniqueNonEmptyListE[T](fromString: String => Either[String, T]): Decoder[UniqueNonEmptyList[T]] =
       decodeStringLike.map(str => UniqueNonEmptyList.unsafeFromList(str :: Nil)).or(decodeUniqueNonEmptyList[String]).emap { uniqueList =>
         val (errorsUniqueList, valuesUniqueList) = uniqueList.foldLeft((UniqueList.empty[String], UniqueList.empty[T])) {
@@ -99,15 +107,16 @@ object CirceOps {
         else Right(UniqueNonEmptyList.unsafeFromList(valuesUniqueList.toList))
       }
 
-    def decodeStringLikeOrNonEmptySet[T: Order : Decoder]: Decoder[NonEmptySet[T]] =
-      decodeStringLikeOrNonEmptySetE { str =>
-        Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
-      }
-
     def decoderStringLikeOrUniqueNonEmptyList[T: Decoder]: Decoder[UniqueNonEmptyList[T]] =
       decodeStringLikeOrUniqueNonEmptyListE { str =>
         Decoder[T].decodeJson(Json.fromString(str)).left.map(_.message)
       }
+
+    def decodeNonEmptyStringLikeOrUniqueNonEmptyList[T](fromString: NonEmptyString => T): Decoder[UniqueNonEmptyList[T]] =
+      decodeStringLikeNonEmpty
+        .map(UniqueNonEmptyList.of(_))
+        .or(DecoderHelpers.decodeUniqueNonEmptyList[NonEmptyString])
+        .map(a => UniqueNonEmptyList.unsafeFromSet(a.map(fromString).toSet))
 
     def decodeStringLikeOrSet[T: Order : Decoder]: Decoder[Set[T]] = {
       decodeStringLike.map(Set(_)).or(Decoder.decodeSet[String]).emap { set =>

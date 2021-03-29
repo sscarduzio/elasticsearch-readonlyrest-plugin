@@ -17,15 +17,15 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.Show
-import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.show.logs.userIdShow
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
+import tech.beshu.ror.accesscontrol.show.logs.userIdShow
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final case class ImpersonatorDef(id: User.Id,
                                  authenticationRule: AuthenticationRule,
-                                 users: NonEmptySet[User.Id])
+                                 users: UniqueNonEmptyList[User.Id])
   extends Item {
 
   override type Id = User.Id

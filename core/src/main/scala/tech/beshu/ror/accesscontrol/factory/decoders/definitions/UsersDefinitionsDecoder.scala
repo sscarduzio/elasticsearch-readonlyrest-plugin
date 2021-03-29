@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
-import cats.data.NonEmptySet
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.UserIdPatterns
 import tech.beshu.ror.accesscontrol.blocks.definitions._
@@ -28,9 +27,8 @@ import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.show.logs._
-import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -73,7 +71,7 @@ object UsersDefinitionsDecoder {
         val usernameKey = "username"
         val groupsKey = "groups"
         for {
-          usernamePatterns <- c.downField(usernameKey).as[NonEmptySet[UserIdPattern]].map(UserIdPatterns.apply)
+          usernamePatterns <- c.downField(usernameKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
           groups <- c.downField(groupsKey).as[UniqueNonEmptyList[Group]]
           ruleWithVariableUsage <- c.withoutKeys(Set(usernameKey, groupsKey))
             .tryDecodeAuthRule(usernamePatterns, caseMappingEquality)

@@ -45,9 +45,12 @@ import scala.language.postfixOps
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.CaseMappingEquality._
 import eu.timepit.refined.auto._
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.utils.UserIdEq
 
 class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
-  import tech.beshu.ror.utils.TestsUtils.userIdEq
+
+  private implicit val defaultCaseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
   "A SessionMaxIdleRule" should {
     "match" when {
@@ -140,6 +143,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
                          loggedUser: Option[DirectlyLoggedUser],
                          isMatched: Boolean)
                         (implicit clock: Clock) = {
+    implicit val defaultCaseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle))
     val requestContext = mock[RequestContext]
     val headers = NonEmptyString.unapply(rawCookie) match {

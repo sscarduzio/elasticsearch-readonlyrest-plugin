@@ -19,9 +19,8 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 import java.net.URI
 import java.util.concurrent.TimeUnit
 
-import cats.data.NonEmptySet
+import cats.Show
 import cats.implicits._
-import cats.{Order, Show}
 import com.comcast.ip4s.{IpAddress, Port, SocketAddress}
 import com.softwaremill.sttp.Uri
 import eu.timepit.refined.api.{Refined, Validate}
@@ -124,16 +123,16 @@ object common extends Logging {
       .withError(ValueLevelCreationError(Message("Non empty list of groups are required")))
       .decoder
 
-  implicit def usersNesDecoder(implicit userIdEq: Order[User.Id]): Decoder[NonEmptySet[User.Id]] =
+  implicit val usersUniqueNonEmptyListDecoder: Decoder[UniqueNonEmptyList[User.Id]] =
     DecoderHelpers
-      .decodeStringLikeOrNonEmptySet[User.Id]
+      .decoderStringLikeOrUniqueNonEmptyList[User.Id]
       .toSyncDecoder
       .withError(ValueLevelCreationError(Message("Non empty list of user IDs are required")))
       .decoder
 
-  implicit def userPatternNesDecoder(implicit userIdEq: Order[UserIdPattern]): Decoder[NonEmptySet[UserIdPattern]] = {
+  implicit val userPatternsUniqueNonEMptyListDecoder: Decoder[UniqueNonEmptyList[UserIdPattern]] = {
     DecoderHelpers
-      .decodeStringLikeOrNonEmptySet[UserIdPattern]
+      .decoderStringLikeOrUniqueNonEmptyList[UserIdPattern]
       .toSyncDecoder
       .withError(ValueLevelCreationError(Message("Non empty list of user ID patterns are required")))
       .decoder

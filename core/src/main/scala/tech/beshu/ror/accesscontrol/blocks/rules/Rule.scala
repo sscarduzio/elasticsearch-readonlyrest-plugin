@@ -117,7 +117,7 @@ object Rule {
     private lazy val enhancedImpersonatorDefs =
       impersonators
         .map { i =>
-           val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSortedSet)(caseMappingEquality)
+           val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSet)(caseMappingEquality)
           (i, userMatcher)
         }
 

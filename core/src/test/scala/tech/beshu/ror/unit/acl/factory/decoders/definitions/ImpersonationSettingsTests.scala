@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders.definitions
 
-import cats.data.NonEmptySet
 import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
@@ -26,9 +25,8 @@ import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ImpersonationDefinitionsDecoder}
-import tech.beshu.ror.utils.CaseMappingEquality._
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ImpersonationSettingsTests extends BaseDecoderTest(
   ImpersonationDefinitionsDecoder.instance(UserIdEq.caseSensitive)(
@@ -56,7 +54,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
               definitions.items should have size 1
               val impersonator = definitions.items.head
               impersonator.id should be(User.Id("admin"))
-              impersonator.users should be(NonEmptySet.one(User.Id("*")))
+              impersonator.users should be(UniqueNonEmptyList.of(User.Id("*")))
               impersonator.authenticationRule shouldBe a[AuthKeyRule]
             }
           )
@@ -79,12 +77,12 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
 
             val impersonator1 = definitions.items.head
             impersonator1.id should be(User.Id("admin"))
-            impersonator1.users should be(NonEmptySet.one(User.Id("*")))
+            impersonator1.users should be(UniqueNonEmptyList.of(User.Id("*")))
             impersonator1.authenticationRule shouldBe a[AuthKeySha1Rule]
 
             val impersonator2 = definitions.items.tail.head
             impersonator2.id should be(User.Id("admin2"))
-            impersonator2.users should be(NonEmptySet.of(User.Id("user1"), User.Id("user2")))
+            impersonator2.users should be(UniqueNonEmptyList.of(User.Id("user1"), User.Id("user2")))
             impersonator2.authenticationRule shouldBe a[AuthKeyRule]
           }
         )

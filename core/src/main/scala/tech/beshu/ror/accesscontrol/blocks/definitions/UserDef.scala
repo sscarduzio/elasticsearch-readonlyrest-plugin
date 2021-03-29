@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.Show
-import cats.data.NonEmptySet
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.UserIdPatterns
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.domain.{Group, User}
@@ -32,5 +31,5 @@ final case class UserDef(id: UserDef#Id,
   override implicit val show: Show[UserIdPatterns] = userIdPatternsShow
 }
 object UserDef {
-  final case class UserIdPatterns(patterns: NonEmptySet[User.UserIdPattern])
+  final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
 }

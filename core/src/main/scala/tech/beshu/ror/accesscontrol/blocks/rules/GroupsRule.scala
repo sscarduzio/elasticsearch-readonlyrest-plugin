@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.data.NonEmptySet
+import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -67,7 +67,7 @@ final class GroupsRule(val settings: Settings,
                                                                                            resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
       case Some(user) =>
-        NonEmptySet.fromSet(userDefinitionsMatching(user.id)) match {
+        NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
             Task.now(Rejected())
           case Some(filteredUserDefinitions) =>
@@ -82,7 +82,7 @@ final class GroupsRule(val settings: Settings,
     settings.usersDefinitions.filter(ud => matchers(ud).`match`(userId))
   }
 
-  private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext : BlockContextUpdater](userDefs: NonEmptySet[UserDef],
+  private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext : BlockContextUpdater](userDefs: NonEmptyList[UserDef],
                                                                                           blockContext: B,
                                                                                           resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
     userDefs
@@ -138,5 +138,5 @@ object GroupsRule {
   val name = Rule.Name("groups")
 
   final case class Settings(groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]],
-                            usersDefinitions: NonEmptySet[UserDef])
+                            usersDefinitions: NonEmptyList[UserDef])
 }

@@ -16,7 +16,8 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import cats.data.NonEmptySet
+import cats.Order
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
@@ -29,25 +30,26 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{Header, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.CaseMappingEquality._
-import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
-import eu.timepit.refined.auto._
+import tech.beshu.ror.utils.UserIdEq
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
+
+  private implicit val defaultUserIdOrder: Order[Id] = UserIdEq.caseSensitive.toOrder
 
   "A ProxyAuthRule" should {
     "match" when {
       "one user id is configured and the same id can be find in auth header" in {
         assertMatchRule(
-          settings = ProxyAuthRule.Settings(NonEmptySet.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
+          settings = ProxyAuthRule.Settings(UniqueNonEmptyList.of(User.Id("userA")), headerNameFrom("custom-user-auth-header")),
           header = headerFrom("custom-user-auth-header" -> "userA")
         )
       }
       "several user ids are configured and one of them can be find in auth header" in {
         assertMatchRule(
           settings = ProxyAuthRule.Settings(
-            NonEmptySet.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
+            UniqueNonEmptyList.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
             headerNameFrom("custom-user-auth-header")
           ),
           header = headerFrom("custom-user-auth-header" -> "userB")
@@ -58,7 +60,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
       "none of configured user ids corresponds to the auth header one" in {
         assertNotMatchRule(
           settings = ProxyAuthRule.Settings(
-            NonEmptySet.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
+            UniqueNonEmptyList.of(User.Id("userA"), User.Id("userB"), User.Id("userC")),
             headerNameFrom("custom-user-auth-header")
           ),
           header = headerFrom("custom-user-auth-header" -> "userD")
@@ -67,7 +69,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
       "user id is passed in different header than the configured one" in {
         assertNotMatchRule(
           settings = ProxyAuthRule.Settings(
-            NonEmptySet.of(User.Id("userA")),
+            UniqueNonEmptyList.of(User.Id("userA")),
             headerNameFrom("custom-user-auth-header")
           ),
           header = headerFrom("X-Forwarded-User" -> "userD")
@@ -83,7 +85,7 @@ class ProxyAuthRuleTests extends AnyWordSpec with MockFactory {
     assertRule(settings, header, isMatched = false)
 
   private def assertRule(settings: ProxyAuthRule.Settings, header: Header, isMatched: Boolean) = {
-    val rule = new ProxyAuthRule(settings, TestsUtils.userIdEq)
+    val rule = new ProxyAuthRule(settings, UserIdEq.caseSensitive)
     val requestContext = mock[RequestContext]
     (requestContext.headers _).expects().returning(Set(header)).twice()
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)

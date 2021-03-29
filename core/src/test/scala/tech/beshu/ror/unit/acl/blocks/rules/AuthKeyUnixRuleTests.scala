@@ -19,7 +19,7 @@ package tech.beshu.ror.unit.acl.blocks.rules
 import eu.timepit.refined.auto._
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyUnixRule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.utils.TestsUtils
+import tech.beshu.ror.utils.UserIdEq
 
 class AuthKeyUnixRuleTests extends BasicAuthenticationTestTemplate {
 
@@ -32,6 +32,6 @@ class AuthKeyUnixRuleTests extends BasicAuthenticationTestTemplate {
         "$6$rounds=65535$d07dnv4N$jh8an.nDSXG6PZlfVh5ehigYL8.5gtV.9yoXAOYFHTQvwPWhBdEIOxnS8tpbuIAk86shjJiqxeap5o0A1PoFI/"
       )),
     Nil,
-    TestsUtils.userIdEq
+    UserIdEq.caseSensitive
   )
 }

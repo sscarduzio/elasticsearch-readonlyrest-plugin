@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -31,14 +32,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticati
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils.{AssertionType, BlockContextAssertion, _}
+import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
-import eu.timepit.refined.auto._
 
 class LdapAuthRuleTests
   extends AnyWordSpec
@@ -158,9 +158,9 @@ class LdapAuthRuleTests
                          authorizationSettings: LdapAuthorizationRule.Settings,
                          basicHeader: Option[Header],
                          assertionType: AssertionType): Unit = {
-    val rule = new LdapAuthRule(authentication = new LdapAuthenticationRule(authenticationSettings, TestsUtils.userIdEq),
+    val rule = new LdapAuthRule(authentication = new LdapAuthenticationRule(authenticationSettings, UserIdEq.caseSensitive),
       authorization = new LdapAuthorizationRule(authorizationSettings),
-      caseMappingEquality = TestsUtils.userIdEq,
+      caseMappingEquality = UserIdEq.caseSensitive,
     )
     val requestContext = MockRequestContext.indices.copy(headers = basicHeader.toSet)
     val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty, Set.empty, Set.empty)

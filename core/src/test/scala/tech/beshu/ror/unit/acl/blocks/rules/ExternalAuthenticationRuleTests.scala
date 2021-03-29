@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -27,13 +28,12 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
-import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
+import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
-import eu.timepit.refined.auto._
+import tech.beshu.ror.utils.UserIdEq
 
 class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
@@ -54,7 +54,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
-        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService), TestsUtils.userIdEq)
+        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService), UserIdEq.caseSensitive)
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           GeneralNonIndexRequestBlockContext(
             requestContext,
@@ -81,7 +81,7 @@ class ExternalAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
         val blockContext = GeneralNonIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
-        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService), TestsUtils.userIdEq)
+        val rule = new ExternalAuthenticationRule(Settings(externalAuthenticationService), UserIdEq.caseSensitive)
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
     }
