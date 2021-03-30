@@ -35,15 +35,15 @@ import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.usage.UsageService
 import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.StartingFailure
+import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.actions.rradmin._
 import tech.beshu.ror.es.actions.rradmin.rest.RestRRAdminAction
 import tech.beshu.ror.es.actions.rrauditevent.rest.RestRRAuditEventAction
-import tech.beshu.ror.es.actions.rrauditevent.{RRAuditEventActionHandler, RRAuditEventActionType, RRAuditEventRequest, RRAuditEventResponse, TransportRRAuditEventAction}
+import tech.beshu.ror.es.actions.rrauditevent._
 import tech.beshu.ror.es.actions.rrconfig.rest.RestRRConfigAction
 import tech.beshu.ror.es.actions.rrconfig.{RRConfigActionType, TransportRRConfigAction}
 import tech.beshu.ror.es.actions.rrmetadata.rest.RestRRUserMetadataAction
 import tech.beshu.ror.es.actions.rrmetadata.{RRUserMetadataActionType, TransportRRUserMetadataAction}
-import tech.beshu.ror.es.RorRestChannel
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
