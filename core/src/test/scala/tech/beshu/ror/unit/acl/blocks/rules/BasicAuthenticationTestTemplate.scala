@@ -27,7 +27,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.request.RequestContext
-import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
+import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
+import eu.timepit.refined.auto._
 
 trait BasicAuthenticationTestTemplate extends AnyWordSpec with MockFactory {
 
@@ -44,7 +45,7 @@ trait BasicAuthenticationTestTemplate extends AnyWordSpec with MockFactory {
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Fulfilled(
           GeneralNonIndexRequestBlockContext(
             requestContext,
-            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("logstash".nonempty))),
+            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("logstash"))),
             Set.empty,
             List.empty
           )

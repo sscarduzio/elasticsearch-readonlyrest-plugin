@@ -14,22 +14,23 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.utils
+package tech.beshu.ror.accesscontrol.matchers
 
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import tech.beshu.ror.accesscontrol.domain.Pattern
+import tech.beshu.ror.utils.CaseMappingEquality
 
-class IndicesMatcher(indices: Set[IndexName]) {
-  val availableIndicesMatcher: Matcher[IndexName] = MatcherWithWildcardsScalaAdapter[IndexName](indices)
+class GenericPatternMatcher[T : CaseMappingEquality](patterns: Traversable[Pattern[T]]) {
+  
+  private val underlyingMatcher: Matcher[String] = {
+    implicit val extractedStringCaseMappingEquality: CaseMappingEquality[String] = CaseMappingEquality.instance(
+      identity,
+      implicitly[CaseMappingEquality[T]].mapCases
+    )
+    MatcherWithWildcardsScalaAdapter[String](patterns.map(_.value.value).toSet)
+  }
 
-  def filterIndices(indices: Set[IndexName]): Set[IndexName] = availableIndicesMatcher.filter(indices)
-
-  def `match`(value: IndexName): Boolean = availableIndicesMatcher.`match`(value)
-
-  def contains(str: String): Boolean = availableIndicesMatcher.contains(str)
-}
-
-object IndicesMatcher {
-  def create(indices: Set[IndexName]): IndicesMatcher = {
-    new IndicesMatcher(indices)
+  def `match`(value: T): Boolean = {
+    val stringValue = implicitly[CaseMappingEquality[T]].show(value)
+    underlyingMatcher.`match`(stringValue)
   }
 }

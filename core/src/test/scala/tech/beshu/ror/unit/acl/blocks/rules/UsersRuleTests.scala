@@ -16,7 +16,10 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import cats.Order
 import cats.data.NonEmptySet
+import eu.timepit.refined.auto._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
@@ -31,24 +34,24 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.CaseMappingEquality._
-import tech.beshu.ror.utils.TestsUtils
-import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.UserIdEq
 
 class UsersRuleTests extends AnyWordSpec with MockFactory {
+
+  private implicit val defaultUserIdOrder: Order[Id] = UserIdEq.caseSensitive.toOrder
 
   "An UsersRule" should {
     "match" when {
       "configured user id is the same as logged user id" in {
         assertMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("asd")),
-          loggedUser = Some(DirectlyLoggedUser(Id("asd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("asd")))
         )
       }
       "configured user id has wildcard and can be applied to logged user id" in {
         assertMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
-          loggedUser = Some(DirectlyLoggedUser(Id("asd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("asd")))
         )
       }
     }
@@ -56,13 +59,13 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
       "configured user id is different than logged user id" in {
         assertNotMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("_asd")),
-          loggedUser = Some(DirectlyLoggedUser(Id("asd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("asd")))
         )
       }
       "configured user id has wildcard but cannot be applied to logged user id" in {
         assertNotMatchRule(
           configuredIds = NonEmptySet.of(userIdValueFrom("as*")),
-          loggedUser = Some(DirectlyLoggedUser(Id("aXsd".nonempty)))
+          loggedUser = Some(DirectlyLoggedUser(Id("aXsd")))
         )
       }
       "user is not logged" in {
@@ -81,7 +84,7 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
     assertRule(configuredIds, loggedUser, isMatched = false)
 
   private def assertRule(configuredIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]], loggedUser: Option[DirectlyLoggedUser], isMatched: Boolean) = {
-    val rule = new UsersRule(UsersRule.Settings(configuredIds), TestsUtils.userIdEq)
+    val rule = new UsersRule(UsersRule.Settings(configuredIds), UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.metadata
     val blockContext = CurrentUserMetadataRequestBlockContext(
       requestContext,
@@ -100,7 +103,7 @@ class UsersRuleTests extends AnyWordSpec with MockFactory {
 
   private def userIdValueFrom(value: String): RuntimeMultiResolvableVariable[User.Id] = {
     RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom(value.nonempty)(AlwaysRightConvertible.from(User.Id.apply))
+      .createMultiResolvableVariableFrom(NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(User.Id.apply))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create User Id Value from $value"))
   }

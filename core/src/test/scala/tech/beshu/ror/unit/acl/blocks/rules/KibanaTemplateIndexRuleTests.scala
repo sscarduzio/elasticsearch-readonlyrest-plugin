@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.wordspec.AnyWordSpec
@@ -27,7 +28,6 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.domain.IndexName
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.unit.acl.blocks.rules.utils.IndexNameRuntimeResolvableVariable
-import tech.beshu.ror.utils.TestsUtils._
 
 class KibanaTemplateIndexRuleTests
   extends AnyWordSpec
@@ -44,7 +44,7 @@ class KibanaTemplateIndexRuleTests
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
           CurrentUserMetadataRequestBlockContext(
             requestContext,
-            UserMetadata.empty.withKibanaTemplateIndex(IndexName("kibana_template_index".nonempty)),
+            UserMetadata.empty.withKibanaTemplateIndex(IndexName("kibana_template_index")),
             Set.empty,
             List.empty)
         ))

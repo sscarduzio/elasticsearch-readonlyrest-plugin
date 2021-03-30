@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{GeneralReadonlyrestSettingsError, RulesLevelCreationError}
-import tech.beshu.ror.boot.RorMode
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.utils.TestsUtils._
 
 class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[ResponseFieldsRule] {
@@ -43,7 +43,7 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.responseFields.head should be(AlreadyResolved(ResponseField("field1".nonempty).nel))
+              rule.settings.responseFields.head should be(AlreadyResolved(ResponseField("field1").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
             }
           )
@@ -62,8 +62,8 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
                 |""".stripMargin,
             assertion = rule => {
               val decodedFields = rule.settings.responseFields
-              decodedFields.head should be(AlreadyResolved(ResponseField("field1".nonempty).nel))
-              decodedFields.last should be(AlreadyResolved(ResponseField("field2".nonempty).nel))
+              decodedFields.head should be(AlreadyResolved(ResponseField("field1").nel))
+              decodedFields.last should be(AlreadyResolved(ResponseField("field2").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
             }
           )
@@ -81,7 +81,7 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
                 |
                 |""".stripMargin,
             assertion = rule => {
-              rule.settings.responseFields.head should be(AlreadyResolved(ResponseField("field1".nonempty).nel))
+              rule.settings.responseFields.head should be(AlreadyResolved(ResponseField("field1").nel))
               rule.settings.accessMode should be(AccessMode.Blacklist)
             }
           )
@@ -100,8 +100,8 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
                 |""".stripMargin,
             assertion = rule => {
               val decodedFields = rule.settings.responseFields
-              decodedFields.head should be(AlreadyResolved(ResponseField("field1".nonempty).nel))
-              decodedFields.last should be(AlreadyResolved(ResponseField("field2".nonempty).nel))
+              decodedFields.head should be(AlreadyResolved(ResponseField("field1").nel))
+              decodedFields.last should be(AlreadyResolved(ResponseField("field2").nel))
               rule.settings.accessMode should be(AccessMode.Blacklist)
             }
           )
@@ -121,7 +121,7 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
                 |""".stripMargin,
             assertion = rule => {
               rule.settings.responseFields.head shouldBe a[ToBeResolved[_]]
-              rule.settings.responseFields.last should be(AlreadyResolved(ResponseField("field2".nonempty).nel))
+              rule.settings.responseFields.last should be(AlreadyResolved(ResponseField("field2").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
             }
           )
@@ -140,8 +140,8 @@ class ResponseFieldsRuleSettingsTest extends BaseRuleSettingsDecoderTest[Respons
                 |""".stripMargin,
             assertion = rule => {
               val decodedFields = rule.settings.responseFields
-              decodedFields.head should be(AlreadyResolved(ResponseField("field1".nonempty).nel))
-              decodedFields.last should be(AlreadyResolved(ResponseField("_uid".nonempty).nel))
+              decodedFields.head should be(AlreadyResolved(ResponseField("field1").nel))
+              decodedFields.last should be(AlreadyResolved(ResponseField("_uid").nel))
               rule.settings.accessMode should be(AccessMode.Whitelist)
             }
           )

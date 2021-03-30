@@ -22,7 +22,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.utils.TestsUtils.StringOps
+import eu.timepit.refined.auto._
 
 class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaIndexRule] {
 
@@ -41,7 +41,7 @@ class KibanaIndexRuleSettingsTests extends BaseRuleSettingsDecoderTest[KibanaInd
               |
               |""".stripMargin,
           assertion = rule => {
-            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName("some_kibana_index".nonempty)))
+            rule.settings.kibanaIndex should be(AlreadyResolved(IndexName("some_kibana_index")))
           }
         )
       }

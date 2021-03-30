@@ -25,7 +25,7 @@ import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.StringOps
+import eu.timepit.refined.auto._
 
 class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with MockFactory with Inside  {
 
@@ -53,7 +53,7 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec with 
         inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
           block.name should be(Block.Name("Template Tenancy"))
           assertBlockContext(
-            kibanaIndex = Some(IndexName(".kibana_template".nonempty)),
+            kibanaIndex = Some(IndexName(".kibana_template")),
             kibanaAccess = Some(KibanaAccess.Admin)
           ) {
             blockContext

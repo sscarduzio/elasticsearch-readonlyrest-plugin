@@ -26,6 +26,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.utils.TestsUtils._
+import eu.timepit.refined.auto._
 
 class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[RepositoriesRule] {
 
@@ -44,7 +45,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |
               |""".stripMargin,
           assertion = rule => {
-            val repositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]] = NonEmptySet.one(AlreadyResolved(RepositoryName("repository1".nonempty).nel))
+            val repositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]] = NonEmptySet.one(AlreadyResolved(RepositoryName("repository1").nel))
             rule.settings.allowedRepositories should be(repositories)
           }
         )
@@ -82,7 +83,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
               |""".stripMargin,
           assertion = rule => {
             val indices: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]] =
-              NonEmptySet.of(AlreadyResolved(RepositoryName("repository1".nonempty).nel), AlreadyResolved(RepositoryName("repository2".nonempty).nel))
+              NonEmptySet.of(AlreadyResolved(RepositoryName("repository1").nel), AlreadyResolved(RepositoryName("repository2").nel))
             rule.settings.allowedRepositories should be(indices)
           }
         )
@@ -103,7 +104,7 @@ class RepositoriesRuleSettingsTest extends BaseRuleSettingsDecoderTest[Repositor
           assertion = rule => {
             rule.settings.allowedRepositories.length == 2
 
-            rule.settings.allowedRepositories.head should be(AlreadyResolved(RepositoryName("repository1".nonempty).nel))
+            rule.settings.allowedRepositories.head should be(AlreadyResolved(RepositoryName("repository1").nel))
             rule.settings.allowedRepositories.tail.head shouldBe a [ToBeResolved[_]]
           }
         )
