@@ -441,8 +441,6 @@ object RestHighLevelClientAdapter {
           throw ex.toSpecializedException
         case ex: ResponseException =>
           throw ex.toSpecializedException
-        case ex =>
-          throw ex
       }
   }
 }
