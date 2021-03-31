@@ -10,6 +10,7 @@ import org.elasticsearch.client.ResponseException
 import org.elasticsearch.common.io.Streams
 import org.elasticsearch.rest.RestStatus
 import org.elasticsearch.{ElasticsearchException, ElasticsearchSecurityException}
+import ujson.Value
 
 import scala.util.Try
 
@@ -47,11 +48,13 @@ object exceptions {
         case exceptionTypeCaptureRegex(aType@"index_not_found_exception", reason) =>
           new ElasticsearchException(reason) {
             override def status(): RestStatus = RestStatus.NOT_FOUND
+
             override def getExceptionName: String = aType
           }
         case exceptionTypeCaptureRegex(aType, reason) =>
           new ElasticsearchException(reason) {
             override def status(): RestStatus = exception.status()
+
             override def getExceptionName: String = aType
           }
         case _ =>
@@ -62,19 +65,29 @@ object exceptions {
 
   implicit class SpecializedResponseExceptionOps(val exception: ResponseException) {
     def toSpecializedException: ElasticsearchException = {
-      Try {
-        val responseJson = ujson.read(Streams.copyToString(
-          new InputStreamReader(exception.getResponse.getEntity.getContent, StandardCharsets.UTF_8)
-        ))
-        val exceptionJson = responseJson("error")("root_cause")(0)
-        val `type` = exceptionJson("type").str
-        val reason = exceptionJson("reason").str
-        new ElasticsearchException(reason) {
-          override def status(): RestStatus = RestStatus.fromCode(exception.getResponse.getStatusLine.getStatusCode)
-          override def getExceptionName: String = `type`
-        }
-      } getOrElse {
-        throw exception
+      rootCauseError()
+        .orElse(causedByError())
+        .getOrElse(throw exception)
+    }
+
+    private def rootCauseError() = Try {
+      error(json => json("error")("root_cause")(0))
+    }
+
+    private def causedByError() = Try {
+      error(json => json("error")("caused_by"))
+    }
+
+    private def error(readExceptionJson: Value => Value) = {
+      val responseJson = ujson.read(Streams.copyToString(
+        new InputStreamReader(exception.getResponse.getEntity.getContent, StandardCharsets.UTF_8)
+      ))
+      val exceptionJson = readExceptionJson(responseJson)
+      val `type` = exceptionJson("type").str
+      val reason = exceptionJson("reason").str
+      new ElasticsearchException(reason) {
+        override def status(): RestStatus = RestStatus.fromCode(exception.getResponse.getStatusLine.getStatusCode)
+        override def getExceptionName: String = `type`
       }
     }
   }

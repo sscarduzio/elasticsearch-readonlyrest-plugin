@@ -60,7 +60,6 @@ object GenericRequest {
     "/_security",
     "/_transform",
     "/_unfreeze", // todo: indices awareness,
-    "/_async_search", // todo: indices awareness,
     "/_watcher",
     "/_xpack",
   )
