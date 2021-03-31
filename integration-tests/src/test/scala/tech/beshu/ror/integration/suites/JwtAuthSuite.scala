@@ -21,7 +21,6 @@ import java.util.Date
 
 import com.google.common.collect.Lists
 import io.jsonwebtoken.{JwtBuilder, Jwts, SignatureAlgorithm}
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator

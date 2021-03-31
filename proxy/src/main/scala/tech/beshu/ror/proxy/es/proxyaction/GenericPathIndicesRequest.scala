@@ -33,6 +33,7 @@ class GenericPathIndicesRequest(override val actionName: String,
 
 object GenericPathIndicesRequest {
 
+  private val asyncSearchSubmit = "^/?([^/]+)/_async_search/?$".r
   private val ilmMoveToRegex = "^/?_ilm/move/([^/]+)/?$".r
   private val ilmExplainRegex = "^/?([^/]+)/_ilm/explain/?$".r
   private val ilmRemovePolicyRegex = "^/?([^/]+)/_ilm/remove/?$".r
@@ -40,6 +41,7 @@ object GenericPathIndicesRequest {
 
   def from(rest: RestRequest): Option[GenericPathIndicesRequest] = {
     val indicesStrAndAction = rest.path() match {
+      case asyncSearchSubmit(is) => Some(is, "indices:data/read/async_search/submit")
       case ilmMoveToRegex(is) => Some(is, "cluster:admin/ilm/_move/post")
       case ilmExplainRegex(is) => Some(is, "indices:admin/ilm/explain")
       case ilmRemovePolicyRegex(is) => Some(is, "indices:admin/ilm/remove_policy")

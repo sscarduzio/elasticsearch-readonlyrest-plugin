@@ -21,13 +21,13 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpUriRequest;
 import tech.beshu.ror.utils.httpclient.RestClient;
-import tech.beshu.ror.utils.misc.HttpResponseHelper;
+import tech.beshu.ror.utils.httpclient.HttpResponseHelper;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.function.Function;
 
-import static tech.beshu.ror.utils.misc.HttpResponseHelper.stringBodyFrom;
+import static tech.beshu.ror.utils.httpclient.HttpResponseHelper.stringBodyFrom;
 
 public abstract class JBaseManager {
 

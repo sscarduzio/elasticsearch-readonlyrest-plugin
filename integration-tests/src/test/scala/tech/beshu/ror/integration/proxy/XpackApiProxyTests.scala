@@ -19,5 +19,4 @@ package tech.beshu.ror.integration.proxy
 import tech.beshu.ror.integration.suites.XpackApiSuite
 import tech.beshu.ror.integration.utils.ProxyTestSupport
 
-// todo: enable in future
-//class XpackApiProxyTests extends XpackApiSuite with ProxyTestSupport
+class XpackApiProxyTests extends XpackApiSuite with ProxyTestSupport
