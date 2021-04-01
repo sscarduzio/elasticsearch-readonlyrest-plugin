@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationSe
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.{ComplianceResult, OneOfRuleBeforeMustBeAuthenticationRule}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
@@ -296,6 +296,8 @@ object show {
     implicit val complianceResultShow: Show[ComplianceResult.NonCompliantWith] = Show.show {
       case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
         s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
+      case ComplianceResult.NonCompliantWith(JwtVariableInGroupsRuleIsAllowedWhenThereIsJwtRuleInBlock) =>
+        s"JWT variables are not allowed to be used in Groups rule"
     }
 
     def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {

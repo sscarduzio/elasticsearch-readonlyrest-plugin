@@ -36,7 +36,6 @@ import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.utils.LdapConnectionPoolOps._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
-import UnboundidLdapConnectionPoolProvider.ConnectionError
 
 import scala.concurrent.duration._
 import scala.util.Try

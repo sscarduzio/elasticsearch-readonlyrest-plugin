@@ -41,8 +41,8 @@ import scala.util.Try
 final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRule
-    with NoImpersonationSupport
     with AuthorizationRule
+    with NoImpersonationSupport
     with Logging {
 
   override val name: Rule.Name = JwtAuthRule.name
@@ -123,7 +123,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   }
 
   private def logBadToken(ex: Throwable, token: JwtToken): Unit = {
-    val tokenParts = token.show.split(".")
+    val tokenParts = token.show.split("\\.")
     val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length === 3) {
       // signed JWT, last block is the cryptographic digest, which should be treated as a secret.
       s"${tokenParts(0)}.${tokenParts(1)} (omitted digest)"

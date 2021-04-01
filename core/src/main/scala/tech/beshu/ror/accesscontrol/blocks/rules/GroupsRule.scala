@@ -33,9 +33,6 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
-// todo:  seems that there is a problem with this rule. Eg. when we use as authentication method JWT token auth.
-//        We're trying to get group names first and then check authentication. We cannot resolve JWT token variable
-//        when user is not authenticated (using JWT auth token)
 final class GroupsRule(val settings: Settings,
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRule

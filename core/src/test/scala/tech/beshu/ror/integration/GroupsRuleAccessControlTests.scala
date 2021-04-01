@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, IndexWithAliases, 
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.misc.JwtUtils._
-import tech.beshu.ror.utils.misc.{JwtUtils, Random}
+import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
@@ -52,7 +52,8 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
       |    indices: ["g12_index"]
       |
       |  - name: "Allowed only for group5"
-      |    groups: [group5]
+      |    jwt_auth: "jwt1"
+      |    groups: ["@explode{jwt:roles}"]
       |    indices: ["g5_index"]
       |
       |  users:
@@ -79,8 +80,9 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
       |  jwt:
       |
       |  - name: jwt1
+      |    signature_algo: "RSA"
       |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
-      |    user_claim: user
+      |    user_claim: "userId"
       |    roles_claim: roles
       |
     """.stripMargin
@@ -110,7 +112,7 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 2
+          result.history should have size 3
           inside(result.result) { case ForbiddenByMismatched(causes) =>
             causes.toNonEmptyList.toList should have size 1
             causes.toNonEmptyList.head should be (Cause.OperationNotAllowed)
@@ -120,18 +122,21 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
     }
     "jwt auth is used together with groups" should {
       "allow to proceed" when {
-        "test" in {
-          val jwt = JwtUtils.createJsonWebToken(secret, List("user" := "user3"))
+        "at least one of user's roles is declared in groups" in {
+          val jwt = Jwt(secret, claims = List(
+            "userId" := "user3",
+            "roles" := List("group5", "group6", "group7")
+          ))
           val request = MockRequestContext.indices.copy(
-            headers = Set(header("Authorization", s"Bearer $jwt")),
+            headers = Set(header("Authorization", s"Bearer ${jwt.stringify()}")),
             filteredIndices = Set(IndexName("g*")),
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 3
           inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1")))
+            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user3"))))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group5")))
           }
         }
       }

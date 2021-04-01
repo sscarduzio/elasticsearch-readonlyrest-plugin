@@ -27,47 +27,62 @@ import scala.language.implicitConversions
 
 object JwtUtils {
 
-  def createJsonWebToken(secret: PrivateKey, claims: Traversable[Claim]): String = {
-    // todo: cleanup
-    val defaultClaims = new DefaultClaims {
-      claims.foldLeft(Map.empty[String, AnyRef]) {
-        case (acc, claim) =>
-          val claimValue = claim.name.tail match {
-            case Nil =>
-              claim.value
-            case notEmptyTail =>
-              val reversedListOfClaimKeys = notEmptyTail.reverse
-              val theDeepestElement: AnyRef = Map(reversedListOfClaimKeys.head.value -> claim.value).asJava
-              val claimValue = reversedListOfClaimKeys.tail.foldLeft(theDeepestElement) {
-                case (innerElement, claimKey) => Map(claimKey.value -> innerElement).asJava
-              }
-              claimValue
-          }
-          acc + (claim.name.head.value -> claimValue)
-      }
+  final case class Jwt(secret: PrivateKey, claims: Traversable[Claim]) {
+
+    def stringify(): String = {
+      Jwts.builder
+        .signWith(secret)
+        .setSubject("test")
+        .setClaims(defaultClaims())
+        .compact()
     }
-    Jwts.builder
-      .signWith(secret)
-      .setSubject("test")
-      .setClaims(defaultClaims)
-      .compact()
+
+    def defaultClaims(): DefaultClaims = {
+      val initialClaimsMap = Map[String, AnyRef]("sub" -> "test")
+      val fullMapOfClaims
+      = claims
+        .foldLeft(initialClaimsMap) {
+          case (acc, claim) =>
+            val claimValue = claim.name.tail match {
+              case Nil => claim.value
+              case nonEmptyTail => claimValueFrom(nonEmptyTail, claim.value)
+            }
+            acc + (claim.name.head.value -> claimValue)
+        }
+        .asJava
+      new DefaultClaims(fullMapOfClaims)
+    }
+
+    private def claimValueFrom(notEmptyTailOfClaimKeys: List[ClaimKey], value: AnyRef) = {
+      val reversedListOfClaimKeys = notEmptyTailOfClaimKeys.reverse
+      val theDeepestElement: AnyRef = Map(reversedListOfClaimKeys.head.value -> value).asJava
+      val claimValue = reversedListOfClaimKeys.tail.foldLeft(theDeepestElement) {
+        case (innerElement, claimKey) => Map(claimKey.value -> innerElement).asJava
+      }
+      claimValue
+    }
   }
 
-  final case class Claim(name: NonEmptyList[ClaimKey], value: String)
+  final case class Claim(name: NonEmptyList[ClaimKey], value: AnyRef)
   final case class ClaimKey(value: String) extends AnyVal
 
   implicit class NonEmptyListOfClaimKeysOps[T](val list: T)
                                               (implicit f: T => NonEmptyList[ClaimKey]) {
     def :=(value: String): Claim = Claim(list, value)
+
+    def :=(value: List[String]): Claim = Claim(list, value.asJava)
+
     def :->(nextKey: ClaimKey): NonEmptyList[ClaimKey] = list :+ nextKey
   }
 
   implicit class ClaimKeyOps[T](key: T)
                                (implicit f: T => ClaimKey) {
     def :=(value: String): Claim = Claim(NonEmptyList.one(key), value)
+
+    def :=(value: List[String]): Claim = Claim(NonEmptyList.one(key), value.asJava)
+
     def :->(nextKey: ClaimKey): NonEmptyList[ClaimKey] = NonEmptyList.of(key, nextKey)
   }
 
   implicit def string2ClaimKey(value: String): ClaimKey = ClaimKey(value)
-
 }
