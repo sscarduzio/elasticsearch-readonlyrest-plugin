@@ -123,7 +123,7 @@ object VariableContext {
     case object JwtVariableInGroupsRuleIsAllowedWhenThereIsJwtRuleInBlock extends UsageRequirement {
       override def checkIfComplies(context: Context): ComplianceResult =
         if(canExtractJwtVariables(context)) ComplianceResult.Compliant
-        else ComplianceResult.Compliant
+        else ComplianceResult.NonCompliantWith(this)
 
       private def canExtractJwtVariables(context: Context) =
         !isGroupRule(context.currentRule) || thereWasJwtRule(context.rulesBefore)

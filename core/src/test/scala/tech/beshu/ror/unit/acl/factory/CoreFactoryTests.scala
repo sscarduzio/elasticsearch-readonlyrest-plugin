@@ -373,6 +373,26 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
         val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
         acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. Variable used to extract user requires one of the rules defined in block to be authentication rule")))))
       }
+      "'groups' rule uses jwt variable without defining `jwt_auth` rule beforehand" in {
+        val config = rorConfigFromUnsafe(
+          """
+            |readonlyrest:
+            |
+            |  access_control_rules:
+            |
+            |  - name: test_block
+            |    groups: ["@explode{jwt:roles}"]
+            |
+            |  users:
+            |
+            |  - username: user1-proxy-id
+            |    groups: ["group1"]
+            |    auth_key: "user2:pass"
+            |
+            |""".stripMargin)
+        val acl = createCore(config, new MockHttpClientsFactoryWithFixedHttpClient(mock[HttpClient]))
+        acl should be(Left(NonEmptyList.one(BlocksLevelCreationError(Message("The 'test_block' block doesn't meet requirements for defined variables. JWT variables are not allowed to be used in Groups rule")))))
+      }
     }
     "return rule level error" when {
       "no rules are defined in block" in {
@@ -439,7 +459,6 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
           secondBlock.rules should have size 1
       }
     }
-
     "return ACL with blocks defined in config" when {
       "each block meets requirements for variables" in {
         val config = rorConfigFromUnsafe(
