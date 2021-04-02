@@ -108,7 +108,7 @@ object VariableContext {
         case _: VariableType.CurrentGroup => None
         case _: VariableType.AvailableGroups => None
         case _: VariableType.Header => None
-        case _: VariableType.Jwt => Some(JwtVariableInGroupsRuleIsAllowedWhenThereIsJwtRuleInBlock)
+        case _: VariableType.Jwt => Some(JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier)
       }
     }
 
@@ -120,18 +120,12 @@ object VariableContext {
         }
     }
 
-    case object JwtVariableInGroupsRuleIsAllowedWhenThereIsJwtRuleInBlock extends UsageRequirement {
+    case object JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier extends UsageRequirement {
       override def checkIfComplies(context: Context): ComplianceResult =
-        if(canExtractJwtVariables(context)) ComplianceResult.Compliant
+        if(ruleWithJwtTokenWasAlreadyProcessed(context.rulesBefore)) ComplianceResult.Compliant
         else ComplianceResult.NonCompliantWith(this)
 
-      private def canExtractJwtVariables(context: Context) =
-        !isGroupRule(context.currentRule) || thereWasJwtRule(context.rulesBefore)
-
-      private def isGroupRule(rule: Rule) =
-        rule.isInstanceOf[GroupsRule] || rule.isInstanceOf[RorKbnAuthRule]
-
-      private def thereWasJwtRule(rulesBefore: List[Rule]) =
+      private def ruleWithJwtTokenWasAlreadyProcessed(rulesBefore: List[Rule]) =
         rulesBefore
           .collect {
             case rule: JwtAuthRule => rule

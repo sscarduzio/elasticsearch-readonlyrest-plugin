@@ -52,9 +52,9 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
       |    indices: ["g12_index"]
       |
       |  - name: "Allowed only for group5"
-      |    jwt_auth: "jwt1"
       |    groups: ["@explode{jwt:roles}"]
       |    indices: ["g5_index"]
+      |    jwt_auth: "jwt1"
       |
       |  users:
       |

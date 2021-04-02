@@ -296,7 +296,7 @@ object show {
     implicit val complianceResultShow: Show[ComplianceResult.NonCompliantWith] = Show.show {
       case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
         s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
-      case ComplianceResult.NonCompliantWith(JwtVariableInGroupsRuleIsAllowedWhenThereIsJwtRuleInBlock) =>
+      case ComplianceResult.NonCompliantWith(JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier) =>
         s"JWT variables are not allowed to be used in Groups rule"
     }
 
