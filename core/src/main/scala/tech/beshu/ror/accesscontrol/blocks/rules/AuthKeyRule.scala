@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExi
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
-final class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
+final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[Credentials],
                         override val impersonators: List[ImpersonatorDef],
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings)

@@ -16,20 +16,20 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
+import java.time.Clock
+
 import cats.Eq
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
+import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, ExternalAuthenticationRule, JwtAuthRule, _}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{RorConfigurationIndex, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
 import tech.beshu.ror.providers.UuidProvider
-
-import java.time.Clock
 
 object ruleDecoders {
 
@@ -77,7 +77,7 @@ object ruleDecoders {
           definitions.rorKbns,
           Some(definitions.impersonators),
           caseMappingEquality
-        )
+        ) map (_.toRuleBaseDecoder)
     }
   }
 
@@ -88,7 +88,7 @@ object ruleDecoders {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   rorKbnDefinitions: Definitions[RorKbnDef],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
-                                  caseMappingEquality: UserIdCaseMappingEquality): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
+                                  caseMappingEquality: UserIdCaseMappingEquality): Option[AuthenticationRuleBaseDecoder[_ <: AuthenticationRule]] = {
     name match {
       case AuthKeyRule.name => Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
       case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
@@ -105,5 +105,6 @@ object ruleDecoders {
       case _ => None
     }
   }
+
 
 }

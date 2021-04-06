@@ -31,16 +31,17 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{AuthenticationRuleDecoderWithoutAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
+import EligibleUsers.Instances._
 
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                     implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields[LdapAuthenticationRule](
+  extends AuthenticationRuleDecoderWithoutAssociatedFields[LdapAuthenticationRule](
     LdapAuthenticationRuleDecoder.simpleLdapAuthenticationNameAndLocalConfig
       .orElse(LdapAuthenticationRuleDecoder.complexLdapAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
@@ -116,7 +117,7 @@ object LdapAuthorizationRuleDecoder {
 
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                           caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields[LdapAuthRule](
+  extends AuthenticationRuleDecoderWithoutAssociatedFields[LdapAuthRule](
     LdapAuthRuleDecoder.instance(ldapDefinitions, caseMappingEquality)
       .map(RuleWithVariableUsageDefinition.create(_))
   )

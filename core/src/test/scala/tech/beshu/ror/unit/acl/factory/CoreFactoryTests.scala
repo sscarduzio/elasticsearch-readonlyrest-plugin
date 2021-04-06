@@ -385,7 +385,7 @@ class CoreFactoryTests extends AnyWordSpec with Inside with MockFactory {
             |
             |  users:
             |
-            |  - username: user1-proxy-id
+            |  - username: "*"
             |    groups: ["group1"]
             |    auth_key: "user2:pass"
             |

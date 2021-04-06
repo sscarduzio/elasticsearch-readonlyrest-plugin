@@ -169,7 +169,7 @@ class RorKbnAuthRuleTests
       "userId isn't passed in JWT token claim" in {
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         val jwt = Jwt(key, claims = List(
-          "user" := "user1",
+          "userId" := "user1",
           "groups" := List("group1", "group2")
         ))
         assertNotMatchRule(

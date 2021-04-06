@@ -134,7 +134,7 @@ class JwtAuthRuleTests
           configuredJwtDef = jwtDef,
           tokenHeader = new Header(
             Header.Name.authorization,
-            NonEmptyString.unsafeFrom(s"Bearer ${validJwt.defaultClaims()}")
+            NonEmptyString.unsafeFrom(s"Bearer ${validJwt.stringify()}")
           )
         ) {
           blockContext => assertBlockContext(

@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.utils
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import cats.{Applicative, Order, Show}
+import cats.{Applicative, Order}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.CursorOp.DownField
 import io.circe._
@@ -35,11 +35,15 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.UserIdPatterns
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, Reason, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.authenticationRuleDecoderBy
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.EligibleUsers
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.EligibleUsers.Support
+import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult._
@@ -314,17 +318,17 @@ object CirceOps {
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
 
-    def tryDecodeAuthRule[U: Show](userDefId: U,
-                                   caseMappingEquality: UserIdCaseMappingEquality)
-                                  (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                   authProxyDefinitions: Definitions[ProxyAuth],
-                                   jwtDefinitions: Definitions[JwtDef],
-                                   ldapDefinitions: Definitions[LdapService],
-                                   rorKbnDefinitions: Definitions[RorKbnDef],
-                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
+    def tryDecodeAuthRule(userIdPatterns: UserIdPatterns,
+                          caseMappingEquality: UserIdCaseMappingEquality)
+                         (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                          authProxyDefinitions: Definitions[ProxyAuth],
+                          jwtDefinitions: Definitions[JwtDef],
+                          ldapDefinitions: Definitions[LdapService],
+                          rorKbnDefinitions: Definitions[RorKbnDef],
+                          impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
       value.keys.map(_.toList) match {
         case None | Some(Nil) =>
-          Left(Message(s"No authentication method defined for [${userDefId.show}]"))
+          Left(Message(s"No authentication method defined for [${userIdPatterns.show}]"))
         case Some(key :: Nil) =>
           val decoder = authenticationRuleDecoderBy(
             Rule.Name(key),
@@ -343,9 +347,22 @@ object CirceOps {
           }
           decoder
             .tryDecode(value.downField(key))
-            .left.map(_ => Message(s"Cannot parse '$key' rule declared for [${userDefId.show}]"))
+            .left.map(_ => Message(s"Cannot parse '$key' rule declared for [${userIdPatterns.show}]"))
+            .flatMap { case (r: RuleWithVariableUsageDefinition[_], eligibleUsersCheck: EligibleUsers.Support) =>
+              def authRule = r.asInstanceOf[RuleWithVariableUsageDefinition[_ <: AuthenticationRule]]
+
+              eligibleUsersCheck match {
+                case Support.Available(users) =>
+                  val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)(caseMappingEquality)
+                  users.find(matcher.`match`) match {
+                    case Some(_) => Right(authRule)
+                    case None => Left(Message(s"Users [${users.map(_.show).mkString(",")}] are allowed to be authenticated by rule [${authRule.rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."))
+                  }
+                case Support.NotAvailable => Right(authRule)
+              }
+            }
         case Some(keys) =>
-          Left(Message(s"Only one authentication should be defined for [${userDefId.show}]. Found ${keys.mkString(", ")}"))
+          Left(Message(s"Only one authentication should be defined for [${userIdPatterns.show}]. Found ${keys.mkString(", ")}"))
       }
     }
   }

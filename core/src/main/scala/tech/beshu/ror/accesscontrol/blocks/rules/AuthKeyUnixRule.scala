@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
 import java.util.regex.Pattern
 
-final class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
+final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
                             override val impersonators: List[ImpersonatorDef],
                             implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings) {

@@ -21,12 +21,13 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.domain.User
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
+import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, DecoderHelpers, DecodingFailureOps, HCursorOps}
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -58,12 +59,12 @@ object ImpersonationDefinitionsDecoder {
         val impersonatorKey = "impersonator"
         val usersKey = "users"
         for {
-          impersonator <- c.downField(impersonatorKey).as[User.Id]
+          impersonatorPatterns <- c.downField(impersonatorKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
           users <- c.downField(usersKey).as[UniqueNonEmptyList[User.Id]]
           ruleWithVariableUsage <- c.withoutKeys(Set(impersonatorKey, usersKey))
-            .tryDecodeAuthRule(impersonator, caseMappingEquality)
+            .tryDecodeAuthRule(impersonatorPatterns, caseMappingEquality)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))
-        } yield ImpersonatorDef(impersonator, ruleWithVariableUsage.rule, users)
+        } yield ImpersonatorDef(impersonatorPatterns, ruleWithVariableUsage.rule, users)
       }
       .withError(DefinitionsLevelCreationError.apply, Message("Impersonation definition malformed"))
       .decoder

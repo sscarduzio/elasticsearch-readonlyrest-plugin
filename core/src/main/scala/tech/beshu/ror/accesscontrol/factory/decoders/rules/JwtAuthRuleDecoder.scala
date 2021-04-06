@@ -28,14 +28,15 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.JwtDefinitionsDecoder._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{AuthenticationRuleDecoderWithoutAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.decodeUniqueList
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import EligibleUsers.Instances._
 
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
+  extends AuthenticationRuleDecoderWithoutAssociatedFields[JwtAuthRule](
     JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder

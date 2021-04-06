@@ -20,12 +20,11 @@ import eu.timepit.refined.auto._
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.UserIdPatterns
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
-import tech.beshu.ror.accesscontrol.domain.{Credentials, Group, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.{Credentials, Group, PlainTextSecret, User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, RulesLevelCreationError}
 import tech.beshu.ror.utils.TestsUtils._
@@ -472,6 +471,29 @@ class GroupsRuleSettingsTests extends BaseRuleSettingsDecoderTest[GroupsRule] wi
           assertion = errors => {
             errors should have size 1
             errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found unknown_field, auth_key")))
+          }
+        )
+      }
+      "auth rule is used, but user cannot be matched by username patterns" in {
+        assertDecodingFailure(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    groups: group1
+              |
+              |  users:
+              |  - username: a*
+              |    groups: ["group1", "group3"]
+              |    auth_key: "cartman:pass"
+              |
+              |""".stripMargin,
+          assertion = errors => {
+            errors should have size 1
+            errors.head should be(DefinitionsLevelCreationError(Message("Users [cartman] are allowed to be authenticated by rule [auth_key], but it's used in a context of user patterns [a*]. It seems that this is not what you expect.")))
           }
         )
       }

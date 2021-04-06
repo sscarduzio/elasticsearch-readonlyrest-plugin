@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration
+package tech.beshu.ror.unit.configuration
 
 import cats.{Id, ~>}
 import io.circe.Json
@@ -22,6 +22,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
 import tech.beshu.ror.configuration.ConfigLoading.LoadConfigAction
+import tech.beshu.ror.configuration.{ConfigLoading, RawRorConfig}
 import tech.beshu.ror.configuration.loader.LoadedRorConfig.{FileConfig, ForcedFileConfig, IndexConfig}
 import tech.beshu.ror.configuration.loader.{LoadRawRorConfig, LoadedRorConfig, Path}
 

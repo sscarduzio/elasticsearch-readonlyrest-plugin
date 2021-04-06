@@ -28,14 +28,15 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.RorKbnDefinitionsDecoder._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{AuthenticationRuleDecoderWithoutAssociatedFields, RuleDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.decodeUniqueList
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
+import EligibleUsers.Instances._
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                             implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields[RorKbnAuthRule](
+  extends AuthenticationRuleDecoderWithoutAssociatedFields[RorKbnAuthRule](
     RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder

@@ -18,12 +18,11 @@ package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
 import cats.Id
 import io.circe.Decoder
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.UserIdPatterns
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
+import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
@@ -81,5 +80,4 @@ object UsersDefinitionsDecoder {
       .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
       .decoder
   }
-
 }
