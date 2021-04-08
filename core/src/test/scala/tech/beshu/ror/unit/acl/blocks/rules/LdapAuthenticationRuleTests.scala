@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -30,8 +31,8 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils
-import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
+import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
+import tech.beshu.ror.utils.UserIdEq
 
 class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
 
@@ -42,13 +43,13 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
-        (service.authenticate _).expects(User.Id("admin".nonempty), PlainTextSecret("pass".nonempty)).returning(Task.now(true))
+        (service.authenticate _).expects(User.Id("admin"), PlainTextSecret("pass")).returning(Task.now(true))
 
-        val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), TestsUtils.userIdEq)
+        val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), UserIdEq.caseSensitive)
         rule.check(blockContext).runSyncStep shouldBe  Right(RuleResult.Fulfilled(
           CurrentUserMetadataRequestBlockContext(
             requestContext,
-            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("admin".nonempty))),
+            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(Id("admin"))),
             Set.empty,
             List.empty)
         ))
@@ -60,9 +61,9 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
-        (service.authenticate _).expects(User.Id("admin".nonempty), PlainTextSecret("pass".nonempty)).returning(Task.now(false))
+        (service.authenticate _).expects(User.Id("admin"), PlainTextSecret("pass")).returning(Task.now(false))
 
-        val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), TestsUtils.userIdEq)
+        val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), UserIdEq.caseSensitive)
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "there is no basic auth header" in {
@@ -70,7 +71,7 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
         val service = mock[LdapAuthenticationService]
 
-        val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), TestsUtils.userIdEq)
+        val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), UserIdEq.caseSensitive)
         rule.check(blockContext).runSyncStep shouldBe Right(RuleResult.Rejected())
       }
       "LDAP service fails" in {
@@ -78,9 +79,9 @@ class LdapAuthenticationRuleTests extends AnyWordSpec with MockFactory {
         val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty)
 
         val service = mock[LdapAuthenticationService]
-        (service.authenticate _).expects(User.Id("admin".nonempty), PlainTextSecret("pass".nonempty)).returning(Task.raiseError(TestException("Cannot reach LDAP")))
+        (service.authenticate _).expects(User.Id("admin"), PlainTextSecret("pass")).returning(Task.raiseError(TestException("Cannot reach LDAP")))
 
-        val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), TestsUtils.userIdEq)
+        val rule = new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), UserIdEq.caseSensitive)
         val thrown = the [TestException] thrownBy rule.check(blockContext).runSyncUnsafe()
         thrown.getMessage should equal ("Cannot reach LDAP")
       }

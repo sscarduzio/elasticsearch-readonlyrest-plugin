@@ -35,15 +35,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils
+import tech.beshu.ror.utils.{TestsUtils, UserIdEq}
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
-
 import java.security.Key
+
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import eu.timepit.refined.auto._
 
 class RorKbnAuthRuleTests
   extends AnyWordSpec with MockFactory with Inside with BlockContextAssertion {
@@ -55,7 +56,7 @@ class RorKbnAuthRuleTests
         val claims = new DefaultClaims(Map("sub" -> "test", "user" -> "user1", "groups" -> List("group1", "group2").asJava).asJava)
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test".nonempty),
+            RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           tokenHeader = new Header(
@@ -68,7 +69,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(JwtTokenPayload(claims))
             )(blockContext)
         }
@@ -78,7 +79,7 @@ class RorKbnAuthRuleTests
         val claims = new DefaultClaims(Map("sub" -> "test", "user" -> "user1", "groups" -> List("group1", "group2").asJava).asJava)
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test".nonempty),
+            RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
           tokenHeader = new Header(
@@ -91,7 +92,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(JwtTokenPayload(claims))
             )(blockContext)
         }
@@ -101,7 +102,7 @@ class RorKbnAuthRuleTests
         val claims = new DefaultClaims(Map[String, AnyRef]("sub" -> "test", "user" -> "user1").asJava)
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test".nonempty),
+            RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.empty,
@@ -115,7 +116,7 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               jwt = Some(JwtTokenPayload(claims))
             )(blockContext)
         }
@@ -125,7 +126,7 @@ class RorKbnAuthRuleTests
         val claims = new DefaultClaims(Map("sub" -> "test", "user" -> "user1", "groups" -> List("group1", "group2").asJava).asJava)
         assertMatchRule(
           configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test".nonempty),
+            RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group2")),
@@ -139,9 +140,9 @@ class RorKbnAuthRuleTests
         ) {
           blockContext =>
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
-              currentGroup = Some(Group("group2".nonempty)),
-              availableGroups = UniqueList.of(Group("group2".nonempty)),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
+              currentGroup = Some(Group("group2")),
+              availableGroups = UniqueList.of(Group("group2")),
               jwt = Some(JwtTokenPayload(claims))
             )(blockContext)
         }
@@ -153,7 +154,7 @@ class RorKbnAuthRuleTests
         val key2: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test".nonempty),
+            RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key1.getEncoded)
           ),
           tokenHeader = new Header(
@@ -174,7 +175,7 @@ class RorKbnAuthRuleTests
         val (_, secret) = Random.generateRsaRandomKeys
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test".nonempty),
+            RorKbnDef.Name("test"),
             SignatureCheckMethod.Rsa(pub)
           ),
           tokenHeader = new Header(
@@ -194,7 +195,7 @@ class RorKbnAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test".nonempty),
+            RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           tokenHeader = new Header(
@@ -214,10 +215,10 @@ class RorKbnAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test".nonempty),
+            RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
-          configuredGroups = UniqueList.of(Group("g1".nonempty)),
+          configuredGroups = UniqueList.of(Group("g1")),
           tokenHeader = new Header(
             Header.Name.authorization,
             {
@@ -235,7 +236,7 @@ class RorKbnAuthRuleTests
         val key: Key = Keys.secretKeyFor(SignatureAlgorithm.valueOf("HS256"))
         assertNotMatchRule(
           configuredRorKbnDef = RorKbnDef(
-            RorKbnDef.Name("test".nonempty),
+            RorKbnDef.Name("test"),
             SignatureCheckMethod.Hmac(key.getEncoded)
           ),
           configuredGroups = UniqueList.of(groupFrom("group3"), groupFrom("group4")),
@@ -270,7 +271,7 @@ class RorKbnAuthRuleTests
                          configuredGroups: UniqueList[Group] = UniqueList.empty,
                          tokenHeader: Header,
                          blockContextAssertion: Option[BlockContext => Unit]) = {
-    val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), TestsUtils.userIdEq)
+    val rule = new RorKbnAuthRule(RorKbnAuthRule.Settings(configuredRorKbnDef, configuredGroups), UserIdEq.caseSensitive)
     val requestContext = MockRequestContext.metadata.copy(headers = Set(tokenHeader))
     val blockContext = CurrentUserMetadataRequestBlockContext(requestContext, UserMetadata.from(requestContext), Set.empty, List.empty)
     val result = rule.check(blockContext).runSyncUnsafe(1 second)

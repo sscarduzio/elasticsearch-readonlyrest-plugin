@@ -35,6 +35,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
 import tech.beshu.ror.utils.ScalaOps._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
                                      nodeClient: NodeClient)
@@ -55,7 +56,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
         IndexName
           .fromString(indexMetaData.getIndex.getName)
           .map { indexName =>
-            val aliases = indexMetaData.getAliases.keysIt.asScala.toSet.flatMap(IndexName.fromString)
+            val aliases = indexMetaData.getAliases.asSafeKeys.flatMap(IndexName.fromString)
             (indexName, aliases)
           }
       }
@@ -77,7 +78,7 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
           indexPatterns <- UniqueNonEmptyList.fromList(
             templateMetaData.patterns().asScala.flatMap(IndexPattern.fromString).toList
           )
-          aliases = templateMetaData.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+          aliases = templateMetaData.aliases().asSafeValues.flatMap(a => IndexName.fromString(a.alias()))
         } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
       }
       .toSet

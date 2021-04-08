@@ -16,23 +16,21 @@
  */
 package tech.beshu.ror.integration
 
+import eu.timepit.refined.auto._
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, Inside}
-
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched
+import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched._
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.{StringOps, basicAuthHeader}
+import tech.beshu.ror.utils.TestsUtils.basicAuthHeader
 import tech.beshu.ror.utils.containers.LdapContainer
-import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched._
-import cats.data.NonEmptySet
 
 class LdapConnectivityCheckYamlLoadedAccessControlTests
   extends AnyWordSpec
@@ -110,7 +108,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
           result.history should have size 1
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("LDAP1"))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman".nonempty)))) {
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("cartman")))) {
               blockContext
             }
           }
@@ -121,7 +119,7 @@ class LdapConnectivityCheckYamlLoadedAccessControlTests
           result.history should have size 2
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("LDAP2"))
-            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("kyle".nonempty)))) {
+            assertBlockContext(loggedUser = Some(DirectlyLoggedUser(User.Id("kyle")))) {
               blockContext
             }
           }

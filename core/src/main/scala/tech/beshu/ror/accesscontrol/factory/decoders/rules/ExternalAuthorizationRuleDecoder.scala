@@ -17,7 +17,6 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import cats.Order
-import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
@@ -41,11 +40,11 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration.FiniteDuration
 
-class ExternalAuthorizationRuleDecoder(authotizationServices: Definitions[ExternalAuthorizationService],
-                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
+class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
+                                       implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
     ExternalAuthorizationRuleDecoder
-      .settingsDecoder(authotizationServices, caseMappingEquality)
+      .settingsDecoder(authorizationServices, caseMappingEquality)
       .map(settings => RuleWithVariableUsageDefinition.create(new ExternalAuthorizationRule(settings, caseMappingEquality)))
   )
 
@@ -59,9 +58,9 @@ object ExternalAuthorizationRuleDecoder {
         for {
           name <- c.downField("user_groups_provider").as[ExternalAuthorizationService.Name]
           groups <- c.downField("groups").as[UniqueNonEmptyList[Group]]
-          users <- c.downField("users").as[Option[NonEmptySet[User.Id]]]
+          users <- c.downField("users").as[Option[UniqueNonEmptyList[User.Id]]]
           ttl <- c.downFields("cache_ttl_in_sec", "cache_ttl").as[Option[FiniteDuration Refined Positive]]
-        } yield (name, ttl, groups, users.getOrElse(NonEmptySet.one(User.Id(NonEmptyString.unsafeFrom("*")))))
+        } yield (name, ttl, groups, users.getOrElse(UniqueNonEmptyList.of(User.Id(NonEmptyString.unsafeFrom("*")))))
       }
       .toSyncDecoder
       .mapError(RulesLevelCreationError.apply)

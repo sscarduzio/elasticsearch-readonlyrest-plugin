@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks
 
+import eu.timepit.refined.auto._
 import cats.data.NonEmptyList
 import eu.timepit.refined.auto._
 import monix.eval.Task
@@ -180,8 +181,8 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
         policy = Block.Policy.Allow,
         verbosity = Block.Verbosity.Info,
         rules = NonEmptyList.fromListUnsafe(
-          passingRule("r1", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1".nonempty))))) ::
-          passingRule("r2", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2".nonempty))))) ::
+          passingRule("r1", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user1"))))) ::
+          passingRule("r2", _.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(User.Id("user2"))))) ::
             Nil
         )
       )
@@ -197,7 +198,7 @@ class BlockTests extends AnyWordSpec with BlockContextAssertion with Inside {
           blockContext.userMetadata should be(
             UserMetadata
               .empty
-              .withLoggedUser(DirectlyLoggedUser(User.Id("user2".nonempty)))
+              .withLoggedUser(DirectlyLoggedUser(User.Id("user2")))
           )
           blockContext.filteredIndices should be(empty)
           blockContext.allAllowedIndices should be(empty)

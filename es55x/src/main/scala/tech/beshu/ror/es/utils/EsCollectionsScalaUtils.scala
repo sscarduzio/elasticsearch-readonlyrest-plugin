@@ -14,22 +14,16 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.utils
+package tech.beshu.ror.es.utils
 
-import tech.beshu.ror.accesscontrol.domain.IndexName
+import org.elasticsearch.common.collect.ImmutableOpenMap
+import scala.collection.JavaConverters._
 
-class IndicesMatcher(indices: Set[IndexName]) {
-  val availableIndicesMatcher: Matcher[IndexName] = MatcherWithWildcardsScalaAdapter[IndexName](indices)
+object EsCollectionsScalaUtils {
 
-  def filterIndices(indices: Set[IndexName]): Set[IndexName] = availableIndicesMatcher.filter(indices)
+  implicit class ImmutableOpenMapOps[K, V](val value: ImmutableOpenMap[K, V]) extends AnyVal {
 
-  def `match`(value: IndexName): Boolean = availableIndicesMatcher.`match`(value)
-
-  def contains(str: String): Boolean = availableIndicesMatcher.contains(str)
-}
-
-object IndicesMatcher {
-  def create(indices: Set[IndexName]): IndicesMatcher = {
-    new IndicesMatcher(indices)
+    def asSafeKeys: Set[K] = Option(value).map(_.keysIt().asScala.toSet).getOrElse(Set.empty)
+    def asSafeValues: Set[V] = Option(value).map(_.valuesIt().asScala.toSet).getOrElse(Set.empty)
   }
 }

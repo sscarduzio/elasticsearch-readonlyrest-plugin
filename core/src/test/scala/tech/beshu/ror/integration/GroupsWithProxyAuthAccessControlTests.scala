@@ -17,6 +17,7 @@
 package tech.beshu.ror.integration
 
 import eu.timepit.refined.auto._
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
@@ -77,8 +78,8 @@ class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoa
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
           inside(result.result) { case Allow(blockContext, _) =>
-            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id".nonempty))))
-            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1".nonempty)))
+            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user1-proxy-id"))))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group1")))
           }
         }
       }

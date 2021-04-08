@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration
 
+import eu.timepit.refined.auto._
 import java.util.Base64
 
 import eu.timepit.refined.types.string.NonEmptyString
@@ -131,7 +132,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(groupFrom("g3")),
               availableGroups = UniqueList.of(groupFrom("g3"))
             ) {
@@ -150,7 +151,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from header variable"))
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(groupFrom("g3")),
               availableGroups = UniqueList.of(groupFrom("g3"))
             ) {
@@ -169,7 +170,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable (old syntax)"))
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
               currentGroup = Some(groupFrom("gs2")),
               availableGroups = UniqueList.of(groupFrom("gs2"))
             ) {
@@ -188,7 +189,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Group name from env variable"))
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               currentGroup = Some(groupFrom("gs1")),
               availableGroups = UniqueList.of(groupFrom("gs1"))
             ) {
@@ -209,7 +210,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 val jwtBuilder = Jwts.builder.signWith(secret).setSubject("test").setClaims(claims)
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
-            filteredIndices = Set(IndexName("gj1".nonempty))
+            filteredIndices = Set(IndexName("gj1"))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -220,10 +221,10 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             blockContext.userMetadata should be(
               UserMetadata
                 .empty
-                .withLoggedUser(DirectlyLoggedUser(User.Id("user3".nonempty)))
+                .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
                 .withJwtToken(JwtTokenPayload(claims))
             )
-            blockContext.filteredIndices should be(Set(IndexName("gj1".nonempty)))
+            blockContext.filteredIndices should be(Set(IndexName("gj1")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }
@@ -240,8 +241,8 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
                 val jwtBuilder = Jwts.builder.signWith(secret).setSubject("test").setClaims(claims)
                 NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
               })),
-            filteredIndices = Set(IndexName("gj0".nonempty)),
-            allIndicesAndAliases = Set(IndexWithAliases(IndexName("gj0".nonempty), Set.empty))
+            filteredIndices = Set(IndexName("gj0")),
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName("gj0"), Set.empty))
           )
 
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
@@ -252,10 +253,10 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             blockContext.userMetadata should be(
               UserMetadata
                 .from(request)
-                .withLoggedUser(DirectlyLoggedUser(User.Id("user4".nonempty)))
+                .withLoggedUser(DirectlyLoggedUser(User.Id("user4")))
                 .withJwtToken(JwtTokenPayload(claims))
             )
-            blockContext.filteredIndices should be(Set(IndexName("gj0".nonempty)))
+            blockContext.filteredIndices should be(Set(IndexName("gj0")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }
@@ -284,12 +285,12 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
             blockContext.userMetadata should be(
               UserMetadata
                 .from(request)
-                .withLoggedUser(DirectlyLoggedUser(User.Id("user5".nonempty)))
+                .withLoggedUser(DirectlyLoggedUser(User.Id("user5")))
                 .withJwtToken(JwtTokenPayload(claims))
             )
             blockContext.filteredIndices should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)
-            blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}""".nonempty)))
+            blockContext.filter should be(Some(Filter("""{"bool": { "must": { "terms": { "user_id": ["alice","bob"] }}}}""")))
           }
         }
       }

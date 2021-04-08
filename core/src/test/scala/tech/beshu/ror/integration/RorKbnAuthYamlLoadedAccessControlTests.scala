@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.integration
 
+import eu.timepit.refined.auto._
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.impl.DefaultClaims
 import io.jsonwebtoken.security.Keys
@@ -100,7 +101,7 @@ class RorKbnAuthYamlLoadedAccessControlTests extends AnyWordSpec with BaseYamlLo
           inside(result.result) { case RegularRequestResult.Allow(blockContext, block) =>
             block.name should be(Block.Name("Valid JWT token is present"))
             assertBlockContext(
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user"))),
               jwt = Some(JwtTokenPayload(claims))
             ) {
               blockContext

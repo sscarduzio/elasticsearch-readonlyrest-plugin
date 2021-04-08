@@ -17,13 +17,13 @@
 package tech.beshu.ror.unit.acl.factory.decoders
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -64,7 +64,7 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a [LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a [ComposedLdapAuthService]
-            rule.settings.permittedGroups should be (UniqueNonEmptyList.of(Group("group3".nonempty)))
+            rule.settings.permittedGroups should be (UniqueNonEmptyList.of(Group("group3")))
           }
         )
       }
@@ -95,7 +95,7 @@ class LdapAuthorizationRuleSettingsTests
           assertion = rule => {
             rule.settings.ldap shouldBe a [LoggableLdapAuthorizationServiceDecorator]
             rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a [CacheableLdapAuthorizationServiceDecorator]
-            rule.settings.permittedGroups should be (UniqueNonEmptyList.of(Group("group3".nonempty)))
+            rule.settings.permittedGroups should be (UniqueNonEmptyList.of(Group("group3")))
           }
         )
       }

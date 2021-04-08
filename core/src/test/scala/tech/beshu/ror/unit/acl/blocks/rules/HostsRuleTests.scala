@@ -17,21 +17,21 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptySet
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import tech.beshu.ror.accesscontrol.domain.Address
-import tech.beshu.ror.accesscontrol.blocks.rules.HostsRule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.GeneralNonIndexRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
+import tech.beshu.ror.accesscontrol.blocks.rules.HostsRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
-import tech.beshu.ror.mocks.{MockHostnameResolver, MockRequestContext}
+import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
-import tech.beshu.ror.utils.TestsUtils.StringOps
 
 class HostsRuleTests extends AnyWordSpec with MockFactory {
 
@@ -108,7 +108,10 @@ class HostsRuleTests extends AnyWordSpec with MockFactory {
 
   private def addressValueFrom(value: String): RuntimeMultiResolvableVariable[Address] = {
     RuntimeResolvableVariableCreator
-      .createMultiResolvableVariableFrom[Address](value.nonempty)(AlwaysRightConvertible.from(extracted => Address.from(extracted.value).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))))
+      .createMultiResolvableVariableFrom[Address](NonEmptyString.unsafeFrom(value)) {
+      AlwaysRightConvertible
+        .from(extracted => Address.from(extracted.value).getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value")))
+      }
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Address Value from $value"))
   }

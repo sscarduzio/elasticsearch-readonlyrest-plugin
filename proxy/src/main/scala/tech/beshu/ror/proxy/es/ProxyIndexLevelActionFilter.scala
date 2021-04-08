@@ -13,7 +13,7 @@ import org.elasticsearch.action.{ActionListener, ActionRequest, ActionResponse}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.{Engine, Ror, RorInstance, RorMode, StartingFailure}
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext

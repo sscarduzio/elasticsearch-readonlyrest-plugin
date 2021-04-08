@@ -14,33 +14,33 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.utils
+package tech.beshu.ror.accesscontrol.matchers
 
 import eu.timepit.refined.types.string.NonEmptyString
-import tech.beshu.ror.accesscontrol.domain.IndexName
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.ZeroKnowledgeIndexFilterScalaAdapter.CheckResult
+import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
+import tech.beshu.ror.accesscontrol.domain.RepositoryName
 import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 
 import scala.collection.JavaConverters._
 
-class ZeroKnowledgeIndexFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
+class ZeroKnowledgeRepositoryFilterScalaAdapter(underlying: ZeroKnowledgeIndexFilter) {
 
-  def check(indices: Set[IndexName], matcher: Matcher[IndexName]): CheckResult = {
-    val processedIndices: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
+  def check(indices: Set[RepositoryName], matcher: Matcher[RepositoryName]): CheckResult = {
+    val processedRepositories: java.util.Set[String] = scala.collection.mutable.Set.empty[String].asJava
     val result = underlying.alterIndicesIfNecessaryAndCheck(
       indices.map(_.value.value).asJava,
       Matcher.asMatcherWithWildcards(matcher),
-      processedIndices.addAll _
+      processedRepositories.addAll _
     )
-    if(result) CheckResult.Ok(processedIndices.asScala.map(str => IndexName(NonEmptyString.unsafeFrom(str))).toSet)
+    if(result) CheckResult.Ok(processedRepositories.asScala.map(str => RepositoryName(NonEmptyString.unsafeFrom(str))).toSet)
     else CheckResult.Failed
   }
 }
 
-object ZeroKnowledgeIndexFilterScalaAdapter {
+object ZeroKnowledgeRepositoryFilterScalaAdapter {
   sealed trait CheckResult
   object CheckResult {
-    final case class Ok(processedIndices: Set[IndexName]) extends CheckResult
+    final case class Ok(processedRepositories: Set[RepositoryName]) extends CheckResult
     case object Failed extends CheckResult
   }
 }

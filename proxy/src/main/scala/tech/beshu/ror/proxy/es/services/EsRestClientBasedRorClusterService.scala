@@ -27,6 +27,7 @@ import tech.beshu.ror.utils.ScalaOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 
 // todo: we need to refactor ROR to be able to use here async API
 class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
@@ -76,7 +77,7 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
             indexPatterns <- UniqueNonEmptyList.fromList(
               template.patterns().asSafeList.flatMap(IndexPattern.fromString)
             )
-            aliases = template.aliases().valuesIt().asScala.flatMap(a => IndexName.fromString(a.alias())).toSet
+            aliases = template.aliases().asSafeValues.flatMap(a => IndexName.fromString(a.alias())).toSet
           } yield Template.LegacyTemplate(templateName, indexPatterns, aliases)
         }
       }

@@ -57,7 +57,7 @@ import org.elasticsearch.rest.RestChannel
 import org.elasticsearch.tasks.{Task => EsTask}
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.AccessControlStaticContext
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.boot.Engine
 import tech.beshu.ror.es.actions.rradmin.RRAdminRequest
 import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
