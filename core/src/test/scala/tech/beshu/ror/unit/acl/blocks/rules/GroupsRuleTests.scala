@@ -27,6 +27,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
@@ -67,7 +68,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   usersDefinitions = NonEmptyList.of(UserDef(
                     id = userIdPatterns("user1"),
                     groups = groups("g1", "g2"),
-                    authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
+                    mode = WithoutGroupsMapping(alwaysFulfillingAuthRule(User.Id("user1")))
                   ))
                 ),
                 loggedUser = None,
@@ -87,7 +88,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   usersDefinitions = NonEmptyList.of(UserDef(
                     id = userIdPatterns("user1"),
                     groups = groups("g1", "g2"),
-                    authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
+                    mode = WithoutGroupsMapping(alwaysFulfillingAuthRule(User.Id("User1")))
                   ))
                 ),
                 loggedUser = None,
@@ -110,7 +111,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   usersDefinitions = NonEmptyList.of(UserDef(
                     id = userIdPatterns("u*"),
                     groups = groups("g1", "g2"),
-                    authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
+                    mode = WithoutGroupsMapping(alwaysFulfillingAuthRule(User.Id("user1")))
                   ))
                 ),
                 loggedUser = None,
@@ -130,7 +131,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                   usersDefinitions = NonEmptyList.of(UserDef(
                     id = userIdPatterns("u*"),
                     groups = groups("g1", "g2"),
-                    authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
+                    mode = WithoutGroupsMapping(alwaysFulfillingAuthRule(User.Id("User1")))
                   ))
                 ),
                 loggedUser = None,
@@ -156,12 +157,12 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
                     UserDef(
                       id = userIdPatterns("user2"),
                       groups = groups("g1", "g2"),
-                      authenticationRule = alwaysRejectingAuthRule
+                      mode = WithoutGroupsMapping(alwaysRejectingAuthRule)
                     ),
                     UserDef(
                       id = userIdPatterns("user1"),
                       groups = groups("g1"),
-                      authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
+                      mode = WithoutGroupsMapping(alwaysFulfillingAuthRule(User.Id("user1")))
                     )
                   )
                 ),
@@ -200,7 +201,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               usersDefinitions = NonEmptyList.of(UserDef(
                 id = userIdPatterns("user1"),
                 groups = groups("group_user1"),
-                authenticationRule = alwaysRejectingAuthRule
+                mode = WithoutGroupsMapping(alwaysRejectingAuthRule)
               ))
             ),
             loggedUser = None,
@@ -214,7 +215,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               usersDefinitions = NonEmptyList.of(UserDef(
                 id = userIdPatterns("user1"),
                 groups = groups("g1"),
-                authenticationRule = alwaysRejectingAuthRule
+                mode = WithoutGroupsMapping(alwaysRejectingAuthRule)
               ))
             ),
             loggedUser = None,
@@ -228,7 +229,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               usersDefinitions = NonEmptyList.of(UserDef(
                 id = userIdPatterns("user1"),
                 groups = groups("g1"),
-                authenticationRule = alwaysRejectingAuthRule
+                mode = WithoutGroupsMapping(alwaysRejectingAuthRule)
               ))
             ),
             loggedUser = Some(User.Id("user2")),
@@ -242,7 +243,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               usersDefinitions = NonEmptyList.of(UserDef(
                 id = userIdPatterns("user1"),
                 groups = groups("g1"),
-                authenticationRule = alwaysRejectingAuthRule
+                mode = WithoutGroupsMapping(alwaysRejectingAuthRule)
               ))
             ),
             loggedUser = Some(User.Id("user1")),
@@ -256,7 +257,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               usersDefinitions = NonEmptyList.of(UserDef(
                 id = userIdPatterns("u*"),
                 groups = groups("g1"),
-                authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
+                mode = WithoutGroupsMapping(alwaysFulfillingAuthRule(User.Id("User1")))
               ))
             ),
             loggedUser = None,
@@ -270,7 +271,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
               usersDefinitions = NonEmptyList.of(UserDef(
                 id = userIdPatterns("user1"),
                 groups = groups("g1"),
-                authenticationRule = alwaysThrowingAuthRule
+                mode = WithoutGroupsMapping(alwaysThrowingAuthRule)
               ))
             ),
             loggedUser = Some(User.Id("user1")),

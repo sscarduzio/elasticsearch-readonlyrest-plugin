@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -72,10 +71,15 @@ object UsersDefinitionsDecoder {
         for {
           usernamePatterns <- c.downField(usernameKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
           groups <- c.downField(groupsKey).as[UniqueNonEmptyList[Group]]
+          // todo: read modes
           ruleWithVariableUsage <- c.withoutKeys(Set(usernameKey, groupsKey))
             .tryDecodeAuthRule(usernamePatterns, caseMappingEquality)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))
-        } yield UserDef(usernamePatterns, groups, ruleWithVariableUsage.rule)
+        } yield UserDef(
+          usernamePatterns,
+          groups,
+          UserDef.Mode.WithoutGroupsMapping(ruleWithVariableUsage.rule)
+        )
       }
       .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
       .decoder
