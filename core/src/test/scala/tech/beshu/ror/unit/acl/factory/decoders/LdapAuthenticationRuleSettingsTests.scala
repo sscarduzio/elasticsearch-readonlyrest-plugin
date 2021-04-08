@@ -27,7 +27,7 @@ import tech.beshu.ror.utils.containers.LdapContainer
 
 class LdapAuthenticationRuleSettingsTests
   extends BaseRuleSettingsDecoderTest[LdapAuthenticationRule]
-    with ForAllTestContainer{
+    with ForAllTestContainer {
 
   private val containerLdap1 = new LdapContainer("LDAP1", "test_example.ldif")
   private val containerLdap2 = new LdapContainer("LDAP2", "test_example.ldif")

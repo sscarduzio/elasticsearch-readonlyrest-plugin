@@ -57,210 +57,237 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
 
   "A GroupsRule" should {
     "match" when {
-      "user is logged in" when {
-        "user ID is matched by user definition with full username" when {
-          "authentication rule also matches and case sensitivity is configured" in {
-            assertMatchRule(
-              settings = GroupsRule.Settings(
-                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-                usersDefinitions = NonEmptyList.of(UserDef(
-                  id = userIdPatterns("user1"),
-                  groups = groups("g1", "g2"),
-                  authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
-                ))
-              ),
-              loggedUser = None,
-              preferredGroup = None
-            )(
-              blockContextAssertion = defaultOutputBlockContextAssertion(
-                user = User.Id("user1"),
-                group = groupFrom("g1"),
-                availableGroups = UniqueList.of(groupFrom("g1"))
+      "groups mapping is not configured" when {
+        "user is logged in" when {
+          "user ID is matched by user definition with full username" when {
+            "authentication rule also matches and case sensitivity is configured" in {
+              assertMatchRule(
+                settings = GroupsRule.Settings(
+                  groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                  usersDefinitions = NonEmptyList.of(UserDef(
+                    id = userIdPatterns("user1"),
+                    groups = groups("g1", "g2"),
+                    authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
+                  ))
+                ),
+                loggedUser = None,
+                preferredGroup = None
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("user1"),
+                  group = groupFrom("g1"),
+                  availableGroups = UniqueList.of(groupFrom("g1"))
+                )
               )
-            )
+            }
+            "authentication rule also matches and case insensitivity is configured" in {
+              assertMatchRule(
+                settings = GroupsRule.Settings(
+                  groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                  usersDefinitions = NonEmptyList.of(UserDef(
+                    id = userIdPatterns("user1"),
+                    groups = groups("g1", "g2"),
+                    authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
+                  ))
+                ),
+                loggedUser = None,
+                preferredGroup = None,
+                caseSensitivity = false
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("User1"),
+                  group = groupFrom("g1"),
+                  availableGroups = UniqueList.of(groupFrom("g1"))
+                )
+              )
+            }
           }
-          "authentication rule also matches and case insensitivity is configured" in {
-            assertMatchRule(
-              settings = GroupsRule.Settings(
-                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-                usersDefinitions = NonEmptyList.of(UserDef(
-                  id = userIdPatterns("user1"),
-                  groups = groups("g1", "g2"),
-                  authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
-                ))
-              ),
-              loggedUser = None,
-              preferredGroup = None,
-              caseSensitivity = false
-            )(
-              blockContextAssertion = defaultOutputBlockContextAssertion(
-                user = User.Id("User1"),
-                group = groupFrom("g1"),
-                availableGroups = UniqueList.of(groupFrom("g1"))
+          "user ID is matched by user definition with username with wildcard" when {
+            "authentication rule also matches and and case sensitivity is configured" in {
+              assertMatchRule(
+                settings = GroupsRule.Settings(
+                  groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                  usersDefinitions = NonEmptyList.of(UserDef(
+                    id = userIdPatterns("u*"),
+                    groups = groups("g1", "g2"),
+                    authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
+                  ))
+                ),
+                loggedUser = None,
+                preferredGroup = None
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("user1"),
+                  group = groupFrom("g1"),
+                  availableGroups = UniqueList.of(groupFrom("g1"))
+                )
               )
-            )
+            }
+            "authentication rule also matches and and case insensitivity is configured" in {
+              assertMatchRule(
+                settings = GroupsRule.Settings(
+                  groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                  usersDefinitions = NonEmptyList.of(UserDef(
+                    id = userIdPatterns("u*"),
+                    groups = groups("g1", "g2"),
+                    authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
+                  ))
+                ),
+                loggedUser = None,
+                preferredGroup = None,
+                caseSensitivity = false
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("User1"),
+                  group = groupFrom("g1"),
+                  availableGroups = UniqueList.of(groupFrom("g1"))
+                )
+              )
+            }
           }
         }
-        "user ID is matched by user definition with username with wildcard" when {
-          "authentication rule also matches and and case sensitivity is configured" in {
-            assertMatchRule(
-              settings = GroupsRule.Settings(
-                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-                usersDefinitions = NonEmptyList.of(UserDef(
-                  id = userIdPatterns("u*"),
-                  groups = groups("g1", "g2"),
-                  authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
-                ))
-              ),
-              loggedUser = None,
-              preferredGroup = None
-            )(
-              blockContextAssertion = defaultOutputBlockContextAssertion(
-                user = User.Id("user1"),
-                group = groupFrom("g1"),
-                availableGroups = UniqueList.of(groupFrom("g1"))
+        "user is not logged in" when {
+          "user ID is matched by user definition with full username" when {
+            "authentication rule also matches and preferred group is used" in {
+              assertMatchRule(
+                settings = GroupsRule.Settings(
+                  groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                  usersDefinitions = NonEmptyList.of(
+                    UserDef(
+                      id = userIdPatterns("user2"),
+                      groups = groups("g1", "g2"),
+                      authenticationRule = alwaysRejectingAuthRule
+                    ),
+                    UserDef(
+                      id = userIdPatterns("user1"),
+                      groups = groups("g1"),
+                      authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
+                    )
+                  )
+                ),
+                loggedUser = None,
+                preferredGroup = Some(groupFrom("g1"))
+              )(
+                blockContextAssertion = defaultOutputBlockContextAssertion(
+                  user = User.Id("user1"),
+                  group = groupFrom("g1"),
+                  availableGroups = UniqueList.of(groupFrom("g1"))
+                )
               )
-            )
-          }
-          "authentication rule also matches and and case insensitivity is configured" in {
-            assertMatchRule(
-              settings = GroupsRule.Settings(
-                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-                usersDefinitions = NonEmptyList.of(UserDef(
-                  id = userIdPatterns("u*"),
-                  groups = groups("g1", "g2"),
-                  authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
-                ))
-              ),
-              loggedUser = None,
-              preferredGroup = None,
-              caseSensitivity = false
-            )(
-              blockContextAssertion = defaultOutputBlockContextAssertion(
-                user = User.Id("User1"),
-                group = groupFrom("g1"),
-                availableGroups = UniqueList.of(groupFrom("g1"))
-              )
-            )
+            }
           }
         }
       }
-      "user is not logged in" when {
-        "user ID is matched by user definition with full username" when {
-          "authentication rule also matches and preferred group is used" in {
-            assertMatchRule(
-              settings = GroupsRule.Settings(
-                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-                usersDefinitions = NonEmptyList.of(
-                  UserDef(
-                    id = userIdPatterns("user2"),
-                    groups = groups("g1", "g2"),
-                    authenticationRule = alwaysRejectingAuthRule
-                  ),
-                  UserDef(
-                    id = userIdPatterns("user1"),
-                    groups = groups("g1"),
-                    authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
-                  )
-                )
-              ),
-              loggedUser = None,
-              preferredGroup = Some(groupFrom("g1"))
-            )(
-              blockContextAssertion = defaultOutputBlockContextAssertion(
-                user = User.Id("user1"),
-                group = groupFrom("g1"),
-                availableGroups = UniqueList.of(groupFrom("g1"))
-              )
-            )
+      "groups mapping is configured" when {
+        "one authentication with authorization rule is used" when {
+          "user can be matched and user can be authorized in external system and locally" in {
+
+          }
+        }
+        "separate authentication and authorization rules are used" when {
+          "user can be matched and user can be authorized in external system and locally" in {
+
           }
         }
       }
     }
     "not match" when {
-      "no group can be resolved" in {
-        assertNotMatchRule(
-          settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(Group.apply)).right.get),
-            usersDefinitions = NonEmptyList.of(UserDef(
-              id = userIdPatterns("user1"),
-              groups = groups("group_user1"),
-              authenticationRule = alwaysRejectingAuthRule
-            ))
-          ),
-          loggedUser = None,
-          preferredGroup = None
-        )
+      "groups mapping is not configured" when {
+        "no group can be resolved" in {
+          assertNotMatchRule(
+            settings = GroupsRule.Settings(
+              groups = UniqueNonEmptyList.of(createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(Group.apply)).right.get),
+              usersDefinitions = NonEmptyList.of(UserDef(
+                id = userIdPatterns("user1"),
+                groups = groups("group_user1"),
+                authenticationRule = alwaysRejectingAuthRule
+              ))
+            ),
+            loggedUser = None,
+            preferredGroup = None
+          )
+        }
+        "resolved groups don't contain preferred group" in {
+          assertNotMatchRule(
+            settings = GroupsRule.Settings(
+              groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+              usersDefinitions = NonEmptyList.of(UserDef(
+                id = userIdPatterns("user1"),
+                groups = groups("g1"),
+                authenticationRule = alwaysRejectingAuthRule
+              ))
+            ),
+            loggedUser = None,
+            preferredGroup = Some(groupFrom("g2"))
+          )
+        }
+        "there is no user definition for given logged user" in {
+          assertNotMatchRule(
+            settings = GroupsRule.Settings(
+              groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+              usersDefinitions = NonEmptyList.of(UserDef(
+                id = userIdPatterns("user1"),
+                groups = groups("g1"),
+                authenticationRule = alwaysRejectingAuthRule
+              ))
+            ),
+            loggedUser = Some(User.Id("user2")),
+            preferredGroup = None
+          )
+        }
+        "there is no matching auth rule for given user" in {
+          assertNotMatchRule(
+            settings = GroupsRule.Settings(
+              groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+              usersDefinitions = NonEmptyList.of(UserDef(
+                id = userIdPatterns("user1"),
+                groups = groups("g1"),
+                authenticationRule = alwaysRejectingAuthRule
+              ))
+            ),
+            loggedUser = Some(User.Id("user1")),
+            preferredGroup = None
+          )
+        }
+        "case sensitivity is configured, but authentication rule authenticates user with name with a capital letter at the beginning" in {
+          assertNotMatchRule(
+            settings = GroupsRule.Settings(
+              groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+              usersDefinitions = NonEmptyList.of(UserDef(
+                id = userIdPatterns("u*"),
+                groups = groups("g1"),
+                authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
+              ))
+            ),
+            loggedUser = None,
+            preferredGroup = None
+          )
+        }
+        "one auth rule available is throwing an exception" in {
+          assertNotMatchRule(
+            settings = GroupsRule.Settings(
+              groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+              usersDefinitions = NonEmptyList.of(UserDef(
+                id = userIdPatterns("user1"),
+                groups = groups("g1"),
+                authenticationRule = alwaysThrowingAuthRule
+              ))
+            ),
+            loggedUser = Some(User.Id("user1")),
+            preferredGroup = None
+          )
+        }
       }
-      "resolved groups don't contain preferred group" in {
-        assertNotMatchRule(
-          settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptyList.of(UserDef(
-              id = userIdPatterns("user1"),
-              groups = groups("g1"),
-              authenticationRule = alwaysRejectingAuthRule
-            ))
-          ),
-          loggedUser = None,
-          preferredGroup = Some(groupFrom("g2"))
-        )
-      }
-      "there is no user definition for given logged user" in {
-        assertNotMatchRule(
-          settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptyList.of(UserDef(
-              id = userIdPatterns("user1"),
-              groups = groups("g1"),
-              authenticationRule = alwaysRejectingAuthRule
-            ))
-          ),
-          loggedUser = Some(User.Id("user2")),
-          preferredGroup = None
-        )
-      }
-      "there is no matching auth rule for given user" in {
-        assertNotMatchRule(
-          settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptyList.of(UserDef(
-              id = userIdPatterns("user1"),
-              groups = groups("g1"),
-              authenticationRule = alwaysRejectingAuthRule
-            ))
-          ),
-          loggedUser = Some(User.Id("user1")),
-          preferredGroup = None
-        )
-      }
-      "case sensitivity is configured, but authentication rule authenticates user with name with a capital letter at the beginning" in {
-        assertNotMatchRule(
-          settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptyList.of(UserDef(
-              id = userIdPatterns("u*"),
-              groups = groups("g1"),
-              authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
-            ))
-          ),
-          loggedUser = None,
-          preferredGroup = None
-        )
-      }
-      "one auth rule available is throwing an exception" in {
-        assertNotMatchRule(
-          settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptyList.of(UserDef(
-              id = userIdPatterns("user1"),
-              groups = groups("g1"),
-              authenticationRule = alwaysThrowingAuthRule
-            ))
-          ),
-          loggedUser = Some(User.Id("user1")),
-          preferredGroup = None
-        )
+      "groups mapping is configured" when {
+        "user cannot be authenticated by authentication with authorization rule" in {
+
+        }
+        "user cannot be authorized by authentication with authorization rule" in {
+
+        }
+        "user can be authenticated and authorized by authentication with authorization rule, but mapped groups doesn't match `groups`rule" in {
+
+        }
       }
     }
   }

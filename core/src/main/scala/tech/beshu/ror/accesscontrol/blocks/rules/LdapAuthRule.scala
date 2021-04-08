@@ -26,8 +26,8 @@ final class LdapAuthRule(val authentication: LdapAuthenticationRule,
                          val authorization: LdapAuthorizationRule,
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRule
-    with NoImpersonationSupport
-    with AuthorizationRule {
+    with AuthorizationRule
+    with NoImpersonationSupport {
 
   override val name: Rule.Name = LdapAuthRule.name
 
