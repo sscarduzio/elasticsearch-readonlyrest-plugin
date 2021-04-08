@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.auto._
 import cats.data.{NonEmptyList, NonEmptySet}
 import com.softwaremill.sttp.Method
 import eu.timepit.refined.api.Refined
@@ -33,7 +34,7 @@ import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.RandomBasedUniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.AlreadyResolved
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
@@ -211,8 +212,8 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "multi filterable request tries to fetch data for allowed and not allowed index" in {
         assertMatchRuleForMultiIndexRequest(
           configured = NonEmptySet.of(index("test1")),
-          indexPacks = Indices.Found(Set(IndexName("test1".nonempty), IndexName("test2".nonempty))) :: Nil,
-          allowed = Indices.Found(Set(IndexName("test1".nonempty))) :: Nil
+          indexPacks = Indices.Found(Set(IndexName("test1"), IndexName("test2"))) :: Nil,
+          allowed = Indices.Found(Set(IndexName("test1"))) :: Nil
         )
       }
     }
@@ -2146,7 +2147,7 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
       "multi filterable request tries to fetch data for not allowed index" in {
         assertNotMatchRuleForMultiIndexRequest(
           configured = NonEmptySet.of(index("test1")),
-          indexPacks = Indices.Found(Set(IndexName("test2".nonempty))) :: Nil
+          indexPacks = Indices.Found(Set(IndexName("test2"))) :: Nil
         )
       }
     }
@@ -2237,11 +2238,11 @@ class IndicesRuleTests extends AnyWordSpec with MockFactory {
         isReadOnlyRequest = true,
         method = Method("POST"),
         allIndicesAndAliases = Set(
-          IndexWithAliases(IndexName("test1".nonempty), Set.empty),
-          IndexWithAliases(IndexName("test2".nonempty), Set.empty),
-          IndexWithAliases(IndexName("test3".nonempty), Set.empty),
-          IndexWithAliases(IndexName("test4".nonempty), Set.empty),
-          IndexWithAliases(IndexName("test5".nonempty), Set.empty)
+          IndexWithAliases(IndexName("test1"), Set.empty),
+          IndexWithAliases(IndexName("test2"), Set.empty),
+          IndexWithAliases(IndexName("test3"), Set.empty),
+          IndexWithAliases(IndexName("test4"), Set.empty),
+          IndexWithAliases(IndexName("test5"), Set.empty)
         )
       )
     val blockContext = FilterableMultiRequestBlockContext(

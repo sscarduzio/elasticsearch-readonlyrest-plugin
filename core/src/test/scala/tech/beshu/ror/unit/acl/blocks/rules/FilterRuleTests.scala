@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
@@ -33,7 +34,6 @@ import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Filter, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
-import tech.beshu.ror.utils.TestsUtils._
 
 class FilterRuleTests extends AnyWordSpec with MockFactory {
 
@@ -82,7 +82,7 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
         val requestContext = MockRequestContext.indices.copy(isReadOnlyRequest = false)
         val blockContext = FilterableRequestBlockContext(
           requestContext,
-          UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob".nonempty))),
+          UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob"))),
           Set.empty,
           List.empty,
           Set.empty,
@@ -93,7 +93,7 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
         rule.check(blockContext).runSyncStep shouldBe Right(Fulfilled(
           FilterableRequestBlockContext(
             requestContext,
-            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob".nonempty))),
+            UserMetadata.empty.withLoggedUser(DirectlyLoggedUser(User.Id("bob"))),
             Set.empty,
             List.empty,
             Set.empty,
@@ -134,7 +134,7 @@ class FilterRuleTests extends AnyWordSpec with MockFactory {
   private def filterValueFrom(value: String): RuntimeSingleResolvableVariable[Filter] = {
     implicit val provider: EnvVarsProvider = OsEnvVarsProvider
     RuntimeResolvableVariableCreator
-      .createSingleResolvableVariableFrom[Filter](value.nonempty)(AlwaysRightConvertible.from(Filter.apply))
+      .createSingleResolvableVariableFrom[Filter](NonEmptyString.unsafeFrom(value))(AlwaysRightConvertible.from(Filter.apply))
       .right
       .getOrElse(throw new IllegalStateException(s"Cannot create Filter Value from $value"))
   }

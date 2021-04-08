@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.variables
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -25,7 +26,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator.{CreationError, createMultiVariableFrom, createSingleVariableFrom}
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
-import tech.beshu.ror.utils.TestsUtils._
+import eu.timepit.refined.auto._
 
 class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
 
@@ -63,17 +64,17 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
     }
     "have not been able to be created" when {
       "env name is an empty string" in {
-        createSingleVariableFrom("test_@{env:}".nonempty) shouldBe {
+        createSingleVariableFrom("test_@{env:}") shouldBe {
           Left(CreationError.InvalidVariableDefinition("Empty ENV name passed"))
         }
       }
       "more than one multivariable is used" in {
-        createMultiVariableFrom("@explode{env:test-multi1}x@explode{env:test-multi2}".nonempty) shouldBe {
+        createMultiVariableFrom("@explode{env:test-multi1}x@explode{env:test-multi2}") shouldBe {
           Left(CreationError.OnlyOneMultiVariableCanBeUsedInVariableDefinition)
         }
       }
       "multivariable is used in single variable context" in {
-        createSingleVariableFrom("@explode{env:test-multi1}".nonempty) shouldBe {
+        createSingleVariableFrom("@explode{env:test-multi1}") shouldBe {
           Left(CreationError.CannotUserMultiVariableInSingleVariableContext)
         }
       }
@@ -108,17 +109,17 @@ class StartupResolvableVariablesTests extends AnyWordSpec with MockFactory {
   }
 
   private def createSingleVariable(text: String) = {
-    createSingleVariableFrom(text.nonempty).right.get
+    createSingleVariableFrom(NonEmptyString.unsafeFrom(text)).right.get
   }
 
   private def createMultiVariable(text: String) = {
-    StartupResolvableVariableCreator.createMultiVariableFrom(text.nonempty).right.get
+    StartupResolvableVariableCreator.createMultiVariableFrom(NonEmptyString.unsafeFrom(text)).right.get
   }
 
   private def mockEnvVarProvider(envs: Map[String, Option[String]]) = {
     val provider = mock[EnvVarsProvider]
     envs.foreach { case (envName, envValue) =>
-      (provider.getEnv _).expects(EnvVarName(envName.nonempty)).returns(envValue)
+      (provider.getEnv _).expects(EnvVarName(NonEmptyString.unsafeFrom(envName))).returns(envValue)
     }
     provider
   }

@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.accesscontrol.blocks.rules.utils
+package tech.beshu.ror.accesscontrol.matchers
 
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive

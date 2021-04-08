@@ -44,9 +44,13 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.CaseMappingEquality._
+import eu.timepit.refined.auto._
+import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.utils.UserIdEq
 
 class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
-  import tech.beshu.ror.utils.TestsUtils.userIdEq
+
+  private implicit val defaultCaseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
 
   "A SessionMaxIdleRule" should {
     "match" when {
@@ -56,7 +60,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           assertRule(
             sessionMaxIdle = positive(10 minutes),
             setRawCookie = rorSessionCookie.forUser1,
-            loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+            loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
             isMatched = true
           )
         }
@@ -66,7 +70,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
               sessionMaxIdle = positive(5 minutes),
               rawCookie = rorSessionCookie.forUser1,
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               isMatched = true
             )
           }
@@ -75,7 +79,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
               sessionMaxIdle = positive(5 minutes),
               rawCookie = s"cookie1=test;${rorSessionCookie.forUser1};last_cookie=123",
               setRawCookie = rorSessionCookie.forUser1ExpireAfter5Minutes,
-              loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+              loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
               isMatched = true
             )
           }
@@ -96,7 +100,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
           isMatched = false
         )
       }
@@ -106,7 +110,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.forUser1,
           setRawCookie = "",
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user2".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user2"))),
           isMatched = false
         )
       }
@@ -116,7 +120,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.wrongSignature,
           setRawCookie = "",
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
           isMatched = false
         )
       }
@@ -126,7 +130,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
           sessionMaxIdle = positive(5 minutes),
           rawCookie = rorSessionCookie.malformed,
           setRawCookie = "",
-          loggedUser = Some(DirectlyLoggedUser(User.Id("user1".nonempty))),
+          loggedUser = Some(DirectlyLoggedUser(User.Id("user1"))),
           isMatched = false
         )
       }
@@ -139,6 +143,7 @@ class SessionMaxIdleRuleTest extends AnyWordSpec with MockFactory {
                          loggedUser: Option[DirectlyLoggedUser],
                          isMatched: Boolean)
                         (implicit clock: Clock) = {
+    implicit val defaultCaseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
     val rule = new SessionMaxIdleRule(Settings(sessionMaxIdle))
     val requestContext = mock[RequestContext]
     val headers = NonEmptyString.unapply(rawCookie) match {

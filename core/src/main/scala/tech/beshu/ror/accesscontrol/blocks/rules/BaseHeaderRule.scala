@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import cats.implicits._
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RegularRule
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.MatcherWithWildcardsScalaAdapter
+import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 
 abstract class BaseHeaderRule extends RegularRule with Logging {

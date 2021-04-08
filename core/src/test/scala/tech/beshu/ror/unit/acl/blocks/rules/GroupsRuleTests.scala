@@ -16,7 +16,10 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
-import cats.data.NonEmptySet
+import cats.Eq
+import cats.data.NonEmptyList
+import eu.timepit.refined.auto._
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -24,6 +27,7 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.CurrentUserMetadataRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetadataRequestBlockContextUpdater
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.UserIdPatterns
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
@@ -36,18 +40,17 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain._
-import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
 import tech.beshu.ror.unit.acl.blocks.rules.GroupsRuleTests._
-import tech.beshu.ror.utils.TestsUtils
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.UserIdEq
 import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import cats.Eq
 
 class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion {
 
@@ -55,60 +58,136 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
 
   "A GroupsRule" should {
     "match" when {
-      "user is not logged but there is one auth rule which matches" in {
-        assertMatchRule(
-          settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptySet.of(UserDef(
-              User.Id("user1".nonempty),
-              UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")),
-              alwaysFulfillingAuthRule(User.Id("user1".nonempty)
-              ))
+      "user is logged in" when {
+        "user ID is matched by user definition with full username" when {
+          "authentication rule also matches and case sensitivity is configured" in {
+            assertMatchRule(
+              settings = GroupsRule.Settings(
+                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                usersDefinitions = NonEmptyList.of(UserDef(
+                  id = userIdPatterns("user1"),
+                  groups = groups("g1", "g2"),
+                  authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
+                ))
+              ),
+              loggedUser = None,
+              preferredGroup = None
+            )(
+              blockContextAssertion = defaultOutputBlockContextAssertion(
+                user = User.Id("user1"),
+                group = groupFrom("g1"),
+                availableGroups = UniqueList.of(groupFrom("g1"))
+              )
             )
-          ),
-          loggedUser = None,
-          preferredGroup = None
-        )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1".nonempty), groupFrom("g1"), UniqueList.of(groupFrom("g1")))
-        )
+          }
+          "authentication rule also matches and case insensitivity is configured" in {
+            assertMatchRule(
+              settings = GroupsRule.Settings(
+                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                usersDefinitions = NonEmptyList.of(UserDef(
+                  id = userIdPatterns("user1"),
+                  groups = groups("g1", "g2"),
+                  authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
+                ))
+              ),
+              loggedUser = None,
+              preferredGroup = None,
+              caseSensitivity = false
+            )(
+              blockContextAssertion = defaultOutputBlockContextAssertion(
+                user = User.Id("User1"),
+                group = groupFrom("g1"),
+                availableGroups = UniqueList.of(groupFrom("g1"))
+              )
+            )
+          }
+        }
+        "user ID is matched by user definition with username with wildcard" when {
+          "authentication rule also matches and and case sensitivity is configured" in {
+            assertMatchRule(
+              settings = GroupsRule.Settings(
+                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                usersDefinitions = NonEmptyList.of(UserDef(
+                  id = userIdPatterns("u*"),
+                  groups = groups("g1", "g2"),
+                  authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
+                ))
+              ),
+              loggedUser = None,
+              preferredGroup = None
+            )(
+              blockContextAssertion = defaultOutputBlockContextAssertion(
+                user = User.Id("user1"),
+                group = groupFrom("g1"),
+                availableGroups = UniqueList.of(groupFrom("g1"))
+              )
+            )
+          }
+          "authentication rule also matches and and case insensitivity is configured" in {
+            assertMatchRule(
+              settings = GroupsRule.Settings(
+                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                usersDefinitions = NonEmptyList.of(UserDef(
+                  id = userIdPatterns("u*"),
+                  groups = groups("g1", "g2"),
+                  authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
+                ))
+              ),
+              loggedUser = None,
+              preferredGroup = None,
+              caseSensitivity = false
+            )(
+              blockContextAssertion = defaultOutputBlockContextAssertion(
+                user = User.Id("User1"),
+                group = groupFrom("g1"),
+                availableGroups = UniqueList.of(groupFrom("g1"))
+              )
+            )
+          }
+        }
       }
-      "user is not logged but there is one auth rule which matches and current group is set" in {
-        assertMatchRule(
-          settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptySet.of(
-              UserDef(User.Id("user2".nonempty), UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")), alwaysRejectingAuthRule),
-              UserDef(User.Id("user1".nonempty), UniqueNonEmptyList.of(groupFrom("g1")), alwaysFulfillingAuthRule(User.Id("user1".nonempty)))
+      "user is not logged in" when {
+        "user ID is matched by user definition with full username" when {
+          "authentication rule also matches and preferred group is used" in {
+            assertMatchRule(
+              settings = GroupsRule.Settings(
+                groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+                usersDefinitions = NonEmptyList.of(
+                  UserDef(
+                    id = userIdPatterns("user2"),
+                    groups = groups("g1", "g2"),
+                    authenticationRule = alwaysRejectingAuthRule
+                  ),
+                  UserDef(
+                    id = userIdPatterns("user1"),
+                    groups = groups("g1"),
+                    authenticationRule = alwaysFulfillingAuthRule(User.Id("user1"))
+                  )
+                )
+              ),
+              loggedUser = None,
+              preferredGroup = Some(groupFrom("g1"))
+            )(
+              blockContextAssertion = defaultOutputBlockContextAssertion(
+                user = User.Id("user1"),
+                group = groupFrom("g1"),
+                availableGroups = UniqueList.of(groupFrom("g1"))
+              )
             )
-          ),
-          loggedUser = None,
-          preferredGroup = Some(groupFrom("g1"))
-        )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1".nonempty), groupFrom("g1"), UniqueList.of(groupFrom("g1")))
-        )
-      }
-      "user is logged and there is one auth rule which matches" in {
-        assertMatchRule(
-          settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptySet.of(
-              UserDef(User.Id("user2".nonempty), UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")), alwaysRejectingAuthRule),
-              UserDef(User.Id("user1".nonempty), UniqueNonEmptyList.of(groupFrom("g1"), groupFrom("g2")), alwaysFulfillingAuthRule(User.Id("user1".nonempty)))
-            )
-          ),
-          loggedUser = Some(User.Id("user1".nonempty)),
-          preferredGroup = None
-        )(
-          blockContextAssertion = defaultOutputBlockContextAssertion(User.Id("user1".nonempty), groupFrom("g1"), UniqueList.of(groupFrom("g1")))
-        )
+          }
+        }
       }
     }
     "not match" when {
       "no group can be resolved" in {
         assertNotMatchRule(
           settings = GroupsRule.Settings(
-            groups = UniqueNonEmptyList.of(createMultiResolvableVariableFrom("group_@{user}".nonempty)(AlwaysRightConvertible.from(Group.apply)).right.get),
-            usersDefinitions = NonEmptySet.of(UserDef(User.Id("user1".nonempty), UniqueNonEmptyList.of(groupFrom("group_user1")), alwaysRejectingAuthRule))
+            groups = UniqueNonEmptyList.of(createMultiResolvableVariableFrom("group_@{user}")(AlwaysRightConvertible.from(Group.apply)).right.get),
+            usersDefinitions = NonEmptyList.of(UserDef(
+              id = userIdPatterns("user1"),
+              groups = groups("group_user1"),
+              authenticationRule = alwaysRejectingAuthRule
+            ))
           ),
           loggedUser = None,
           preferredGroup = None
@@ -118,7 +197,11 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         assertNotMatchRule(
           settings = GroupsRule.Settings(
             groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptySet.of(UserDef(User.Id("user1".nonempty), UniqueNonEmptyList.of(groupFrom("g1")), alwaysRejectingAuthRule))
+            usersDefinitions = NonEmptyList.of(UserDef(
+              id = userIdPatterns("user1"),
+              groups = groups("g1"),
+              authenticationRule = alwaysRejectingAuthRule
+            ))
           ),
           loggedUser = None,
           preferredGroup = Some(groupFrom("g2"))
@@ -128,9 +211,13 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         assertNotMatchRule(
           settings = GroupsRule.Settings(
             groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptySet.of(UserDef(User.Id("user1".nonempty), UniqueNonEmptyList.of(groupFrom("g1")), alwaysRejectingAuthRule))
+            usersDefinitions = NonEmptyList.of(UserDef(
+              id = userIdPatterns("user1"),
+              groups = groups("g1"),
+              authenticationRule = alwaysRejectingAuthRule
+            ))
           ),
-          loggedUser = Some(User.Id("user2".nonempty)),
+          loggedUser = Some(User.Id("user2")),
           preferredGroup = None
         )
       }
@@ -138,9 +225,27 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         assertNotMatchRule(
           settings = GroupsRule.Settings(
             groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptySet.of(UserDef(User.Id("user1".nonempty), UniqueNonEmptyList.of(groupFrom("g1")), alwaysRejectingAuthRule))
+            usersDefinitions = NonEmptyList.of(UserDef(
+              id = userIdPatterns("user1"),
+              groups = groups("g1"),
+              authenticationRule = alwaysRejectingAuthRule
+            ))
           ),
-          loggedUser = Some(User.Id("user1".nonempty)),
+          loggedUser = Some(User.Id("user1")),
+          preferredGroup = None
+        )
+      }
+      "case sensitivity is configured, but authentication rule authenticates user with name with a capital letter at the beginning" in {
+        assertNotMatchRule(
+          settings = GroupsRule.Settings(
+            groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
+            usersDefinitions = NonEmptyList.of(UserDef(
+              id = userIdPatterns("u*"),
+              groups = groups("g1"),
+              authenticationRule = alwaysFulfillingAuthRule(User.Id("User1"))
+            ))
+          ),
+          loggedUser = None,
           preferredGroup = None
         )
       }
@@ -148,27 +253,41 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         assertNotMatchRule(
           settings = GroupsRule.Settings(
             groups = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("g1").nel)),
-            usersDefinitions = NonEmptySet.of(UserDef(User.Id("user1".nonempty), UniqueNonEmptyList.of(groupFrom("g1")), alwaysThrowingAuthRule))
+            usersDefinitions = NonEmptyList.of(UserDef(
+              id = userIdPatterns("user1"),
+              groups = groups("g1"),
+              authenticationRule = alwaysThrowingAuthRule
+            ))
           ),
-          loggedUser = Some(User.Id("user1".nonempty)),
+          loggedUser = Some(User.Id("user1")),
           preferredGroup = None
         )
       }
     }
   }
 
-  private def assertMatchRule(settings: GroupsRule.Settings, loggedUser: Option[User.Id], preferredGroup: Option[Group])
+  private def assertMatchRule(settings: GroupsRule.Settings,
+                              loggedUser: Option[User.Id],
+                              preferredGroup: Option[Group],
+                              caseSensitivity: Boolean = true)
                              (blockContextAssertion: BlockContext => Unit): Unit =
-    assertRule(settings, loggedUser, preferredGroup, Some(blockContextAssertion))
+    assertRule(settings, loggedUser, preferredGroup, Some(blockContextAssertion), caseSensitivity)
 
-  private def assertNotMatchRule(settings: GroupsRule.Settings, loggedUser: Option[User.Id], preferredGroup: Option[Group]): Unit =
-    assertRule(settings, loggedUser, preferredGroup, blockContextAssertion = None)
+  private def assertNotMatchRule(settings: GroupsRule.Settings,
+                                 loggedUser: Option[User.Id],
+                                 preferredGroup: Option[Group],
+                                 caseSensitivity: Boolean = true): Unit =
+    assertRule(settings, loggedUser, preferredGroup, blockContextAssertion = None, caseSensitivity)
 
   private def assertRule(settings: GroupsRule.Settings,
                          loggedUser: Option[User.Id],
                          preferredGroup: Option[Group],
-                         blockContextAssertion: Option[BlockContext => Unit]): Unit = {
-    val rule = new GroupsRule(settings, TestsUtils.userIdEq)
+                         blockContextAssertion: Option[BlockContext => Unit],
+                         caseSensitivity: Boolean): Unit = {
+    val rule = new GroupsRule(
+      settings,
+      if (caseSensitivity) UserIdEq.caseSensitive else UserIdEq.caseInsensitive
+    )
     val requestContext = MockRequestContext.metadata.copy(
       headers = preferredGroup.map(_.value).map(v => new Header(Header.Name.currentGroup, v)).toSet[Header]
     )
@@ -202,35 +321,56 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
         availableGroups = availableGroups
       )(blockContext)
     }
+
+  private def userIdPatterns(id: String, ids: String*) = {
+    UserIdPatterns(
+      UniqueNonEmptyList.unsafeFromList(
+        (id :: ids.toList).map(str => UserIdPattern(NonEmptyString.unsafeFrom(str)))
+      )
+    )
+  }
+
+  private def groups(g1: String, gs: String*) = {
+    UniqueNonEmptyList.of(groupFrom(g1), gs.map(groupFrom): _*)
+  }
 }
 
 object GroupsRuleTests {
   private val alwaysRejectingAuthRule = new AuthenticationRule {
     override protected val impersonators: List[ImpersonatorDef] = Nil
     override val name: Rule.Name = Rule.Name("dummy-rejecting")
+
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = Task.now(Rejected())
+
     override def exists(user: User.Id)
                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence] =
       Task.now(UserExistence.CannotCheck)
 
-    override protected val caseMappingEquality: UserIdCaseMappingEquality = TestsUtils.userIdEq
+    override protected val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
   }
 
   private val alwaysThrowingAuthRule = new AuthenticationRule {
     override protected val impersonators: List[ImpersonatorDef] = Nil
+
     override def name: Rule.Name = Rule.Name("dummy-throwing")
+
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
       Task.raiseError(new Exception("Sth went wrong"))
+
     override def exists(user: User.Id)
                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
-    override protected val caseMappingEquality: UserIdCaseMappingEquality = TestsUtils.userIdEq
+
+    override protected val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
   }
 
   private def alwaysFulfillingAuthRule(user: User.Id) = new AuthenticationRule with NoImpersonationSupport {
     override protected val impersonators: List[ImpersonatorDef] = Nil
+
     override def name: Rule.Name = Rule.Name("dummy-fulfilling")
+
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
       Task.now(Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
-    override protected val caseMappingEquality: UserIdCaseMappingEquality = TestsUtils.userIdEq
+
+    override protected val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
   }
 }

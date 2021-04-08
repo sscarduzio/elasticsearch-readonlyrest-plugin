@@ -16,13 +16,13 @@
  */
 package tech.beshu.ror.unit.acl.factory.decoders
 
+import eu.timepit.refined.auto._
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyPBKDF2WithHmacSHA512Rule
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.TestsUtils._
 
 class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
   extends BaseRuleSettingsDecoderTest[AuthKeyPBKDF2WithHmacSHA512Rule] {
@@ -43,7 +43,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.credentials should be {
-              HashedCredentials.HashedUserAndPassword("KhIxF5EEYkH5GPX51zTRIR4cHqhpRVALSmTaWE18mZEL2KqCkRMeMU4GR848mGq4SDtNvsybtJ/sZBuX6oFaSg==".nonempty)
+              HashedCredentials.HashedUserAndPassword("KhIxF5EEYkH5GPX51zTRIR4cHqhpRVALSmTaWE18mZEL2KqCkRMeMU4GR848mGq4SDtNvsybtJ/sZBuX6oFaSg==")
             }
           }
         )
@@ -62,7 +62,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleSettingsTests
               |""".stripMargin,
           assertion = rule => {
             rule.settings.credentials should be {
-              HashedCredentials.HashedOnlyPassword(User.Id("user1".nonempty), "JltDNAoXNtc7MIBs2FYlW0o1f815ucj+bel3drdAk2yOufg2PNfQ51qr0EQ6RSkojw/DzrDLFDeXONumzwKjOA==".nonempty)
+              HashedCredentials.HashedOnlyPassword(User.Id("user1"), "JltDNAoXNtc7MIBs2FYlW0o1f815ucj+bel3drdAk2yOufg2PNfQ51qr0EQ6RSkojw/DzrDLFDeXONumzwKjOA==")
             }
           }
         )

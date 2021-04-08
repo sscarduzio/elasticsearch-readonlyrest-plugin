@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.rules
 
+import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
@@ -30,7 +31,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolv
 import tech.beshu.ror.accesscontrol.domain.KibanaAccess.{RO, ROStrict, RW, Unrestricted}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.TestsUtils.{BlockContextAssertion, StringOps}
+import tech.beshu.ror.utils.TestsUtils.BlockContextAssertion
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -62,141 +63,141 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
     "RW action is passed" in {
       RW_ACTIONS.asScala.map(str => Action(str.replace("*", "_")))
         .foreach { action =>
-          assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName(".kibana".nonempty)))
-          assertNotMatchRule(settingsOf(RO), action, Set(IndexName(".kibana".nonempty)))
-          assertMatchRule(settingsOf(RW), action, Set(IndexName(".kibana".nonempty))) {
+          assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName(".kibana")))
+          assertNotMatchRule(settingsOf(RO), action, Set(IndexName(".kibana")))
+          assertMatchRule(settingsOf(RW), action, Set(IndexName(".kibana"))) {
             assertBlockContext(
-              kibanaIndex = Some(IndexName(".kibana".nonempty)),
+              kibanaIndex = Some(IndexName(".kibana")),
               kibanaAccess = Some(RW),
-              indices = Set(IndexName(".kibana".nonempty))
+              indices = Set(IndexName(".kibana"))
             )
           }
         }
     }
     "RO action is passed with other indices" in {
       RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
-        assertMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx".nonempty)))()
-        assertMatchRule(settingsOf(RO), action, Set(IndexName("xxx".nonempty)))()
-        assertMatchRule(settingsOf(RW), action, Set(IndexName("xxx".nonempty)))()
+        assertMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx")))()
+        assertMatchRule(settingsOf(RO), action, Set(IndexName("xxx")))()
+        assertMatchRule(settingsOf(RW), action, Set(IndexName("xxx")))()
       }
     }
     "RW action is passed with other indices" in {
       RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
-          assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx".nonempty)))
-          assertNotMatchRule(settingsOf(RO), action, Set(IndexName("xxx".nonempty)))
-          assertNotMatchRule(settingsOf(RW), action, Set(IndexName("xxx".nonempty)))
+          assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx")))
+          assertNotMatchRule(settingsOf(RO), action, Set(IndexName("xxx")))
+          assertNotMatchRule(settingsOf(RW), action, Set(IndexName("xxx")))
         }
     }
     "RO action is passed with mixed indices" in {
       RO_ACTIONS.asScala.map(Action.apply).foreach { action =>
-        assertMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))()
-        assertMatchRule(settingsOf(RO), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))()
-        assertMatchRule(settingsOf(RW), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))()
+        assertMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx"), IndexName(".kibana")))()
+        assertMatchRule(settingsOf(RO), action, Set(IndexName("xxx"), IndexName(".kibana")))()
+        assertMatchRule(settingsOf(RW), action, Set(IndexName("xxx"), IndexName(".kibana")))()
       }
     }
     "RW action is passed with mixed indices" in {
       RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
-          assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))
-          assertNotMatchRule(settingsOf(RO), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))
-          assertNotMatchRule(settingsOf(RW), action, Set(IndexName("xxx".nonempty), IndexName(".kibana".nonempty)))
+          assertNotMatchRule(settingsOf(ROStrict), action, Set(IndexName("xxx"), IndexName(".kibana")))
+          assertNotMatchRule(settingsOf(RO), action, Set(IndexName("xxx"), IndexName(".kibana")))
+          assertNotMatchRule(settingsOf(RW), action, Set(IndexName("xxx"), IndexName(".kibana")))
         }
     }
     "RW action is passed with custom kibana index" in {
       RW_ACTIONS.asScala.map(Action.apply)
         .foreach { action =>
-          assertNotMatchRule(settingsOf(ROStrict, IndexName(".custom_kibana".nonempty)), action, Set(IndexName(".custom_kibana".nonempty)))
-          assertNotMatchRule(settingsOf(RO, IndexName(".custom_kibana".nonempty)), action, Set(IndexName(".custom_kibana".nonempty)))
-          assertMatchRule(settingsOf(RW, IndexName(".custom_kibana".nonempty)), action, Set(IndexName(".custom_kibana".nonempty))) {
+          assertNotMatchRule(settingsOf(ROStrict, IndexName(".custom_kibana")), action, Set(IndexName(".custom_kibana")))
+          assertNotMatchRule(settingsOf(RO, IndexName(".custom_kibana")), action, Set(IndexName(".custom_kibana")))
+          assertMatchRule(settingsOf(RW, IndexName(".custom_kibana")), action, Set(IndexName(".custom_kibana"))) {
             assertBlockContext(
-              kibanaIndex = Some(IndexName(".custom_kibana".nonempty)),
+              kibanaIndex = Some(IndexName(".custom_kibana")),
               kibanaAccess = Some(RW),
-              indices = Set(IndexName(".custom_kibana".nonempty)),
+              indices = Set(IndexName(".custom_kibana")),
             )
           }
         }
     }
     "non strict operations (1)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/index-pattern/job")
       )
     }
     "non strict operations (2)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/delete"),
         uriPath = UriPath("/.custom_kibana/index-pattern/nilb-auh-filebeat-*")
       )
     }
     "non strict operations (3)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:admin/template/put"),
         uriPath = UriPath("/_template/kibana_index_template%3A.kibana")
       )
     }
     "non strict operations (4)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
         uriPath = UriPath("/.custom_kibana/doc/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b/_update?")
       )
     }
     "non strict operations (5)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/doc/telemetry%3Atelemetry?refresh=wait_for")
       )
     }
     "non strict operations (6)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
         uriPath = UriPath("/.custom_kibana/doc/url1234/_update?")
       )
     }
     "non strict operations (7)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/url/1234/")
       )
     }
     "non strict operations (8)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/config/1234/_create/something")
       )
     }
     "non strict operations (9)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
         uriPath = UriPath("/.custom_kibana/_update/index-pattern%3A895e56e0-d873-11e8-bd16-3dcc5288c87b")
       )
     }
     "non strict operations (10)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/update"),
         uriPath = UriPath("/.custom_kibana/_update/url1234")
       )
     }
     "non strict operations (11)" in {
       testNonStrictOperations(
-        customKibanaIndex = IndexName(".custom_kibana".nonempty),
+        customKibanaIndex = IndexName(".custom_kibana"),
         action = Action("indices:data/write/index"),
         uriPath = UriPath("/.custom_kibana/_create/url:710d2a92ef849fc282bcb8a216f39046")
       )
     }
     "RW can change cluster settings" in {
-      assertNotMatchRule(settingsOf(RO, IndexName(".kibana".nonempty)), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings")))
-      assertMatchRule(settingsOf(RW, IndexName(".kibana".nonempty)), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings"))) {
+      assertNotMatchRule(settingsOf(RO, IndexName(".kibana")), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings")))
+      assertMatchRule(settingsOf(RW, IndexName(".kibana")), Action("cluster:admin/settings/update"), Set.empty, Some(UriPath("/_cluster/settings"))) {
         assertBlockContext(
           kibanaIndex = None,
           kibanaAccess = Some(RW)
@@ -205,7 +206,7 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
     }
     "X-Pack cluster settings update" in {
       def assertMatchClusterRule(access: KibanaAccess) = {
-        assertMatchRule(settingsOf(access, IndexName(".kibana".nonempty)), Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"), Set.empty, Some(UriPath("/_ccr/auto_follow"))) {
+        assertMatchRule(settingsOf(access, IndexName(".kibana")), Action("cluster:admin/xpack/ccr/auto_follow_pattern/resolve"), Set.empty, Some(UriPath("/_ccr/auto_follow"))) {
           assertBlockContext(
             kibanaIndex = None,
             kibanaAccess = Some(access)
@@ -274,7 +275,7 @@ class KibanaAccessRuleTests extends AnyWordSpec with Inside with BlockContextAss
     }
   }
 
-  private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana".nonempty)) = {
+  private def settingsOf(access: KibanaAccess, kibanaIndex: IndexName = IndexName(".kibana")) = {
     KibanaAccessRule.Settings(access, AlreadyResolved(kibanaIndex), RorConfigurationIndex(IndexName.fromUnsafeString(".readonlyrest")))
   }
 

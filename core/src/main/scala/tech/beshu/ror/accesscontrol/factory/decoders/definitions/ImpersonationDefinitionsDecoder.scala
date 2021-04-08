@@ -16,19 +16,20 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.definitions
 
-import cats.data.NonEmptySet
 import cats.{Id, Order}
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{ACursorOps, DecoderHelpers, DecodingFailureOps, HCursorOps}
 import tech.beshu.ror.accesscontrol.utils.{ADecoder, SyncDecoder, SyncDecoderCreator}
+import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 object ImpersonationDefinitionsDecoder {
 
@@ -58,7 +59,7 @@ object ImpersonationDefinitionsDecoder {
         val usersKey = "users"
         for {
           impersonator <- c.downField(impersonatorKey).as[User.Id]
-          users <- c.downField(usersKey).as[NonEmptySet[User.Id]]
+          users <- c.downField(usersKey).as[UniqueNonEmptyList[User.Id]]
           ruleWithVariableUsage <- c.withoutKeys(Set(impersonatorKey, usersKey))
             .tryDecodeAuthRule(impersonator, caseMappingEquality)
             .left.map(m => DecodingFailureOps.fromError(DefinitionsLevelCreationError(m)))

@@ -17,6 +17,7 @@
 package tech.beshu.ror.unit.acl.blocks.rules
 
 import cats.data.NonEmptyList
+import eu.timepit.refined.types.string.NonEmptyString
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.matchers.should.Matchers._
@@ -45,7 +46,7 @@ class ResponseFieldsRuleTests extends AnyWordSpec with MockFactory {
   }
 
   private def assertMatchRule(fields: NonEmptyList[String], mode: AccessMode) = {
-    val resolvedFields = fields.map(field => AlreadyResolved(ResponseField(field.nonempty).nel))
+    val resolvedFields = fields.map(field => AlreadyResolved(ResponseField(NonEmptyString.unsafeFrom(field)).nel))
     val rule = new ResponseFieldsRule(ResponseFieldsRule.Settings(UniqueNonEmptyList.fromNonEmptyList(resolvedFields), mode))
     val requestContext = MockRequestContext.indices
     val blockContext = GeneralIndexRequestBlockContext(requestContext, UserMetadata.empty, Set.empty, List.empty, Set.empty, Set.empty)

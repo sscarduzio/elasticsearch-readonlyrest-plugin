@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions
 
+import eu.timepit.refined.auto._
 import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
@@ -61,8 +62,8 @@ class UnboundidLdapAuthorizationServiceTests
       "returns non empty set of groups" when {
         "user has groups" in {
           eventually {
-            authorizationService.groupsOf(User.Id("morgan".nonempty)).runSyncUnsafe() should be {
-              UniqueList.of(Group("groupAll".nonempty), Group("group3".nonempty), Group("group2".nonempty))
+            authorizationService.groupsOf(User.Id("morgan")).runSyncUnsafe() should be {
+              UniqueList.of(Group("groupAll"), Group("group3"), Group("group2"))
             }
           }
         }
@@ -70,12 +71,12 @@ class UnboundidLdapAuthorizationServiceTests
       "returns empty set of groups" when {
         "user has no groups" in {
           eventually {
-            authorizationService.groupsOf(User.Id("devito".nonempty)).runSyncUnsafe() should be(UniqueList.empty[Group])
+            authorizationService.groupsOf(User.Id("devito")).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
         "there is no user with given name" in {
           eventually {
-            authorizationService.groupsOf(User.Id("unknown".nonempty)).runSyncUnsafe() should be(UniqueList.empty[Group])
+            authorizationService.groupsOf(User.Id("unknown")).runSyncUnsafe() should be(UniqueList.empty[Group])
           }
         }
       }
@@ -85,7 +86,7 @@ class UnboundidLdapAuthorizationServiceTests
   private def authorizationService = {
     UnboundidLdapAuthorizationService
       .create(
-        Name("ldap1".nonempty),
+        Name("ldap1"),
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
           ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${container.ldapHost}:${container.ldapPort}").get),
@@ -94,17 +95,17 @@ class UnboundidLdapAuthorizationServiceTests
           requestTimeout = Refined.unsafeApply(5 seconds),
           trustAllCerts = false,
           BindRequestUser.CustomUser(
-            Dn("cn=admin,dc=example,dc=com".nonempty),
-            PlainTextSecret("password".nonempty)
+            Dn("cn=admin,dc=example,dc=com"),
+            PlainTextSecret("password")
           ),
           ignoreLdapConnectivityProblems = false
         ),
-        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com".nonempty), "uid".nonempty),
+        UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid"),
         UserGroupsSearchFilterConfig(DefaultGroupSearch(
-          Dn("ou=Groups,dc=example,dc=com".nonempty),
-          "cn".nonempty,
-          "uniqueMember".nonempty,
-          "(cn=*)".nonempty,
+          Dn("ou=Groups,dc=example,dc=com"),
+          "cn",
+          "uniqueMember",
+          "(cn=*)",
           groupAttributeIsDN = true
         )),
         global

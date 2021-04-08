@@ -16,7 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.data.NonEmptySet
+import cats.data.NonEmptyList
 import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
@@ -26,11 +26,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
-import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.resolveAll
-import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 // todo:  seems that there is a problem with this rule. Eg. when we use as authentication method JWT token auth.
@@ -44,6 +44,11 @@ final class GroupsRule(val settings: Settings,
     with Logging {
 
   override val name: Rule.Name = GroupsRule.name
+
+  private val matchers = settings
+    .usersDefinitions.toList
+    .map { userDef => userDef -> new GenericPatternMatcher(userDef.id.patterns.toList) }
+    .toMap
 
   override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
     Task
@@ -62,7 +67,7 @@ final class GroupsRule(val settings: Settings,
                                                                                            resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
     blockContext.userMetadata.loggedUser match {
       case Some(user) =>
-        NonEmptySet.fromSet(settings.usersDefinitions.filter(_.id === user.id)) match {
+        NonEmptyList.fromFoldable(userDefinitionsMatching(user.id)) match {
           case None =>
             Task.now(Rejected())
           case Some(filteredUserDefinitions) =>
@@ -73,7 +78,11 @@ final class GroupsRule(val settings: Settings,
     }
   }
 
-  private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext : BlockContextUpdater](userDefs: NonEmptySet[UserDef],
+  private def userDefinitionsMatching(userId: User.Id) = {
+    settings.usersDefinitions.filter(ud => matchers(ud).`match`(userId))
+  }
+
+  private def tryToAuthorizeAndAuthenticateUsing[B <: BlockContext : BlockContextUpdater](userDefs: NonEmptyList[UserDef],
                                                                                           blockContext: B,
                                                                                           resolvedGroups: UniqueNonEmptyList[Group]): Task[RuleResult[B]] = {
     userDefs
@@ -106,7 +115,7 @@ final class GroupsRule(val settings: Settings,
             case fulfilled: RuleResult.Fulfilled[B] =>
               val newBlockContext = fulfilled.blockContext
               newBlockContext.userMetadata.loggedUser match {
-                case Some(loggedUser) if loggedUser.id === userDef.id => Some {
+                case Some(loggedUser) if matchers(userDef).`match`(loggedUser.id) => Some {
                   newBlockContext.withUserMetadata(_.addAvailableGroups(availableGroups))
                 }
                 case Some(_) => None
@@ -129,5 +138,5 @@ object GroupsRule {
   val name = Rule.Name("groups")
 
   final case class Settings(groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]],
-                            usersDefinitions: NonEmptySet[UserDef])
+                            usersDefinitions: NonEmptyList[UserDef])
 }

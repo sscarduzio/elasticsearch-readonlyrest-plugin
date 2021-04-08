@@ -27,7 +27,7 @@ import tech.beshu.ror.es.actions.rrauditevent.RRAuditEventRequest
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult
 import tech.beshu.ror.proxy.es.EsActionRequestHandler.HandlingResult.{Handled, PassItThrough}
 import tech.beshu.ror.proxy.es.clients.RestHighLevelClientAdapter
-import tech.beshu.ror.proxy.es.proxyaction.GenericRequest
+import tech.beshu.ror.proxy.es.proxyaction.ByProxyProcessedRequest
 
 class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
                              clusterService: ClusterService)
@@ -57,7 +57,7 @@ class EsActionRequestHandler(esClient: RestHighLevelClientAdapter,
     case request: SearchTemplateRequest => esClient.searchTemplate(request)
     case request: MultiSearchTemplateRequest => esClient.mSearchTemplate(request)
     case request: ReindexRequest => esClient.reindex(request)
-    case request: GenericRequest => esClient.generic(request)
+    case request: ByProxyProcessedRequest => esClient.generic(request)
     case request: ClearScrollRequest => esClient.clearScroll(request)
     case request: SearchScrollRequest => esClient.searchScroll(request)
     case request: GetComposableIndexTemplateAction.Request => esClient.getComposableTemplate(request)

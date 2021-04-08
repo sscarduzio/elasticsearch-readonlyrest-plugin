@@ -27,10 +27,10 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.threadpool.ThreadPool
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.TemplateRequestBlockContext.TemplatesTransformation
-import tech.beshu.ror.accesscontrol.blocks.rules.utils.UniqueIdentifierGenerator
+import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.domain.TemplateOperation.GettingLegacyTemplates
 import tech.beshu.ror.accesscontrol.domain.UriPath.{CatTemplatePath, TemplatePath}
-import tech.beshu.ror.accesscontrol.domain.{TemplateNamePattern, UriPath}
+import tech.beshu.ror.accesscontrol.domain.{TemplateName, TemplateNamePattern, UriPath}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
@@ -110,9 +110,11 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
         transformation
       )
       .filter { t =>
-        TemplateNamePattern
+        TemplateName
           .fromString(t.name())
-          .exists(allowedTemplates.contains)
+          .exists { templateName =>
+            allowedTemplates.exists(_.matches(templateName))
+          }
       }
       .map(_.name())
 
@@ -128,33 +130,6 @@ class TemplateClusterStateEsRequestContext private(actionRequest: ClusterStateRe
       ClusterState
         .builder(response.getState)
         .metaData(newMetadataWithFilteredTemplates)
-        .build()
-
-    new ClusterStateResponse(
-      response.getClusterName,
-      modifiedClusterState,
-      response.isWaitForTimedOut
-    )
-  }
-
-  private def modifyIndexTemplatesOfResponse(response: ClusterStateResponse,
-                                             allowedTemplates: Set[TemplateNamePattern],
-                                             transformation: TemplatesTransformation) = {
-    implicit val idImplicit: RequestContext.Id = id
-    val oldMetadata = response.getState.metaData()
-
-    val newMetadataWithFilteredTemplatesV2 = oldMetadata
-      .templatesV2().keySet().asScala
-      .foldLeft(new MetaData.Builder(oldMetadata)) {
-        case (acc, templateName) => acc.removeIndexTemplate(templateName)
-      }
-      .build()
-
-    // remove all (just in case)
-    val modifiedClusterState =
-      ClusterState
-        .builder(response.getState)
-        .metaData(newMetadataWithFilteredTemplatesV2)
         .build()
 
     new ClusterStateResponse(
