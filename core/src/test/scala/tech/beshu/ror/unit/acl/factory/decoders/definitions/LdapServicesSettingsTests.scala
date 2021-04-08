@@ -26,7 +26,6 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
-import tech.beshu.ror.utils.TestsUtils.StringOps
 import tech.beshu.ror.utils.containers.{LdapContainer, LdapWithDnsContainer}
 
 import scala.language.postfixOps
@@ -112,7 +111,7 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             val ldapService = definitions.items.head
             ldapService shouldBe a[CacheableLdapServiceDecorator]
             //TODO: Check if returned CacheableLdapServiceDecorator has underlying CircuitBreaker decorator
-            ldapService.id should be(LdapService.Name("ldap1".nonempty))
+            ldapService.id should be(LdapService.Name("ldap1"))
           }
         )
       }
@@ -627,23 +626,6 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    connection_timeout_in_sec: -10
-           """.stripMargin,
-          assertion = { error =>
-            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
-          }
-        )
-      }
-      "circuit breaker is malformed" in {
-        assertDecodingFailure(
-          yaml =
-            s"""
-               |  ldaps:
-               |  - name: ldap1
-               |    host: ${containerLdap1.ldapHost}
-               |    port: ${containerLdap1.ldapPort}
-               |    search_user_base_DN: "ou=People,dc=example,dc=com"
-               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
-               |    circuit_breaker:
            """.stripMargin,
           assertion = { error =>
             error should be(AclCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))

@@ -69,13 +69,13 @@ class UnboundidLdapAuthenticationServiceTests
   implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
     def assertSuccessfulAuthentication = {
       authenticationService
-        .authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty))
+        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
         .runSyncUnsafe() should be(true)
     }
 
     def assertFailedAuthentication[T : ClassTag] = {
       an [T] should be thrownBy authenticationService
-        .authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty))
+        .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
         .runSyncUnsafe()
     }
   }
