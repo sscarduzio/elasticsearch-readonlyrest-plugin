@@ -21,11 +21,12 @@ import eu.timepit.refined.auto._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{LdapAuthService, LdapAuthenticationService, LdapService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapServiceDecorator, LdapAuthService, LdapAuthenticationService, LdapService}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder
 import tech.beshu.ror.utils.TaskComonad.wait30SecTaskComonad
+import tech.beshu.ror.utils.TestsUtils.StringOps
 import tech.beshu.ror.utils.containers.{LdapContainer, LdapWithDnsContainer}
 
 import scala.language.postfixOps
@@ -79,6 +80,39 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
             val ldapService = definitions.items.head
             ldapService shouldBe a[LdapAuthService]
             ldapService.id should be(LdapService.Name("ldap1"))
+          }
+        )
+      }
+      "one LDAP service with circuit breaker is declared" in {
+        assertDecodingSuccess(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${containerLdap1.ldapHost}
+               |    port: ${containerLdap1.ldapPort}                          # default 389
+               |    ssl_enabled: false                                        # default true
+               |    ssl_trust_all_certs: true                                 # default false
+               |    bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+               |    bind_password: "password"                                 # skip for anonymous bind
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    user_id_attribute: "uid"                                  # default "uid"
+               |    unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+               |    connection_pool_size: 10                                  # default 30
+               |    connection_timeout_in_sec: 10                             # default 1
+               |    request_timeout_in_sec: 10                                # default 1
+               |    cache_ttl_in_sec: 60                                      # default 0 - cache disabled
+               |    circuit_breaker:
+               |      max_retries: 2
+               |      reset_duration: 2
+           """.stripMargin,
+          assertion = { definitions =>
+            definitions.items should have size 1
+            val ldapService = definitions.items.head
+            ldapService shouldBe a[CacheableLdapServiceDecorator]
+            //TODO: Check if returned CacheableLdapServiceDecorator has underlying CircuitBreaker decorator
+            ldapService.id should be(LdapService.Name("ldap1".nonempty))
           }
         )
       }
@@ -593,6 +627,23 @@ class LdapServicesSettingsTests(ldapConnectionPoolProvider: UnboundidLdapConnect
                |    search_user_base_DN: "ou=People,dc=example,dc=com"
                |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
                |    connection_timeout_in_sec: -10
+           """.stripMargin,
+          assertion = { error =>
+            error should be(AclCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))
+          }
+        )
+      }
+      "circuit breaker is malformed" in {
+        assertDecodingFailure(
+          yaml =
+            s"""
+               |  ldaps:
+               |  - name: ldap1
+               |    host: ${containerLdap1.ldapHost}
+               |    port: ${containerLdap1.ldapPort}
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+               |    circuit_breaker:
            """.stripMargin,
           assertion = { error =>
             error should be(AclCreationError.DefinitionsLevelCreationError(Message("Only positive values allowed. Found: -10 seconds")))

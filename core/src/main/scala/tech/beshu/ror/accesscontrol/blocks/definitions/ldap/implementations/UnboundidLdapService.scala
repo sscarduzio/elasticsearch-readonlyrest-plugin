@@ -36,9 +36,9 @@ import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.utils.LdapConnectionPoolOps._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
-import UnboundidLdapConnectionPoolProvider.ConnectionError
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Try
 
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
@@ -67,9 +67,12 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
         release = connection => Task(connectionPool.releaseAndReAuthenticateConnection(connection))
       )
       .map(_.getResultCode == ResultCode.SUCCESS)
-      .recover { case ex =>
-        logger.errorEx(s"LDAP authenticate operation failed - cause [${ex.getMessage}]", ex)
-        false
+      .onError { case ex =>
+        Task(logger.errorEx(s"LDAP authenticate operation failed - cause [${ex.getMessage}]", ex))
+      }
+      .recover {
+        case ex: LDAPBindException if ex.getResultCode == ResultCode.INVALID_CREDENTIALS =>
+          false
       }
   }
 }
@@ -334,6 +337,12 @@ object LdapConnectionConfig {
   object BindRequestUser {
     case object Anonymous extends BindRequestUser
     final case class CustomUser(dn: Dn, password: PlainTextSecret) extends BindRequestUser
+  }
+
+  sealed trait CircuitBreaker
+  object CircuitBreaker {
+    case object Disabled extends CircuitBreaker
+    final case class Enabled(maxFailures: Int, resetDuration: FiniteDuration Refined Positive) extends CircuitBreaker
   }
 
 }

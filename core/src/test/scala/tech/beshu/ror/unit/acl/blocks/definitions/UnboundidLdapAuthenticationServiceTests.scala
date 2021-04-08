@@ -19,35 +19,39 @@ package tech.beshu.ror.unit.acl.blocks.definitions
 import eu.timepit.refined.auto._
 import cats.data._
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
+import com.unboundid.ldap.sdk.LDAPSearchException
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.exceptions.ExecutionRejectedException
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.{BeforeAndAfterAll, Inside}
-
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CircuitBreakerLdapAuthenticationServiceDecorator, Dn, LdapAuthenticationService}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.ScalaOps.repeat
 import tech.beshu.ror.utils.TestsUtils._
-import tech.beshu.ror.utils.containers.LdapContainer
+import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.reflect.ClassTag
 
 class UnboundidLdapAuthenticationServiceTests
   extends AnyWordSpec
     with BeforeAndAfterAll
+    with BeforeAndAfterEach
     with ForAllTestContainer
     with Inside {
 
-  private val ldap1Container = new LdapContainer("LDAP1", "test_example.ldif")
+  private val ldap1Container = LdapContainer.create("LDAP1", "test_example.ldif")
+  private val ldap1ContainerWithToxiproxy = new ToxiproxyContainer(ldap1Container, LdapContainer.defaults.ldap.port)
   private val ldap2Container = new LdapContainer("LDAP2", "test_example.ldif")
-  override val container: Container = MultipleContainers(ldap1Container, ldap2Container)
+  override val container: Container = MultipleContainers(ldap1ContainerWithToxiproxy, ldap2Container)
   private val ldapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override protected def afterAll(): Unit = {
@@ -55,14 +59,50 @@ class UnboundidLdapAuthenticationServiceTests
     ldapConnectionPoolProvider.close()
       .runSyncUnsafe()
   }
+
+  override protected def beforeEach(): Unit = {
+    super.beforeEach()
+    ldap1ContainerWithToxiproxy.enableNetwork()
+    ldap1ContainerWithToxiproxy.disableNetworkTimeout()
+  }
+
+  implicit class LdapAuthenticationServiceOps(authenticationService: LdapAuthenticationService) {
+    def assertSuccessfulAuthentication = {
+      authenticationService
+        .authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty))
+        .runSyncUnsafe() should be(true)
+    }
+
+    def assertFailedAuthentication[T : ClassTag] = {
+      an [T] should be thrownBy authenticationService
+        .authenticate(User.Id("morgan".nonempty), PlainTextSecret("user1".nonempty))
+        .runSyncUnsafe()
+    }
+  }
+
   "An LdapAuthenticationService" should {
-    "has method to authenticate" which {
+    "have method to authenticate" which {
       "returns true" when {
         "user exists in LDAP and its credentials are correct" in {
-          createSimpleAuthenticationService()
-            .authenticate(User.Id("morgan"), PlainTextSecret("user1"))
-            .runSyncUnsafe() should be(true)
+          createSimpleAuthenticationService().assertSuccessfulAuthentication
         }
+        "after connection timeout and retry" in {
+          val authenticationService = createSimpleAuthenticationService()
+          authenticationService.assertSuccessfulAuthentication
+          ldap1ContainerWithToxiproxy.enableNetworkTimeout()
+          authenticationService.assertFailedAuthentication[LdapUnexpectedResult]
+          ldap1ContainerWithToxiproxy.disableNetworkTimeout()
+          authenticationService.assertSuccessfulAuthentication
+        }
+        "after connection failure and retry" in {
+          val authenticationService = createSimpleAuthenticationService()
+          authenticationService.assertSuccessfulAuthentication
+          ldap1ContainerWithToxiproxy.disableNetwork()
+          authenticationService.assertFailedAuthentication[LDAPSearchException]
+          ldap1ContainerWithToxiproxy.enableNetwork()
+          authenticationService.assertSuccessfulAuthentication
+        }
+
       }
       "returns false" when {
         "user doesn't exist in LDAP" in {
@@ -100,13 +140,53 @@ class UnboundidLdapAuthenticationServiceTests
     }
   }
 
+  "An CircuitBreaker decorated LdapAuthenticationService" should {
+    "close circuit breaker after 2 failed attempts" in {
+      val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
+      authenticationService.assertSuccessfulAuthentication
+      ldap1ContainerWithToxiproxy.disableNetwork()
+      authenticationService.assertFailedAuthentication[LDAPSearchException]
+      authenticationService.assertFailedAuthentication[LDAPSearchException]
+      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+      ldap1ContainerWithToxiproxy.enableNetwork()
+      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+    }
+
+    "close circuit breaker after 2 failed attempts, but open it later" in {
+      val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
+      authenticationService.assertSuccessfulAuthentication
+      ldap1ContainerWithToxiproxy.disableNetwork()
+      authenticationService.assertFailedAuthentication[LDAPSearchException]
+      ldap1ContainerWithToxiproxy.enableNetwork()
+      ldap1ContainerWithToxiproxy.enableNetworkTimeout()
+      authenticationService.assertFailedAuthentication[LDAPSearchException]
+      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+      ldap1ContainerWithToxiproxy.disableNetworkTimeout()
+      Thread.sleep(550)
+      authenticationService.assertSuccessfulAuthentication
+      authenticationService.assertSuccessfulAuthentication
+    }
+
+    "close circuit breaker after 2 failed attempts and keep it closed because of network issues" in {
+      val authenticationService = createCircuitBreakerDecoratedSimpleAuthenticationService()
+      authenticationService.assertSuccessfulAuthentication
+      ldap1ContainerWithToxiproxy.disableNetwork()
+      authenticationService.assertFailedAuthentication[LDAPSearchException]
+      authenticationService.assertFailedAuthentication[LDAPSearchException]
+      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+      Thread.sleep(550)
+      authenticationService.assertFailedAuthentication[LDAPSearchException]
+      authenticationService.assertFailedAuthentication[ExecutionRejectedException]
+    }
+  }
+
   private def createSimpleAuthenticationService() = {
     UnboundidLdapAuthenticationService
       .create(
         Name("my_ldap"),
         ldapConnectionPoolProvider,
         LdapConnectionConfig(
-          ConnectionMethod.SingleServer(LdapHost.from(s"ldap://${ldap1Container.ldapHost}:${ldap1Container.ldapPort}").get),
+          ConnectionMethod.SingleServer(LdapHost.from(s"ldap://localhost:${ldap1ContainerWithToxiproxy.innerContainerMappedPort}").get),
           poolSize = 1,
           connectionTimeout = Refined.unsafeApply(5 seconds),
           requestTimeout = Refined.unsafeApply(5 seconds),
@@ -115,13 +195,21 @@ class UnboundidLdapAuthenticationServiceTests
             Dn("cn=admin,dc=example,dc=com"),
             PlainTextSecret("password")
           ),
-          ignoreLdapConnectivityProblems = false
+          ignoreLdapConnectivityProblems = false,
         ),
         UserSearchFilterConfig(Dn("ou=People,dc=example,dc=com"), "uid"),
         global
       )
       .runSyncUnsafe()
       .right.getOrElse(throw new IllegalStateException("LDAP connection problem"))
+  }
+
+  private def createCircuitBreakerDecoratedSimpleAuthenticationService() = {
+    new CircuitBreakerLdapAuthenticationServiceDecorator(
+      createSimpleAuthenticationService(),
+      maxFailures = 2,
+      resetDuration = Refined.unsafeApply(0.5 second)
+    )
   }
 
   private def createHaAuthenticationService() = {

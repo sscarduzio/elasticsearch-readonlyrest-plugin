@@ -76,8 +76,8 @@ object LdapServicesDecoder {
   private def decodeLdapService(cursor: HCursor)
                                (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[DecodingFailure, LdapUserService]] = {
     for {
-      authenticationService <- (authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService])(cursor)
-      authortizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
+      authenticationService <- (circuitBreakerAuthenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService])(cursor)
+      authortizationService <- (circuitBreakerAuthorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
     } yield (authenticationService, authortizationService) match {
       case (Right(authn), Right(authz)) => Right {
         new ComposedLdapAuthService(authn.id, authn, authz)
@@ -86,6 +86,28 @@ object LdapServicesDecoder {
       case (_, authz@Right(_)) => authz
       case (error@Left(_), _) => error
     }
+  }
+
+  private def circuitBreakerAuthenticationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthenticationService] = {
+    AsyncDecoderCreator
+      .from(circuitBreakerDecoder)
+      .flatMap {
+        case CircuitBreaker.Disabled => authenticationServiceDecoder
+        case CircuitBreaker.Enabled(maxFailures, resetTimeout) => authenticationServiceDecoder.map { authenticationService =>
+          new CircuitBreakerLdapAuthenticationServiceDecorator(authenticationService, maxFailures, resetTimeout)
+        }
+    }
+  }
+
+  private def circuitBreakerAuthorizationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthorizationService] = {
+    AsyncDecoderCreator
+      .from(circuitBreakerDecoder)
+      .flatMap {
+        case CircuitBreaker.Disabled => authorizationServiceDecoder
+        case CircuitBreaker.Enabled(maxFailures, resetTimeout) => authorizationServiceDecoder.map { authorizationService =>
+          new CircuitBreakerLdapAuthorizationServiceDecorator(authorizationService, maxFailures, resetTimeout)
+        }
+      }
   }
 
   private def authenticationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthenticationService] =
@@ -221,6 +243,20 @@ object LdapServicesDecoder {
         )
       }
   }
+
+  private implicit val enabledCircuitBreakerDecoder: Decoder[CircuitBreaker.Enabled] =
+    Decoder.forProduct2("max_retries", "reset_duration")(CircuitBreaker.Enabled.apply)
+
+  private lazy val circuitBreakerDecoder: Decoder[CircuitBreaker] =
+    Decoder
+      .instance { c =>
+        val circuitBreaker = c.downField("circuit_breaker")
+        if (circuitBreaker.failed) {
+          Right(CircuitBreaker.Disabled)
+        } else {
+          circuitBreaker.as[CircuitBreaker.Enabled]
+        }
+      }
 
   private lazy val connectionMethodDecoder: Decoder[ConnectionMethod] =
     SyncDecoderCreator
