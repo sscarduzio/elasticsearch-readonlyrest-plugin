@@ -294,6 +294,8 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
 
 object LdapConnectionConfig {
 
+  val DEFAULT_CIRCUIT_BREAKER_CONFIG = CircuitBreakerConfig(10, Refined.unsafeApply(10 seconds))
+
   final case class LdapHost private(url: UrlWithAuthority) {
     def isSecure: Boolean = url.schemeOption.contains(LdapHost.ldapsSchema)
 
@@ -339,12 +341,7 @@ object LdapConnectionConfig {
     final case class CustomUser(dn: Dn, password: PlainTextSecret) extends BindRequestUser
   }
 
-  sealed trait CircuitBreaker
-  object CircuitBreaker {
-    case object Disabled extends CircuitBreaker
-    final case class Enabled(maxFailures: Int, resetDuration: FiniteDuration Refined Positive) extends CircuitBreaker
-  }
-
+  final case class CircuitBreakerConfig(maxFailures: Int, resetDuration: FiniteDuration Refined Positive)
 }
 
 final case class UserSearchFilterConfig(searchUserBaseDN: Dn, uidAttribute: NonEmptyString)

@@ -76,38 +76,22 @@ object LdapServicesDecoder {
   private def decodeLdapService(cursor: HCursor)
                                (implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): Task[Either[DecodingFailure, LdapUserService]] = {
     for {
-      authenticationService <- (circuitBreakerAuthenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService])(cursor)
-      authortizationService <- (circuitBreakerAuthorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
-    } yield (authenticationService, authortizationService) match {
-      case (Right(authn), Right(authz)) => Right {
-        new ComposedLdapAuthService(authn.id, authn, authz)
+      authenticationService <- (authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService])(cursor)
+      authortizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
+      circuitBreakerSettings <- AsyncDecoderCreator.from(circuitBreakerDecoder)(cursor)
+    } yield (authenticationService, authortizationService, circuitBreakerSettings) match {
+      case (Right(authn), Right(authz), Right(CircuitBreakerConfig(maxFailures, resetTimeout))) => Right {
+        new CircuitBreakerLdapServiceDecorator(
+          new ComposedLdapAuthService(authn.id, authn, authz), maxFailures, resetTimeout
+        )
       }
-      case (authn@Right(_), _) => authn
-      case (_, authz@Right(_)) => authz
-      case (error@Left(_), _) => error
+      case (Right(authn), _, Right(CircuitBreakerConfig(maxFailures, resetTimeout))) =>
+        Right(new CircuitBreakerLdapAuthenticationServiceDecorator(authn, maxFailures, resetTimeout))
+      case (_, Right(authz), Right(CircuitBreakerConfig(maxFailures, resetTimeout))) =>
+        Right(new CircuitBreakerLdapAuthorizationServiceDecorator(authz, maxFailures, resetTimeout))
+      case (error@Left(_), _, _) => error
+      case (_, _, Left(error)) => Left(error)
     }
-  }
-
-  private def circuitBreakerAuthenticationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthenticationService] = {
-    AsyncDecoderCreator
-      .from(circuitBreakerDecoder)
-      .flatMap {
-        case CircuitBreaker.Disabled => authenticationServiceDecoder
-        case CircuitBreaker.Enabled(maxFailures, resetTimeout) => authenticationServiceDecoder.map { authenticationService =>
-          new CircuitBreakerLdapAuthenticationServiceDecorator(authenticationService, maxFailures, resetTimeout)
-        }
-    }
-  }
-
-  private def circuitBreakerAuthorizationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthorizationService] = {
-    AsyncDecoderCreator
-      .from(circuitBreakerDecoder)
-      .flatMap {
-        case CircuitBreaker.Disabled => authorizationServiceDecoder
-        case CircuitBreaker.Enabled(maxFailures, resetTimeout) => authorizationServiceDecoder.map { authorizationService =>
-          new CircuitBreakerLdapAuthorizationServiceDecorator(authorizationService, maxFailures, resetTimeout)
-        }
-      }
   }
 
   private def authenticationServiceDecoder(implicit ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider): AsyncDecoder[LdapAuthenticationService] =
@@ -244,17 +228,16 @@ object LdapServicesDecoder {
       }
   }
 
-  private implicit val enabledCircuitBreakerDecoder: Decoder[CircuitBreaker.Enabled] =
-    Decoder.forProduct2("max_retries", "reset_duration")(CircuitBreaker.Enabled.apply)
 
-  private lazy val circuitBreakerDecoder: Decoder[CircuitBreaker] =
+  private lazy val circuitBreakerDecoder: Decoder[CircuitBreakerConfig] =
     Decoder
       .instance { c =>
         val circuitBreaker = c.downField("circuit_breaker")
         if (circuitBreaker.failed) {
-          Right(CircuitBreaker.Disabled)
+          Right(DEFAULT_CIRCUIT_BREAKER_CONFIG)
         } else {
-          circuitBreaker.as[CircuitBreaker.Enabled]
+          val decoder = Decoder.forProduct2("max_retries", "reset_duration")(CircuitBreakerConfig.apply)
+          decoder.tryDecode(circuitBreaker)
         }
       }
 
