@@ -237,10 +237,6 @@ object LdapServicesDecoder {
         if (circuitBreaker.failed) {
           Right(DEFAULT_CIRCUIT_BREAKER_CONFIG)
         } else {
-//          for {
-//            maxRetries <- circuitBreaker.downField("max_retries").as[Int Refined Positive]
-//            resetDuration <- circuitBreaker.downField("reset_duration").or circuitBreaker.downFields("reset_duration", "reset_duration_in_sec").as[FiniteDuration Refined Positive]
-//          }
           val decoder = Decoder.forProduct2("max_retries", "reset_duration")(CircuitBreakerConfig.apply)
           decoder.tryDecode(circuitBreaker)
         }
