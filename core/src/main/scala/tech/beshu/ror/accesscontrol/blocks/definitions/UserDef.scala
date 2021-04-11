@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.definitions
 import cats.Show
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
 import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.show.logs.userIdPatternsShow
@@ -46,7 +46,7 @@ object UserDef {
         final case class SeparateRules(authenticationRule: AuthenticationRule,
                                        authorizationRule: AuthorizationRule)
           extends Auth
-        final case class SingleRule(rule: AuthenticationRule with AuthorizationRule)
+        final case class SingleRule(rule: AuthRule)
           extends Auth
       }
     }

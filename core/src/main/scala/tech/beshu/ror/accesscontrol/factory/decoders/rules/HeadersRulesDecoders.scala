@@ -17,31 +17,42 @@
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
 import eu.timepit.refined.types.string.NonEmptyString
+import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.{HeadersAndRule, HeadersOrRule}
-import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.HeadersHelper.headerAccessRequirementFromString
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.StringWiseSplitter._
 
-object HeadersAndRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers
-    .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
-    .map { requirements =>
-      RuleWithVariableUsageDefinition.create(new HeadersAndRule(HeadersAndRule.Settings(requirements)))
-    }
-)
+object HeadersAndRuleDecoder
+  extends RegularRuleDecoder[HeadersAndRule]
+    with RuleDecoderWithoutAssociatedFields[HeadersAndRule] {
 
-object HeadersOrRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers
-    .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
-    .map { requirements =>
-      RuleWithVariableUsageDefinition.create(new HeadersOrRule(HeadersOrRule.Settings(requirements)))
-    }
-)
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[HeadersAndRule]] = {
+    DecoderHelpers
+      .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
+      .map { requirements =>
+        RuleWithVariableUsageDefinition.create(new HeadersAndRule(HeadersAndRule.Settings(requirements)))
+      }
+  }
+}
+
+object HeadersOrRuleDecoder
+  extends RegularRuleDecoder[HeadersOrRule]
+    with RuleDecoderWithoutAssociatedFields[HeadersOrRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[HeadersOrRule]] = {
+    DecoderHelpers
+      .decodeStringLikeOrNonEmptySetE(headerAccessRequirementFromString)
+      .map { requirements =>
+        RuleWithVariableUsageDefinition.create(new HeadersOrRule(HeadersOrRule.Settings(requirements)))
+      }
+  }
+}
 
 private object HeadersHelper {
   def headerAccessRequirementFromString(value: String): Either[String, AccessRequirement[Header]] =
@@ -49,7 +60,7 @@ private object HeadersHelper {
       .toNonEmptyStringsTuple
       .left.map(_ => errorMessage(value))
       .flatMap { case (first, second) =>
-        if(first.value.startsWith("~")) {
+        if (first.value.startsWith("~")) {
           NonEmptyString.unapply(first.value.substring(1)) match {
             case Some(name) => Right(AccessRequirement.MustBeAbsent(new Header(Name(name), second)))
             case None => Left(errorMessage(value))

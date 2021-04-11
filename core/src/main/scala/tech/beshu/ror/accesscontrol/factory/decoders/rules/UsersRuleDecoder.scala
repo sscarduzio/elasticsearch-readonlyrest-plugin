@@ -30,11 +30,15 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.CaseMappingEquality._
 
 class UsersRuleDecoder(implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[User.Id]]
-    .map(users => RuleWithVariableUsageDefinition.create(new UsersRule(Settings(users), caseMappingEquality)))
-)
+  extends RegularRuleDecoder[UsersRule]
+    with RuleDecoderWithoutAssociatedFields[UsersRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[UsersRule]] = {
+    DecoderHelpers
+      .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[User.Id]]
+      .map(users => RuleWithVariableUsageDefinition.create(new UsersRule(Settings(users), caseMappingEquality)))
+  }
+}
 
 private object UsersRuleDecoderHelper {
   implicit val userIdValueDecoder: Decoder[RuntimeMultiResolvableVariable[User.Id]] =

@@ -24,16 +24,21 @@ import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.MethodsRuleDecoderHelper.methodDecoder
-import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
+import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 
-object MethodsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[Method]
-    .map(methods => RuleWithVariableUsageDefinition.create(new MethodsRule(Settings(methods))))
-)
+object MethodsRuleDecoder
+  extends RegularRuleDecoder[MethodsRule]
+    with RuleDecoderWithoutAssociatedFields[MethodsRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[MethodsRule]] = {
+    DecoderHelpers
+      .decodeStringLikeOrNonEmptySet[Method]
+      .map(methods => RuleWithVariableUsageDefinition.create(new MethodsRule(Settings(methods))))
+  }
+}
 
 private object MethodsRuleDecoderHelper {
   implicit val methodDecoder: Decoder[Method] =

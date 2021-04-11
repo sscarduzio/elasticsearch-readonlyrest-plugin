@@ -110,6 +110,8 @@ object Rule {
 
   }
 
+  trait AuthRule extends AuthenticationRule with AuthorizationRule
+
   trait AuthorizationRule extends Rule
 
   trait AuthenticationRule extends Rule {

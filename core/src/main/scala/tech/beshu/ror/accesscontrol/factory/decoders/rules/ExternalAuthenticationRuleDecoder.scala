@@ -21,9 +21,9 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.{CacheableExternalAuthenticationServiceDecorator, ExternalAuthenticationService}
-import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.ExternalAuthenticationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.rules.{ExternalAuthenticationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
@@ -31,18 +31,20 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthenticationServicesDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ExternalAuthenticationServicesDecoder}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.ExternalAuthenticationRuleDecoder._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{AuthenticationRuleDecoderWithoutAssociatedFields, RuleDecoderWithoutAssociatedFields}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.EligibleUsers.Instances._
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
-import EligibleUsers.Instances._
 
 import scala.concurrent.duration.FiniteDuration
 
 class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService],
-                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields[ExternalAuthenticationRule](
+                                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
+  extends AuthenticationRuleDecoder[ExternalAuthenticationRule]
+    with RuleDecoderWithoutAssociatedFields[ExternalAuthenticationRule] {
+
+  override protected def decoder: Decoder[Rule.RuleWithVariableUsageDefinition[ExternalAuthenticationRule]] = {
     simpleExternalAuthenticationServiceNameAndLocalConfig
       .orElse(complexExternalAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
@@ -55,9 +57,7 @@ class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[Exte
       }
       .map(service => RuleWithVariableUsageDefinition.create(new ExternalAuthenticationRule(Settings(service), caseMappingEquality)))
       .decoder
-  )
-
-object ExternalAuthenticationRuleDecoder {
+  }
 
   private def simpleExternalAuthenticationServiceNameAndLocalConfig: Decoder[(ExternalAuthenticationService.Name, Option[FiniteDuration Refined Positive])] =
     ExternalAuthenticationServicesDecoder

@@ -28,15 +28,17 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.RorKbnDefinitionsDecoder._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{AuthenticationRuleDecoderWithoutAssociatedFields, RuleDecoderWithoutAssociatedFields}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.decodeUniqueList
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
-import EligibleUsers.Instances._
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                             implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields[RorKbnAuthRule](
+  extends AuthRuleDecoder[RorKbnAuthRule]
+    with RuleDecoderWithoutAssociatedFields[RorKbnAuthRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[RorKbnAuthRule]] = {
     RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(RorKbnAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder
@@ -50,7 +52,8 @@ class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
         RuleWithVariableUsageDefinition.create(new RorKbnAuthRule(RorKbnAuthRule.Settings(rorKbnDef, groups), caseMappingEquality))
       }
       .decoder
-  )
+  }
+}
 
 private object RorKbnAuthRuleDecoder {
 

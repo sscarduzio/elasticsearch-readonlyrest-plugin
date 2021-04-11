@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{AuthenticationRuleDecoderWithoutAssociatedFields, RuleDecoderWithoutAssociatedFields}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -41,7 +41,10 @@ import EligibleUsers.Instances._
 
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                     implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields[LdapAuthenticationRule](
+  extends AuthenticationRuleDecoder[LdapAuthenticationRule]
+    with RuleDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthenticationRule]] = {
     LdapAuthenticationRuleDecoder.simpleLdapAuthenticationNameAndLocalConfig
       .orElse(LdapAuthenticationRuleDecoder.complexLdapAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
@@ -57,7 +60,8 @@ class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
       .map(service => RuleWithVariableUsageDefinition.create(new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), caseMappingEquality)))
       .decoder
-  )
+  }
+}
 
 object LdapAuthenticationRuleDecoder {
 
@@ -80,11 +84,15 @@ object LdapAuthenticationRuleDecoder {
 }
 
 class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService])
-  extends RuleDecoderWithoutAssociatedFields[LdapAuthorizationRule](
+  extends AuthorizationRuleDecoder[LdapAuthorizationRule]
+    with RuleDecoderWithoutAssociatedFields[LdapAuthorizationRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthorizationRule]] = {
     LdapAuthorizationRuleDecoder
       .settingsDecoder(ldapDefinitions)
       .map(settings => RuleWithVariableUsageDefinition.create(new LdapAuthorizationRule(settings)))
-  )
+  }
+}
 
 object LdapAuthorizationRuleDecoder {
 
@@ -117,10 +125,14 @@ object LdapAuthorizationRuleDecoder {
 
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                           caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields[LdapAuthRule](
+  extends AuthRuleDecoder[LdapAuthRule]
+    with RuleDecoderWithoutAssociatedFields[LdapAuthRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthRule]] = {
     LdapAuthRuleDecoder.instance(ldapDefinitions, caseMappingEquality)
       .map(RuleWithVariableUsageDefinition.create(_))
-  )
+  }
+}
 
 object LdapAuthRuleDecoder {
 

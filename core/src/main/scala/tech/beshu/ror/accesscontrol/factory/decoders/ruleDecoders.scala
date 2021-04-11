@@ -24,8 +24,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, ExternalAuthenticationRule, JwtAuthRule, _}
+import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{RorConfigurationIndex, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
@@ -35,49 +35,74 @@ object ruleDecoders {
 
   def ruleDecoderBy(name: Rule.Name,
                     definitions: DefinitionsPack,
-                    rorIndexNameConfiguration: RorConfigurationIndex,
                     globalSettings: GlobalSettings,
                     caseMappingEquality: UserIdCaseMappingEquality)
                    (implicit clock: Clock,
-                    uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] = {
+                    uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule] with RuleDecoder[_ <: Rule]] = {
     implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
     name match {
       case ActionsRule.name => Some(ActionsRuleDecoder)
       case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
-      case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(definitions.authorizationServices, caseMappingEquality))
       case FieldsRule.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine))
       case ResponseFieldsRule.name => Some(ResponseFieldsRuleDecoder)
-      case FilterRule.name => Some(new FilterRuleDecoder)
+      case FilterRule.name => Some(FilterRuleDecoder)
       case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users, caseMappingEquality))
       case HeadersAndRule.name | HeadersAndRule.deprecatedName => Some(HeadersAndRuleDecoder)
       case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
-      case HostsRule.name => Some(new HostsRuleDecoder)
-      case IndicesRule.name => Some(new IndicesRuleDecoders)
-      case KibanaAccessRule.name => Some(new KibanaAccessRuleDecoder(rorIndexNameConfiguration))
+      case HostsRule.name => Some(HostsRuleDecoder)
+      case IndicesRule.name => Some(IndicesRuleDecoders)
+      case KibanaAccessRule.name => Some(new KibanaAccessRuleDecoder(globalSettings.configurationIndex))
       case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
-      case KibanaIndexRule.name => Some(new KibanaIndexRuleDecoder)
-      case KibanaTemplateIndexRule.name => Some(new KibanaTemplateIndexRuleDecoder)
-      case LdapAuthorizationRule.name => Some(new LdapAuthorizationRuleDecoder(definitions.ldaps))
+      case KibanaIndexRule.name => Some(KibanaIndexRuleDecoder)
+      case KibanaTemplateIndexRule.name => Some(KibanaTemplateIndexRuleDecoder)
       case LocalHostsRule.name => Some(new LocalHostsRuleDecoder)
       case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
       case MethodsRule.name => Some(MethodsRuleDecoder)
-      case RepositoriesRule.name => Some(new RepositoriesRuleDecoder)
+      case RepositoriesRule.name => Some(RepositoriesRuleDecoder)
       case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder())
-      case SnapshotsRule.name => Some(new SnapshotsRuleDecoder)
-      case UriRegexRule.name => Some(new UriRegexRuleDecoder)
+      case SnapshotsRule.name => Some(SnapshotsRuleDecoder)
+      case UriRegexRule.name => Some(UriRegexRuleDecoder)
       case UsersRule.name => Some(new UsersRuleDecoder()(caseMappingEquality))
-      case XForwardedForRule.name => Some(new XForwardedForRuleDecoder)
+      case XForwardedForRule.name => Some(XForwardedForRuleDecoder)
+      case _ => usersDefinitionsAllowedRulesDecoderBy(
+        name,
+        definitions.authenticationServices,
+        definitions.authorizationServices,
+        definitions.proxies,
+        definitions.jwts,
+        definitions.rorKbns,
+        definitions.ldaps,
+        Some(definitions.impersonators),
+        caseMappingEquality
+      ) map(_.asInstanceOf[RuleBaseDecoder[_ <: Rule] with RuleDecoder[_ <: Rule]])
+    }
+  }
+
+  def usersDefinitionsAllowedRulesDecoderBy(name: Rule.Name,
+                                            authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                                            authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+                                            authProxyDefinitions: Definitions[ProxyAuth],
+                                            jwtDefinitions: Definitions[JwtDef],
+                                            rorKbnDefinitions: Definitions[RorKbnDef],
+                                            ldapServiceDefinitions: Definitions[LdapService],
+                                            impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+                                            caseMappingEquality: UserIdCaseMappingEquality): Option[RuleDecoder[_ <: Rule]] = {
+    name match {
+      case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, caseMappingEquality))
+      case LdapAuthorizationRule.name => Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions))
+      case LdapAuthRule.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
+      case RorKbnAuthRule.name => Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, caseMappingEquality))
       case _ =>
         authenticationRuleDecoderBy(
           name,
-          definitions.authenticationServices,
-          definitions.proxies,
-          definitions.jwts,
-          definitions.ldaps,
-          definitions.rorKbns,
-          Some(definitions.impersonators),
+          authenticationServiceDefinitions,
+          authProxyDefinitions,
+          jwtDefinitions,
+          ldapServiceDefinitions,
+          rorKbnDefinitions,
+          impersonatorsDefinitions,
           caseMappingEquality
-        ) map (_.toRuleBaseDecoder)
+        )  map(_.asInstanceOf[RuleDecoder[_ <: Rule]])
     }
   }
 
@@ -88,7 +113,7 @@ object ruleDecoders {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   rorKbnDefinitions: Definitions[RorKbnDef],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
-                                  caseMappingEquality: UserIdCaseMappingEquality): Option[AuthenticationRuleBaseDecoder[_ <: AuthenticationRule]] = {
+                                  caseMappingEquality: UserIdCaseMappingEquality): Option[AuthenticationRuleDecoder[_ <: AuthenticationRule]] = {
     name match {
       case AuthKeyRule.name => Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
       case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
@@ -98,10 +123,8 @@ object ruleDecoders {
       case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
       case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, caseMappingEquality))
       case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
-      case LdapAuthRule.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
       case LdapAuthenticationRule.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
       case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions, caseMappingEquality))
-      case RorKbnAuthRule.name => Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, caseMappingEquality))
       case _ => None
     }
   }

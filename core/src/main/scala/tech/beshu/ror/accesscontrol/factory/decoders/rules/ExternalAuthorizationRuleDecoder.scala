@@ -42,13 +42,13 @@ import scala.concurrent.duration.FiniteDuration
 
 class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
                                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
-    ExternalAuthorizationRuleDecoder
-      .settingsDecoder(authorizationServices, caseMappingEquality)
-      .map(settings => RuleWithVariableUsageDefinition.create(new ExternalAuthorizationRule(settings, caseMappingEquality)))
-  )
+  extends AuthorizationRuleDecoder[ExternalAuthorizationRule]
+    with RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
 
-object ExternalAuthorizationRuleDecoder {
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ExternalAuthorizationRule]] = {
+    settingsDecoder(authorizationServices, caseMappingEquality)
+      .map(settings => RuleWithVariableUsageDefinition.create(new ExternalAuthorizationRule(settings, caseMappingEquality)))
+  }
 
   private def settingsDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
                               caseMappingEquality: UserIdCaseMappingEquality): Decoder[ExternalAuthorizationRule.Settings] = {

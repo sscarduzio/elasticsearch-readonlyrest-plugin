@@ -28,58 +28,106 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.EligibleUsers.Instances._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.AuthenticationRuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.StringWiseSplitter
 import tech.beshu.ror.utils.StringWiseSplitter._
 
 class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields(
+  extends AuthenticationRuleDecoder[AuthKeyRule]
+    with RuleDecoderWithoutAssociatedFields[AuthKeyRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeyRule]] = {
     AuthKeyDecodersHelper
       .plainTextCredentialsDecoder
-      .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeyRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)))
-  )
+      .map(settings =>
+        RuleWithVariableUsageDefinition.create(
+          new AuthKeyRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+        )
+      )
+  }
+}
 
 class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields(
+  extends AuthenticationRuleDecoder[AuthKeySha1Rule]
+    with RuleDecoderWithoutAssociatedFields[AuthKeySha1Rule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeySha1Rule]] = {
     AuthKeyDecodersHelper
       .hashedCredentialsDecoder
-      .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeySha1Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)))
-  )
+      .map(settings =>
+        RuleWithVariableUsageDefinition.create(
+          new AuthKeySha1Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+        )
+      )
+  }
+}
 
 class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields(
+  extends AuthenticationRuleDecoder[AuthKeySha256Rule]
+    with RuleDecoderWithoutAssociatedFields[AuthKeySha256Rule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeySha256Rule]] = {
     AuthKeyDecodersHelper
       .hashedCredentialsDecoder
-      .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeySha256Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)))
-  )
+      .map(settings =>
+        RuleWithVariableUsageDefinition.create(
+          new AuthKeySha256Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+        )
+      )
+  }
+}
 
 class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields(
+  extends AuthenticationRuleDecoder[AuthKeySha512Rule]
+    with RuleDecoderWithoutAssociatedFields[AuthKeySha512Rule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeySha512Rule]] = {
     AuthKeyDecodersHelper
       .hashedCredentialsDecoder
-      .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeySha512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)))
-  )
+      .map(settings =>
+        RuleWithVariableUsageDefinition.create(
+          new AuthKeySha512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+        )
+      )
+  }
+}
 
 class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields(
+  extends AuthenticationRuleDecoder[AuthKeyPBKDF2WithHmacSHA512Rule]
+    with RuleDecoderWithoutAssociatedFields[AuthKeyPBKDF2WithHmacSHA512Rule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeyPBKDF2WithHmacSHA512Rule]] = {
     AuthKeyDecodersHelper
       .hashedCredentialsDecoder
-      .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeyPBKDF2WithHmacSHA512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)))
-  )
+      .map(settings =>
+        RuleWithVariableUsageDefinition.create(
+          new AuthKeyPBKDF2WithHmacSHA512Rule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+        )
+      )
+  }
+}
 
 class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoderWithoutAssociatedFields(
+  extends AuthenticationRuleDecoder[AuthKeyUnixRule]
+    with RuleDecoderWithoutAssociatedFields[AuthKeyUnixRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeyUnixRule]] = {
     AuthKeyDecodersHelper
       .unixHashedCredentialsDecoder
-      .map(settings => RuleWithVariableUsageDefinition.create(new AuthKeyUnixRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)))
-  )
+      .map(settings =>
+        RuleWithVariableUsageDefinition.create(
+          new AuthKeyUnixRule(settings, impersonatorsDef.map(_.items).getOrElse(Nil), caseMappingEquality)
+        )
+      )
+  }
+}
 
 private object AuthKeyDecodersHelper {
   val hashedCredentialsDecoder: Decoder[BasicAuthenticationRule.Settings[AuthKeyHashingRule.HashedCredentials]] =

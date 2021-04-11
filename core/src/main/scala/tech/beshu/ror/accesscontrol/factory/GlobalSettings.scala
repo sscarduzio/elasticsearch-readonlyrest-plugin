@@ -23,8 +23,7 @@ final case class GlobalSettings(showBasicAuthPrompt: Boolean,
                                 flsEngine: GlobalSettings.FlsEngine,
                                 configurationIndex: RorConfigurationIndex,
                                 usernameCaseMapping: GlobalSettings.UsernameCaseMapping,
-                                indexAuditTemplate: Option[RorAuditIndexTemplate],
-                               )
+                                indexAuditTemplate: Option[RorAuditIndexTemplate])
 
 object GlobalSettings {
   sealed trait UsernameCaseMapping

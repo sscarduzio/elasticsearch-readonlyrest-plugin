@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
+import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.ResponseFieldsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
@@ -23,18 +24,22 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseField}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
 
-object ResponseFieldsRuleDecoder extends RuleDecoderWithoutAssociatedFields(ResponseFieldsRuleDecoderHelper.fieldsRuleDecoder)
-
-private object ResponseFieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
+object ResponseFieldsRuleDecoder
+  extends RegularRuleDecoder[ResponseFieldsRule]
+    with RuleDecoderWithoutAssociatedFields[ResponseFieldsRule]
+    with FieldsRuleLikeDecoderHelperBase{
 
   private implicit val convertible: Convertible[ResponseField] = AlwaysRightConvertible.from(ResponseField.apply)
 
   implicit val accessModeConverter: AccessModeConverter[AccessMode] =
     AccessModeConverter.create(whitelistElement = AccessMode.Whitelist, blacklistElement = AccessMode.Blacklist)
 
-  val fieldsRuleDecoder = for {
-    configuredFields <- configuredFieldsDecoder
-    accessMode <- accessModeDecoder[AccessMode](configuredFields)
-    documentFields <- documentFieldsDecoder[ResponseField](configuredFields, Set.empty)
-  } yield RuleWithVariableUsageDefinition.create(new ResponseFieldsRule(ResponseFieldsRule.Settings(documentFields, accessMode)))
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ResponseFieldsRule]] = {
+    for {
+      configuredFields <- configuredFieldsDecoder
+      accessMode <- accessModeDecoder[AccessMode](configuredFields)
+      documentFields <- documentFieldsDecoder[ResponseField](configuredFields, Set.empty)
+    } yield RuleWithVariableUsageDefinition.create(new ResponseFieldsRule(ResponseFieldsRule.Settings(documentFields, accessMode)))
+
+  }
 }
