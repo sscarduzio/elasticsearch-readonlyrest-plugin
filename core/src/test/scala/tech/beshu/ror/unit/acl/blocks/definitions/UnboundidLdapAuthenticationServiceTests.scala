@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.unit.acl.blocks.definitions
 
-import eu.timepit.refined.auto._
 import cats.data._
 import com.dimafeng.testcontainers.{Container, ForAllTestContainer, MultipleContainers}
 import com.unboundid.ldap.sdk.LDAPSearchException
@@ -28,13 +27,13 @@ import monix.execution.exceptions.ExecutionRejectedException
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, Inside}
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CircuitBreakerLdapAuthenticationServiceDecorator, Dn, LdapAuthenticationService}
+import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod, HaMethod, LdapHost}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations._
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CircuitBreakerLdapAuthenticationServiceDecorator, Dn, LdapAuthenticationService}
 import tech.beshu.ror.accesscontrol.domain.{PlainTextSecret, User}
 import tech.beshu.ror.utils.ScalaOps.repeat
-import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.containers.{LdapContainer, ToxiproxyContainer}
 
 import scala.concurrent.duration._
@@ -207,8 +206,9 @@ class UnboundidLdapAuthenticationServiceTests
   private def createCircuitBreakerDecoratedSimpleAuthenticationService() = {
     new CircuitBreakerLdapAuthenticationServiceDecorator(
       createSimpleAuthenticationService(),
-      maxFailures = 2,
-      resetDuration = Refined.unsafeApply(0.5 second)
+      CircuitBreakerConfig(
+        maxFailures = Refined.unsafeApply(2),
+        resetDuration = Refined.unsafeApply(0.5 second))
     )
   }
 

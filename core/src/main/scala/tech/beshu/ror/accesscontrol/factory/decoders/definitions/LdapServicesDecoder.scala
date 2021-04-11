@@ -25,6 +25,7 @@ import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
@@ -80,15 +81,15 @@ object LdapServicesDecoder {
       authortizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
       circuitBreakerSettings <- AsyncDecoderCreator.from(circuitBreakerDecoder)(cursor)
     } yield (authenticationService, authortizationService, circuitBreakerSettings) match {
-      case (Right(authn), Right(authz), Right(CircuitBreakerConfig(maxFailures, resetTimeout))) => Right {
+      case (Right(authn), Right(authz), Right(circuitBreakerConfig)) => Right {
         new CircuitBreakerLdapServiceDecorator(
-          new ComposedLdapAuthService(authn.id, authn, authz), maxFailures, resetTimeout
+          new ComposedLdapAuthService(authn.id, authn, authz), circuitBreakerConfig
         )
       }
-      case (Right(authn), _, Right(CircuitBreakerConfig(maxFailures, resetTimeout))) =>
-        Right(new CircuitBreakerLdapAuthenticationServiceDecorator(authn, maxFailures, resetTimeout))
-      case (_, Right(authz), Right(CircuitBreakerConfig(maxFailures, resetTimeout))) =>
-        Right(new CircuitBreakerLdapAuthorizationServiceDecorator(authz, maxFailures, resetTimeout))
+      case (Right(authn), _, Right(circuitBreakerConfig)) =>
+        Right(new CircuitBreakerLdapAuthenticationServiceDecorator(authn, circuitBreakerConfig))
+      case (_, Right(authz), Right(circuitBreakerConfig)) =>
+        Right(new CircuitBreakerLdapAuthorizationServiceDecorator(authz, circuitBreakerConfig))
       case (error@Left(_), _, _) => error
       case (_, _, Left(error)) => Left(error)
     }
@@ -236,6 +237,10 @@ object LdapServicesDecoder {
         if (circuitBreaker.failed) {
           Right(DEFAULT_CIRCUIT_BREAKER_CONFIG)
         } else {
+//          for {
+//            maxRetries <- circuitBreaker.downField("max_retries").as[Int Refined Positive]
+//            resetDuration <- circuitBreaker.downField("reset_duration").or circuitBreaker.downFields("reset_duration", "reset_duration_in_sec").as[FiniteDuration Refined Positive]
+//          }
           val decoder = Decoder.forProduct2("max_retries", "reset_duration")(CircuitBreakerConfig.apply)
           decoder.tryDecode(circuitBreaker)
         }
