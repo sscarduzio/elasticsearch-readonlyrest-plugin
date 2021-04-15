@@ -24,7 +24,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -45,7 +45,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
     with NoImpersonationSupport
     with Logging {
 
-  override val name: Rule.Name = JwtAuthRule.name
+  override val name: Rule.Name = JwtAuthRule.Name.name
 
   private val parser =
     settings.jwt.checkMethod match {
@@ -189,7 +189,10 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 }
 
 object JwtAuthRule {
-  val name = Rule.Name("jwt_auth")
+
+  implicit case object Name extends RuleName[JwtAuthRule] {
+    override val name = Rule.Name("jwt_auth")
+  }
 
   final case class Settings(jwt: JwtDef, groups: UniqueList[Group])
 

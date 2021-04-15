@@ -22,12 +22,12 @@ import com.softwaremill.sttp.Method
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.MethodsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 
 class MethodsRule(val settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = MethodsRule.name
+  override val name: Rule.Name = MethodsRule.Name.name
 
   /*
     NB: Elasticsearch will parse as GET any HTTP methods that it does not understand.
@@ -42,6 +42,10 @@ class MethodsRule(val settings: Settings)
 }
 
 object MethodsRule {
-  val name = Rule.Name("methods")
+
+  implicit case object Name extends RuleName[MethodsRule] {
+    override val name = Rule.Name("methods")
+  }
+
   final case class Settings(methods: NonEmptySet[Method])
 }

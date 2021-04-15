@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, NoImpersonationSupport, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -40,7 +40,7 @@ final class GroupsRule(val settings: Settings,
     with NoImpersonationSupport
     with Logging {
 
-  override val name: Rule.Name = GroupsRule.name
+  override val name: Rule.Name = GroupsRule.Name.name
 
   private val matchers = settings
     .usersDefinitions.toList
@@ -144,7 +144,10 @@ final class GroupsRule(val settings: Settings,
 }
 
 object GroupsRule {
-  val name = Rule.Name("groups")
+
+  implicit case object Name extends RuleName[GroupsRule] {
+    override val name = Rule.Name("groups")
+  }
 
   final case class Settings(groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]],
                             usersDefinitions: NonEmptyList[UserDef])

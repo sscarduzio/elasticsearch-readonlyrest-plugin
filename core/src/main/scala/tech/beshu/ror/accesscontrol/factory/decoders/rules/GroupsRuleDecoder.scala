@@ -28,14 +28,15 @@ import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRuleDecoder[GroupsRule]
-    with RuleDecoderWithoutAssociatedFields[GroupsRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[GroupsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[GroupsRule]] = {
     DecoderHelpers
@@ -47,7 +48,7 @@ class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
           case Some(userDefs) =>
             Right(RuleWithVariableUsageDefinition.create(new GroupsRule(GroupsRule.Settings(groups, userDefs), caseMappingEquality)))
           case None =>
-            Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.name.show}` requires them.")))
+            Left(RulesLevelCreationError(Message(s"No user definitions was defined. Rule `${GroupsRule.Name.show}` requires them.")))
         }
       }
       .decoder

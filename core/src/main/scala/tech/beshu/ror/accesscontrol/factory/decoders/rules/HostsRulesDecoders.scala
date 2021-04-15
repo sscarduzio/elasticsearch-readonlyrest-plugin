@@ -20,19 +20,20 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
-import tech.beshu.ror.accesscontrol.blocks.rules.{HostsRule, LocalHostsRule, Rule}
+import tech.beshu.ror.accesscontrol.blocks.rules.{HostsRule, LocalHostsRule}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.HostRulesDecodersHelper._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleBaseDecoderWithAssociatedFields, RuleBaseDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
+import HostsRule._
 
 object HostsRuleDecoder
   extends RegularRuleDecoder[HostsRule]
-    with RuleDecoderWithAssociatedFields[HostsRule, Boolean] {
+    with RuleBaseDecoderWithAssociatedFields[HostsRule, Boolean] {
 
   override def ruleDecoderCreator: Boolean => Decoder[RuleWithVariableUsageDefinition[HostsRule]] =
     acceptXForwardedFor =>
@@ -48,13 +49,11 @@ object HostsRuleDecoder
   override val associatedFieldsDecoder: Decoder[Boolean] =
     Decoder.instance(_.downField("accept_x-forwarded-for_header").as[Boolean])
       .or(Decoder.const(defaultAcceptForwardedForHeader))
-
-  override def ruleName: Rule.Name = ???
 }
 
 class LocalHostsRuleDecoder
   extends RegularRuleDecoder[LocalHostsRule]
-    with RuleDecoderWithoutAssociatedFields[LocalHostsRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[LocalHostsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LocalHostsRule]] = {
     DecoderHelpers

@@ -31,7 +31,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.IndicesDecodersHelper._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RepositoriesDecodersHelper._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.SnapshotDecodersHelper._
 import tech.beshu.ror.accesscontrol.matchers.RandomBasedUniqueIdentifierGenerator
 import tech.beshu.ror.accesscontrol.orders._
@@ -40,7 +40,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 object IndicesRuleDecoders
   extends RegularRuleDecoder[IndicesRule]
-    with RuleDecoderWithoutAssociatedFields[IndicesRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[IndicesRule]] = {
     IndicesRuleDecoders.indicesRuleSimpleDecoder
@@ -84,7 +84,7 @@ object IndicesRuleDecoders
 
 object SnapshotsRuleDecoder
   extends RegularRuleDecoder[SnapshotsRule]
-    with RuleDecoderWithoutAssociatedFields[SnapshotsRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[SnapshotsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[SnapshotsRule]] = {
     DecoderHelpers
@@ -92,9 +92,9 @@ object SnapshotsRuleDecoder
       .toSyncDecoder
       .emapE { snapshots =>
         if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.all))
-          Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - snapshot ${SnapshotName.all.show}")))
+          Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.Name.show}) that matches all the values is redundant - snapshot ${SnapshotName.all.show}")))
         else if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.wildcard))
-          Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.name.show}) that matches all the values is redundant - snapshot ${SnapshotName.wildcard.show}")))
+          Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.Name.show}) that matches all the values is redundant - snapshot ${SnapshotName.wildcard.show}")))
         else
           Right(snapshots)
       }
@@ -105,7 +105,7 @@ object SnapshotsRuleDecoder
 
 object RepositoriesRuleDecoder
   extends RegularRuleDecoder[RepositoriesRule]
-    with RuleDecoderWithoutAssociatedFields[RepositoriesRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[RepositoriesRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[RepositoriesRule]] = {
     DecoderHelpers
@@ -113,9 +113,9 @@ object RepositoriesRuleDecoder
       .toSyncDecoder
       .emapE { repositories =>
         if (checkIfAlreadyResolvedRepositoryVariableContains(repositories, RepositoryName.all))
-          Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - repository ${RepositoryName.all.show}")))
+          Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.Name.show}) that matches all the values is redundant - repository ${RepositoryName.all.show}")))
         else if (checkIfAlreadyResolvedRepositoryVariableContains(repositories, RepositoryName.wildcard))
-          Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.name.show}) that matches all the values is redundant - repository ${RepositoryName.wildcard.show}")))
+          Left(RulesLevelCreationError(Message(s"Setting up a rule (${RepositoriesRule.Name.show}) that matches all the values is redundant - repository ${RepositoryName.wildcard.show}")))
         else
           Right(repositories)
       }

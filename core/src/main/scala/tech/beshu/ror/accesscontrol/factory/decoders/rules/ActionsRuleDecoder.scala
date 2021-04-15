@@ -20,13 +20,13 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.domain.Action
 import tech.beshu.ror.accesscontrol.blocks.rules.ActionsRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 
 object ActionsRuleDecoder
   extends RegularRuleDecoder[ActionsRule]
-    with RuleDecoderWithoutAssociatedFields[ActionsRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[ActionsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ActionsRule]] = {
     DecoderHelpers

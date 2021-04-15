@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthorizationServicesDecoder._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -43,7 +43,7 @@ import scala.concurrent.duration.FiniteDuration
 class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
                                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthorizationRuleDecoder[ExternalAuthorizationRule]
-    with RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ExternalAuthorizationRule]] = {
     settingsDecoder(authorizationServices, caseMappingEquality)

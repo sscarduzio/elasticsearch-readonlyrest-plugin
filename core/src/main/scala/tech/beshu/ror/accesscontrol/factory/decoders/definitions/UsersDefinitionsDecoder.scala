@@ -20,12 +20,13 @@ import java.time.Clock
 
 import cats.Id
 import cats.implicits._
-import io.circe.{ACursor, DecodingFailure}
+import io.circe.{ACursor, Decoder, DecodingFailure}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.{GroupsRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
 import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
@@ -62,8 +63,7 @@ object UsersDefinitionsDecoder {
           for {
             usernamePatterns <- c.downField(usernameKey).as[UniqueNonEmptyList[UserIdPattern]].map(UserIdPatterns.apply)
             groups <- c.downField(groupsKey).as[UniqueNonEmptyList[Group]]
-            mode <- decodeMode(
-              c.withoutKeys(Set(usernameKey, groupsKey)),
+            modeDecoder = createModeDecoder(
               usernamePatterns,
               authenticationServiceDefinitions,
               authorizationServiceDefinitions,
@@ -74,27 +74,27 @@ object UsersDefinitionsDecoder {
               impersonatorsDefinitions,
               caseMappingEquality
             )
+            mode <- modeDecoder.tryDecode(c.withoutKeys(Set(usernameKey, groupsKey)))
           } yield UserDef(usernamePatterns, groups, mode)
         }
         .withError(DefinitionsLevelCreationError.apply, Message("User definition malformed"))
     DefinitionsBaseDecoder.instance[Id, UserDef]("users")
   }
 
-  private def decodeMode(cursor: ACursor,
-                         usernamePatterns: UserIdPatterns,
-                         authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                         authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
-                         authProxyDefinitions: Definitions[ProxyAuth],
-                         jwtDefinitions: Definitions[JwtDef],
-                         rorKbnDefinitions: Definitions[RorKbnDef],
-                         ldapServiceDefinitions: Definitions[LdapService],
-                         impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
-                         caseMappingEquality: UserIdCaseMappingEquality)
-                        (implicit clock: Clock,
-                         uuidProvider: UuidProvider): Either[DecodingFailure, UserDef.Mode] = {
-    type DecodedRules = List[RuleDecoder[_ <: Rule]]
-    val ruleNames = cursor.keys.toList.flatten.map(Rule.Name.apply)
-    val decodedRules = ruleNames.foldLeft(Either.right[Message, DecodedRules](List.empty)) {
+  private def createModeDecoder(usernamePatterns: UserIdPatterns,
+                          authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                          authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+                          authProxyDefinitions: Definitions[ProxyAuth],
+                          jwtDefinitions: Definitions[JwtDef],
+                          rorKbnDefinitions: Definitions[RorKbnDef],
+                          ldapServiceDefinitions: Definitions[LdapService],
+                          impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+                          caseMappingEquality: UserIdCaseMappingEquality)
+                         (implicit clock: Clock,
+                          uuidProvider: UuidProvider): Decoder[UserDef.Mode] = Decoder.instance { c =>
+    type RuleDecoders = List[RuleDecoder[Rule]]
+    val ruleNames = c.keys.toList.flatten.map(Rule.Name.apply)
+    val ruleDecoders = ruleNames.foldLeft(Either.right[Message, RuleDecoders](List.empty)) {
       case (failure@Left(_), _) => failure
       case (Right(decoders), ruleName) =>
         usersDefinitionsAllowedRulesDecoderBy(
@@ -112,96 +112,94 @@ object UsersDefinitionsDecoder {
           case None => Left(Message(s"Unknown rule '${ruleName.show}' in users definitions section"))
         }
     }
-    val decodedUserModes = decodedRules match {
-      case Right(Nil) =>
-        failedDecoder(Message(s"No authentication method defined for [${usernamePatterns.show}] in users definition section"))
-      case Right(first :: Nil) =>
-        oneRuleModeFrom(first)
-      case Right(first :: second :: Nil) =>
-        twoRulesModeFrom(first, second)
-      case Right(moreThanTwoRules) =>
-        val ruleNamesStr = moreThanTwoRules.map(_.ruleName.show).mkString(",")
-        failedDecoder(Message(s"Two many rules defined for [${usernamePatterns.show}] in users definition section: $ruleNamesStr"))
-      case Left(errorMsg) =>
-        failedDecoder(errorMsg)
-    }
-    decodedUserModes.tryDecode(cursor)
-  }
-
-  private def oneRuleModeFrom(ruleDecoder: RuleDecoder[_]) = ruleDecoder match {
-    case d: GroupsRuleDecoder =>
-      failedDecoder(Message(s"Cannot use '${d.ruleName.show}' rule in users definition section"))
-    case d: AuthRuleDecoder[_] =>
-      userDefModeFrom(d)
-    case d: AuthenticationRuleDecoder[_] =>
-      userDefModeFrom(d)
-    case other =>
-      failedDecoder(Message(s"Cannot use '${other.ruleName.show}' rule in users definition section"))
-  }
-
-  private def twoRulesModeFrom(rule1Decoder: RuleDecoder[_ <: Rule],
-                               rule2Decoder: RuleDecoder[_ <: Rule]) =
-    (rule1Decoder, rule2Decoder) match {
-      case (d1: AuthRuleDecoder[_], d2: AuthenticationRuleDecoder[_]) =>
-        errorFor(d1, d2)
-      case (d1: AuthRuleDecoder[_], d2: AuthorizationRuleDecoder[_]) =>
-        errorFor(d1, d2)
-      case (d1: AuthenticationRuleDecoder[_], d2: AuthRuleDecoder[_]) =>
-        errorFor(d2, d1)
-      case (d1: AuthorizationRuleDecoder[_], d2: AuthRuleDecoder[_]) =>
-        errorFor(d2, d1)
-      case (d1: AuthenticationRuleDecoder[_], d2: AuthorizationRuleDecoder[_]) =>
-        userDefModeFrom(d1, d2)
-      case (d1: AuthorizationRuleDecoder[_], d2: AuthenticationRuleDecoder[_]) =>
-        userDefModeFrom(d2, d1)
-      case (d1, d2) =>
-        errorFor(d1, d2)
-    }
-
-  private def userDefModeFrom(d: AuthenticationRuleDecoder[_ <: AuthenticationRule]) = {
-    d.map(r => UserDef.Mode.WithoutGroupsMapping(r.rule))
-  }
-
-  private def userDefModeFrom(d: AuthRuleDecoder[_ <: AuthRule]) = {
-    d.map(r => UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r.rule)))
-  }
-
-  private def userDefModeFrom(d1: AuthenticationRuleDecoder[_ <: AuthenticationRule],
-                              d2: AuthorizationRuleDecoder[_ <: AuthorizationRule]) = {
-    d1.flatMap { r1 =>
-      d2.map { r2 =>
-        UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r1.rule, r2.rule))
+    ruleDecoders
+      .left.map(error => DecodingFailureOps.fromError(DefinitionsLevelCreationError(error)))
+      .flatMap { decoders =>
+        val emptyAcc: (ACursor, Decoder.Result[List[Rule]]) = (c, Right(List.empty))
+        decoders
+          .foldLeft(emptyAcc) {
+            case ((modifiedCursor, left@Left(_)), _) =>
+              (modifiedCursor, left)
+            case ((modifiedCursor, Right(rules)), decoder) =>
+              decoder.apply(c) match {
+                case Right(RuleDecoder.Result(ruleWithVariableUsage, unconsumedCursor)) =>
+                  (unconsumedCursor, Right(ruleWithVariableUsage.rule :: rules))
+                case Left(failure) =>
+                  (modifiedCursor, Left(failure))
+              }
+          }
+          .sequence
       }
+      .map { case (_, rules) => rules }
+      .flatMap {
+        case Nil =>
+          failure(Message(s"No authentication method defined for [${usernamePatterns.show}] in users definition section"))
+        case first :: Nil =>
+          oneRuleModeFrom(first)
+        case first :: second :: Nil =>
+          twoRulesModeFrom(first, second)
+        case moreThanTwoRules =>
+          val ruleNamesStr = moreThanTwoRules.map(_.name.show).mkString(",")
+          failure(Message(s"Two many rules defined for [${usernamePatterns.show}] in users definition section: $ruleNamesStr"))
+      }
+  }
+
+  private def oneRuleModeFrom(rule: Rule): Either[DecodingFailure, Mode] = rule match {
+    case _: GroupsRule =>
+      failure(Message(s"Cannot use '${rule.name.show}' rule in users definition section"))
+    case r: AuthRule =>
+      UserDef.Mode.WithGroupsMapping(Auth.SingleRule(r)).asRight
+    case r: AuthenticationRule =>
+      UserDef.Mode.WithoutGroupsMapping(r).asRight
+    case other =>
+      failure(Message(s"Cannot use '${other.name.show}' rule in users definition section"))
+  }
+
+  private def twoRulesModeFrom(rule1: Rule, rule2: Rule): Either[DecodingFailure, Mode] =
+    (rule1, rule2) match {
+      case (r1: AuthRule, r2: AuthenticationRule) =>
+        errorFor(r1, r2)
+      case (r1: AuthRule, r2: AuthorizationRule) =>
+        errorFor(r1, r2)
+      case (r1: AuthenticationRule, r2: AuthRule) =>
+        errorFor(r2, r1)
+      case (r1: AuthorizationRule, r2: AuthRule) =>
+        errorFor(r2, r1)
+      case (r1: AuthenticationRule, r2: AuthorizationRule) =>
+        UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r1, r2)).asRight
+      case (r1: AuthorizationRule, r2: AuthenticationRule) =>
+        UserDef.Mode.WithGroupsMapping(Auth.SeparateRules(r2, r1)).asRight
+      case (r1, r2) =>
+        errorFor(r1, r2)
     }
-  }
 
-  private def errorFor(authRuleDecoder: RuleDecoder[_], authenticationRuleDecoder: AuthenticationRuleDecoder[_]) = {
-    failedDecoder(Message(
+  private def errorFor(authRule: Rule, authenticationRule: AuthenticationRule) = {
+    failure(Message(
       s"""Users definition section external groups mapping feature allows for single rule with authentication
-         | and authorization or two rules which handle authentication and authorization separately. '${authRuleDecoder.ruleName.show}'
-         | is an authentication with authorization rule and '${authenticationRuleDecoder.ruleName.show}' is and authentication only rule.
+         | and authorization or two rules which handle authentication and authorization separately. '${authRule.name.show}'
+         | is an authentication with authorization rule and '${authenticationRule.name.show}' is and authentication only rule.
          | Cannot use them both in this context.""".stripMargin
     ))
   }
 
-  private def errorFor(authRule: RuleDecoder[_], authorizationRuleDecoder: AuthorizationRuleDecoder[_]) = {
-    failedDecoder(Message(
+  private def errorFor(authRule: Rule, authorizationRule: AuthorizationRule) = {
+    failure(Message(
       s"""Users definition section external groups mapping feature allows for single rule with authentication
-         | and authorization or two rules which handle authentication and authorization separately. '${authRule.ruleName.show}'
-         | is an authentication with authorization rule and '${authorizationRuleDecoder.ruleName.show}' is and authorization only rule.
+         | and authorization or two rules which handle authentication and authorization separately. '${authRule.name.show}'
+         | is an authentication with authorization rule and '${authorizationRule.name.show}' is and authorization only rule.
          | Cannot use them both in this context.""".stripMargin
     ))
   }
 
-  private def errorFor(rule1Decoder: RuleDecoder[_], rule2Decoder: RuleDecoder[_]) = {
-    failedDecoder(Message(
+  private def errorFor(rule1: Rule, rule2: Rule) = {
+    failure(Message(
       s"""Users definition section external groups mapping feature allows for single rule with authentication
-         | and authorization or two rules which handle authentication and authorization separately. '${rule1Decoder.ruleName.show}'
-         | and '${rule2Decoder.ruleName.show}' should be authentication and authorization rules""".stripMargin
+         | and authorization or two rules which handle authentication and authorization separately. '${rule1.name.show}'
+         | and '${rule2.name.show}' should be authentication and authorization rules""".stripMargin
     ))
   }
 
-  private def failedDecoder(msg: Message) = {
-    DecoderHelpers.failed[UserDef.Mode](DefinitionsLevelCreationError(msg))
+  private def failure(msg: Message) = {
+    Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg)))
   }
 }

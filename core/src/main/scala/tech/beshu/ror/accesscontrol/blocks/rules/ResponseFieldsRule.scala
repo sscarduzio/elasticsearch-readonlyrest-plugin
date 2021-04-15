@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.ResponseFieldsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, FilteredResponseFields}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering._
@@ -28,7 +28,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 class ResponseFieldsRule(val settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = ResponseFieldsRule.name
+  override val name: Rule.Name = ResponseFieldsRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     val maybeResolvedFields = resolveAll(settings.responseFields.toNonEmptyList, blockContext)
@@ -42,7 +42,10 @@ class ResponseFieldsRule(val settings: Settings)
 }
 
 object ResponseFieldsRule {
-  val name = Rule.Name("response_fields")
+
+  implicit case object Name extends RuleName[ResponseFieldsRule] {
+    override val name = Rule.Name("response_fields")
+  }
 
   final case class Settings(responseFields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[ResponseField]],
                             accessMode: AccessMode)

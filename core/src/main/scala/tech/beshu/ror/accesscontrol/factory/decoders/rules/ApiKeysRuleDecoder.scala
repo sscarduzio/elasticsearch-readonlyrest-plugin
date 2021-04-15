@@ -20,13 +20,13 @@ import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.ApiKeysRule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.ApiKey
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 
 object ApiKeysRuleDecoder
   extends RegularRuleDecoder[ApiKeysRule]
-  with RuleDecoderWithoutAssociatedFields[ApiKeysRule] {
+  with RuleBaseDecoderWithoutAssociatedFields[ApiKeysRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ApiKeysRule]] = {
     DecoderHelpers

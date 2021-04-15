@@ -32,14 +32,14 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.KibanaRulesDecoderHelper.kibanaIndexDecoder
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleBaseDecoderWithAssociatedFields, RuleBaseDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 object KibanaHideAppsRuleDecoder
   extends RegularRuleDecoder[KibanaHideAppsRule]
-    with RuleDecoderWithoutAssociatedFields[KibanaHideAppsRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[KibanaHideAppsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaHideAppsRule]] = {
     DecoderHelpers
@@ -50,7 +50,7 @@ object KibanaHideAppsRuleDecoder
 
 object KibanaIndexRuleDecoder
   extends RegularRuleDecoder[KibanaIndexRule]
-    with RuleDecoderWithoutAssociatedFields[KibanaIndexRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[KibanaIndexRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaIndexRule]] = {
     KibanaRulesDecoderHelper
@@ -63,7 +63,7 @@ object KibanaIndexRuleDecoder
 
 object KibanaTemplateIndexRuleDecoder
   extends RegularRuleDecoder[KibanaTemplateIndexRule]
-    with RuleDecoderWithoutAssociatedFields[KibanaTemplateIndexRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[KibanaTemplateIndexRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaTemplateIndexRule]] = {
     KibanaRulesDecoderHelper
@@ -76,7 +76,7 @@ object KibanaTemplateIndexRuleDecoder
 
 class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
   extends RegularRuleDecoder[KibanaAccessRule]
-    with RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]] {
+    with RuleBaseDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]] {
 
   override def ruleDecoderCreator: RuntimeSingleResolvableVariable[IndexName] => Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
     kibanaIndexName =>

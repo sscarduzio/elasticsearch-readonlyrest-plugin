@@ -286,7 +286,7 @@ object CirceOps {
     def stringify(error: AclCreationError): String = Encoder[AclCreationError].apply(error).noSpaces
   }
 
-  implicit class HCursorOps(val value: HCursor) extends AnyVal {
+  implicit class ACursorOps[C <: ACursor](val value: C) extends AnyVal {
     def downFields(field: String, fields: String*): ACursor = {
       fields.toList.foldLeft(value.downField(field)) {
         case (_: FailedCursor, nextField) => value.downField(nextField)
@@ -308,9 +308,10 @@ object CirceOps {
     def withoutKeys(keys: Set[String]): ACursor = {
       value.withFocus(_.mapObject(_.filterKeys(key => !keys.contains(key))))
     }
-  }
 
-  implicit class ACursorOps(val value: ACursor) extends AnyVal {
+    def withKeysOnly(keys: Set[String]): ACursor = {
+      value.withFocus(_.mapObject(_.filterKeys(key => keys.contains(key))))
+    }
 
     def asWithError[T: Decoder](error: String): Decoder.Result[T] =
       value
@@ -318,63 +319,66 @@ object CirceOps {
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
 
-    def tryDecodeAuthRule(userIdPatterns: UserIdPatterns,
-                          caseMappingEquality: UserIdCaseMappingEquality)
-                         (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                          authProxyDefinitions: Definitions[ProxyAuth],
-                          jwtDefinitions: Definitions[JwtDef],
-                          ldapDefinitions: Definitions[LdapService],
-                          rorKbnDefinitions: Definitions[RorKbnDef],
-                          impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]): Either[Message, RuleWithVariableUsageDefinition[AuthenticationRule]] = {
-      value.keys.map(_.toList) match {
-        case None | Some(Nil) =>
-          Left(Message(s"No authentication method defined for [${userIdPatterns.show}]"))
-        case Some(key :: Nil) =>
-          authenticationRuleDecoderBy(
-            Rule.Name(key),
-            authenticationServiceDefinitions,
-            authProxyDefinitions,
-            jwtDefinitions,
-            ldapDefinitions,
-            rorKbnDefinitions,
-            impersonatorsDefinitions,
-            caseMappingEquality
-          ) match {
-            case Some(decoder) =>
-              tryDecodeUsingAuthenticationDecoder(
-                key,
-                decoder,
-                userIdPatterns,
-                caseMappingEquality
-              )
-            case None =>
-              Left(Message(s"Rule $key is not authentication rule"))
-          }
-        case Some(keys) =>
-          Left(Message(s"Only one authentication should be defined for [${userIdPatterns.show}]. Found ${keys.mkString(", ")}"))
-      }
-    }
+    // todo: remove?
 
-    private def tryDecodeUsingAuthenticationDecoder[A <: AuthenticationRule](key: String,
-                                                                             decoder: AuthenticationRuleDecoder[A],
-                                                                             userIdPatterns: UserIdPatterns,
-                                                                             caseMappingEquality: UserIdCaseMappingEquality): Either[Message, RuleWithVariableUsageDefinition[AuthenticationRule]] = {
-      decoder.tryDecode(value.downField(key))
-        .left.map(_ => Message(s"Cannot parse '$key' rule declared for [${userIdPatterns.show}]"))
-        .flatMap { r =>
-          def authRule = r.asInstanceOf[RuleWithVariableUsageDefinition[AuthenticationRule]]
 
-          decoder.eligibleUsersSupport(r.rule) match {
-            case Support.Available(users) =>
-              val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)(caseMappingEquality)
-              users.find(matcher.`match`) match {
-                case Some(_) => Right(authRule)
-                case None => Left(Message(s"Users [${users.map(_.show).mkString(",")}] are allowed to be authenticated by rule [${authRule.rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."))
-              }
-            case Support.NotAvailable => Right(authRule)
-          }
-        }
-    }
+//    def tryDecodeAuthRule(userIdPatterns: UserIdPatterns,
+//                          caseMappingEquality: UserIdCaseMappingEquality)
+//                         (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+//                          authProxyDefinitions: Definitions[ProxyAuth],
+//                          jwtDefinitions: Definitions[JwtDef],
+//                          ldapDefinitions: Definitions[LdapService],
+//                          rorKbnDefinitions: Definitions[RorKbnDef],
+//                          impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]): Either[Message, RuleWithVariableUsageDefinition[AuthenticationRule]] = {
+//      value.keys.map(_.toList) match {
+//        case None | Some(Nil) =>
+//          Left(Message(s"No authentication method defined for [${userIdPatterns.show}]"))
+//        case Some(key :: Nil) =>
+//          authenticationRuleDecoderBy(
+//            Rule.Name(key),
+//            authenticationServiceDefinitions,
+//            authProxyDefinitions,
+//            jwtDefinitions,
+//            ldapDefinitions,
+//            rorKbnDefinitions,
+//            impersonatorsDefinitions,
+//            caseMappingEquality
+//          ) match {
+//            case Some(decoder) =>
+//              tryDecodeUsingAuthenticationDecoder(
+//                key,
+//                decoder,
+//                userIdPatterns,
+//                caseMappingEquality
+//              )
+//            case None =>
+//              Left(Message(s"Rule $key is not authentication rule"))
+//          }
+//        case Some(keys) =>
+//          Left(Message(s"Only one authentication should be defined for [${userIdPatterns.show}]. Found ${keys.mkString(", ")}"))
+//      }
+//    }
+//
+//    private def tryDecodeUsingAuthenticationDecoder[A <: AuthenticationRule](key: String,
+//                                                                             decoder: AuthenticationRuleDecoder[A],
+//                                                                             userIdPatterns: UserIdPatterns,
+//                                                                             caseMappingEquality: UserIdCaseMappingEquality): Either[Message, RuleWithVariableUsageDefinition[AuthenticationRule]] = {
+//      decoder.tryDecode(value.downField(key))
+//        .left.map(_ => Message(s"Cannot parse '$key' rule declared for [${userIdPatterns.show}]"))
+//        .flatMap { r =>
+//          def authRule = r.asInstanceOf[RuleWithVariableUsageDefinition[AuthenticationRule]]
+//
+//          decoder.eligibleUsersSupport(r.rule) match {
+//            case Support.Available(users) =>
+//              val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)(caseMappingEquality)
+//              users.find(matcher.`match`) match {
+//                case Some(_) => Right(authRule)
+//                case None => Left(Message(s"Users [${users.map(_.show).mkString(",")}] are allowed to be authenticated by rule [${authRule.rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."))
+//              }
+//            case Support.NotAvailable => Right(authRule)
+//          }
+//        }
+//    }
 
   }
 }

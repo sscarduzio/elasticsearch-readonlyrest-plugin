@@ -23,14 +23,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.{HeadersAndRule, HeadersOrRule}
 import tech.beshu.ror.accesscontrol.domain.Header.Name
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.HeadersHelper.headerAccessRequirementFromString
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.StringWiseSplitter._
 
 object HeadersAndRuleDecoder
   extends RegularRuleDecoder[HeadersAndRule]
-    with RuleDecoderWithoutAssociatedFields[HeadersAndRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[HeadersAndRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[HeadersAndRule]] = {
     DecoderHelpers
@@ -43,7 +43,7 @@ object HeadersAndRuleDecoder
 
 object HeadersOrRuleDecoder
   extends RegularRuleDecoder[HeadersOrRule]
-    with RuleDecoderWithoutAssociatedFields[HeadersOrRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[HeadersOrRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[HeadersOrRule]] = {
     DecoderHelpers

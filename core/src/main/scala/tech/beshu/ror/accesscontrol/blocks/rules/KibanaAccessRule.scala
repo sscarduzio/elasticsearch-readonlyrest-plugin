@@ -24,7 +24,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.Constants
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaAccessRule._
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.IndexName.devNullKibana
@@ -39,7 +39,7 @@ import scala.util.Try
 class KibanaAccessRule(val settings: Settings)
   extends RegularRule with Logging {
 
-  override val name: Rule.Name = KibanaAccessRule.name
+  override val name: Rule.Name = KibanaAccessRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
 
@@ -159,7 +159,10 @@ class KibanaAccessRule(val settings: Settings)
 }
 
 object KibanaAccessRule {
-  val name = Rule.Name("kibana_access")
+
+  implicit case object Name extends RuleName[KibanaAccessRule] {
+    override val name = Rule.Name("kibana_access")
+  }
 
   final case class Settings(access: KibanaAccess,
                             kibanaIndex: RuntimeSingleResolvableVariable[IndexName],

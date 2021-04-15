@@ -26,15 +26,16 @@ import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCrede
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
-
 import java.util.regex.Pattern
+
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 
 final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
                             override val impersonators: List[ImpersonatorDef],
                             implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings) {
 
-  override val name: Rule.Name = AuthKeyUnixRule.name
+  override val name: Rule.Name = AuthKeyUnixRule.Name.name
 
   override protected def compare(configuredCredentials: UnixHashedCredentials,
                                  credentials: Credentials): Task[Boolean] = Task {
@@ -51,7 +52,10 @@ final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Setti
 }
 
 object AuthKeyUnixRule {
-  val name = Rule.Name("auth_key_unix")
+
+  implicit case object Name extends RuleName[AuthKeyUnixRule] {
+    override val name = Rule.Name("auth_key_unix")
+  }
 
   private val pattern = Pattern.compile("((?:[^$]*\\$){3}[^$]*).*")
 

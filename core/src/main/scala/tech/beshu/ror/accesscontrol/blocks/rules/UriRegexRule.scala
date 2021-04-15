@@ -20,7 +20,7 @@ import java.util.regex.Pattern
 
 import cats.data.{NonEmptyList, NonEmptySet}
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UriRegexRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.request.RequestContext
 class UriRegexRule(val settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = UriRegexRule.name
+  override val name: Rule.Name = UriRegexRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.resultBasedOnCondition(blockContext) {
@@ -54,7 +54,10 @@ class UriRegexRule(val settings: Settings)
 }
 
 object UriRegexRule {
-  val name = Rule.Name("uri_re")
+
+  implicit case object Name extends RuleName[UriRegexRule] {
+    override val name = Rule.Name("uri_re")
+  }
 
   final case class Settings(uriPatterns: NonEmptySet[RuntimeMultiResolvableVariable[Pattern]])
 

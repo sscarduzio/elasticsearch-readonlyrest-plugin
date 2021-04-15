@@ -21,6 +21,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthorizationService
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser, User}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
@@ -33,7 +34,7 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 
   private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.users.toSet)
 
-  override val name: Rule.Name = ExternalAuthorizationRule.name
+  override val name: Rule.Name = ExternalAuthorizationRule.Name.name
 
   override protected def authorize[B <: BlockContext](blockContext: B,
                                                       user: LoggedUser): Task[AuthorizationResult] = {
@@ -63,7 +64,10 @@ class ExternalAuthorizationRule(val settings: ExternalAuthorizationRule.Settings
 }
 
 object ExternalAuthorizationRule {
-  val name = Rule.Name("groups_provider_authorization")
+
+  implicit case object Name extends RuleName[ExternalAuthorizationRule] {
+    override val name = Rule.Name("groups_provider_authorization")
+  }
 
   final case class Settings(service: ExternalAuthorizationService,
                             permittedGroups: UniqueNonEmptyList[Group],

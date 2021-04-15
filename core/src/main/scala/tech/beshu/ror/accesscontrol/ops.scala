@@ -36,7 +36,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
@@ -154,6 +154,7 @@ object show {
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
     implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
+    implicit def ruleNameShow[T <: RuleName[_]]: Show[T] = Show.show(_.name.value)
 
     implicit def nonEmptyList[T : Show]: Show[NonEmptyList[T]] = Show[List[T]].contramap(_.toList)
 

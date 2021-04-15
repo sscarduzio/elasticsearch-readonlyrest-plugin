@@ -19,7 +19,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.NoImpersonationSupport
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{NoImpersonationSupport, RuleName}
 import tech.beshu.ror.accesscontrol.domain.Credentials
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 
@@ -28,7 +28,7 @@ final class LdapAuthenticationRule(val settings: Settings,
   extends BaseBasicAuthenticationRule
     with NoImpersonationSupport {
 
-  override val name: Rule.Name = LdapAuthenticationRule.name
+  override val name: Rule.Name = LdapAuthenticationRule.Name.name
 
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.ldap.authenticate(credentials.user, credentials.secret)
@@ -37,7 +37,10 @@ final class LdapAuthenticationRule(val settings: Settings,
 
 
 object LdapAuthenticationRule {
-  val name = Rule.Name("ldap_authentication")
+
+  implicit case object Name extends RuleName[LdapAuthenticationRule] {
+    override val name = Rule.Name("ldap_authentication")
+  }
 
   final case class Settings(ldap: LdapAuthenticationService)
 }

@@ -22,11 +22,11 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefin
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, ResponseField}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 
 object ResponseFieldsRuleDecoder
   extends RegularRuleDecoder[ResponseFieldsRule]
-    with RuleDecoderWithoutAssociatedFields[ResponseFieldsRule]
+    with RuleBaseDecoderWithoutAssociatedFields[ResponseFieldsRule]
     with FieldsRuleLikeDecoderHelperBase{
 
   private implicit val convertible: Convertible[ResponseField] = AlwaysRightConvertible.from(ResponseField.apply)

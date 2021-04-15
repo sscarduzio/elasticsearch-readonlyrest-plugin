@@ -44,7 +44,7 @@ final class RorKbnAuthRule(val settings: Settings,
     with NoImpersonationSupport
     with Logging {
 
-  override val name: Rule.Name = RorKbnAuthRule.name
+  override val name: Rule.Name = RorKbnAuthRule.Name.name
 
   private val parser = settings.rorKbn.checkMethod match {
     case Hmac(rawKey) => Jwts.parserBuilder().setSigningKey(rawKey).build()
@@ -133,7 +133,10 @@ final class RorKbnAuthRule(val settings: Settings,
 }
 
 object RorKbnAuthRule {
-  val name = Rule.Name("ror_kbn_auth")
+
+  implicit case object Name extends RuleName[RorKbnAuthRule] {
+    override val name = Rule.Name("ror_kbn_auth")
+  }
 
   final case class Settings(rorKbn: RorKbnDef, groups: UniqueList[Group])
 

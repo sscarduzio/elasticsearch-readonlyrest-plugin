@@ -32,7 +32,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthenticationServicesDecoder._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, ExternalAuthenticationServicesDecoder}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.EligibleUsers.Instances._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.accesscontrol.utils.SyncDecoderCreator
@@ -42,7 +42,7 @@ import scala.concurrent.duration.FiniteDuration
 class ExternalAuthenticationRuleDecoder(authenticationServices: Definitions[ExternalAuthenticationService],
                                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthenticationRuleDecoder[ExternalAuthenticationRule]
-    with RuleDecoderWithoutAssociatedFields[ExternalAuthenticationRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[ExternalAuthenticationRule] {
 
   override protected def decoder: Decoder[Rule.RuleWithVariableUsageDefinition[ExternalAuthenticationRule]] = {
     simpleExternalAuthenticationServiceNameAndLocalConfig

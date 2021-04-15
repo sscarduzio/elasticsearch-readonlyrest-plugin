@@ -23,12 +23,12 @@ import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 object MaxBodyLengthRuleDecoder
   extends RegularRuleDecoder[MaxBodyLengthRule]
-    with RuleDecoderWithoutAssociatedFields[MaxBodyLengthRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[MaxBodyLengthRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[MaxBodyLengthRule]] = {
     Decoder

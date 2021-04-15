@@ -25,9 +25,9 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRe
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence.{CannotCheck, Exists, NotExist}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
@@ -39,12 +39,19 @@ import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.CaseMappingEquality._
 
 sealed trait Rule {
-  def name: Name
+  def name: Rule.Name
 
   def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
 }
 
 object Rule {
+
+  trait RuleName[T <: Rule] {
+    def name: Rule.Name
+  }
+  object RuleName {
+    def apply[T <: Rule](implicit ev: RuleName[T]): RuleName[T] = ev
+  }
 
   final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, variableUsage: VariableUsage[T])
 

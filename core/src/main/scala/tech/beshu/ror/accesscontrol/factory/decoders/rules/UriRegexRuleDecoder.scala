@@ -28,7 +28,7 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -37,7 +37,7 @@ import scala.util.Try
 
 object UriRegexRuleDecoder
   extends RegularRuleDecoder[UriRegexRule]
-    with RuleDecoderWithoutAssociatedFields[UriRegexRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[UriRegexRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[UriRegexRule]] = {
     DecoderHelpers

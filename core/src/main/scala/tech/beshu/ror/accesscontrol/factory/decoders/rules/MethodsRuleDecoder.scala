@@ -25,13 +25,13 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefin
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.MethodsRuleDecoderHelper.methodDecoder
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 
 object MethodsRuleDecoder
   extends RegularRuleDecoder[MethodsRule]
-    with RuleDecoderWithoutAssociatedFields[MethodsRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[MethodsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[MethodsRule]] = {
     DecoderHelpers

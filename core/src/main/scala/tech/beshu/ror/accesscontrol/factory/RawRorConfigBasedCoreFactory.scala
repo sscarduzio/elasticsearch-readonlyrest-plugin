@@ -32,14 +32,15 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.Unbo
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
 import tech.beshu.ror.accesscontrol.domain.{Header, RorConfigurationIndex}
+import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, GlobalStaticSettingsDecoder}
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{ImpersonationDefinitionsDecoderCreator, _}
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
+import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, GlobalStaticSettingsDecoder}
 import tech.beshu.ror.accesscontrol.logging.{AuditingTool, LoggingContext}
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult.{FieldListValue, NoField}
@@ -104,26 +105,26 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
     val decoder = for {
       enabled <- AsyncDecoderCreator.from(coreEnabilityDecoder)
       core <-
-        if (!enabled) {
-          AsyncDecoderCreator
-            .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
-        } else {
-          for {
-            auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
+      if (!enabled) {
+        AsyncDecoderCreator
+          .from(Decoder.const(CoreSettings(DisabledAccessControl, DisabledAccessControlStaticContext$, None)))
+      } else {
+        for {
+          auditingTools <- AsyncDecoderCreator.from(AuditingSettingsDecoder.instance)
           globalSettings <- AsyncDecoderCreator.from(GlobalStaticSettingsDecoder.instance(
             rorMode,
             rorConfigurationIndex,
             auditingTools.map(_.rorAuditIndexTemplate)
           ))
           aclAndContext <- aclDecoder(httpClientFactory, ldapConnectionPoolProvider, globalSettings)
-            (acl, context) = aclAndContext
+          (acl, context) = aclAndContext
 
-          } yield CoreSettings(
-            aclEngine = acl,
-            aclStaticContext = context,
-            auditingSettings = auditingTools
-          )
-        }
+        } yield CoreSettings(
+          aclEngine = acl,
+          aclStaticContext = context,
+          auditingSettings = auditingTools
+        )
+      }
     } yield core
 
     decoder(HCursor.fromJson(settingsJson))
@@ -142,11 +143,11 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
     val init = State.pure[ACursor, Option[Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](None)
     val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
-        for {
-          last <- collectedRuleResults
-          current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings).map(_.map(_.map(_ :: Nil)))
-        } yield Monoid.combine(last, current)
-      }
+      for {
+        last <- collectedRuleResults
+        current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings).map(_.map(_.map(_ :: Nil)))
+      } yield Monoid.combine(last, current)
+    }
       .run(c)
       .value
 
@@ -170,28 +171,18 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private def decodeRuleInCursorContext(name: String,
                                         definitions: DefinitionsPack,
                                         globalSettings: GlobalSettings): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] = {
-    val caseMappingEquality: UserIdCaseMappingEquality = createUserMapingEquality(globalSettings)
+    val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
     State(cursor => {
       if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
       else {
         ruleDecoderBy(Rule.Name(name), definitions, globalSettings, caseMappingEquality) match {
           case Some(decoder) =>
-            val decodingResult = decoder.decode(
-              cursor.downField(name),
-              cursor.withFocus(_.mapObject(_.filterKeys(key => decoder.associatedFields.contains(key))))
-            )
-            val newCursor = cursor.withFocus(_.mapObject(json =>
-              decoder
-                .associatedFields
-                .foldLeft(json.remove(name)) {
-                  case (currentJson, field) =>
-                    ruleDecoderBy(Rule.Name(field), definitions, globalSettings, caseMappingEquality) match {
-                      case Some(_) => currentJson
-                      case None => currentJson.remove(field)
-                    }
-                }
-            ))
-            (newCursor, Some(decodingResult))
+            decoder.tryDecode(cursor) match {
+              case Right(RuleDecoder.Result(rule, unconsumedCursor)) =>
+                (unconsumedCursor, Some(Right(rule)))
+              case Left(failure) =>
+                (cursor, Some(Left(failure)))
+            }
           case None =>
             (cursor, None)
         }
@@ -199,7 +190,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
     })
   }
 
-  private def createUserMapingEquality(globalSettings: GlobalSettings) = {
+  private def createUserMappingEquality(globalSettings: GlobalSettings) = {
     globalSettings.usernameCaseMapping match {
       case UsernameCaseMapping.CaseSensitive => UserIdEq.caseSensitive
       case UsernameCaseMapping.CaseInsensitive => UserIdEq.caseInsensitive
@@ -215,20 +206,20 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         .decodeString
         .toSyncDecoder
         .emapE[Block.Policy] {
-          case "allow" => Right(Block.Policy.Allow)
-          case "forbid" => Right(Block.Policy.Forbid)
-          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
-        }
+        case "allow" => Right(Block.Policy.Allow)
+        case "forbid" => Right(Block.Policy.Forbid)
+        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown block policy type: $unknown")))
+      }
         .decoder
     implicit val verbosityDecoder: Decoder[Verbosity] =
       Decoder
         .decodeString
         .toSyncDecoder
         .emapE[Verbosity] {
-          case "info" => Right(Verbosity.Info)
-          case "error" => Right(Verbosity.Error)
-          case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
-        }
+        case "info" => Right(Verbosity.Info)
+        case "error" => Right(Verbosity.Error)
+        case unknown => Left(BlocksLevelCreationError(Message(s"Unknown verbosity value: $unknown")))
+      }
         .decoder
     Decoder
       .instance { c =>
@@ -270,7 +261,7 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
   private def aclDecoder(httpClientFactory: HttpClientsFactory,
                          ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider,
                          globalSettings: GlobalSettings): AsyncDecoder[(AccessControl, EnabledAccessControlStaticContext)] = {
-    val caseMappingEquality: UserIdCaseMappingEquality = createUserMapingEquality(globalSettings)
+    val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
     AsyncDecoderCreator.instance[(AccessControl, EnabledAccessControlStaticContext)] { c =>
       val decoder = for {
         authProxies <- AsyncDecoderCreator.from(ProxyAuthDefinitionsDecoder.instance)
@@ -279,7 +270,10 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
         jwtDefs <- AsyncDecoderCreator.from(JwtDefinitionsDecoder.instance(httpClientFactory))
         ldapServices <- LdapServicesDecoder.ldapServicesDefinitionsDecoder(ldapConnectionPoolProvider)
         rorKbnDefs <- AsyncDecoderCreator.from(RorKbnDefinitionsDecoder.instance())
-        impersonationDefs <- AsyncDecoderCreator.from(ImpersonationDefinitionsDecoder.instance(caseMappingEquality)(authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs))
+        impersonationDefinitionsDecoderCreator = new ImpersonationDefinitionsDecoderCreator(
+          caseMappingEquality, authenticationServices, authProxies, jwtDefs, ldapServices, rorKbnDefs
+        )
+        impersonationDefs <- AsyncDecoderCreator.from(impersonationDefinitionsDecoderCreator.create)
         userDefs <- AsyncDecoderCreator.from(UsersDefinitionsDecoder.instance(authenticationServices, authorizationServices, authProxies, jwtDefs, rorKbnDefs, ldapServices, Some(impersonationDefs), caseMappingEquality))
         obfuscatedHeaders <- AsyncDecoderCreator.from(obfuscatedHeadersAsyncDecoder)
         blocks <- {

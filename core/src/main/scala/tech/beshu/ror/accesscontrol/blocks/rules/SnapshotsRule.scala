@@ -21,7 +21,7 @@ import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.SnapshotRequestBlockContext
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.SnapshotsRule.Settings
 import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeMatchFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeMatchFilterScalaAdapter.AlterResult.{Altered, NotAltered}
@@ -33,7 +33,8 @@ import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.reso
 class SnapshotsRule(val settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = SnapshotsRule.name
+  override val name: Rule.Name = SnapshotsRule.Name.name
+
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeMatchFilterScalaAdapter
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
@@ -71,7 +72,10 @@ class SnapshotsRule(val settings: Settings)
 }
 
 object SnapshotsRule {
-  val name = Rule.Name("snapshots")
+
+  implicit case object Name extends RuleName[SnapshotsRule] {
+    override val name = Rule.Name("snapshots")
+  }
 
   final case class Settings(allowedSnapshots: NonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]])
 }

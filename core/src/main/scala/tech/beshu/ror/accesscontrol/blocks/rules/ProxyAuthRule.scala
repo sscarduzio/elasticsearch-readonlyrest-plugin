@@ -21,7 +21,7 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id
@@ -39,7 +39,7 @@ final class ProxyAuthRule(val settings: Settings,
 
   private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.userIds.toSet)
 
-  override val name: Rule.Name = ProxyAuthRule.name
+  override val name: Rule.Name = ProxyAuthRule.Name.name
 
   override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     getLoggedUser(blockContext.requestContext) match {
@@ -65,7 +65,10 @@ final class ProxyAuthRule(val settings: Settings,
 }
 
 object ProxyAuthRule {
-  val name = Rule.Name("proxy_auth")
+
+  implicit case object Name extends RuleName[ProxyAuthRule] {
+    override val name = Rule.Name("proxy_auth")
+  }
 
   final case class Settings(userIds: UniqueNonEmptyList[User.Id], userHeaderName: Header.Name)
 }

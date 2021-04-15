@@ -22,14 +22,14 @@ import tech.beshu.ror.accesscontrol.blocks.rules.XForwardedForRule
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.Address
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 
 object XForwardedForRuleDecoder
   extends RegularRuleDecoder[XForwardedForRule]
-    with RuleDecoderWithoutAssociatedFields[XForwardedForRule] {
+    with RuleBaseDecoderWithoutAssociatedFields[XForwardedForRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[XForwardedForRule]] = {
     DecoderHelpers
