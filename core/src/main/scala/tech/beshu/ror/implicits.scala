@@ -24,14 +24,6 @@ object implicits
     with cats.instances.AllInstances
     with cats.syntax.AllSyntax {
 
-  //  override implicit def catsStdShowForSet[T: Show]: Show[Set[T]] = ???
-  //    def show(fa: Set[A]): String =
-  //      fa.iterator.map(_.show).mkString("Set(", ", ", ")")
-  //  }
-  //  implicit def customListShow[T: Show]: Show[List[T]] = Show.show(_.map(_.show).mkString(","))
-  //  implicit def customSetShow[T: Show]: Show[Set[T]] =
-
-
   override implicit def catsStdShowForSet[A](implicit evidence$3: Show[A]): Show[Set[A]] =
     Show.show(_.map(_.show).mkString(","))
 }

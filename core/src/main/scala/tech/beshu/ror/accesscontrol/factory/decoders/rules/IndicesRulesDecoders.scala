@@ -39,8 +39,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 object IndicesRuleDecoders
-  extends RegularRuleDecoder[IndicesRule]
-    with RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[IndicesRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[IndicesRule]] = {
     IndicesRuleDecoders.indicesRuleSimpleDecoder
@@ -83,8 +82,7 @@ object IndicesRuleDecoders
 }
 
 object SnapshotsRuleDecoder
-  extends RegularRuleDecoder[SnapshotsRule]
-    with RuleBaseDecoderWithoutAssociatedFields[SnapshotsRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[SnapshotsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[SnapshotsRule]] = {
     DecoderHelpers
@@ -104,8 +102,7 @@ object SnapshotsRuleDecoder
 }
 
 object RepositoriesRuleDecoder
-  extends RegularRuleDecoder[RepositoriesRule]
-    with RuleBaseDecoderWithoutAssociatedFields[RepositoriesRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[RepositoriesRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[RepositoriesRule]] = {
     DecoderHelpers

@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
-import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
@@ -38,8 +37,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 object KibanaHideAppsRuleDecoder
-  extends RegularRuleDecoder[KibanaHideAppsRule]
-    with RuleBaseDecoderWithoutAssociatedFields[KibanaHideAppsRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[KibanaHideAppsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaHideAppsRule]] = {
     DecoderHelpers
@@ -49,8 +47,7 @@ object KibanaHideAppsRuleDecoder
 }
 
 object KibanaIndexRuleDecoder
-  extends RegularRuleDecoder[KibanaIndexRule]
-    with RuleBaseDecoderWithoutAssociatedFields[KibanaIndexRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[KibanaIndexRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaIndexRule]] = {
     KibanaRulesDecoderHelper
@@ -62,8 +59,7 @@ object KibanaIndexRuleDecoder
 }
 
 object KibanaTemplateIndexRuleDecoder
-  extends RegularRuleDecoder[KibanaTemplateIndexRule]
-    with RuleBaseDecoderWithoutAssociatedFields[KibanaTemplateIndexRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[KibanaTemplateIndexRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaTemplateIndexRule]] = {
     KibanaRulesDecoderHelper
@@ -75,8 +71,7 @@ object KibanaTemplateIndexRuleDecoder
 }
 
 class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
-  extends RegularRuleDecoder[KibanaAccessRule]
-    with RuleBaseDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]] {
+  extends RuleBaseDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]] {
 
   override def ruleDecoderCreator: RuntimeSingleResolvableVariable[IndexName] => Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
     kibanaIndexName =>
@@ -96,7 +91,7 @@ class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
         .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
         .decoder
 
-  override val associatedFieldsSet: NonEmptySet[String] = NonEmptySet.of("kibana_index")
+  override val associatedFields: Set[String] = Set("kibana_index")
 
   override val associatedFieldsDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
     Decoder.instance(_.downField("kibana_index").as[RuntimeSingleResolvableVariable[IndexName]]) or Decoder.const(AlreadyResolved(IndexName.kibana))
@@ -121,6 +116,5 @@ private object KibanaRulesDecoderHelper {
         case Left(error) => Left(RulesLevelCreationError(Message(error.show)))
       }
       .decoder
-
 }
 

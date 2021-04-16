@@ -28,8 +28,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
 
 object XForwardedForRuleDecoder
-  extends RegularRuleDecoder[XForwardedForRule]
-    with RuleBaseDecoderWithoutAssociatedFields[XForwardedForRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[XForwardedForRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[XForwardedForRule]] = {
     DecoderHelpers

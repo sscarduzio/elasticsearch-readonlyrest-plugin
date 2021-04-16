@@ -42,19 +42,26 @@ class KibanaAccessRule(val settings: Settings)
   override val name: Rule.Name = KibanaAccessRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
-
     val requestContext = blockContext.requestContext
 
-    if (settings.access === KibanaAccess.Unrestricted) Fulfilled(modifyMatched(blockContext))
-    else if (requestContext.uriPath.isCurrentUserMetadataPath) Fulfilled(modifyMatched(blockContext))
+    if (settings.access === KibanaAccess.Unrestricted)
+      Fulfilled(modifyMatched(blockContext))
+    else if (requestContext.uriPath.isCurrentUserMetadataPath)
+      Fulfilled(modifyMatched(blockContext))
     // Allow other actions if devnull is targeted to readers and writers
-    else if (blockContext.requestContext.initialBlockContext.indices.contains(devNullKibana)) Fulfilled(modifyMatched(blockContext))
+    else if (blockContext.requestContext.initialBlockContext.indices.contains(devNullKibana))
+      Fulfilled(modifyMatched(blockContext))
     // Any index, read op
-    else if (Matchers.roMatcher.`match`(requestContext.action)) Fulfilled(modifyMatched(blockContext))
-    else if (Matchers.clusterMatcher.`match`(requestContext.action)) Fulfilled(modifyMatched(blockContext))
-    else if (emptyIndicesMatch(requestContext)) Fulfilled(modifyMatched(blockContext))
-    else if (isKibanaSimplaData(requestContext)) Fulfilled(modifyMatched(blockContext))
-    else processCheck(blockContext)
+    else if (Matchers.roMatcher.`match`(requestContext.action))
+      Fulfilled(modifyMatched(blockContext))
+    else if (Matchers.clusterMatcher.`match`(requestContext.action))
+      Fulfilled(modifyMatched(blockContext))
+    else if (emptyIndicesMatch(requestContext))
+      Fulfilled(modifyMatched(blockContext))
+    else if (isKibanaSimplaData(requestContext))
+      Fulfilled(modifyMatched(blockContext))
+    else
+      processCheck(blockContext)
   }
 
   private def processCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): RuleResult[B] = {

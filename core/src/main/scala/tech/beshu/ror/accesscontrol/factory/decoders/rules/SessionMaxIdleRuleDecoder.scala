@@ -33,8 +33,7 @@ import tech.beshu.ror.providers.UuidProvider
 class SessionMaxIdleRuleDecoder(implicit clock: Clock,
                                 uuidProvider: UuidProvider,
                                 userIdEq: Eq[User.Id])
-  extends RegularRuleDecoder[SessionMaxIdleRule]
-    with RuleBaseDecoderWithoutAssociatedFields[SessionMaxIdleRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[SessionMaxIdleRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[SessionMaxIdleRule]] = {
     common

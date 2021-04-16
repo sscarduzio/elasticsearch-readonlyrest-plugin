@@ -17,12 +17,7 @@
 package tech.beshu.ror.integration
 
 import java.time.{Clock, Instant, ZoneId}
-import java.time.format.DateTimeFormatter
 import org.scalatest.wordspec.AnyWordSpec
-
-import monix.execution.Scheduler.Implicits.global
-import org.scalatest.Matchers._
-import org.scalatest.WordSpec
 import tech.beshu.ror.accesscontrol.domain.RorAuditIndexTemplate
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.logging.{AccessControlLoggingDecorator, AuditingTool, LoggingContext}
@@ -30,9 +25,10 @@ import tech.beshu.ror.audit.instances.DefaultAuditLogSerializer
 import tech.beshu.ror.es.AuditSinkService
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils.header
-
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future, Promise}
+
+import monix.execution.Scheduler.Implicits.global
 import scala.language.postfixOps
 
 class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest {
@@ -79,7 +75,7 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
              |  "task_id":0,
              |  "type":"default-type",
              |  "req_method":"GET",
-             |  "path":"/_readonlyrest/metadata/current_user/",
+             |  "path":"_search",
              |  "indices":[],
              |  "@timestamp":"2020-01-01T00:00:00Z",
              |  "content_len_kb":0,
@@ -116,7 +112,7 @@ class AccessControlAuditTests extends AnyWordSpec with BaseYamlLoadedAccessContr
              |  "task_id":0,
              |  "type":"default-type",
              |  "req_method":"GET",
-             |  "path":"/_readonlyrest/metadata/current_user/",
+             |  "path":"_search",
              |  "indices":[],
              |  "@timestamp":"2020-01-01T00:00:00Z",
              |  "content_len_kb":0,

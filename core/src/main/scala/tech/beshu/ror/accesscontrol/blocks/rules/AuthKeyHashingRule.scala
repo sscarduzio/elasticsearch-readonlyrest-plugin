@@ -24,7 +24,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.{EligibleUsersSupport, UserExistence}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
@@ -56,6 +56,10 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[Has
     }
   }
 
+  override val eligibleUsers: EligibleUsersSupport = settings.credentials match {
+    case HashedCredentials.HashedUserAndPassword(_) => EligibleUsersSupport.NotAvailable
+    case HashedCredentials.HashedOnlyPassword(userId, _) => EligibleUsersSupport.Available(Set(userId))
+  }
 }
 
 object AuthKeyHashingRule {

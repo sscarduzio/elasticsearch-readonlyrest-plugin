@@ -82,22 +82,29 @@ class ImpersonationDefinitionsDecoderCreator(caseMappingEquality: UserIdCaseMapp
             impersonatorsDefinitions = None,
             caseMappingEquality = caseMappingEquality
           ) match {
-          case Some(decoder) => decoder(cursor).map(_.rule.rule)
-          case None => decodingFailure(Message("Only an authentication rule can be used in context of 'impersonator' definition"))
+          case Some(decoder) =>
+            ruleDecoders
+              .withUserIdParamsCheck(decoder, userIdPatterns, decodingFailure)
+              .map(_.rule.rule)
+              .apply(cursor)
+          case None =>
+            Left(decodingFailure(Message("Only an authentication rule can be used in context of 'impersonator' definition")))
         }
       }
       .sequence
       .flatMap {
         case Nil =>
-          decodingFailure(Message(s"No authentication method defined for [${userIdPatterns.show}]"))
+          Left(decodingFailure(Message(s"No authentication method defined for [${userIdPatterns.show}]")))
         case one :: Nil =>
           Right(one)
         case many =>
-          decodingFailure(Message(s"Only one authentication should be defined for [${userIdPatterns.show}]. Found ${many.map(_.name.show).mkString(", ")}"))
+          Left(decodingFailure(Message(
+            s"Only one authentication should be defined for [${userIdPatterns.show}]. Found ${many.map(_.name.show).mkString(", ")}"
+          )))
       }
   }
 
   private def decodingFailure(message: Message) = {
-    Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(message)))
+    DecodingFailureOps.fromError(DefinitionsLevelCreationError(message))
   }
 }

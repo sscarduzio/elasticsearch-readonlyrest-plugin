@@ -20,6 +20,7 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.ProxyAuthRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -38,6 +39,8 @@ final class ProxyAuthRule(val settings: Settings,
     with Logging {
 
   private val userMatcher = MatcherWithWildcardsScalaAdapter[User.Id](settings.userIds.toSet)
+
+  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.Available(settings.userIds.toSet)
 
   override val name: Rule.Name = ProxyAuthRule.Name.name
 

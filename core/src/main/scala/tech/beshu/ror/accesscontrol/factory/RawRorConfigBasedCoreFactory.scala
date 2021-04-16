@@ -18,7 +18,7 @@ package tech.beshu.ror.accesscontrol.factory
 
 import java.time.Clock
 
-import cats.data.{NonEmptyList, State}
+import cats.data.{NonEmptyList, State, Validated}
 import cats.implicits._
 import cats.kernel.Monoid
 import io.circe._
@@ -37,7 +37,7 @@ import tech.beshu.ror.accesscontrol.factory.GlobalSettings.UsernameCaseMapping
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError._
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.{AclCreationError, Attributes}
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{ImpersonationDefinitionsDecoderCreator, _}
+import tech.beshu.ror.accesscontrol.factory.decoders.definitions._
 import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.ruleDecoderBy
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.{AuditingSettingsDecoder, GlobalStaticSettingsDecoder}
@@ -138,21 +138,28 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
     }
   }
 
+  import RawRorConfigBasedCoreFactory._
+
   private def rulesNelDecoder(definitions: DefinitionsPack,
                               globalSettings: GlobalSettings): Decoder[NonEmptyList[RuleWithVariableUsageDefinition[Rule]]] = Decoder.instance { c =>
-    val init = State.pure[ACursor, Option[Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](None)
-    val (cursor, result) = c.keys.toList.flatten.sorted // at the moment kibana_index must be defined before kibana_access
+    val init = State.pure[ACursor, Validated[List[String], Decoder.Result[List[RuleWithVariableUsageDefinition[Rule]]]]](Validated.Valid(Right(List.empty)))
+
+    val (_, result) = c.keys.toList.flatten // at the moment kibana_index must be defined before kibana_access
       .foldLeft(init) { case (collectedRuleResults, currentRuleName) =>
-      for {
-        last <- collectedRuleResults
-        current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings).map(_.map(_.map(_ :: Nil)))
-      } yield Monoid.combine(last, current)
-    }
+        for {
+          last <- collectedRuleResults
+          current <- decodeRuleInCursorContext(currentRuleName, definitions, globalSettings).map {
+            case RuleDecodingResult.Result(value) => Validated.Valid(value.map(_ :: Nil))
+            case RuleDecodingResult.UnknownRule => Validated.Invalid(currentRuleName :: Nil)
+            case RuleDecodingResult.Skipped => Validated.Valid(Right(List.empty))
+          }
+        } yield Monoid.combine(last, current)
+      }
       .run(c)
       .value
 
-    (cursor.keys.toList.flatten, result) match {
-      case (Nil, Some(r)) =>
+    result match {
+      case Validated.Valid(r) =>
         r.flatMap { a =>
           NonEmptyList.fromList(a) match {
             case Some(rules) =>
@@ -161,30 +168,29 @@ class RawRorConfigBasedCoreFactory(rorMode: RorMode)
               Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"No rules defined in block"))))
           }
         }
-      case (Nil, None) =>
-        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"No rules defined in block"))))
-      case (keys, _) =>
-        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Unknown rules: ${keys.mkString(",")}"))))
+      case Validated.Invalid(unknownRules) =>
+        Left(DecodingFailureOps.fromError(RulesLevelCreationError(Message(s"Unknown rules: ${unknownRules.mkString(",")}"))))
     }
   }
 
   private def decodeRuleInCursorContext(name: String,
                                         definitions: DefinitionsPack,
-                                        globalSettings: GlobalSettings): State[ACursor, Option[Decoder.Result[RuleWithVariableUsageDefinition[Rule]]]] = {
+                                        globalSettings: GlobalSettings): State[ACursor, RuleDecodingResult] = {
     val caseMappingEquality: UserIdCaseMappingEquality = createUserMappingEquality(globalSettings)
     State(cursor => {
-      if (!cursor.keys.exists(_.toSet.contains(name))) (cursor, None)
-      else {
+      if(!cursor.keys.toList.flatten.contains(name)) {
+        (cursor, RuleDecodingResult.Skipped)
+      } else {
         ruleDecoderBy(Rule.Name(name), definitions, globalSettings, caseMappingEquality) match {
           case Some(decoder) =>
             decoder.tryDecode(cursor) match {
               case Right(RuleDecoder.Result(rule, unconsumedCursor)) =>
-                (unconsumedCursor, Some(Right(rule)))
+                (unconsumedCursor, RuleDecodingResult.Result(Right(rule)))
               case Left(failure) =>
-                (cursor, Some(Left(failure)))
+                (cursor, RuleDecodingResult.Result(Left(failure)))
             }
           case None =>
-            (cursor, None)
+            (cursor, RuleDecodingResult.UnknownRule)
         }
       }
     })
@@ -352,6 +358,13 @@ object RawRorConfigBasedCoreFactory {
 
     }
 
+  }
+
+  private sealed trait RuleDecodingResult
+  private object RuleDecodingResult {
+    final case class Result(value: Decoder.Result[RuleWithVariableUsageDefinition[Rule]]) extends RuleDecodingResult
+    case object UnknownRule extends RuleDecodingResult
+    case object Skipped extends RuleDecodingResult
   }
 
   private object Attributes {

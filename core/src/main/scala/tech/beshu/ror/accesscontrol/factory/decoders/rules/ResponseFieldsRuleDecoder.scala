@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.{AccessMode, 
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 
 object ResponseFieldsRuleDecoder
-  extends RegularRuleDecoder[ResponseFieldsRule]
-    with RuleBaseDecoderWithoutAssociatedFields[ResponseFieldsRule]
+  extends RuleBaseDecoderWithoutAssociatedFields[ResponseFieldsRule]
     with FieldsRuleLikeDecoderHelperBase{
 
   private implicit val convertible: Convertible[ResponseField] = AlwaysRightConvertible.from(ResponseField.apply)

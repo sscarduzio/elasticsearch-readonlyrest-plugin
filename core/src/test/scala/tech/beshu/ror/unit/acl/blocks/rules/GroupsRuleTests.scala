@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.CurrentUserMetada
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ImpersonatorDef, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.{EligibleUsersSupport, UserExistence}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, NoImpersonationSupport}
 import tech.beshu.ror.accesscontrol.blocks.rules.{GroupsRule, Rule}
@@ -363,7 +363,7 @@ class GroupsRuleTests extends AnyWordSpec with Inside with BlockContextAssertion
 }
 
 object GroupsRuleTests {
-  private val alwaysRejectingAuthRule = new AuthenticationRule {
+  private val alwaysRejectingAuthRule: AuthenticationRule = new AuthenticationRule {
     override protected val impersonators: List[ImpersonatorDef] = Nil
     override val name: Rule.Name = Rule.Name("dummy-rejecting")
 
@@ -373,10 +373,11 @@ object GroupsRuleTests {
                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence] =
       Task.now(UserExistence.CannotCheck)
 
-    override protected val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+    override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+    override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
   }
 
-  private val alwaysThrowingAuthRule = new AuthenticationRule {
+  private val alwaysThrowingAuthRule: AuthenticationRule = new AuthenticationRule {
     override protected val impersonators: List[ImpersonatorDef] = Nil
 
     override def name: Rule.Name = Rule.Name("dummy-throwing")
@@ -387,7 +388,8 @@ object GroupsRuleTests {
     override def exists(user: User.Id)
                        (implicit userIdEq: Eq[User.Id]): Task[UserExistence] = Task.now(UserExistence.CannotCheck)
 
-    override protected val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+    override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+    override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
   }
 
   private def alwaysFulfillingAuthRule(user: User.Id) = new AuthenticationRule with NoImpersonationSupport {
@@ -398,6 +400,7 @@ object GroupsRuleTests {
     override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] =
       Task.now(Fulfilled(blockContext.withUserMetadata(_.withLoggedUser(DirectlyLoggedUser(user)))))
 
-    override protected val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+    override val caseMappingEquality: UserIdCaseMappingEquality = UserIdEq.caseSensitive
+    override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
   }
 }

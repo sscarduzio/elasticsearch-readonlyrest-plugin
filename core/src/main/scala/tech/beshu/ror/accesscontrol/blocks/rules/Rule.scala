@@ -136,6 +136,8 @@ object Rule {
     protected def exists(user: User.Id)
                         (implicit userIdEq: Eq[User.Id]): Task[UserExistence]
 
+    def eligibleUsers: AuthenticationRule.EligibleUsersSupport
+
     def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
 
     override final def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]] = {
@@ -156,7 +158,7 @@ object Rule {
       }
     }
 
-    protected def caseMappingEquality: UserIdCaseMappingEquality
+    def caseMappingEquality: UserIdCaseMappingEquality
 
     private def findImpersonatorWithProperRights[B <: BlockContext](theImpersonatedUserId: User.Id,
                                                                     requestContext: RequestContext)
@@ -217,6 +219,12 @@ object Rule {
       case object Exists extends UserExistence
       case object NotExist extends UserExistence
       case object CannotCheck extends UserExistence
+    }
+
+    sealed trait EligibleUsersSupport
+    object EligibleUsersSupport {
+      final case class Available(users: Set[User.Id]) extends EligibleUsersSupport
+      case object NotAvailable extends EligibleUsersSupport
     }
   }
 

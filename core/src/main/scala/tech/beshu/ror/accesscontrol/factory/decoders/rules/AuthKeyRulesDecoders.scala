@@ -27,7 +27,6 @@ import tech.beshu.ror.accesscontrol.domain.{Credentials, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.EligibleUsers.Instances._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.StringWiseSplitter
@@ -35,8 +34,7 @@ import tech.beshu.ror.utils.StringWiseSplitter._
 
 class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoder[AuthKeyRule]
-    with RuleBaseDecoderWithoutAssociatedFields[AuthKeyRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeyRule]] = {
     AuthKeyDecodersHelper
@@ -51,8 +49,7 @@ class AuthKeyRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
 
 class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoder[AuthKeySha1Rule]
-    with RuleBaseDecoderWithoutAssociatedFields[AuthKeySha1Rule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha1Rule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeySha1Rule]] = {
     AuthKeyDecodersHelper
@@ -67,8 +64,7 @@ class AuthKeySha1RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDe
 
 class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoder[AuthKeySha256Rule]
-    with RuleBaseDecoderWithoutAssociatedFields[AuthKeySha256Rule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha256Rule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeySha256Rule]] = {
     AuthKeyDecodersHelper
@@ -83,8 +79,7 @@ class AuthKeySha256RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
 
 class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoder[AuthKeySha512Rule]
-    with RuleBaseDecoderWithoutAssociatedFields[AuthKeySha512Rule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeySha512Rule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeySha512Rule]] = {
     AuthKeyDecodersHelper
@@ -99,8 +94,7 @@ class AuthKeySha512RuleDecoder(impersonatorsDef: Option[Definitions[Impersonator
 
 class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoder[AuthKeyPBKDF2WithHmacSHA512Rule]
-    with RuleBaseDecoderWithoutAssociatedFields[AuthKeyPBKDF2WithHmacSHA512Rule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyPBKDF2WithHmacSHA512Rule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeyPBKDF2WithHmacSHA512Rule]] = {
     AuthKeyDecodersHelper
@@ -115,8 +109,7 @@ class AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDef: Option[Definition
 
 class AuthKeyUnixRuleDecoder(impersonatorsDef: Option[Definitions[ImpersonatorDef]],
                              implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoder[AuthKeyUnixRule]
-    with RuleBaseDecoderWithoutAssociatedFields[AuthKeyUnixRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[AuthKeyUnixRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[AuthKeyUnixRule]] = {
     AuthKeyDecodersHelper

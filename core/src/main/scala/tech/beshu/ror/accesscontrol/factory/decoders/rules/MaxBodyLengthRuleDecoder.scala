@@ -27,8 +27,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 object MaxBodyLengthRuleDecoder
-  extends RegularRuleDecoder[MaxBodyLengthRule]
-    with RuleBaseDecoderWithoutAssociatedFields[MaxBodyLengthRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[MaxBodyLengthRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[MaxBodyLengthRule]] = {
     Decoder

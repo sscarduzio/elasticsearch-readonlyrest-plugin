@@ -38,12 +38,10 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
-import EligibleUsers.Instances._
 
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                     implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoder[LdapAuthenticationRule]
-    with RuleBaseDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthenticationRule]] = {
     LdapAuthenticationRuleDecoder.simpleLdapAuthenticationNameAndLocalConfig
@@ -87,8 +85,7 @@ object LdapAuthenticationRuleDecoder {
 }
 
 class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService])
-  extends AuthorizationRuleDecoder[LdapAuthorizationRule]
-    with RuleBaseDecoderWithoutAssociatedFields[LdapAuthorizationRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthorizationRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthorizationRule]] = {
     LdapAuthorizationRuleDecoder
@@ -128,8 +125,7 @@ object LdapAuthorizationRuleDecoder {
 
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                           caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthRuleDecoder[LdapAuthRule]
-    with RuleBaseDecoderWithoutAssociatedFields[LdapAuthRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthRule]] = {
     LdapAuthRuleDecoder.instance(ldapDefinitions, caseMappingEquality)

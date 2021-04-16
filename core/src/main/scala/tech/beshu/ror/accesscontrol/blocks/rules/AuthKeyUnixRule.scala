@@ -23,7 +23,7 @@ import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.{EligibleUsersSupport, UserExistence}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 import java.util.regex.Pattern
@@ -49,6 +49,9 @@ final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Setti
     if (user === settings.credentials.userId) UserExistence.Exists
     else UserExistence.NotExist
   }
+
+  override val eligibleUsers: EligibleUsersSupport =
+    EligibleUsersSupport.Available(Set(settings.credentials.userId))
 }
 
 object AuthKeyUnixRule {

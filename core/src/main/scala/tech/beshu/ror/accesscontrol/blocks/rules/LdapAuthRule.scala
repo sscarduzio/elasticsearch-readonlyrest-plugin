@@ -17,6 +17,7 @@
 package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, NoImpersonationSupport, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -29,6 +30,8 @@ final class LdapAuthRule(val authentication: LdapAuthenticationRule,
     with NoImpersonationSupport {
 
   override val name: Rule.Name = LdapAuthRule.Name.name
+
+  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     authentication

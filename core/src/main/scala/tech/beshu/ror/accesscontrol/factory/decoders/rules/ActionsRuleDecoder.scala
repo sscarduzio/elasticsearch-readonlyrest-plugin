@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 
 object ActionsRuleDecoder
-  extends RegularRuleDecoder[ActionsRule]
-    with RuleBaseDecoderWithoutAssociatedFields[ActionsRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[ActionsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ActionsRule]] = {
     DecoderHelpers

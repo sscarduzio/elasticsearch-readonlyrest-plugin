@@ -21,9 +21,10 @@ import eu.timepit.refined.auto._
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithoutGroupsMapping
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.{WithGroupsMapping, WithoutGroupsMapping}
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.HashedUserAndPassword
-import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule, GroupsRule}
+import tech.beshu.ror.accesscontrol.blocks.rules._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.domain._
@@ -266,24 +267,31 @@ class GroupsRuleSettingsTests
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] =
-                UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel), AlreadyResolved(groupFrom("group2").nel))
+              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(
+                AlreadyResolved(groupFrom("group1").nel),
+                AlreadyResolved(groupFrom("group2").nel)
+              )
               rule.settings.groups should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
-              inside(sortedUserDefinitions.head) { case UserDef(patterns, userGroups, authRule) =>
+              inside(sortedUserDefinitions.head) { case UserDef(patterns, userGroups, WithGroupsMapping(Auth.SeparateRules(rule1, rule2))) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
-                authRule shouldBe an[AuthKeyRule]
-                authRule.asInstanceOf[AuthKeyRule].settings should be {
+                userGroups should be(UniqueNonEmptyList.of(groupFrom("group1")))
+
+                rule1 shouldBe an[AuthKeyRule]
+                rule1.asInstanceOf[AuthKeyRule].settings should be {
                   BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
                 }
+                rule2 shouldBe an[ExternalAuthorizationRule]
+                rule2.asInstanceOf[ExternalAuthorizationRule].settings.permittedGroups should be(UniqueNonEmptyList.of(
+                  Group("group3")
+                ))
               }
-              inside(sortedUserDefinitions.tail.head) { case UserDef(patterns, userGroups, authRule) =>
+              inside(sortedUserDefinitions.tail.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(rule1)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
                 userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
-                authRule shouldBe an[AuthKeySha1Rule]
-                authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
+                rule1 shouldBe an[AuthKeySha1Rule]
+                rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
                 }
               }
@@ -322,24 +330,23 @@ class GroupsRuleSettingsTests
                  |
                  |""".stripMargin,
             assertion = rule => {
-              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] =
-                UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel), AlreadyResolved(groupFrom("group2").nel))
+              val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(
+                AlreadyResolved(groupFrom("group1").nel),
+                AlreadyResolved(groupFrom("group2").nel)
+              )
               rule.settings.groups should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
-              inside(sortedUserDefinitions.head) { case UserDef(patterns, userGroups, authRule) =>
+              inside(sortedUserDefinitions.head) { case UserDef(patterns, userGroups, WithGroupsMapping(Auth.SingleRule(rule1))) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
-                userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
-                authRule shouldBe an[AuthKeyRule]
-                authRule.asInstanceOf[AuthKeyRule].settings should be {
-                  BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
-                }
+                userGroups should be(UniqueNonEmptyList.of(groupFrom("group1")))
+                rule1 shouldBe an[LdapAuthRule]
               }
-              inside(sortedUserDefinitions.tail.head) { case UserDef(patterns, userGroups, authRule) =>
+              inside(sortedUserDefinitions.tail.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(rule1)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
                 userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
-                authRule shouldBe an[AuthKeySha1Rule]
-                authRule.asInstanceOf[AuthKeySha1Rule].settings should be {
+                rule1 shouldBe an[AuthKeySha1Rule]
+                rule1.asInstanceOf[AuthKeySha1Rule].settings should be {
                   BasicAuthenticationRule.Settings(HashedUserAndPassword("d27aaf7fa3c1603948bb29b7339f2559dc02019a"))
                 }
               }
@@ -527,207 +534,144 @@ class GroupsRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found auth_key, auth_key_sha1")))
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              """Users definition section external groups mapping feature allows for single rule with authentication
+                | and authorization or two rules which handle authentication and authorization separately. 'auth_key'
+                | and 'auth_key_sha1' should be authentication and authorization rules""".stripMargin
+            )))
           }
         )
       }
       "only one authorization rule can be defined for user in users section" in {
         assertDecodingFailure(
           yaml =
-            """
-              |readonlyrest:
-              |
+            s"""
+               |readonlyrest:
+               |
               |  access_control_rules:
-              |
+               |
               |  - name: test_block1
-              |    groups: ["group1"]
-              |
+               |    groups: ["group1"]
+               |
               |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |    ldap_authorization:
-              |      name: "ldap1"
-              |      groups: ["ldap_group1"]
-              |    groups_provider_authorization:
-              |      user_groups_provider: GroupsService1
-              |      groups: ["group3"]
-              |
+               |  - username: cartman
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |    ldap_authorization:
+               |      name: "ldap1"
+               |      groups: ["ldap_group1"]
+               |    groups_provider_authorization:
+               |      user_groups_provider: GroupsService1
+               |      groups: ["group3"]
+               |
               |  ldaps:
-              |  - name: ldap1
-              |    host: ${container.ldapHost}
-              |    port: ${container.ldapPort}
-              |    ssl_enabled: false
-              |    search_user_base_DN: "ou=People,dc=example,dc=com"
-              |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-              |
+               |  - name: ldap1
+               |    host: ${container.ldapHost}
+               |    port: ${container.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |
               |  user_groups_providers:
-              |  - name: GroupsService1
-              |    groups_endpoint: "http://localhost:8080/groups"
-              |    auth_token_name: "user"
-              |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$$..groups[?(@.name)].name"
-              |
+               |  - name: GroupsService1
+               |    groups_endpoint: "http://localhost:8080/groups"
+               |    auth_token_name: "user"
+               |    auth_token_passed_as: QUERY_PARAM
+               |    response_groups_json_path: "$$..groups[?(@.name)].name"
+               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found auth_key, auth_key_sha1")))
-          }
-        )
-      }
-      "groups rule cannot be used as single authorization and authentication rule in users section" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    groups: ["group1"]
-              |
-              |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    groups: ["group1"]
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found auth_key, auth_key_sha1")))
-          }
-        )
-      }
-      "groups rule cannot be used as authentication rule in users section" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    groups: ["group1"]
-              |
-              |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    groups: ["group1"]
-              |    groups_provider_authorization:
-              |      user_groups_provider: GroupsService1
-              |      groups: ["group3"]
-              |
-              |  user_groups_providers:
-              |  - name: GroupsService1
-              |    groups_endpoint: "http://localhost:8080/groups"
-              |    auth_token_name: "user"
-              |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$$..groups[?(@.name)].name"
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found auth_key, auth_key_sha1")))
-          }
-        )
-      }
-      "groups rule cannot be used as authorization rule in users section" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    groups: ["group1"]
-              |
-              |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |    groups: ["group1"]
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found auth_key, auth_key_sha1")))
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              "Too many rules defined for [cartman] in users definition section: auth_key,ldap_authorization,groups_provider_authorization"
+            )))
           }
         )
       }
       "single authorization and authentication rule cannot be used together with different authentication rule for user in users section" in {
         assertDecodingFailure(
           yaml =
-            """
-              |readonlyrest:
-              |
+            s"""
+               |readonlyrest:
+               |
               |  access_control_rules:
-              |
+               |
               |  - name: test_block1
-              |    groups:
-              |
+               |    groups:
+               |
               |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |    ldap_auth:
-              |      name: "ldap1"
-              |      groups: ["ldap_group1"]
-              |
+               |  - username: cartman
+               |    groups: ["group1", "group3"]
+               |    auth_key: "cartman:pass"
+               |    ldap_auth:
+               |      name: "ldap1"
+               |      groups: ["ldap_group1"]
+               |
               |  ldaps:
-              |  - name: ldap1
-              |    host: ${container.ldapHost}
-              |    port: ${container.ldapPort}
-              |    ssl_enabled: false
-              |    search_user_base_DN: "ou=People,dc=example,dc=com"
-              |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-              |
+               |  - name: ldap1
+               |    host: ${container.ldapHost}
+               |    port: ${container.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found auth_key, auth_key_sha1")))
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              """Users definition section external groups mapping feature allows for single rule with authentication
+                | and authorization or two rules which handle authentication and authorization separately. 'ldap_auth'
+                | is an authentication with authorization rule and 'auth_key' is and authentication only rule.
+                | Cannot use them both in this context.""".stripMargin
+            )))
           }
         )
       }
       "single authorization and authentication rule cannot be used together with different authorization rule for user in users section" in {
         assertDecodingFailure(
           yaml =
-            """
-              |readonlyrest:
-              |
+            s"""
+               |readonlyrest:
+               |
               |  access_control_rules:
-              |
+               |
               |  - name: test_block1
-              |    groups:
-              |
+               |    groups:
+               |
               |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    ldap_auth:
-              |      name: "ldap1"
-              |      groups: ["ldap_group1"]
-              |    groups_provider_authorization:
-              |      user_groups_provider: GroupsService1
-              |      groups: ["group3"]
-              |
+               |  - username: cartman
+               |    groups: ["group1", "group3"]
+               |    ldap_auth:
+               |      name: "ldap1"
+               |      groups: ["ldap_group1"]
+               |    groups_provider_authorization:
+               |      user_groups_provider: GroupsService1
+               |      groups: ["group3"]
+               |
               |  ldaps:
-              |  - name: ldap1
-              |    host: ${container.ldapHost}
-              |    port: ${container.ldapPort}
-              |    ssl_enabled: false
-              |    search_user_base_DN: "ou=People,dc=example,dc=com"
-              |    search_groups_base_DN: "ou=People,dc=example,dc=com"
-              |
+               |  - name: ldap1
+               |    host: ${container.ldapHost}
+               |    port: ${container.ldapPort}
+               |    ssl_enabled: false
+               |    search_user_base_DN: "ou=People,dc=example,dc=com"
+               |    search_groups_base_DN: "ou=People,dc=example,dc=com"
+               |
               |  user_groups_providers:
-              |  - name: GroupsService1
-              |    groups_endpoint: "http://localhost:8080/groups"
-              |    auth_token_name: "user"
-              |    auth_token_passed_as: QUERY_PARAM
-              |    response_groups_json_path: "$$..groups[?(@.name)].name"
-              |
+               |  - name: GroupsService1
+               |    groups_endpoint: "http://localhost:8080/groups"
+               |    auth_token_name: "user"
+               |    auth_token_passed_as: QUERY_PARAM
+               |    response_groups_json_path: "$$..groups[?(@.name)].name"
+               |
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found auth_key, auth_key_sha1")))
+            errors.head should be(DefinitionsLevelCreationError(Message(
+              """Users definition section external groups mapping feature allows for single rule with authentication
+                | and authorization or two rules which handle authentication and authorization separately. 'ldap_auth'
+                | is an authentication with authorization rule and 'groups_provider_authorization' is and authorization only rule.
+                | Cannot use them both in this context.""".stripMargin
+            )))
           }
         )
       }
@@ -751,7 +695,10 @@ class GroupsRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Cannot parse 'auth_key' rule declared for [cartman]")))
+            errors.head should be(DefinitionsLevelCreationError(MalformedValue(
+              """auth_key:
+                |  key: "cartman:pass"
+                |""".stripMargin)))
           }
         )
       }
@@ -782,7 +729,7 @@ class GroupsRuleSettingsTests
           }
         )
       }
-      "user definition doesn't allow to define other fields than 'username', 'groups' and one auth rule" in {
+      "user definition doesn't allow to use unknown rules" in {
         assertDecodingFailure(
           yaml =
             """
@@ -802,7 +749,7 @@ class GroupsRuleSettingsTests
               |""".stripMargin,
           assertion = errors => {
             errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("Only one authentication should be defined for [cartman]. Found unknown_field, auth_key")))
+            errors.head should be(DefinitionsLevelCreationError(Message("Unknown rule 'unknown_field' in users definitions section")))
           }
         )
       }

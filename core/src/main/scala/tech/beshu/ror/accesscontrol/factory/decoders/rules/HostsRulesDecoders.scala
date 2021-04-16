@@ -16,8 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
-import cats.data.NonEmptySet
-import cats.implicits._
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.blocks.rules.{HostsRule, LocalHostsRule}
@@ -29,11 +27,9 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{Rule
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 import tech.beshu.ror.utils.Ip4sBasedHostnameResolver
-import HostsRule._
 
 object HostsRuleDecoder
-  extends RegularRuleDecoder[HostsRule]
-    with RuleBaseDecoderWithAssociatedFields[HostsRule, Boolean] {
+  extends RuleBaseDecoderWithAssociatedFields[HostsRule, Boolean] {
 
   override def ruleDecoderCreator: Boolean => Decoder[RuleWithVariableUsageDefinition[HostsRule]] =
     acceptXForwardedFor =>
@@ -43,8 +39,7 @@ object HostsRuleDecoder
           new HostsRule(HostsRule.Settings(nes, acceptXForwardedFor), new Ip4sBasedHostnameResolver)
         ))
 
-  override val associatedFieldsSet: NonEmptySet[String] =
-    NonEmptySet.one("accept_x-forwarded-for_header")
+  override val associatedFields: Set[String] = Set("accept_x-forwarded-for_header")
 
   override val associatedFieldsDecoder: Decoder[Boolean] =
     Decoder.instance(_.downField("accept_x-forwarded-for_header").as[Boolean])
@@ -52,8 +47,7 @@ object HostsRuleDecoder
 }
 
 class LocalHostsRuleDecoder
-  extends RegularRuleDecoder[LocalHostsRule]
-    with RuleBaseDecoderWithoutAssociatedFields[LocalHostsRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[LocalHostsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LocalHostsRule]] = {
     DecoderHelpers
@@ -67,5 +61,4 @@ class LocalHostsRuleDecoder
 private object HostRulesDecodersHelper {
 
   val defaultAcceptForwardedForHeader = false
-
 }

@@ -28,7 +28,6 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common.userIdDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ProxyAuthDefinitionsDecoder._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.EligibleUsers.Instances._
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, DecodingFailureOps}
@@ -37,8 +36,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class ProxyAuthRuleDecoder(authProxiesDefinitions: Definitions[ProxyAuth],
                            implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRuleDecoder[ProxyAuthRule]
-    with RuleBaseDecoderWithoutAssociatedFields[ProxyAuthRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[ProxyAuthRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ProxyAuthRule]] = {
     ProxyAuthRuleDecoder.simpleSettingsDecoder

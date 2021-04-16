@@ -30,8 +30,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import scala.collection.JavaConverters._
 
 class FieldsRuleDecoder(flsEngine: FlsEngine)
-  extends RegularRuleDecoder[FieldsRule]
-    with RuleBaseDecoderWithoutAssociatedFields[FieldsRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[FieldsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[FieldsRule]] =
     FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine)

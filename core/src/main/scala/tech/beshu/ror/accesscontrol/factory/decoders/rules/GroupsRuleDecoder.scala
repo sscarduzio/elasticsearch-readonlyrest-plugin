@@ -35,8 +35,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 class GroupsRuleDecoder(usersDefinitions: Definitions[UserDef],
                         implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthRuleDecoder[GroupsRule]
-    with RuleBaseDecoderWithoutAssociatedFields[GroupsRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[GroupsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[GroupsRule]] = {
     DecoderHelpers

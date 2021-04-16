@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleB
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 object FilterRuleDecoder
-  extends RegularRuleDecoder[FilterRule]
-    with RuleBaseDecoderWithoutAssociatedFields[FilterRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[FilterRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[FilterRule]] = {
     DecoderHelpers

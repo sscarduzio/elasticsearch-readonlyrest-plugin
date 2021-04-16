@@ -36,8 +36,7 @@ import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import scala.util.Try
 
 object UriRegexRuleDecoder
-  extends RegularRuleDecoder[UriRegexRule]
-    with RuleBaseDecoderWithoutAssociatedFields[UriRegexRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[UriRegexRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[UriRegexRule]] = {
     DecoderHelpers

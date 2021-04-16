@@ -35,8 +35,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class RorKbnAuthRuleDecoder(rorKbnDefinitions: Definitions[RorKbnDef],
                             implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthRuleDecoder[RorKbnAuthRule]
-    with RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[RorKbnAuthRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[RorKbnAuthRule]] = {
     RorKbnAuthRuleDecoder.nameAndGroupsSimpleDecoder

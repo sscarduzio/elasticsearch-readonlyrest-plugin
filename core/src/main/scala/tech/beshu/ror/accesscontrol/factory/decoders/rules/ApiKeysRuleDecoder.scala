@@ -25,8 +25,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers
 
 object ApiKeysRuleDecoder
-  extends RegularRuleDecoder[ApiKeysRule]
-  with RuleBaseDecoderWithoutAssociatedFields[ApiKeysRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[ApiKeysRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ApiKeysRule]] = {
     DecoderHelpers

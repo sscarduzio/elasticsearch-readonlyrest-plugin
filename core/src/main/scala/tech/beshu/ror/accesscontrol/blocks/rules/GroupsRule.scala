@@ -23,6 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
 import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, NoImpersonationSupport, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -41,6 +42,8 @@ final class GroupsRule(val settings: Settings,
     with Logging {
 
   override val name: Rule.Name = GroupsRule.Name.name
+
+  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   private val matchers = settings
     .usersDefinitions.toList

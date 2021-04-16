@@ -148,7 +148,7 @@ class ImpersonationSettingsTests extends BaseDecoderTest(
                |   users: ["*"]
            """.stripMargin,
           assertion = { error =>
-            error should be(DefinitionsLevelCreationError(Message("Cannot parse 'unknown_auth' rule declared for [admin]")))
+            error should be(DefinitionsLevelCreationError(Message("Only an authentication rule can be used in context of 'impersonator' definition")))
           }
         )
       }

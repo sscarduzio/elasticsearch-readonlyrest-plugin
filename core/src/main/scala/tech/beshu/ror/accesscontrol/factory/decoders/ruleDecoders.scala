@@ -18,17 +18,23 @@ package tech.beshu.ror.accesscontrol.factory.decoders
 
 import java.time.Clock
 
+import cats.implicits._
 import cats.Eq
+import io.circe.{Decoder, DecodingFailure}
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
-import tech.beshu.ror.accesscontrol.domain.User
+import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
+import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.providers.UuidProvider
 
 object ruleDecoders {
@@ -47,7 +53,8 @@ object ruleDecoders {
       case ResponseFieldsRule.Name.name => Some(ResponseFieldsRuleDecoder)
       case FilterRule.Name.name => Some(FilterRuleDecoder)
       case GroupsRule.Name.name => Some(new GroupsRuleDecoder(definitions.users, caseMappingEquality))
-      case HeadersAndRule.Name.name | HeadersAndRule.DeprecatedName.name => Some(HeadersAndRuleDecoder)
+      case HeadersAndRule.Name.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.Name))
+      case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
       case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
       case HostsRule.Name.name => Some(HostsRuleDecoder)
       case IndicesRule.Name.name => Some(IndicesRuleDecoders)
@@ -115,7 +122,7 @@ object ruleDecoders {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   rorKbnDefinitions: Definitions[RorKbnDef],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
-                                  caseMappingEquality: UserIdCaseMappingEquality): Option[AuthenticationRuleDecoder[AuthenticationRule]] = {
+                                  caseMappingEquality: UserIdCaseMappingEquality): Option[RuleDecoder[AuthenticationRule]] = {
     val optionalRuleDecoder = name match {
       case AuthKeyRule.Name.name => Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
       case AuthKeySha1Rule.Name.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
@@ -129,8 +136,40 @@ object ruleDecoders {
       case ProxyAuthRule.Name.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions, caseMappingEquality))
       case _ => None
     }
-    optionalRuleDecoder.map(_.asInstanceOf[AuthenticationRuleDecoder[AuthenticationRule]])
+    optionalRuleDecoder
+      .map(_.asInstanceOf[RuleDecoder[AuthenticationRule]])
   }
 
+  def withUserIdParamsCheck[R <: Rule](decoder: RuleDecoder[R],
+                                       userIdPatterns: UserIdPatterns,
+                                       errorCreator: Message => DecodingFailure): Decoder[RuleDecoder.Result[R]] = {
+    decoder.flatMap { result =>
+      result.rule.rule match {
+        case _: Rule.RegularRule => Decoder.const(result)
+        case _: Rule.AuthorizationRule => Decoder.const(result)
+        case rule: AuthenticationRule =>
+          checkUsersEligibility(rule, userIdPatterns) match {
+            case Right(_) => Decoder.const(result)
+            case Left(msg) => Decoder.failed(errorCreator(Message(msg)))
+          }
+      }
+    }
+  }
 
+  private def checkUsersEligibility(rule: AuthenticationRule, userIdPatterns: UserIdPatterns) = {
+    rule.eligibleUsers match {
+      case EligibleUsersSupport.Available(users) =>
+        implicit val _ = rule.caseMappingEquality
+        val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)
+        if (users.exists(matcher.`match`)) {
+          Right(())
+        } else {
+          Left(
+            s"Users [${users.map(_.show).mkString(",")}] are allowed to be authenticated by rule [${rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."
+          )
+        }
+      case EligibleUsersSupport.NotAvailable =>
+        Right(())
+    }
+  }
 }

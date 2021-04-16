@@ -30,8 +30,7 @@ import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.{DecoderHelpers, _}
 
 object MethodsRuleDecoder
-  extends RegularRuleDecoder[MethodsRule]
-    with RuleBaseDecoderWithoutAssociatedFields[MethodsRule] {
+  extends RuleBaseDecoderWithoutAssociatedFields[MethodsRule] {
 
   override protected def decoder: Decoder[RuleWithVariableUsageDefinition[MethodsRule]] = {
     DecoderHelpers

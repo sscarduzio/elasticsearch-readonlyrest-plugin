@@ -18,6 +18,7 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.definitions.ExternalAuthenticationService
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{NoImpersonationSupport, RuleName}
 import tech.beshu.ror.accesscontrol.domain.Credentials
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -32,6 +33,7 @@ final class ExternalAuthenticationRule(val settings: ExternalAuthenticationRule.
   override protected def authenticateUsing(credentials: Credentials): Task[Boolean] =
     settings.service.authenticate(credentials)
 
+  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 }
 
 object ExternalAuthenticationRule {

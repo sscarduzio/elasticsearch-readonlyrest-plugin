@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.DefinitionsLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
-import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.usersDefinitionsAllowedRulesDecoderBy
+import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.{usersDefinitionsAllowedRulesDecoderBy, withUserIdParamsCheck}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
@@ -82,16 +82,16 @@ object UsersDefinitionsDecoder {
   }
 
   private def createModeDecoder(usernamePatterns: UserIdPatterns,
-                          authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                          authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
-                          authProxyDefinitions: Definitions[ProxyAuth],
-                          jwtDefinitions: Definitions[JwtDef],
-                          rorKbnDefinitions: Definitions[RorKbnDef],
-                          ldapServiceDefinitions: Definitions[LdapService],
-                          impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
-                          caseMappingEquality: UserIdCaseMappingEquality)
-                         (implicit clock: Clock,
-                          uuidProvider: UuidProvider): Decoder[UserDef.Mode] = Decoder.instance { c =>
+                                authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                                authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+                                authProxyDefinitions: Definitions[ProxyAuth],
+                                jwtDefinitions: Definitions[JwtDef],
+                                rorKbnDefinitions: Definitions[RorKbnDef],
+                                ldapServiceDefinitions: Definitions[LdapService],
+                                impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+                                caseMappingEquality: UserIdCaseMappingEquality)
+                               (implicit clock: Clock,
+                                uuidProvider: UuidProvider): Decoder[UserDef.Mode] = Decoder.instance { c =>
     type RuleDecoders = List[RuleDecoder[Rule]]
     val ruleNames = c.keys.toList.flatten.map(Rule.Name.apply)
     val ruleDecoders = ruleNames.foldLeft(Either.right[Message, RuleDecoders](List.empty)) {
@@ -114,6 +114,9 @@ object UsersDefinitionsDecoder {
     }
     ruleDecoders
       .left.map(error => DecodingFailureOps.fromError(DefinitionsLevelCreationError(error)))
+      .map { decoders =>
+        decoders.map(withUserIdParamsCheck(_, usernamePatterns, decodingFailure))
+      }
       .flatMap { decoders =>
         val emptyAcc: (ACursor, Decoder.Result[List[Rule]]) = (c, Right(List.empty))
         decoders
@@ -140,7 +143,7 @@ object UsersDefinitionsDecoder {
           twoRulesModeFrom(first, second)
         case moreThanTwoRules =>
           val ruleNamesStr = moreThanTwoRules.map(_.name.show).mkString(",")
-          failure(Message(s"Two many rules defined for [${usernamePatterns.show}] in users definition section: $ruleNamesStr"))
+          failure(Message(s"Too many rules defined for [${usernamePatterns.show}] in users definition section: $ruleNamesStr"))
       }
   }
 
@@ -199,7 +202,7 @@ object UsersDefinitionsDecoder {
     ))
   }
 
-  private def failure(msg: Message) = {
-    Left(DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg)))
-  }
+  private def failure(msg: Message) = Left(decodingFailure(msg))
+
+  private def decodingFailure(msg: Message) = DecodingFailureOps.fromError(DefinitionsLevelCreationError(msg))
 }

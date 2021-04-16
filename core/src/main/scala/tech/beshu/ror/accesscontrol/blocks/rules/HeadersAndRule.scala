@@ -58,7 +58,7 @@ class HeadersAndRule(val settings: Settings)
 
 object HeadersAndRule {
 
-  implicit case object Name extends RuleName[HeadersAndRule] {
+  case object Name extends RuleName[HeadersAndRule] {
     override val name = Rule.Name("headers_and")
   }
 
