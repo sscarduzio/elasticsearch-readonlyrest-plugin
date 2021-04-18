@@ -22,10 +22,11 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
 import tech.beshu.ror.accesscontrol.blocks.rules.GroupsRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, NoImpersonationSupport, RuleName, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -36,7 +37,7 @@ import tech.beshu.ror.accesscontrol.utils.RuntimeMultiResolvableVariableOps.reso
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final class GroupsRule(val settings: Settings,
-                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+                       implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthRule
     with NoImpersonationSupport
     with Logging {
@@ -106,21 +107,65 @@ final class GroupsRule(val settings: Settings,
       case None =>
         Task.now(None)
       case Some(availableGroups) =>
+        val allowedUserMatcher = matchers(userDef)
         userDef.mode match {
           case Mode.WithoutGroupsMapping(auth) =>
-            authenticateInNonGroupsMappingMode(auth, blockContext, matchers(userDef), availableGroups)
-          case Mode.WithGroupsMapping(auth) =>
-            // todo:
-            ???
+            authenticate(auth, blockContext, allowedUserMatcher, availableGroups)
+          case Mode.WithGroupsMapping(Auth.SingleRule(auth)) =>
+            authenticateAndAuthorize(auth, blockContext, allowedUserMatcher, availableGroups)
+          case Mode.WithGroupsMapping(Auth.SeparateRules(authn, authz)) =>
+            authenticateAndAuthorize(authn, authz, blockContext, allowedUserMatcher, availableGroups)
         }
     }
   }
 
-  private def authenticateInNonGroupsMappingMode[B <: BlockContext : BlockContextUpdater](auth: AuthenticationRule,
-                                                                                          blockContext: B,
-                                                                                          allowedUserMatcher: GenericPatternMatcher[User.Id],
-                                                                                          availableGroups: UniqueNonEmptyList[Group]) = {
-    auth
+  private def authenticate[B <: BlockContext : BlockContextUpdater](auth: AuthenticationRule,
+                                                                    blockContext: B,
+                                                                    allowedUserMatcher: GenericPatternMatcher[User.Id],
+                                                                    availableGroups: UniqueNonEmptyList[Group]) = {
+    checkRule(auth, blockContext, allowedUserMatcher, availableGroups)
+      .onErrorRecover { case ex =>
+        logger.debug(s"Authentication error; req=${blockContext.requestContext.id.show}", ex)
+        None
+      }
+  }
+
+  private def authenticateAndAuthorize[B <: BlockContext : BlockContextUpdater](auth: AuthRule,
+                                                                                blockContext: B,
+                                                                                allowedUserMatcher: GenericPatternMatcher[User.Id],
+                                                                                availableGroups: UniqueNonEmptyList[Group]) = {
+    checkRule(auth, blockContext, allowedUserMatcher, availableGroups)
+      .onErrorRecover { case ex =>
+        logger.debug(s"Authentication & Authorization error; req=${blockContext.requestContext.id.show}", ex)
+        None
+      }
+  }
+
+  private def authenticateAndAuthorize[B <: BlockContext : BlockContextUpdater](authnRule: AuthenticationRule,
+                                                                                authzRule: AuthorizationRule,
+                                                                                blockContext: B,
+                                                                                allowedUserMatcher: GenericPatternMatcher[User.Id],
+                                                                                availableGroups: UniqueNonEmptyList[Group]) = {
+
+    authnRule
+      .check(blockContext)
+      .flatMap {
+        case fulfilled: RuleResult.Fulfilled[B] =>
+          checkRule(authzRule, fulfilled.blockContext, allowedUserMatcher, availableGroups)
+        case RuleResult.Rejected(_) =>
+          Task.now(None)
+      }
+      .onErrorRecover { case ex =>
+        logger.debug(s"Authentication & Authorization error; req=${blockContext.requestContext.id.show}", ex)
+        None
+      }
+  }
+
+  private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule,
+                                                                 blockContext: B,
+                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
+                                                                 availableGroups: UniqueNonEmptyList[Group]) = {
+    rule
       .check(blockContext)
       .map {
         case RuleResult.Rejected(_) =>
@@ -134,10 +179,6 @@ final class GroupsRule(val settings: Settings,
             case Some(_) => None
             case None => None
           }
-      }
-      .onErrorRecover { case ex =>
-        logger.debug(s"Authentication error; req=${blockContext.requestContext.id.show}", ex)
-        None
       }
   }
 
