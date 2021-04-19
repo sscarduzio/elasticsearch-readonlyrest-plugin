@@ -145,19 +145,22 @@ final class GroupsRule(val settings: Settings,
                                                                                 authzRule: AuthorizationRule,
                                                                                 blockContext: B,
                                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
-                                                                                availableGroups: UniqueNonEmptyList[Group]) = {
-
-    authnRule
-      .check(blockContext)
+                                                                                availableGroups: UniqueNonEmptyList[Group]): Task[Option[B]] = {
+    checkRule(authnRule, blockContext, allowedUserMatcher, availableGroups)
       .flatMap {
-        case fulfilled: RuleResult.Fulfilled[B] =>
-          checkRule(authzRule, fulfilled.blockContext, allowedUserMatcher, availableGroups)
-        case RuleResult.Rejected(_) =>
-          Task.now(None)
+        case Some(newBlockContext) =>
+          authzRule
+            .check(newBlockContext)
+            .map {
+              case _: RuleResult.Fulfilled[B] => Some(newBlockContext)
+              case RuleResult.Rejected(_) => None
+            }
+        case None =>
+          Task.now(Option.empty[B])
       }
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication & Authorization error; req=${blockContext.requestContext.id.show}", ex)
-        None
+        Option.empty[B]
       }
   }
 
@@ -174,7 +177,9 @@ final class GroupsRule(val settings: Settings,
           val newBlockContext = fulfilled.blockContext
           newBlockContext.userMetadata.loggedUser match {
             case Some(loggedUser) if allowedUserMatcher.`match`(loggedUser.id) => Some {
-              newBlockContext.withUserMetadata(_.addAvailableGroups(availableGroups))
+              blockContext.withUserMetadata(_
+                .withLoggedUser(loggedUser)
+                .addAvailableGroups(availableGroups))
             }
             case Some(_) => None
             case None => None
