@@ -63,7 +63,7 @@ class LdapAuthorizationRuleSettingsTests
                |""".stripMargin,
           assertion = rule => {
             rule.settings.ldap shouldBe a [LoggableLdapAuthorizationServiceDecorator]
-            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a [ComposedLdapAuthService]
+            rule.settings.ldap.asInstanceOf[LoggableLdapAuthorizationServiceDecorator].underlying shouldBe a [CircuitBreakerLdapServiceDecorator]
             rule.settings.permittedGroups should be (UniqueNonEmptyList.of(Group("group3")))
           }
         )
