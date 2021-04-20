@@ -21,7 +21,7 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.ActionsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Action
@@ -30,7 +30,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 class ActionsRule(val settings: Settings)
   extends RegularRule with Logging {
 
-  override val name: Rule.Name = ActionsRule.name
+  override val name: Rule.Name = ActionsRule.Name.name
 
   private val matcher: MatcherWithWildcardsScalaAdapter[Action] = MatcherWithWildcardsScalaAdapter[Action](settings.actions.toSortedSet)
 
@@ -47,7 +47,9 @@ class ActionsRule(val settings: Settings)
 
 object ActionsRule {
 
-  val name = Rule.Name("actions")
+  implicit case object Name extends RuleName[ActionsRule] {
+    override val name = Rule.Name("actions")
+  }
 
   final case class Settings(actions: NonEmptySet[Action])
 

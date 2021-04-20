@@ -24,7 +24,8 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyHashingRule.HashedCredentials.{HashedOnlyPassword, HashedUserAndPassword}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.{EligibleUsersSupport, UserExistence}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.utils.CaseMappingEquality._
@@ -55,6 +56,10 @@ abstract class AuthKeyHashingRule(settings: BasicAuthenticationRule.Settings[Has
     }
   }
 
+  override val eligibleUsers: EligibleUsersSupport = settings.credentials match {
+    case HashedCredentials.HashedUserAndPassword(_) => EligibleUsersSupport.NotAvailable
+    case HashedCredentials.HashedOnlyPassword(userId, _) => EligibleUsersSupport.Available(Set(userId))
+  }
 }
 
 object AuthKeyHashingRule {
@@ -88,16 +93,18 @@ object AuthKeyHashingRule {
 
 }
 
-final class AuthKeySha1Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+final class AuthKeySha1Rule(override val settings: BasicAuthenticationRule.Settings[HashedCredentials],
                             override val impersonators: List[ImpersonatorDef],
                             implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthKeyHashingRule(settings, hasher = Hasher.Sha1) {
 
-  override val name: Rule.Name = AuthKeySha1Rule.name
+  override val name: Rule.Name = AuthKeySha1Rule.Name.name
 }
 
 object AuthKeySha1Rule {
-  val name = Rule.Name("auth_key_sha1")
+  implicit case object Name extends RuleName[AuthKeySha1Rule] {
+    override val name = Rule.Name("auth_key_sha1")
+  }
 }
 
 final class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
@@ -105,33 +112,39 @@ final class AuthKeySha256Rule(settings: BasicAuthenticationRule.Settings[HashedC
                               implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthKeyHashingRule(settings, hasher = Hasher.Sha256) {
 
-  override val name: Rule.Name = AuthKeySha256Rule.name
+  override val name: Rule.Name = AuthKeySha256Rule.Name.name
 }
 
 object AuthKeySha256Rule {
-  val name = Rule.Name("auth_key_sha256")
+  implicit case object Name extends RuleName[AuthKeySha256Rule] {
+    override val name = Rule.Name("auth_key_sha256")
+  }
 }
 
-final class AuthKeySha512Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+final class AuthKeySha512Rule(override val settings: BasicAuthenticationRule.Settings[HashedCredentials],
                               override val impersonators: List[ImpersonatorDef],
                               implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthKeyHashingRule(settings, hasher = Hasher.Sha512) {
 
-  override val name: Rule.Name = AuthKeySha512Rule.name
+  override val name: Rule.Name = AuthKeySha512Rule.Name.name
 }
 
 object AuthKeySha512Rule {
-  val name = Rule.Name("auth_key_sha512")
+  implicit case object Name extends RuleName[AuthKeySha512Rule] {
+    override val name = Rule.Name("auth_key_sha512")
+  }
 }
 
-final class AuthKeyPBKDF2WithHmacSHA512Rule(settings: BasicAuthenticationRule.Settings[HashedCredentials],
+final class AuthKeyPBKDF2WithHmacSHA512Rule(override val settings: BasicAuthenticationRule.Settings[HashedCredentials],
                                             override val impersonators: List[ImpersonatorDef],
                                             implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends AuthKeyHashingRule(settings, hasher = Hasher.PBKDF2WithHmacSHA512) {
 
-  override val name: Rule.Name = AuthKeyPBKDF2WithHmacSHA512Rule.name
+  override val name: Rule.Name = AuthKeyPBKDF2WithHmacSHA512Rule.Name.name
 }
 
 object AuthKeyPBKDF2WithHmacSHA512Rule {
-  val name = Rule.Name("auth_key_pbkdf2")
+  implicit case object Name extends RuleName[AuthKeyPBKDF2WithHmacSHA512Rule] {
+    override val name = Rule.Name("auth_key_pbkdf2")
+  }
 }

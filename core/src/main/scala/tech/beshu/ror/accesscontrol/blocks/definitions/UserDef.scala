@@ -17,19 +17,38 @@
 package tech.beshu.ror.accesscontrol.blocks.definitions
 
 import cats.Show
-import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.UserIdPatterns
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
-import tech.beshu.ror.accesscontrol.domain.{Group, User}
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode
+import tech.beshu.ror.accesscontrol.blocks.definitions.UserDef.Mode.WithGroupsMapping.Auth
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule}
+import tech.beshu.ror.accesscontrol.domain.{Group, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions.Item
 import tech.beshu.ror.accesscontrol.show.logs.userIdPatternsShow
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 final case class UserDef(id: UserDef#Id,
                          groups: UniqueNonEmptyList[Group],
-                         authenticationRule: AuthenticationRule) extends Item {
+                         mode: Mode)
+  extends Item {
+
   override type Id = UserIdPatterns
   override implicit val show: Show[UserIdPatterns] = userIdPatternsShow
 }
+
 object UserDef {
-  final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
+
+  sealed trait Mode
+  object Mode {
+    final case class WithoutGroupsMapping(auth: AuthenticationRule) extends Mode
+    final case class WithGroupsMapping(auth: Auth) extends Mode
+    object WithGroupsMapping {
+      sealed trait Auth
+      object Auth {
+        final case class SeparateRules(authenticationRule: AuthenticationRule,
+                                       authorizationRule: AuthorizationRule)
+          extends Auth
+        final case class SingleRule(rule: AuthRule)
+          extends Auth
+      }
+    }
+  }
 }

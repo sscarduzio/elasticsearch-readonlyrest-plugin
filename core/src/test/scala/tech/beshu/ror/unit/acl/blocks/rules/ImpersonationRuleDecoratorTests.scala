@@ -33,7 +33,8 @@ import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rej
 import tech.beshu.ror.accesscontrol.blocks.rules.{AuthKeyRule, AuthKeySha1Rule, BasicAuthenticationRule}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User}
+import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
+import tech.beshu.ror.accesscontrol.domain.{Credentials, Header, PlainTextSecret, User, UserIdPatterns}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
 import tech.beshu.ror.utils.UserIdEq
@@ -167,17 +168,17 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
     authKeyRuleCreator {
       List(
         ImpersonatorDef(
-          User.Id("admin1"),
+          userIdPatterns("admin1"),
           authKeyRule("admin1", "pass"),
           UniqueNonEmptyList.of(User.Id("*"))
         ),
         ImpersonatorDef(
-          User.Id("admin2"),
+          userIdPatterns("admin2"),
           authKeyRule("admin2", "pass"),
           UniqueNonEmptyList.of(User.Id("user2"), User.Id("user3"))
         ),
         ImpersonatorDef(
-          User.Id("admin3"),
+          userIdPatterns("a*"),
           authKeyRule("admin3", "pass"),
           UniqueNonEmptyList.of(User.Id("user1"))
         )
@@ -187,12 +188,21 @@ class ImpersonationRuleDecoratorTests extends AnyWordSpec with MockFactory with 
 
   private def authKeyRule(user: String, password: String) = {
     new AuthKeyRule(
-      BasicAuthenticationRule.Settings(Credentials(
+      settings = BasicAuthenticationRule.Settings(Credentials(
         User.Id(NonEmptyString.unsafeFrom(user)),
         PlainTextSecret(NonEmptyString.unsafeFrom(password))
       )),
-      Nil,
-      defaultUserIdEq
+      impersonators = Nil,
+      caseMappingEquality = defaultUserIdEq
     )
   }
+
+  private def userIdPatterns(id: String, ids: String*) = {
+    UserIdPatterns(
+      UniqueNonEmptyList.unsafeFromList(
+        (id :: ids.toList).map(str => UserIdPattern(NonEmptyString.unsafeFrom(str)))
+      )
+    )
+  }
+
 }

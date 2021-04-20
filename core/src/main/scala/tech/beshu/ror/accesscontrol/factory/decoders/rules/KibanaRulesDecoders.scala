@@ -16,7 +16,6 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders.rules
 
-import cats.data.NonEmptySet
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.Decoder
@@ -32,55 +31,71 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.rules.KibanaRulesDecoderHelper.kibanaIndexDecoder
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleDecoderWithAssociatedFields, RuleDecoderWithoutAssociatedFields}
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.{RuleBaseDecoderWithAssociatedFields, RuleBaseDecoderWithoutAssociatedFields}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-object KibanaHideAppsRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers
-    .decodeNonEmptyStringLikeOrNonEmptySet(KibanaApp.apply)
-    .map(apps => RuleWithVariableUsageDefinition.create(new KibanaHideAppsRule(Settings(apps))))
-)
+object KibanaHideAppsRuleDecoder
+  extends RuleBaseDecoderWithoutAssociatedFields[KibanaHideAppsRule] {
 
-class KibanaIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  KibanaRulesDecoderHelper
-    .kibanaIndexDecoder
-    .map { index =>
-      RuleWithVariableUsageDefinition.create(new KibanaIndexRule(KibanaIndexRule.Settings(index)))
-    }
-)
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaHideAppsRule]] = {
+    DecoderHelpers
+      .decodeNonEmptyStringLikeOrNonEmptySet(KibanaApp.apply)
+      .map(apps => RuleWithVariableUsageDefinition.create(new KibanaHideAppsRule(Settings(apps))))
+  }
+}
 
-class KibanaTemplateIndexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  KibanaRulesDecoderHelper
-    .kibanaIndexDecoder
-    .map { index =>
-      RuleWithVariableUsageDefinition.create(new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(index)))
-    }
-)
+object KibanaIndexRuleDecoder
+  extends RuleBaseDecoderWithoutAssociatedFields[KibanaIndexRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaIndexRule]] = {
+    KibanaRulesDecoderHelper
+      .kibanaIndexDecoder
+      .map { index =>
+        RuleWithVariableUsageDefinition.create(new KibanaIndexRule(KibanaIndexRule.Settings(index)))
+      }
+  }
+}
+
+object KibanaTemplateIndexRuleDecoder
+  extends RuleBaseDecoderWithoutAssociatedFields[KibanaTemplateIndexRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[KibanaTemplateIndexRule]] = {
+    KibanaRulesDecoderHelper
+      .kibanaIndexDecoder
+      .map { index =>
+        RuleWithVariableUsageDefinition.create(new KibanaTemplateIndexRule(KibanaTemplateIndexRule.Settings(index)))
+      }
+  }
+}
 
 class KibanaAccessRuleDecoder(rorIndexNameConfiguration: RorConfigurationIndex)
-  extends RuleDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]](
-  ruleDecoderCreator = kibanaIndexName =>
-    DecoderHelpers
-      .decodeStringLike
-      .map(_.toLowerCase)
-      .toSyncDecoder
-      .emapE[KibanaAccess] {
-      case "ro" => Right(KibanaAccess.RO)
-      case "rw" => Right(KibanaAccess.RW)
-      case "ro_strict" => Right(KibanaAccess.ROStrict)
-      case "admin" => Right(KibanaAccess.Admin)
-      case "unrestricted" => Right(KibanaAccess.Unrestricted)
-      case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
-    }
-      .map(KibanaAccessRule.Settings(_, kibanaIndexName, rorIndexNameConfiguration))
-      .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
-      .decoder,
-  associatedFields = NonEmptySet.of("kibana_index"),
-  associatedFieldsDecoder =
+  extends RuleBaseDecoderWithAssociatedFields[KibanaAccessRule, RuntimeSingleResolvableVariable[IndexName]] {
+
+  override def ruleDecoderCreator: RuntimeSingleResolvableVariable[IndexName] => Decoder[RuleWithVariableUsageDefinition[KibanaAccessRule]] =
+    kibanaIndexName =>
+      DecoderHelpers
+        .decodeStringLike
+        .map(_.toLowerCase)
+        .toSyncDecoder
+        .emapE[KibanaAccess] {
+        case "ro" => Right(KibanaAccess.RO)
+        case "rw" => Right(KibanaAccess.RW)
+        case "ro_strict" => Right(KibanaAccess.ROStrict)
+        case "admin" => Right(KibanaAccess.Admin)
+        case "unrestricted" => Right(KibanaAccess.Unrestricted)
+        case unknown => Left(AclCreationError.RulesLevelCreationError(Message(s"Unknown kibana access '$unknown'")))
+      }
+        .map(KibanaAccessRule.Settings(_, kibanaIndexName, rorIndexNameConfiguration))
+        .map(settings => RuleWithVariableUsageDefinition.create(new KibanaAccessRule(settings)))
+        .decoder
+
+  override val associatedFields: Set[String] = Set("kibana_index")
+
+  override val associatedFieldsDecoder: Decoder[RuntimeSingleResolvableVariable[IndexName]] =
     Decoder.instance(_.downField("kibana_index").as[RuntimeSingleResolvableVariable[IndexName]]) or Decoder.const(AlreadyResolved(IndexName.kibana))
-)
+}
 
 private object KibanaRulesDecoderHelper {
   private implicit val indexNameConvertible: Convertible[IndexName] = new Convertible[IndexName] {
@@ -101,6 +116,5 @@ private object KibanaRulesDecoderHelper {
         case Left(error) => Left(RulesLevelCreationError(Message(error.show)))
       }
       .decoder
-
 }
 

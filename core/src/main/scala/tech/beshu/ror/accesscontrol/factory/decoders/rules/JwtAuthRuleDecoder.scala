@@ -28,14 +28,16 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.JwtDefinitionsDecoder._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.decodeUniqueList
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
 class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
                          implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields[JwtAuthRule](
+  extends RuleBaseDecoderWithoutAssociatedFields[JwtAuthRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[JwtAuthRule]] = {
     JwtAuthRuleDecoder.nameAndGroupsSimpleDecoder
       .or(JwtAuthRuleDecoder.nameAndGroupsExtendedDecoder)
       .toSyncDecoder
@@ -49,7 +51,8 @@ class JwtAuthRuleDecoder(jwtDefinitions: Definitions[JwtDef],
         RuleWithVariableUsageDefinition.create(new JwtAuthRule(JwtAuthRule.Settings(jwtDef, groups), caseMappingEquality))
       }
       .decoder
-  )
+  }
+}
 
 private object JwtAuthRuleDecoder {
 

@@ -24,7 +24,7 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.AllowsFieldsInRequest._
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.FieldsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFLSUpdater}
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity
@@ -42,7 +42,7 @@ class FieldsRule(val settings: Settings)
   extends RegularRule
     with Logging {
 
-  override val name: Rule.Name = FieldsRule.name
+  override val name: Rule.Name = FieldsRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     blockContext.requestContext match {
@@ -155,7 +155,10 @@ class FieldsRule(val settings: Settings)
 }
 
 object FieldsRule {
-  val name = Rule.Name("fields")
+
+  implicit case object Name extends RuleName[FieldsRule] {
+    override val name = Rule.Name("fields")
+  }
 
   final case class Settings(fields: UniqueNonEmptyList[RuntimeMultiResolvableVariable[DocumentField]],
                             accessMode: AccessMode,

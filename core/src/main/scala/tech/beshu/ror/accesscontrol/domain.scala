@@ -73,6 +73,8 @@ object domain {
       extends Pattern[Id](value)
   }
 
+  final case class UserIdPatterns(patterns: UniqueNonEmptyList[User.UserIdPattern])
+
   final case class Group(value: NonEmptyString)
 
   final case class Header(name: Header.Name, value: NonEmptyString)

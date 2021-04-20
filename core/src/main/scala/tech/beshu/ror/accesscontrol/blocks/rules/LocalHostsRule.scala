@@ -16,20 +16,19 @@
  */
 package tech.beshu.ror.accesscontrol.blocks.rules
 
-import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
-import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.LocalHostsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
+import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.Address
 
 class LocalHostsRule(val settings: Settings,
                      resolver: HostnameResolver)
   extends BaseHostsRule(resolver) {
 
-  override val name: Rule.Name = LocalHostsRule.name
+  override val name: Rule.Name = LocalHostsRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     checkAllowedAddresses(blockContext)(
@@ -41,7 +40,10 @@ class LocalHostsRule(val settings: Settings,
 }
 
 object LocalHostsRule {
-  val name = Rule.Name("hosts_local")
+
+  implicit case object Name extends RuleName[LocalHostsRule] {
+    override val name = Rule.Name("hosts_local")
+  }
 
   final case class Settings(allowedAddresses: NonEmptySet[RuntimeMultiResolvableVariable[Address]])
 }

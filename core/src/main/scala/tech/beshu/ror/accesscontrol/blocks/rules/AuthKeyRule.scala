@@ -20,17 +20,18 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.{EligibleUsersSupport, UserExistence}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
 
-final class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
+final class AuthKeyRule(override val settings: BasicAuthenticationRule.Settings[Credentials],
                         override val impersonators: List[ImpersonatorDef],
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings)
     with Logging {
 
-  override val name: Rule.Name = AuthKeyRule.name
+  override val name: Rule.Name = AuthKeyRule.Name.name
 
   override protected def compare(configuredCredentials: Credentials,
                                  credentials: Credentials): Task[Boolean] = Task.now {
@@ -43,8 +44,14 @@ final class AuthKeyRule(settings: BasicAuthenticationRule.Settings[Credentials],
     if (user === settings.credentials.user) UserExistence.Exists
     else UserExistence.NotExist
   }
+
+
+  override val eligibleUsers: EligibleUsersSupport =
+    EligibleUsersSupport.Available(Set(settings.credentials.user))
 }
 
 object AuthKeyRule {
-  val name = Rule.Name("auth_key")
+  implicit case object Name extends RuleName[AuthKeyRule] {
+    override val name = Rule.Name("auth_key")
+  }
 }

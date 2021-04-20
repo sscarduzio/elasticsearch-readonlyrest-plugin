@@ -20,12 +20,12 @@ import monix.eval.Task
 import squants.information.Information
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 
 class MaxBodyLengthRule(val settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = MaxBodyLengthRule.name
+  override val name: Rule.Name = MaxBodyLengthRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.resultBasedOnCondition(blockContext) {
@@ -35,7 +35,10 @@ class MaxBodyLengthRule(val settings: Settings)
 }
 
 object MaxBodyLengthRule {
-  val name = Rule.Name("max_body_length")
+
+  implicit case object Name extends RuleName[MaxBodyLengthRule] {
+    override val name = Rule.Name("max_body_length")
+  }
 
   final case class Settings(maxContentLength: Information)
 }

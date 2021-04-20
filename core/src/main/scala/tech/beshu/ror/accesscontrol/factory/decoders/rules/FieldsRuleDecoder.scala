@@ -25,12 +25,16 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVa
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.domain.FieldLevelSecurity.FieldsRestrictions.{AccessMode, DocumentField}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings.FlsEngine
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 
 import scala.collection.JavaConverters._
 
 class FieldsRuleDecoder(flsEngine: FlsEngine)
-  extends RuleDecoderWithoutAssociatedFields[FieldsRule](FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine))
+  extends RuleBaseDecoderWithoutAssociatedFields[FieldsRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[FieldsRule]] =
+    FieldsRuleDecoderHelper.fieldsRuleDecoder(flsEngine)
+}
 
 private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
 
@@ -46,6 +50,5 @@ private object FieldsRuleDecoderHelper extends FieldsRuleLikeDecoderHelperBase {
       documentFields <- documentFieldsDecoder[DocumentField](configuredFields, Constants.FIELDS_ALWAYS_ALLOW.asScala.map(NonEmptyString.unsafeFrom).toSet)
     } yield RuleWithVariableUsageDefinition.create(new FieldsRule(FieldsRule.Settings(documentFields, accessMode, flsEngine)))
   }
-
 
 }

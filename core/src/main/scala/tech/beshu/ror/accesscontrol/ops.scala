@@ -36,8 +36,8 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.Dn
 import tech.beshu.ror.accesscontrol.blocks.definitions.{ExternalAuthenticationService, ProxyAuth, UserDef}
 import tech.beshu.ror.accesscontrol.blocks.metadata.UserMetadata
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleResult, RuleWithVariableUsageDefinition}
-import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement.{ComplianceResult, OneOfRuleBeforeMustBeAuthenticationRule}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult, RuleWithVariableUsageDefinition}
+import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.UsageRequirement._
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableType
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeResolvableVariableCreator, VariableContext}
 import tech.beshu.ror.accesscontrol.blocks.variables.startup.StartupResolvableVariableCreator
@@ -125,7 +125,7 @@ object show {
     implicit val nonEmptyStringShow: Show[NonEmptyString] = Show.show(_.value)
     implicit val patternShow: Show[Pattern[_]] = Show.show(_.value.value)
     implicit val userIdShow: Show[User.Id] = Show.show(_.value.value)
-    implicit val userIdPatternsShow: Show[UserDef.UserIdPatterns] = Show.show(_.patterns.toList.map(_.value.value).mkString_(","))
+    implicit val userIdPatternsShow: Show[UserIdPatterns] = Show.show(_.patterns.toList.map(_.value.value).mkString_(","))
     implicit val idPatternShow: Show[User.UserIdPattern] = patternShow.contramap(identity[Pattern[User.Id]])
     implicit val loggedUserShow: Show[LoggedUser] = Show.show(_.id.value.value)
     implicit val typeShow: Show[Type] = Show.show(_.value)
@@ -154,6 +154,7 @@ object show {
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
     implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
+    implicit def ruleNameShow[T <: RuleName[_]]: Show[T] = Show.show(_.name.value)
 
     implicit def nonEmptyList[T : Show]: Show[NonEmptyList[T]] = Show[List[T]].contramap(_.toList)
 
@@ -296,6 +297,8 @@ object show {
     implicit val complianceResultShow: Show[ComplianceResult.NonCompliantWith] = Show.show {
       case ComplianceResult.NonCompliantWith(OneOfRuleBeforeMustBeAuthenticationRule(variableType)) =>
         s"Variable used to extract ${variableType.show} requires one of the rules defined in block to be authentication rule"
+      case ComplianceResult.NonCompliantWith(JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier) =>
+        s"JWT variables are not allowed to be used in Groups rule"
     }
 
     def obfuscatedHeaderShow(obfuscatedHeaders: Set[Header.Name]): Show[Header] = {

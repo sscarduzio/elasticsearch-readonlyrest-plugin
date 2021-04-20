@@ -21,7 +21,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater._
 import tech.beshu.ror.accesscontrol.blocks.rules.FilterRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Unresolvable
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater, BlockContextWithFilterUpdater}
@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.domain.Filter
 class FilterRule(val settings: Settings)
   extends RegularRule with Logging {
 
-  override val name: Rule.Name = FilterRule.name
+  override val name: Rule.Name = FilterRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     blockContext.requestContext match {
@@ -67,7 +67,10 @@ class FilterRule(val settings: Settings)
 }
 
 object FilterRule {
-  val name = Rule.Name("filter")
+
+  implicit case object Name extends RuleName[FilterRule] {
+    override  val name = Rule.Name("filter")
+  }
 
   final case class Settings(filter: RuntimeSingleResolvableVariable[Filter])
 

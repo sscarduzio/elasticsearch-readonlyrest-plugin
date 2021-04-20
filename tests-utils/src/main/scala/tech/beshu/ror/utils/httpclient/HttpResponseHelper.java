@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.utils.misc;
+package tech.beshu.ror.utils.httpclient;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;

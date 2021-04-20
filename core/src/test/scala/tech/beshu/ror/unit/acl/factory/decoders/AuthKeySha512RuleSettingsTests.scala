@@ -22,7 +22,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeySha512Rule
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.utils.TestsUtils._
 import eu.timepit.refined.auto._
 
 class AuthKeySha512RuleSettingsTests extends BaseRuleSettingsDecoderTest[AuthKeySha512Rule] {

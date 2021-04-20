@@ -16,23 +16,29 @@
  */
 package tech.beshu.ror.integration
 
+import java.util.Base64
+
 import eu.timepit.refined.auto._
-import eu.timepit.refined.auto._
+import monix.execution.Scheduler.Implicits.global
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
-import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, IndexWithAliases, User}
-import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
-import tech.beshu.ror.mocks.MockRequestContext
-import tech.beshu.ror.utils.uniquelist.UniqueList
-import tech.beshu.ror.utils.TestsUtils._
-import monix.execution.Scheduler.Implicits.global
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
+import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, IndexWithAliases, User}
+import tech.beshu.ror.mocks.MockRequestContext
+import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.misc.JwtUtils._
+import tech.beshu.ror.utils.misc.Random
+import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+
+  private val (pub, secret) = Random.generateRsaRandomKeys
+
   override protected def configYaml: String =
-    """
+    s"""
       |readonlyrest:
       |
       |  access_control_rules:
@@ -44,6 +50,11 @@ class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoa
       |  - name: "Allowed only for group1 and group2"
       |    groups: [group1, group2]
       |    indices: ["g12_index"]
+      |
+      |  - name: "Allowed only for group5"
+      |    groups: ["@explode{jwt:roles}"]
+      |    indices: ["g5_index"]
+      |    jwt_auth: "jwt1"
       |
       |  users:
       |
@@ -57,10 +68,23 @@ class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoa
       |    groups: ["group3", "group4"]
       |    auth_key: "user2:pass"
       |
+      |  - username: user3
+      |    groups: ["group5"]
+      |    jwt_auth: "jwt1"
+      |
       |  proxy_auth_configs:
       |
       |  - name: "proxy1"
       |    user_id_header: "X-Auth-Token"
+      |
+      |  jwt:
+      |
+      |  - name: jwt1
+      |    signature_algo: "RSA"
+      |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
+      |    user_claim: "userId"
+      |    roles_claim: roles
+      |
     """.stripMargin
 
   "An ACL" when {
@@ -70,10 +94,7 @@ class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoa
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-proxy-id")),
             filteredIndices = Set(IndexName("g12_index")),
-            allIndicesAndAliases = Set(
-              IndexWithAliases(IndexName("g12_index"), Set.empty),
-              IndexWithAliases(IndexName("g34_index"), Set.empty)
-            )
+            allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
           result.history should have size 2
@@ -88,13 +109,10 @@ class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoa
           val request = MockRequestContext.indices.copy(
             headers = Set(header("X-Auth-Token", "user1-invalid")),
             filteredIndices = Set(IndexName("g12_index")),
-            allIndicesAndAliases = Set(
-              IndexWithAliases(IndexName("g12_index"), Set.empty),
-              IndexWithAliases(IndexName("g34_index"), Set.empty)
-            )
+            allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 2
+          result.history should have size 3
           inside(result.result) { case ForbiddenByMismatched(causes) =>
             causes.toNonEmptyList.toList should have size 1
             causes.toNonEmptyList.head should be (Cause.OperationNotAllowed)
@@ -102,5 +120,32 @@ class GroupsWithProxyAuthAccessControlTests extends AnyWordSpec with BaseYamlLoa
         }
       }
     }
+    "jwt auth is used together with groups" should {
+      "allow to proceed" when {
+        "at least one of user's roles is declared in groups" in {
+          val jwt = Jwt(secret, claims = List(
+            "userId" := "user3",
+            "roles" := List("group5", "group6", "group7")
+          ))
+          val request = MockRequestContext.indices.copy(
+            headers = Set(header("Authorization", s"Bearer ${jwt.stringify()}")),
+            filteredIndices = Set(IndexName("g*")),
+            allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
+          )
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          result.history should have size 3
+          inside(result.result) { case Allow(blockContext, _) =>
+            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user3"))))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group5")))
+          }
+        }
+      }
+    }
   }
+
+  private def allIndicesAndAliasesInTheTestCase() = Set(
+    IndexWithAliases(IndexName("g12_index"), Set.empty),
+    IndexWithAliases(IndexName("g34_index"), Set.empty),
+    IndexWithAliases(IndexName("g5_index"), Set.empty)
+  )
 }

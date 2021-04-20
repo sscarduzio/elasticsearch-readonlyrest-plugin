@@ -22,6 +22,7 @@ import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapAuthorizationSer
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult
 import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.AuthorizationResult.{Authorized, Unauthorized}
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser}
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -29,7 +30,7 @@ import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 class LdapAuthorizationRule(val settings: Settings)
   extends BaseAuthorizationRule {
 
-  override val name: Rule.Name = LdapAuthorizationRule.name
+  override val name: Rule.Name = LdapAuthorizationRule.Name.name
 
   override protected def authorize[B <: BlockContext](blockContext: B,
                                                       user: LoggedUser): Task[AuthorizationResult] = {
@@ -72,7 +73,10 @@ class LdapAuthorizationRule(val settings: Settings)
 }
 
 object LdapAuthorizationRule {
-  val name = Rule.Name("ldap_authorization")
+
+  implicit case object Name extends RuleName[LdapAuthorizationRule] {
+    override val name = Rule.Name("ldap_authorization")
+  }
 
   final case class Settings(ldap: LdapAuthorizationService,
                             permittedGroups: UniqueNonEmptyList[Group],

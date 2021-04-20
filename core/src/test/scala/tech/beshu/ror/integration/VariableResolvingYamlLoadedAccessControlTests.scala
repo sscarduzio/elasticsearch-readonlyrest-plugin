@@ -16,17 +16,15 @@
  */
 package tech.beshu.ror.integration
 
-import eu.timepit.refined.auto._
 import java.util.Base64
 
+import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
-import io.jsonwebtoken.Jwts
-import io.jsonwebtoken.impl.DefaultClaims
 import monix.execution.Scheduler.Implicits.global
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{FilterableRequestBlockContext, GeneralIndexRequestBlockContext}
@@ -37,10 +35,9 @@ import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.providers.EnvVarProvider.EnvVarName
 import tech.beshu.ror.providers.EnvVarsProvider
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
-
-import scala.collection.JavaConverters._
 
 class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
   with BaseYamlLoadedAccessControlTest with MockFactory with Inside {
@@ -198,18 +195,12 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
           }
         }
         "JWT variable is used (array)" in {
-          val claims = new DefaultClaims(Map[String, AnyRef](
-            "sub" -> "test",
-            "userId" -> "user3",
-            "tech" -> Map("beshu" -> Map("mainGroup" -> List("j1", "j2").asJava).asJava).asJava
-          ).asJava)
+          val jwt = Jwt(secret, claims = List(
+            "userId" := "user3",
+            "tech" :-> "beshu" :-> "mainGroup" := List("j1", "j2")
+          ))
           val request = MockRequestContext.indices.copy(
-            headers = Set(new Header(
-              Header.Name.authorization,
-              {
-                val jwtBuilder = Jwts.builder.signWith(secret).setSubject("test").setClaims(claims)
-                NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
-              })),
+            headers = Set(new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
             filteredIndices = Set(IndexName("gj1"))
           )
 
@@ -222,25 +213,20 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               UserMetadata
                 .empty
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user3")))
-                .withJwtToken(JwtTokenPayload(claims))
+                .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
             )
             blockContext.filteredIndices should be(Set(IndexName("gj1")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }
         "JWT variable is used (CSV string)" in {
-          val claims = new DefaultClaims(Map[String, AnyRef](
-            "sub" -> "test",
-            "userId" -> "user4",
-            "tech" -> Map("beshu" -> Map("mainGroupsString" -> "j0,j3").asJava).asJava
-          ).asJava)
+          val jwt = Jwt(secret, claims = List(
+            "userId" := "user4",
+            "tech" :-> "beshu" :-> "mainGroupsString" := "j0,j3"
+          ))
+
           val request = MockRequestContext.indices.copy(
-            headers = Set(new Header(
-              Header.Name.authorization,
-              {
-                val jwtBuilder = Jwts.builder.signWith(secret).setSubject("test").setClaims(claims)
-                NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
-              })),
+            headers = Set(new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
             filteredIndices = Set(IndexName("gj0")),
             allIndicesAndAliases = Set(IndexWithAliases(IndexName("gj0"), Set.empty))
           )
@@ -254,25 +240,20 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               UserMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user4")))
-                .withJwtToken(JwtTokenPayload(claims))
+                .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
             )
             blockContext.filteredIndices should be(Set(IndexName("gj0")))
             blockContext.responseHeaders should be(Set.empty)
           }
         }
         "JWT variable in filter query is used" in {
-          val claims = new DefaultClaims(Map[String, AnyRef](
-            "sub" -> "test",
-            "userId" -> "user5",
-            "user_id_list" -> List("alice", "bob").asJava
-          ).asJava)
+          val jwt = Jwt(secret, claims = List(
+            "userId" := "user5",
+            "user_id_list" := List("alice", "bob")
+          ))
+
           val request = MockRequestContext.search.copy(
-            headers = Set(new Header(
-              Header.Name.authorization,
-              {
-                val jwtBuilder = Jwts.builder.signWith(secret).setSubject("test").setClaims(claims)
-                NonEmptyString.unsafeFrom(s"Bearer ${jwtBuilder.compact}")
-              })),
+            headers = Set(new Header(Header.Name.authorization, NonEmptyString.unsafeFrom(s"Bearer ${jwt.stringify()}"))),
             indices = Set.empty,
             allIndicesAndAliases = Set.empty
           )
@@ -286,7 +267,7 @@ class VariableResolvingYamlLoadedAccessControlTests extends AnyWordSpec
               UserMetadata
                 .from(request)
                 .withLoggedUser(DirectlyLoggedUser(User.Id("user5")))
-                .withJwtToken(JwtTokenPayload(claims))
+                .withJwtToken(JwtTokenPayload(jwt.defaultClaims()))
             )
             blockContext.filteredIndices should be(Set.empty)
             blockContext.responseHeaders should be(Set.empty)

@@ -33,7 +33,7 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.ExternalAuthorizationServicesDecoder._
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.CaseMappingEquality._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
@@ -42,13 +42,12 @@ import scala.concurrent.duration.FiniteDuration
 
 class ExternalAuthorizationRuleDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
                                        implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields[ExternalAuthorizationRule](
-    ExternalAuthorizationRuleDecoder
-      .settingsDecoder(authorizationServices, caseMappingEquality)
-      .map(settings => RuleWithVariableUsageDefinition.create(new ExternalAuthorizationRule(settings, caseMappingEquality)))
-  )
+  extends RuleBaseDecoderWithoutAssociatedFields[ExternalAuthorizationRule] {
 
-object ExternalAuthorizationRuleDecoder {
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[ExternalAuthorizationRule]] = {
+    settingsDecoder(authorizationServices, caseMappingEquality)
+      .map(settings => RuleWithVariableUsageDefinition.create(new ExternalAuthorizationRule(settings, caseMappingEquality)))
+  }
 
   private def settingsDecoder(authorizationServices: Definitions[ExternalAuthorizationService],
                               caseMappingEquality: UserIdCaseMappingEquality): Decoder[ExternalAuthorizationRule.Settings] = {

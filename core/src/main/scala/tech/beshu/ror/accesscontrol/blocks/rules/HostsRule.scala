@@ -20,7 +20,7 @@ import cats.implicits._
 import cats.data.NonEmptySet
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.HostsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -31,7 +31,7 @@ class HostsRule(val settings: Settings,
                 resolver: HostnameResolver)
   extends BaseHostsRule(resolver) {
 
-  override val name: Rule.Name = HostsRule.name
+  override val name: Rule.Name = HostsRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = {
     val requestContext = blockContext.requestContext
@@ -67,7 +67,9 @@ class HostsRule(val settings: Settings,
 
 object HostsRule {
 
-  val name: Rule.Name = Rule.Name("hosts")
+  implicit case object Name extends RuleName[HostsRule] {
+    override val name: Rule.Name = Rule.Name("hosts")
+  }
 
   final case class Settings(allowedHosts: NonEmptySet[RuntimeMultiResolvableVariable[Address]],
                             acceptXForwardedForHeader: Boolean)

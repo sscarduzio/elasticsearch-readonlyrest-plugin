@@ -27,7 +27,7 @@ import org.apache.http.client.methods.HttpUriRequest
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml
 import tech.beshu.ror.utils.elasticsearch.BaseManager.SimpleResponse
 import tech.beshu.ror.utils.httpclient.RestClient
-import tech.beshu.ror.utils.misc.HttpResponseHelper.stringBodyFrom
+import tech.beshu.ror.utils.httpclient.HttpResponseHelper.stringBodyFrom
 import tech.beshu.ror.utils.misc.ScalaUtils._
 import ujson.Value
 

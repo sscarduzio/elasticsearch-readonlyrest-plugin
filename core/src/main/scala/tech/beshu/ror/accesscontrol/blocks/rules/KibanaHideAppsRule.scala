@@ -23,14 +23,14 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaHideAppsRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.MatchingAlwaysRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RuleName}
 import tech.beshu.ror.accesscontrol.domain.KibanaApp
 import tech.beshu.ror.accesscontrol.show.logs._
 
 class KibanaHideAppsRule(val settings: Settings)
   extends MatchingAlwaysRule with Logging {
 
-  override val name: Rule.Name = KibanaHideAppsRule.name
+  override val name: Rule.Name = KibanaHideAppsRule.Name.name
 
   override def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B] = Task {
     blockContext.userMetadata.loggedUser match {
@@ -44,7 +44,10 @@ class KibanaHideAppsRule(val settings: Settings)
 }
 
 object KibanaHideAppsRule {
-  val name = Rule.Name("kibana_hide_apps")
+
+  implicit case object Name extends RuleName[KibanaHideAppsRule] {
+    override val name = Rule.Name("kibana_hide_apps")
+  }
 
   final case class Settings(kibanaAppsToHide: NonEmptySet[KibanaApp])
 
