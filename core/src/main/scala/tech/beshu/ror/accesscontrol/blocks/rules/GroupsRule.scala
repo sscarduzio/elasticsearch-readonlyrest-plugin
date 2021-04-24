@@ -110,11 +110,24 @@ final class GroupsRule(val settings: Settings,
         val allowedUserMatcher = matchers(userDef)
         userDef.mode match {
           case Mode.WithoutGroupsMapping(auth) =>
-            authenticate(auth, blockContext, allowedUserMatcher, availableGroups)
+            authenticate(auth, blockContext, allowedUserMatcher, availableGroups, withGroupsMapping = false)
           case Mode.WithGroupsMapping(Auth.SingleRule(auth)) =>
-            authenticateAndAuthorize(auth, blockContext, allowedUserMatcher, availableGroups)
+            authenticateAndAuthorize(
+              auth = auth,
+              blockContext = blockContext,
+              allowedUserMatcher = allowedUserMatcher,
+              availableGroups = availableGroups,
+              withGroupsMapping = true
+            )
           case Mode.WithGroupsMapping(Auth.SeparateRules(authn, authz)) =>
-            authenticateAndAuthorize(authn, authz, blockContext, allowedUserMatcher, availableGroups)
+            authenticateAndAuthorize(
+              authnRule = authn,
+              authzRule = authz,
+              blockContext = blockContext,
+              allowedUserMatcher = allowedUserMatcher,
+              availableGroups = availableGroups,
+              withGroupsMapping = true
+            )
         }
     }
   }
@@ -122,8 +135,9 @@ final class GroupsRule(val settings: Settings,
   private def authenticate[B <: BlockContext : BlockContextUpdater](auth: AuthenticationRule,
                                                                     blockContext: B,
                                                                     allowedUserMatcher: GenericPatternMatcher[User.Id],
-                                                                    availableGroups: UniqueNonEmptyList[Group]) = {
-    checkRule(auth, blockContext, allowedUserMatcher, availableGroups)
+                                                                    availableGroups: UniqueNonEmptyList[Group],
+                                                                    withGroupsMapping: Boolean) = {
+    checkRule(auth, blockContext, allowedUserMatcher, availableGroups, withGroupsMapping)
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication error; req=${blockContext.requestContext.id.show}", ex)
         None
@@ -133,8 +147,9 @@ final class GroupsRule(val settings: Settings,
   private def authenticateAndAuthorize[B <: BlockContext : BlockContextUpdater](auth: AuthRule,
                                                                                 blockContext: B,
                                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
-                                                                                availableGroups: UniqueNonEmptyList[Group]) = {
-    checkRule(auth, blockContext, allowedUserMatcher, availableGroups)
+                                                                                availableGroups: UniqueNonEmptyList[Group],
+                                                                                withGroupsMapping: Boolean) = {
+    checkRule(auth, blockContext, allowedUserMatcher, availableGroups, withGroupsMapping)
       .onErrorRecover { case ex =>
         logger.debug(s"Authentication & Authorization error; req=${blockContext.requestContext.id.show}", ex)
         None
@@ -145,8 +160,9 @@ final class GroupsRule(val settings: Settings,
                                                                                 authzRule: AuthorizationRule,
                                                                                 blockContext: B,
                                                                                 allowedUserMatcher: GenericPatternMatcher[User.Id],
-                                                                                availableGroups: UniqueNonEmptyList[Group]): Task[Option[B]] = {
-    checkRule(authnRule, blockContext, allowedUserMatcher, availableGroups)
+                                                                                availableGroups: UniqueNonEmptyList[Group],
+                                                                                withGroupsMapping: Boolean): Task[Option[B]] = {
+    checkRule(authnRule, blockContext, allowedUserMatcher, availableGroups, withGroupsMapping)
       .flatMap {
         case Some(newBlockContext) =>
           authzRule
@@ -167,9 +183,13 @@ final class GroupsRule(val settings: Settings,
   private def checkRule[B <: BlockContext : BlockContextUpdater](rule: Rule,
                                                                  blockContext: B,
                                                                  allowedUserMatcher: GenericPatternMatcher[User.Id],
-                                                                 availableGroups: UniqueNonEmptyList[Group]) = {
+                                                                 availableGroups: UniqueNonEmptyList[Group],
+                                                                 withGroupsMapping: Boolean) = {
     rule
-      .check(blockContext)
+      .check(
+        if(withGroupsMapping) blockContext.withUserMetadata(_.clearCurrentGroup)
+        else blockContext
+      )
       .map {
         case RuleResult.Rejected(_) =>
           None

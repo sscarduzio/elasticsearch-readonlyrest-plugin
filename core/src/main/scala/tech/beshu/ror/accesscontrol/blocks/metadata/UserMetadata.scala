@@ -52,6 +52,7 @@ final case class UserMetadata private(loggedUser: Option[LoggedUser],
   def withKibanaAccess(access: KibanaAccess): UserMetadata = this.copy(kibanaAccess = Some(access))
   def withUserOrigin(origin: UserOrigin): UserMetadata = this.copy(userOrigin = Some(origin))
   def withJwtToken(token: JwtTokenPayload): UserMetadata = this.copy(jwtToken = Some(token))
+  def clearCurrentGroup: UserMetadata = this.copy(currentGroup = None)
 }
 
 object UserMetadata {

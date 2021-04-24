@@ -24,7 +24,6 @@ import tech.beshu.ror.accesscontrol.blocks.rules.BaseAuthorizationRule.Authoriza
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthorizationRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
 import tech.beshu.ror.accesscontrol.domain.{Group, LoggedUser}
-import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 class LdapAuthorizationRule(val settings: Settings)
@@ -34,12 +33,12 @@ class LdapAuthorizationRule(val settings: Settings)
 
   override protected def authorize[B <: BlockContext](blockContext: B,
                                                       user: LoggedUser): Task[AuthorizationResult] = {
-    val requestContext = blockContext.requestContext
-    requestContext.currentGroup.toOption match {
+    val optCurrentGroup = blockContext.userMetadata.currentGroup
+    optCurrentGroup match {
       case Some(currentGroup) if !settings.permittedGroups.contains(currentGroup) =>
         Task.now(Unauthorized)
       case Some(_) | None =>
-        authorizeWithLdapGroups(requestContext.currentGroup.toOption, user)
+        authorizeWithLdapGroups(optCurrentGroup, user)
     }
   }
 
