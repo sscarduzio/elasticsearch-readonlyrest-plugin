@@ -18,7 +18,6 @@ package tech.beshu.ror.unit.acl.factory.decoders
 
 import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.matchers.should.Matchers._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapAuthenticationService
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.{CacheableLdapAuthenticationServiceDecorator, CircuitBreakerLdapAuthenticationServiceDecorator, LoggableLdapAuthenticationServiceDecorator}
 import tech.beshu.ror.accesscontrol.blocks.rules.LdapAuthenticationRule
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message

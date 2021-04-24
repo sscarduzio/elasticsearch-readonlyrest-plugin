@@ -18,6 +18,7 @@ package tech.beshu.ror.integration
 
 import java.util.Base64
 
+import com.dimafeng.testcontainers.ForAllTestContainer
 import eu.timepit.refined.auto._
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Inside
@@ -25,17 +26,27 @@ import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.ForbiddenByMismatched.Cause
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult.{Allow, ForbiddenByMismatched}
+import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.{Group, IndexName, IndexWithAliases, User}
 import tech.beshu.ror.mocks.MockRequestContext
 import tech.beshu.ror.utils.TestsUtils._
+import tech.beshu.ror.utils.containers.LdapContainer
 import tech.beshu.ror.utils.misc.JwtUtils._
 import tech.beshu.ror.utils.misc.Random
 import tech.beshu.ror.utils.uniquelist.UniqueList
 
-class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccessControlTest with Inside {
+class GroupsRuleAccessControlTests
+  extends AnyWordSpec
+    with BaseYamlLoadedAccessControlTest
+    with ForAllTestContainer
+    with Inside {
 
   private val (pub, secret) = Random.generateRsaRandomKeys
+
+  override val container: LdapContainer = new LdapContainer("LDAP1", "test_example.ldif")
+
+  override protected val ldapConnectionPoolProvider: UnboundidLdapConnectionPoolProvider = new UnboundidLdapConnectionPoolProvider
 
   override protected def configYaml: String =
     s"""
@@ -56,6 +67,10 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
       |    indices: ["g5_index"]
       |    jwt_auth: "jwt1"
       |
+      |  - name: "::ELKADMIN::"
+      |    kibana_access: unrestricted
+      |    groups: ["admin"]
+      |
       |  users:
       |
       |  - username: user1-proxy-id
@@ -72,6 +87,12 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
       |    groups: ["group5"]
       |    jwt_auth: "jwt1"
       |
+      |  - username: "*"
+      |    groups: ["personal_admin", "admin", "admin_ops", "admin_dev"]
+      |    ldap_auth:
+      |      name: ldap1
+      |      groups: ["group3"]
+      |
       |  proxy_auth_configs:
       |
       |  - name: "proxy1"
@@ -84,6 +105,34 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
       |    signature_key: "${Base64.getEncoder.encodeToString(pub.getEncoded)}"
       |    user_claim: "userId"
       |    roles_claim: roles
+      |
+      |  ######### LDAP SERVERS CONFIGURATION ########################
+      |  # users:                                                    #
+      |  #   * cartman:user2                                         #
+      |  #   * bong:user1                                            #
+      |  #   * morgan:user1                                          #
+      |  #   * Bìlbö Bággįnš:user2                                   #
+      |  # groups:                                                   #
+      |  #   * group1: cartman, bong                                 #
+      |  #   * group2: morgan, Bìlbö Bággįnš                         #
+      |  #   * group3: morgan, cartman, bong                         #
+      |  #############################################################
+      |  ldaps:
+      |    - name: ldap1
+      |      host: "${container.ldapHost}"
+      |      port: ${container.ldapPort}
+      |      ssl_enabled: false                                        # default true
+      |      ssl_trust_all_certs: true                                 # default false
+      |      bind_dn: "cn=admin,dc=example,dc=com"                     # skip for anonymous bind
+      |      bind_password: "password"                                 # skip for anonymous bind
+      |      search_user_base_DN: "ou=People,dc=example,dc=com"
+      |      search_groups_base_DN: "ou=Groups,dc=example,dc=com"
+      |      user_id_attribute: "uid"                                  # default "uid"
+      |      unique_member_attribute: "uniqueMember"                   # default "uniqueMember"
+      |      connection_pool_size: 10                                  # default 30
+      |      connection_timeout_in_sec: 10                             # default 1
+      |      request_timeout_in_sec: 10                                # default 1
+      |      cache_ttl_in_sec: 60                                      # default 0 - cache disabled
       |
     """.stripMargin
 
@@ -112,7 +161,7 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
             allIndicesAndAliases = allIndicesAndAliasesInTheTestCase()
           )
           val result = acl.handleRegularRequest(request).runSyncUnsafe()
-          result.history should have size 3
+          result.history should have size 4
           inside(result.result) { case ForbiddenByMismatched(causes) =>
             causes.toNonEmptyList.toList should have size 1
             causes.toNonEmptyList.head should be (Cause.OperationNotAllowed)
@@ -137,6 +186,26 @@ class GroupsRuleAccessControlTests extends AnyWordSpec with BaseYamlLoadedAccess
           inside(result.result) { case Allow(blockContext, _) =>
             blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("user3"))))
             blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("group5")))
+          }
+        }
+      }
+    }
+    "ldap auth with groups mapping is used together with groups" should {
+      "allow to proceed" when {
+        "user can be authenticated and authorized (externally and locally)" in {
+          val request = MockRequestContext.indices.copy(
+            headers = Set(
+              basicAuthHeader("morgan:user1"),
+              header("x-ror-current-group", "admin")
+            ),
+            filteredIndices = Set(IndexName(".kibana")),
+            allIndicesAndAliases = Set(IndexWithAliases(IndexName(".kibana"), Set.empty))
+          )
+          val result = acl.handleRegularRequest(request).runSyncUnsafe()
+          result.history should have size 4
+          inside(result.result) { case Allow(blockContext, _) =>
+            blockContext.userMetadata.loggedUser should be(Some(DirectlyLoggedUser(User.Id("morgan"))))
+            blockContext.userMetadata.availableGroups should be(UniqueList.of(Group("admin")))
           }
         }
       }
