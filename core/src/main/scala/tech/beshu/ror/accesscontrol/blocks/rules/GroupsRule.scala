@@ -48,7 +48,7 @@ final class GroupsRule(val settings: Settings,
 
   private val matchers = settings
     .usersDefinitions.toList
-    .map { userDef => userDef -> new GenericPatternMatcher(userDef.id.patterns.toList) }
+    .map { userDef => userDef -> new GenericPatternMatcher(userDef.usernames.patterns.toList) }
     .toMap
 
   override def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] =
