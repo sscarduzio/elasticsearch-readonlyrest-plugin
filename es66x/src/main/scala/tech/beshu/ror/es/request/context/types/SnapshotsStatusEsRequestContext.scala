@@ -94,7 +94,11 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   private def update(actionRequest: SnapshotsStatusRequest,
                      snapshots: NonEmptyList[SnapshotName],
                      repository: RepositoryName) = {
-    actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
+    if (snapshotsFrom(actionRequest).isEmpty && snapshots.contains_(SnapshotName.all)) {
+      // if empty, it's /_snapshot/_status request
+    } else {
+      actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
+    }
     actionRequest.repository(repository.value.value)
   }
 }
