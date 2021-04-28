@@ -4,15 +4,26 @@ readonlyrest:
 
   access_control_rules:
 
+    # ES containter initializer need this rule to configure ES instance after startup
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow
-      auth_key: admin:admin
+      auth_key: admin:container
 
     - name: "dev1 block"
-      indices: ["idev1", "idev1_*"]
       auth_key: dev1:test
+      indices: ["index1"]
 
     - name: "dev2 block"
-      indices: ["idev2", "idev2_*"]
       auth_key: dev2:test
+      indices: ["index2*"]
+      repositories: ["dev2-repo-*"]
+      snapshots: ["dev2-snap-*"]
+
+    - name: "dev3 block"
+      auth_key: dev3:test
+
+    - name: "dev4 block"
+      auth_key: dev4:test
+      indices: ["index1*"]
+      repositories: ["dev4-repo"]

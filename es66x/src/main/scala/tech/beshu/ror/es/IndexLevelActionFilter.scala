@@ -16,6 +16,7 @@
  */
 package tech.beshu.ror.es
 
+
 import java.util.function.Supplier
 
 import monix.execution.atomic.Atomic
@@ -30,17 +31,17 @@ import org.elasticsearch.tasks.Task
 import org.elasticsearch.threadpool.ThreadPool
 import org.elasticsearch.transport.RemoteClusterService
 import tech.beshu.ror.accesscontrol.matchers.UniqueIdentifierGenerator
-import tech.beshu.ror.boot.{Engine, EsInitListener, Ror, RorInstance, RorMode}
-import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
+import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
+import tech.beshu.ror.boot._
 import tech.beshu.ror.es.request.AclAwareRequestFilter
 import tech.beshu.ror.es.request.AclAwareRequestFilter.EsContext
 import tech.beshu.ror.es.request.RorNotAvailableResponse.{createRorNotReadyYetResponse, createRorStartingFailureResponse}
-import tech.beshu.ror.utils.AccessControllerHelper._
+import tech.beshu.ror.es.services.{EsAuditSinkService, EsIndexJsonContentService, EsServerBasedRorClusterService}
 import tech.beshu.ror.es.utils.ThreadRepo
 import tech.beshu.ror.exceptions.StartingFailureException
-import tech.beshu.ror.providers.{EnvVarsProvider, OsEnvVarsProvider}
+import tech.beshu.ror.providers.EnvVarsProvider
+import tech.beshu.ror.utils.AccessControllerHelper._
 import tech.beshu.ror.utils.RorInstanceSupplier
-import tech.beshu.ror.boot.RorSchedulers.Implicits.mainScheduler
 
 import scala.language.postfixOps
 
