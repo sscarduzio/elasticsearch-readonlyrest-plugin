@@ -30,6 +30,10 @@ import tech.beshu.ror.es.request.RequestSeemsToBeInvalid
 import tech.beshu.ror.es.request.context.ModificationResult
 import tech.beshu.ror.utils.ScalaOps._
 
+// curl -vk -u admin:container "http://localhost:9201/_snapshot/dev2-repo-1,dev2-repo-2/dev2-snap-1,dev1-snap-1/_status?pretty"
+// doesn't work.
+// repository = full name, only one
+// snapshot = full name, more than one
 class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
                                       esContext: EsContext,
                                       clusterService: RorClusterService,
