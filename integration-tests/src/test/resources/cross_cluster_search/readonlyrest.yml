@@ -26,3 +26,17 @@ readonlyrest:
     - name: "real life case"
       indices: ["metrics_monitoring*", "etl:etl_*"]
       auth_key: dev3:test
+
+    - name: "Frobid rule for test user"
+      type: forbid
+      auth_key: test:test
+      indices:
+        patterns: ["*-logs-smg-stats-*"]
+        must_involve_indices: true
+
+    - name: "test user"
+      type: allow
+      auth_key: test:test
+      kibana_access: rw
+      kibana_index: ".kibana-xcs" #very important to have if you have non-standard kibana index name.
+      kibana_hide_apps: ["canvas", "maps", "readonlyrest_kbn", "infra:home", "infra:logs", "apm", "uptime", "kibana:dev_tools", "monitoring", "kibana:management"]

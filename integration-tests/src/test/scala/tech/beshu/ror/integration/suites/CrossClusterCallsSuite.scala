@@ -17,7 +17,6 @@
 package tech.beshu.ror.integration.suites
 
 import cats.data.NonEmptyList
-import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.CrossClusterCallsSuite.{localClusterNodeDataInitializer, remoteClusterNodeDataInitializer, remoteClusterSetup}
 import tech.beshu.ror.integration.suites.base.support.{BaseEsRemoteClusterIntegrationTest, SingleClientSupport}
@@ -135,6 +134,28 @@ trait CrossClusterCallsSuite
           val result = user2SearchManager.asyncSearch("odd:test1_index")
           result.responseCode should be(404)
         }
+      }
+    }
+
+    "real example" in { // todo
+      val userTestSearchManager = new SearchManager(basicAuthClient("test", "test"))
+
+//      val result1 = userTestSearchManager.asyncSearch("*-logs-smg-stats-*")
+//      val result2 = userTestSearchManager.asyncSearch("*:*-logs-smg-stats-*")
+//      val result3 = userTestSearchManager.asyncSearch("*-logs-smg-*")
+      val result4 = userTestSearchManager.asyncSearch("*:*-logs-smg-*")
+
+//      if(result1.isSuccess) {
+//        println(s"R1: ${result1.responseJson.toString()}")
+//      }
+//      if(result2.isSuccess) {
+//        println(s"R2: ${result2.responseJson.toString()}")
+//      }
+//      if(result3.isSuccess) {
+//        println(s"R3: ${result3.responseJson.toString()}")
+//      }
+      if(result4.isSuccess) {
+        println(s"R4: ${result4.responseJson.toString()}")
       }
     }
   }
@@ -307,6 +328,10 @@ object CrossClusterCallsSuite {
     val documentManager = new DocumentManager(adminRestClient, esVersion)
     documentManager.createFirstDoc("metrics_monitoring_2020-03-26", ujson.read("""{"counter1":"100"}"""))
     documentManager.createFirstDoc("metrics_monitoring_2020-03-27",  ujson.read("""{"counter1":"50"}"""))
+
+    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}"""))
+    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}"""))
+    documentManager.createFirstDoc("c01-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}"""))
   }
 
   def remoteClusterNodeDataInitializer(): ElasticsearchNodeDataInitializer = (esVersion, adminRestClient: RestClient) => {
@@ -318,6 +343,11 @@ object CrossClusterCallsSuite {
 
     documentManager.createDoc("etl_usage_2020-03-26", 1, ujson.read("""{"usage":"ROR"}"""))
     documentManager.createDoc("etl_usage_2020-03-27", 1, ujson.read("""{"usage":"ROR"}"""))
+
+
+    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-27",  ujson.read("""{"counter1":"50"}"""))
+    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-28",  ujson.read("""{"counter1":"50"}"""))
+    documentManager.createFirstDoc("c02-logs-smg-stats-2020-03-29",  ujson.read("""{"counter1":"50"}"""))
   }
 
   def remoteClusterSetup(): SetupRemoteCluster = (remoteClusters: NonEmptyList[EsClusterContainer]) => {
