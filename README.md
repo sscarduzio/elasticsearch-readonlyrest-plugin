@@ -3,10 +3,11 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/grade/9ef51ae1e6e34deba913f22e2e4cbd56)](https://www.codacy.com/app/scarduzio/elasticsearch-readonlyrest-plugin)
 [![Twitter URL](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/readonlyrest)
 
+[![Build Status](c_apis/build/status/ror?branchName=master)](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_build/latest?definitionId=1&branchName=master)
 
 | Develop branch | Master branch |
 |---|---|
-| [![Build Status Develop](https://dev.azure.com/scarduzio/ROR/_apis/build/status/ror?branchName=develop)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=develop) | [![Build Status Master](https://dev.azure.com/scarduzio/ROR/_apis/build/status/ror?branchName=master)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=master) |
+| [![Build Status Develop](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=develop)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=develop) | [![Build Status Master](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=master)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=master) |
 
 ## Supporters 
 Thanks **@Id57, Jeff Saxe, GoodMirek** for donating!
