@@ -13,7 +13,7 @@ readonlyrest:
     - name: "CONTAINER ADMIN"
       verbosity: error
       type: allow
-      auth_key: admin:container
+      auth_key: elastic:container
 
     - name: "test1"
       indices: ["test1_index_a"]
