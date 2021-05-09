@@ -27,7 +27,7 @@ readonlyrest:
       indices: ["metrics_monitoring*", "etl:etl_*"]
       auth_key: dev3:test
 
-    - name: "Frobid rule for test user"
+    - name: "Forbid rule for test user"
       type: forbid
       auth_key: test:test
       indices:
