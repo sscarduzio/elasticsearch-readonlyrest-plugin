@@ -6,8 +6,7 @@
 
 | Develop branch | Master branch |
 |---|---|
-| [![Build Status Develop](https://dev.azure.com/scarduzio/ROR/_apis/build/status/ror?branchName=develop)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=develop) | [![Build Status Master](https://dev.azure.com/scarduzio/ROR/_apis/build/status/ror?branchName=master)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=master) |
-
+| [![Build Status Develop](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=develop)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=develop) | [![Build Status Master](https://dev.azure.com/beshu-tech/ReadonlyREST%20for%20Elasticsearch/_apis/build/status/ror?branchName=master)](https://dev.azure.com/scarduzio/ROR/_build/latest?definitionId=1&branchName=master) |
 ## Supporters 
 Thanks **@Id57, Jeff Saxe, GoodMirek** for donating!
 
