@@ -36,6 +36,9 @@ dependencies {
     compile group: 'org.apache.httpcomponents',      name: 'httpclient',                    version: '4.5.2'
     compile group: 'org.apache.logging.log4j',       name: 'log4j-1.2-api',                 version: '2.5'
     compile group: 'org.apache.logging.log4j',       name: 'log4j-core',                    version: '2.11.1'
+    compile group: 'io.jsonwebtoken',                name: 'jjwt-api',                      version: '0.11.2'
+    compile group: 'io.jsonwebtoken',                name: 'jjwt-impl',                     version: '0.11.2'
+    compile group: 'io.jsonwebtoken',                name: 'jjwt-orgjson',                  version: '0.11.2'
     compile group: 'com.jayway.jsonpath',            name: 'json-path',                     version: '2.2.0'
     compile group: 'io.monix',                       name: 'monix_2.12',                    version: '3.0.0-RC3'
     compile group: 'com.lihaoyi',                    name: 'os-lib_2.12',                   version: '0.7.0'
@@ -45,6 +48,7 @@ dependencies {
     compile group: 'org.scalatest',                  name: 'scalatest_2.12',                version: '3.1.0'
     compile group: 'com.dimafeng',                   name: 'testcontainers-scala_2.12',     version: '0.39.0'
     compile group: 'org.testcontainers',             name: 'testcontainers',                version: "1.15.0"
+    compile group: 'eu.rekawek.toxiproxy',           name: 'toxiproxy-java',                version: "2.1.4"
     compile group: 'com.unboundid',                  name: 'unboundid-ldapsdk',             version: '4.0.9'
     compile group: 'com.mashape.unirest',            name: 'unirest-java',                  version: '1.4.9'
     compile group: 'com.lihaoyi',                    name: 'upickle_2.12',                  version: '0.7.1'

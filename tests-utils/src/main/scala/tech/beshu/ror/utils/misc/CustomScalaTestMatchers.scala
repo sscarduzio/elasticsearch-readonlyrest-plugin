@@ -21,6 +21,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.matchers.{MatchResult, Matcher}
 import ujson._
 
+import scala.util.matching.Regex
+
 trait CustomScalaTestMatchers extends Matchers {
 
   def containKeyOrValue(expectedKeyOrValue: String): JsonContainsKeyOrValue =
@@ -59,6 +61,23 @@ trait CustomScalaTestMatchers extends Matchers {
       context.regex("""^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$""")
     }
   }
+
+  class SetMayNotContainsElementsMatcher(elements: Set[Regex]) extends Matcher[Set[String]] {
+
+    override def apply(setToCheck: Set[String]): MatchResult = {
+      MatchResult(
+        doesAllValuesFromSetDontMatchAnyOfPatterns(setToCheck),
+        s"Set [${setToCheck.mkString(",")}] contains elements which do match at least one of patterns [${elements.map(_.pattern.pattern()).mkString(",")}]",
+        s"Set [${setToCheck.mkString(",")}] contains only elements matching which don't match any of patterns [${elements.map(_.pattern.pattern()).mkString(",")}]"
+      )
+    }
+
+    private def doesAllValuesFromSetDontMatchAnyOfPatterns(setToCheck: Set[String]): Boolean = setToCheck.forall(value => !matchesAnyOfPatterns(value))
+
+    private def matchesAnyOfPatterns(value: String) = elements.exists(r => r.findFirstMatchIn(value).isDefined)
+  }
+
+  def notContainElementsFrom(elements: Set[Regex]) = new SetMayNotContainsElementsMatcher(elements)
 }
 
 object CustomScalaTestMatchers extends CustomScalaTestMatchers

@@ -14,16 +14,12 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror
+package tech.beshu.ror.accesscontrol.blocks.definitions
 
-import cats.Show
-import tech.beshu.ror.accesscontrol.show.LogsShowInstances
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.numeric.Positive
 
-object implicits
-  extends LogsShowInstances
-    with cats.instances.AllInstances
-    with cats.syntax.AllSyntax {
+import scala.concurrent.duration.FiniteDuration
 
-  override implicit def catsStdShowForSet[A](implicit evidence$3: Show[A]): Show[Set[A]] =
-    Show.show(_.map(_.show).mkString(","))
-}
+final case class CircuitBreakerConfig(maxFailures: Int Refined Positive, resetDuration: FiniteDuration Refined Positive)
+

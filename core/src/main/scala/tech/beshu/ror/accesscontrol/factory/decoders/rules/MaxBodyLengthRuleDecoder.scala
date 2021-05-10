@@ -23,17 +23,21 @@ import tech.beshu.ror.accesscontrol.blocks.rules.MaxBodyLengthRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
-object MaxBodyLengthRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  Decoder
-    .decodeLong
-    .toSyncDecoder
-    .emapE { value =>
-      if (value >= 0) Right(Bytes(value))
-      else Left(RulesLevelCreationError(Message(s"Invalid max body length: $value")))
-    }
-    .map(maxBodyLength => RuleWithVariableUsageDefinition.create(new MaxBodyLengthRule(Settings(maxBodyLength))))
-    .decoder
-)
+object MaxBodyLengthRuleDecoder
+  extends RuleBaseDecoderWithoutAssociatedFields[MaxBodyLengthRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[MaxBodyLengthRule]] = {
+    Decoder
+      .decodeLong
+      .toSyncDecoder
+      .emapE { value =>
+        if (value >= 0) Right(Bytes(value))
+        else Left(RulesLevelCreationError(Message(s"Invalid max body length: $value")))
+      }
+      .map(maxBodyLength => RuleWithVariableUsageDefinition.create(new MaxBodyLengthRule(Settings(maxBodyLength))))
+      .decoder
+  }
+}

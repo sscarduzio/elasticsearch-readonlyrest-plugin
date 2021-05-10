@@ -23,7 +23,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.Inside
 import tech.beshu.ror.accesscontrol.AccessControl.RegularRequestResult
 import tech.beshu.ror.accesscontrol.blocks.Block
-import tech.beshu.ror.accesscontrol.domain.{IndexName, KibanaAccess}
+import tech.beshu.ror.accesscontrol.domain.{Action, IndexName, KibanaAccess}
 import tech.beshu.ror.mocks.MockRequestContext
 import eu.timepit.refined.auto._
 
@@ -45,7 +45,10 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec with 
   "An ACL" when {
     "kibana index and kibana access rules are used" should {
       "allow to proceed" in {
-        val request = MockRequestContext.indices
+        val request = MockRequestContext.indices.copy(
+          action = Action("indices:monitor/*"),
+          filteredIndices = Set(IndexName(".readonlyrest"))
+        )
 
         val result = acl.handleRegularRequest(request).runSyncUnsafe()
 
@@ -54,7 +57,8 @@ class KibanaIndexAndAccessYamlLoadedAccessControlTests extends AnyWordSpec with 
           block.name should be(Block.Name("Template Tenancy"))
           assertBlockContext(
             kibanaIndex = Some(IndexName(".kibana_template")),
-            kibanaAccess = Some(KibanaAccess.Admin)
+            kibanaAccess = Some(KibanaAccess.Admin),
+            indices = Set(IndexName(".readonlyrest")),
           ) {
             blockContext
           }

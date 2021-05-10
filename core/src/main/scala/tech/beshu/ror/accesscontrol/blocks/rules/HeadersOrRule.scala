@@ -22,7 +22,7 @@ import cats.implicits._
 import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.rules.HeadersOrRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.{AccessRequirement, Header}
 import tech.beshu.ror.accesscontrol.request.RequestContext
@@ -34,7 +34,7 @@ import tech.beshu.ror.accesscontrol.show.logs._
 class HeadersOrRule(val settings: Settings)
   extends BaseHeaderRule with Logging {
 
-  override val name: Rule.Name = HeadersOrRule.name
+  override val name: Rule.Name = HeadersOrRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.resultBasedOnCondition(blockContext) {
@@ -55,7 +55,10 @@ class HeadersOrRule(val settings: Settings)
 }
 
 object HeadersOrRule {
-  val name = Rule.Name("headers_or")
+
+  implicit case object Name extends RuleName[HeadersOrRule] {
+    override val name = Rule.Name("headers_or")
+  }
 
   final case class Settings(headerAccessRequirements: NonEmptySet[AccessRequirement[Header]])
 }

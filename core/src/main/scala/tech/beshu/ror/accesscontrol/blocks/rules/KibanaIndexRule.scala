@@ -19,14 +19,14 @@ package tech.beshu.ror.accesscontrol.blocks.rules
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.blocks.rules.KibanaIndexRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.MatchingAlwaysRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{MatchingAlwaysRule, RuleName}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable
 import tech.beshu.ror.accesscontrol.domain.IndexName
 
 class KibanaIndexRule(val settings: Settings)
   extends MatchingAlwaysRule {
 
-  override val name: Rule.Name = KibanaIndexRule.name
+  override val name: Rule.Name = KibanaIndexRule.Name.name
 
   override def process[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[B] = Task {
     settings
@@ -38,7 +38,10 @@ class KibanaIndexRule(val settings: Settings)
 }
 
 object KibanaIndexRule {
-  val name = Rule.Name("kibana_index")
+
+  implicit case object Name extends RuleName[KibanaIndexRule] {
+    override val name = Rule.Name("kibana_index")
+  }
 
   final case class Settings(kibanaIndex: RuntimeSingleResolvableVariable[IndexName])
 }

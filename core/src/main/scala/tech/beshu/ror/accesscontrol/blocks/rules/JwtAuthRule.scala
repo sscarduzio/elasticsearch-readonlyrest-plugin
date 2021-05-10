@@ -23,8 +23,9 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.JwtDef.SignatureCheckMethod._
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthRule, AuthenticationRule, AuthorizationRule, NoImpersonationSupport, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.DirectlyLoggedUser
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -40,12 +41,13 @@ import scala.util.Try
 
 final class JwtAuthRule(val settings: JwtAuthRule.Settings,
                         implicit override val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRule
+  extends AuthRule
     with NoImpersonationSupport
-    with AuthorizationRule
     with Logging {
 
-  override val name: Rule.Name = JwtAuthRule.name
+  override val name: Rule.Name = JwtAuthRule.Name.name
+
+  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   private val parser =
     settings.jwt.checkMethod match {
@@ -123,7 +125,7 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
   }
 
   private def logBadToken(ex: Throwable, token: JwtToken): Unit = {
-    val tokenParts = token.show.split(".")
+    val tokenParts = token.show.split("\\.")
     val printableToken = if (!logger.delegate.isDebugEnabled && tokenParts.length === 3) {
       // signed JWT, last block is the cryptographic digest, which should be treated as a secret.
       s"${tokenParts(0)}.${tokenParts(1)} (omitted digest)"
@@ -189,7 +191,10 @@ final class JwtAuthRule(val settings: JwtAuthRule.Settings,
 }
 
 object JwtAuthRule {
-  val name = Rule.Name("jwt_auth")
+
+  implicit case object Name extends RuleName[JwtAuthRule] {
+    override val name = Rule.Name("jwt_auth")
+  }
 
   final case class Settings(jwt: JwtDef, groups: UniqueList[Group])
 

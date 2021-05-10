@@ -14,13 +14,15 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader.external.dto
+package tech.beshu.ror.unit.configuration.loader
 
-import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}
+import io.circe.syntax._
 import cats.implicits._
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
+import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}
+import tech.beshu.ror.configuration.loader.external.dto.{LoadedConfigDTO, NodesResponseWaringDTO, ResultDTO}
 
 import scala.language.postfixOps
 
@@ -52,7 +54,6 @@ class ResultDTOTest extends AnyWordSpec {
         result shouldEqual expectedResult
       }
       "be as JSON" in {
-        import io.circe.syntax._
         val expectedResult =
           """
             |{

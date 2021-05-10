@@ -28,21 +28,21 @@ import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.Var
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeResolvableVariableCreator}
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.UriRegexRuleDecoder.patternDecoder
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 
 import scala.util.Try
 
-class UriRegexRuleDecoder extends RuleDecoderWithoutAssociatedFields(
-  DecoderHelpers
-    .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Pattern]]
-    .map(patterns => RuleWithVariableUsageDefinition.create(new UriRegexRule(UriRegexRule.Settings(patterns))))
-)
+object UriRegexRuleDecoder
+  extends RuleBaseDecoderWithoutAssociatedFields[UriRegexRule] {
 
-object UriRegexRuleDecoder {
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[UriRegexRule]] = {
+    DecoderHelpers
+      .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[Pattern]]
+      .map(patterns => RuleWithVariableUsageDefinition.create(new UriRegexRule(UriRegexRule.Settings(patterns))))
+  }
 
   implicit val patternConvertible: Convertible[Pattern] = new Convertible[Pattern] {
     override def convert: String => Either[Convertible.ConvertError, Pattern] = str => {

@@ -23,6 +23,7 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef
 import tech.beshu.ror.accesscontrol.blocks.definitions.RorKbnDef.SignatureCheckMethod.{Ec, Hmac, Rsa}
 import tech.beshu.ror.accesscontrol.blocks.rules.RorKbnAuthRule.Settings
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule._
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
@@ -39,13 +40,14 @@ import tech.beshu.ror.utils.uniquelist.{UniqueList, UniqueNonEmptyList}
 import scala.util.Try
 
 final class RorKbnAuthRule(val settings: Settings,
-                        implicit override val caseMappingEquality: UserIdCaseMappingEquality)
-  extends AuthenticationRule
+                           implicit override val caseMappingEquality: UserIdCaseMappingEquality)
+  extends AuthRule
     with NoImpersonationSupport
-    with AuthorizationRule
     with Logging {
 
-  override val name: Rule.Name = RorKbnAuthRule.name
+  override val name: Rule.Name = RorKbnAuthRule.Name.name
+
+  override val eligibleUsers: EligibleUsersSupport = EligibleUsersSupport.NotAvailable
 
   private val parser = settings.rorKbn.checkMethod match {
     case Hmac(rawKey) => Jwts.parserBuilder().setSigningKey(rawKey).build()
@@ -134,7 +136,10 @@ final class RorKbnAuthRule(val settings: Settings,
 }
 
 object RorKbnAuthRule {
-  val name = Rule.Name("ror_kbn_auth")
+
+  implicit case object Name extends RuleName[RorKbnAuthRule] {
+    override val name = Rule.Name("ror_kbn_auth")
+  }
 
   final case class Settings(rorKbn: RorKbnDef, groups: UniqueList[Group])
 

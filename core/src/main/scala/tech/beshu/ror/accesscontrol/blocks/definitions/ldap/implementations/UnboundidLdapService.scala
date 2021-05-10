@@ -27,6 +27,7 @@ import io.lemonlabs.uri.UrlWithAuthority
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.apache.logging.log4j.scala.Logging
+import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.{BindRequestUser, ConnectionMethod}
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.UnboundidLdapConnectionPoolProvider.ConnectionError
@@ -36,9 +37,9 @@ import tech.beshu.ror.accesscontrol.domain.{Group, PlainTextSecret, User}
 import tech.beshu.ror.accesscontrol.utils.LdapConnectionPoolOps._
 import tech.beshu.ror.utils.LoggerOps._
 import tech.beshu.ror.utils.uniquelist.UniqueList
-import UnboundidLdapConnectionPoolProvider.ConnectionError
 
 import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.Try
 
 class UnboundidLdapAuthenticationService private(override val id: LdapService#Id,
@@ -67,9 +68,12 @@ class UnboundidLdapAuthenticationService private(override val id: LdapService#Id
         release = connection => Task(connectionPool.releaseAndReAuthenticateConnection(connection))
       )
       .map(_.getResultCode == ResultCode.SUCCESS)
-      .recover { case ex =>
-        logger.errorEx(s"LDAP authenticate operation failed - cause [${ex.getMessage}]", ex)
-        false
+      .onError { case ex =>
+        Task(logger.errorEx(s"LDAP authenticate operation failed - cause [${ex.getMessage}]", ex))
+      }
+      .recover {
+        case ex: LDAPBindException if ex.getResultCode == ResultCode.INVALID_CREDENTIALS =>
+          false
       }
   }
 }
@@ -290,6 +294,8 @@ final case class LdapConnectionConfig(connectionMethod: ConnectionMethod,
                                       ignoreLdapConnectivityProblems: Boolean)
 
 object LdapConnectionConfig {
+
+  val DEFAULT_CIRCUIT_BREAKER_CONFIG = CircuitBreakerConfig(Refined.unsafeApply(10), Refined.unsafeApply(10 seconds))
 
   final case class LdapHost private(url: UrlWithAuthority) {
     def isSecure: Boolean = url.schemeOption.contains(LdapHost.ldapsSchema)

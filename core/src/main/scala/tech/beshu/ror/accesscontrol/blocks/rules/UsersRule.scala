@@ -20,7 +20,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.UsersRule.Settings
 import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -33,7 +33,7 @@ class UsersRule(val settings: Settings,
                 implicit val caseMappingEquality: UserIdCaseMappingEquality)
   extends RegularRule {
 
-  override val name: Rule.Name = UsersRule.name
+  override val name: Rule.Name = UsersRule.Name.name
 
   override def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     blockContext.userMetadata.loggedUser match {
@@ -51,7 +51,10 @@ class UsersRule(val settings: Settings,
 }
 
 object UsersRule {
-  val name = Rule.Name("users")
+
+  implicit case object Name extends RuleName[UsersRule] {
+    override val name = Rule.Name("users")
+  }
 
   final case class Settings(userIds: NonEmptySet[RuntimeMultiResolvableVariable[User.Id]])
 }

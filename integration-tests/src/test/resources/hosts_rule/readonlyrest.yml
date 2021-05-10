@@ -12,7 +12,7 @@ readonlyrest:
       auth_key: admin:container
 
     - name: "::BAD HOST::"
-      accept_x-forwarded-for_header: true
       hosts: ["wontresolve"]
+      accept_x-forwarded-for_header: true
       indices: ["empty_index"]
       kibana_access: rw

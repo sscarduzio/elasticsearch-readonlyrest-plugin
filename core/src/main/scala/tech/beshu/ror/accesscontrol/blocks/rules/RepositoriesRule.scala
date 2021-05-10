@@ -22,7 +22,7 @@ import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{RepositoryRequestBlockContext, _}
 import tech.beshu.ror.accesscontrol.blocks.rules.RepositoriesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.matchers.{MatcherWithWildcardsScalaAdapter, ZeroKnowledgeRepositoryFilterScalaAdapter}
 import tech.beshu.ror.accesscontrol.matchers.ZeroKnowledgeRepositoryFilterScalaAdapter.CheckResult
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeMultiResolvableVariable
@@ -35,7 +35,7 @@ import tech.beshu.ror.utils.ZeroKnowledgeIndexFilter
 class RepositoriesRule(val settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = RepositoriesRule.name
+  override val name: Rule.Name = RepositoriesRule.Name.name
 
   private val zeroKnowledgeMatchFilter = new ZeroKnowledgeRepositoryFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
@@ -94,7 +94,10 @@ class RepositoriesRule(val settings: Settings)
 }
 
 object RepositoriesRule {
-  val name = Rule.Name("repositories")
+
+  implicit case object Name extends RuleName[RepositoriesRule] {
+    override val name = Rule.Name("repositories")
+  }
 
   final case class Settings(allowedRepositories: NonEmptySet[RuntimeMultiResolvableVariable[RepositoryName]])
 }

@@ -25,26 +25,33 @@ import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.GeneralNonIndexRe
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence.{CannotCheck, Exists, NotExist}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{Name, RuleResult}
-import tech.beshu.ror.accesscontrol.matchers.MatcherWithWildcardsScalaAdapter
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.VariableContext.VariableUsage
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.LoggedUser.ImpersonatedUser
 import tech.beshu.ror.accesscontrol.domain.User
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
+import tech.beshu.ror.accesscontrol.matchers.{GenericPatternMatcher, MatcherWithWildcardsScalaAdapter}
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.accesscontrol.request.RequestContextOps._
 import tech.beshu.ror.utils.CaseMappingEquality._
 
 sealed trait Rule {
-  def name: Name
+  def name: Rule.Name
 
   def check[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]]
 }
 
 object Rule {
+
+  trait RuleName[T <: Rule] {
+    def name: Rule.Name
+  }
+  object RuleName {
+    def apply[T <: Rule](implicit ev: RuleName[T]): RuleName[T] = ev
+  }
 
   final case class RuleWithVariableUsageDefinition[+T <: Rule](rule: T, variableUsage: VariableUsage[T])
 
@@ -110,6 +117,8 @@ object Rule {
 
   }
 
+  trait AuthRule extends AuthenticationRule with AuthorizationRule
+
   trait AuthorizationRule extends Rule
 
   trait AuthenticationRule extends Rule {
@@ -117,14 +126,17 @@ object Rule {
     private lazy val enhancedImpersonatorDefs =
       impersonators
         .map { i =>
-           val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSet)(caseMappingEquality)
-          (i, userMatcher)
+          val impersonatorMatcher = new GenericPatternMatcher(i.usernames.patterns.toList)(caseMappingEquality)
+          val userMatcher = MatcherWithWildcardsScalaAdapter.fromSetString[User.Id](i.users.map(_.value.value).toSet)(caseMappingEquality)
+          (i, impersonatorMatcher, userMatcher)
         }
 
     protected def impersonators: List[ImpersonatorDef]
 
     protected def exists(user: User.Id)
                         (implicit userIdEq: Eq[User.Id]): Task[UserExistence]
+
+    def eligibleUsers: AuthenticationRule.EligibleUsersSupport
 
     def tryToAuthenticate[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[Rule.RuleResult[B]]
 
@@ -135,10 +147,10 @@ object Rule {
         case Some(theImpersonatedUserId) => toRuleResult[B] {
           for {
             impersonatorDef <- findImpersonatorWithProperRights[B](theImpersonatedUserId, requestContext)
-            _ <- authenticateImpersonator(impersonatorDef, blockContext)
+            loggedImpersonator <- authenticateImpersonator(impersonatorDef, blockContext)
             _ <- checkIfTheImpersonatedUserExist[B](theImpersonatedUserId)
           } yield {
-            blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, impersonatorDef.id)))
+            blockContext.withUserMetadata(_.withLoggedUser(ImpersonatedUser(theImpersonatedUserId, loggedImpersonator.id)))
           }
         }
         case None =>
@@ -146,7 +158,7 @@ object Rule {
       }
     }
 
-    protected def caseMappingEquality: UserIdCaseMappingEquality
+    def caseMappingEquality: UserIdCaseMappingEquality
 
     private def findImpersonatorWithProperRights[B <: BlockContext](theImpersonatedUserId: User.Id,
                                                                     requestContext: RequestContext)
@@ -155,10 +167,12 @@ object Rule {
         requestContext
           .basicAuth
           .flatMap { basicAuthCredentials =>
-            enhancedImpersonatorDefs.find(_._1.id === basicAuthCredentials.credentials.user)
+            enhancedImpersonatorDefs.find { case (_, impersonatorMatcher, _) =>
+              impersonatorMatcher.`match`(basicAuthCredentials.credentials.user)
+            }
           }
-          .flatMap { case (impersonatorDef, matcher) =>
-            if (matcher.`match`(theImpersonatedUserId)) Some(impersonatorDef)
+          .flatMap { case (impersonatorDef, _, userMatcher) =>
+            if (userMatcher.`match`(theImpersonatedUserId)) Some(impersonatorDef)
             else None
           },
         ifNone = Rejected[B](Cause.ImpersonationNotAllowed)
@@ -171,7 +185,11 @@ object Rule {
         .authenticationRule
         .tryToAuthenticate(BlockContextUpdater[B].emptyBlockContext(blockContext)) // we are not interested in gathering those data
         .map {
-          case Fulfilled(_) => Right(())
+          case Fulfilled(bc) =>
+            bc.userMetadata.loggedUser match {
+              case Some(loggedUser) => Right(loggedUser)
+              case None => throw new IllegalStateException("Impersonator should be logged")
+            }
           case Rejected(_) => Left(Rejected[B](Cause.ImpersonationNotAllowed))
         }
     }
@@ -201,6 +219,12 @@ object Rule {
       case object Exists extends UserExistence
       case object NotExist extends UserExistence
       case object CannotCheck extends UserExistence
+    }
+
+    sealed trait EligibleUsersSupport
+    object EligibleUsersSupport {
+      final case class Available(users: Set[User.Id]) extends EligibleUsersSupport
+      case object NotAvailable extends EligibleUsersSupport
     }
   }
 

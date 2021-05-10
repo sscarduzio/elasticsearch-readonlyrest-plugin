@@ -16,14 +16,12 @@
  */
 package tech.beshu.ror.integration.suites
 
-import io.jsonwebtoken.{JwtBuilder, Jwts, SignatureAlgorithm}
-import org.scalatest.matchers.should.Matchers._
+import io.jsonwebtoken.SignatureAlgorithm
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.CatManager
-
-import scala.collection.mutable
+import tech.beshu.ror.utils.misc.JwtUtils._
 
 //TODO change test names. Current names are copies from old java integration tests
 trait RorKbnAuthSuite
@@ -31,12 +29,10 @@ trait RorKbnAuthSuite
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
-  private val algo = "HS256"
+  private val algo = SignatureAlgorithm.valueOf("HS256")
   private val validKey = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
   private val validKeyRole = "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
-  private val wrongKey = "abcdef"
-  private val userClaim = "user"
-  private val groupsClaim = "groups"
+  private val wrongKey = "abcdefdsadsadsadsadsadfdsfdsfdsfdsfds"
 
   override implicit val rorConfigFileName = "/ror_kbn_auth/readonlyrest.yml"
 
@@ -48,20 +44,26 @@ trait RorKbnAuthSuite
   }
 
   "rejectTokenWithWrongKey" in {
-    val token = makeToken(wrongKey)
+    val jwt = Jwt(algo, wrongKey, claims = List(
+      "user" := "user"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "rejectTokenWithoutUserClaim" in {
-    val token = makeToken(validKey)
+    val jwt = Jwt(algo, validKey, claims = List.empty)
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
@@ -69,74 +71,77 @@ trait RorKbnAuthSuite
 
   "acceptValidTokenWithUserClaim" in {
     // Groups claim is mandatory, even if empty
-    val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user", groupsClaim, ""))
+    val jwt = Jwt(algo, validKey, claims = List(
+      "user" := "user",
+      "groups" := ""
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
   "rejectExpiredToken" in {
-    val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user", "exp", 0))
+    val jwt = Jwt(algo, validKey, claims = List(
+      "user" := "user",
+      "exp" := "0"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "rejectTokenWithoutRolesClaim" in {
-    val token = makeToken(validKeyRole)
+    val jwt = Jwt(algo, validKeyRole, claims = List(
+      "user" := "user"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "rejectTokenWithWrongRolesClaim" in {
-    val token = makeTokenWithClaims(validKeyRole, makeClaimMap(groupsClaim, "wrong_group"))
+    val jwt = Jwt(algo, validKeyRole, claims = List(
+      "user" := "user",
+      "groups" := "wrong_group"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response.responseCode should be(401)
   }
 
   "acceptValidTokenWithRolesClaim" in {
-    val token = makeTokenWithClaims(validKeyRole, makeClaimMap(groupsClaim, "viewer_group"))
+    val jwt = Jwt(algo, validKeyRole, claims = List(
+      "user" := "user",
+      "groups" := "viewer_group"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"), esVersion = esVersionUsed)
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
+      esVersion = esVersionUsed
+    )
 
     val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
-  private def makeToken(key: String): String = makeTokenWithClaims(key, Map.empty)
-
-  private def makeTokenWithClaims(key: String, claims: scala.collection.Map[String, Any]): String = {
-    val builder: JwtBuilder = Jwts.builder.setSubject("test").signWith(SignatureAlgorithm.valueOf(algo), key.getBytes)
-    claims.foreach(e => builder.claim(e._1, e._2))
-    builder.compact
-  }
-
-  private def makeClaimMap(kvs: Any*) = {
-    assert(kvs.length % 2 == 0)
-    val claims: mutable.Map[String, Any] = mutable.Map.empty
-    var i: Int = 0
-    while (i < kvs.length) {
-      claims.put(kvs(i).asInstanceOf[String], kvs(i + 1))
-      i += 2
-    }
-    if (!claims.contains(userClaim))
-      claims.put(userClaim, "user")
-
-    claims
-  }
 }

@@ -18,28 +18,21 @@ package tech.beshu.ror.accesscontrol.utils
 
 import cats.data.NonEmptySet
 import cats.implicits._
-import cats.{Applicative, Order, Show}
+import cats.{Applicative, Order}
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.CursorOp.DownField
 import io.circe._
 import io.circe.generic.extras
 import io.circe.generic.extras.Configuration
 import io.circe.parser._
-import tech.beshu.ror.accesscontrol.blocks.definitions._
-import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{AuthenticationRule, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariable.Convertible.AlwaysRightConvertible
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeResolvableVariableCreator.{CreationError, createMultiResolvableVariableFrom, createSingleResolvableVariableFrom}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.RuntimeSingleResolvableVariable.{AlreadyResolved, ToBeResolved}
 import tech.beshu.ror.accesscontrol.blocks.variables.runtime.{RuntimeMultiResolvableVariable, RuntimeSingleResolvableVariable}
-import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.{MalformedValue, Message}
-import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{DefinitionsLevelCreationError, Reason, ValueLevelCreationError}
-import tech.beshu.ror.accesscontrol.factory.decoders.definitions.Definitions
-import tech.beshu.ror.accesscontrol.factory.decoders.ruleDecoders.authenticationRuleDecoderBy
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.{Reason, ValueLevelCreationError}
 import tech.beshu.ror.accesscontrol.orders._
 import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.utils.CirceOps.DecoderHelpers.FieldListResult._
@@ -282,7 +275,7 @@ object CirceOps {
     def stringify(error: AclCreationError): String = Encoder[AclCreationError].apply(error).noSpaces
   }
 
-  implicit class HCursorOps(val value: HCursor) extends AnyVal {
+  implicit class ACursorOps[C <: ACursor](val value: C) extends AnyVal {
     def downFields(field: String, fields: String*): ACursor = {
       fields.toList.foldLeft(value.downField(field)) {
         case (_: FailedCursor, nextField) => value.downField(nextField)
@@ -304,50 +297,15 @@ object CirceOps {
     def withoutKeys(keys: Set[String]): ACursor = {
       value.withFocus(_.mapObject(_.filterKeys(key => !keys.contains(key))))
     }
-  }
 
-  implicit class ACursorOps(val value: ACursor) extends AnyVal {
+    def withKeysOnly(keys: Set[String]): ACursor = {
+      value.withFocus(_.mapObject(_.filterKeys(key => keys.contains(key))))
+    }
 
     def asWithError[T: Decoder](error: String): Decoder.Result[T] =
       value
         .as[T](implicitly[Decoder[T]])
         .left
         .map(_.overrideDefaultErrorWith(ValueLevelCreationError(Message(error))))
-
-    def tryDecodeAuthRule[U: Show](userDefId: U,
-                                   caseMappingEquality: UserIdCaseMappingEquality)
-                                  (implicit authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
-                                   authProxyDefinitions: Definitions[ProxyAuth],
-                                   jwtDefinitions: Definitions[JwtDef],
-                                   ldapDefinitions: Definitions[LdapService],
-                                   rorKbnDefinitions: Definitions[RorKbnDef],
-                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]]) = {
-      value.keys.map(_.toList) match {
-        case None | Some(Nil) =>
-          Left(Message(s"No authentication method defined for [${userDefId.show}]"))
-        case Some(key :: Nil) =>
-          val decoder = authenticationRuleDecoderBy(
-            Rule.Name(key),
-            authenticationServiceDefinitions,
-            authProxyDefinitions,
-            jwtDefinitions,
-            ldapDefinitions,
-            rorKbnDefinitions,
-            impersonatorsDefinitions,
-            caseMappingEquality
-          ) match {
-            case Some(authRuleDecoder) => authRuleDecoder
-            case None => DecoderHelpers.failed[RuleWithVariableUsageDefinition[AuthenticationRule]](
-              DefinitionsLevelCreationError(Message(s"Rule $key is not authentication rule"))
-            )
-          }
-          decoder
-            .tryDecode(value.downField(key))
-            .left.map(_ => Message(s"Cannot parse '$key' rule declared for [${userDefId.show}]"))
-        case Some(keys) =>
-          Left(Message(s"Only one authentication should be defined for [${userDefId.show}]. Found ${keys.mkString(", ")}"))
-      }
-    }
   }
-
 }

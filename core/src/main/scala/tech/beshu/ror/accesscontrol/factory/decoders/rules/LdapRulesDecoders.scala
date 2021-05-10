@@ -21,7 +21,7 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.numeric.Positive
 import io.circe.Decoder
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleWithVariableUsageDefinition
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RuleName, RuleWithVariableUsageDefinition}
 import tech.beshu.ror.accesscontrol.blocks.rules.{LdapAuthRule, LdapAuthenticationRule, LdapAuthorizationRule, Rule}
 import tech.beshu.ror.accesscontrol.domain.Group
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
@@ -29,9 +29,10 @@ import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCrea
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.RulesLevelCreationError
 import tech.beshu.ror.accesscontrol.factory.decoders.common._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.LdapServicesDecoder.nameDecoder
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, LdapServicesDecoder}
-import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleDecoderWithoutAssociatedFields
+import tech.beshu.ror.accesscontrol.factory.decoders.rules.RuleBaseDecoder.RuleBaseDecoderWithoutAssociatedFields
 import tech.beshu.ror.accesscontrol.utils.CirceOps._
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
@@ -40,23 +41,28 @@ import scala.reflect.ClassTag
 
 class LdapAuthenticationRuleDecoder(ldapDefinitions: Definitions[LdapService],
                                     implicit val caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields[LdapAuthenticationRule](
+  extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthenticationRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthenticationRule]] = {
     LdapAuthenticationRuleDecoder.simpleLdapAuthenticationNameAndLocalConfig
       .orElse(LdapAuthenticationRuleDecoder.complexLdapAuthenticationServiceNameAndLocalConfig)
       .toSyncDecoder
       .emapE {
         case (name, Some(ttl)) =>
           LdapRulesDecodersHelper
-            .findLdapService[LdapAuthenticationService](ldapDefinitions.items, name, LdapAuthenticationRule.name)
+            .findLdapService[LdapAuthenticationService, LdapAuthenticationRule](ldapDefinitions.items, name)
             .map(new CacheableLdapAuthenticationServiceDecorator(_, ttl))
         case (name, None) =>
           LdapRulesDecodersHelper
-            .findLdapService[LdapAuthenticationService](ldapDefinitions.items, name, LdapAuthenticationRule.name)
+            .findLdapService[LdapAuthenticationService, LdapAuthenticationRule](ldapDefinitions.items, name)
       }
       .map(new LoggableLdapAuthenticationServiceDecorator(_))
-      .map(service => RuleWithVariableUsageDefinition.create(new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), caseMappingEquality)))
+      .map(service => RuleWithVariableUsageDefinition.create(
+        new LdapAuthenticationRule(LdapAuthenticationRule.Settings(service), caseMappingEquality)
+      ))
       .decoder
-  )
+  }
+}
 
 object LdapAuthenticationRuleDecoder {
 
@@ -79,11 +85,14 @@ object LdapAuthenticationRuleDecoder {
 }
 
 class LdapAuthorizationRuleDecoder(ldapDefinitions: Definitions[LdapService])
-  extends RuleDecoderWithoutAssociatedFields[LdapAuthorizationRule](
+  extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthorizationRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthorizationRule]] = {
     LdapAuthorizationRuleDecoder
       .settingsDecoder(ldapDefinitions)
       .map(settings => RuleWithVariableUsageDefinition.create(new LdapAuthorizationRule(settings)))
-  )
+  }
+}
 
 object LdapAuthorizationRuleDecoder {
 
@@ -101,13 +110,13 @@ object LdapAuthorizationRuleDecoder {
       .emapE {
         case (name, Some(ttl), groups) =>
           LdapRulesDecodersHelper
-            .findLdapService[LdapAuthorizationService](ldapDefinitions.items, name, LdapAuthorizationRule.name)
+            .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
             .map(new CacheableLdapAuthorizationServiceDecorator(_, ttl))
             .map(new LoggableLdapAuthorizationServiceDecorator(_))
             .map(LdapAuthorizationRule.Settings(_, groups, groups))
         case (name, None, groups) =>
           LdapRulesDecodersHelper
-            .findLdapService[LdapAuthorizationService](ldapDefinitions.items, name, LdapAuthorizationRule.name)
+            .findLdapService[LdapAuthorizationService, LdapAuthorizationRule](ldapDefinitions.items, name)
             .map(new LoggableLdapAuthorizationServiceDecorator(_))
             .map(LdapAuthorizationRule.Settings(_, groups, groups))
       }
@@ -116,10 +125,13 @@ object LdapAuthorizationRuleDecoder {
 
 class LdapAuthRuleDecoder(ldapDefinitions: Definitions[LdapService],
                           caseMappingEquality: UserIdCaseMappingEquality)
-  extends RuleDecoderWithoutAssociatedFields[LdapAuthRule](
+  extends RuleBaseDecoderWithoutAssociatedFields[LdapAuthRule] {
+
+  override protected def decoder: Decoder[RuleWithVariableUsageDefinition[LdapAuthRule]] = {
     LdapAuthRuleDecoder.instance(ldapDefinitions, caseMappingEquality)
       .map(RuleWithVariableUsageDefinition.create(_))
-  )
+  }
+}
 
 object LdapAuthRuleDecoder {
 
@@ -138,13 +150,13 @@ object LdapAuthRuleDecoder {
       .emapE {
         case (name, Some(ttl), groups) =>
           LdapRulesDecodersHelper
-            .findLdapService[LdapAuthService](ldapDefinitions.items, name, LdapAuthRule.name)
+            .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
             .map(new CacheableLdapServiceDecorator(_, ttl))
             .map(new LoggableLdapServiceDecorator(_))
             .map(createLdapAuthRule(_, groups, caseMappingEquality))
         case (name, None, groups) =>
           LdapRulesDecodersHelper
-            .findLdapService[LdapAuthService](ldapDefinitions.items, name, LdapAuthRule.name)
+            .findLdapService[LdapAuthService, LdapAuthRule](ldapDefinitions.items, name)
             .map(new LoggableLdapServiceDecorator(_))
             .map(createLdapAuthRule(_, groups, caseMappingEquality))
       }
@@ -163,13 +175,12 @@ object LdapAuthRuleDecoder {
 
 private object LdapRulesDecodersHelper {
 
-  def findLdapService[T <: LdapService : ClassTag](ldapServices: List[LdapService],
-                                                   searchedServiceName: LdapService.Name,
-                                                   ruleName: Rule.Name): Either[AclCreationError, T] = {
+  def findLdapService[T <: LdapService : ClassTag, R <: Rule : RuleName](ldapServices: List[LdapService],
+                                                                         searchedServiceName: LdapService.Name): Either[AclCreationError, T] = {
     ldapServices
       .find(_.id === searchedServiceName) match {
       case Some(service: T) => Right(service)
-      case Some(_) => Left(RulesLevelCreationError(Message(s"Service: ${searchedServiceName.show} cannot be used in '${ruleName.show}' rule")))
+      case Some(_) => Left(RulesLevelCreationError(Message(s"Service: ${searchedServiceName.show} cannot be used in '${RuleName[R].show}' rule")))
       case None => Left(RulesLevelCreationError(Message(s"Cannot find LDAP service with name: ${searchedServiceName.show}")))
     }
   }

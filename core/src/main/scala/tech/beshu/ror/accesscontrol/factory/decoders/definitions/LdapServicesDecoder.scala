@@ -25,6 +25,7 @@ import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.{Decoder, DecodingFailure, HCursor}
 import monix.eval.Task
+import tech.beshu.ror.accesscontrol.blocks.definitions.CircuitBreakerConfig
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService.Name
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.implementations.LdapConnectionConfig.ConnectionMethod.{SeveralServers, SingleServer}
@@ -78,13 +79,19 @@ object LdapServicesDecoder {
     for {
       authenticationService <- (authenticationServiceDecoder: AsyncDecoder[LdapAuthenticationService])(cursor)
       authortizationService <- (authorizationServiceDecoder: AsyncDecoder[LdapAuthorizationService])(cursor)
-    } yield (authenticationService, authortizationService) match {
-      case (Right(authn), Right(authz)) => Right {
-        new ComposedLdapAuthService(authn.id, authn, authz)
+      circuitBreakerSettings <- AsyncDecoderCreator.from(circuitBreakerDecoder)(cursor)
+    } yield (authenticationService, authortizationService, circuitBreakerSettings) match {
+      case (Right(authn), Right(authz), Right(circuitBreakerConfig)) => Right {
+        new CircuitBreakerLdapServiceDecorator(
+          new ComposedLdapAuthService(authn.id, authn, authz), circuitBreakerConfig
+        )
       }
-      case (authn@Right(_), _) => authn
-      case (_, authz@Right(_)) => authz
-      case (error@Left(_), _) => error
+      case (Right(authn), _, Right(circuitBreakerConfig)) =>
+        Right(new CircuitBreakerLdapAuthenticationServiceDecorator(authn, circuitBreakerConfig))
+      case (_, Right(authz), Right(circuitBreakerConfig)) =>
+        Right(new CircuitBreakerLdapAuthorizationServiceDecorator(authz, circuitBreakerConfig))
+      case (error@Left(_), _, _) => error
+      case (_, _, Left(error)) => Left(error)
     }
   }
 
@@ -221,6 +228,19 @@ object LdapServicesDecoder {
         )
       }
   }
+
+
+  private lazy val circuitBreakerDecoder: Decoder[CircuitBreakerConfig] =
+    Decoder
+      .instance { c =>
+        val circuitBreaker = c.downField("circuit_breaker")
+        if (circuitBreaker.failed) {
+          Right(DEFAULT_CIRCUIT_BREAKER_CONFIG)
+        } else {
+          val decoder = Decoder.forProduct2("max_retries", "reset_duration")(CircuitBreakerConfig.apply)
+          decoder.tryDecode(circuitBreaker)
+        }
+      }
 
   private lazy val connectionMethodDecoder: Decoder[ConnectionMethod] =
     SyncDecoderCreator

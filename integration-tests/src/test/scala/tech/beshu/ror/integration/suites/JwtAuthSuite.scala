@@ -16,18 +16,12 @@
  */
 package tech.beshu.ror.integration.suites
 
-import java.util
-import java.util.Date
-
-import com.google.common.collect.Lists
-import io.jsonwebtoken.{JwtBuilder, Jwts, SignatureAlgorithm}
-import org.scalatest.matchers.should.Matchers._
+import io.jsonwebtoken.SignatureAlgorithm
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.integration.suites.base.support.BaseSingleNodeEsClusterTest
 import tech.beshu.ror.utils.containers.EsContainerCreator
 import tech.beshu.ror.utils.elasticsearch.CatManager
-
-import scala.collection.mutable
+import tech.beshu.ror.utils.misc.JwtUtils._
 
 //TODO change test names. Current names are copies from old java integration tests
 trait JwtAuthSuite
@@ -35,12 +29,10 @@ trait JwtAuthSuite
     with BaseSingleNodeEsClusterTest {
   this: EsContainerCreator =>
 
-  private val algo = "HS256"
+  private val algo = SignatureAlgorithm.valueOf("HS256")
   private val validKey = "123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456.123456"
   private val validKeyRole = "1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890.1234567890"
-  private val wrongKey = "abcdef"
-  private val userClaim = "user"
-  private val rolesClaim = "roles"
+  private val wrongKey = "abcdefdsadsadsafdsfsadasdfdsfdfdsfdsfsadsdsaffds"
 
   override implicit val rorConfigFileName = "/jwt_auth/readonlyrest.yml"
 
@@ -52,10 +44,12 @@ trait JwtAuthSuite
   }
 
   "rejectTokenWithWrongKey" in {
-    val token = makeToken(wrongKey)
+    val jwt = Jwt(algo, wrongKey, claims = List(
+      "user" := "user"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"),
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
@@ -63,10 +57,10 @@ trait JwtAuthSuite
   }
 
   "rejectTokenWithoutUserClaim" in {
-    val token = makeToken(validKey)
+    val jwt = Jwt(algo, validKey, claims = List.empty)
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"),
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
@@ -74,10 +68,12 @@ trait JwtAuthSuite
   }
 
   "acceptValidTokenWithUserClaim" in {
-    val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user"))
+    val jwt = Jwt(algo, validKey, claims = List(
+      "user" := "user"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"),
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
@@ -85,10 +81,12 @@ trait JwtAuthSuite
   }
 
   "acceptValidTokenWithUserClaimAndCustomHeader" in {
-    val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user"))
+    val jwt = Jwt(algo, validKey, claims = List(
+      "user" := "user"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("x-custom-header" -> s"$token"),
+      additionalHeaders = Map("x-custom-header" -> s"${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
@@ -96,10 +94,12 @@ trait JwtAuthSuite
   }
 
   "acceptValidTokenWithUserClaimAndCustomHeaderAndCustomHeaderPrefix" in {
-    val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user"))
+    val jwt = Jwt(algo, validKey, claims = List(
+      "user" := "user"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("x-custom-header2" -> s"x-custom-prefix$token"),
+      additionalHeaders = Map("x-custom-header2" -> s"x-custom-prefix${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
@@ -107,10 +107,12 @@ trait JwtAuthSuite
   }
 
   "rejectTokenWithUserClaimAndCustomHeader" in {
-    val token = makeTokenWithClaims(validKey, makeClaimMap("inexistent_claim", "user"))
+    val jwt = Jwt(algo, validKey, claims = List(
+      "inexistent_claim" := "user"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("x-custom-header" -> s"$token"),
+      additionalHeaders = Map("x-custom-header" -> s"${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
@@ -118,10 +120,13 @@ trait JwtAuthSuite
   }
 
   "rejectExpiredToken" in {
-    val token = makeTokenWithClaims(validKey, makeClaimMap(userClaim, "user", "exp", 0))
+    val jwt = Jwt(algo, validKey, claims = List(
+      "user" := "user",
+      "exp" := "0"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"),
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
@@ -129,10 +134,10 @@ trait JwtAuthSuite
   }
 
   "rejectTokenWithoutRolesClaim" in {
-    val token = makeToken(validKeyRole)
+    val jwt = Jwt(algo, validKeyRole, claims = List.empty)
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"),
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
@@ -140,10 +145,12 @@ trait JwtAuthSuite
   }
 
   "rejectTokenWithWrongRolesClaim" in {
-    val token = makeTokenWithClaims(validKeyRole, makeClaimMap(rolesClaim, "role_wrong"))
+    val jwt = Jwt(algo, validKeyRole, claims = List(
+      "roles" := "role_wrong"
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"),
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
@@ -151,39 +158,17 @@ trait JwtAuthSuite
   }
 
   "acceptValidTokenWithRolesClaim" in {
-    val roles: util.List[String] = Lists.newArrayList("role_viewer", "something_lol")
-    val token = makeTokenWithClaims(validKeyRole, makeClaimMap(userClaim, "user1", rolesClaim, roles))
+    val jwt = Jwt(algo, validKeyRole, claims = List(
+      "user" := "user1",
+      "roles" := List("role_viewer", "something_lol")
+    ))
     val clusterStateManager = new CatManager(
       noBasicAuthClient,
-      additionalHeaders = Map("Authorization" -> s"Bearer $token"),
+      additionalHeaders = Map("Authorization" -> s"Bearer ${jwt.stringify()}"),
       esVersion = esVersionUsed)
 
     val response = clusterStateManager.indices()
     response.responseCode should be(200)
   }
 
-  private def makeToken(key: String): String = makeTokenWithClaims(key, mutable.Map.empty)
-
-  private def makeTokenWithClaims(key: String, claims: mutable.Map[String, Any]): String = {
-    val builder: JwtBuilder = Jwts.builder
-      .setSubject("test")
-      .setExpiration(new Date(System.currentTimeMillis * 2))
-      .signWith(SignatureAlgorithm.valueOf(algo), key.getBytes)
-
-    claims.foreach {
-      case (key, value) => builder.claim(key, value)
-    }
-    builder.compact
-  }
-
-  private def makeClaimMap(kvs: Any*) = {
-    assert(kvs.length % 2 == 0)
-    val claims: mutable.Map[String, Any] = mutable.Map.empty
-    var i: Int = 0
-    while (i < kvs.length) {
-      claims.put(kvs(i).asInstanceOf[String], kvs(i + 1))
-      i += 2
-    }
-    claims
-  }
 }

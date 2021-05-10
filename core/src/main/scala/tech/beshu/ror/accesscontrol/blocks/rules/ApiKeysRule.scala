@@ -21,7 +21,7 @@ import cats.data.NonEmptySet
 import cats.implicits._
 import monix.eval.Task
 import tech.beshu.ror.accesscontrol.blocks.rules.ApiKeysRule.Settings
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.{BlockContext, BlockContextUpdater}
 import tech.beshu.ror.accesscontrol.domain.ApiKey
 import tech.beshu.ror.accesscontrol.domain.Header.Name._
@@ -29,7 +29,7 @@ import tech.beshu.ror.accesscontrol.domain.Header.Name._
 class ApiKeysRule(val settings: Settings)
   extends RegularRule {
 
-  override val name: Rule.Name = ApiKeysRule.name
+  override val name: Rule.Name = ApiKeysRule.Name.name
 
   def regularCheck[B <: BlockContext : BlockContextUpdater](blockContext: B): Task[RuleResult[B]] = Task {
     RuleResult.resultBasedOnCondition(blockContext) {
@@ -44,7 +44,9 @@ class ApiKeysRule(val settings: Settings)
 
 object ApiKeysRule {
 
-  val name = Rule.Name("api_keys")
+  implicit case object Name extends RuleName[ApiKeysRule] {
+    override val name = Rule.Name("api_keys")
+  }
 
   final case class Settings(apiKeys: NonEmptySet[ApiKey])
 }

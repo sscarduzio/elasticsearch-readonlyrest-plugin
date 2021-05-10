@@ -23,18 +23,19 @@ import monix.eval.Task
 import org.apache.commons.codec.digest.Crypt.crypt
 import tech.beshu.ror.accesscontrol.blocks.definitions.ImpersonatorDef
 import tech.beshu.ror.accesscontrol.blocks.rules.AuthKeyUnixRule.UnixHashedCredentials
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.UserExistence
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.{EligibleUsersSupport, UserExistence}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
 import tech.beshu.ror.accesscontrol.domain.{Credentials, User}
-
 import java.util.regex.Pattern
 
-final class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleName
+
+final class AuthKeyUnixRule(override val settings: BasicAuthenticationRule.Settings[UnixHashedCredentials],
                             override val impersonators: List[ImpersonatorDef],
                             implicit override val caseMappingEquality: UserIdCaseMappingEquality)
   extends BasicAuthenticationRule(settings) {
 
-  override val name: Rule.Name = AuthKeyUnixRule.name
+  override val name: Rule.Name = AuthKeyUnixRule.Name.name
 
   override protected def compare(configuredCredentials: UnixHashedCredentials,
                                  credentials: Credentials): Task[Boolean] = Task {
@@ -48,10 +49,16 @@ final class AuthKeyUnixRule(settings: BasicAuthenticationRule.Settings[UnixHashe
     if (user === settings.credentials.userId) UserExistence.Exists
     else UserExistence.NotExist
   }
+
+  override val eligibleUsers: EligibleUsersSupport =
+    EligibleUsersSupport.Available(Set(settings.credentials.userId))
 }
 
 object AuthKeyUnixRule {
-  val name = Rule.Name("auth_key_unix")
+
+  implicit case object Name extends RuleName[AuthKeyUnixRule] {
+    override val name = Rule.Name("auth_key_unix")
+  }
 
   private val pattern = Pattern.compile("((?:[^$]*\\$){3}[^$]*).*")
 

@@ -23,11 +23,11 @@ import org.apache.logging.log4j.scala.Logging
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.MultiIndexRequestBlockContext.Indices
 import tech.beshu.ror.accesscontrol.blocks.BlockContext.{AliasRequestBlockContext, HasIndexPacks, SnapshotRequestBlockContext}
 import tech.beshu.ror.accesscontrol.blocks.BlockContextUpdater.{AliasRequestBlockContextUpdater, CurrentUserMetadataRequestBlockContextUpdater, FilterableMultiRequestBlockContextUpdater, FilterableRequestBlockContextUpdater, GeneralIndexRequestBlockContextUpdater, GeneralNonIndexRequestBlockContextUpdater, MultiIndexRequestBlockContextUpdater, RepositoryRequestBlockContextUpdater, SnapshotRequestBlockContextUpdater, TemplateRequestBlockContextUpdater}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule
+import tech.beshu.ror.accesscontrol.blocks.rules.{HeadersOrRule, Rule}
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.Rejected.Cause.IndexNotFound
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.RuleResult.{Fulfilled, Rejected}
-import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleResult}
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.{RegularRule, RuleName, RuleResult}
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain._
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule.Settings
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.domain.CanPass
@@ -52,7 +52,7 @@ class IndicesRule(override val settings: Settings,
   import IndicesCheckContinuation._
   import IndicesRule._
 
-  override val name: Rule.Name = IndicesRule.name
+  override val name: Rule.Name = IndicesRule.Name.name
 
   private val zKindexFilter = new ZeroKnowledgeIndexFilterScalaAdapter(new ZeroKnowledgeIndexFilter(true))
 
@@ -354,7 +354,10 @@ class IndicesRule(override val settings: Settings,
 }
 
 object IndicesRule {
-  val name = Rule.Name("indices")
+
+  implicit case object Name extends RuleName[IndicesRule] {
+    override val name = Rule.Name("indices")
+  }
 
   final case class Settings(allowedIndices: NonEmptySet[RuntimeMultiResolvableVariable[IndexName]],
                             mustInvolveIndices: Boolean)

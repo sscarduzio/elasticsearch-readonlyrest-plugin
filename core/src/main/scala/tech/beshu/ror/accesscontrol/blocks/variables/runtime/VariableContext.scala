@@ -87,8 +87,11 @@ object VariableContext {
     implicit val sessionMaxIdleRule: VariableUsage[SessionMaxIdleRule] = NotUsingVariable
   }
 
+  final case class Context(currentRule: Rule,
+                           rulesBefore: List[Rule])
+
   sealed trait UsageRequirement {
-    def checkIfComplies(rulesBefore: List[Rule]): UsageRequirement.ComplianceResult
+    def checkIfComplies(context: Context): UsageRequirement.ComplianceResult
   }
 
   object UsageRequirement {
@@ -105,17 +108,32 @@ object VariableContext {
         case _: VariableType.CurrentGroup => None
         case _: VariableType.AvailableGroups => None
         case _: VariableType.Header => None
-        case _: VariableType.Jwt => None
+        case _: VariableType.Jwt => Some(JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier)
       }
     }
 
     final case class OneOfRuleBeforeMustBeAuthenticationRule(requiredBy: VariableType) extends UsageRequirement {
-      override def checkIfComplies(rulesBefore: List[Rule]): ComplianceResult =
-        rulesBefore.collect { case rule: Rule.AuthenticationRule => rule } match {
+      override def checkIfComplies(context: Context): ComplianceResult =
+        context.rulesBefore.collect { case rule: Rule.AuthenticationRule => rule } match {
           case Nil => ComplianceResult.NonCompliantWith(this)
           case _ => ComplianceResult.Compliant
         }
     }
+
+    case object JwtVariableIsAllowedOnlyWhenAuthRuleRelatedToJwtTokenIsProcessedEarlier extends UsageRequirement {
+      override def checkIfComplies(context: Context): ComplianceResult =
+        if(ruleWithJwtTokenWasAlreadyProcessed(context.rulesBefore)) ComplianceResult.Compliant
+        else ComplianceResult.NonCompliantWith(this)
+
+      private def ruleWithJwtTokenWasAlreadyProcessed(rulesBefore: List[Rule]) =
+        rulesBefore
+          .collect {
+            case rule: JwtAuthRule => rule
+            case rule: RorKbnAuthRule => rule
+          }
+          .nonEmpty
+    }
+
   }
 
   object RequirementVerifier {
@@ -124,15 +142,15 @@ object VariableContext {
       val rulesBefore = findRulesListedBeforeGivenRule(verifiedRule, otherRules)
       val usedVariables = usingVariable.usedVariablesBy(verifiedRule)
       extractVariablesTypesFromExtractables(usedVariables)
-        .flatMap(checkSingleVariableBasedOn(rulesBefore))
+        .flatMap(checkSingleVariableBasedOn(Context(verifiedRule, rulesBefore)))
     }
 
     private def findRulesListedBeforeGivenRule[A <: Rule](rule: A, otherRules: NonEmptyList[Rule]) =
       otherRules.toList.takeWhile(_ != rule)
 
-    private def checkSingleVariableBasedOn(rulesBefore: List[Rule])(usedVariable: VariableType) = {
+    private def checkSingleVariableBasedOn(context: Context)(usedVariable: VariableType) = {
       UsageRequirement.definedFor(usedVariable)
-        .map(_.checkIfComplies(rulesBefore))
+        .map(_.checkIfComplies(context))
     }
 
     private def extractVariablesTypesFromExtractables(usedVariables: NonEmptyList[RuntimeResolvableVariable[_]]): List[VariableType] = {

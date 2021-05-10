@@ -14,7 +14,7 @@
  *    You should have received a copy of the GNU General Public License
  *    along with ReadonlyREST.  If not, see http://www.gnu.org/licenses/
  */
-package tech.beshu.ror.configuration.loader.distributed
+package tech.beshu.ror.unit.configuration.loader
 
 import cats.implicits._
 import eu.timepit.refined.auto._
@@ -22,9 +22,10 @@ import eu.timepit.refined.types.string.NonEmptyString
 import org.scalatest.matchers.should.Matchers._
 import org.scalatest.wordspec.AnyWordSpec
 import tech.beshu.ror.accesscontrol.domain.{IndexName, RorConfigurationIndex}
-import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
-import tech.beshu.ror.configuration.loader.distributed.Summary.CurrentNodeHaveToProduceResult
 import tech.beshu.ror.configuration.loader.LoadedRorConfig
+import tech.beshu.ror.configuration.loader.distributed.NodesResponse.{NodeError, NodeId, NodeResponse}
+import tech.beshu.ror.configuration.loader.distributed.{NodesResponse, Summary}
+import tech.beshu.ror.configuration.loader.distributed.Summary.CurrentNodeHaveToProduceResult
 
 import scala.language.postfixOps
 

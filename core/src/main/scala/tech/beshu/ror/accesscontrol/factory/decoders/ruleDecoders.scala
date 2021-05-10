@@ -16,69 +16,103 @@
  */
 package tech.beshu.ror.accesscontrol.factory.decoders
 
+import java.time.Clock
+
+import cats.implicits._
 import cats.Eq
+import io.circe.{Decoder, DecodingFailure}
 import tech.beshu.ror.accesscontrol.blocks.definitions._
 import tech.beshu.ror.accesscontrol.blocks.definitions.ldap.LdapService
 import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule
+import tech.beshu.ror.accesscontrol.blocks.rules.Rule.AuthenticationRule.EligibleUsersSupport
 import tech.beshu.ror.accesscontrol.blocks.rules._
+import tech.beshu.ror.accesscontrol.show.logs._
 import tech.beshu.ror.accesscontrol.blocks.rules.indicesrule.IndicesRule
+import tech.beshu.ror.accesscontrol.domain.{User, UserIdPatterns}
 import tech.beshu.ror.accesscontrol.domain.User.Id.UserIdCaseMappingEquality
-import tech.beshu.ror.accesscontrol.domain.{RorConfigurationIndex, User}
 import tech.beshu.ror.accesscontrol.factory.GlobalSettings
+import tech.beshu.ror.accesscontrol.factory.RawRorConfigBasedCoreFactory.AclCreationError.Reason.Message
 import tech.beshu.ror.accesscontrol.factory.decoders.definitions.{Definitions, DefinitionsPack}
 import tech.beshu.ror.accesscontrol.factory.decoders.rules._
+import tech.beshu.ror.accesscontrol.matchers.GenericPatternMatcher
 import tech.beshu.ror.providers.UuidProvider
-
-import java.time.Clock
 
 object ruleDecoders {
 
   def ruleDecoderBy(name: Rule.Name,
                     definitions: DefinitionsPack,
-                    rorIndexNameConfiguration: RorConfigurationIndex,
                     globalSettings: GlobalSettings,
                     caseMappingEquality: UserIdCaseMappingEquality)
                    (implicit clock: Clock,
-                    uuidProvider: UuidProvider): Option[RuleBaseDecoder[_ <: Rule]] = {
+                    uuidProvider: UuidProvider): Option[RuleDecoder[Rule]] = {
     implicit val userIdEq: Eq[User.Id] = caseMappingEquality.toOrder
-    name match {
-      case ActionsRule.name => Some(ActionsRuleDecoder)
-      case ApiKeysRule.name => Some(ApiKeysRuleDecoder)
-      case ExternalAuthorizationRule.name => Some(new ExternalAuthorizationRuleDecoder(definitions.authorizationServices, caseMappingEquality))
-      case FieldsRule.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine))
-      case ResponseFieldsRule.name => Some(ResponseFieldsRuleDecoder)
-      case FilterRule.name => Some(new FilterRuleDecoder)
-      case GroupsRule.name => Some(new GroupsRuleDecoder(definitions.users, caseMappingEquality))
-      case HeadersAndRule.name | HeadersAndRule.deprecatedName => Some(HeadersAndRuleDecoder)
-      case HeadersOrRule.name => Some(HeadersOrRuleDecoder)
-      case HostsRule.name => Some(new HostsRuleDecoder)
-      case IndicesRule.name => Some(new IndicesRuleDecoders)
-      case KibanaAccessRule.name => Some(new KibanaAccessRuleDecoder(rorIndexNameConfiguration))
-      case KibanaHideAppsRule.name => Some(KibanaHideAppsRuleDecoder)
-      case KibanaIndexRule.name => Some(new KibanaIndexRuleDecoder)
-      case KibanaTemplateIndexRule.name => Some(new KibanaTemplateIndexRuleDecoder)
-      case LdapAuthorizationRule.name => Some(new LdapAuthorizationRuleDecoder(definitions.ldaps))
-      case LocalHostsRule.name => Some(new LocalHostsRuleDecoder)
-      case MaxBodyLengthRule.name => Some(MaxBodyLengthRuleDecoder)
-      case MethodsRule.name => Some(MethodsRuleDecoder)
-      case RepositoriesRule.name => Some(new RepositoriesRuleDecoder)
-      case SessionMaxIdleRule.name => Some(new SessionMaxIdleRuleDecoder())
-      case SnapshotsRule.name => Some(new SnapshotsRuleDecoder)
-      case UriRegexRule.name => Some(new UriRegexRuleDecoder)
-      case UsersRule.name => Some(new UsersRuleDecoder()(caseMappingEquality))
-      case XForwardedForRule.name => Some(new XForwardedForRuleDecoder)
+    val optionalRuleDecoder = name match {
+      case ActionsRule.Name.name => Some(ActionsRuleDecoder)
+      case ApiKeysRule.Name.name => Some(ApiKeysRuleDecoder)
+      case FieldsRule.Name.name => Some(new FieldsRuleDecoder(globalSettings.flsEngine))
+      case ResponseFieldsRule.Name.name => Some(ResponseFieldsRuleDecoder)
+      case FilterRule.Name.name => Some(FilterRuleDecoder)
+      case GroupsRule.Name.name => Some(new GroupsRuleDecoder(definitions.users, caseMappingEquality))
+      case HeadersAndRule.Name.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.Name))
+      case HeadersAndRule.DeprecatedName.name => Some(new HeadersAndRuleDecoder()(HeadersAndRule.DeprecatedName))
+      case HeadersOrRule.Name.name => Some(HeadersOrRuleDecoder)
+      case HostsRule.Name.name => Some(HostsRuleDecoder)
+      case IndicesRule.Name.name => Some(IndicesRuleDecoders)
+      case KibanaAccessRule.Name.name => Some(new KibanaAccessRuleDecoder(globalSettings.configurationIndex))
+      case KibanaHideAppsRule.Name.name => Some(KibanaHideAppsRuleDecoder)
+      case KibanaIndexRule.Name.name => Some(KibanaIndexRuleDecoder)
+      case KibanaTemplateIndexRule.Name.name => Some(KibanaTemplateIndexRuleDecoder)
+      case LocalHostsRule.Name.name => Some(new LocalHostsRuleDecoder)
+      case MaxBodyLengthRule.Name.name => Some(MaxBodyLengthRuleDecoder)
+      case MethodsRule.Name.name => Some(MethodsRuleDecoder)
+      case RepositoriesRule.Name.name => Some(RepositoriesRuleDecoder)
+      case SessionMaxIdleRule.Name.name => Some(new SessionMaxIdleRuleDecoder())
+      case SnapshotsRule.Name.name => Some(SnapshotsRuleDecoder)
+      case UriRegexRule.Name.name => Some(UriRegexRuleDecoder)
+      case UsersRule.Name.name => Some(new UsersRuleDecoder()(caseMappingEquality))
+      case XForwardedForRule.Name.name => Some(XForwardedForRuleDecoder)
+      case _ => usersDefinitionsAllowedRulesDecoderBy(
+        name,
+        definitions.authenticationServices,
+        definitions.authorizationServices,
+        definitions.proxies,
+        definitions.jwts,
+        definitions.rorKbns,
+        definitions.ldaps,
+        Some(definitions.impersonators),
+        caseMappingEquality
+      )
+    }
+    optionalRuleDecoder.map(_.asInstanceOf[RuleDecoder[Rule]])
+  }
+
+  def usersDefinitionsAllowedRulesDecoderBy(name: Rule.Name,
+                                            authenticationServiceDefinitions: Definitions[ExternalAuthenticationService],
+                                            authorizationServiceDefinitions: Definitions[ExternalAuthorizationService],
+                                            authProxyDefinitions: Definitions[ProxyAuth],
+                                            jwtDefinitions: Definitions[JwtDef],
+                                            rorKbnDefinitions: Definitions[RorKbnDef],
+                                            ldapServiceDefinitions: Definitions[LdapService],
+                                            impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
+                                            caseMappingEquality: UserIdCaseMappingEquality): Option[RuleDecoder[Rule]] = {
+    val optionalRuleDecoder = name match {
+      case ExternalAuthorizationRule.Name.name => Some(new ExternalAuthorizationRuleDecoder(authorizationServiceDefinitions, caseMappingEquality))
+      case LdapAuthorizationRule.Name.name => Some(new LdapAuthorizationRuleDecoder(ldapServiceDefinitions))
+      case LdapAuthRule.Name.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
+      case RorKbnAuthRule.Name.name => Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, caseMappingEquality))
       case _ =>
         authenticationRuleDecoderBy(
           name,
-          definitions.authenticationServices,
-          definitions.proxies,
-          definitions.jwts,
-          definitions.ldaps,
-          definitions.rorKbns,
-          Some(definitions.impersonators),
+          authenticationServiceDefinitions,
+          authProxyDefinitions,
+          jwtDefinitions,
+          ldapServiceDefinitions,
+          rorKbnDefinitions,
+          impersonatorsDefinitions,
           caseMappingEquality
         )
     }
+    optionalRuleDecoder.map(_.asInstanceOf[RuleDecoder[Rule]])
   }
 
   def authenticationRuleDecoderBy(name: Rule.Name,
@@ -88,22 +122,54 @@ object ruleDecoders {
                                   ldapServiceDefinitions: Definitions[LdapService],
                                   rorKbnDefinitions: Definitions[RorKbnDef],
                                   impersonatorsDefinitions: Option[Definitions[ImpersonatorDef]],
-                                  caseMappingEquality: UserIdCaseMappingEquality): Option[RuleBaseDecoder[_ <: AuthenticationRule]] = {
-    name match {
-      case AuthKeyRule.name => Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
-      case AuthKeySha1Rule.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
-      case AuthKeySha256Rule.name => Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
-      case AuthKeySha512Rule.name => Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
-      case AuthKeyPBKDF2WithHmacSHA512Rule.name => Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
-      case AuthKeyUnixRule.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
-      case ExternalAuthenticationRule.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, caseMappingEquality))
-      case JwtAuthRule.name => Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
-      case LdapAuthRule.name => Some(new LdapAuthRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
-      case LdapAuthenticationRule.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
-      case ProxyAuthRule.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions, caseMappingEquality))
-      case RorKbnAuthRule.name => Some(new RorKbnAuthRuleDecoder(rorKbnDefinitions, caseMappingEquality))
+                                  caseMappingEquality: UserIdCaseMappingEquality): Option[RuleDecoder[AuthenticationRule]] = {
+    val optionalRuleDecoder = name match {
+      case AuthKeyRule.Name.name => Some(new AuthKeyRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeySha1Rule.Name.name => Some(new AuthKeySha1RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeySha256Rule.Name.name => Some(new AuthKeySha256RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeySha512Rule.Name.name => Some(new AuthKeySha512RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeyPBKDF2WithHmacSHA512Rule.Name.name => Some(new AuthKeyPBKDF2WithHmacSHA512RuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case AuthKeyUnixRule.Name.name => Some(new AuthKeyUnixRuleDecoder(impersonatorsDefinitions, caseMappingEquality))
+      case ExternalAuthenticationRule.Name.name => Some(new ExternalAuthenticationRuleDecoder(authenticationServiceDefinitions, caseMappingEquality))
+      case JwtAuthRule.Name.name => Some(new JwtAuthRuleDecoder(jwtDefinitions, caseMappingEquality))
+      case LdapAuthenticationRule.Name.name => Some(new LdapAuthenticationRuleDecoder(ldapServiceDefinitions, caseMappingEquality))
+      case ProxyAuthRule.Name.name => Some(new ProxyAuthRuleDecoder(authProxyDefinitions, caseMappingEquality))
       case _ => None
+    }
+    optionalRuleDecoder
+      .map(_.asInstanceOf[RuleDecoder[AuthenticationRule]])
+  }
+
+  def withUserIdParamsCheck[R <: Rule](decoder: RuleDecoder[R],
+                                       userIdPatterns: UserIdPatterns,
+                                       errorCreator: Message => DecodingFailure): Decoder[RuleDecoder.Result[R]] = {
+    decoder.flatMap { result =>
+      result.rule.rule match {
+        case _: Rule.RegularRule => Decoder.const(result)
+        case _: Rule.AuthorizationRule => Decoder.const(result)
+        case rule: AuthenticationRule =>
+          checkUsersEligibility(rule, userIdPatterns) match {
+            case Right(_) => Decoder.const(result)
+            case Left(msg) => Decoder.failed(errorCreator(Message(msg)))
+          }
+      }
     }
   }
 
+  private def checkUsersEligibility(rule: AuthenticationRule, userIdPatterns: UserIdPatterns) = {
+    rule.eligibleUsers match {
+      case EligibleUsersSupport.Available(users) =>
+        implicit val _ = rule.caseMappingEquality
+        val matcher = new GenericPatternMatcher(userIdPatterns.patterns.toList)
+        if (users.exists(matcher.`match`)) {
+          Right(())
+        } else {
+          Left(
+            s"Users [${users.map(_.show).mkString(",")}] are allowed to be authenticated by rule [${rule.name.show}], but it's used in a context of user patterns [${userIdPatterns.show}]. It seems that this is not what you expect."
+          )
+        }
+      case EligibleUsersSupport.NotAvailable =>
+        Right(())
+    }
+  }
 }
