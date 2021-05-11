@@ -66,7 +66,7 @@ class GroupsRuleSettingsTests
                 val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
                 rule.settings.groups should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
-                inside(rule.settings.usersDefinitions.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
                   userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
@@ -98,7 +98,7 @@ class GroupsRuleSettingsTests
                 val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
                 rule.settings.groups should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
-                inside(rule.settings.usersDefinitions.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("car*"))))
                   userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
@@ -130,7 +130,7 @@ class GroupsRuleSettingsTests
                 val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(AlreadyResolved(groupFrom("group1").nel))
                 rule.settings.groups should be(groups)
                 rule.settings.usersDefinitions.length should be(1)
-                inside(rule.settings.usersDefinitions.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"), User.UserIdPattern("ca*"))))
                   userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
@@ -170,7 +170,7 @@ class GroupsRuleSettingsTests
                 rule.settings.groups should be(groups)
                 rule.settings.usersDefinitions.length should be(2)
                 val sortedUserDefinitions = rule.settings.usersDefinitions
-                inside(sortedUserDefinitions.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(sortedUserDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
                   userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
@@ -178,7 +178,7 @@ class GroupsRuleSettingsTests
                     BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
                   }
                 }
-                inside(sortedUserDefinitions.tail.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
                   userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeySha1Rule]
@@ -213,7 +213,7 @@ class GroupsRuleSettingsTests
                 rule.settings.groups.tail.head shouldBe a[ToBeResolved[_]]
 
                 rule.settings.usersDefinitions.length should be(1)
-                inside(rule.settings.usersDefinitions.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(authRule)) =>
+                inside(rule.settings.usersDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(authRule)) =>
                   patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
                   userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
                   authRule shouldBe an[AuthKeyRule]
@@ -274,7 +274,7 @@ class GroupsRuleSettingsTests
               rule.settings.groups should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
-              inside(sortedUserDefinitions.head) { case UserDef(patterns, userGroups, WithGroupsMapping(Auth.SeparateRules(rule1, rule2))) =>
+              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, userGroups, WithGroupsMapping(Auth.SeparateRules(rule1, rule2))) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
                 userGroups should be(UniqueNonEmptyList.of(groupFrom("group1")))
 
@@ -287,7 +287,7 @@ class GroupsRuleSettingsTests
                   Group("group3")
                 ))
               }
-              inside(sortedUserDefinitions.tail.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(rule1)) =>
+              inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(rule1)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
                 userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
@@ -337,12 +337,12 @@ class GroupsRuleSettingsTests
               rule.settings.groups should be(groups)
               rule.settings.usersDefinitions.length should be(2)
               val sortedUserDefinitions = rule.settings.usersDefinitions
-              inside(sortedUserDefinitions.head) { case UserDef(patterns, userGroups, WithGroupsMapping(Auth.SingleRule(rule1))) =>
+              inside(sortedUserDefinitions.head) { case UserDef(_, patterns, userGroups, WithGroupsMapping(Auth.SingleRule(rule1))) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("cartman"))))
                 userGroups should be(UniqueNonEmptyList.of(groupFrom("group1")))
                 rule1 shouldBe an[LdapAuthRule]
               }
-              inside(sortedUserDefinitions.tail.head) { case UserDef(patterns, userGroups, WithoutGroupsMapping(rule1)) =>
+              inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(rule1)) =>
                 patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("morgan"))))
                 userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
                 rule1 shouldBe an[AuthKeySha1Rule]
@@ -353,6 +353,53 @@ class GroupsRuleSettingsTests
             }
           )
         }
+      }
+      "users inside users sections must have the same username patterns" in {
+        assertDecodingSuccess(
+          yaml =
+            """
+              |readonlyrest:
+              |
+              |  access_control_rules:
+              |
+              |  - name: test_block1
+              |    groups: ["group1"]
+              |
+              |  users:
+              |  - username: "*"
+              |    groups: ["group1", "group3"]
+              |    auth_key: "cartman:pass"
+              |
+              |  - username: "*"
+              |    groups: ["group2", "group3"]
+              |    auth_key: "morgan:pass"
+              |
+              |""".stripMargin,
+          assertion = rule => {
+            val groups: UniqueNonEmptyList[RuntimeMultiResolvableVariable[Group]] = UniqueNonEmptyList.of(
+              AlreadyResolved(groupFrom("group1").nel)
+            )
+            rule.settings.groups should be(groups)
+            rule.settings.usersDefinitions.length should be(2)
+            val sortedUserDefinitions = rule.settings.usersDefinitions
+            inside(sortedUserDefinitions.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(r)) =>
+              patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("*"))))
+              userGroups should be(UniqueNonEmptyList.of(groupFrom("group1"), groupFrom("group3")))
+              r shouldBe an[AuthKeyRule]
+              r.asInstanceOf[AuthKeyRule].settings should be {
+                BasicAuthenticationRule.Settings(Credentials(User.Id("cartman"), PlainTextSecret("pass")))
+              }
+            }
+            inside(sortedUserDefinitions.tail.head) { case UserDef(_, patterns, userGroups, WithoutGroupsMapping(r)) =>
+              patterns should be(UserIdPatterns(UniqueNonEmptyList.of(User.UserIdPattern("*"))))
+              userGroups should be(UniqueNonEmptyList.of(groupFrom("group2"), groupFrom("group3")))
+              r shouldBe an[AuthKeyRule]
+              r.asInstanceOf[AuthKeyRule].settings should be {
+                BasicAuthenticationRule.Settings(Credentials(User.Id("morgan"), PlainTextSecret("pass")))
+              }
+            }
+          }
+        )
       }
     }
     "not be able to be loaded from config" when {
@@ -699,33 +746,6 @@ class GroupsRuleSettingsTests
               """auth_key:
                 |  key: "cartman:pass"
                 |""".stripMargin)))
-          }
-        )
-      }
-      "users inside users sections must have unique usernames" in {
-        assertDecodingFailure(
-          yaml =
-            """
-              |readonlyrest:
-              |
-              |  access_control_rules:
-              |
-              |  - name: test_block1
-              |    groups:
-              |
-              |  users:
-              |  - username: cartman
-              |    groups: ["group1", "group3"]
-              |    auth_key: "cartman:pass"
-              |
-              |  - username: cartman
-              |    groups: ["group2", "group3"]
-              |    auth_key: "cartman:pass"
-              |
-              |""".stripMargin,
-          assertion = errors => {
-            errors should have size 1
-            errors.head should be(DefinitionsLevelCreationError(Message("users definitions must have unique identifiers. Duplicates: cartman")))
           }
         )
       }
