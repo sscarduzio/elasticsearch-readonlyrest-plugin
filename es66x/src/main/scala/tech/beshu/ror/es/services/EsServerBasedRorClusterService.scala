@@ -16,6 +16,8 @@
  */
 package tech.beshu.ror.es.services
 
+import java.util.function.Supplier
+
 import cats.data.NonEmptyList
 import cats.implicits._
 import eu.timepit.refined.types.string.NonEmptyString
@@ -23,20 +25,23 @@ import monix.eval.Task
 import org.apache.logging.log4j.scala.Logging
 import org.elasticsearch.action.search.{MultiSearchResponse, SearchRequestBuilder, SearchResponse}
 import org.elasticsearch.client.node.NodeClient
+import org.elasticsearch.cluster.metadata.RepositoriesMetaData
 import org.elasticsearch.cluster.service.ClusterService
 import org.elasticsearch.index.query.QueryBuilders
+import org.elasticsearch.snapshots.SnapshotsService
 import tech.beshu.ror.accesscontrol.domain.DocumentAccessibility.{Accessible, Inaccessible}
 import tech.beshu.ror.accesscontrol.domain._
 import tech.beshu.ror.accesscontrol.request.RequestContext
 import tech.beshu.ror.es.RorClusterService
 import tech.beshu.ror.es.RorClusterService._
+import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 import tech.beshu.ror.es.utils.GenericResponseListener
 import tech.beshu.ror.utils.uniquelist.UniqueNonEmptyList
 
 import scala.collection.JavaConverters._
-import tech.beshu.ror.es.utils.EsCollectionsScalaUtils._
 
 class EsServerBasedRorClusterService(clusterService: ClusterService,
+                                     snapshotsServiceSupplier: Supplier[Option[SnapshotsService]],
                                      nodeClient: NodeClient)
   extends RorClusterService
     with Logging {
@@ -63,6 +68,41 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
   }
 
   override def allTemplates: Set[Template] = legacyTemplates()
+
+  override def allSnapshots: Map[RepositoryName, Set[SnapshotName.Full]] = {
+    val repositoriesMetadata: RepositoriesMetaData = clusterService.state().custom(RepositoriesMetaData.TYPE)
+    repositoriesMetadata
+      .repositories().asScala
+      .flatMap { repositoryMetadata =>
+        NonEmptyString.unapply(repositoryMetadata.name())
+          .map(RepositoryName.apply)
+          .map { name => (name, snapshotsBy(name)) }
+      }
+      .toMap
+  }
+
+  private def snapshotsBy(repositoryName: RepositoryName) = {
+    snapshotsServiceSupplier.get() match {
+      case Some(snapshotsService) =>
+        snapshotsService
+          .getRepositoryData(repositoryName.value.value)
+          .getAllSnapshotIds.asScala
+          .flatMap { sId =>
+            SnapshotName
+              .from(sId.getName)
+              .flatMap {
+                case SnapshotName.Wildcard => None
+                case SnapshotName.All => None
+                case SnapshotName.Pattern(_) => None
+                case f: SnapshotName.Full => Some(f)
+              }
+          }
+          .toSet
+      case None =>
+        logger.error("Cannot supply Snapshots Service. Please, report the issue!!!")
+        Set.empty[SnapshotName.Full]
+    }
+  }
 
   private def legacyTemplates(): Set[Template] = {
     val templates = clusterService.state.metaData().templates()
@@ -160,4 +200,5 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .zip(results)
       .toMap
   }
+
 }

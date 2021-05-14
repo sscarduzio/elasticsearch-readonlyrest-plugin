@@ -38,6 +38,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
   extends BaseSnapshotEsRequestContext[CreateSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
   override def snapshotsFrom(request: CreateSnapshotRequest): Set[SnapshotName] = Set {
+
     NonEmptyString
       .from(request.snapshot())
       .map(SnapshotName.apply)

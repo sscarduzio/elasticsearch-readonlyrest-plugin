@@ -35,13 +35,9 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
   extends BaseSnapshotEsRequestContext[DeleteSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
   override protected def snapshotsFrom(request: DeleteSnapshotRequest): Set[SnapshotName] = Set {
-    NonEmptyString
+    SnapshotName
       .from(request.snapshot())
-      .map(SnapshotName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[DeleteSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[DeleteSnapshotRequest]("Snapshot name is empty"))
   }
 
   override protected def repositoriesFrom(request: DeleteSnapshotRequest): Set[RepositoryName] = Set {
@@ -99,7 +95,7 @@ class DeleteSnapshotEsRequestContext(actionRequest: DeleteSnapshotRequest,
   private def update(actionRequest: DeleteSnapshotRequest,
                      snapshot: SnapshotName,
                      repository: RepositoryName) = {
-    actionRequest.snapshot(snapshot.value.value)
+    actionRequest.snapshot(SnapshotName.toString(snapshot))
     actionRequest.repository(repository.value.value)
   }
 }

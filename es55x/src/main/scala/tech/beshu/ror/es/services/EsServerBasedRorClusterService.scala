@@ -64,6 +64,8 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
 
   override def allTemplates: Set[Template] = legacyTemplates()
 
+  override def allSnapshots: Map[RepositoryName, Set[SnapshotName]] = ???
+
   private def legacyTemplates(): Set[Template] = {
     val templates = clusterService.state.metaData().templates()
     templates

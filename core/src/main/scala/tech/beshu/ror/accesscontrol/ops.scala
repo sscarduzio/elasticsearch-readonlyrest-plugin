@@ -49,7 +49,7 @@ import tech.beshu.ror.accesscontrol.domain.Header.AuthorizationValueError
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.AccessMode.{Blacklist, Whitelist}
 import tech.beshu.ror.accesscontrol.domain.ResponseFieldsFiltering.ResponseFieldsRestrictions
 import tech.beshu.ror.accesscontrol.domain.User.UserIdPattern
-import tech.beshu.ror.accesscontrol.domain._
+import tech.beshu.ror.accesscontrol.domain.{SnapshotName, _}
 import tech.beshu.ror.accesscontrol.factory.BlockValidator.BlockValidationError
 import tech.beshu.ror.accesscontrol.header.{FromHeaderValue, ToHeaderValue}
 import tech.beshu.ror.com.jayway.jsonpath.JsonPath
@@ -110,7 +110,12 @@ object orders {
     case ForbiddenByMismatched.Cause.ImpersonationNotSupported => 3
   }
   implicit val repositoryOrder: Order[RepositoryName] = Order.by(_.value.value)
-  implicit val snapshotOrder: Order[SnapshotName] = Order.by(_.value.value)
+  implicit val snapshotOrder: Order[SnapshotName] = Order.by {
+    case SnapshotName.Full(value) => value.value
+    case SnapshotName.Pattern(value) => value.value
+    case SnapshotName.All => "_all"
+    case SnapshotName.Wildcard => "*"
+  }
 
   implicit def accessOrder[T: Order]: Order[AccessRequirement[T]] = Order.from {
     case (MustBeAbsent(v1), MustBeAbsent(v2)) => v1.compare(v2)
@@ -154,6 +159,7 @@ object show {
     implicit val propNameShow: Show[PropName] = Show.show(_.value.value)
     implicit val templateNameShow: Show[TemplateName] = Show.show(_.value.value)
     implicit val templateNamePatternShow: Show[TemplateNamePattern] = Show.show(_.value.value)
+    implicit val snapshotNameShow: Show[SnapshotName] = Show.show(v => SnapshotName.toString(v))
     implicit def ruleNameShow[T <: RuleName[_]]: Show[T] = Show.show(_.name.value)
 
     implicit def nonEmptyList[T : Show]: Show[NonEmptyList[T]] = Show[List[T]].contramap(_.toList)

@@ -26,6 +26,7 @@ import cats.data.NonEmptyList
 import cats.implicits._
 import cats.kernel.Monoid
 import com.comcast.ip4s.{Cidr, Hostname, IpAddress}
+import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.types.string.NonEmptyString
 import io.jsonwebtoken.Claims
@@ -441,14 +442,38 @@ object domain {
     implicit val eqRepository: Eq[RepositoryName] = Eq.fromUniversalEquals
     implicit val caseMappingEqualityRepositoryName: CaseMappingEquality[RepositoryName] = CaseMappingEquality.instance(_.value.value, identity)
   }
-  final case class SnapshotName(value: NonEmptyString)
+
+  sealed trait SnapshotName
   object SnapshotName {
-    val all: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("_all"))
-    val wildcard: SnapshotName = SnapshotName(NonEmptyString.unsafeFrom("*"))
+    final case class Full private(value: NonEmptyString) extends SnapshotName
+    final case class Pattern private(value: NonEmptyString) extends SnapshotName
+    case object All extends SnapshotName
+    case object Wildcard extends SnapshotName
+
+    def all: SnapshotName = All
+    def wildcard: SnapshotName = Wildcard
+
+    def from(value: String): Option[SnapshotName] = {
+      NonEmptyString.unapply(value).map {
+        case Refined("_all") => All
+        case Refined("*") => Wildcard
+        case v if v.contains("*") => Pattern(NonEmptyString.unsafeFrom(v))
+        case v => Full(NonEmptyString.unsafeFrom(v))
+      }
+    }
 
     implicit val eqRepository: Eq[SnapshotName] = Eq.fromUniversalEquals
-    implicit val caseMappingEqualitySnapshotName: CaseMappingEquality[SnapshotName] =
-      CaseMappingEquality.instance(_.value.value, identity)
+    implicit val caseMappingEqualitySnapshotName: CaseMappingEquality[SnapshotName] = CaseMappingEquality.instance(
+      snapshotName => toString(snapshotName),
+      identity
+    )
+
+    def toString(snapshotName: SnapshotName): String = snapshotName match {
+      case Full(value) => value.value
+      case Pattern(value) => value.value
+      case All => "*"
+      case Wildcard => "*"
+    }
   }
 
   sealed trait Template {

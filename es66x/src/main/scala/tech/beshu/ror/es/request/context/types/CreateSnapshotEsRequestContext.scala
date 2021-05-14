@@ -38,13 +38,9 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
   extends BaseSnapshotEsRequestContext[CreateSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
   override def snapshotsFrom(request: CreateSnapshotRequest): Set[SnapshotName] = Set {
-    NonEmptyString
+    SnapshotName
       .from(request.snapshot())
-      .map(SnapshotName.apply)
-      .fold(
-        msg => throw RequestSeemsToBeInvalid[CreateSnapshotRequest](msg),
-        identity
-      )
+      .getOrElse(throw RequestSeemsToBeInvalid[CreateSnapshotRequest]("Snapshot name is empty"))
   }
 
   override protected def repositoriesFrom(request: CreateSnapshotRequest): Set[RepositoryName] = Set {
@@ -113,7 +109,7 @@ class CreateSnapshotEsRequestContext(actionRequest: CreateSnapshotRequest,
                      snapshot: SnapshotName,
                      repository: RepositoryName,
                      indices: UniqueNonEmptyList[IndexName]) = {
-    actionRequest.snapshot(snapshot.value.value)
+    actionRequest.snapshot(SnapshotName.toString(snapshot))
     actionRequest.repository(repository.value.value)
     actionRequest.indices(indices.toList.map(_.value.value).asJava)
   }

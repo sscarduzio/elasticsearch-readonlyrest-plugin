@@ -205,4 +205,6 @@ class EsRestClientBasedRorClusterService(client: RestHighLevelClientAdapter)
       .zip(results)
       .toMap
   }
+
+  override def allSnapshots: Map[RepositoryName, Set[SnapshotName]] = ???
 }

@@ -39,10 +39,9 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
   extends BaseSnapshotEsRequestContext[RestoreSnapshotRequest](actionRequest, esContext, clusterService, threadPool) {
 
   override protected def snapshotsFrom(request: RestoreSnapshotRequest): Set[domain.SnapshotName] =
-    NonEmptyString
+    SnapshotName
       .from(request.snapshot())
-      .map(SnapshotName.apply)
-      .toOption.toSet
+      .toSet
 
   override protected def repositoriesFrom(request: RestoreSnapshotRequest): Set[domain.RepositoryName] = Set {
     NonEmptyString
@@ -109,7 +108,7 @@ class RestoreSnapshotEsRequestContext(actionRequest: RestoreSnapshotRequest,
                      snapshot: SnapshotName,
                      repository: RepositoryName,
                      indices: NonEmptyList[IndexName]) = {
-    request.snapshot(snapshot.value.value)
+    request.snapshot(SnapshotName.toString(snapshot))
     request.repository(repository.value.value)
     request.indices(indices.toList.map(_.value.value): _*)
   }

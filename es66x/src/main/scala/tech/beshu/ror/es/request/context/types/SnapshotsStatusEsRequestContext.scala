@@ -43,9 +43,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
   override protected def snapshotsFrom(request: SnapshotsStatusRequest): Set[SnapshotName] =
     request
       .snapshots().asSafeList
-      .flatMap { s =>
-        NonEmptyString.unapply(s).map(SnapshotName.apply)
-      }
+      .flatMap(SnapshotName.from)
       .toSet[SnapshotName]
 
   override protected def repositoriesFrom(request: SnapshotsStatusRequest): Set[RepositoryName] = Set {
@@ -101,7 +99,7 @@ class SnapshotsStatusEsRequestContext(actionRequest: SnapshotsStatusRequest,
     if (snapshotsFrom(actionRequest).isEmpty && snapshots.contains_(SnapshotName.all)) {
       // if empty, it's /_snapshot/_status request
     } else {
-      actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
+      actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
     }
     actionRequest.repository(repository.value.value)
   }

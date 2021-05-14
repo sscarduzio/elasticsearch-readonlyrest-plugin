@@ -47,7 +47,6 @@ import org.elasticsearch.index.mapper.MapperService
 import org.elasticsearch.indices.breaker.CircuitBreakerService
 import org.elasticsearch.plugins.ActionPlugin.ActionHandler
 import org.elasticsearch.plugins._
-import org.elasticsearch.repositories.RepositoriesModule
 import org.elasticsearch.rest.{RestChannel, RestController, RestHandler, RestRequest}
 import org.elasticsearch.script.ScriptService
 import org.elasticsearch.threadpool.ThreadPool
@@ -129,6 +128,7 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
         threadPool,
         environment,
         TransportServiceInterceptor.remoteClusterServiceSupplier,
+        SnapshotsServiceInterceptor.snapshotsServiceSupplier,
         emptyClusterState,
         esInitListener,
       )
@@ -150,11 +150,6 @@ class ReadonlyRestPlugin(s: Settings, p: Path)
 
   override def onIndexModule(indexModule: IndexModule): Unit = {
     indexModule.setSearcherWrapper(new RoleIndexSearcherWrapper(_))
-  }
-
-  override
-
-  @deprecated def onModule(module: RepositoriesModule): Unit = {
   }
 
   override def getSettings: util.List[Setting[_]] = {

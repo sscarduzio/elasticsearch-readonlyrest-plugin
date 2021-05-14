@@ -195,4 +195,6 @@ class EsServerBasedRorClusterService(clusterService: ClusterService,
       .zip(results)
       .toMap
   }
+
+  override def allSnapshots: Map[RepositoryName, Set[SnapshotName]] = ???
 }

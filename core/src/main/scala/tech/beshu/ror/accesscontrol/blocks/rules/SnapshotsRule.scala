@@ -53,7 +53,7 @@ class SnapshotsRule(val settings: Settings)
 
   private def checkAllowedSnapshots(allowedSnapshots: Set[SnapshotName],
                                     blockContext: SnapshotRequestBlockContext): RuleResult[SnapshotRequestBlockContext] = {
-    if (allowedSnapshots.contains(SnapshotName.all) || allowedSnapshots.contains(SnapshotName.wildcard)) {
+    if (allowedSnapshots.contains(SnapshotName.All) || allowedSnapshots.contains(SnapshotName.Wildcard)) {
       Fulfilled(blockContext)
     } else {
       zeroKnowledgeMatchFilter.alterSnapshotsIfNecessary(

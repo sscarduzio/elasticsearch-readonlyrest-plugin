@@ -45,9 +45,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   override protected def snapshotsFrom(request: GetSnapshotsRequest): Set[SnapshotName] = {
     request
       .snapshots().asSafeList
-      .flatMap { s =>
-        NonEmptyString.unapply(s).map(SnapshotName.apply)
-      }
+      .flatMap(SnapshotName.from)
       .toSet[SnapshotName]
   }
 
@@ -106,7 +104,7 @@ class GetSnapshotsEsRequestContext(actionRequest: GetSnapshotsRequest,
   private def update(actionRequest: GetSnapshotsRequest,
                      snapshots: UniqueNonEmptyList[SnapshotName],
                      repository: RepositoryName) = {
-    actionRequest.snapshots(snapshots.toList.map(_.value.value).toArray)
+    actionRequest.snapshots(snapshots.toList.map(SnapshotName.toString).toArray)
     actionRequest.repository(repository.value.value)
   }
 

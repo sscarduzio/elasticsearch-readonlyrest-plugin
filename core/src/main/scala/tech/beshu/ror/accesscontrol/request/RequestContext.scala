@@ -71,6 +71,8 @@ trait RequestContext {
 
   def allTemplates: Set[Template]
 
+  def allSnapshots: Map[RepositoryName, Set[SnapshotName.Full]]
+
   lazy val legacyTemplates: Set[Template.LegacyTemplate] =
     allTemplates.collect { case t: Template.LegacyTemplate => t }
 

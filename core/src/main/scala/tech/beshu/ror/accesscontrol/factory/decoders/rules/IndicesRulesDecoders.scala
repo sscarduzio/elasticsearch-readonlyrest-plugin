@@ -89,9 +89,9 @@ object SnapshotsRuleDecoder
       .decodeStringLikeOrNonEmptySet[RuntimeMultiResolvableVariable[SnapshotName]]
       .toSyncDecoder
       .emapE { snapshots =>
-        if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.all))
+        if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.All))
           Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.Name.show}) that matches all the values is redundant - snapshot ${SnapshotName.all.show}")))
-        else if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.wildcard))
+        else if (SnapshotDecodersHelper.checkIfAlreadyResolvedSnapshotVariableContains(snapshots, SnapshotName.Wildcard))
           Left(RulesLevelCreationError(Message(s"Setting up a rule (${SnapshotsRule.Name.show}) that matches all the values is redundant - snapshot ${SnapshotName.wildcard.show}")))
         else
           Right(snapshots)
@@ -154,10 +154,10 @@ private object RepositoriesDecodersHelper {
 private object SnapshotDecodersHelper {
   private implicit val snapshotNameConvertible: Convertible[SnapshotName] = new Convertible[SnapshotName] {
     override def convert: String => Either[Convertible.ConvertError, SnapshotName] = str =>
-      NonEmptyString
-        .from(str)
-        .map(SnapshotName.apply)
-        .left.map(_ => Convertible.ConvertError("Snapshot name cannot be empty"))
+      SnapshotName.from(str) match {
+        case Some(value) => Right(value)
+        case None => Left(Convertible.ConvertError("Snapshot name cannot be empty"))
+      }
   }
   implicit val snapshotNameValueDecoder: Decoder[RuntimeMultiResolvableVariable[SnapshotName]] =
     DecoderHelpers
