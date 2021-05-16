@@ -302,15 +302,6 @@ object CirceOps {
       value.withFocus(_.mapObject(_.filterKeys(key => keys.contains(key))))
     }
 
-    implicit class ACursorOps(val value: ACursor) extends AnyVal {
-      def downFields(field: String, fields: String*): ACursor = {
-        fields.toList.foldLeft(value.downField(field)) {
-          case (_: FailedCursor, nextField) => value.downField(nextField)
-          case (found: HCursor, _) => found
-          case (other, _) => other
-        }
-    }
-
     def asWithError[T: Decoder](error: String): Decoder.Result[T] =
       value
         .as[T](implicitly[Decoder[T]])
